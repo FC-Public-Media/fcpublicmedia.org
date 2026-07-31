@@ -28,7 +28,11 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.3"
+          # Read from .ruby-version rather than pinned here. Cloudflare Pages
+          # reads that same file, so CI and the live build cannot drift onto
+          # different Ruby versions and start disagreeing about whether the
+          # site builds.
+          ruby-version: .ruby-version
           bundler-cache: true
 
       # The build runs unconditionally. It is the part worth checking on every
