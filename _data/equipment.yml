@@ -1,0 +1,34 @@
+# Equipment inventory.
+#
+# The current site shows this as an image gallery, which means the inventory is
+# not readable as text, not searchable, and not indexable. Listing it as data
+# fixes all three and costs nothing.
+#
+# EVERY ENTRY BELOW IS A PLACEHOLDER. Replace with the real inventory before
+# launch — the categories are a guess at the shape, not a claim about what
+# FCPM actually owns.
+
+- category: Cameras
+  items:
+    - name: TODO
+      notes: TODO
+
+- category: Lenses
+  items:
+    - name: TODO
+      notes: TODO
+
+- category: Audio
+  items:
+    - name: TODO
+      notes: TODO
+
+- category: Lighting
+  items:
+    - name: TODO
+      notes: TODO
+
+- category: Support and Grip
+  items:
+    - name: TODO
+      notes: TODO

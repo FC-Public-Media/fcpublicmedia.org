@@ -1,0 +1,69 @@
+---
+layout: default
+title: ""
+---
+
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Fort Collins, Colorado &middot; Since {{ site.data.org.founded }}</p>
+    <h1>Community media, open to everyone.</h1>
+    <p class="lede">
+      Fort Collins Public Media gives creators the gear, the training, and the
+      studio space to make something &mdash; and a channel to put it on.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ '/membership/' | relative_url }}">Become a member</a>
+      <a class="btn" href="{{ '/watch/' | relative_url }}">Watch live</a>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2 class="visually-hidden">What we offer</h2>
+  <ul class="grid grid-4">
+    <li class="card">
+      <h3><a href="{{ '/equipment/' | relative_url }}">Equipment</a></h3>
+      <p>Cameras, audio, and lighting available to members for checkout.</p>
+    </li>
+    <li class="card">
+      <h3><a href="{{ '/reservations/' | relative_url }}">Studios</a></h3>
+      <p>A video studio, a podcast studio, and three editing bays.</p>
+    </li>
+    <li class="card">
+      <h3><a href="{{ '/classes/' | relative_url }}">Classes</a></h3>
+      <p>Hands-on training in production, editing, and getting an audience.</p>
+    </li>
+    <li class="card">
+      <h3><a href="{{ '/submit/' | relative_url }}">Submit a program</a></h3>
+      <p>Get your work on cable, streaming, and video on demand.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <p class="eyebrow">Coming up</p>
+    <h2>Classes at the studio</h2>
+    <p class="lede">
+      Short, practical, and open to the public.
+    </p>
+    {%- comment -%}
+      TODO: class listings are the one part of this site that changes on a
+      schedule. Once a ticketing provider is chosen, this becomes either a
+      _data/classes.yml loop or an embed from that provider. Until then it
+      links to the classes page rather than inventing a listing here.
+    {%- endcomment -%}
+    <p><a class="btn" href="{{ '/classes/' | relative_url }}">See the schedule</a></p>
+  </div>
+</section>
+
+<section class="wrap" style="margin-top: 4rem;">
+  <p class="eyebrow">On the air</p>
+  <h2>Watch local programs anywhere</h2>
+  <ul class="rows">
+    {% for channel in site.data.watch.carriage %}
+      <li><b>{{ channel.name }}</b> <span>{{ channel.detail }}</span></li>
+    {% endfor %}
+  </ul>
+  <p><a class="btn" href="{{ '/watch/' | relative_url }}">Live stream and on demand</a></p>
+</section>

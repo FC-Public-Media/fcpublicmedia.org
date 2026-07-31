@@ -1,0 +1,40 @@
+# Membership tiers.
+#
+# Prices confirmed from the current site. Benefit lists are NOT — the live page
+# describes benefits in one shared paragraph rather than per tier, so the
+# `includes` arrays below are marked TODO and must be confirmed by the board
+# before launch.
+#
+# Also unresolved: the current page states both "January 1 - December 31" and
+# "expires one year from the sign-up date". Those cannot both be true.
+
+term: TODO — calendar year or rolling year? The current site says both.
+
+tiers:
+  - name: Sponsor
+    price: 40
+    summary: Support the organization without needing studio access.
+    includes: [] # TODO
+
+  - name: Student
+    price: 60
+    summary: TODO — confirm eligibility and what proof is required.
+    includes: [] # TODO
+
+  - name: Creator
+    price: 70
+    summary: TODO
+    includes: [] # TODO
+
+  - name: Producer
+    price: 140
+    summary: TODO
+    includes: [] # TODO
+
+# Applies to every tier, per the current site copy.
+shared_benefits:
+  - Studio space
+  - Equipment for video, photography, audio, and podcasting
+  - Editing software and editing bays
+  - Training classes
+  - Community support and connection

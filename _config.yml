@@ -1,0 +1,48 @@
+# Fort Collins Public Media — site configuration
+#
+# Deliberately small. Everything Jekyll needs is in this file; there are no
+# plugins, no theme gem, and no build step beyond `jekyll build`. If you can
+# read YAML and HTML you can maintain this site.
+
+title: Fort Collins Public Media
+tagline: Gear, training, and studio space for Fort Collins storytellers.
+description: >-
+  Fort Collins Public Media is a 501(c)(3) community media resource providing
+  creators with equipment, training, studio space, and a channel to broadcast on.
+
+url: https://www.fcpublicmedia.org
+baseurl: ""
+
+# /classes.md becomes /classes/ — clean URLs, no .html anywhere.
+permalink: pretty
+markdown: kramdown
+
+# The only collection. Podcast pages are all the same shape, so they live in
+# _podcasts/ and share one layout instead of being eight near-identical pages.
+collections:
+  podcasts:
+    output: true
+    permalink: /podcasts/:name/
+
+defaults:
+  - scope:
+      path: ""
+      type: podcasts
+    values:
+      layout: podcast
+  - scope:
+      path: ""
+    values:
+      layout: page
+
+sass:
+  style: compressed
+
+exclude:
+  - README.md
+  - CONTENT-TODO.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - api
+  - node_modules

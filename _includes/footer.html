@@ -1,0 +1,48 @@
+{%- assign org = site.data.org -%}
+<footer class="site-foot">
+  <div class="wrap site-foot-inner">
+
+    <div class="foot-block">
+      <h2 class="foot-title">{{ org.name }}</h2>
+      <address>
+        {{ org.address.venue }}<br>
+        {{ org.address.street }}<br>
+        {{ org.address.city }}, {{ org.address.state }} {{ org.address.zip }}<br>
+        <span class="muted">{{ org.address.note }}</span>
+      </address>
+      <p>
+        <a href="mailto:{{ org.email }}">{{ org.email }}</a><br>
+        <a href="tel:{{ org.phone | remove: '-' }}">{{ org.phone }}</a>
+      </p>
+    </div>
+
+    <div class="foot-block">
+      <h2 class="foot-title">More</h2>
+      <ul class="foot-links">
+        {% for item in site.data.nav.footer %}
+          <li><a href="{{ item.url | relative_url }}">{{ item.title }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="foot-block">
+      <h2 class="foot-title">Follow</h2>
+      <ul class="foot-links">
+        {% for channel in org.social %}
+          {% if channel.url and channel.url != "" %}
+            <li><a href="{{ channel.url }}">{{ channel.name }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if org.newsletter_url and org.newsletter_url != "" %}
+          <li><a href="{{ org.newsletter_url }}">Newsletter</a></li>
+        {% endif %}
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="wrap foot-legal">
+    <p>{{ org.legal }}</p>
+    <p>&copy; {{ org.founded }}&ndash;{{ site.time | date: '%Y' }} {{ org.name }}</p>
+  </div>
+</footer>

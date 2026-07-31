@@ -1,0 +1,14 @@
+# Board and staff roster.
+#
+# Placeholder structure. `photo` is optional; the template falls back to
+# initials when it is empty, so nobody is blocked on a headshot.
+
+- name: TODO
+  role: TODO
+  bio: TODO
+  photo: ""
+
+- name: TODO
+  role: TODO
+  bio: TODO
+  photo: ""

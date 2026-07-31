@@ -1,0 +1,23 @@
+---
+permalink: /sitemap.xml
+layout: null
+sitemap: false
+---
+{%- comment -%}
+  Hand-rolled instead of using jekyll-sitemap. It is a few lines of Liquid, it
+  has no dependency, and you can see exactly what it emits. This is the kind of
+  thing that would otherwise be a plugin.
+
+  Includes anything whose URL ends in a slash — which, with pretty permalinks,
+  means every real page. Opt a page out with `sitemap: false`.
+{%- endcomment -%}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{%- assign pages = site.pages | concat: site.podcasts | sort: "url" -%}
+{%- for page in pages -%}
+{%- assign tail = page.url | slice: -1 -%}
+{%- if page.sitemap != false and tail == "/" %}
+  <url><loc>{{ page.url | absolute_url }}</loc></url>
+{%- endif -%}
+{%- endfor %}
+</urlset>

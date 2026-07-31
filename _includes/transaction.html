@@ -1,0 +1,27 @@
+{%- comment -%}
+  The only way this site links out to a paid or stateful service.
+
+  Usage:  {% include transaction.html key="tickets" text="Register" %}
+
+  Reads _data/providers.yml. If that entry has no url yet, this renders a
+  visible placeholder rather than a broken button — so an unconfigured
+  transaction is impossible to miss during review.
+{%- endcomment -%}
+
+{%- assign t = site.data.providers[include.key] -%}
+{%- assign label = include.text | default: t.label -%}
+
+{% if t.url and t.url != "" %}
+  <p class="transaction">
+    <a class="btn btn-primary" href="{{ t.url }}" rel="noopener">{{ label }}</a>
+    {% if t.provider and t.provider != "" %}
+      <span class="transaction-provider">Handled by {{ t.provider }}</span>
+    {% endif %}
+  </p>
+{% else %}
+  <p class="transaction transaction-todo">
+    <b>{{ label }} &mdash; not wired up yet.</b>
+    {% if t.note %}<span class="muted">{{ t.note | strip_newlines | strip }}</span>{% endif %}
+    <span class="muted">Set <code>{{ include.key }}.url</code> in <code>_data/providers.yml</code>.</span>
+  </p>
+{% endif %}

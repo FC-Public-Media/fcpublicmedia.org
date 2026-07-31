@@ -1,0 +1,32 @@
+---
+layout: default
+---
+<header class="page-head">
+  <div class="wrap">
+    <p class="eyebrow"><a href="{{ '/podcasts/' | relative_url }}">Podcasts</a></p>
+    <h1>{{ page.title }}</h1>
+    {% if page.explicit %}<p class="tag tag-warn">Explicit language</p>{% endif %}
+    {% if page.hosts %}<p class="lede">With {{ page.hosts }}</p>{% endif %}
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="prose">
+    {{ content }}
+
+    {% if page.embed %}
+      <div class="embed">{{ page.embed }}</div>
+    {% endif %}
+
+    {% if page.listen %}
+      <h2>Listen</h2>
+      <ul class="listen">
+        {% for link in page.listen %}
+          {% if link.url and link.url != "" %}
+            <li><a href="{{ link.url }}">{{ link.name }}</a></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</div>
