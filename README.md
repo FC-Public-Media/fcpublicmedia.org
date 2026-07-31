@@ -216,7 +216,57 @@ A static site can't accept a form post. Two options, both fine:
   submission form has ranked scheduling preferences, a file upload, and a legal
   agreement, and is not worth hand-building.
 
-## Deploying
+## Deploying to Cloudflare Pages
+
+This is the fastest path to a real URL on a real domain, and it is what the
+demo runs on.
+
+Point the Cloudflare GitHub app at this repository and enter:
+
+| Setting | Value |
+|---|---|
+| Framework preset | **Jekyll** |
+| Build command | `bundle exec jekyll build` |
+| Build output directory | `_site` |
+| Root directory | `/` (leave it alone) |
+
+That is the whole configuration. Three fields, and nothing else needs
+touching.
+
+Notes, since the build settings are the usual place this goes wrong:
+
+- **`bundle exec` is deliberate.** Cloudflare finds the `Gemfile` and runs
+  `bundle install` on its own, so plain `jekyll build` also works. Prefixing
+  with `bundle exec` guarantees the bundled Jekyll rather than whatever
+  happens to be on `PATH`, and costs nothing if the preset already filled the
+  field in. Either value builds this repo.
+- **`_site` is Jekyll's default** and is not overridden in `_config.yml`, so
+  the preset's default and the value above are the same thing.
+- **`.ruby-version` pins Ruby 3.2.2**, which is the default in Cloudflare's v2
+  build image. Without it the build image could fall back to a Ruby too old
+  for Jekyll 4. This is why the file exists — do not delete it.
+- **Leave the root directory as `/`.** The `api/` folder is Azure Functions
+  source, not a second site. Cloudflare only auto-builds functions from a
+  folder named `functions/`, which this repo does not have, and `_config.yml`
+  excludes `api/` from the published output. There is one buildable component
+  here, at the root.
+- **`Gemfile.lock` is intentionally not committed.** A lock file resolved on a
+  different platform is a common cause of `bundle install` failures on hosted
+  builders. Jekyll is the only direct dependency, so there is little to gain
+  from pinning it.
+
+### Redirects and headers
+
+Cloudflare Pages reads `_redirects` and `_headers` from the root of the
+published output. Azure reads `staticwebapp.config.json`. **All three are
+generated from `_data/redirects.yml`** at build time, so the hosts cannot
+drift apart — add a redirect once and both get it.
+
+The 20 legacy Wix URLs therefore keep working on either host, which matters:
+those are the links currently indexed by Google and sitting in other people's
+bookmarks.
+
+## Deploying to Azure Static Web Apps
 
 `.github/workflows/deploy.yml` builds with Jekyll and deploys to Azure Static
 Web Apps on every push to `main`. Pull requests get their own preview URL,
@@ -229,14 +279,24 @@ App resource in the Azure portal.
 The free tier covers the static hosting, the managed functions, the auth, and a
 custom domain with a certificate.
 
-### Why Azure and not GitHub Pages
+### Cloudflare or Azure?
 
-Normally GitHub Pages plus Cloudflare would be the answer. Here the
-organization already has Microsoft 365, and Azure Static Web Apps bundles
-static hosting, Entra sign-in, and a small serverless API into one free
-resource. That combination is what makes members-only pages possible without
-running a server or adding a vendor. The site is still just static files — if
-Azure ever stops being the right host, `_site/` deploys anywhere.
+Both, for now, and that is not indecision.
+
+**Cloudflare Pages** is the demo host: it attaches to the domain in minutes
+and needs no Azure setup. It serves static files, which is all this site
+currently is.
+
+**Azure Static Web Apps** is where this goes if members-only pages are
+wanted, because it bundles static hosting, Entra ID sign-in, and a small
+serverless API into one free resource inside the Microsoft 365 tenant the
+organization already has. Cloudflare Pages can do auth and functions too, but
+not with Entra sitting right there.
+
+Nothing about the site favours one over the other — that is the point of it
+being static files. `_site/` deploys anywhere, both hosts build from the same
+command, and the redirect list feeds both. Switching later is a DNS change,
+not a rewrite.
 
 ---
 

@@ -1,0 +1,15 @@
+---
+layout: null
+sitemap: false
+---
+{%- comment -%}
+  Cloudflare Pages equivalent of the globalHeaders block in
+  staticwebapp.config.json. Same headers, different host. Listed under
+  `include:` in _config.yml so Jekyll publishes it despite the underscore.
+{%- endcomment -%}
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/assets/*
+  Cache-Control: public, max-age=3600

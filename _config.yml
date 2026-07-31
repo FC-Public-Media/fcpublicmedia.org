@@ -38,11 +38,19 @@ defaults:
 sass:
   style: compressed
 
+# Jekyll skips source files that start with an underscore. These two are named
+# by their hosts — Cloudflare Pages looks for exactly /_redirects and
+# /_headers in the published output — so they have to be let back in.
+include:
+  - _redirects
+  - _headers
+
 exclude:
   - README.md
   - CONTENT-TODO.md
   - Gemfile
   - Gemfile.lock
   - vendor
-  - api
+  - api      # Azure Functions source; deployed separately, never published
+  - script   # build tooling, not site content
   - node_modules
