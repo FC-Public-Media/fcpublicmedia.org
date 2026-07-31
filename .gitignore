@@ -11,3 +11,8 @@ node_modules/
 # Cloudflare Wrangler
 .wrangler/
 .dev.vars
+
+# Playwright
+tests/node_modules/
+tests/playwright-report/
+tests/test-results/

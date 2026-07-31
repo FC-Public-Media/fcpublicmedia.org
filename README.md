@@ -136,6 +136,67 @@ grants membership.
 
 `api/src/functions/GetRoles.js` is a working stub with the lookup left as a TODO.
 
+## Tests
+
+Browser smoke tests, run with Playwright against a real Chromium in both a
+desktop and a phone viewport.
+
+```
+bundle exec jekyll build
+cd tests && npm ci && npx playwright install chromium
+npx playwright test
+```
+
+They exist because the failures that matter here are the ones you cannot see:
+a JavaScript error on a phone, an embed that silently does not mount, a link
+that looks fine and 404s. Each page is checked for:
+
+- HTTP status, a title, exactly one `<h1>`
+- No uncaught JavaScript errors and no console errors
+- No failed same-origin requests
+- Every internal link resolving — this is not a crawl of the whole site, it is
+  every link on every listed page, fetched
+- No link with an invisible label (blank text, no image, no `aria-label`)
+- No horizontal scrolling, which is the classic phone bug
+
+Plus the mobile menu opening and closing, and the archive filter actually
+filtering.
+
+They caught two real bugs the first time they ran: all 38 category links on
+`/watch/` pointed at `/watch-archive-news`-style paths that 404ed, because
+`slugify` had been chained after `append` and slugified the path along with
+the name; and the archive scrolled sideways on a phone because Cablecast
+titles are often one long underscore-joined token with nowhere to break.
+
+### Tests marked @external
+
+`embeds.spec.js` checks the Cablecast player, show links, thumbnails, and
+outbound links. These need network and depend on someone else's servers, so
+they are excluded from the pull request run:
+
+```
+npx playwright test --grep-invert @external   # what CI runs
+npx playwright test --grep @external          # third-party health
+```
+
+The external ones run on a weekly schedule with `continue-on-error`, because
+a suite that goes red when a third party has a bad afternoon is a suite people
+stop reading.
+
+**Why these are browser tests rather than link checks:** Cablecast's viewer is
+a single-page app. `/internetchannel/show/999999` returns HTTP 200 with a full
+HTML shell for a show that does not exist. A status check proves nothing; you
+have to render the page and look for the player.
+
+### Testing the deployed site
+
+```
+cd tests && BASE_URL=https://www.fcpublicmedia.org npx playwright test
+```
+
+Worth doing after a deploy, because redirects, custom 404s, and trailing-slash
+handling are host behavior and do not exist in the local preview server.
+
 ## The Cablecast catalog
 
 The station's Cablecast instance has a public API that needs no key and sends

@@ -63,7 +63,19 @@ def main():
     print("  %d shows" % len(raw))
 
     shows = []
+    untitled = 0
     for s in raw:
+        # 426 records in the catalog have no title at all, and none of them
+        # have a VOD. Published, they become blank clickable rows — a third of
+        # the archive rendering as nothing. They are almost certainly stubs or
+        # deleted entries rather than programs anyone can watch.
+        #
+        # Dropped here rather than hidden in the template, so the count is
+        # visible on the archive page and someone can go fix the records.
+        if not (s.get("title") or "").strip():
+            untitled += 1
+            continue
+
         # A show with no VOD cannot be watched on the site — it aired on cable
         # and was never encoded. Keep it in the archive anyway; it is still a
         # record that the program exists, which is more than we have today.
@@ -105,6 +117,7 @@ def main():
     data = {
         "fetched": None,  # stamped by the workflow; see below
         "total": len(shows),
+        "untitled_omitted": untitled,
         "watchable": sum(1 for s in shows if s["watchable"]),
         "categories": sorted(
             ({"name": k, "count": v} for k, v in counts.items()),
@@ -130,6 +143,8 @@ def main():
         "Wrote %s: %d shows, %d watchable, %d categories"
         % (OUT, data["total"], data["watchable"], len(data["categories"]))
     )
+    if untitled:
+        print("  omitted %d catalog records with no title" % untitled)
 
 
 if __name__ == "__main__":

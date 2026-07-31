@@ -56,3 +56,4 @@ exclude:
   - node_modules
   - wrangler.jsonc   # host config, read from the repo root, not the output
   - .wrangler
+  - tests    # browser tests, not site content

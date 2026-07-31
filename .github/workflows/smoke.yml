@@ -1,0 +1,73 @@
+name: Smoke tests
+
+# Builds the site and drives it in a real browser — desktop and phone
+# viewports — checking for the failures that are invisible in normal use:
+# JavaScript errors, dead links, broken images, sideways scrolling.
+#
+# The @external tests (Cablecast player, thumbnails, outbound links) are not
+# run here. They depend on someone else's servers being up, and a test suite
+# that goes red because a third party had a bad afternoon is a suite people
+# start ignoring. Run those on a schedule instead, below.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Tuesday morning, a day after the catalog sync, so the weekly run covers
+    # whatever the sync pulled in.
+    - cron: "0 14 * * 2"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build the site
+        run: bundle exec jekyll build
+        env:
+          JEKYLL_ENV: production
+
+      - name: Install test dependencies
+        working-directory: tests
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        working-directory: tests
+        run: npx playwright test --grep-invert @external
+
+      # Only on the scheduled run, and allowed to fail: this is a report on
+      # whether Cablecast and the outbound links are healthy, not a gate.
+      - name: Check embeds and outbound links
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        working-directory: tests
+        run: npx playwright test --grep @external
+
+      # test-results/ carries the screenshot, video, and trace for each
+      # failure. On a test that only fails on the runner, that recording is
+      # the whole diagnosis — open the trace with `npx playwright show-trace`.
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            tests/playwright-report/
+            tests/test-results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -484,6 +484,13 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 .rows-archive li[hidden] { display: none; }
 
+/* Cablecast titles are frequently one long underscore-joined token —
+   Midnight_Limited_1940_2026-07-14_11_59_43 — with no place to break. On a
+   phone that pushes the whole page sideways. */
+.rows-archive li b,
+.rows-archive li span,
+.card-show h3 { overflow-wrap: anywhere; }
+
 .filter {
   position: sticky; top: 4.25rem; z-index: 5;
   background: var(--paper);
