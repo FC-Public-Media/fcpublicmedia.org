@@ -216,44 +216,64 @@ A static site can't accept a form post. Two options, both fine:
   submission form has ranked scheduling preferences, a file upload, and a legal
   agreement, and is not worth hand-building.
 
-## Deploying to Cloudflare Pages
+## Deploying to Cloudflare
 
 This is the fastest path to a real URL on a real domain, and it is what the
 demo runs on.
 
-Point the Cloudflare GitHub app at this repository and enter:
+Cloudflare now creates new projects as **Workers** rather than Pages, and the
+two behave differently at deploy time. This repository is set up for the
+Workers flow, which is what you get by default today.
+
+Point the Cloudflare GitHub app at this repository and set:
 
 | Setting | Value |
 |---|---|
-| Framework preset | **Jekyll** |
 | Build command | `bundle exec jekyll build` |
+| Deploy command | `npx wrangler deploy` |
 | Build output directory | `_site` |
 | Root directory | `/` (leave it alone) |
 
-That is the whole configuration. Three fields, and nothing else needs
-touching.
+Everything else is in `wrangler.jsonc`, which is committed.
 
-Notes, since the build settings are the usual place this goes wrong:
+### Why wrangler.jsonc has to be committed
+
+`wrangler deploy` looks for a config file. If it does not find one it runs
+auto-configuration: it inspects the repository, decides what kind of project
+this is, and **re-runs the build command through npx**. For a Ruby project
+that produces `npx bundle exec jekyll build`, which fails with:
+
+```
+npm error could not determine executable to run
+```
+
+The Jekyll build has already succeeded at that point. The failure is wrangler
+guessing, not the build. Committing `wrangler.jsonc` skips the guess.
+
+### Notes
 
 - **`bundle exec` is deliberate.** Cloudflare finds the `Gemfile` and runs
   `bundle install` on its own, so plain `jekyll build` also works. Prefixing
   with `bundle exec` guarantees the bundled Jekyll rather than whatever
-  happens to be on `PATH`, and costs nothing if the preset already filled the
-  field in. Either value builds this repo.
-- **`_site` is Jekyll's default** and is not overridden in `_config.yml`, so
-  the preset's default and the value above are the same thing.
-- **`.ruby-version` pins Ruby 3.2.2**, which is the default in Cloudflare's v2
-  build image. Without it the build image could fall back to a Ruby too old
-  for Jekyll 4. This is why the file exists — do not delete it.
+  happens to be on `PATH`.
+- **`_site` appears twice** — in the dashboard and in `wrangler.jsonc` under
+  `assets.directory`. Both need it. It is Jekyll's default and is not
+  overridden in `_config.yml`.
+- **`.ruby-version` pins Ruby 3.2.2**, the default in Cloudflare's build
+  image, and CI reads the same file. Without it the builder can fall back to
+  a Ruby too old for Jekyll 4. Do not delete it.
 - **Leave the root directory as `/`.** The `api/` folder is Azure Functions
-  source, not a second site. Cloudflare only auto-builds functions from a
-  folder named `functions/`, which this repo does not have, and `_config.yml`
-  excludes `api/` from the published output. There is one buildable component
-  here, at the root.
+  source, not a second site, and `_config.yml` excludes it from the output.
+  There is one buildable component here, at the root.
 - **`Gemfile.lock` is intentionally not committed.** A lock file resolved on a
   different platform is a common cause of `bundle install` failures on hosted
-  builders. Jekyll is the only direct dependency, so there is little to gain
-  from pinning it.
+  builders. Jekyll is the only direct dependency.
+
+### If you are on classic Pages instead
+
+Same build command and output directory, no deploy command, and
+`wrangler.jsonc` is ignored. Both flows serve `_redirects` and `_headers`
+from the output, so the redirect handling below applies either way.
 
 ### Redirects and headers
 
