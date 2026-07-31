@@ -6,6 +6,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches: [main]
+  # Lets sync-cablecast.yml trigger a rebuild on weeks when the catalog did
+  # not change but a featured item needs to expire.
+  workflow_dispatch:
 
 permissions:
   contents: read

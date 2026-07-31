@@ -21,6 +21,12 @@ address:
 
 legal: FC Public Media is a 501(c)(3) nonprofit public charity.
 
+# Optional homepage photo. Set it to something like /assets/img/studio.jpg and
+# the hero switches to a photo background with the headline on a solid panel
+# over it. Left empty, the hero is type only — which looks intentional, not
+# broken, so there is no rush.
+hero_image: ""
+
 # Entries without a url are skipped by the footer include, so it is safe to
 # leave a placeholder here until someone confirms the account.
 social:

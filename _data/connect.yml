@@ -1,0 +1,30 @@
+# Where the community actually talks to each other.
+#
+# Right now that is Slack, and there is interest in Teams. Deliberately kept
+# as data so switching is a one-line edit rather than a hunt through pages —
+# same reasoning as _data/providers.yml.
+#
+# An entry with no url is skipped, so a platform under discussion can sit here
+# without appearing on the site.
+
+heading: Find the rest of us
+blurb: >-
+  The studio is the easy part. The harder part is knowing who else is making
+  something, and that happens between visits.
+
+channels:
+  - name: Slack
+    detail: Day-to-day chat between members and producers.
+    url: "" # TODO — invite link. Use one that does not expire.
+
+  - name: Newsletter
+    detail: What's coming up, once in a while.
+    url: https://conta.cc/3G5YyWi
+
+  - name: YouTube
+    detail: Selected programs, reposted.
+    url: https://www.youtube.com/user/fcpanutube
+
+  - name: Instagram
+    detail: The studio, behind the scenes.
+    url: https://www.instagram.com/fcpublicmedia/

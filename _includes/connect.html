@@ -1,0 +1,19 @@
+{%- assign c = site.data.connect -%}
+<section class="band band-ink">
+  <div class="wrap">
+    <p class="eyebrow">Community</p>
+    <h2>{{ c.heading }}</h2>
+    <p class="lede">{{ c.blurb | strip_newlines | strip }}</p>
+
+    <ul class="rows rows-connect">
+      {% for channel in c.channels %}
+        {% if channel.url and channel.url != "" %}
+          <li>
+            <b><a href="{{ channel.url }}">{{ channel.name }}</a></b>
+            <span>{{ channel.detail }}</span>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+</section>

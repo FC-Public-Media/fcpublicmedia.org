@@ -148,7 +148,15 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 
 .band { background: var(--paper-alt); padding: clamp(2.5rem, 6vw, 5rem) 0; margin-top: 4rem; }
-.band-ink { background: var(--ink); color: var(--paper); }
+/* On a dark band the secondary tokens have to flip too, or every muted
+   element renders dark-on-dark. Redefining them here means components inside
+   need no special cases. */
+.band-ink {
+  background: var(--ink);
+  color: var(--paper);
+  --ink-soft: color-mix(in srgb, var(--paper) 66%, transparent);
+  --rule: color-mix(in srgb, var(--paper) 24%, transparent);
+}
 .band-ink h2 { color: var(--paper); }
 .band-ink a { color: var(--paper); }
 
@@ -269,6 +277,22 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 /* --- Hero ----------------------------------------------------------------- */
 
 .hero { padding: clamp(3rem, 8vw, 6.5rem) 0 clamp(2.5rem, 5vw, 4rem); }
+
+/* With a photo, the type sits on an opaque panel rather than on the image.
+   The studio shot can be as busy and colorful as it likes; the words stay
+   readable either way. This is the fix for the old full-bleed hero. */
+.hero-photo {
+  background-image: var(--hero-image);
+  background-size: cover;
+  background-position: center;
+  padding-block: clamp(4rem, 9vw, 8rem);
+}
+.hero-photo .hero-panel {
+  background: var(--paper);
+  padding: clamp(1.75rem, 4vw, 3rem);
+  max-width: 46rem;
+}
+.hero-photo .hero-panel .lede { max-width: 40ch; }
 .hero h1 {
   font-size: var(--step-4);
   max-width: 16ch;
@@ -361,6 +385,126 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .embed { margin: 2rem 0; }
 .embed iframe { width: 100%; border: 0; aspect-ratio: 16 / 9; }
 .embed-audio iframe { aspect-ratio: auto; height: 180px; }
+
+/* The live player gets a frame so it reads as a piece of equipment rather
+   than a hole in the page. */
+.embed-live {
+  border: 1px solid var(--rule);
+  background: #000;
+  margin-block: 1.5rem;
+  /* Capped so the player reads as one element on the page rather than
+     swallowing the whole viewport at desktop widths. */
+  max-width: 56rem;
+}
+.embed-live iframe { display: block; }
+
+/* --- Sections ------------------------------------------------------------- */
+
+.section { margin-top: clamp(3rem, 6vw, 5rem); }
+
+.section-head {
+  display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+  align-items: end; justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+.section-head h2 { margin: 0; }
+.section-head .eyebrow { margin-bottom: 0.35rem; }
+
+/* --- On-air bar ----------------------------------------------------------- */
+
+/* Sits directly under the hero. Reads as a ticker without moving, because a
+   thing that scrolls by itself is harder to read, not easier. */
+.onair-bar {
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--step--1);
+}
+.onair-bar[hidden] { display: none; }
+.onair-bar > * { display: inline; }
+
+.onair-bar {
+  padding: 0.85rem clamp(1.25rem, 4vw, 3rem);
+  display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; align-items: baseline;
+}
+
+.onair-label {
+  text-transform: uppercase; letter-spacing: 0.1em;
+  font-weight: 700; font-size: 0.72rem;
+  color: var(--signal);
+  margin-right: 0.35rem;
+}
+.onair-next { color: var(--ink-soft); }
+
+.onair-inline {
+  border: 1px solid var(--rule);
+  background: var(--paper-alt);
+  color: var(--ink);
+  margin-bottom: 2rem;
+}
+
+/* --- Featured ------------------------------------------------------------- */
+
+.featured { margin-top: clamp(2.5rem, 5vw, 4rem); }
+
+.grid-feature { grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); }
+
+.card-feature { border-top: 4px solid var(--signal); }
+.card-feature .tag { align-self: start; }
+.feature-when { font-weight: 650; color: var(--ink) !important; }
+
+/* --- Show cards ----------------------------------------------------------- */
+
+.grid-show { grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+
+.card-show { padding: 0; border: 1px solid var(--rule); gap: 0; }
+.card-show h3 {
+  font-size: var(--step-0); font-weight: 650; line-height: 1.25;
+  padding: 0.9rem 1rem 0.35rem;
+}
+.card-show h3 a { color: var(--ink); }
+.card-show .show-meta {
+  padding: 0 1rem 0.25rem;
+  font-size: 0.8rem;
+}
+.card-show .show-meta:last-child { padding-bottom: 1rem; }
+
+.show-thumb { display: block; background: var(--paper-alt); }
+.show-thumb img {
+  width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+}
+
+/* --- Archive -------------------------------------------------------------- */
+
+.rows-inline { display: flex; flex-wrap: wrap; gap: 0 2rem; }
+.rows-inline li { border: 0; padding: 0.4rem 0; }
+
+.rows-tight li { padding: 0.5rem 0; }
+
+.rows-connect li { border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
+
+.rows-archive li[hidden] { display: none; }
+
+.filter {
+  position: sticky; top: 4.25rem; z-index: 5;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+.filter[hidden] { display: none; }
+.filter label {
+  display: block; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-soft); margin-bottom: 0.4rem;
+}
+.filter input {
+  width: min(100%, 26rem);
+  font: inherit; font-size: var(--step-0);
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--rule);
+  background: var(--paper); color: var(--ink);
+}
+.filter-count { margin: 0.5rem 0 0; font-size: var(--step--1); color: var(--ink-soft); }
 
 /* --- Footer --------------------------------------------------------------- */
 

@@ -1,0 +1,21 @@
+{%- comment -%}
+  One program from the Cablecast catalog.
+  Usage: {% include show-card.html show=item %}
+{%- endcomment -%}
+{%- assign s = include.show -%}
+<li class="card card-show">
+  {% if s.thumb and s.thumb != "" %}
+    <a class="show-thumb" href="{{ s.watch_url }}">
+      <img src="{{ s.thumb }}" alt="" loading="lazy" decoding="async" width="320" height="180">
+    </a>
+  {% endif %}
+  <h3><a href="{{ s.watch_url }}">{{ s.title }}</a></h3>
+  <p class="show-meta">
+    {% if s.category and s.category != "" %}{{ s.category }}{% endif %}
+    {% if s.date and s.date != "" %}<span class="muted"> &middot; {{ s.date }}</span>{% endif %}
+    {% unless s.watchable %}<span class="tag">Cable only</span>{% endunless %}
+  </p>
+  {% if s.producer and s.producer != "" %}
+    <p class="show-meta muted">{{ s.producer }}</p>
+  {% endif %}
+</li>
