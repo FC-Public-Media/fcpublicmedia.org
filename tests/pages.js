@@ -35,4 +35,15 @@ const THIRD_PARTY = [
 
 const isThirdParty = (url) => THIRD_PARTY.some((host) => url.includes(host));
 
-module.exports = { PAGES, THIRD_PARTY, isThirdParty };
+// Console output we know comes from an embedded player rather than our code.
+// Matched by text as a backstop, because not every console message carries a
+// usable source URL — an iframe error with an empty location would otherwise
+// be blamed on this site.
+const THIRD_PARTY_CONSOLE = [
+  'VIDEOJS:', // the Cablecast player
+];
+
+const isThirdPartyConsole = (text) =>
+  THIRD_PARTY_CONSOLE.some((prefix) => text.includes(prefix));
+
+module.exports = { PAGES, THIRD_PARTY, isThirdParty, isThirdPartyConsole };

@@ -7,7 +7,7 @@
 // especially on a phone, where there is no console to look at.
 
 const { test, expect } = require('@playwright/test');
-const { PAGES, isThirdParty } = require('./pages');
+const { PAGES, isThirdParty, isThirdPartyConsole } = require('./pages');
 
 /**
  * Attach listeners before navigating and return the collected problems.
@@ -22,7 +22,26 @@ function watch(page) {
   const thirdPartyFailures = [];
 
   page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text());
+    if (message.type() !== 'error') return;
+
+    // Console messages from inside an embedded iframe surface on the parent
+    // page's console, so a third-party player's internal errors would
+    // otherwise fail an assertion about our own code.
+    //
+    // The concrete case: headless Chromium ships without the codecs for HLS,
+    // so the Cablecast player reliably logs
+    // "VIDEOJS: ERROR: (CODE:4 MEDIA_ERR_SRC_NOT_SUPPORTED)" on any runner
+    // that can reach the network. That is a property of the test browser, not
+    // a broken embed — whether the player actually mounts is asserted in
+    // embeds.spec.js, where it belongs.
+    const source = message.location()?.url || '';
+    const text = message.text();
+
+    if (isThirdParty(source) || isThirdPartyConsole(text)) {
+      thirdPartyFailures.push(`console: ${text}`);
+    } else {
+      consoleErrors.push(text);
+    }
   });
 
   page.on('pageerror', (error) => {
@@ -54,6 +73,16 @@ for (const { path, name } of PAGES) {
 
       // Give deferred scripts a moment to run and fail if they are going to.
       await page.waitForTimeout(500);
+
+      // Third-party trouble is recorded on the test rather than asserted on,
+      // so it shows up in the report without turning the run red because
+      // someone else's server had a bad minute.
+      if (problems.thirdPartyFailures.length) {
+        test.info().annotations.push({
+          type: 'third-party',
+          description: problems.thirdPartyFailures.join('\n'),
+        });
+      }
 
       expect(problems.pageErrors, `uncaught JavaScript errors on ${path}`).toEqual([]);
       expect(problems.consoleErrors, `console errors on ${path}`).toEqual([]);

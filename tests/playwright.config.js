@@ -20,7 +20,12 @@ module.exports = defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  // The html reporter is what the failure artifact in CI is made of — without
+  // it the upload step finds nothing to upload, which is the situation you
+  // least want when a test only fails on the runner.
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    : [['list']],
 
   use: {
     baseURL: BASE_URL || `http://127.0.0.1:${LOCAL_PORT}`,
