@@ -5,7 +5,12 @@
   {%- assign page_title = page.title | default: site.title -%}
   {%- assign page_desc = page.lede | default: page.description | default: site.description -%}
 
-  <title>{% if page.title %}{{ page.title }} — {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+  {%- comment -%}
+    `page.title` must be tested for emptiness, not just existence: an empty
+    string is truthy in Liquid, so the homepage (title: "") rendered as
+    " — Fort Collins Public Media" with a leading separator.
+  {%- endcomment -%}
+  <title>{% if page.title and page.title != "" %}{{ page.title }} — {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
   <meta name="description" content="{{ page_desc | strip_newlines | strip }}">
   <link rel="canonical" href="{{ page.url | absolute_url }}">
 

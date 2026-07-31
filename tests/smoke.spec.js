@@ -92,7 +92,11 @@ for (const { path, name } of PAGES) {
     test(`${name} has real content`, async ({ page }) => {
       await page.goto(path, { waitUntil: 'domcontentloaded' });
 
-      await expect(page).toHaveTitle(/\S/);
+      // Not just "has a title" — a title must not begin or end with a
+      // separator. The homepage rendered as " — Fort Collins Public Media"
+      // because an empty string is truthy in Liquid, and a bare /\S/ check
+      // was happy with it.
+      await expect(page).toHaveTitle(/^[^\s—|-].*[^\s—|-]$/);
       await expect(page.locator('h1')).toHaveCount(1);
       await expect(page.locator('h1')).not.toBeEmpty();
 
