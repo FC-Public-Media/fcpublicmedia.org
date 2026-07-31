@@ -1,0 +1,13 @@
+---
+layout: null
+sitemap: false
+---
+{%- comment -%}
+  Cloudflare Pages reads this file from the root of the published output.
+
+  Jekyll normally skips source files beginning with an underscore, so
+  _config.yml lists this path under `include:`. Generated from
+  _data/redirects.yml — edit that, not this.
+{%- endcomment -%}
+{% for r in site.data.redirects %}{{ r.from }} {{ r.to }} 301
+{% endfor %}

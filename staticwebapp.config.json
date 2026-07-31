@@ -1,3 +1,17 @@
+---
+permalink: /staticwebapp.config.json
+layout: null
+sitemap: false
+---
+{%- comment -%}
+  Azure Static Web Apps configuration.
+
+  The redirect list is generated from _data/redirects.yml, the same file that
+  produces Cloudflare's _redirects, so moving between hosts cannot leave one
+  of them stale. Everything else here is Azure-specific and hand-written.
+
+  Harmless on Cloudflare Pages, which ignores it.
+{%- endcomment -%}
 {
   "trailingSlash": "always",
 
@@ -8,31 +22,10 @@
     { "route": "/.auth/login/twitter", "statusCode": 404 },
 
     { "route": "/members/*", "allowedRoles": ["member"] },
-    { "route": "/api/members/*", "allowedRoles": ["member"] },
-
-    { "route": "/", "redirect": "/index.html", "statusCode": 200 },
-
-    { "route": "/podcasts-1", "redirect": "/podcasts/", "statusCode": 301 },
-    { "route": "/podcasts-1/podcastarchives", "redirect": "/podcasts/", "statusCode": 301 },
-    { "route": "/submit-a-program-1", "redirect": "/submit/", "statusCode": 301 },
-    { "route": "/watch-live", "redirect": "/watch/", "statusCode": 301 },
-    { "route": "/community-bulletin-board", "redirect": "/bulletin-board/", "statusCode": 301 },
-    { "route": "/membership/reservations", "redirect": "/reservations/", "statusCode": 301 },
-    { "route": "/book-online", "redirect": "/reservations/", "statusCode": 301 },
-    { "route": "/for-nonprofits", "redirect": "/nonprofits/", "statusCode": 301 },
-    { "route": "/connect", "redirect": "/contact/", "statusCode": 301 },
-    { "route": "/event-list", "redirect": "/classes/", "statusCode": 301 },
-    { "route": "/innstructor-application", "redirect": "/teach/", "statusCode": 301 },
-    { "route": "/non-discrimination-policy", "redirect": "/policies/non-discrimination/", "statusCode": 301 },
-
-    { "route": "/throughanotherlens", "redirect": "/podcasts/throughanotherlens/", "statusCode": 301 },
-    { "route": "/lcsnapshotnews", "redirect": "/podcasts/lcsnapshotnews/", "statusCode": 301 },
-    { "route": "/shakenandunfiltered", "redirect": "/podcasts/shakenandunfiltered/", "statusCode": 301 },
-    { "route": "/spillingmidlifetea", "redirect": "/podcasts/spillingmidlifetea/", "statusCode": 301 },
-    { "route": "/springboard", "redirect": "/podcasts/springboard/", "statusCode": 301 },
-    { "route": "/theblindchick", "redirect": "/podcasts/theblindchick/", "statusCode": 301 },
-    { "route": "/thetandaparty", "redirect": "/podcasts/thetandaparty/", "statusCode": 301 },
-    { "route": "/veteranslifemagazine", "redirect": "/podcasts/veteranslifemagazine/", "statusCode": 301 }
+    { "route": "/api/members/*", "allowedRoles": ["member"] }
+    {%- for r in site.data.redirects %},
+    { "route": "{{ r.from }}", "redirect": "{{ r.to }}", "statusCode": 301 }
+    {%- endfor %}
   ],
 
   "responseOverrides": {

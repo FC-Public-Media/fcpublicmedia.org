@@ -1,0 +1,53 @@
+# Legacy Wix URLs and where they go now.
+#
+# One list, two hosts. Both of these are generated from this file at build
+# time, so the two never drift apart:
+#
+#   _redirects                 Cloudflare Pages   (source: redirects.txt)
+#   staticwebapp.config.json   Azure Static Web Apps
+#
+# Every path here is a URL that exists on the live Wix site today. Deleting an
+# entry breaks an inbound link, so add, don't replace.
+
+- from: /podcasts-1
+  to: /podcasts/
+- from: /podcasts-1/podcastarchives
+  to: /podcasts/
+- from: /submit-a-program-1
+  to: /submit/
+- from: /watch-live
+  to: /watch/
+- from: /community-bulletin-board
+  to: /bulletin-board/
+- from: /membership/reservations
+  to: /reservations/
+- from: /book-online
+  to: /reservations/
+- from: /for-nonprofits
+  to: /nonprofits/
+- from: /connect
+  to: /contact/
+- from: /event-list
+  to: /classes/
+- from: /innstructor-application
+  to: /teach/
+- from: /non-discrimination-policy
+  to: /policies/non-discrimination/
+
+# Each podcast had its own top-level slug on Wix.
+- from: /throughanotherlens
+  to: /podcasts/throughanotherlens/
+- from: /lcsnapshotnews
+  to: /podcasts/lcsnapshotnews/
+- from: /shakenandunfiltered
+  to: /podcasts/shakenandunfiltered/
+- from: /spillingmidlifetea
+  to: /podcasts/spillingmidlifetea/
+- from: /springboard
+  to: /podcasts/springboard/
+- from: /theblindchick
+  to: /podcasts/theblindchick/
+- from: /thetandaparty
+  to: /podcasts/thetandaparty/
+- from: /veteranslifemagazine
+  to: /podcasts/veteranslifemagazine/
