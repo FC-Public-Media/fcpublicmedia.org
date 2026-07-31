@@ -7,3 +7,7 @@ vendor/
 node_modules/
 .DS_Store
 .bundle/
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars

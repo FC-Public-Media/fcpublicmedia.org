@@ -54,3 +54,5 @@ exclude:
   - api      # Azure Functions source; deployed separately, never published
   - script   # build tooling, not site content
   - node_modules
+  - wrangler.jsonc   # host config, read from the repo root, not the output
+  - .wrangler
