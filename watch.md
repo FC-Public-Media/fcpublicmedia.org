@@ -50,9 +50,15 @@ locally.
 
 ## By category
 
+{%- comment -%}
+  Slugify the category name on its own. Chaining it after `append` slugifies
+  the whole string including the path, turning /watch/archive/#news into
+  /watch-archive-news — which is how all 38 of these links 404ed.
+{%- endcomment -%}
 <ul class="rows rows-tight">
 {% for category in cc.categories %}
-  <li><b><a href="{{ '/watch/archive/#' | append: category.name | slugify | relative_url }}">{{ category.name }}</a></b> <span>{{ category.count }}</span></li>
+  {%- assign anchor = category.name | slugify -%}
+  <li><b><a href="{{ '/watch/archive/' | relative_url }}#{{ anchor }}">{{ category.name }}</a></b> <span>{{ category.count }}</span></li>
 {% endfor %}
 </ul>
 {% endif %}

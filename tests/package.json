@@ -1,0 +1,13 @@
+{
+  "name": "fcpm-tests",
+  "private": true,
+  "description": "Browser smoke tests. Deliberately NOT at the repository root — a package.json up there changes how Cloudflare and wrangler detect the project, and this is a Ruby site.",
+  "scripts": {
+    "test": "playwright test",
+    "test:live": "BASE_URL=https://www.fcpublicmedia.org playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

@@ -9,6 +9,15 @@ permalink: /watch/archive/
 {{ cc.total }} programs on record, {{ cc.watchable }} of them watchable online.
 {{ cc.local_total }} were produced locally.
 
+{% if cc.untitled_omitted and cc.untitled_omitted > 0 %}
+<p class="transaction transaction-todo">
+  <b>{{ cc.untitled_omitted }} catalog records are not listed.</b>
+  <span class="muted">They have no title in Cablecast and no video attached,
+  so there is nothing to show and nothing to watch. Give them titles in
+  Cablecast and they appear here at the next weekly sync.</span>
+</p>
+{% endif %}
+
 <p class="muted">
   This page is generated from the station's Cablecast catalog by
   <code>script/sync-cablecast.py</code>. It is plain HTML, so it can be
