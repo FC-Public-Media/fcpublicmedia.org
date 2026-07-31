@@ -136,6 +136,75 @@ grants membership.
 
 `api/src/functions/GetRoles.js` is a working stub with the lookup left as a TODO.
 
+## The Cablecast catalog
+
+The station's Cablecast instance has a public API that needs no key and sends
+`Access-Control-Allow-Origin: *`. It holds **1,486 programs** going back to
+2011, 740 of them watchable online, 1,462 with thumbnails, across 36
+categories and 80 producers. That is the archive, and it was already there.
+
+`script/sync-cablecast.py` pulls it into `_data/cablecast.json` (standard
+library only, nothing to install):
+
+```
+python3 script/sync-cablecast.py
+```
+
+`.github/workflows/sync-cablecast.yml` runs it weekly and commits the result
+if anything changed.
+
+Snapshotting at build time rather than fetching in the browser means the
+archive is real HTML — indexable, findable with ⌘F, and still there if
+Cablecast is down. The one thing that *is* live is the "on now" strip
+(`assets/js/onair.js`), which reads the schedule directly because a weekly
+snapshot cannot tell you what is playing right now. It removes itself if the
+request fails.
+
+The script's one judgement call is `LOCAL_PREFIXES` — which categories count
+as locally produced. This matters: the raw "most recent" list is dominated by
+Free Speech TV and Paltrocast, which buries the work Fort Collins people
+actually made, so the site features local production separately.
+
+## Featuring things on the homepage
+
+`_data/featured.yml` is the whole content management system. It is a list.
+Add an entry to put something on the front page; it removes itself when `ends`
+passes. Four archetypes — `class`, `event`, `show`, `notice` — which is what
+the actual pattern of announcements looks like.
+
+Expiry is evaluated at build time, which is why the weekly workflow rebuilds
+even when nothing changed. Otherwise a class that happened on Tuesday would
+still be advertised on Friday.
+
+If nothing is currently in its date window, the section renders nothing and
+the page closes up around it. An empty `featured.yml` is a valid state.
+
+## Booking on a subdomain
+
+Booking is expected to end up hosted elsewhere — likely Microsoft-built and
+Microsoft-hosted, on something like `book.fcpublicmedia.org`. The concern is
+that it should feel like part of this organization, not like scheduling a
+video call with a stranger.
+
+Three things carry most of that, in order of effect per unit of work:
+
+1. **Same domain, not a redirect to a vendor URL.** A subdomain of
+   `fcpublicmedia.org` reads as first-party; `outlook.office365.com/...` does
+   not. This is most of the perceived difference and it costs one DNS record.
+2. **Arrive and leave inside the site.** Link out from `/reservations/` with
+   context already given — who can book, what the spaces are, what happens
+   after — so the external page only has to collect a time. Send people back
+   to a page here on completion.
+3. **Carry the tokens across.** The palette, type scale, and spacing all live
+   in the `:root` block of `assets/css/site.css`. Where the booking host
+   allows custom CSS or a logo and color, copy those values rather than
+   re-picking them by eye.
+
+What not to spend effort on: recreating this site's header on the booking
+host. Partial imitation reads worse than an honest, clean handoff.
+
+Set `booking.subdomain` in `_data/providers.yml` once the host is chosen.
+
 ## Forms
 
 A static site can't accept a form post. Two options, both fine:

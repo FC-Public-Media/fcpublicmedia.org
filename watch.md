@@ -1,19 +1,24 @@
 ---
 title: Watch
-lede: Local programs, live and on demand.
+lede: Live on cable and online, plus every program we have on record.
 ---
 
-## Live
+{% assign cc = site.data.cablecast %}
 
-<div class="embed">
-  {%- comment -%}
-    The Cablecast player is an embed and moves over as-is. Confirm the exact
-    iframe URL with Cablecast before launch; the link below always works.
-  {%- endcomment -%}
-  <p><a class="btn btn-primary" href="{{ site.data.watch.live_url }}">Open the live stream</a></p>
+## Live right now
+
+<div class="embed embed-live">
+  <iframe
+    src="https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-live-embed?streamId=1"
+    title="Fort Collins Public Media live stream"
+    loading="lazy"
+    allow="fullscreen"
+    allowfullscreen></iframe>
 </div>
 
-## Where to find us
+<div class="onair-bar onair-inline" data-onair hidden></div>
+
+## Where to find the channel
 
 <ul class="rows">
 {% for channel in site.data.watch.carriage %}
@@ -21,17 +26,33 @@ lede: Local programs, live and on demand.
 {% endfor %}
 </ul>
 
-## On demand
+{% if cc %}
+## Recently on the air
 
-The full library is browsable on our
-[{{ site.data.watch.live_provider }} channel]({{ site.data.watch.live_url }}),
-organized by category:
+<ul class="grid grid-show">
+{% for show in cc.recent limit: 12 %}
+  {% include show-card.html show=show %}
+{% endfor %}
+</ul>
 
-{% for category in site.data.watch.categories %}
-- {{ category }}
-{%- endfor %}
+## Made in Fort Collins
 
-## Schedule
+{{ cc.local_total }} of the {{ cc.total }} programs on record were produced
+locally.
 
-TODO &mdash; the current site publishes a programming schedule through
-{{ site.data.watch.live_provider }}. Decide whether to link to it or embed it.
+<ul class="grid grid-show">
+{% for show in cc.recent_local limit: 12 %}
+  {% include show-card.html show=show %}
+{% endfor %}
+</ul>
+
+<p><a class="btn btn-primary" href="{{ '/watch/archive/' | relative_url }}">Browse the full archive</a></p>
+
+## By category
+
+<ul class="rows rows-tight">
+{% for category in cc.categories %}
+  <li><b><a href="{{ '/watch/archive/#' | append: category.name | slugify | relative_url }}">{{ category.name }}</a></b> <span>{{ category.count }}</span></li>
+{% endfor %}
+</ul>
+{% endif %}

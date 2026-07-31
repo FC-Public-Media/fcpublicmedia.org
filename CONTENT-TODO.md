@@ -46,6 +46,26 @@ content Google reads poorly too.
 - **Facility descriptions.** The booking pages list durations but not what's
   actually in each room.
 
+## Cablecast data hygiene
+
+Now that the catalog is exposed on the site, its gaps are visible:
+
+- **461 of 1,486 programs have no category.** They fall into "Uncategorized"
+  on the archive page. Some are certainly local work that is currently
+  impossible to find.
+- **746 programs have no VOD**, so they are listed but not watchable. Worth
+  knowing whether that is deliberate (rights) or just un-encoded.
+- **No program has captions.** `hasCaptions` is false across the board, and
+  Cablecast has a captioning service configured.
+- **Titles carry filename debris** — `Midnight_Limited_1940_2026-07-14_11_59_43`,
+  `DISCLOSURE - Resized for FC Public Media`. These are what the public sees.
+- **`LOCAL_PREFIXES` in `script/sync-cablecast.py`** is my guess at which
+  categories are locally produced. Someone who knows the programming should
+  confirm it.
+
+Fixing any of these happens in Cablecast, not in this repository, and shows up
+on the site at the next weekly sync.
+
 ## Assets
 
 - A real logo. The current wordmark uses a plain block as a placeholder mark.

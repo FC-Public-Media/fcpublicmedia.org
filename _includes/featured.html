@@ -1,0 +1,40 @@
+{%- comment -%}
+  Renders _data/featured.yml, skipping anything outside its date window.
+
+  Dates are compared as epoch seconds because Liquid has no date arithmetic.
+  `ends` is inclusive — a feature ending on the 11th is still shown all day on
+  the 11th, hence the 86400.
+
+  If nothing is currently featured this include renders nothing at all, and
+  the homepage closes up around it. An empty featured.yml is a valid state,
+  not a broken page.
+{%- endcomment -%}
+
+{%- assign now = site.time | date: '%s' | plus: 0 -%}
+{%- assign live = '' | split: '' -%}
+{%- for item in site.data.featured -%}
+  {%- assign starts = item.starts | default: '1970-01-01' | date: '%s' | plus: 0 -%}
+  {%- assign ends = item.ends | default: '2099-12-31' | date: '%s' | plus: 86400 -%}
+  {%- if now >= starts and now < ends -%}
+    {%- assign live = live | push: item -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- if live.size > 0 %}
+<section class="wrap featured">
+  <p class="eyebrow">Coming up</p>
+  <ul class="grid grid-feature">
+    {% for item in live %}
+      <li class="card card-feature">
+        <p class="tag">{{ item.kind | default: 'notice' }}</p>
+        <h3>{{ item.title }}</h3>
+        {% if item.when %}<p class="feature-when">{{ item.when }}</p>{% endif %}
+        {% if item.blurb %}<p>{{ item.blurb | strip_newlines | strip }}</p>{% endif %}
+        <p class="card-foot">
+          <a class="btn" href="{{ item.url | relative_url }}">{{ item.cta | default: 'Details' }}</a>
+        </p>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{%- endif -%}

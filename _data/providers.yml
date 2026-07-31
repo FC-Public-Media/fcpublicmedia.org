@@ -41,6 +41,10 @@ booking:
   provider: Bookable
   url: ""
   status: pending
+  # Set this when booking moves to its own host, e.g. book.fcpublicmedia.org.
+  # See README, "Booking on a subdomain", for how to keep it feeling like part
+  # of this site rather than a scheduling tool someone bolted on.
+  subdomain: ""
   note: >-
     Staying on Bookable for now. Microsoft 365 calendar integration is being
     developed separately; when it lands, only this entry changes.

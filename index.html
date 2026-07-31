@@ -3,27 +3,96 @@ layout: default
 title: ""
 ---
 
-<section class="hero">
+{%- comment -%}
+  The homepage answers three questions in order: who are we, what is on, and
+  what can I do here. No carousel — every item is visible at once and nothing
+  moves on its own.
+
+  The hero photo is a background *behind* a solid panel, not underneath the
+  text. That is deliberate: the old site put type directly on a busy, colorful
+  studio shot, which made both the photo and the words hard to look at. Here
+  the photo can be as colorful as it likes and the words stay legible.
+
+  Drop a file at assets/img/studio.jpg and it appears. Until then the hero is
+  type only, which is a perfectly good state rather than a broken one.
+{%- endcomment -%}
+
+<section class="hero{% if site.data.org.hero_image %} hero-photo{% endif %}"
+         {% if site.data.org.hero_image %}style="--hero-image: url('{{ site.data.org.hero_image | relative_url }}')"{% endif %}>
   <div class="wrap">
-    <p class="eyebrow">Fort Collins, Colorado &middot; Since {{ site.data.org.founded }}</p>
-    <h1>Community media, open to everyone.</h1>
-    <p class="lede">
-      Fort Collins Public Media gives creators the gear, the training, and the
-      studio space to make something &mdash; and a channel to put it on.
-    </p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="{{ '/membership/' | relative_url }}">Become a member</a>
-      <a class="btn" href="{{ '/watch/' | relative_url }}">Watch live</a>
+    <div class="hero-panel">
+      <p class="eyebrow">Fort Collins, Colorado &middot; Since {{ site.data.org.founded }}</p>
+      <h1>Made here. Watched here.</h1>
+      <p class="lede">
+        Fort Collins Public Media is a community television station and studio.
+        We lend the gear, teach the skills, and put local work on the air &mdash;
+        for anyone who walks in.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ '/watch/' | relative_url }}">Watch now</a>
+        <a class="btn" href="{{ '/membership/' | relative_url }}">Become a member</a>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="wrap">
-  <h2 class="visually-hidden">What we offer</h2>
+{%- comment -%} Filled in by assets/js/onair.js; hidden until it succeeds. {%- endcomment -%}
+<div class="onair-bar" data-onair hidden></div>
+
+{% include featured.html %}
+
+<section class="wrap section">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">On the air</p>
+      <h2>Watch the channel live</h2>
+    </div>
+    <a class="btn" href="{{ '/watch/' | relative_url }}">All ways to watch</a>
+  </div>
+
+  <div class="embed embed-live">
+    <iframe
+      src="https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-live-embed?streamId=1"
+      title="Fort Collins Public Media live stream"
+      loading="lazy"
+      allow="fullscreen"
+      allowfullscreen></iframe>
+  </div>
+
+  <ul class="rows rows-inline">
+    {% for channel in site.data.watch.carriage %}
+      <li><b>{{ channel.name }}</b> <span>{{ channel.detail }}</span></li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% assign cc = site.data.cablecast %}
+{% if cc and cc.recent_local.size > 0 %}
+<section class="band">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">From the archive</p>
+        <h2>Made in Fort Collins</h2>
+      </div>
+      <a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>
+    </div>
+    <ul class="grid grid-show">
+      {% for show in cc.recent_local limit: 8 %}
+        {% include show-card.html show=show %}
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<section class="wrap section">
+  <p class="eyebrow">What we do</p>
+  <h2>Everything here is open to members</h2>
   <ul class="grid grid-4">
     <li class="card">
       <h3><a href="{{ '/equipment/' | relative_url }}">Equipment</a></h3>
-      <p>Cameras, audio, and lighting available to members for checkout.</p>
+      <p>Cameras, audio, and lighting, checked out for your own projects.</p>
     </li>
     <li class="card">
       <h3><a href="{{ '/reservations/' | relative_url }}">Studios</a></h3>
@@ -31,7 +100,7 @@ title: ""
     </li>
     <li class="card">
       <h3><a href="{{ '/classes/' | relative_url }}">Classes</a></h3>
-      <p>Hands-on training in production, editing, and getting an audience.</p>
+      <p>Hands-on training in production, editing, and finding an audience.</p>
     </li>
     <li class="card">
       <h3><a href="{{ '/submit/' | relative_url }}">Submit a program</a></h3>
@@ -40,30 +109,4 @@ title: ""
   </ul>
 </section>
 
-<section class="band">
-  <div class="wrap">
-    <p class="eyebrow">Coming up</p>
-    <h2>Classes at the studio</h2>
-    <p class="lede">
-      Short, practical, and open to the public.
-    </p>
-    {%- comment -%}
-      TODO: class listings are the one part of this site that changes on a
-      schedule. Once a ticketing provider is chosen, this becomes either a
-      _data/classes.yml loop or an embed from that provider. Until then it
-      links to the classes page rather than inventing a listing here.
-    {%- endcomment -%}
-    <p><a class="btn" href="{{ '/classes/' | relative_url }}">See the schedule</a></p>
-  </div>
-</section>
-
-<section class="wrap" style="margin-top: 4rem;">
-  <p class="eyebrow">On the air</p>
-  <h2>Watch local programs anywhere</h2>
-  <ul class="rows">
-    {% for channel in site.data.watch.carriage %}
-      <li><b>{{ channel.name }}</b> <span>{{ channel.detail }}</span></li>
-    {% endfor %}
-  </ul>
-  <p><a class="btn" href="{{ '/watch/' | relative_url }}">Live stream and on demand</a></p>
-</section>
+{% include connect.html %}
