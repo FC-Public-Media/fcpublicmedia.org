@@ -16,23 +16,31 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
     name: Build and deploy
+    # Lifted to the job so the deploy steps below can test whether it is set.
+    # Secrets cannot be referenced directly in an `if:` expression.
+    env:
+      SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
           bundler-cache: true
 
-      # Pull requests build against the deploy preview URL rather than the
-      # production domain, so absolute links in preview builds stay on the
-      # preview.
+      # The build runs unconditionally. It is the part worth checking on every
+      # pull request, and it does not need any credentials.
       - name: Build
         run: bundle exec jekyll build --trace
         env:
           JEKYLL_ENV: production
 
+      # Deployment is skipped until someone creates the Azure Static Web App
+      # and adds its token as a repository secret. Until then the build still
+      # gates every pull request, and CI stays green rather than failing on
+      # infrastructure that does not exist yet.
       - name: Deploy to Azure Static Web Apps
+        if: env.SWA_TOKEN != ''
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
@@ -41,14 +49,28 @@ jobs:
           app_location: "_site"
           api_location: "api"
           skip_app_build: true
-          skip_api_build: false
+
+      - name: Note skipped deploy
+        if: env.SWA_TOKEN == ''
+        run: |
+          echo "### Deploy skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The site built successfully but was not deployed: the repository" >> "$GITHUB_STEP_SUMMARY"
+          echo "secret \`AZURE_STATIC_WEB_APPS_API_TOKEN\` is not set." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Create the Static Web App in Azure, copy its deployment token," >> "$GITHUB_STEP_SUMMARY"
+          echo "and add it under Settings, Secrets and variables, Actions." >> "$GITHUB_STEP_SUMMARY"
 
   close_pull_request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     name: Close preview
+    env:
+      SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     steps:
-      - uses: Azure/static-web-apps-deploy@v1
+      - name: Close the deploy preview
+        if: env.SWA_TOKEN != ''
+        uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: close
