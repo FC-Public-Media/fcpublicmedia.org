@@ -1,0 +1,21 @@
+# Where FCPM programming can be watched.
+
+live_url: https://reflect-fcpublicmedia.cablecast.tv
+live_provider: Cablecast
+
+carriage:
+  - name: Comcast
+    detail: Channel 97
+  - name: Connexion
+    detail: Channel 22
+  - name: Roku
+    detail: FC Public Media channel
+  - name: Apple TV
+    detail: FC Public Media channel
+
+# Video-on-demand categories used by the current Cablecast library.
+categories:
+  - News & Information
+  - Arts
+  - Cooking
+  - Entertainment

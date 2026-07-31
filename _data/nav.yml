@@ -1,0 +1,39 @@
+# Site navigation.
+#
+# `primary` is the header. `cta` is the one highlighted button. `footer` is
+# everything that does not earn a spot in the header. Reorder by editing this
+# file — no template changes required.
+
+primary:
+  - title: Watch
+    url: /watch/
+  - title: Classes
+    url: /classes/
+  - title: Equipment
+    url: /equipment/
+  - title: Studios
+    url: /reservations/
+  - title: Membership
+    url: /membership/
+  - title: Podcasts
+    url: /podcasts/
+  - title: Submit
+    url: /submit/
+
+cta:
+  title: Donate
+  url: /donate/
+
+footer:
+  - title: About & Board
+    url: /about/
+  - title: Bulletin Board
+    url: /bulletin-board/
+  - title: For Nonprofits
+    url: /nonprofits/
+  - title: Teach a Class
+    url: /teach/
+  - title: Contact
+    url: /contact/
+  - title: Non-Discrimination Policy
+    url: /policies/non-discrimination/

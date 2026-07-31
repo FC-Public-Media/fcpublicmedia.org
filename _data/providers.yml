@@ -1,0 +1,55 @@
+# Every place the site hands a visitor off to something that isn't static.
+#
+# This is the whole dynamic surface of fcpublicmedia.org. It is five entries
+# long. Each one is rendered by _includes/transaction.html, so switching a
+# vendor means editing one line here — not hunting through page copy.
+#
+# An entry with an empty `url` renders as a visible "not wired up yet"
+# placeholder instead of a dead button. That is intentional: an unconfigured
+# transaction should be obvious on the page, not silently broken.
+#
+# status: live | pending | placeholder
+
+tickets:
+  label: Class registration and ticketing
+  provider: ""
+  url: ""
+  status: placeholder
+  note: >-
+    Currently Wix Events. Candidates: Zeffy (no platform fee for nonprofits),
+    Givebutter, or an M365-backed form once sign-in exists.
+
+membership:
+  label: Membership signup and dues
+  provider: ""
+  url: ""
+  status: placeholder
+  note: >-
+    Currently Wix Pricing Plans. Target state is Entra ID sign-in for identity
+    plus a payment provider for dues; the payment redirect is what promotes an
+    account to the `member` role. See README, "Members and sign-in".
+
+donate:
+  label: Donations
+  provider: ""
+  url: ""
+  status: placeholder
+  note: Currently a Wix Donations widget. Needs a decision.
+
+booking:
+  label: Studio and bay reservations
+  provider: Bookable
+  url: ""
+  status: pending
+  note: >-
+    Staying on Bookable for now. Microsoft 365 calendar integration is being
+    developed separately; when it lands, only this entry changes.
+
+submit:
+  label: Program submission
+  provider: ""
+  url: ""
+  status: placeholder
+  note: >-
+    Currently a Wix form plus a shared Dropbox link for the video file. The
+    legal agreement is the hard part, not the form.

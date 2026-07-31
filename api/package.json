@@ -1,0 +1,10 @@
+{
+  "name": "fcpm-api",
+  "version": "1.0.0",
+  "description": "The small amount of server-side code this site needs.",
+  "main": "src/functions/*.js",
+  "private": true,
+  "dependencies": {
+    "@azure/functions": "^4.5.0"
+  }
+}

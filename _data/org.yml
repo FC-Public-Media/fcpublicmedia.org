@@ -1,0 +1,34 @@
+# Organization facts that appear in more than one place.
+#
+# Change an address or a phone number here and it updates everywhere on the
+# site. Nothing below is hardcoded into a template.
+
+name: Fort Collins Public Media
+short_name: FCPM
+founded: 2004
+
+email: info@fcpublicmedia.org
+equipment_email: fcpmequipment@gmail.com
+phone: "970-818-2490"
+
+address:
+  venue: Center for Creativity
+  street: 200 Mathews Street
+  city: Fort Collins
+  state: CO
+  zip: "80524"
+  note: Open by appointment
+
+legal: FC Public Media is a 501(c)(3) nonprofit public charity.
+
+# Entries without a url are skipped by the footer include, so it is safe to
+# leave a placeholder here until someone confirms the account.
+social:
+  - name: Facebook
+    url: https://www.facebook.com/fcpublicmedia/
+  - name: YouTube
+    url: https://www.youtube.com/user/fcpanutube
+  - name: Instagram
+    url: https://www.instagram.com/fcpublicmedia/
+
+newsletter_url: https://conta.cc/3G5YyWi

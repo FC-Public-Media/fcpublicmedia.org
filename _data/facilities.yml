@@ -1,0 +1,31 @@
+# Bookable spaces, mirroring the seven service pages on the current site.
+# Membership is required to reserve any of these.
+
+- name: Video Studio
+  slot: 8 hours
+  summary: TODO — dimensions, cyc wall, lighting grid, what's included.
+
+- name: Video Studio with Light Technician
+  slot: 8 hours
+  summary: TODO — staffed session. Confirm whether this costs extra.
+
+- name: Podcast Studio
+  slot: 4 hours
+  summary: TODO — mic count, seats, recording setup.
+
+- name: Editing Bay 1
+  slot: 4 hours
+  summary: TODO — machine spec and installed software.
+
+- name: Editing Bay 2
+  slot: 4 hours
+  summary: TODO — machine spec and installed software.
+
+- name: Editing Bay 3
+  slot: 4 hours
+  summary: TODO — machine spec and installed software.
+
+- name: Equipment Checkout
+  slot: By arrangement
+  summary: >-
+    Handled by email rather than the booking calendar. See the Equipment page.

@@ -1,0 +1,61 @@
+{
+  "trailingSlash": "always",
+
+  "routes": [
+    { "route": "/login", "rewrite": "/.auth/login/aad" },
+    { "route": "/logout", "rewrite": "/.auth/logout" },
+    { "route": "/.auth/login/github", "statusCode": 404 },
+    { "route": "/.auth/login/twitter", "statusCode": 404 },
+
+    { "route": "/members/*", "allowedRoles": ["member"] },
+    { "route": "/api/members/*", "allowedRoles": ["member"] },
+
+    { "route": "/", "redirect": "/index.html", "statusCode": 200 },
+
+    { "route": "/podcasts-1", "redirect": "/podcasts/", "statusCode": 301 },
+    { "route": "/podcasts-1/podcastarchives", "redirect": "/podcasts/", "statusCode": 301 },
+    { "route": "/submit-a-program-1", "redirect": "/submit/", "statusCode": 301 },
+    { "route": "/watch-live", "redirect": "/watch/", "statusCode": 301 },
+    { "route": "/community-bulletin-board", "redirect": "/bulletin-board/", "statusCode": 301 },
+    { "route": "/membership/reservations", "redirect": "/reservations/", "statusCode": 301 },
+    { "route": "/book-online", "redirect": "/reservations/", "statusCode": 301 },
+    { "route": "/for-nonprofits", "redirect": "/nonprofits/", "statusCode": 301 },
+    { "route": "/connect", "redirect": "/contact/", "statusCode": 301 },
+    { "route": "/event-list", "redirect": "/classes/", "statusCode": 301 },
+    { "route": "/innstructor-application", "redirect": "/teach/", "statusCode": 301 },
+    { "route": "/non-discrimination-policy", "redirect": "/policies/non-discrimination/", "statusCode": 301 },
+
+    { "route": "/throughanotherlens", "redirect": "/podcasts/throughanotherlens/", "statusCode": 301 },
+    { "route": "/lcsnapshotnews", "redirect": "/podcasts/lcsnapshotnews/", "statusCode": 301 },
+    { "route": "/shakenandunfiltered", "redirect": "/podcasts/shakenandunfiltered/", "statusCode": 301 },
+    { "route": "/spillingmidlifetea", "redirect": "/podcasts/spillingmidlifetea/", "statusCode": 301 },
+    { "route": "/springboard", "redirect": "/podcasts/springboard/", "statusCode": 301 },
+    { "route": "/theblindchick", "redirect": "/podcasts/theblindchick/", "statusCode": 301 },
+    { "route": "/thetandaparty", "redirect": "/podcasts/thetandaparty/", "statusCode": 301 },
+    { "route": "/veteranslifemagazine", "redirect": "/podcasts/veteranslifemagazine/", "statusCode": 301 }
+  ],
+
+  "responseOverrides": {
+    "401": { "statusCode": 302, "redirect": "/login" },
+    "404": { "rewrite": "/404.html" }
+  },
+
+  "navigationFallback": {
+    "rewrite": "/404.html",
+    "exclude": ["/assets/*", "/*.{css,js,png,jpg,jpeg,svg,webp,ico,woff2}"]
+  },
+
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+  },
+
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  },
+
+  "auth": {
+    "rolesSource": "/api/GetRoles"
+  }
+}
