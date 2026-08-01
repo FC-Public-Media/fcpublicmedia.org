@@ -107,21 +107,36 @@ test.describe('class mode', () => {
   });
 
   test('decides from the build, without fetching a schedule', async ({ page }) => {
-    // The homepage does make third-party requests — the Cablecast on-air
-    // strip, the live embed, archive thumbnails. Those are other features.
-    // What class mode must not do is fetch a calendar.
+    // Scoped to the main frame rather than to a list of third-party hosts.
+    //
+    // The Cablecast player iframe pulls in its own dependencies — video.js
+    // from a CDN, and a Stripe pricing script — on hosts nobody here chose or
+    // can predict. Those belong to the embed's frame, not ours. Filtering by
+    // frame captures the real distinction: what *this page* asked for. A
+    // maintained host list would have to be updated every time a vendor adds
+    // a dependency, and would go quietly wrong when it wasn't.
     const requests = [];
     page.on('request', (request) => {
+      let ownFrame = false;
+      try {
+        ownFrame = request.frame() === page.mainFrame();
+      } catch (error) {
+        return; // service worker or a frame already gone
+      }
+      if (!ownFrame) return;
+
       const url = request.url();
-      if (!isThirdParty(url) && !url.includes('/assets/')) requests.push(url);
+      // The on-air strip legitimately calls Cablecast from this frame. That is
+      // a different feature; the frame check alone would flag it.
+      if (isThirdParty(url)) return;
+      if (url.includes('/assets/') || url.match(/127\.0\.0\.1:\d+\/$/)) return;
+      requests.push(url);
     });
 
     await visitAt(page, at(20));
     await expect(slot(page)).toBeVisible();
 
-    // Only the document itself.
-    const extra = requests.filter((url) => !url.match(/127\.0\.0\.1:\d+\/$/));
-    expect(extra, 'class mode fetched something').toEqual([]);
+    expect(requests, 'class mode fetched something').toEqual([]);
 
     // And the schedule really is inline rather than loaded.
     const inline = await page.locator('#class-config').textContent();
