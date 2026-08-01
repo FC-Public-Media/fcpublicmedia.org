@@ -160,6 +160,30 @@ The generated code was decoded back to `https://www.fcpublicmedia.org/check-in/`
 to confirm it is correct — a printed poster with a wrong URL is worse than no
 poster.
 
+### Location
+
+Checking in requires being at the studio. Coordinates, radius, and re-check
+interval are in `_data/checkin.yml`.
+
+- Tap **Check in**. If you are within 200m, done.
+- If not, the check-in is held as **pending**: the page shows the distance and
+  a directions link, and completes by itself when you arrive. Leave it open,
+  walk in, look down.
+- Pending survives a reload. Re-checks run every five minutes and **only while
+  the tab is visible**, so a page left open in a pocket costs nothing.
+- A tap asks for a fresh fix; background polls reuse a cached one. That
+  distinction matters — with a cached fix, someone standing in the doorway
+  gets told they are still down the street. A test covers it.
+- Coordinates are never stored, even locally. The history keeps the distance
+  and a `verified` flag, which is the part that means anything later.
+
+Accuracy is handled by accepting a reading when `distance - accuracy` is
+inside the radius, capped by `accuracy_slack_m` so a fix reporting ±3km cannot
+wave someone through from home.
+
+The venue coordinates were geocoded from the address. Worth confirming by
+standing at the front door with a phone before this goes live.
+
 ### This does not replace the paper log
 
 Two things follow from there being no server, and neither is a bug in the page:
@@ -178,42 +202,114 @@ implying a permanence it cannot deliver.
 
 So run it alongside the paper log until check-ins have somewhere to go.
 
+### Storage durability
+
+`navigator.storage.persist()` is requested on load, and the page reports what
+the browser said. Persistent mode exempts an origin from routine eviction in
+both Chrome and Safari.
+
+The catch is how it is granted. Neither browser prompts — both decide on
+heuristics. Chrome uses engagement signals; **WebKit grants it largely when the
+site is running as a Home Screen web app**. So on iPhone, the reliable way to
+keep a check-in history is Add to Home Screen, not an API call. The page says
+so instead of pretending the request is a guarantee.
+
+That is worth knowing before treating any of this as durable: for a visitor
+who opens the page once a month in Safari and never installs it, the history
+is likely to be gone by their next visit.
+
 ### What "somewhere to go" would take
 
-On Cloudflare, a Worker with a D1 or KV binding — roughly thirty lines, and the
-free tier covers this volume many times over. The page would POST the same
-record it stores locally, and the device-local history keeps working as the
-visitor's own copy.
+**The short version: a Worker, and it is the low-impact option, not the heavy
+one.**
 
-That is a small piece of work. It is listed here rather than built because it
-turns a static site into one holding a record of who was in the building and
-when, and that is a decision for the board: retention period, who can read it,
-what happens on a subpoena, and whether it needs a privacy notice.
+Any design where the browser triggers a GitHub Actions dispatch means the
+browser holds a credential that can dispatch it — and a credential in a
+browser is a public credential. Wrapping it per member does not change that:
+whoever can unwrap it can dispatch, and the thing doing the wrapping is itself
+a server you now have to run and rotate. You would have built a key
+distribution service to avoid running thirty lines of Worker.
 
-### Identity
+There is also a quieter problem. `repository_dispatch` needs a token with
+write access to the repository. Not "can trigger this one workflow" — write.
+Anyone holding it can push. Fine-grained PATs narrow it, but the floor is
+still higher than "may append a row to a log".
 
-`_data/checkin.yml` sets `identity.mode`:
+What the Worker actually costs: 100,000 requests a day on the free plan. A
+check-in is one request. At FCPM's volume that is not a rounding error, it is
+noise.
 
-- **`none`** (current) — check-ins are recorded without an email, and the page
-  says so.
-- **`access`** — put Cloudflare Access in front of `/check-in/` and the page
-  reads the verified identity from `/cdn-cgi/access/get-identity`.
+Two shapes, both small:
 
-`access` is what matches the original ask: the visitor picks their own provider
-— Google, Microsoft, GitHub, or a one-time emailed PIN — Cloudflare verifies
-it, and the page gets a real email address without this site holding a secret
-or running any OAuth code. Changing provider later is a dashboard setting, not
-a code change, and someone can use a different email next time without anything
-breaking.
+1. **Straight through.** The Worker receives the check-in and immediately
+   fires `repository_dispatch` with a token held as a Worker secret, never in
+   the client. Nothing is stored anywhere. Fastest possible flush, no state to
+   jam.
+2. **Batched.** The Worker appends to KV; a cron trigger flushes every few
+   hours and clears the key. Fewer Actions runs. The batch is the only thing
+   ever "held", and a failed flush retries on the next tick rather than
+   stalling — a jam self-clears.
 
-It is off because enabling it is a Zero Trust dashboard change; switching the
-config before the route is actually protected would show everyone an error.
-When the route is not behind Access the identity request 404s and the page
-falls back to an anonymous check-in, so both states are safe.
+Given the stated goal of flushing as fast as possible and holding nothing,
+shape 1 is the better fit, and it is the simpler one. Batching is worth it only
+if Actions runs turn out to be the annoyance.
 
-Note that Access authenticates the visitor to *Cloudflare*, and the page then
-reads that identity client-side. It does not by itself give FCPM a server-side
-record — that still needs the Worker above.
+Either way the device-local history keeps working as the visitor's own copy —
+that part does not change.
+
+This is listed rather than built because it turns a static site into one
+holding a record of who was in the building and when. Retention, who can read
+it, what happens on a subpoena, whether it needs a privacy notice — board
+decisions, not technical ones.
+
+### Identity: how Cloudflare Access plugs in
+
+Almost nothing happens in this repository. That is the appeal.
+
+**In Cloudflare (Zero Trust dashboard):**
+
+1. Add an Access application for the path `fcpublicmedia.org/check-in/sign-in/`.
+2. Add login methods — Google, Microsoft, GitHub, one-time PIN by email. The
+   visitor picks; you do not choose for them.
+3. Set the policy to Allow with the rule *Emails ending in* `@` — that is,
+   anyone who can prove an email address. This is a check-in, not a vault.
+
+**In this repository:** set `identity.mode: access` in `_data/checkin.yml`.
+That is the whole change.
+
+**How the result is caught.** After a visitor authenticates, Cloudflare sets a
+`CF_Authorization` cookie on the hostname. `assets/js/checkin.js` then calls:
+
+```
+GET /cdn-cgi/access/get-identity   →   { "email": "…", "name": "…", … }
+```
+
+That endpoint is served by Cloudflare's edge, not by this site. No client
+secret, no redirect handling, no token parsing, no OAuth library.
+
+**Protect a sub-path, not `/check-in/` itself.** Access gates a whole route: a
+protected `/check-in/` would demand a login before anyone could see the page,
+which breaks the one-tap flow and makes anonymous check-in impossible. Putting
+Access on `/check-in/sign-in/` instead keeps the page public — someone taps
+"sign in", authenticates, comes back, and the identity call now returns their
+email because the cookie is set for the hostname.
+
+**Two things to know before turning it on:**
+
+- **The free Zero Trust plan covers 50 seats.** Beyond that it is around $7
+  per user per month. FCPM may well have more than 50 members, and the seat
+  count is what makes this decision non-obvious — it is free the way the rest
+  of this stack is free only if the org is small enough.
+- **Access authenticates the visitor to Cloudflare.** The page reads that
+  identity client-side. It does not by itself give FCPM a server-side record —
+  that still needs the Worker above. Access answers "who is this?", not "how do
+  we find out later?".
+
+Left at `none` because enabling it is a dashboard change; flipping the config
+before the route is protected would show everyone an error. When the route is
+not behind Access the identity call 404s and the page records an anonymous
+check-in, so both states are safe. That fallback is verified against the live
+deployment, not just reasoned about.
 
 ## Tests
 

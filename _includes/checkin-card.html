@@ -1,0 +1,33 @@
+{%- assign ci = site.data.checkin -%}
+{%- comment -%}
+  Two audiences at once. Whoever is holding the phone taps the button. Whoever
+  is standing next to them scans the code. Both land in the same place.
+
+  The QR is the same committed SVG the printed poster uses, so there is one
+  code in the world rather than two that could drift apart.
+{%- endcomment -%}
+<section class="band">
+  <div class="wrap checkin-card">
+    <div class="checkin-card-text">
+      <p class="eyebrow">Here at the studio?</p>
+      <h2>Check in</h2>
+      <p class="lede">
+        One tap. Your visits are kept on your own phone &mdash; we don't make
+        you an account.
+      </p>
+      <p class="hero-actions">
+        <a class="btn btn-primary btn-big" href="{{ '/check-in/' | relative_url }}">Check in now</a>
+      </p>
+      <p class="muted">
+        Not here yet? Tap anyway &mdash; it will finish when you arrive.
+      </p>
+    </div>
+
+    <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}"
+       aria-label="Check in">
+      <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
+           alt="" width="200" height="200" loading="lazy">
+      <span>or scan</span>
+    </a>
+  </div>
+</section>

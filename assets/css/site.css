@@ -550,6 +550,56 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 .rows-checkin li b { font-variant-numeric: tabular-nums; }
 
+/* Only one state panel is ever visible; the rest carry `hidden`. */
+.state[hidden] { display: none; }
+.state { margin-bottom: 2.5rem; }
+.state h2 { margin-top: 0; }
+
+/* The primary action is meant to be hit with a thumb, at a glance, possibly
+   while walking. */
+.btn-big {
+  font-size: var(--step-1);
+  padding: 0.9rem 1.8rem;
+}
+
+.field { margin-bottom: 1.25rem; max-width: var(--measure); }
+.field label {
+  display: block;
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-soft); margin-bottom: 0.4rem;
+}
+.field input,
+.field select {
+  font: inherit; font-size: var(--step-0);
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule);
+  background: var(--paper); color: var(--ink);
+}
+
+.checkin-card {
+  display: flex; flex-wrap: wrap; gap: var(--gap);
+  align-items: center; justify-content: space-between;
+}
+.checkin-card-text { flex: 1 1 22rem; }
+.checkin-card-text h2 { margin-bottom: 0.3em; }
+
+.checkin-card-qr {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  text-decoration: none;
+}
+.checkin-card-qr img {
+  width: clamp(8rem, 22vw, 11rem); height: auto;
+  background: #fff; padding: 0.6rem;
+  border: 1px solid var(--rule);
+}
+.checkin-card-qr span {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em;
+  font-weight: 700; color: var(--ink-soft);
+}
+
 .rows input[type="text"] {
   font: inherit;
   padding: 0.35rem 0.6rem;
