@@ -40,7 +40,7 @@ _data/                   Content that repeats or changes. Plain YAML.
   providers.yml          The five transactions. See below.
   membership.yml         Tiers and prices.
   facilities.yml         Bookable spaces.
-  equipment.yml          Gear inventory.
+  equipment.yml          What kinds of gear we have (not an inventory).
   watch.yml              Channels and carriage.
   board.yml              Board and staff roster.
 _layouts/                Three of them: default, page, podcast.
@@ -710,5 +710,7 @@ Carried over as a to-do list, since each is a one-line fix here:
   year from signup)
 - Several pages load slowly because of Wix widgets, including one that displays
   the weather
-- The equipment inventory is published as images, so it isn't searchable or
-  indexable
+- The equipment page is a photo gallery of the inventory, which is neither
+  searchable nor the question visitors are asking. Bookable is the system of
+  record and staff pick the gear, so the page should summarise categories
+  rather than list items
