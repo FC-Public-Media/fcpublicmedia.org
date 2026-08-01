@@ -51,3 +51,16 @@
   to: /podcasts/thetandaparty/
 - from: /veteranslifemagazine
   to: /podcasts/veteranslifemagazine/
+
+# Three shows that still have pages on the Wix site but are not in its
+# navigation — presumably retired. Pointed at the podcast index so inbound
+# links and search results land somewhere sensible rather than on a 404.
+#
+# If any of them should have a page of their own, add it to _podcasts/ and
+# change the target here. Nothing is lost by starting with this.
+- from: /weirdwildwonderfulco
+  to: /podcasts/
+- from: /gamerz
+  to: /podcasts/
+- from: /wherethemindgoes
+  to: /podcasts/

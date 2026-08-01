@@ -1,0 +1,141 @@
+# What's not in the new site (yet)
+
+A plain list of what was left out, cut on purpose, or built as structure with
+the content still missing. Written for the board, not for developers.
+
+The short version: **every page on the current site has a home in the new
+one.** Nothing was dropped without a destination. What's missing is content
+that couldn't be read out of Wix automatically, and decisions nobody has made
+yet.
+
+---
+
+## 1. Content we couldn't get out of Wix
+
+These aren't design decisions. Wix renders these parts of the site with
+JavaScript after the page loads, so the words aren't in the file a browser or
+a search engine receives. That means they couldn't be copied over
+automatically — and it also means **Google reads them poorly today**, which is
+its own argument for moving.
+
+Each one needs a person to copy it across.
+
+| Page | What's missing |
+|---|---|
+| Donate | The whole page. Suggested amounts, the case for giving, and which payment processor is currently in use. |
+| Bulletin Board | The whole page. We can't see what's posted or how people submit to it. |
+| Podcasts (all 8) | Show descriptions, hosts, player embeds, and subscribe links. |
+| DEI and Digital Inclusion Statement | The statement text. Should be copied word for word, not rewritten. |
+| Submit a Program | The full legal agreement — the most legally significant text on the site. |
+| Teach a Class | The instructor application questions. |
+
+## 2. Left out on purpose
+
+| What | Why |
+|---|---|
+| The weather widget | A public media site doesn't need to tell you the weather, and it was one of the things making pages slow. |
+| The photo-collage panels | Slow to load, and they were decoration rather than information. |
+| The equipment photo gallery | Replaced with a short description of what kinds of gear we have. The real inventory lives in our booking system and staff pick the gear — a copy on the website would go out of date and answer a question nobody asks. |
+| The separate podcast archive page | Folded into the main Podcasts page. One list is easier than two. |
+| Two abandoned online-store sitemaps from 2022 | Nothing was behind them. |
+| Member accounts | The current site has no working sign-in. Rather than rebuild something unused, the new site is designed so accounts can be added later only where they'd actually do something. |
+
+## 3. Retired shows — a decision to make
+
+Three podcast pages are still live on the current site but aren't linked from
+its own menu: **Weird Wild Wonderful CO**, **Gamerz**, and **Where the Mind
+Goes**.
+
+They now redirect to the main Podcasts page, so any old link still works. If
+any of them deserves a page of its own, that's a small addition — but somebody
+needs to say which.
+
+## 4. Built, but waiting on content
+
+The page exists, the layout works, the words are placeholders.
+
+| Page | Needs |
+|---|---|
+| About & Board | Mission statement, short history, and the board roster. **The current site has no about page at all**, which is unusual for a nonprofit asking for donations. |
+| Membership | What actually differs between the four tiers. The current site describes benefits in one shared paragraph, so the difference between Sponsor, Student, Creator, and Producer isn't written down anywhere. |
+| Membership | The membership year. The current page says both "January 1 – December 31" and "expires one year from sign-up." Both can't be true. |
+| Equipment | Four one-line descriptions of what we have. About ten minutes for someone who knows the kit. |
+| Studios | What's actually in each room. The booking pages list how long you get, but not what you're getting. |
+| Classes | Drop-in prices, and whether members at some tiers attend free. |
+| For Nonprofits | Whether to publish rates for nonprofit video work. Currently unpublished. |
+
+## 5. Functions not built
+
+Five things on the current site take money or make a booking. **None of them
+were rebuilt**, because each one is a choice about which company to use, and
+that's the board's call rather than a technical one.
+
+| What | Currently | Status |
+|---|---|---|
+| Class registration | Wix Events | Needs a provider |
+| Membership dues | Wix Pricing Plans | Needs a provider |
+| Donations | Wix Donations | Needs a provider |
+| Studio booking | Bookable | **Staying** — no change needed |
+| Program submissions | Wix form + Dropbox | Needs a form service |
+
+Until one is chosen, each shows a visible "not set up yet" notice rather than
+a button that goes nowhere.
+
+**This is the list that matters for leaving Wix.** Donations and membership
+dues are the two that actually have to move before the Wix subscription can be
+cancelled.
+
+## 6. Deliberately deferred
+
+Things that were designed and documented but not built, each waiting on a
+decision.
+
+**Check-in records.** The check-in page works and keeps a history — but on the
+visitor's own phone. FCPM receives nothing. Sending check-ins somewhere the
+organization can count them is a small piece of work, deliberately not done,
+because it means the organization starts holding a record of who was in the
+building and when. That needs answers about how long it's kept and who can see
+it before it's built, not after. **The paper log should stay until then.**
+
+**Verified email at check-in.** People could sign in with Google, Microsoft, or
+a one-time emailed code, using a Cloudflare feature that needs no passwords on
+our side. It's free up to 50 users, then about $7 per user per month — and 50
+may be fewer than FCPM has members, which is the part worth checking.
+
+**Class RSVPs.** The page can take "I'm planning to come," but it's noted on
+the visitor's phone only, and it says so. It becomes a real RSVP when
+check-in records do.
+
+**Reservation follow-through.** Flagging when someone checks in without a
+booking. Needs the calendar connection first.
+
+**Live class schedule.** Class times are currently typed into a file. They
+could come from the Microsoft 365 calendar automatically, the same way the
+programme archive comes from Cablecast.
+
+## 7. Things the new site has that the old one doesn't
+
+For balance:
+
+- **A searchable archive of 1,060 programmes** going back to 2011, pulled from
+  Cablecast automatically each week. This existed but was unreachable.
+- **A check-in page and printable QR poster.**
+- **An about and board page** (needs content).
+- **A class mode** that changes the homepage while a class is running.
+- **Every change gets a preview link** before it goes live.
+- **245 automated tests** that check the site on a phone and a desktop.
+
+---
+
+## Known issues on the current site, fixed here
+
+Small things, listed because they show what's easy to fix when the site is in
+version control:
+
+- The footer copyright says 2025
+- The instructor page URL is misspelled (`innstructor-application`)
+- Donate isn't linked from the navigation at all
+- Programme titles carry filenames like `Midnight_Limited_1940_2026-07-14_11_59_43`
+- 426 programmes in Cablecast have no title and 461 have no category — those
+  are fixable in Cablecast and would appear on the site the following week
+- No programme has captions, despite a captioning service being configured
