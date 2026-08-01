@@ -92,7 +92,9 @@ a:hover { color: var(--signal); }
 
 img { max-width: 100%; height: auto; display: block; }
 
-code { font-family: var(--font-mono); font-size: 0.9em; }
+/* URLs and paths in code spans are long unbreakable tokens; without this they
+   push the page sideways on a phone. */
+code { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
 
 hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
@@ -543,6 +545,52 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   color: var(--ink-soft);
 }
 .foot-legal p { margin: 0; }
+
+/* --- Check-in ------------------------------------------------------------- */
+
+.rows-checkin li b { font-variant-numeric: tabular-nums; }
+
+.rows input[type="text"] {
+  font: inherit;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  max-width: 14rem;
+}
+
+/* A label styled as a button, so "Restore from a file" matches the buttons
+   either side of it while still driving the hidden file input. */
+label.btn { cursor: pointer; }
+
+/* --- Poster --------------------------------------------------------------- */
+
+.poster {
+  border: 3px solid var(--ink);
+  padding: clamp(1.5rem, 5vw, 3rem);
+  text-align: center;
+  max-width: 34rem;
+  margin: 2rem 0;
+}
+.poster-eyebrow {
+  font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.14em;
+  font-weight: 700; color: var(--ink-soft); margin-bottom: 0.5rem;
+}
+.poster-title { font-size: var(--step-3); margin-bottom: 1.5rem; }
+.poster-qr {
+  width: min(100%, 20rem); height: auto; margin: 0 auto 1.25rem;
+  /* The SVG paths are black; invert in dark mode so the code stays scannable
+     on screen as well as on paper. */
+  background: #fff; padding: 0.75rem;
+}
+.poster-url { font-weight: 650; font-size: var(--step-1); margin-bottom: 0.75rem; overflow-wrap: anywhere; }
+.poster-note { color: var(--ink-soft); font-size: var(--step--1); margin: 0; }
+
+@media print {
+  .site-head, .site-foot, .no-print, .page-head .lede { display: none !important; }
+  .poster { border-width: 2px; page-break-inside: avoid; }
+  body { background: #fff; color: #000; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

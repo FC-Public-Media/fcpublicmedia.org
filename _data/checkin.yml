@@ -1,0 +1,55 @@
+# Check-in configuration.
+#
+# The check-in page records visits in the browser's own storage. There is no
+# server, no account on our side, and nothing is transmitted anywhere.
+#
+# READ THIS BEFORE RETIRING THE PAPER LOG
+# ---------------------------------------
+# Device-local history serves the visitor, not the organization. Two limits
+# follow from that, and neither is a bug to be fixed in the page:
+#
+#   1. FCPM receives nothing. A log that lives on someone's phone cannot be
+#      counted, reported to the City, or put in a grant application. The
+#      export button exists so a visitor can hand their history over, but
+#      that is a person doing a favour, not a reporting system.
+#
+#   2. Browsers delete this. Safari removes script-writable storage after
+#      seven days without a visit, unless the site has been added to the Home
+#      Screen. For a log people touch monthly, that is not an edge case —
+#      it is the normal outcome.
+#
+# So: run this alongside the paper log, not instead of it, until there is
+# somewhere for a check-in to go. See README, "Check-in", for what that would
+# take — on Cloudflare it is a small Worker and about thirty lines.
+
+# The URL the QR code points at. Regenerate the code after changing it:
+#   python3 script/make-qr.py
+url: https://www.fcpublicmedia.org/check-in/
+
+identity:
+  # How the page learns who someone is.
+  #
+  #   none    — check-ins are recorded without an identity. Works today,
+  #             requires nothing, and is the default.
+  #   access  — Cloudflare Access sits in front of /check-in/ and the page
+  #             reads the signed-in identity from
+  #             /cdn-cgi/access/get-identity.
+  #
+  # `access` is the one that matches what was asked for: the visitor picks
+  # their own provider (Google, Microsoft, GitHub, or a one-time emailed PIN),
+  # Cloudflare verifies it, and the page receives a real email address without
+  # this site holding any secret or running any OAuth code. Switching provider
+  # later is a Cloudflare setting, not a code change.
+  #
+  # It is not enabled here because turning it on is a Zero Trust dashboard
+  # change, and enabling it in config before the route is actually protected
+  # would just show everyone an error.
+  mode: none
+
+  # Shown when mode is `none`, so the page is honest about what it is doing.
+  anonymous_note: >-
+    You are not signed in, so this check-in is recorded on this device only
+    and is not linked to an email address.
+
+# How many check-ins to keep on the device. Old entries fall off the end.
+history_limit: 200

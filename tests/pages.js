@@ -19,6 +19,8 @@ const PAGES = [
   { path: '/about/', name: 'about' },
   { path: '/teach/', name: 'teach' },
   { path: '/policies/non-discrimination/', name: 'policy' },
+  { path: '/check-in/', name: 'check-in' },
+  { path: '/check-in/poster/', name: 'check-in-poster' },
 ];
 
 // Hosts we embed from. Requests to these are expected and are reported
