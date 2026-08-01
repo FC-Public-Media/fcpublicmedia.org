@@ -136,6 +136,85 @@ grants membership.
 
 `api/src/functions/GetRoles.js` is a working stub with the lookup left as a TODO.
 
+## Check-in
+
+`/check-in/` is a QR destination. Someone scans the poster, taps once, and the
+visit is recorded — in their own browser's storage, on their own device.
+
+- The device identifier is a random UUID made on first visit. Not derived from
+  the device or the person, never transmitted, deleted by "Forget this device".
+- History is capped, exportable to a JSON file, and re-importable — importing
+  merges rather than replaces, so restoring a backup never drops newer visits.
+- A test asserts that checking in makes **no network request**. If a future
+  change starts posting somewhere, the suite fails.
+
+Print the poster at `/check-in/poster/`. The QR is a committed SVG; regenerate
+it only if the URL changes:
+
+```
+pip install qrcode
+python3 script/make-qr.py
+```
+
+The generated code was decoded back to `https://www.fcpublicmedia.org/check-in/`
+to confirm it is correct — a printed poster with a wrong URL is worse than no
+poster.
+
+### This does not replace the paper log
+
+Two things follow from there being no server, and neither is a bug in the page:
+
+**FCPM receives nothing.** A log on a visitor's phone cannot be counted,
+reported to the City, or put in a grant application. The export button lets a
+visitor hand their history over, but that is a favour, not a reporting system.
+The stated goal was simplifying check-in *reporting* — device-local storage
+serves the visitor, not the organization.
+
+**Browsers delete this.** Safari removes script-writable storage after about
+seven days without a visit unless the site is on the Home Screen, and clearing
+browsing data clears it. For a log people touch monthly, losing it is the
+normal outcome, not an edge case. The page says so plainly rather than
+implying a permanence it cannot deliver.
+
+So run it alongside the paper log until check-ins have somewhere to go.
+
+### What "somewhere to go" would take
+
+On Cloudflare, a Worker with a D1 or KV binding — roughly thirty lines, and the
+free tier covers this volume many times over. The page would POST the same
+record it stores locally, and the device-local history keeps working as the
+visitor's own copy.
+
+That is a small piece of work. It is listed here rather than built because it
+turns a static site into one holding a record of who was in the building and
+when, and that is a decision for the board: retention period, who can read it,
+what happens on a subpoena, and whether it needs a privacy notice.
+
+### Identity
+
+`_data/checkin.yml` sets `identity.mode`:
+
+- **`none`** (current) — check-ins are recorded without an email, and the page
+  says so.
+- **`access`** — put Cloudflare Access in front of `/check-in/` and the page
+  reads the verified identity from `/cdn-cgi/access/get-identity`.
+
+`access` is what matches the original ask: the visitor picks their own provider
+— Google, Microsoft, GitHub, or a one-time emailed PIN — Cloudflare verifies
+it, and the page gets a real email address without this site holding a secret
+or running any OAuth code. Changing provider later is a dashboard setting, not
+a code change, and someone can use a different email next time without anything
+breaking.
+
+It is off because enabling it is a Zero Trust dashboard change; switching the
+config before the route is actually protected would show everyone an error.
+When the route is not behind Access the identity request 404s and the page
+falls back to an anonymous check-in, so both states are safe.
+
+Note that Access authenticates the visitor to *Cloudflare*, and the page then
+reads that identity client-side. It does not by itself give FCPM a server-side
+record — that still needs the Worker above.
+
 ## Tests
 
 Browser smoke tests, run with Playwright against a real Chromium in both a
