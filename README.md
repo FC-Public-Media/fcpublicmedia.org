@@ -257,6 +257,54 @@ if Actions runs turn out to be the annoyance.
 Either way the device-local history keeps working as the visitor's own copy —
 that part does not change.
 
+#### The token, and not having to manage it
+
+Use a **GitHub App**, not a personal access token. This is the difference
+between a credential you maintain and one you set up once.
+
+- A PAT expires. Fine-grained ones must, classic ones can be set not to but
+  are broad and are a bearer secret forever. Either way it is a thing in a
+  calendar reminder.
+- **A GitHub App's private key does not expire.** The Worker signs a short JWT
+  with it and exchanges that for an installation access token, which lasts one
+  hour and is minted on demand. Nothing to rotate, nothing to remember. The
+  key sits as a Worker secret and is never in the client.
+
+Workers can do the RS256 signing with built-in WebCrypto — no library. It is
+about forty lines rather than one header, which is the whole cost of never
+thinking about it again.
+
+Install the App on this repository only, with the narrowest permission that
+lets it fire `repository_dispatch`. Confirm the exact permission when creating
+the App; GitHub documents the classic-token requirement as `repo` scope, and
+the fine-grained equivalent is narrower but worth checking rather than
+assuming.
+
+#### Concurrency
+
+Thirty people arriving for a class would fire thirty dispatches, thirty
+workflow runs, and thirty racing commits to the same log file. Runs would
+clobber each other or fail on a stale ref.
+
+Add a concurrency group to the workflow:
+
+```yaml
+concurrency:
+  group: checkin-log
+  cancel-in-progress: false
+```
+
+Runs then queue instead of racing. `cancel-in-progress: false` matters — the
+default would throw away queued check-ins, which is exactly the data you were
+trying to keep.
+
+If that queue gets long, batching (shape 2) collapses thirty runs into one and
+the problem stops existing. That is the case where batching earns its keep,
+rather than the daily-volume case.
+
+Public repositories get unlimited Actions minutes, so the cost of a run is
+wall-clock and queue depth, not money.
+
 This is listed rather than built because it turns a static site into one
 holding a record of who was in the building and when. Retention, who can read
 it, what happens on a subpoena, whether it needs a privacy notice — board
@@ -400,6 +448,59 @@ The script's one judgement call is `LOCAL_PREFIXES` — which categories count
 as locally produced. This matters: the raw "most recent" list is dominated by
 Free Speech TV and Paltrocast, which buries the work Fort Collins people
 actually made, so the site features local production separately.
+
+## Class mode
+
+The homepage knows when a class is running and rearranges itself around it.
+Two gears, deliberately separate:
+
+**The build** bakes `_data/classes.yml` into the page as inline JSON. Session
+titles, times, rooms, and drop-in prices come along with the HTML.
+
+**The browser** reads the wall clock and decides. No request, no API, no key —
+`assets/js/classmode.js` is arithmetic on numbers already in memory. A page
+built last night knows about tonight's class. It re-checks each minute while
+the tab is visible, so a page left open switches on by itself when the class
+starts and off again when it ends.
+
+Three windows: `soon` (the `lead_minutes` before), `now`, and `late` (the first
+`late_minutes`, when someone walking in is still worth inviting). Outside all
+three the block stays hidden and the ordinary check-in card is untouched.
+
+The cost of the split is staleness — a class added this morning is not on the
+site until the next build. The weekly sync already rebuilds; if classes get
+added at short notice, move that job to daily. Eventually `classes.yml` should
+be generated from the Microsoft 365 calendar the same way `cablecast.json` is
+generated from Cablecast, at which point the gear on this side does not change
+at all.
+
+**Times must carry an offset** — `2026-08-11T18:00:00-06:00`, never a bare
+local time. A time without an offset is read as the *visitor's* zone, which is
+wrong for anyone travelling and silently wrong, which is worse. The template
+normalises through `date_to_xmlschema` so what reaches the browser is always
+unambiguous.
+
+### Drop-in pricing
+
+Shown as one plain line, not a gate. Someone who balks at the drop-in rate is
+exactly the person for whom membership is the better deal, so the membership
+link sits beside the price rather than behind it, and "other classes" is
+offered next to "I'm here for the class". A person who came for one class and
+leaves having browsed three and considered joining is a better outcome than a
+completed drop-in payment.
+
+This is not ticketing. People who signed up already paid through registration;
+this is only the walk-in case.
+
+**Every price in `_data/classes.yml` is a placeholder.** Nothing renders the
+price block until real figures replace them.
+
+### What is not built
+
+Tier-aware pricing — showing someone their own rate rather than the public one
+— needs the device to know the member's tier, which needs identity, which
+needs Access or a Worker. The payment hand-off itself is blocked on the same
+provider decision as everything else in `_data/providers.yml`.
 
 ## Featuring things on the homepage
 
