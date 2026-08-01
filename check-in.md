@@ -5,6 +5,36 @@ lede: One tap when you get here. Your visits stay on your own phone.
 
 {%- assign ci = site.data.checkin -%}
 {%- assign loc = ci.location -%}
+{%- assign cl = site.data.classes -%}
+
+{%- comment -%}
+  The same schedule the homepage gets. Both pages run the same function over
+  it (assets/js/classes.js), so they cannot disagree about whether a class is
+  on — and the QR on the door stays a permanent link to this page, carrying no
+  class information that could go stale in someone's pocket.
+{%- endcomment -%}
+<script type="application/json" id="class-config">
+{
+  "leadMinutes": {{ cl.lead_minutes | default: 90 }},
+  "lateMinutes": {{ cl.late_minutes | default: 45 }},
+  "dropin": {
+    "public": {{ cl.dropin.public | jsonify }},
+    "member": {{ cl.dropin.member | jsonify }}
+  },
+  "sessions": [
+    {%- for s in cl.sessions -%}
+    {
+      "title": {{ s.title | jsonify }},
+      "starts": {{ s.starts | date_to_xmlschema | jsonify }},
+      "ends": {{ s.ends | date_to_xmlschema | jsonify }},
+      "room": {{ s.room | jsonify }},
+      "summary": {{ s.summary | strip_newlines | strip | jsonify }},
+      "signup": {{ s.signup | jsonify }}
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+</script>
 
 <script type="application/json" id="checkin-config">
 {
@@ -29,6 +59,40 @@ lede: One tap when you get here. Your visits stay on your own phone.
     the door works fine.</span>
   </p>
 </noscript>
+
+{% comment %} ------------------------------------------------ class banner {% endcomment %}
+
+{%- comment -%}
+  Unhidden by checkin.js when a class window is open. Same data, same
+  function, same answer as the homepage.
+{%- endcomment -%}
+<div class="class-banner" id="class-banner-root" data-class-banner hidden>
+  <p class="eyebrow" data-class-eyebrow></p>
+  <h2 data-class-title></h2>
+  <p class="lede">
+    <span data-class-when></span>
+    <span class="muted" data-class-room></span>
+  </p>
+  <p data-class-late hidden>Running late? Come anyway &mdash; you can still join.</p>
+
+  {%- comment -%}
+    Before the class starts, "I'm coming" is an expression of intent. It is
+    recorded on this device only — there is nowhere to send it yet. The
+    wording says so rather than implying we received it.
+  {%- endcomment -%}
+  <div data-rsvp-offer hidden>
+    <p>
+      <button class="btn" id="rsvp-button" type="button">I'm planning to come</button>
+    </p>
+    <p class="muted">
+      Noted on this phone. We don't receive it &mdash; check in when you arrive.
+    </p>
+  </div>
+
+  <p class="rsvp-noted" data-rsvp-noted hidden>
+    You said you're coming to this. Check in when you get here.
+  </p>
+</div>
 
 {% comment %} ---------------------------------------------------- states {% endcomment %}
 
@@ -200,4 +264,4 @@ lede: One tap when you get here. Your visits stay on your own phone.
   <button class="btn" id="forget-button" type="button">Forget this device</button>
 </p>
 
-<script src="{{ '/assets/js/checkin.js' | relative_url }}" defer></script>
+<script type="module" src="{{ '/assets/js/checkin.js' | relative_url }}"></script>
