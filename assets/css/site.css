@@ -550,6 +550,24 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 .rows-checkin li b { font-variant-numeric: tabular-nums; }
 
+/* Class context on the check-in page. Same information the homepage shows,
+   from the same data, worked out by the same function. */
+.class-banner {
+  border-left: 5px solid var(--signal);
+  background: var(--paper-alt);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.class-banner[hidden] { display: none; }
+.class-banner h2 { margin: 0 0 0.3em; }
+.class-banner .lede { font-size: var(--step-0); margin-bottom: 0.5em; }
+.class-banner [data-class-room]::before { content: " · "; }
+.class-banner p:last-child { margin-bottom: 0; }
+
+.rsvp-noted { font-weight: 600; }
+.rsvp-noted[hidden],
+[data-rsvp-offer][hidden] { display: none; }
+
 /* Only one state panel is ever visible; the rest carry `hidden`. */
 .state[hidden] { display: none; }
 .state { margin-bottom: 2.5rem; }

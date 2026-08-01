@@ -467,6 +467,47 @@ Three windows: `soon` (the `lead_minutes` before), `now`, and `late` (the first
 `late_minutes`, when someone walking in is still worth inviting). Outside all
 three the block stays hidden and the ordinary check-in card is untouched.
 
+### One QR, two pages, one answer
+
+`assets/js/classes.js` holds the window logic. The homepage and the check-in
+page both import it and run it over the same baked-in schedule, so they cannot
+disagree about whether a class is on.
+
+That has a consequence worth stating plainly, because it removes work:
+
+**The QR carries no class information.** It is a permanent link to
+`/check-in/`. There is no per-class code to generate, print, swap on the door,
+or take down afterwards. The page works out on arrival that a class is
+running — which is also the only place that decision can be correct, since a
+link shared two hours ago would still be claiming a class is on.
+
+The homepage's job shrinks to decorating the panel that already holds the QR
+and the link. It does not encode anything.
+
+Same reasoning for a class held elsewhere: what would change is the venue
+coordinates the page checks against, not the code on the door. The QR is the
+door; the location is the fact.
+
+### On the check-in page
+
+When a class window is open, the check-in page:
+
+- shows the class, with the same wording as the homepage
+- preselects `Class` as the reason — but **only if the visitor has not chosen
+  something else**, so a page open since before the class does not have its
+  answer overwritten
+- changes the button to "I'm here for the class"
+- before the start, offers "I'm planning to come"
+
+That last one is recorded **on the device only**, and the page says so. There
+is nowhere to send it yet. It becomes a real RSVP the day the Worker exists,
+and the wording changes then — until it does, telling someone we received
+their RSVP would be a lie.
+
+Because the intent, the name, and the reason are all the same stored profile,
+someone who noted intent on the way in is already set up to check in when they
+arrive. No second form.
+
 The cost of the split is staleness — a class added this morning is not on the
 site until the next build. The weekly sync already rebuilds; if classes get
 added at short notice, move that job to daily. Eventually `classes.yml` should

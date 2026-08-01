@@ -75,12 +75,23 @@ test.describe('class mode', () => {
     await expect(card(page)).toHaveAttribute('data-class-mode', 'off');
   });
 
-  test('the join link primes the check-in reason', async ({ page }) => {
+  test('the join link carries no class information', async ({ page }) => {
     await visitAt(page, at(20));
 
+    // Deliberately a bare link. The check-in page reaches the same conclusion
+    // from the same data, so putting the class in the URL would create a
+    // second place for the answer to live — and a link that could be shared
+    // hours later still claiming a class is on. It also means the QR on the
+    // door never has to be reprinted for a class.
     const join = page.locator('[data-class-join]');
     await expect(join).toBeVisible();
-    await expect(join).toHaveAttribute('href', '/check-in/?reason=Class');
+    await expect(join).toHaveAttribute('href', '/check-in/');
+    await expect(join).toHaveText("I'm here for the class");
+  });
+
+  test('the join link invites rather than announces before the start', async ({ page }) => {
+    await visitAt(page, at(-60));
+    await expect(page.locator('[data-class-join]')).toHaveText('Check in for this class');
   });
 
   test('offers other classes rather than only this one', async ({ page }) => {

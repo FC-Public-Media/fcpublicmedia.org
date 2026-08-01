@@ -332,3 +332,120 @@ test.describe('check-in entry points', () => {
     await expect(page.locator('.poster-url')).toContainText('fcpublicmedia.org/check-in/');
   });
 });
+
+// ---------------------------------------------------------------------------
+// The check-in page runs the same class logic the homepage does, from the same
+// data. The QR on the door is a permanent link here; everything about a class
+// is worked out on arrival rather than encoded in what someone scanned.
+
+const CLASS_START = Date.parse('2026-08-12T00:00:00Z');
+const classAt = (minutes) => new Date(CLASS_START + minutes * 60000);
+
+async function visitDuringClass(page, context, minutes, coords = STUDIO) {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation(coords);
+  await page.clock.install({ time: classAt(minutes) });
+  await page.goto(PATH);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForTimeout(250);
+}
+
+test.describe('check-in during a class', () => {
+  test('says nothing about classes outside a class window', async ({ page, context }) => {
+    await visitDuringClass(page, context, -24 * 60);
+    await expect(page.locator('#class-banner-root')).toBeHidden();
+  });
+
+  test('shows the class when one is running', async ({ page, context }) => {
+    await visitDuringClass(page, context, 20);
+
+    const banner = page.locator('#class-banner-root');
+    await expect(banner).toBeVisible();
+    await expect(banner.locator('[data-class-title]')).toHaveText('Podcasting 101');
+    await expect(banner.locator('[data-class-eyebrow]')).toHaveText('Happening now');
+    await expect(banner.locator('[data-class-late]')).toBeVisible();
+  });
+
+  test('preloads the reason so a class arrival is one tap', async ({ page, context }) => {
+    await visitDuringClass(page, context, 20);
+
+    await expect(page.locator('#profile-reason')).toHaveValue('Class');
+    await expect(
+      page.locator('[data-state="idle"] [data-action="check-in"]')
+    ).toHaveText("I'm here for the class");
+  });
+
+  test('does not overwrite a reason the visitor chose', async ({ page, context }) => {
+    // Two hours out — outside the 90 minute lead, so no class banner yet.
+    await visitDuringClass(page, context, -120);
+    await expect(page.locator('#class-banner-root')).toBeHidden();
+
+    await page.locator('#profile-reason').selectOption('Equipment pickup or return');
+
+    // The class window opens while they are still on the page. fastForward
+    // rather than setFixedTime: the latter moves the clock but never fires
+    // the interval, so nothing would re-render and the test would be
+    // asserting against a page that never updated.
+    await page.clock.fastForward('02:20:00');
+
+    await expect(page.locator('#class-banner-root')).toBeVisible();
+    await expect(page.locator('#profile-reason')).toHaveValue('Equipment pickup or return');
+  });
+
+  test('a class check-in records the class as the reason', async ({ page, context }) => {
+    await visitDuringClass(page, context, 20);
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+
+    await expect(panel(page, 'done')).toBeVisible();
+    const [entry] = await readHistory(page);
+    expect(entry.reason).toEqual('Class');
+  });
+
+  test('offers to note intent before the class starts', async ({ page, context }) => {
+    await visitDuringClass(page, context, -60);
+
+    await expect(page.locator('[data-rsvp-offer]')).toBeVisible();
+    await expect(page.locator('[data-rsvp-noted]')).toBeHidden();
+
+    await page.locator('#rsvp-button').click();
+
+    await expect(page.locator('[data-rsvp-noted]')).toBeVisible();
+    await expect(page.locator('[data-rsvp-offer]')).toBeHidden();
+
+    const rsvps = await page.evaluate(() => JSON.parse(localStorage.getItem('fcpm.rsvp') || '[]'));
+    expect(rsvps).toHaveLength(1);
+  });
+
+  test('remembers the noted intent across a reload', async ({ page, context }) => {
+    await visitDuringClass(page, context, -60);
+    await page.locator('#rsvp-button').click();
+    await expect(page.locator('[data-rsvp-noted]')).toBeVisible();
+
+    await page.reload();
+    await page.waitForTimeout(250);
+
+    await expect(page.locator('[data-rsvp-noted]')).toBeVisible();
+  });
+
+  test('stops offering intent once the class is running', async ({ page, context }) => {
+    await visitDuringClass(page, context, 20);
+    await expect(page.locator('[data-rsvp-offer]')).toBeHidden();
+  });
+
+  test('noting intent sends nothing anywhere', async ({ page, context }) => {
+    const outbound = [];
+    page.on('request', (request) => {
+      let own = false;
+      try { own = request.frame() === page.mainFrame(); } catch { return; }
+      if (own && request.method() !== 'GET') outbound.push(`${request.method()} ${request.url()}`);
+    });
+
+    await visitDuringClass(page, context, -60);
+    await page.locator('#rsvp-button').click();
+    await expect(page.locator('[data-rsvp-noted]')).toBeVisible();
+    await page.waitForTimeout(400);
+
+    expect(outbound, 'the RSVP was transmitted').toEqual([]);
+  });
+});

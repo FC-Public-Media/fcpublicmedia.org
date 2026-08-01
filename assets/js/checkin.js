@@ -18,12 +18,20 @@
 // derived from anything about the device or the person, it is never sent
 // anywhere, and "Forget this device" deletes it.
 
+import { readConfig, pickSession, sessionKey, clockTime, watch } from './classes.js';
+
 const DEVICE_KEY = 'fcpm.device';
 const HISTORY_KEY = 'fcpm.checkins';
 const PROFILE_KEY = 'fcpm.profile';
 const PENDING_KEY = 'fcpm.pending';
+const RSVP_KEY = 'fcpm.rsvp';
 
 const config = JSON.parse(document.getElementById('checkin-config').textContent);
+const classConfig = readConfig();
+
+// The session currently in a window, or null. Re-read rather than cached, so
+// a page left open through the start of a class behaves correctly.
+let session = null;
 
 let timer = null;
 
@@ -105,6 +113,7 @@ function getDevice() {
 const getHistory = () => readStore(HISTORY_KEY, []);
 const getProfile = () => readStore(PROFILE_KEY, { name: '', reason: '', note: '' });
 const getPending = () => readStore(PENDING_KEY, null);
+const getRsvps = () => readStore(RSVP_KEY, []);
 
 function saveHistory(entries) {
   return writeStore(HISTORY_KEY, entries.slice(0, config.historyLimit));
@@ -383,6 +392,61 @@ function onVisibilityChange() {
   }
 }
 
+/* ------------------------------------------------------------------ class */
+
+// The same question the homepage asks, answered by the same function over the
+// same data. Neither page can drift from the other, and the QR on the door
+// stays a permanent link that carries no class information.
+function renderClass() {
+  const banner = el('class-banner-root');
+  if (!banner || !classConfig) return;
+
+  session = pickSession(classConfig);
+
+  if (!session) {
+    banner.hidden = true;
+    return;
+  }
+
+  banner.hidden = false;
+
+  const q = (sel) => banner.querySelector(sel);
+  q('[data-class-title]').textContent = session.title;
+  q('[data-class-room]').textContent = session.room || '';
+  q('[data-class-eyebrow]').textContent = session.running ? 'Happening now' : 'Starting soon';
+  q('[data-class-when]').textContent = session.running
+    ? `On now until ${clockTime(session.ends)}`
+    : `Starts at ${clockTime(session.starts)}`;
+  q('[data-class-late]').hidden = session.phase !== 'late';
+
+  // Before it starts, offer to note intent. Once it is running, the thing to
+  // do is check in, so the offer goes away.
+  const noted = getRsvps().includes(sessionKey(session));
+  q('[data-rsvp-offer]').hidden = session.running || noted;
+  q('[data-rsvp-noted]').hidden = !noted || session.running;
+
+  // A class arrival is a check-in with the reason already known. Only fill it
+  // in if the visitor has not chosen something else themselves.
+  const reason = el('profile-reason');
+  if (!reason.value) {
+    reason.value = 'Class';
+    saveProfile();
+  }
+
+  // The button says what it is for.
+  for (const button of document.querySelectorAll('[data-state="idle"] [data-action="check-in"]')) {
+    button.textContent = session.running ? "I'm here for the class" : 'Check in';
+  }
+}
+
+function noteRsvp() {
+  if (!session) return;
+  const key = sessionKey(session);
+  const rsvps = getRsvps();
+  if (!rsvps.includes(key)) writeStore(RSVP_KEY, [...rsvps, key]);
+  renderClass();
+}
+
 /* ---------------------------------------------------------------- exports */
 
 function exportHistory() {
@@ -482,6 +546,13 @@ async function init() {
   });
 
   document.addEventListener('visibilitychange', onVisibilityChange);
+
+  const rsvp = el('rsvp-button');
+  if (rsvp) rsvp.addEventListener('click', noteRsvp);
+
+  // Re-evaluated on a timer while visible, so a page open through the start of
+  // a class updates itself the same way the homepage does.
+  if (classConfig) watch(renderClass);
 
   const persisted = await requestPersistence();
   el('persist-state').textContent =
