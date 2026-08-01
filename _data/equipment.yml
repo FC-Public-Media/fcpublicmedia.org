@@ -1,34 +1,35 @@
-# Equipment inventory.
+# What kinds of gear FCPM has.
 #
-# The current site shows this as an image gallery, which means the inventory is
-# not readable as text, not searchable, and not indexable. Listing it as data
-# fixes all three and costs nothing.
+# Deliberately NOT an inventory.
 #
-# EVERY ENTRY BELOW IS A PLACEHOLDER. Replace with the real inventory before
-# launch — the categories are a guess at the shape, not a claim about what
-# FCPM actually owns.
+# The real inventory lives in Bookable, which is the system of record and the
+# only place staff actually work from. Members do not pick items themselves —
+# they email fcpmequipment@gmail.com describing what they need, and staff
+# select the gear. So an item-level list here would serve nobody: it would
+# duplicate Bookable, drift from it within a month, and answer a question no
+# visitor is asking.
+#
+# What a visitor is actually asking is "do you have the sort of thing I need,
+# and is joining worth it?" — which is a question about categories, not serial
+# numbers. That answer changes maybe once a year, so keeping it here costs
+# nothing and cannot meaningfully go stale.
+#
+# If FCPM ever wants a real catalogue on the site, the right move is to read
+# Bookable, not to retype it — the same pattern as script/sync-cablecast.py.
 
-- category: Cameras
-  items:
-    - name: TODO
-      notes: TODO
+categories:
+  - name: Cameras
+    summary: TODO — e.g. "camcorders, mirrorless bodies, and a cinema camera"
 
-- category: Lenses
-  items:
-    - name: TODO
-      notes: TODO
+  - name: Audio
+    summary: TODO — e.g. "shotgun and lavalier mics, field recorders, boom kits"
 
-- category: Audio
-  items:
-    - name: TODO
-      notes: TODO
+  - name: Lighting
+    summary: TODO — e.g. "LED panels, softboxes, and a portable three-point kit"
 
-- category: Lighting
-  items:
-    - name: TODO
-      notes: TODO
+  - name: Support and grip
+    summary: TODO — e.g. "tripods, sliders, gimbals, and stands"
 
-- category: Support and Grip
-  items:
-    - name: TODO
-      notes: TODO
+# Anything notable enough that a prospective member might join specifically to
+# use it. Optional; leave empty if nothing qualifies.
+highlights: []

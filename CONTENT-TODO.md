@@ -15,10 +15,20 @@ content Google reads poorly too.
 | `/donate` | Entire page. Suggested amounts, recurring options, the case for support, and which processor is in use. |
 | `/bulletin-board` | Entire page. Unknown what's posted or how it's submitted. |
 | `_podcasts/*` (all 8) | Descriptions, hosts, player embeds, subscribe links. |
-| `/equipment` | The inventory. Published as a photo gallery. |
 | `/policies/non-discrimination` | The statement text. Copy verbatim, don't paraphrase. |
 | `/submit` | The full legal agreement text. |
 | `/teach` | The instructor application questions. |
+
+## Equipment
+
+Not a migration item. The inventory lives in Bookable, which is the system of
+record, and members never pick items themselves — they describe the job and
+staff pull the gear. So the site needs a category-level summary, not a
+catalogue.
+
+What's needed is four one-line descriptions in `_data/equipment.yml`
+("camcorders, mirrorless bodies, and a cinema camera"), written by someone who
+knows the kit. Ten minutes, not a data-entry project.
 
 ## Needs a decision, not a copy-paste
 
