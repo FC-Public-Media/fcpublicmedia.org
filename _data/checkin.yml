@@ -5,51 +5,71 @@
 #
 # READ THIS BEFORE RETIRING THE PAPER LOG
 # ---------------------------------------
-# Device-local history serves the visitor, not the organization. Two limits
-# follow from that, and neither is a bug to be fixed in the page:
-#
-#   1. FCPM receives nothing. A log that lives on someone's phone cannot be
-#      counted, reported to the City, or put in a grant application. The
-#      export button exists so a visitor can hand their history over, but
-#      that is a person doing a favour, not a reporting system.
-#
-#   2. Browsers delete this. Safari removes script-writable storage after
-#      seven days without a visit, unless the site has been added to the Home
-#      Screen. For a log people touch monthly, that is not an edge case —
-#      it is the normal outcome.
-#
-# So: run this alongside the paper log, not instead of it, until there is
-# somewhere for a check-in to go. See README, "Check-in", for what that would
-# take — on Cloudflare it is a small Worker and about thirty lines.
+# Device-local history serves the visitor, not the organization. FCPM receives
+# nothing from a log that lives on someone's phone, and browsers delete this
+# storage — see README, "Check-in", for both limits and for what a server-side
+# copy would take.
 
 # The URL the QR code points at. Regenerate the code after changing it:
 #   python3 script/make-qr.py
 url: https://www.fcpublicmedia.org/check-in/
 
+# --------------------------------------------------------------- location
+
+# Checking in requires being at the studio. The page asks for location once,
+# and if the visitor is not there yet it holds the check-in as pending and
+# finishes it by itself when they arrive.
+location:
+  required: true
+
+  name: Carnegie Center for Creativity
+  address: 200 Mathews Street, Fort Collins, CO 80524
+
+  # Geocoded from the address via OpenStreetMap Nominatim. Worth confirming by
+  # standing at the front door with a phone before this goes live — a few
+  # metres out is fine, a few hundred is not.
+  latitude: 40.5849119
+  longitude: -105.0735292
+
+  # How close counts as "here". 200m covers the building, the parking, and the
+  # street outside without reaching the next block.
+  radius_m: 200
+
+  # Phone fixes are imprecise, especially indoors. A reading is accepted when
+  # distance - accuracy is inside the radius, but only up to this much slack,
+  # so a fix reporting ±3km cannot wave someone through from home.
+  accuracy_slack_m: 100
+
+  # How often to re-check while the page is open and visible. Five minutes is
+  # frequent enough to notice an arrival and slow enough not to matter to a
+  # battery. Checks stop entirely when the tab is hidden.
+  recheck_seconds: 300
+
+# --------------------------------------------------------------- the form
+
+# The paper log asks why someone is here. These prime the same question, and
+# can be preselected from the URL: /check-in/?reason=Class
+reasons:
+  - Studio or bay reservation
+  - Equipment pickup or return
+  - Class
+  - Volunteering or crew
+  - Meeting
+  - Just visiting
+
+# --------------------------------------------------------------- identity
+
 identity:
-  # How the page learns who someone is.
+  # none    — check-ins are recorded without an identity. Works today.
+  # access  — Cloudflare Access protects /check-in/sign-in/ and the page reads
+  #           the verified identity from /cdn-cgi/access/get-identity.
   #
-  #   none    — check-ins are recorded without an identity. Works today,
-  #             requires nothing, and is the default.
-  #   access  — Cloudflare Access sits in front of /check-in/ and the page
-  #             reads the signed-in identity from
-  #             /cdn-cgi/access/get-identity.
-  #
-  # `access` is the one that matches what was asked for: the visitor picks
-  # their own provider (Google, Microsoft, GitHub, or a one-time emailed PIN),
-  # Cloudflare verifies it, and the page receives a real email address without
-  # this site holding any secret or running any OAuth code. Switching provider
-  # later is a Cloudflare setting, not a code change.
-  #
-  # It is not enabled here because turning it on is a Zero Trust dashboard
-  # change, and enabling it in config before the route is actually protected
-  # would just show everyone an error.
+  # See README, "Check-in / Identity". Note the free Zero Trust plan covers 50
+  # seats, which may be fewer than FCPM has members.
   mode: none
 
-  # Shown when mode is `none`, so the page is honest about what it is doing.
   anonymous_note: >-
     You are not signed in, so this check-in is recorded on this device only
     and is not linked to an email address.
 
-# How many check-ins to keep on the device. Old entries fall off the end.
 history_limit: 200
