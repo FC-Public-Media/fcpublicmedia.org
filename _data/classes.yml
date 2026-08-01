@@ -1,0 +1,58 @@
+# Class sessions.
+#
+# Two gears turn here, and they are deliberately separate:
+#
+#   Gear 1 — the build. This file is baked into the page. Eventually it will be
+#            generated from the Microsoft 365 calendar by a script, the same
+#            way _data/cablecast.json is generated. Until then it is edited by
+#            hand.
+#
+#   Gear 2 — the browser. assets/js/classmode.js looks at the wall clock and
+#            decides whether a class is happening *right now*. No request, no
+#            API, no key. A page built last night knows about tonight's class
+#            because the times came along with it.
+#
+# The cost of that split is staleness: a class added this morning is not on the
+# site until the next build. The weekly sync already rebuilds; if classes are
+# added at short notice, move that to daily.
+#
+# TIMES MUST CARRY AN OFFSET. "2026-08-11T18:00:00-06:00", not
+# "2026-08-11 18:00". Colorado is -06:00 in summer and -07:00 in winter, and a
+# time without an offset is read as the visitor's own zone — which is wrong for
+# anyone travelling, and silently wrong, which is worse.
+
+# How early the homepage starts advertising a session, and how long after the
+# start someone is still told they can join.
+lead_minutes: 90
+late_minutes: 45
+
+# Drop-in pricing for someone who turns up without having signed up.
+#
+# This is not a ticketing system: people who signed up already paid through
+# whatever the registration flow is. This is the walk-in case.
+#
+# TODO — every figure below is a placeholder. Confirm with the board before
+# this is shown to anyone.
+dropin:
+  public: TODO
+  member: TODO
+  note: >-
+    TODO — confirm whether members at some tiers attend free, and which.
+
+sessions:
+  - title: Podcasting 101
+    starts: 2026-08-11T18:00:00-06:00
+    ends: 2026-08-11T20:00:00-06:00
+    room: Podcast Studio
+    summary: >-
+      Plan, record, and publish an episode. Bring an idea; leave with something
+      people can listen to.
+    signup: /classes/
+
+  - title: Social Media Marketing 101
+    starts: 2026-08-26T18:00:00-06:00
+    ends: 2026-08-26T20:00:00-06:00
+    room: Video Studio
+    summary: >-
+      How to get the thing you made in front of people who want to see it.
+    signup: /classes/

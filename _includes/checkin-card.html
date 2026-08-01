@@ -1,33 +1,98 @@
 {%- assign ci = site.data.checkin -%}
+{%- assign cl = site.data.classes -%}
 {%- comment -%}
   Two audiences at once. Whoever is holding the phone taps the button. Whoever
   is standing next to them scans the code. Both land in the same place.
 
   The QR is the same committed SVG the printed poster uses, so there is one
   code in the world rather than two that could drift apart.
+
+  When a class is running, assets/js/classmode.js unhides the class block
+  above it — from data baked in at build time, with no request made. Outside
+  class hours the block stays hidden and this is an ordinary check-in card.
 {%- endcomment -%}
-<section class="band">
-  <div class="wrap checkin-card">
-    <div class="checkin-card-text">
-      <p class="eyebrow">Here at the studio?</p>
-      <h2>Check in</h2>
+
+<script type="application/json" id="class-config">
+{
+  "leadMinutes": {{ cl.lead_minutes | default: 90 }},
+  "lateMinutes": {{ cl.late_minutes | default: 45 }},
+  "dropin": {
+    "public": {{ cl.dropin.public | jsonify }},
+    "member": {{ cl.dropin.member | jsonify }}
+  },
+  "sessions": [
+    {%- for s in cl.sessions -%}
+    {
+      "title": {{ s.title | jsonify }},
+      "starts": {{ s.starts | date_to_xmlschema | jsonify }},
+      "ends": {{ s.ends | date_to_xmlschema | jsonify }},
+      "room": {{ s.room | jsonify }},
+      "summary": {{ s.summary | strip_newlines | strip | jsonify }},
+      "signup": {{ s.signup | jsonify }}
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+</script>
+
+<section class="band" data-checkin-card data-class-mode="off">
+  <div class="wrap">
+
+    {%- comment -%} Class block. Hidden until classmode.js says otherwise. {%- endcomment -%}
+    <div class="class-now" data-class-slot hidden>
+      <p class="eyebrow" data-class-eyebrow></p>
+      <h2 data-class-title></h2>
       <p class="lede">
-        One tap. Your visits are kept on your own phone &mdash; we don't make
-        you an account.
+        <span data-class-when></span>
+        <span class="muted" data-class-room></span>
       </p>
+      <p data-class-summary></p>
+
+      <p class="class-late" data-class-late hidden>
+        Running late? Come anyway &mdash; you can still join.
+      </p>
+
+      <p class="class-price" data-class-price hidden>
+        Dropping in without signing up costs
+        <b>{{ cl.dropin.public }}</b>{% if cl.dropin.member %},
+        or <b>{{ cl.dropin.member }}</b> for members{% endif %}.
+        <a href="{{ '/membership/' | relative_url }}">Membership</a> pays for
+        itself quickly if you plan to come back.
+      </p>
+
       <p class="hero-actions">
-        <a class="btn btn-primary btn-big" href="{{ '/check-in/' | relative_url }}">Check in now</a>
+        <a class="btn btn-primary btn-big" data-class-join href="{{ '/check-in/' | relative_url }}">I'm here for the class</a>
+        <a class="btn" data-class-signup href="{{ '/classes/' | relative_url }}">Other classes</a>
       </p>
-      <p class="muted">
-        Not here yet? Tap anyway &mdash; it will finish when you arrive.
-      </p>
+
+      <hr>
     </div>
 
-    <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}"
-       aria-label="Check in">
-      <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
-           alt="" width="200" height="200" loading="lazy">
-      <span>or scan</span>
-    </a>
+    {%- comment -%} The ordinary card, always present. {%- endcomment -%}
+    <div class="checkin-card">
+      <div class="checkin-card-text">
+        <p class="eyebrow">Here at the studio?</p>
+        <h2>Check in</h2>
+        <p class="lede">
+          One tap. Your visits are kept on your own phone &mdash; we don't make
+          you an account.
+        </p>
+        <p class="hero-actions">
+          <a class="btn btn-primary btn-big" href="{{ '/check-in/' | relative_url }}">Check in now</a>
+        </p>
+        <p class="muted">
+          Not here yet? Tap anyway &mdash; it will finish when you arrive.
+        </p>
+      </div>
+
+      <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}" aria-label="Check in">
+        <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
+             alt="" width="200" height="200" loading="lazy">
+        <span>or scan</span>
+      </a>
+    </div>
+
   </div>
 </section>
+
+<script src="{{ '/assets/js/classmode.js' | relative_url }}" defer></script>

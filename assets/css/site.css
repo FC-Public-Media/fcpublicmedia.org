@@ -578,6 +578,36 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   background: var(--paper); color: var(--ink);
 }
 
+/* Class mode. When a class is running the band gets the signal colour on its
+   leading edge, so the page reads differently at a glance without the layout
+   jumping around. */
+[data-class-mode="now"],
+[data-class-mode="late"],
+[data-class-mode="soon"] { border-left: 5px solid var(--signal); }
+
+.class-now[hidden] { display: none; }
+.class-now h2 { margin-bottom: 0.3em; }
+.class-now [data-class-room]::before { content: " · "; }
+.class-now hr { margin: 2.5rem 0 2rem; }
+
+.class-late {
+  border-left: 3px solid var(--signal);
+  padding-left: 0.9rem;
+  font-weight: 600;
+}
+.class-late[hidden] { display: none; }
+
+/* Deliberately not a paywall: one line, plain numbers, membership beside it
+   rather than behind it. */
+.class-price {
+  font-size: var(--step--1);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 0.8rem 1rem;
+  max-width: var(--measure);
+}
+.class-price[hidden] { display: none; }
+
 .checkin-card {
   display: flex; flex-wrap: wrap; gap: var(--gap);
   align-items: center; justify-content: space-between;
