@@ -64,3 +64,74 @@
   to: /podcasts/
 - from: /wherethemindgoes
   to: /podcasts/
+
+# --------------------------------------------------------------------------
+# Wix booking service pages. Each was a bookable resource; the new site
+# describes all of them on one page.
+
+- from: /service-page/equipment-checkout
+  to: /reservations/
+- from: /service-page/reserve-editing-bay-1
+  to: /reservations/
+- from: /service-page/reserve-editing-bay-2
+  to: /reservations/
+- from: /service-page/reserve-editing-bay-3
+  to: /reservations/
+- from: /service-page/reserve-podcast-studio
+  to: /reservations/
+- from: /service-page/reserve-video-studio
+  to: /reservations/
+- from: /service-page/video-studio-with-light-technician
+  to: /reservations/
+
+# --------------------------------------------------------------------------
+# Wix event pages — one per class, past and upcoming, including several
+# duplicates Wix created when a class ran more than once. All go to the
+# classes page; there is no per-class page on the new site, and inventing 16
+# of them to hold past events would be worse than one current list.
+
+- from: /event-details/adobe-lightroom
+  to: /classes/
+- from: /event-details/audio-training-101
+  to: /classes/
+- from: /event-details/beginner-photoshop-class
+  to: /classes/
+- from: /event-details/camera-operation-basics
+  to: /classes/
+- from: /event-details/digital-camera-and-cinematography
+  to: /classes/
+- from: /event-details/digital-camera-and-cinematography-1
+  to: /classes/
+- from: /event-details/digital-camera-and-cinematography-2
+  to: /classes/
+- from: /event-details/introducing-fcpms-new-studio-light-board
+  to: /classes/
+- from: /event-details/introduction-to-video-editing-with-adobe-premiere
+  to: /classes/
+- from: /event-details/introductory-screenwriting
+  to: /classes/
+- from: /event-details/lighting-basics-for-beginners
+  to: /classes/
+- from: /event-details/podcasting-101
+  to: /classes/
+- from: /event-details/podcasting-basics
+  to: /classes/
+- from: /event-details/social-media-marketing-101
+  to: /classes/
+- from: /event-details/social-media-marketing-101-1
+  to: /classes/
+- from: /event-details/social-media-marketing-101-2
+  to: /classes/
+
+# --------------------------------------------------------------------------
+# NOT redirected, on purpose: 12 product pages and one category from an
+# online store that was never used. Every one is Wix's own demo placeholder —
+# the titles are literally "I'm a product". They should 404 so search engines
+# drop them, which is what a 404 is for. Redirecting them somewhere real
+# would launder template junk into apparent content.
+#
+#   /product-page/i-m-a-product ... i-m-a-product-11
+#   /category/all-products
+#
+# Listed here so the decision is recorded rather than an oversight.
+
