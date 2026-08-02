@@ -521,6 +521,73 @@ wrong for anyone travelling and silently wrong, which is worse. The template
 normalises through `date_to_xmlschema` so what reaches the browser is always
 unambiguous.
 
+### Where the schedule comes from
+
+`_includes/class-config.html` picks a source, in this order:
+
+1. **`_data/calendar.json`** — written by `script/sync-calendar.py` from the
+   Microsoft 365 calendar. Used whenever it has anything in it.
+2. **`_data/classes.yml`** — hand-maintained. The fallback, and what the site
+   uses today.
+
+Switching is a matter of configuring a source and running the sync. No
+template change, and `assets/js/classes.js` never learns where the data came
+from.
+
+```
+python3 script/sync-calendar.py --ics "$FCPM_CALENDAR_ICS" --weeks 12
+python3 script/test_sync_calendar.py     # 17 tests, no dependencies
+```
+
+**Why at build time.** The schedule changes a few times a month and is the
+same for everybody. Every visitor's browser asking Microsoft for it would be
+the same answer fetched thousands of times, would put a key or a public
+endpoint in the client, and would leave the page blank whenever Microsoft is
+slow. Fetching once per build is faster, cheaper, private, and works offline.
+Same reasoning as the Cablecast sync.
+
+### Two ways into the calendar
+
+**A published ICS link** is what the script implements, and it is the one to
+start with. In Outlook on the web: Settings → Calendar → Shared calendars →
+Publish a calendar. **No app registration, no admin consent, no client secret,
+nothing that expires.**
+
+The trade is that the link works for anyone who has it. That is fine for a
+class schedule and wrong for anything else — so publish a dedicated *Public
+Programming* calendar rather than someone's own.
+
+**Microsoft Graph** is needed for anything not public: room free/busy,
+reservation details, a hidden nonce on a booking. Three things to know:
+
+- Use **`calendarView`**, not `/events`. `/events` returns the recurrence
+  *master*; `calendarView` expands a series into real occurrences across a date
+  window, which is the shape a website wants.
+- From GitHub Actions, authenticate with **workload identity federation**
+  rather than a client secret. GitHub's OIDC token is exchanged for a Graph
+  token, so there is no stored secret and nothing to rotate — Entra client
+  secrets expire within 24 months otherwise.
+- **`Calendars.Read` as an application permission grants read access to every
+  mailbox in the tenant.** Scope it with an Application Access Policy
+  (`New-ApplicationAccessPolicy`) pointed at a mail-enabled security group
+  containing only the calendars in question. This is the sharp edge.
+
+### Recurring events
+
+Published ICS describes a repeating event once, with an `RRULE`, rather than
+listing occurrences. Expanding those correctly — with exceptions, moved
+instances, and daylight saving — is real work and not worth hand-rolling.
+
+**The script does not.** It reports them and skips them, loudly. If FCPM starts
+running recurring classes, that is the moment to move to Graph `calendarView`,
+which expands them server-side.
+
+The parser is deliberately strict about time zones for the same reason. Outlook
+writes Windows zone names (`Mountain Standard Time`) that `zoneinfo` has never
+heard of; the common US ones are mapped, and anything unrecognised is refused
+rather than guessed at. Being silently an hour out twice a year is worse than a
+visible error.
+
 ### Drop-in pricing
 
 Shown as one plain line, not a gate. Someone who balks at the drop-in rate is
