@@ -40,6 +40,11 @@ jobs:
         env:
           JEKYLL_ENV: production
 
+      # Cheap, no browser needed, and the failure mode it guards against is a
+      # class showing at the wrong hour rather than an obvious error.
+      - name: Test the calendar parser
+        run: python3 script/test_sync_calendar.py
+
       - name: Install test dependencies
         working-directory: tests
         run: |

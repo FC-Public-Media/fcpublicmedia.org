@@ -13,28 +13,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
   on — and the QR on the door stays a permanent link to this page, carrying no
   class information that could go stale in someone's pocket.
 {%- endcomment -%}
-<script type="application/json" id="class-config">
-{
-  "leadMinutes": {{ cl.lead_minutes | default: 90 }},
-  "lateMinutes": {{ cl.late_minutes | default: 45 }},
-  "dropin": {
-    "public": {{ cl.dropin.public | jsonify }},
-    "member": {{ cl.dropin.member | jsonify }}
-  },
-  "sessions": [
-    {%- for s in cl.sessions -%}
-    {
-      "title": {{ s.title | jsonify }},
-      "starts": {{ s.starts | date_to_xmlschema | jsonify }},
-      "ends": {{ s.ends | date_to_xmlschema | jsonify }},
-      "room": {{ s.room | jsonify }},
-      "summary": {{ s.summary | strip_newlines | strip | jsonify }},
-      "signup": {{ s.signup | jsonify }}
-    }{% unless forloop.last %},{% endunless %}
-    {%- endfor -%}
-  ]
-}
-</script>
+{% include class-config.html %}
 
 <script type="application/json" id="checkin-config">
 {
