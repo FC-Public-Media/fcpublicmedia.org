@@ -310,7 +310,67 @@ holding a record of who was in the building and when. Retention, who can read
 it, what happens on a subpoena, whether it needs a privacy notice — board
 decisions, not technical ones.
 
-### Identity: how Cloudflare Access plugs in
+### Identity: proving an email address without a server
+
+Nothing on the site proves anything today. The paper log by the door accepts
+any name in any handwriting, and the check-in page records whatever it is
+given. That is the baseline any of this is measured against — not a secure
+system, a clipboard.
+
+Two mechanisms are built, and they answer different questions.
+
+#### Email claims (built, unconfigured)
+
+A static site has nowhere to check a password and nowhere to remember that
+someone answered a one-time code. So this inverts the usual direction: instead
+of the visitor proving something to us, **we prove something to them and let
+them keep it**.
+
+1. Staff mint a claim for an address and email the link:
+
+   ```
+   python3 script/mint-claim.py --new-key claim-key.pem   # once, ever
+   python3 script/mint-claim.py --email someone@example.com
+   ```
+
+2. Receiving the mail is the proof — only the holder of that mailbox gets it.
+3. Opening the link verifies an ECDSA P-256 signature against the public key in
+   `_data/identity.yml` and stores the token on that device.
+
+**The token is kept whole, not just the address read out of it.** That is the
+part with any value. A page verifying a signature in the visitor's own browser
+proves nothing to us — it is their browser, and they can edit it. The check
+exists so someone whose link was mangled by an email client finds out
+immediately. The security lives in the signature, which anything downstream —
+staff, a form, a Worker not yet built — re-verifies for itself rather than
+believing a flag some device set.
+
+Consequences worth knowing before turning it on:
+
+- **Every provider at once, or rather none.** No OAuth registration with
+  Google, then Microsoft, then Apple. It works for any address that receives
+  mail, which is all of them.
+- **Multi-device falls out for free.** The same email opened on a phone and a
+  laptop verifies independently on each. FCPM never learns how many devices
+  anyone uses, because nothing reports back.
+- **The link is in the URL fragment**, which browsers do not send to servers.
+  It appears in no access log, ours or Cloudflare's.
+- **There is no revocation.** With no server there is nowhere to keep a
+  revocation list. A claim is good until it expires (`days:` in
+  `_data/identity.yml`, default 120) or until its signing key is removed from
+  the list, which invalidates every claim that key signed.
+- **A claim is not a login.** No session, no sign-out, no password. It says
+  "the holder of this device received mail at this address". Do not gate
+  anything on it that you would not leave on a clipboard by the door.
+
+**Left unconfigured** (`keys: []`) because minting requires generating a
+private key, and where that key lives is a decision with consequences — anyone
+holding it can assert any address. The page's default state is the typed-address
+field, which is what almost everyone will see and is not treated as a failure:
+an address someone typed still lines their visits up with the membership list,
+and is recorded as unconfirmed so the record never claims more than it knows.
+
+#### Cloudflare Access
 
 Almost nothing happens in this repository. That is the appeal.
 
@@ -344,10 +404,14 @@ email because the cookie is set for the hostname.
 
 **Two things to know before turning it on:**
 
-- **The free Zero Trust plan covers 50 seats.** Beyond that it is around $7
-  per user per month. FCPM may well have more than 50 members, and the seat
-  count is what makes this decision non-obvious — it is free the way the rest
-  of this stack is free only if the org is small enough.
+- **A seat is one authenticated human, and the free plan has 50.** Not a
+  device, not a session — a person. So seats scale with the number of members
+  who ever sign in, which for a public-facing check-in is the wrong shape
+  entirely: beyond 50 it is around $7 per user per month, or roughly $1,400 a
+  month at 200 members to record that someone came to a class. **Access is for
+  bounded populations** — staff, board, an admin view — where the answer to
+  "how many people log in" is a number you already know. For members, use email
+  claims above, which are metered by nothing.
 - **Access authenticates the visitor to Cloudflare.** The page reads that
   identity client-side. It does not by itself give FCPM a server-side record —
   that still needs the Worker above. Access answers "who is this?", not "how do

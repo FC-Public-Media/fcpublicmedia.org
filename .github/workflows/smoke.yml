@@ -45,6 +45,12 @@ jobs:
       - name: Test the calendar parser
         run: python3 script/test_sync_calendar.py
 
+      # The signature conversion between openssl and WebCrypto is hand-written,
+      # and a mistake in it produces tokens that look fine and verify nowhere.
+      # tests/claims.spec.js checks the other half of the same seam.
+      - name: Test the claim minter
+        run: python3 script/test_mint_claim.py
+
       - name: Install test dependencies
         working-directory: tests
         run: |

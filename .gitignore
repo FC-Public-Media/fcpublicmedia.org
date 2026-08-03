@@ -17,3 +17,7 @@ tests/node_modules/
 tests/playwright-report/
 tests/test-results/
 test-results/
+
+# Claim signing keys — never committed.
+*-key.pem
+__pycache__/

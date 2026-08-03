@@ -1,0 +1,80 @@
+# Email claims: proving an address without a server.
+#
+# THE PROBLEM
+# -----------
+# A static site has nowhere to check a password, nowhere to hold a session, and
+# nowhere to remember that someone answered a one-time code correctly. The
+# usual answer is OAuth, which means registering this site with Google, then
+# Microsoft, then Apple, each separately, and still excluding anyone whose
+# address is not with one of them.
+#
+# THE SHAPE USED HERE
+# -------------------
+# We do not ask the visitor to prove anything to us. We prove something to
+# them, and let them keep it.
+#
+#   1. Staff mint a claim for an address:  script/mint-claim.py --email …
+#   2. The claim is a short signed token, delivered as a link, sent by email.
+#      Receiving it is the proof — only the holder of that mailbox gets it.
+#   3. Opening the link verifies the signature in the browser against the
+#      public key below and stores the token on that device.
+#
+# The signature is what matters, not the check. The token is kept whole and can
+# be re-verified later by anyone — staff, a form, a Worker we have not built —
+# so a visitor who edits their own browser storage fools only their own phone.
+#
+# Opening the same email on a laptop and a phone gives each device its own
+# attestation. That is deliberate. We never learn how many devices someone
+# uses, because nothing reports back.
+#
+# WHAT THIS IS NOT
+# ----------------
+# Not a login. There is no session, no sign-out, and no password. A claim says
+# "the holder of this device received mail at this address" and nothing else.
+# It is a large improvement on the current state, which proves nothing at all,
+# and it is not a vault key. Do not gate anything on it that you would not
+# leave on a clipboard by the door.
+
+# Shown to the visitor so a claim link is attributable to someone real.
+issuer: Fort Collins Public Media
+
+# --------------------------------------------------------------- signing keys
+#
+# Public halves only. The private key never enters this repository — it lives
+# wherever claims are minted, and only there.
+#
+# Generate the first one with:
+#
+#   python3 script/mint-claim.py --new-key claim-key.pem
+#
+# which prints the block to paste below and writes the private key to a file
+# you keep out of git (.gitignore already covers *-key.pem).
+#
+# A LIST, NOT A KEY, because rotation has to be possible without breaking the
+# links already sitting in people's inboxes. Add the new key, keep the old one
+# until its claims have expired, then delete it. Deleting a key invalidates
+# every claim it signed — which is also the only revocation mechanism there is,
+# so keep an eye on `days` below.
+keys: []
+# - id: 2026-08
+#   x: "…"
+#   y: "…"
+
+# ------------------------------------------------------------------- lifetime
+#
+# How long a minted claim stays valid, in days. This is the only expiry
+# control: with no server there is no revocation list, so a claim is good until
+# it lapses or its key is removed.
+#
+# 120 days is a compromise. Long enough that re-issuing is not a chore for
+# staff or a nuisance for members, short enough that a forwarded link stops
+# working within a season.
+days: 120
+
+# What the page says when someone has no claim. This is the ordinary state and
+# the copy should not make it sound like a failure — an unverified address is
+# still useful, and plenty of people will never want one.
+unverified_note: >-
+  You can put your email here so your visits line up with your membership. We
+  can't confirm it from this page, so it stays on your device as something you
+  told us rather than something we checked.

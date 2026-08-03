@@ -15,9 +15,24 @@ lede: One tap when you get here. Your visits stay on your own phone.
 {%- endcomment -%}
 {% include class-config.html %}
 
+{%- assign id = site.data.identity -%}
+
 <script type="application/json" id="checkin-config">
 {
   "identityMode": {{ ci.identity.mode | jsonify }},
+  {%- comment -%}
+    Public halves only. These are safe to serve to everyone — that is the
+    point of them. See _data/identity.yml.
+  {%- endcomment -%}
+  "identity": {
+    "issuer": {{ id.issuer | jsonify }},
+    "keys": [
+      {%- for key in id.keys -%}
+        {"id": {{ key.id | jsonify }}, "x": {{ key.x | jsonify }}, "y": {{ key.y | jsonify }}}
+        {%- unless forloop.last %},{% endunless -%}
+      {%- endfor -%}
+    ]
+  },
   "historyLimit": {{ ci.history_limit | default: 200 }},
   "location": {
     "required": {{ loc.required | default: false }},
@@ -192,6 +207,47 @@ lede: One tap when you get here. Your visits stay on your own phone.
 <div class="field">
   <label for="profile-note">Anything else</label>
   <input type="text" id="profile-note" placeholder="Optional">
+</div>
+
+{% comment %} ------------------------------------------------------- email {% endcomment %}
+
+{%- comment -%}
+  Two states, and neither is an error. Most people will type an address and
+  never have a confirmed one; that is a normal, useful outcome. Arriving with a
+  claim link is the upgrade, not the expectation.
+{%- endcomment -%}
+
+<h2>Your email</h2>
+
+<p class="muted" id="claim-status" role="status" aria-live="polite" hidden></p>
+
+<div data-claim="verified" hidden>
+  <ul class="rows">
+    <li><b>Confirmed</b> <span><code id="claim-email"></code></span></li>
+    <li><b>Good until</b> <span id="claim-expires"></span></li>
+  </ul>
+  <p class="muted">
+    {{ id.issuer }} sent this address a link and this device opened it. The
+    confirmation is stored here and can be checked by anyone we hand it to
+    &mdash; it isn't just a note this page wrote to itself.
+  </p>
+  <p>
+    <button class="btn" id="claim-forget" type="button">Remove it</button>
+  </p>
+</div>
+
+<div data-claim="none" hidden>
+  <div class="field">
+    <label for="profile-email">Email</label>
+    <input type="email" id="profile-email" autocomplete="email" placeholder="Optional"
+           inputmode="email" autocapitalize="none" spellcheck="false">
+  </div>
+  <p class="muted">{{ id.unverified_note | strip_newlines | strip }}</p>
+  <p class="muted">
+    Want it confirmed? <a href="/contact/">Ask us</a> and we'll email you a
+    link. Opening it here confirms the address on this device, and opening the
+    same email on another device confirms it there too.
+  </p>
 </div>
 
 {% comment %} ----------------------------------------------------- history {% endcomment %}
