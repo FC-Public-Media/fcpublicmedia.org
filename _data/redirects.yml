@@ -135,3 +135,13 @@
 #
 # Listed here so the decision is recorded rather than an oversight.
 
+
+# --------------------------------------------------------------------------
+# Forgiving alternates for the two hosted-form pages. /book/ and /register/
+# are the canonical paths because they also read well as subdomains.
+- from: /booking
+  to: /book/
+- from: /registration
+  to: /register/
+- from: /sign-up
+  to: /register/

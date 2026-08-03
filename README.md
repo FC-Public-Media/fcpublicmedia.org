@@ -624,12 +624,75 @@ still be advertised on Friday.
 If nothing is currently in its date window, the section renders nothing and
 the page closes up around it. An empty `featured.yml` is a valid state.
 
+## Hosted forms
+
+`/book/` and `/register/` frame a Microsoft Form inside our own pages, so
+nobody is handed a `forms.office.com` URL and asked to trust it. Configure
+them in `_data/forms.yml`.
+
+Both paths are chosen to work equally well as subdomains — `book.` and
+`register.` read naturally, `/booking/` and `/sign-up/` redirect in for
+forgiveness.
+
+### Set the form to "Anyone can respond"
+
+**A Form set to "Only people in my organization can respond" will not work
+embedded in Safari.** Signing in needs an Entra session cookie, which counts
+as third-party inside an iframe, and Safari blocks those by default. It works
+in Chrome and fails on iPhones — the worst possible split for a studio whose
+visitors arrive holding phones.
+
+If a form genuinely needs sign-in, set `requires_signin: true` and the include
+stops framing it: it renders a button that opens the form directly instead.
+Better an honest handoff than something that works on the laptop it was tested
+on.
+
+### What framing buys, and what it doesn't
+
+It buys the address bar, our header and footer, and the context around the
+form — who it's for, what happens next, what it costs. That is most of feeling
+first-party.
+
+It does not restyle the form. A Microsoft Form in a frame still looks like a
+Microsoft Form. Forms has its own theming in the designer and matching it
+roughly to the site is worth ten minutes, but no amount of framing makes it
+ours.
+
+The direct link is shown permanently rather than as a fallback, because an
+iframe that fails does so silently and cross-origin — we cannot detect it, so
+the only honest thing is to offer both routes at once.
+
 ## Booking on a subdomain
 
 Booking is expected to end up hosted elsewhere — likely Microsoft-built and
 Microsoft-hosted, on something like `book.fcpublicmedia.org`. The concern is
 that it should feel like part of this organization, not like scheduling a
 video call with a stranger.
+
+### Mapping a subdomain onto one of these paths
+
+Two ways, and they differ in whether the subdomain survives in the address bar.
+
+**Redirect rule (no code).** In Cloudflare: Rules → Redirect Rules, sending
+`book.fcpublicmedia.org/*` to `fcpublicmedia.org/book/`. Two minutes, nothing
+to deploy, nothing to maintain. The visitor ends up on the main domain, which
+still reads as unmistakably ours — this is almost certainly enough.
+
+**Worker rewrite (keeps the subdomain).** If `book.fcpublicmedia.org` must
+stay in the address bar throughout, the Worker has to serve that hostname's
+requests from the `/book/` path. That means adding a `main` script and
+`run_worker_first` to `wrangler.jsonc` — perhaps fifteen lines, but it turns a
+static-assets-only Worker into one with code in the request path, which is a
+real step up in things that can break.
+
+Worth being clear about what the subdomain actually buys: a visitor reading
+`fcpublicmedia.org/book/` already knows whose page it is. The subdomain is
+mostly useful if booking later moves to something FCPM doesn't host, at which
+point it can be pointed elsewhere without the main site caring. That is a good
+reason — but it is a future-proofing reason, not a trust one, and it does not
+need solving today.
+
+### Keeping an externally hosted booking tool feeling first-party
 
 Three things carry most of that, in order of effect per unit of work:
 
