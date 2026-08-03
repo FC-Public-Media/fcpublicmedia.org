@@ -216,3 +216,46 @@ test.describe('archive', () => {
     expect(bad, 'archive rows with no link or no label').toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The two pages that frame a hosted form. Nothing is configured yet, so what
+// matters is that the unconfigured state is visible rather than a blank space,
+// and that the page never leaves someone with no way forward.
+
+test.describe('hosted forms', () => {
+  for (const path of ['/book/', '/register/']) {
+    test(`${path} says plainly that it is not set up yet`, async ({ page }) => {
+      await page.goto(path);
+
+      const notice = page.locator('.transaction-todo');
+      await expect(notice).toBeVisible();
+      await expect(notice).toContainText('not set up yet');
+
+      // The instruction that stops someone shipping a form that breaks on
+      // iPhones has to survive edits to this page.
+      await expect(notice).toContainText('Anyone can respond');
+    });
+
+    test(`${path} still offers somewhere to go`, async ({ page }) => {
+      await page.goto(path);
+
+      // An unconfigured form page must not be a dead end. Two specific things
+      // rather than a link count, which would only measure how chatty the
+      // copy happens to be: somewhere else on the site to go, and a way to
+      // reach a human.
+      const onward = await page.$$eval('main a[href^="/"]', (as) => as.length);
+      expect(onward, 'no links onward into the site').toBeGreaterThan(0);
+
+      const contact = await page.$$eval(
+        'main a[href^="mailto:"], main a[href^="tel:"]',
+        (as) => as.length
+      );
+      expect(contact, 'no way to reach a person').toBeGreaterThan(0);
+    });
+
+    test(`${path} does not frame anything before it is configured`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator('.hosted-form iframe')).toHaveCount(0);
+    });
+  }
+});

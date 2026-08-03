@@ -1,0 +1,68 @@
+{%- comment -%}
+  Frames a hosted form inside one of our own pages.
+
+  Usage: {% include hosted-form.html key="book" %}
+
+  Reads _data/forms.yml. Three states, and all of them are deliberate:
+
+    configured        the frame, plus a permanent direct link
+    sign-in required  no frame at all — see the Safari note in forms.yml
+    not configured    a visible placeholder, not a blank space
+
+  The direct link is always shown, never tucked into a fallback. An iframe
+  that fails does so silently and cross-origin, so we cannot detect it and
+  cannot swap in an alternative. The only honest answer is to offer both
+  routes at once.
+{%- endcomment -%}
+
+{%- assign f = site.data.forms[include.key] -%}
+
+{% if f.intro %}
+  <p>{{ f.intro | strip_newlines | strip }}</p>
+{% endif %}
+
+{% if f.embed and f.embed != "" and f.requires_signin != true %}
+
+  <div class="hosted-form">
+    <iframe src="{{ f.embed }}"
+            title="{{ f.title }}"
+            loading="lazy"
+            allowfullscreen>
+    </iframe>
+  </div>
+
+  <p class="hosted-form-escape">
+    Form not loading?
+    <a href="{{ f.direct | default: f.embed }}" target="_blank" rel="noopener">Open it in a new tab</a>.
+    Some browsers block embedded forms.
+  </p>
+
+{% elsif f.direct and f.direct != "" %}
+
+  {%- comment -%}
+    Deliberately not framed. A form that requires sign-in cannot authenticate
+    inside an iframe on Safari, so framing it would work on a laptop and fail
+    on a phone.
+  {%- endcomment -%}
+  <p class="transaction">
+    <a class="btn btn-primary btn-big" href="{{ f.direct }}" target="_blank" rel="noopener">{{ f.title }}</a>
+    <span class="transaction-provider">Opens a Microsoft form in a new tab.</span>
+  </p>
+
+{% else %}
+
+  <p class="transaction transaction-todo">
+    <b>{{ f.title }} &mdash; not set up yet.</b>
+    <span class="muted">
+      Create the form, then put its embed and share links under
+      <code>{{ include.key }}</code> in <code>_data/forms.yml</code>.
+      Set it to <b>Anyone can respond</b>, or embedding will fail on iPhones.
+    </span>
+  </p>
+
+{% endif %}
+
+{% if f.after %}
+  <h2>What happens next</h2>
+  <p>{{ f.after | strip_newlines | strip }}</p>
+{% endif %}

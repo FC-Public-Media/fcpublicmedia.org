@@ -1,0 +1,70 @@
+# Hosted forms we frame inside our own pages.
+#
+# The point is that people stay on fcpublicmedia.org. They should never be
+# handed a forms.office.com URL and asked to trust it — the address bar is
+# most of what "is this really them?" comes down to for a visitor.
+#
+# WHAT FRAMING DOES AND DOESN'T BUY
+# ---------------------------------
+# It buys the address bar, our header and footer, and the context around the
+# form — who this is for, what happens next, what it costs. That is the bulk
+# of feeling first-party.
+#
+# It does not restyle the form. A Microsoft Form inside a frame still looks
+# like a Microsoft Form. Forms has its own theming (colours, header image) in
+# the designer, and matching it roughly to the site is worth ten minutes — but
+# no amount of framing makes it ours, and pretending otherwise reads worse
+# than an honest handoff.
+#
+# THE SAFARI PROBLEM — READ THIS BEFORE CHOOSING FORM SETTINGS
+# ------------------------------------------------------------
+# A form set to "Only people in my organization can respond" **will not work
+# embedded in Safari**. Sign-in needs an Entra session cookie, which counts as
+# third-party inside an iframe, and Safari blocks those by default. It works
+# in Chrome and fails on iPhones, which is the worst possible split for a
+# studio whose visitors are on phones.
+#
+# So: set forms to "Anyone can respond" if they are to be framed. If a form
+# genuinely needs sign-in, don't frame it — link straight out, and say why.
+#
+# Every page here shows a permanent "open the form directly" link rather than
+# hiding one in a fallback, because a frame that fails does so silently and
+# we cannot detect it from outside.
+
+book:
+  title: Book a studio
+  lede: Tell us what you need and when. We'll confirm.
+
+  # Paste the src from Forms > Collect responses > Embed.
+  embed: ""
+  # The plain share link. Always shown, so a blocked frame is never a dead end.
+  direct: ""
+
+  requires_signin: false
+
+  intro: >-
+    Studios and editing bays are for members. Requests aren't confirmed
+    straight away — someone needs to check the room is free and that a host
+    can be there, so expect a reply rather than an instant booking.
+
+  after: >-
+    We'll email you once it's confirmed. If you need it sooner than that,
+    call us.
+
+register:
+  title: Register for a class
+  lede: Save a seat. Classes are open to everyone, member or not.
+
+  embed: ""
+  direct: ""
+
+  requires_signin: false
+
+  intro: >-
+    Tell us which class and how to reach you. If a class is full we'll let you
+    know and put you first in line for the next one.
+
+  after: >-
+    You'll get a confirmation by email. Turning up on the day without
+    registering is usually fine too &mdash; registering just means we know to
+    expect you.

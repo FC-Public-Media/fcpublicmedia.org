@@ -694,3 +694,28 @@ label.btn { cursor: pointer; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* --- Hosted forms ---------------------------------------------------------- */
+
+/* A framed third-party form. Given its own frame and ground so it reads as a
+   panel we put there deliberately, rather than a hole in the page. Microsoft
+   Forms does not report its height to the parent, so this is a tall fixed box
+   that scrolls internally — there is no message-passing to hook into. */
+.hosted-form {
+  border: 1px solid var(--rule);
+  background: #fff;
+  margin: 1.75rem 0 1rem;
+}
+.hosted-form iframe {
+  display: block;
+  width: 100%;
+  height: min(80vh, 46rem);
+  border: 0;
+}
+
+.hosted-form-escape {
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+  max-width: var(--measure);
+  margin-bottom: 2rem;
+}

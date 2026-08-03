@@ -35,6 +35,10 @@ footer:
     url: /teach/
   - title: Contact
     url: /contact/
+  - title: Book a Studio
+    url: /book/
+  - title: Register for a Class
+    url: /register/
   - title: Check In
     url: /check-in/
   - title: Non-Discrimination Policy
