@@ -19,12 +19,14 @@
 // anywhere, and "Forget this device" deletes it.
 
 import { readConfig, pickSession, sessionKey, clockTime, watch } from './classes.js';
+import { verifyClaim, claimFromLocation, clearClaimFromLocation } from './claims.js';
 
 const DEVICE_KEY = 'fcpm.device';
 const HISTORY_KEY = 'fcpm.checkins';
 const PROFILE_KEY = 'fcpm.profile';
 const PENDING_KEY = 'fcpm.pending';
 const RSVP_KEY = 'fcpm.rsvp';
+const CLAIM_KEY = 'fcpm.claim';
 
 const config = JSON.parse(document.getElementById('checkin-config').textContent);
 const classConfig = readConfig();
@@ -111,9 +113,10 @@ function getDevice() {
 /* --------------------------------------------------------------- history */
 
 const getHistory = () => readStore(HISTORY_KEY, []);
-const getProfile = () => readStore(PROFILE_KEY, { name: '', reason: '', note: '' });
+const getProfile = () => readStore(PROFILE_KEY, { name: '', reason: '', note: '', email: '' });
 const getPending = () => readStore(PENDING_KEY, null);
 const getRsvps = () => readStore(RSVP_KEY, []);
+const getClaim = () => readStore(CLAIM_KEY, null);
 
 function saveHistory(entries) {
   return writeStore(HISTORY_KEY, entries.slice(0, config.historyLimit));
@@ -221,7 +224,15 @@ function renderHistory() {
     when.textContent = formatWhen(entry.at);
 
     const detail = document.createElement('span');
-    detail.textContent = [entry.reason, entry.email].filter(Boolean).join(' · ') || 'checked in';
+    // An unconfirmed address is marked in the list itself. Someone reading
+    // their own history should be able to see which visits carry an address we
+    // actually checked, without having to remember when they got the link.
+    const who = entry.email
+      ? entry.email_verified
+        ? entry.email
+        : `${entry.email} (unconfirmed)`
+      : null;
+    detail.textContent = [entry.reason, who].filter(Boolean).join(' · ') || 'checked in';
 
     item.append(when, detail);
     list.append(item);
@@ -241,6 +252,7 @@ function renderProfile() {
   const profile = getProfile();
   el('profile-name').value = profile.name || '';
   el('profile-note').value = profile.note || '';
+  el('profile-email').value = profile.email || '';
 
   const reason = el('profile-reason');
   // A reason primed from the URL wins over the stored one, so a QR aimed at
@@ -256,16 +268,30 @@ function saveProfile() {
     name: el('profile-name').value.trim(),
     reason: el('profile-reason').value,
     note: el('profile-note').value.trim(),
+    // Only meaningful while there is no claim; a confirmed address supersedes
+    // it rather than overwriting it, so removing the claim leaves whatever the
+    // visitor had typed before.
+    email: el('profile-email').value.trim().toLowerCase(),
   });
 }
 
 /* --------------------------------------------------------------- identity */
 
-// With identity.mode = "access", Cloudflare Access has already authenticated
-// the visitor against whichever provider they chose. Nothing here holds a
-// secret; if the route is not behind Access this 404s and the check-in is
-// recorded anonymously.
-async function getIdentity() {
+// Three ways this page can know an email address, in descending order of how
+// much they are worth:
+//
+//   claim   a signed token we minted and mailed. Verified, and the proof is
+//           kept so anyone downstream can check it themselves.
+//   access  Cloudflare Access authenticated the visitor at the edge. Verified,
+//           but only while the request is ours to make — nothing portable
+//           comes out of it.
+//   typed   the visitor told us. Unverified, and recorded as such.
+//
+// A typed address is not treated as a failure. Most people will never have a
+// claim, and an address they typed still lines their visits up with the
+// membership list, which is the whole point.
+
+async function getAccessIdentity() {
   if (config.identityMode !== 'access') return null;
   try {
     const response = await fetch('/cdn-cgi/access/get-identity', {
@@ -278,17 +304,101 @@ async function getIdentity() {
   }
 }
 
+async function getIdentity() {
+  const claim = getClaim();
+  if (claim?.email) return { email: claim.email, verified: true, via: 'claim' };
+
+  const access = await getAccessIdentity();
+  if (access) return { email: access, verified: true, via: 'access' };
+
+  const typed = getProfile().email;
+  if (typed) return { email: typed, verified: false, via: 'typed' };
+
+  return { email: null, verified: false, via: null };
+}
+
+/**
+ * Take a claim from the URL, check it, and keep it if it holds.
+ *
+ * The stored record includes the token itself, not just the address read out
+ * of it. That is the part with any value: the address alone is a string this
+ * device wrote, while the token is something we signed and anyone can re-check.
+ */
+async function redeemClaim(token) {
+  const status = el('claim-status');
+  const result = await verifyClaim(token, config.identity.keys);
+
+  if (!result.ok) {
+    const message = {
+      expired: 'That link has expired. Ask us for a new one and it will work again.',
+      signature: "That link didn't check out. It may have been altered in transit — ask us to send another.",
+      malformed: 'That link looks incomplete. Email clients sometimes break long links across lines; try opening it from the original message.',
+      unsupported: 'This browser cannot check the link. Your address can still be entered by hand below.',
+      missing: '',
+    }[result.reason] || 'That link could not be used.';
+
+    if (status) {
+      status.textContent = message;
+      status.hidden = !message;
+    }
+    return false;
+  }
+
+  writeStore(CLAIM_KEY, {
+    token,
+    email: result.payload.email,
+    issued: new Date(result.payload.iat * 1000).toISOString(),
+    expires: new Date(result.payload.exp * 1000).toISOString(),
+    verifiedAt: new Date().toISOString(),
+  });
+
+  if (status) {
+    status.textContent = `${result.payload.email} is confirmed on this device.`;
+    status.hidden = false;
+  }
+  return true;
+}
+
+function renderClaim() {
+  const claim = getClaim();
+  const verified = Boolean(claim?.email);
+
+  for (const panel of document.querySelectorAll('[data-claim]')) {
+    panel.hidden = (panel.dataset.claim === 'verified') !== verified;
+  }
+
+  if (verified) {
+    el('claim-email').textContent = claim.email;
+    el('claim-expires').textContent = new Date(claim.expires).toLocaleDateString();
+  } else {
+    el('profile-email').value = getProfile().email || '';
+  }
+}
+
+function dropClaim() {
+  if (!window.confirm('Remove the confirmed email address from this device?')) return;
+  dropStore(CLAIM_KEY);
+  renderClaim();
+  renderHistory();
+  el('claim-status').hidden = true;
+}
+
 /* ---------------------------------------------------------------- actions */
 
 function complete(reading) {
   const profile = getProfile();
   const device = getDevice();
 
-  return getIdentity().then((email) => {
+  return getIdentity().then((identity) => {
+    const { email, verified } = identity;
     const entry = {
       at: new Date().toISOString(),
       device: device.id,
       email,
+      // Recorded rather than inferred. A row that says an address was
+      // confirmed has to mean it, and a row that says otherwise is still a
+      // perfectly good row.
+      email_verified: Boolean(email) && verified,
       name: profile.name || null,
       reason: profile.reason || null,
       note: profile.note || null,
@@ -309,7 +419,9 @@ function complete(reading) {
     }
 
     el('done-detail').textContent = email
-      ? `Checked in as ${email}.`
+      ? verified
+        ? `Checked in as ${email}.`
+        : `Checked in as ${email} — an address you entered, which we haven't confirmed.`
       : 'Checked in.';
     show('done');
     renderHistory();
@@ -454,6 +566,10 @@ function exportHistory() {
     exported: new Date().toISOString(),
     device: getDevice(),
     profile: getProfile(),
+    // The whole token, so a restored backup is verified again rather than
+    // trusted. Moving a file between devices must not be a way to manufacture
+    // a confirmed address.
+    claim: getClaim(),
     checkins: getHistory(),
   };
 
@@ -482,7 +598,18 @@ async function importHistory(file) {
 
     saveHistory(merged);
     renderHistory();
-    status.textContent = `Restored ${payload.checkins.length} visits.`;
+
+    // A claim in the file is re-checked from scratch. The file said it was
+    // verified; that is not evidence, and the signature is.
+    let note = '';
+    if (payload.claim?.token && !getClaim()) {
+      note = (await redeemClaim(payload.claim.token))
+        ? ' Your confirmed email came across too.'
+        : ' The confirmed email in that file no longer checks out.';
+      renderClaim();
+    }
+
+    status.textContent = `Restored ${payload.checkins.length} visits.${note}`;
   } catch (error) {
     status.textContent = `That file could not be read: ${error.message}`;
   }
@@ -492,10 +619,11 @@ function forgetDevice() {
   if (!window.confirm('Delete this device identifier and every visit recorded on it? This cannot be undone.')) {
     return;
   }
-  [DEVICE_KEY, HISTORY_KEY, PROFILE_KEY, PENDING_KEY].forEach(dropStore);
+  [DEVICE_KEY, HISTORY_KEY, PROFILE_KEY, PENDING_KEY, CLAIM_KEY].forEach(dropStore);
   stopTimer();
   renderDevice();
   renderProfile();
+  renderClaim();
   renderHistory();
   show('idle');
   el('storage-status').textContent = 'Deleted. A new device identifier has been generated.';
@@ -511,6 +639,16 @@ async function init() {
 
   renderDevice();
   renderProfile();
+
+  // Before anything is rendered that depends on it: a claim arriving in the
+  // URL is the reason this page was opened, and the history rows below should
+  // already know about it.
+  const arriving = claimFromLocation();
+  if (arriving) {
+    await redeemClaim(arriving);
+    clearClaimFromLocation();
+  }
+  renderClaim();
   renderHistory();
 
   el('venue-directions').href =
@@ -518,10 +656,12 @@ async function init() {
 
   // Form state is written on every change, so closing the page mid-answer and
   // coming back later loses nothing.
-  for (const id of ['profile-name', 'profile-reason', 'profile-note']) {
+  for (const id of ['profile-name', 'profile-reason', 'profile-note', 'profile-email']) {
     el(id).addEventListener('input', saveProfile);
     el(id).addEventListener('change', saveProfile);
   }
+
+  el('claim-forget').addEventListener('click', dropClaim);
 
   el('device-label').addEventListener('change', () => {
     writeStore(DEVICE_KEY, { ...getDevice(), label: el('device-label').value.trim() });
