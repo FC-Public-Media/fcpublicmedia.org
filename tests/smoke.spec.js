@@ -259,3 +259,90 @@ test.describe('hosted forms', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Airing history on the archive.
+//
+// Cablecast records every run, so this is a join rather than something the
+// site tracks. What is worth testing is the part that is easy to get quietly
+// wrong: the join itself (a Liquid lookup that returns nothing rather than
+// complaining when the key type is off), and the sort, which has to flatten
+// the category grouping to be useful at all.
+
+test.describe('archive airing history', () => {
+  test('shows how often programs have aired', async ({ page }) => {
+    // The Liquid join indexes a JSON object by a stringified id. Get that
+    // wrong and every row silently reads "not aired this year" — a page that
+    // looks fine and is entirely wrong.
+    await page.goto('/watch/archive/');
+
+    const withAirings = await page.$$eval(
+      '[data-archive] li[data-airings]',
+      (rows) => rows.filter((r) => Number(r.dataset.airings) > 0).length
+    );
+
+    expect(withAirings, 'no program has any airing history').toBeGreaterThan(0);
+    await expect(page.locator('.airings').first()).toBeVisible();
+  });
+
+  test('sorting by least aired puts unaired programs first', async ({ page }) => {
+    await page.goto('/watch/archive/');
+
+    await page.locator('#archive-sort').selectOption('least');
+
+    const first = await page.$$eval('[data-archive] li:not([hidden])', (rows) =>
+      rows.slice(0, 5).map((r) => Number(r.dataset.airings))
+    );
+    expect(first.every((n) => n === 0), `got ${first}`).toBe(true);
+  });
+
+  test('sorting by most aired puts the heaviest rotation first', async ({ page }) => {
+    await page.goto('/watch/archive/');
+
+    await page.locator('#archive-sort').selectOption('most');
+
+    const counts = await page.$$eval('[data-archive] li:not([hidden])', (rows) =>
+      rows.slice(0, 10).map((r) => Number(r.dataset.airings))
+    );
+    expect(counts[0]).toBeGreaterThan(0);
+    expect(counts, 'not in descending order').toEqual([...counts].sort((a, b) => b - a));
+  });
+
+  test('sorting flattens the category headings', async ({ page }) => {
+    // A program nobody has run in two years is interesting regardless of the
+    // heading it happens to sit under, so sorting cannot stay inside groups.
+    await page.goto('/watch/archive/');
+
+    const before = await page.locator('h2[id]:not([hidden])').count();
+    expect(before).toBeGreaterThan(1);
+
+    await page.locator('#archive-sort').selectOption('title');
+    await expect(page.locator('h2[id]:not([hidden])')).toHaveCount(0);
+  });
+
+  test('returning to category puts every row back', async ({ page }) => {
+    // The rows are moved between lists, so "back" has to be a real restore
+    // rather than an approximation — losing one would lose a program.
+    await page.goto('/watch/archive/');
+
+    const total = await page.locator('[data-archive] li').count();
+    const firstTitle = await page.locator('[data-archive] li').first().getAttribute('data-title');
+
+    await page.locator('#archive-sort').selectOption('most');
+    await page.locator('#archive-sort').selectOption('category');
+
+    await expect(page.locator('[data-archive] li')).toHaveCount(total);
+    expect(await page.locator('[data-archive] li').first().getAttribute('data-title'))
+      .toBe(firstTitle);
+    expect(await page.locator('h2[id]:not([hidden])').count()).toBeGreaterThan(1);
+  });
+
+  test('filtering still works while sorted', async ({ page }) => {
+    await page.goto('/watch/archive/');
+
+    await page.locator('#archive-sort').selectOption('least');
+    await page.locator('#archive-filter').fill('zzzzzznotathing');
+
+    await expect(page.locator('[data-archive] li:not([hidden])')).toHaveCount(0);
+  });
+});

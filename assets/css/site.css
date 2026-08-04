@@ -504,6 +504,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 .rows-archive li[hidden] { display: none; }
 
+/* Airing counts read as data, not as prose — they are the thing someone is
+   scanning for when they sort by them. "Not aired" is the signal, so it gets
+   the emphasis rather than the counts do. */
+.airings { font-variant-numeric: tabular-nums; font-weight: 600; }
+.airings-none { color: var(--signal); }
+
 /* Cablecast titles are frequently one long underscore-joined token —
    Midnight_Limited_1940_2026-07-14_11_59_43 — with no place to break. On a
    phone that pushes the whole page sideways. */
@@ -517,6 +523,24 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border-bottom: 1px solid var(--rule);
   padding: 1rem 0;
   margin-bottom: 1rem;
+  /* Two controls now, wrapping to stacked on a narrow screen rather than
+     squeezing a select down to nothing. */
+  display: grid; gap: 0.4rem 1rem;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+}
+.filter label { grid-row: 1; }
+.filter input, .filter select { grid-row: 2; }
+.filter-count { grid-column: 1 / -1; grid-row: 3; }
+.filter select {
+  font: inherit; font-size: var(--step--1);
+  padding: 0.6rem 0.7rem;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--rule);
+}
+@media (max-width: 32rem) {
+  .filter { grid-template-columns: 1fr; }
+  .filter label, .filter input, .filter select, .filter-count { grid-row: auto; }
 }
 .filter[hidden] { display: none; }
 .filter label {
