@@ -1,33 +1,38 @@
 ---
-title: About & Board
-lede: Who we are and who runs the place.
+title: About
+lede: Who we are and what the place is for.
 ---
 
 Fort Collins Public Media has been a community media resource since
 {{ site.data.org.founded }}. {{ site.data.org.legal }}
 
-TODO &mdash; mission statement and a short history. The current site has no
-about page, which is unusual for a nonprofit and worth fixing.
-
-## Board and staff
-
-<ul class="grid">
-{% for person in site.data.board %}
-  <li class="card">
-    <h3>{{ person.name }}</h3>
-    <p class="muted">{{ person.role }}</p>
-    <p>{{ person.bio }}</p>
-  </li>
-{% endfor %}
-</ul>
-
 <p class="transaction transaction-todo">
-  <b>Roster is a placeholder.</b>
-  <span class="muted">Fill in <code>_data/board.yml</code>. Board members also
-  host studio sessions, so this page is worth getting right.</span>
+  <b>Mission statement and history &mdash; not written yet.</b>
+  <span class="muted">The current Wix site has no about page at all, which is
+  unusual for a nonprofit and is the gap this page exists to close. A few
+  paragraphs on what FCPM is for, who it serves, and how it started would do
+  it.</span>
 </p>
+
+## The board
+
+The board meets in the open &mdash; anyone can come and sit in.
+<a href="/board/">Who's on it, when they meet, and how to attend</a> is on its
+own page, along with the minutes.
 
 ## Financials and governance
 
-TODO &mdash; nonprofits are generally expected to publish their EIN, Form 990,
-and annual report. Decide what belongs here.
+<p class="transaction transaction-todo">
+  <b>Not decided yet.</b>
+  <span class="muted">Nonprofits are commonly asked for an EIN, a Form 990,
+  and an annual report. What belongs here is a board decision rather than a
+  technical one. Anything published goes in <code>documents</code> in
+  <code>_data/governance.yml</code> and appears on the board page.</span>
+</p>
+
+## Getting in touch
+
+{{ site.data.org.name }} is at {{ site.data.org.address.street }},
+{{ site.data.org.address.city }}. The
+<a href="/contact/">contact page</a> has hours, a phone number, and the right
+address for each kind of question.

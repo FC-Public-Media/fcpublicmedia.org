@@ -550,6 +550,16 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 .rows-checkin li b { font-variant-numeric: tabular-nums; }
 
+/* Merged community calendar. Dates line up as a column, so a list of six
+   scans as a schedule rather than as six sentences that happen to start with
+   a date. The time sits under the date and does not compete with it. */
+.rows-events li b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  display: flex; flex-direction: column; gap: 0.1rem;
+}
+.rows-events li b .muted { font-weight: 400; }
+
 /* Class context on the check-in page. Same information the homepage shows,
    from the same data, worked out by the same function. */
 .class-banner {

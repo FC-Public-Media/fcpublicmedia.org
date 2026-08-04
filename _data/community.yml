@@ -1,0 +1,79 @@
+# The community: what's coming up, and where people talk between visits.
+#
+# Replaces the old _data/connect.yml, which held only the channels. The two
+# belong together — "when can I turn up" and "where is everyone" are the same
+# question asked twice.
+#
+# WHERE EVENTS COME FROM
+# ----------------------
+# The page merges three sources into one chronological list, so nobody has to
+# know which of them a thing lives in:
+#
+#   _data/classes.yml       class sessions
+#   _data/governance.yml    board meetings
+#   this file, `events`     everything else
+#
+# Add a screening, a work night, or a members' meeting here. Anything that is
+# already a class or a board meeting should NOT be repeated — it will show up
+# on its own.
+#
+# TIMES MUST CARRY AN OFFSET, the same rule as _data/classes.yml:
+# "2026-09-15T18:30:00-06:00", not "2026-09-15 18:30". Colorado is -06:00 in
+# summer and -07:00 in winter, and a time without one is read as the visitor's
+# own zone — wrong for anyone travelling, and silently wrong.
+
+heading: Find the rest of us
+blurb: >-
+  The studio is the easy part. The harder part is knowing who else is making
+  something, and that happens between visits.
+
+# --------------------------------------------------------------- what's on
+#
+# Each entry needs `title` and `starts`. Optional: `ends`, `where`, `note`,
+# `url` (a link for more detail — leave it off and the entry is plain text,
+# which is fine).
+#
+# Empty is an honest state and the page says so plainly rather than showing a
+# grid of nothing. A short list is not a problem; a list that pretends to be
+# longer than it is would be.
+events: []
+# - title: Members' work night
+#   starts: "2026-09-04T18:00:00-06:00"
+#   ends: "2026-09-04T21:00:00-06:00"
+#   where: Studio A
+#   note: Bring whatever you're editing. No agenda.
+
+# ------------------------------------------------------------ where we talk
+#
+# An entry with no url is skipped entirely, so a platform under discussion can
+# sit here without appearing on the site.
+#
+# ON THE CHAT PLATFORM, WHICH IS UNSETTLED
+# ----------------------------------------
+# Slack is what exists today. Teams keeps coming up because the org is on
+# M365 and it is already paid for. Both are heavier than a place this size
+# needs, and the honest read is that neither is load-bearing: the newsletter
+# reaches more people more reliably than either, and costs nothing to keep.
+#
+# So this list is deliberately not ranked by how modern a thing is. Mark
+# whichever one people should actually try first with `primary: true` and the
+# page leads with it. Switching platforms is then a two-line edit here, not a
+# hunt through pages — and if the chat platform lapses entirely, deleting its
+# entry leaves a page that still works.
+channels:
+  - name: Slack
+    detail: Day-to-day chat between members and producers.
+    primary: true
+    url: "" # TODO — invite link. Use one that does not expire.
+
+  - name: Newsletter
+    detail: What's coming up, once in a while.
+    url: https://conta.cc/3G5YyWi
+
+  - name: YouTube
+    detail: Selected programs, reposted.
+    url: https://www.youtube.com/user/fcpanutube
+
+  - name: Instagram
+    detail: The studio, behind the scenes.
+    url: https://www.instagram.com/fcpublicmedia/
