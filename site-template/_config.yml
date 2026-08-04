@@ -1,0 +1,26 @@
+# A member site.
+#
+# Deliberately as plain as the main FCPM site: no plugins, no theme gem, no
+# npm, no CSS preprocessor. Somebody should be able to open this repository
+# knowing no Jekyll and still work out what changes what.
+
+title: Your Show
+description: A Fort Collins Public Media member site.
+
+# Set this when the site is deployed.
+#
+#   GitHub Pages at fcpublicmedia.github.io/your-show/  →  baseurl: "/your-show"
+#   A domain of your own                                →  baseurl: ""
+#
+# Getting this wrong is the classic Pages mistake: every link and stylesheet
+# 404s and the site looks broken rather than misconfigured.
+baseurl: ""
+url: ""
+
+permalink: pretty
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor

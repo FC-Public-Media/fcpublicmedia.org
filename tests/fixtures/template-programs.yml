@@ -1,0 +1,37 @@
+# Sample programs for the template round-trip check in CI.
+#
+# Deliberately NOT in site-template/_data/programs.yml. A scaffold shipping
+# invented shows is how "Episode 3: The Reckoning" ends up on a real member's
+# site — somebody always forgets to delete the examples. So the fixture lives
+# with the tests and is copied in at check time.
+#
+# Covers the three states, because the interesting behaviour is which of them
+# reach the feed: drafts never, scheduled with a future date, released as
+# normal.
+
+programs:
+  - title: A Released Program
+    status: released
+    drop: "2026-07-20T18:00:00-06:00"
+    runtime: "24:10"
+    summary: A finished thing.
+    image: https://example.com/thumb.jpg
+    links:
+      - name: YouTube
+        url: https://www.youtube.com/watch?v=abc
+    artifact:
+      url: https://example.com/master.mp4
+      type: video/mp4
+      bytes: 1288490188
+
+  - title: A Scheduled Program
+    status: scheduled
+    drop: "2026-12-01T18:00:00-07:00"
+    summary: Waiting for a drop day.
+    links:
+      - name: YouTube
+        url: https://www.youtube.com/watch?v=def
+
+  - title: A Draft
+    status: draft
+    summary: Should never leave the repository.

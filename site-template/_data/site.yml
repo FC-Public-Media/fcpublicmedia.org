@@ -1,0 +1,63 @@
+# Everything a member can change about their site, in one file.
+#
+# WHY ONE FILE
+# ------------
+# This is the file an editing UI writes to. Keeping it to one means the whole
+# "change your settings" story is a single read, a single edit, and a single
+# commit through the GitHub Contents API — no merging, no partial writes, and
+# an obvious thing to show someone on a phone.
+#
+# It is also why settings live in a file rather than in repository variables.
+# A file is versioned: you can see what changed, when, and put it back. A
+# variable is a value with no history, which is a poor home for the thing that
+# defines someone's site.
+#
+# Anything not here is either in _data/programs.yml or is a decision the
+# template made on the member's behalf.
+
+# --------------------------------------------------------------------- who
+name: Your Show
+tagline: One line about what you make.
+
+# Shown so people can tell a Fort Collins producer from a stranger. This is
+# the whole point of the site — the platforms will not tell anyone you are
+# local.
+producer: Your Name
+location: Fort Collins, CO
+
+about: >-
+  A paragraph. What you make, who it is for, how long you have been at it.
+  Two or three sentences is plenty; this is an index, not a biography.
+
+# ------------------------------------------------------------------ contact
+#
+# Leave anything blank and it is skipped rather than rendered empty.
+email: ""
+website: ""
+
+# Where the work already lives. These are links out, listed because they are
+# where someone should actually subscribe — the site is a way to be found, not
+# a place to hold an audience hostage.
+platforms:
+  - name: YouTube
+    url: ""
+  - name: Spotify
+    url: ""
+  - name: Apple Podcasts
+    url: ""
+
+# ------------------------------------------------------------------- feed
+#
+# The feed is the contract with FCPM. These describe it.
+feed:
+  title: ""        # falls back to `name`
+  description: ""  # falls back to `tagline`
+  # Programs older than this drop out of the feed. The site keeps them.
+  months: 24
+
+# ---------------------------------------------------------------- affiliation
+#
+# Set false and the FCPM credit disappears. It is here as a courtesy, not a
+# condition — a member who wants no visible connection to us should be able to
+# have that without editing a layout.
+show_fcpm_credit: true

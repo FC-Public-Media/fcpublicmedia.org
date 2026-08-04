@@ -84,6 +84,7 @@ OUTPUT = os.path.join(ROOT, "_data", "member_programs.json")
 
 ATOM = "{http://www.w3.org/2005/Atom}"
 MEDIA = "{http://search.yahoo.com/mrss/}"
+ITUNES = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
 
 TIMEOUT = 20
 USER_AGENT = "fcpublicmedia-feed-sync/1 (+https://www.fcpublicmedia.org/)"
@@ -178,6 +179,50 @@ def _text(node, *names):
     return ""
 
 
+def _image(node):
+    """A picture of the thing: media:thumbnail, or a podcast's itunes:image."""
+    thumbnail = node.find(f".//{MEDIA}thumbnail")
+    if thumbnail is not None:
+        return safe_link(thumbnail.get("url"))
+
+    art = node.find(f".//{ITUNES}image")
+    if art is not None:
+        return safe_link(art.get("href"))
+
+    return ""
+
+
+def _enclosure(node):
+    """The thing itself: an audio file, a video file, a download.
+
+    Kept apart from the thumbnail, which had been sharing a field with it.
+    They are not the same and only one of them is safe to put in an <img>.
+
+    This is also the field that matters for submissions — a feed entry tells
+    us a program exists, and the enclosure is what tells us where the actual
+    file is. Members keep large artifacts out of their repositories, so the
+    feed pointing at one is how the file ever reaches us.
+    """
+    found = node.find("enclosure")
+    if found is None:
+        for link in node.findall(f"{ATOM}link"):
+            if link.get("rel") == "enclosure":
+                found = link
+                break
+    if found is None:
+        return {}
+
+    url = safe_link(found.get("url") or found.get("href"))
+    if not url:
+        return {}
+
+    return {
+        "url": url,
+        "type": clean(found.get("type"), 80),
+        "bytes": int(found.get("length") or found.get("size") or 0) or None,
+    }
+
+
 def parse_rss(root):
     channel = root.find("channel")
     if channel is None:
@@ -185,14 +230,14 @@ def parse_rss(root):
 
     items = []
     for node in channel.findall("item"):
-        enclosure = node.find("enclosure")
         items.append(
             {
                 "title": clean(_text(node, "title"), MAX_TITLE),
                 "summary": clean(_text(node, "description"), MAX_SUMMARY),
                 "link": safe_link(_text(node, "link")),
                 "published": parse_date(_text(node, "pubDate")),
-                "media": safe_link(enclosure.get("url")) if enclosure is not None else "",
+                "image": _image(node),
+                "enclosure": _enclosure(node),
             }
         )
     return items
@@ -213,19 +258,27 @@ def parse_atom(root):
             first = node.find(f"{ATOM}link")
             link = first.get("href", "") if first is not None else ""
 
-        thumbnail = node.find(f".//{MEDIA}thumbnail")
-
         items.append(
             {
                 "title": clean(_text(node, f"{ATOM}title"), MAX_TITLE),
+                # YouTube puts the description in media:description rather
+                # than atom:summary, and leaves atom:summary out entirely —
+                # so without this every YouTube entry has no text at all.
                 "summary": clean(
-                    _text(node, f"{ATOM}summary", f"{ATOM}content"), MAX_SUMMARY
+                    _text(
+                        node,
+                        f"{ATOM}summary",
+                        f".//{MEDIA}description",
+                        f"{ATOM}content",
+                    ),
+                    MAX_SUMMARY,
                 ),
                 "link": safe_link(link),
                 "published": parse_date(
                     _text(node, f"{ATOM}published", f"{ATOM}updated")
                 ),
-                "media": safe_link(thumbnail.get("url")) if thumbnail is not None else "",
+                "image": _image(node),
+                "enclosure": _enclosure(node),
             }
         )
     return items

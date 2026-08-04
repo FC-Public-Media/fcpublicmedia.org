@@ -1,0 +1,60 @@
+/* Deliberately small and unopinionated.
+ *
+ * A member site is theirs. This is enough that a brand new one looks
+ * intentional rather than unstyled, and little enough that replacing it
+ * wholesale is an afternoon rather than a fight. There is no framework to
+ * learn and nothing here that another stylesheet has to override.
+ */
+
+:root {
+  --ink: #17191c;
+  --soft: #5b6470;
+  --paper: #fcfbf9;
+  --rule: #e2ded6;
+  --accent: #1f6a66;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #ece8e1; --soft: #a2a9b3; --paper: #14171a;
+    --rule: #2e353c; --accent: #58bdb5;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0 auto; padding: 2rem 1.25rem 4rem;
+  max-width: 46rem;
+  background: var(--paper); color: var(--ink);
+  font: 1.05rem/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+h1 { font-size: clamp(2rem, 1.5rem + 2vw, 3rem); margin: 0 0 0.2em; line-height: 1.1; }
+h2 { font-size: 1.3rem; margin: 2.5rem 0 0.8rem; }
+h3 { font-size: 1.1rem; margin: 0 0 0.2rem; }
+
+a { color: var(--accent); }
+img { max-width: 100%; height: auto; display: block; }
+
+.tagline { font-size: 1.2rem; color: var(--soft); margin: 0 0 0.4rem; }
+.who, .meta { color: var(--soft); font-size: 0.9rem; margin: 0 0 0.4rem; }
+.setup { color: var(--soft); font-size: 0.9rem; }
+
+.platforms ul { display: flex; flex-wrap: wrap; gap: 1rem; list-style: none; padding: 0; }
+
+.programs ul { list-style: none; padding: 0; }
+.programs li {
+  display: flex; gap: 1rem; align-items: flex-start;
+  padding: 1.25rem 0; border-top: 1px solid var(--rule);
+}
+/* Fixed ratio so a thumbnail of an unexpected size cannot shove the layout
+   around — the URL points at someone else's server. */
+.programs img { flex: none; width: clamp(6rem, 24vw, 10rem); aspect-ratio: 16/9; object-fit: cover; }
+.programs li > div { min-width: 0; }
+
+footer {
+  margin-top: 4rem; padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+  color: var(--soft); font-size: 0.9rem;
+}

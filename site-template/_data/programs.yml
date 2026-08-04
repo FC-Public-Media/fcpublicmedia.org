@@ -1,0 +1,57 @@
+# The programs. One entry per thing you make.
+#
+# Ships with one commented entry rather than three invented ones. A scaffold
+# full of plausible fake shows is worse than an empty one — somebody always
+# forgets to delete an example, and "Episode 3: The Reckoning" ends up on a
+# real site.
+#
+# ---------------------------------------------------------------------------
+# FIELDS
+#
+#   title      required.
+#   status     draft | scheduled | released. See below.
+#   drop       when it goes out. Required for scheduled and released.
+#              MUST CARRY A UTC OFFSET: "2026-08-14T18:00:00-06:00", not
+#              "2026-08-14". Colorado is -06:00 in summer and -07:00 in
+#              winter, and a time without one is read as whatever zone the
+#              reader happens to be in.
+#   summary    a paragraph. This is what shows up on FCPM's site, so it is
+#              worth writing properly — it is often the only thing a stranger
+#              reads before deciding whether to click.
+#   image      a thumbnail URL. Optional; a link to one already on the
+#              platform is fine.
+#   links      where it can be watched or heard. As many as apply.
+#   artifact   where the FINISHED FILE is. A pointer, never the file itself —
+#              see the README. This is what lets FCPM actually air it rather
+#              than just know it exists.
+#   runtime    "12:40". Optional, and useful to whoever schedules a slot.
+#
+# ---------------------------------------------------------------------------
+# STATUS
+#
+#   draft      not on the site, not in the feed. The repository is public, so
+#              this is scheduling rather than secrecy — anyone reading the
+#              repo can see it. If that matters, eject and go private.
+#
+#   scheduled  on the site marked as coming, and IN THE FEED with a future
+#              date. That is deliberate: it is how FCPM sees what is coming
+#              and fits it into a drop day without anybody sending an email.
+#
+#   released   out.
+
+programs: []
+
+# - title: An Example Program
+#   status: released
+#   drop: "2026-08-14T18:00:00-06:00"
+#   runtime: "24:10"
+#   summary: >-
+#     What it is, in a few sentences.
+#   image: https://i.ytimg.com/vi/VIDEOID/hqdefault.jpg
+#   links:
+#     - name: YouTube
+#       url: https://www.youtube.com/watch?v=VIDEOID
+#   artifact:
+#     url: https://example.com/path/to/final-master.mp4
+#     type: video/mp4
+#     bytes: 1288490188
