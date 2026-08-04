@@ -177,11 +177,16 @@ def sign(key_path, message):
 # ---------------------------------------------------------------------- claim
 
 
-def build_claim(key_path, email, days, key_id, now=None):
+def build_claim(key_path, email, days, key_id, now=None, repo=None):
     """Return the signed token for an address.
 
     The signature covers the version and the payload together, so a token
     cannot be replayed under a different format later.
+
+    With `repo`, the claim also names a member site, and the link points at
+    /authorize/ instead of /check-in/. The repository travels inside the
+    signature rather than as a separate URL parameter, so a forwarded link
+    cannot be edited to bind a device to somebody else's site.
     """
     email = email.strip().lower()
     if "@" not in email or email.startswith("@") or email.endswith("@"):
@@ -194,6 +199,11 @@ def build_claim(key_path, email, days, key_id, now=None):
         "exp": issued + days * 86400,
         "kid": key_id,
     }
+
+    if repo:
+        if repo.count("/") != 1 or repo.startswith("/") or repo.endswith("/"):
+            raise MintError(f"{repo!r} should look like owner/repository")
+        payload["repo"] = repo
 
     # Separators pinned so the bytes signed here are the bytes verified there.
     body = b64u(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode())
@@ -215,6 +225,10 @@ def main(argv=None):
         help="signing key (default: $FCPM_CLAIM_KEY or claim-key.pem)",
     )
     parser.add_argument("--days", type=int, default=120, help="how long it stays valid")
+    parser.add_argument(
+        "--repo",
+        help="owner/repository of a member site; makes this a device-binding link",
+    )
     parser.add_argument(
         "--key-id",
         default=None,
@@ -246,13 +260,24 @@ def main(argv=None):
         )
 
     key_id = args.key_id or public_block(args.key)["id"]
-    token, payload = build_claim(args.key, args.email, args.days, key_id)
+    token, payload = build_claim(
+        args.key, args.email, args.days, key_id, repo=args.repo
+    )
+
+    # A claim naming a repository is for binding a device to a member site; a
+    # bare one confirms an address. Same signature, same key, different door.
+    path = "/authorize/" if args.repo else "/check-in/"
 
     # The token rides in the fragment, which browsers do not send to servers.
     # It never appears in an access log, ours or Cloudflare's.
-    print(f"{args.site}/check-in/#claim={token}")
+    print(f"{args.site}{path}#claim={token}")
     print(file=sys.stderr)
     print(f"  for      {payload['email']}", file=sys.stderr)
+    if args.repo:
+        print(f"  site     {payload['repo']}", file=sys.stderr)
+        print("  NOTE     anyone who opens this link can bind a device.",
+              file=sys.stderr)
+        print("           Keep --days short for these.", file=sys.stderr)
     print(f"  expires  {time.strftime('%Y-%m-%d', time.localtime(payload['exp']))}",
           file=sys.stderr)
     print(f"  key      {key_id}", file=sys.stderr)
