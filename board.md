@@ -72,9 +72,9 @@ first &mdash; though it's a small room, so it's kind to.
 <ul class="rows">
 {% for meeting in m.upcoming %}
   <li>
-    <b>{{ meeting.date | date: "%A, %-d %B %Y" }}</b>
+    <b>{{ meeting.starts | date: "%A, %-d %B" }}</b>
     <span>
-      {% if meeting.time %}{{ meeting.time }}{% endif %}
+      {{ meeting.starts | date: "%-l:%M%P" }}
       {% if meeting.note %}<span class="muted">{{ meeting.note }}</span>{% endif %}
     </span>
   </li>

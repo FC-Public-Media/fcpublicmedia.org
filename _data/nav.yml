@@ -25,6 +25,8 @@ cta:
   url: /donate/
 
 footer:
+  - title: Community
+    url: /community/
   - title: About
     url: /about/
   - title: Board & Meetings

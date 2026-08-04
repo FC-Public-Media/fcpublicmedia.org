@@ -45,12 +45,17 @@ meetings:
   # are the only record there is.
   recorded: false
 
-  # Optional. Specific dates, newest first, for when the schedule alone is not
-  # enough — a special meeting, or an annual meeting that breaks the pattern.
-  # Each entry: date (YYYY-MM-DD), and optionally time, note.
+  # Optional. Specific dates, for when the schedule alone is not enough — a
+  # special meeting, or an annual meeting that breaks the pattern. These also
+  # appear in the merged list on /community/, so a neighbour who never visits
+  # this page still sees them.
+  #
+  # TIMES MUST CARRY AN OFFSET — "2026-09-15T18:30:00-06:00", not
+  # "2026-09-15 18:30". Same rule as _data/classes.yml and _data/community.yml,
+  # and for the same reason: a time without one is read as the visitor's own
+  # zone, which is silently wrong for anyone travelling.
   upcoming: []
-  # - date: 2026-09-15
-  #   time: "6:30pm"
+  # - starts: "2026-09-15T18:30:00-06:00"
   #   note: Annual meeting — board elections.
 
 minutes:
