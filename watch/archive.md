@@ -5,9 +5,30 @@ permalink: /watch/archive/
 ---
 
 {% assign cc = site.data.cablecast %}
+{% assign air = site.data.airings %}
 
 {{ cc.total }} programs on record, {{ cc.watchable }} of them watchable online.
 {{ cc.local_total }} were produced locally.
+
+{%- comment -%}
+  Airing history, joined from _data/airings.json on the Cablecast show id.
+  Cablecast already records every run, so none of this is tracked here — it is
+  read from the system that does the broadcasting.
+
+  The interesting number is the one nobody asks for: how much of the
+  catalogue never runs.
+{%- endcomment -%}
+{% if air and air.totals.distinct > 0 %}
+<p class="lede">
+  In the last year, <b>{{ air.totals.slots }}</b> airings covered
+  <b>{{ air.totals.distinct }}</b> programs.
+</p>
+<p class="muted">
+  Sort by <b>Least aired</b> below to see what has been sitting unwatched.
+  Airing counts come from the station&rsquo;s own broadcast log and exclude
+  filler.
+</p>
+{% endif %}
 
 {% if cc.untitled_omitted and cc.untitled_omitted > 0 %}
 <p class="transaction transaction-todo">
@@ -28,6 +49,23 @@ permalink: /watch/archive/
 <div class="filter" data-filter hidden>
   <label for="archive-filter">Filter</label>
   <input type="search" id="archive-filter" placeholder="Title, producer, or category" autocomplete="off">
+
+  {%- comment -%}
+    Sorting by anything other than category has to flatten the groups — a
+    program that has not aired in two years is interesting regardless of which
+    heading it happens to live under. archive-filter.js moves the rows into
+    one list and puts them back when "Category" is chosen again.
+  {%- endcomment -%}
+  <label for="archive-sort">Sort</label>
+  <select id="archive-sort">
+    <option value="category">Category</option>
+    <option value="least">Least aired</option>
+    <option value="most">Most aired</option>
+    <option value="stale">Longest since aired</option>
+    <option value="recent">Aired most recently</option>
+    <option value="title">Title A&ndash;Z</option>
+  </select>
+
   <p class="filter-count" data-filter-count></p>
 </div>
 
@@ -41,12 +79,30 @@ permalink: /watch/archive/
 
   <ul class="rows rows-archive" data-archive>
     {% for show in group.items %}
-      <li data-search="{{ show.title | downcase | escape }} {{ show.producer | downcase | escape }} {{ label | downcase }}">
+      {%- comment -%}
+        The id has to be stringified before it will index the JSON object —
+        Liquid will not match an integer against a string key, and the lookup
+        silently returns nothing rather than complaining.
+      {%- endcomment -%}
+      {%- assign key = show.id | append: "" -%}
+      {%- assign a = air.shows[key] -%}
+      <li data-search="{{ show.title | downcase | escape }} {{ show.producer | downcase | escape }} {{ label | downcase }}"
+          data-title="{{ show.title | downcase | escape }}"
+          data-airings="{{ a.airings | default: 0 }}"
+          data-last="{{ a.last | default: '' }}">
         <b><a href="{{ show.watch_url }}">{{ show.title }}</a></b>
         <span>
           {% if show.date and show.date != "" %}{{ show.date }}{% endif %}
           {% if show.producer and show.producer != "" %} &middot; {{ show.producer }}{% endif %}
           {% unless show.watchable %} &middot; cable only{% endunless %}
+          {%- if air and air.totals.distinct > 0 -%}
+            {%- if a %}
+              &middot; <b class="airings">{{ a.airings }} airing{% unless a.airings == 1 %}s{% endunless %}</b>,
+              last {{ a.last | date: "%b %Y" }}
+            {%- else %}
+              &middot; <b class="airings airings-none">not aired this year</b>
+            {%- endif -%}
+          {%- endif -%}
         </span>
       </li>
     {% endfor %}
