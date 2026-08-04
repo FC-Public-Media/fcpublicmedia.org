@@ -22,11 +22,15 @@ feature rather than a limitation.
 
 Checked against the live Cablecast API, August 2026.
 
+Cablecast is made by Tightrope Media Systems, who publish API examples at
+`github.com/trms`. Where this note says "ask the vendor", it means whoever
+FCPM already talks to for Cablecast support.
+
 **Shows and schedule items are separate resources.** A show can exist with no
-schedule item attached, and TRMS's own `new-show.mjs` example creates the show
-first and schedules it as a second call. So **an upload does not have to be
-slated against a draft schedule.** A member could upload, the show record would
-exist, and it would air nowhere until somebody scheduled it.
+schedule item attached, and the vendor's own `new-show.mjs` example creates the
+show first and schedules it as a second call. So **an upload does not have to
+be slated against a draft schedule.** A member could upload, the show record
+would exist, and it would air nowhere until somebody scheduled it.
 
 That matters more than it sounds: it means the safe version of this idea is
 available without any of the risky parts.
@@ -61,9 +65,10 @@ Three ways out, in order of how much they cost:
    is waiting for a slot*, which is genuinely fewer steps than today and risks
    nothing. **This is the version to build first if this is ever built.**
 
-2. **Ask TRMS whether a draft or pending run status exists.** If it does, the
-   whole idea works with Cablecast as the source of truth and nothing stored
-   here — which is the version worth wanting. One support email answers it.
+2. **Ask the vendor whether a draft or pending run status exists.** If it
+   does, the whole idea works with Cablecast as the source of truth and
+   nothing stored here — which is the version worth wanting, and one support
+   question answers it.
 
 3. **Hold the intent outside Cablecast.** Works, but breaks the property that
    makes this attractive: Cablecast stops being the source of truth for what
@@ -99,7 +104,8 @@ the direct path is better when it works.
 
 ### What to find out
 
-- Does a draft or pending `runStatus` exist? (support@cablecast — one email)
+- Does a draft or pending `runStatus` exist, and what do its values mean?
+  One question to Cablecast support.
 - Does the first-party tool staff use today create shows, schedule items, or
   both? Watching Nate answers this and question one at the same time.
 - Are the gaps in a typical week big enough to be worth picking from, or is
