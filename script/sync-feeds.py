@@ -23,13 +23,28 @@ should not become our problem.
 
 ON ONE BAD FEED
 ---------------
-A host that is down, or serving HTML where XML was promised, is reported and
-skipped. It must not fail the run: a member's hosting provider having a bad
-morning is not a reason for this repository to go red, and it is not a reason
-for everyone else's programs to vanish from the page.
+Feeds fail, and YouTube's fails a lot: it returns 404 and 500 for channels
+that plainly exist, varying by time of day, from any client. Observed here as
+fifteen consecutive failures against a channel that had worked an hour before,
+with plain curl failing the same way. Three things handle it, in order of how
+much they matter:
 
-The exception is *everything* failing, which usually means this script broke
-rather than the whole internet, and is worth a red mark.
+  1. RETRY. Five attempts with backoff, and 404 is treated as retryable even
+     though it normally means "wrong URL" — see RETRY_STATUS.
+
+  2. CARRY FORWARD. When a source still fails, its items from the previous run
+     are kept. This is the important one: without it a transient outage
+     produces a file missing that member's programs, and the workflow commits
+     that as the new truth. An outage nobody noticed would silently remove
+     someone's work from the site.
+
+  3. DO NOT REWRITE. If the items come out identical, the file is left alone.
+     The payload carries a timestamp, so writing unconditionally would make it
+     differ every run and generate a commit every morning recording that a
+     feed was checked.
+
+The run only fails when every feed failed *and* nothing was carried — which
+means this script broke rather than the whole internet.
 
 WHY PyYAML HERE WHEN mint-claim.py AVOIDS DEPENDENCIES
 ------------------------------------------------------
@@ -47,6 +62,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -236,20 +252,97 @@ def parse_feed(payload):
 # ------------------------------------------------------------------ fetching
 
 
-def fetch(url):
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+def _open(url):
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "application/atom+xml, application/rss+xml, application/xml;q=0.9, */*;q=0.5",
+        },
+    )
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
         return response.read()
+
+
+# Statuses worth trying again.
+#
+# 404 is in here, which is not the obvious choice — normally it means the URL
+# is wrong and no amount of retrying will fix it. But YouTube's feed endpoint
+# returns spurious 404s and 500s for channels that plainly exist, varying by
+# time of day, and it is the single most likely source a member will hand us.
+#
+# Retrying a genuinely dead URL costs a few seconds and still reports the
+# failure afterwards, so the only thing lost is time. Being wrong in the other
+# direction loses a member's programs off the page.
+RETRY_STATUS = {404, 408, 425, 429, 500, 502, 503, 504}
+
+# Five attempts with backoff is about 22 seconds of patience, which is cheap
+# in a daily job and covers the short blips. A longer outage is not a retry
+# problem — that is what carrying the previous run's items forward is for.
+ATTEMPTS = 5
+BACKOFF = 1.5
+
+
+def fetch(url, opener=_open, sleeper=time.sleep, attempts=ATTEMPTS):
+    """Fetch with backoff, raising the last error if it never succeeds."""
+    last = None
+
+    for attempt in range(attempts):
+        try:
+            return opener(url)
+        except urllib.error.HTTPError as error:
+            last = error
+            if error.code not in RETRY_STATUS:
+                raise
+            # A server that told us how long to wait knows better than we do.
+            pause = error.headers.get("Retry-After") if error.headers else None
+            delay = float(pause) if (pause or "").strip().isdigit() else BACKOFF * (2**attempt)
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            last = error
+            delay = BACKOFF * (2**attempt)
+
+        if attempt < attempts - 1:
+            print(f"    retrying in {delay:.0f}s ({last})", file=sys.stderr)
+            sleeper(min(delay, 30))
+
+    raise last
 
 
 # ---------------------------------------------------------------------- main
 
 
-def collect(sources, config, now, fetcher=fetch):
+def read_output(path):
+    """The previous run's file, or an empty payload.
+
+    A first run has nothing, and a half-written file is not worth crashing
+    over — either way the answer is "no history".
+    """
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError):
+        return {}
+
+
+def group_by_source(payload):
+    """Previous items keyed by source, so a failing feed can keep its own."""
+    grouped = {}
+    for item in (payload or {}).get("items", []):
+        grouped.setdefault(item.get("source", ""), []).append(item)
+    return grouped
+
+
+# Kept for callers that only want the grouping.
+def load_previous(path):
+    return group_by_source(read_output(path))
+
+
+def collect(sources, config, now, fetcher=fetch, previous=None):
     """Read every source. Returns (items, errors)."""
     per_source = int(config.get("per_source", 6))
     months = int(config.get("months", 18))
     cutoff = now - dt.timedelta(days=months * 31)
+    previous = previous or {}
 
     items, errors = [], []
 
@@ -264,8 +357,31 @@ def collect(sources, config, now, fetcher=fetch):
         try:
             parsed = parse_feed(fetcher(url))
         except Exception as error:  # noqa: BLE001 — one bad host, not a crash
-            errors.append({"name": name, "error": f"{type(error).__name__}: {error}"})
-            print(f"  {name}: {error}", file=sys.stderr)
+            # Keep what this source published last time rather than dropping
+            # it. Without this, a transient 500 at sync time would quietly
+            # delete a member's programs from the site and the commit would
+            # record that as the new truth — a worse outcome than the outage,
+            # and one nobody would notice until the member did.
+            kept = [
+                item
+                for item in previous.get(name, [])
+                if not item.get("published")
+                or (parse_date(item["published"]) or now) >= cutoff
+            ][:per_source]
+
+            # Carried items are kept byte-identical rather than marked. A
+            # marker would make the file differ on every outage and differ
+            # again when it recovered, producing commits that record nothing a
+            # visitor could see.
+            items.extend(kept)
+            errors.append(
+                {
+                    "name": name,
+                    "error": f"{type(error).__name__}: {error}",
+                    "carried": len(kept),
+                }
+            )
+            print(f"  {name}: {error} — kept {len(kept)} from last time", file=sys.stderr)
             continue
 
         kept = 0
@@ -293,6 +409,25 @@ def collect(sources, config, now, fetcher=fetch):
     # not necessarily new and pretending otherwise would push real news down.
     items.sort(key=lambda i: (i["published"] is not None, i["published"] or ""), reverse=True)
     return items[: int(config.get("total", 24))], errors
+
+
+def status(sources, errors, carried):
+    """The exit code, and the summary that explains it.
+
+    Every feed failing usually means this script broke rather than the whole
+    internet, so it earns a red mark — but only when it actually cost
+    something. If the last run's items carried through, the site is intact and
+    a transient outage should not turn a daily job red for nothing.
+    """
+    if errors:
+        print(f"{len(errors)} feed(s) could not be read.", file=sys.stderr)
+    if carried:
+        print(f"{carried} item(s) kept from the previous run.", file=sys.stderr)
+
+    if sources and len(errors) == len(sources) and not carried:
+        print("Every feed failed and nothing was kept.", file=sys.stderr)
+        return 1
+    return 0
 
 
 def main(argv=None):
@@ -325,8 +460,26 @@ def main(argv=None):
             file=sys.stderr,
         )
 
+    existing = read_output(args.out)
+    previous = group_by_source(existing)
+
     print(f"Reading {len(sources)} feed(s)...", file=sys.stderr)
-    items, errors = collect(sources, config, now, fetcher)
+    items, errors = collect(sources, config, now, fetcher, previous=previous)
+    carried = sum(error.get("carried", 0) for error in errors)
+
+    # Nothing new, nothing written.
+    #
+    # The output carries a timestamp, so rewriting it unconditionally makes the
+    # file differ on every single run — and the workflow commits whatever
+    # differs. That would be a commit every morning recording that a feed was
+    # checked, which is not a thing anyone needs in the history.
+    #
+    # Comparing the items alone also means a failed fetch that carried
+    # everything forward produces no commit at all, because the result is
+    # genuinely unchanged.
+    if items == existing.get("items") and os.path.exists(args.out):
+        print("Nothing new.", file=sys.stderr)
+        return status(sources, errors, carried)
 
     payload = {
         "_note": (
@@ -343,16 +496,7 @@ def main(argv=None):
         json.dump(payload, handle, indent=1, ensure_ascii=False)
         handle.write("\n")
 
-    print(f"{len(items)} item(s) from {len(sources) - len(errors)} feed(s).", file=sys.stderr)
-    if errors:
-        print(f"{len(errors)} feed(s) could not be read.", file=sys.stderr)
-
-    # One host being down is normal. Every host being down usually means this
-    # script is broken, which is worth failing over.
-    if sources and len(errors) == len(sources):
-        print("Every feed failed — check the parser before blaming the hosts.", file=sys.stderr)
-        return 1
-    return 0
+    return status(sources, errors, carried)
 
 
 if __name__ == "__main__":
