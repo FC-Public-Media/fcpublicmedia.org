@@ -168,6 +168,73 @@ lede: What's coming up, and where to find everyone between visits.
   no channel.
 </p>
 
+{% comment %} ------------------------------------------------ made by members {% endcomment %}
+
+{%- comment -%}
+  Read from _data/member_programs.json, which script/sync-feeds.py builds from
+  the feeds listed in _data/feeds.yml. Nothing is fetched in the browser.
+
+  EVERY STRING BELOW WAS WRITTEN BY SOMEBODY ELSE. The sync already strips
+  markup and rejects any link that is not http(s); `| escape` here is the
+  second half of that, and removing it would put a member's blog getting
+  hijacked directly into our pages. Do not "tidy" it away.
+{%- endcomment -%}
+
+{%- assign made = site.data.member_programs -%}
+{% if made and made.items.size > 0 %}
+
+## Made by members
+
+<p class="lede">
+  Published by members on their own channels. We read the feeds &mdash; follow
+  the source for everything.
+</p>
+
+<ul class="rows rows-events">
+{% for item in made.items %}
+  <li>
+    <b>
+      {% if item.published %}
+        <time datetime="{{ item.published | escape }}">{{ item.published | date: "%a %-d %b" }}</time>
+      {% else %}
+        <span class="muted">Undated</span>
+      {% endif %}
+    </b>
+    <span>
+      {% if item.link and item.link != "" %}
+        <a href="{{ item.link | escape }}" rel="noopener">{{ item.title | escape }}</a>
+      {% else %}
+        {{ item.title | escape }}
+      {% endif %}
+      <span class="muted">
+        {{ item.source | escape }}{% if item.owner and item.owner != "" %} &middot; {{ item.owner | escape }}{% endif %}
+      </span>
+      {% if item.summary and item.summary != "" %}
+        <span class="muted">{{ item.summary | escape }}</span>
+      {% endif %}
+    </span>
+  </li>
+{% endfor %}
+</ul>
+
+<p class="muted">
+  Publish something you'd like listed here? <a href="/contact/">Send us the
+  feed</a> &mdash; a podcast RSS URL, a YouTube channel, a blog. You keep the
+  work wherever it already lives.
+</p>
+
+{% else %}
+
+## Made by members
+
+<p>
+  If you publish a podcast, a channel, or a blog, we can list what you put out
+  here &mdash; you keep it wherever it already lives and we just read the feed.
+  <a href="/contact/">Send us the link</a> and it starts showing up.
+</p>
+
+{% endif %}
+
 {% comment %} ----------------------------------------------------- taking part {% endcomment %}
 
 ## Taking part

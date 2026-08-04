@@ -120,6 +120,41 @@ test.describe('community channels', () => {
   });
 });
 
+test.describe('member programs', () => {
+  test('invites feeds even with none configured', async ({ page }) => {
+    // The shipped state, and the one that has to do the work: nobody has sent
+    // a feed yet, so the section's whole job is to ask for one. An empty
+    // heading with nothing under it would ask for nothing.
+    await page.goto('/community/');
+
+    const section = page.locator('main');
+    await expect(section).toContainText('Made by members');
+    await expect(section).toContainText('feed');
+  });
+
+  test('every member item would be escaped and safely linked', async ({ page }) => {
+    // Feed content is third-party. If items are present, none of them may
+    // introduce a script, an event handler, or a non-http link — the two
+    // halves of the defence are stripping in sync-feeds.py and | escape in
+    // the template, and this checks the result rather than either half.
+    await page.goto('/community/');
+
+    const items = page.locator('.rows-events li');
+    if ((await items.count()) === 0) return;
+
+    const html = await page.locator('main').innerHTML();
+    expect(html).not.toMatch(/<\s*script/i);
+    expect(html).not.toMatch(/\son\w+\s*=/i);
+
+    const hrefs = await page.$$eval('main a[href]', (as) =>
+      as.map((a) => a.getAttribute('href'))
+    );
+    for (const href of hrefs) {
+      expect(href, `${href} is not a safe link`).toMatch(/^(https?:\/\/|\/|mailto:|tel:|#)/);
+    }
+  });
+});
+
 test.describe('community wayfinding', () => {
   test('the homepage band leads here', async ({ page }) => {
     await page.goto('/');

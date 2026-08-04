@@ -51,6 +51,13 @@ jobs:
       - name: Test the claim minter
         run: python3 script/test_mint_claim.py
 
+      # Feed content is written by other people and lands in our HTML, so the
+      # sanitizing here is load-bearing rather than cosmetic.
+      - name: Test the feed reader
+        run: |
+          pip install --quiet pyyaml
+          python3 script/test_sync_feeds.py
+
       - name: Install test dependencies
         working-directory: tests
         run: |
