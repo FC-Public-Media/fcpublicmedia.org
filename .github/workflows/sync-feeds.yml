@@ -1,0 +1,54 @@
+name: Sync member feeds
+
+# Members publish on their own channels and we read the feeds. Daily rather
+# than weekly, which is the Cablecast cadence: a member who puts out an episode
+# on Tuesday should not be waiting until Monday to see it listed. The run is
+# cheap — a handful of HTTP requests and an XML parse.
+#
+# Separate from sync-cablecast.yml precisely because of that difference in
+# cadence. Sharing a workflow would mean picking one schedule for two things
+# that want different ones.
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # 06:00 America/Denver in summer, 05:00 in winter
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A run already in flight is not worth interrupting, but a queue of them is
+# pointless — they would all fetch the same feeds.
+concurrency:
+  group: sync-feeds
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the YAML reader
+        run: pip install --quiet pyyaml
+
+      # Exits non-zero only when EVERY feed failed, which means this script
+      # broke rather than the whole internet. One member's host having a bad
+      # morning is expected and leaves the last good data in place.
+      - name: Read the feeds
+        run: python3 script/sync-feeds.py
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- _data/member_programs.json; then
+            echo "No new items."
+            exit 0
+          fi
+
+          count=$(python3 -c 'import json; print(len(json.load(open("_data/member_programs.json"))["items"]))')
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _data/member_programs.json
+          git commit -m "Sync member feeds: ${count} items"
+          git push

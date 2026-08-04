@@ -1,0 +1,53 @@
+# Member feeds.
+#
+# THE IDEA
+# --------
+# A member publishes wherever they already publish, and we read the feed. They
+# are not filling in our form; they are making something in their own place and
+# we notice. They keep the work whether or not it ever goes out on the channel.
+#
+# This is also the smallest useful version of the member-site idea. If the
+# contract between a member and FCPM is a feed, then reading feeds is the
+# product and generating one — a template repository, a site we host for
+# someone with nowhere to publish — is a fallback for people who have no feed
+# yet. The reader works today with channels that already exist.
+#
+# WHAT COUNTS AS A FEED
+# ---------------------
+# RSS 2.0 or Atom, which between them cover essentially everything:
+#
+#   YouTube channel   https://www.youtube.com/feeds/videos.xml?channel_id=UC…
+#   Podcast host      the show's RSS URL — the one in _podcasts/*.md
+#   Substack          https://name.substack.com/feed
+#   WordPress         https://example.com/feed/
+#   Squarespace       https://example.com/blog?format=rss
+#
+# ONE BAD FEED DOES NOT BREAK THE SYNC
+# ------------------------------------
+# A host being down, or serving something that is not XML, is reported and
+# skipped. It does not fail the build and does not empty the page — the last
+# good copy of _data/member_programs.json stays committed until a later run
+# replaces it.
+#
+# EVERYTHING HERE IS UNTRUSTED
+# ----------------------------
+# Titles and descriptions are written by other people, on servers we do not
+# run, and they land in our HTML. script/sync-feeds.py strips markup and
+# rejects any link that is not http(s), and the template escapes on top of
+# that. Do not remove either half.
+
+# How many items to take from each feed, and how many to keep overall. The
+# page is a sampler, not an archive — someone who wants everything should be
+# following the source.
+per_source: 6
+total: 24
+
+# Only items newer than this are kept, so a show that stopped in 2019 quietly
+# drops off instead of sitting at the bottom forever.
+months: 18
+
+sources: []
+# - name: Larimer County Snapshot News
+#   url: https://example.com/feed.xml
+#   kind: podcast          # podcast | video | writing
+#   owner: Jane Doe        # optional — who makes it
