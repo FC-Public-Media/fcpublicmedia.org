@@ -17,6 +17,7 @@ const PAGES = [
   { path: '/nonprofits/', name: 'nonprofits' },
   { path: '/contact/', name: 'contact' },
   { path: '/about/', name: 'about' },
+  { path: '/board/', name: 'board' },
   { path: '/teach/', name: 'teach' },
   { path: '/policies/non-discrimination/', name: 'policy' },
   { path: '/book/', name: 'book' },

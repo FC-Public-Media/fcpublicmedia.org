@@ -1,14 +1,18 @@
-# Board and staff roster.
+# Board and staff roster, rendered on /board/.
 #
-# Placeholder structure. `photo` is optional; the template falls back to
-# initials when it is empty, so nobody is blocked on a headshot.
+# Empty rather than full of TODOs, because a live page showing three cards
+# saying "TODO" is worse than one saying plainly that the roster isn't filled
+# in yet. The page handles both, and the empty state says where to look.
+#
+# A name and a role is enough to publish someone. `bio` and `photo` are
+# optional and can follow later — nobody should be held off the page waiting
+# for a headshot.
+#
+# Order here is the order on the page. Officers first is the usual convention.
 
-- name: TODO
-  role: TODO
-  bio: TODO
-  photo: ""
-
-- name: TODO
-  role: TODO
-  bio: TODO
-  photo: ""
+[]
+# - name: Jane Doe
+#   role: Board Chair
+#   bio: >-
+#     One or two sentences. What they do, why they're here.
+#   photo: ""
