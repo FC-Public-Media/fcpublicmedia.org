@@ -48,6 +48,7 @@ include:
 exclude:
   - README.md
   - CONTENT-TODO.md
+  - DESIGN-NOTES.md
   - Gemfile
   - Gemfile.lock
   - vendor
