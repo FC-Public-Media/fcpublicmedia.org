@@ -1,0 +1,69 @@
+# Binding a device to a member site.
+#
+# THE FLOW
+# --------
+# A member gets a link by email, opens it on the phone they want to use, and
+# makes a passkey. The public half of that passkey is what authorizes the
+# device to change their site's settings later.
+#
+# The link is a signed claim naming the repository — see script/mint-claim.py
+# --repo. The repository travels inside the signature, so a forwarded link
+# cannot be edited to point at somebody else's site.
+#
+# FORWARDING IS ALLOWED, ON PURPOSE
+# ---------------------------------
+# Someone can forward the email to a co-producer and they can bind their own
+# phone. That is wanted — a site with two people running it should not need
+# two separate invitations from us.
+#
+# It also means the link is a capability rather than a proof of identity. You
+# cannot have both. So the controls are not prevention, they are:
+#
+#   * short expiry — mint these with a small --days
+#   * every bound device is visible to every other one, with its label
+#   * any bound device can remove another
+#
+# The last two need the broker below. Until it exists, binding is a manual
+# step and this page tells the visitor to send us the record.
+
+# ------------------------------------------------------------------- relying
+#
+# The domain the passkey belongs to. Passkeys are bound to a domain, and
+# github.io is on the Public Suffix List — so a member site published at
+# fcpublicmedia.github.io/their-name/ can NEVER host this page. It has to be
+# on ours.
+#
+# Leave this empty and the browser uses whatever domain the page is served
+# from, which is right for previews and local builds. Set it to the
+# registrable domain — "fcpublicmedia.org", not "www.fcpublicmedia.org" — so
+# one passkey works across www and any subdomain.
+#
+# Setting it to a domain this page is NOT served from throws a SecurityError.
+rp_id: ""
+
+# ------------------------------------------------------------------- broker
+#
+# A small service that verifies the claim, then writes the device record into
+# the member's repository using a GitHub App installation token. It exists so
+# the browser never holds a credential that can write to a repository — a repo
+# write can add a workflow, and a workflow runs with the repository's secrets.
+#
+# Empty is the shipped state. The page then completes the passkey and shows
+# the record for someone to hand over, which is a real workflow for the first
+# few members and needs nothing running.
+url: ""
+
+# Where the broker writes. Kept in the member's own repository rather than in
+# a database, so the grants travel with the repo when it is handed over, and
+# die with it when it is deleted. Nothing orphaned anywhere.
+devices_path: .auth/devices.json
+
+# How the broker commits: "commit" writes straight to the default branch;
+# "pull_request" opens one instead.
+#
+# The tradeoff is who is kept waiting. A pull request gives staff a review
+# step and a tidy audit trail, but the member standing there with a new phone
+# is not authorized until somebody merges it — which turns "bind this device"
+# into "wait for us". Direct commit is the default because the signed link was
+# already the approval.
+write_mode: commit

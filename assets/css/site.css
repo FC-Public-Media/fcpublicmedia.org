@@ -96,6 +96,24 @@ img { max-width: 100%; height: auto; display: block; }
    push the page sideways on a phone. */
 code { font-family: var(--font-mono); font-size: 0.9em; overflow-wrap: anywhere; }
 
+/* A block of text meant to be copied rather than read — a device record, a
+   key. Scrolls inside itself: a long unbroken token must not be what makes
+   the whole page pan sideways on a phone. */
+.code-block {
+  margin: 0 0 1.5em;
+  padding: 1rem;
+  background: var(--paper-sunk, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.code-block code {
+  white-space: pre;
+  overflow-wrap: normal;
+  font-size: var(--step--1);
+}
+
 hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 :focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }

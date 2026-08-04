@@ -28,7 +28,12 @@ module.exports = defineConfig({
     : [['list']],
 
   use: {
-    baseURL: BASE_URL || `http://127.0.0.1:${LOCAL_PORT}`,
+    // localhost rather than 127.0.0.1, and not interchangeably: WebAuthn
+    // requires the origin to have a valid *domain*, and an IP literal is not
+    // one. Passkey creation on 127.0.0.1 fails with "This is an invalid
+    // domain" while working fine in production, which is the worst kind of
+    // environment-only difference. localhost is special-cased by the spec.
+    baseURL: BASE_URL || `http://localhost:${LOCAL_PORT}`,
     // On failure, keep enough to diagnose without re-running — which is the
     // whole point when the thing that broke only breaks on a phone.
     trace: 'retain-on-failure',
@@ -45,8 +50,11 @@ module.exports = defineConfig({
   webServer: BASE_URL
     ? undefined
     : {
-        command: `python3 -m http.server ${LOCAL_PORT} --bind 127.0.0.1 --directory ../_site`,
-        url: `http://127.0.0.1:${LOCAL_PORT}/`,
+        // Bound to all interfaces rather than 127.0.0.1 so it answers on
+        // localhost whether that resolves to IPv4 or IPv6 — which differs
+        // between a laptop and a CI runner.
+        command: `python3 -m http.server ${LOCAL_PORT} --directory ../_site`,
+        url: `http://localhost:${LOCAL_PORT}/`,
         reuseExistingServer: !process.env.CI,
         timeout: 30_000,
       },

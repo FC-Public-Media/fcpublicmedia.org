@@ -136,11 +136,16 @@ test.describe('class mode', () => {
       }
       if (!ownFrame) return;
 
+      // The page's own document is not a fetch. Said as "is this the
+      // navigation?" rather than by matching the test server's hostname,
+      // which was how this previously broke when the host changed.
+      if (request.isNavigationRequest()) return;
+
       const url = request.url();
       // The on-air strip legitimately calls Cablecast from this frame. That is
       // a different feature; the frame check alone would flag it.
       if (isThirdParty(url)) return;
-      if (url.includes('/assets/') || url.match(/127\.0\.0\.1:\d+\/$/)) return;
+      if (url.includes('/assets/')) return;
       requests.push(url);
     });
 
