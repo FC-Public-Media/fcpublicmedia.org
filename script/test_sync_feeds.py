@@ -17,6 +17,7 @@ import pathlib
 import re
 import tempfile
 import unittest
+import urllib.error
 
 HERE = pathlib.Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("sync_feeds", HERE / "sync-feeds.py")
@@ -233,6 +234,272 @@ class Collecting(unittest.TestCase):
         self.assertEqual(items[0]["owner"], "Jane")
 
 
+class Retrying(unittest.TestCase):
+    """YouTube's feed endpoint returns spurious 404s and 500s for channels
+    that plainly exist, varying by time of day. Observed live: four
+    consecutive attempts against a real channel returning 404, 404, 500, 404.
+    """
+
+    def http_error(self, code, headers=None):
+        return urllib.error.HTTPError(
+            "https://example.com/feed", code, "boom", headers, None
+        )
+
+    def flaky(self, failures, code=500):
+        """An opener that fails a set number of times, then works."""
+        state = {"calls": 0}
+
+        def opener(url):
+            state["calls"] += 1
+            if state["calls"] <= failures:
+                raise self.http_error(code)
+            return RSS.encode()
+
+        opener.state = state
+        return opener
+
+    def test_retries_a_500(self):
+        opener = self.flaky(2)
+        self.assertEqual(feeds.fetch("u", opener, lambda s: None), RSS.encode())
+        self.assertEqual(opener.state["calls"], 3)
+
+    def test_retries_a_404(self):
+        # Not the obvious choice — a 404 usually means the URL is wrong. But
+        # YouTube returns them spuriously, and retrying a genuinely dead URL
+        # only costs time, since the failure is still reported afterwards.
+        opener = self.flaky(2, code=404)
+        self.assertEqual(feeds.fetch("u", opener, lambda s: None), RSS.encode())
+
+    def test_gives_up_and_raises_the_last_error(self):
+        opener = self.flaky(99)
+        with self.assertRaises(urllib.error.HTTPError):
+            feeds.fetch("u", opener, lambda s: None, attempts=3)
+        self.assertEqual(opener.state["calls"], 3)
+
+    def test_does_not_retry_something_retrying_will_not_fix(self):
+        # A 403 means we are not allowed in. Hammering it is rude and pointless.
+        def opener(url):
+            raise self.http_error(403)
+
+        with self.assertRaises(urllib.error.HTTPError):
+            feeds.fetch("u", opener, lambda s: None)
+
+    def test_retries_a_dropped_connection(self):
+        state = {"calls": 0}
+
+        def opener(url):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                raise urllib.error.URLError("connection reset")
+            return RSS.encode()
+
+        self.assertEqual(feeds.fetch("u", opener, lambda s: None), RSS.encode())
+
+    def test_honours_retry_after(self):
+        # A server that told us how long to wait knows better than we do.
+        import email.message
+
+        headers = email.message.Message()
+        headers["Retry-After"] = "7"
+        waits = []
+
+        state = {"calls": 0}
+
+        def opener(url):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                raise self.http_error(429, headers)
+            return RSS.encode()
+
+        feeds.fetch("u", opener, waits.append)
+        self.assertEqual(waits, [7])
+
+
+class CarryingForward(unittest.TestCase):
+    """A failed fetch must not delete what that source published last time.
+
+    This matters more than the retrying does. Without it, a transient 500 at
+    sync time produces a data file missing that member's programs, and the
+    workflow commits it as the new truth — so an outage nobody noticed silently
+    removes someone's work from the site.
+    """
+
+    def previous(self, count=3, published="2026-07-01T12:00:00+00:00"):
+        return {
+            "A Show": [
+                {
+                    "title": f"Old {n}",
+                    "link": f"https://example.com/{n}",
+                    "summary": "",
+                    "media": "",
+                    "published": published,
+                    "source": "A Show",
+                    "kind": "podcast",
+                    "owner": "",
+                }
+                for n in range(count)
+            ]
+        }
+
+    def failing(self, url):
+        raise OSError("connection refused")
+
+    def test_keeps_the_previous_items(self):
+        items, errors = feeds.collect(
+            [{"name": "A Show", "url": "u"}],
+            {"per_source": 10, "total": 10, "months": 18},
+            NOW, self.failing, previous=self.previous(),
+        )
+
+        self.assertEqual(len(items), 3)
+        self.assertEqual(errors[0]["carried"], 3)
+
+    def test_keeps_them_byte_identical(self):
+        # Not marked as stale, deliberately. A marker would make the file
+        # differ during an outage and differ again on recovery, producing
+        # commits that record nothing a visitor could see.
+        before = self.previous()["A Show"]
+        items, _ = feeds.collect(
+            [{"name": "A Show", "url": "u"}],
+            {"per_source": 10, "total": 10, "months": 18},
+            NOW, self.failing, previous={"A Show": before},
+        )
+        self.assertEqual(items, before)
+
+    def test_carried_items_still_respect_the_date_window(self):
+        # Otherwise a source that fails forever keeps its items past the
+        # cutoff indefinitely, and the window stops meaning anything.
+        items, _ = feeds.collect(
+            [{"name": "A Show", "url": "u"}],
+            {"per_source": 10, "total": 10, "months": 18},
+            NOW, self.failing,
+            previous=self.previous(published="2019-01-01T12:00:00+00:00"),
+        )
+        self.assertEqual(items, [])
+
+    def test_carried_items_still_respect_the_per_source_cap(self):
+        items, _ = feeds.collect(
+            [{"name": "A Show", "url": "u"}],
+            {"per_source": 2, "total": 10, "months": 18},
+            NOW, self.failing, previous=self.previous(count=5),
+        )
+        self.assertEqual(len(items), 2)
+
+    def test_a_source_with_no_history_carries_nothing(self):
+        items, errors = feeds.collect(
+            [{"name": "Brand New", "url": "u"}],
+            {"per_source": 10, "total": 10, "months": 18},
+            NOW, self.failing, previous=self.previous(),
+        )
+        self.assertEqual(items, [])
+        self.assertEqual(errors[0]["carried"], 0)
+
+    def test_load_previous_groups_by_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "out.json")
+            with open(path, "w") as handle:
+                json.dump(
+                    {"items": [{"source": "A", "title": "x"}, {"source": "B", "title": "y"}]},
+                    handle,
+                )
+            grouped = feeds.load_previous(path)
+        self.assertEqual(sorted(grouped), ["A", "B"])
+
+    def test_load_previous_survives_a_missing_or_broken_file(self):
+        # First ever run, or a half-written file. Neither is a crash.
+        self.assertEqual(feeds.load_previous("/nonexistent/nope.json"), {})
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            handle.write("{not json")
+            broken = handle.name
+        try:
+            self.assertEqual(feeds.load_previous(broken), {})
+        finally:
+            os.unlink(broken)
+
+
+class NotRewriting(unittest.TestCase):
+    """The output carries a timestamp, so writing it unconditionally makes it
+    differ on every run — and the workflow commits whatever differs. That is a
+    commit every morning recording that a feed was checked.
+    """
+
+    def run_twice(self, tmp, fetcher):
+        config = os.path.join(tmp, "feeds.yml")
+        out = os.path.join(tmp, "out.json")
+        with open(config, "w") as handle:
+            handle.write("sources:\n  - name: A Show\n    url: https://example.com/f\n")
+            handle.write("months: 12000\n")
+
+        original = feeds.fetch
+        feeds.fetch = fetcher
+        try:
+            feeds.main(["--config", config, "--out", out])
+            first = open(out).read()
+            feeds.main(["--config", config, "--out", out])
+            return first, open(out).read()
+        finally:
+            feeds.fetch = original
+
+    def test_an_unchanged_feed_leaves_the_file_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first, second = self.run_twice(tmp, lambda url: RSS.encode())
+        self.assertEqual(first, second, "the file was rewritten with nothing new")
+
+    def test_a_failed_fetch_that_carries_everything_leaves_it_alone(self):
+        # The outage case. Carrying the previous items forward reproduces the
+        # previous result exactly, so there is nothing to commit.
+        with tempfile.TemporaryDirectory() as tmp:
+            config = os.path.join(tmp, "feeds.yml")
+            out = os.path.join(tmp, "out.json")
+            with open(config, "w") as handle:
+                handle.write(
+                    "sources:\n  - name: A Show\n    url: https://example.com/f\n"
+                    "months: 12000\n"
+                )
+
+            original = feeds.fetch
+            try:
+                feeds.fetch = lambda url: RSS.encode()
+                feeds.main(["--config", config, "--out", out])
+                good = open(out).read()
+
+                feeds.fetch = lambda url: (_ for _ in ()).throw(OSError("down"))
+                self.assertEqual(feeds.main(["--config", config, "--out", out]), 0)
+            finally:
+                feeds.fetch = original
+
+            self.assertEqual(open(out).read(), good)
+
+    def test_a_new_item_does_get_written(self):
+        # The guard must not be so eager that real news never lands.
+        with tempfile.TemporaryDirectory() as tmp:
+            config = os.path.join(tmp, "feeds.yml")
+            out = os.path.join(tmp, "out.json")
+            with open(config, "w") as handle:
+                handle.write(
+                    "sources:\n  - name: A Show\n    url: https://example.com/f\n"
+                    "months: 12000\n"
+                )
+
+            extra = RSS.replace(
+                "</channel>",
+                "<item><title>Brand New</title>"
+                "<link>https://example.com/new</link></item></channel>",
+            )
+
+            original = feeds.fetch
+            try:
+                feeds.fetch = lambda url: RSS.encode()
+                feeds.main(["--config", config, "--out", out])
+                feeds.fetch = lambda url: extra.encode()
+                feeds.main(["--config", config, "--out", out])
+            finally:
+                feeds.fetch = original
+
+            titles = [i["title"] for i in json.load(open(out))["items"]]
+            self.assertIn("Brand New", titles)
+
+
 class Output(unittest.TestCase):
     def test_writes_a_file_even_with_no_feeds(self):
         # The build reads this file unconditionally. A missing one would be a
@@ -250,19 +517,47 @@ class Output(unittest.TestCase):
             self.assertEqual(payload["items"], [])
             self.assertIn("generated", payload)
 
-    def test_every_feed_failing_is_an_error(self):
-        # One host down is weather. All of them down usually means the parser
-        # broke, and that should not pass quietly.
+    def test_every_feed_failing_with_nothing_kept_is_an_error(self):
+        # One host down is weather. All of them down, with no previous run to
+        # fall back on, usually means the parser broke — and that should not
+        # pass quietly.
+        #
+        # fetch is replaced rather than pointed at a dead port, so the test
+        # does not spend the real backoff sleeping.
         with tempfile.TemporaryDirectory() as tmp:
             config = os.path.join(tmp, "feeds.yml")
             out = os.path.join(tmp, "out.json")
             with open(config, "w") as handle:
-                handle.write(
-                    "sources:\n  - name: Nowhere\n"
-                    "    url: https://127.0.0.1:9/feed\n"
-                )
+                handle.write("sources:\n  - name: Nowhere\n    url: https://example.com/f\n")
 
-            self.assertEqual(feeds.main(["--config", config, "--out", out]), 1)
+            original = feeds.fetch
+            feeds.fetch = lambda url: (_ for _ in ()).throw(OSError("down"))
+            try:
+                self.assertEqual(feeds.main(["--config", config, "--out", out]), 1)
+            finally:
+                feeds.fetch = original
+
+    def test_every_feed_failing_is_fine_when_the_last_run_carries(self):
+        # A transient outage that costs nothing should not turn a daily job
+        # red. The site still has the programs; there is nothing to look at.
+        with tempfile.TemporaryDirectory() as tmp:
+            config = os.path.join(tmp, "feeds.yml")
+            out = os.path.join(tmp, "out.json")
+            with open(config, "w") as handle:
+                handle.write("sources:\n  - name: A Show\n    url: https://example.com/f\n")
+            with open(out, "w") as handle:
+                json.dump({"items": [{"source": "A Show", "title": "kept",
+                                      "published": "2026-07-01T00:00:00+00:00"}]}, handle)
+
+            original = feeds.fetch
+            feeds.fetch = lambda url: (_ for _ in ()).throw(OSError("down"))
+            try:
+                self.assertEqual(feeds.main(["--config", config, "--out", out]), 0)
+            finally:
+                feeds.fetch = original
+
+            with open(out) as handle:
+                self.assertEqual(len(json.load(handle)["items"]), 1)
 
 
 class TemplateGuard(unittest.TestCase):
