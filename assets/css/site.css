@@ -510,6 +510,10 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .airings { font-variant-numeric: tabular-nums; font-weight: 600; }
 .airings-none { color: var(--signal); }
 
+/* A date that has not happened yet. Same weight as an airing count — it is
+   the thing being scanned for, not decoration. */
+.coming { color: var(--signal); font-variant-numeric: tabular-nums; }
+
 /* Cablecast titles are frequently one long underscore-joined token —
    Midnight_Limited_1940_2026-07-14_11_59_43 — with no place to break. On a
    phone that pushes the whole page sideways. */

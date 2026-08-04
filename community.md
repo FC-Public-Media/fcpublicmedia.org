@@ -181,7 +181,87 @@ lede: What's coming up, and where to find everyone between visits.
 {%- endcomment -%}
 
 {%- assign made = site.data.member_programs -%}
-{% if made and made.items.size > 0 %}
+
+{%- comment -%}
+  SPLIT BY WHETHER IT HAS HAPPENED YET.
+
+  A member site marks a program `scheduled` with a future drop date, and that
+  date rides into the feed as the pubDate. Which means a submission arrives
+  here as an ordinary feed item that simply has not happened yet — no form, no
+  upload, nothing for anyone to process.
+
+  Without this split those items rendered under "Made by members", announcing
+  something as published on the day it was still being finished.
+
+  `plus: 0` forces integers. `now` above is a string, compared against other
+  strings; mixing the two raises rather than coercing, so this uses its own.
+{%- endcomment -%}
+{%- assign nowsec = site.time | date: "%s" | plus: 0 -%}
+{%- assign coming = "" | split: "" -%}
+{%- assign published = "" | split: "" -%}
+
+{%- for item in made.items -%}
+  {%- if item.published -%}
+    {%- assign at = item.published | date: "%s" | plus: 0 -%}
+    {%- if at > nowsec -%}
+      {%- assign coming = coming | push: item -%}
+    {%- else -%}
+      {%- assign published = published | push: item -%}
+    {%- endif -%}
+  {%- else -%}
+    {%- comment -%}
+      No date at all. Undated is not the same as forthcoming, and guessing
+      that it is would put half a feed's back catalogue under "coming up".
+    {%- endcomment -%}
+    {%- assign published = published | push: item -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{% if coming.size > 0 %}
+
+## Coming up from members
+
+<p class="lede">
+  Announced by members on their own channels, not yet out.
+</p>
+
+{%- comment -%}
+  Deliberately no artifact link here. The feed carries a pointer to the
+  finished file, and that is for us — a page announcing something is coming
+  has no business publishing where the master lives.
+{%- endcomment -%}
+<ul class="feed">
+{% for item in coming %}
+  <li>
+    {% if item.image and item.image != "" %}
+      <div class="feed-thumb">
+        <img src="{{ item.image | escape }}" alt="" loading="lazy"
+             decoding="async" referrerpolicy="no-referrer">
+      </div>
+    {% endif %}
+    <div class="feed-body">
+      <b>
+        {% if item.link and item.link != "" %}
+          <a href="{{ item.link | escape }}" rel="noopener">{{ item.title | escape }}</a>
+        {% else %}
+          {{ item.title | escape }}
+        {% endif %}
+      </b>
+      <p class="feed-meta muted">
+        <b class="coming">{{ item.published | date: "%-d %b" }}</b>
+        &middot; {{ item.source | escape }}{% if item.owner and item.owner != "" %} &middot; {{ item.owner | escape }}{% endif %}
+      </p>
+      {% if item.summary and item.summary != "" %}
+        <p class="feed-summary muted">{{ item.summary | escape }}</p>
+      {% endif %}
+    </div>
+  </li>
+{% endfor %}
+</ul>
+
+{% endif %}
+
+{% if published.size > 0 %}
 
 ## Made by members
 
@@ -191,14 +271,8 @@ lede: What's coming up, and where to find everyone between visits.
 </p>
 
 <ul class="feed">
-{% for item in made.items %}
+{% for item in published %}
   <li>
-    {%- comment -%}
-      A third-party image. referrerpolicy keeps us from telling YouTube which
-      page someone was on, and alt is empty on purpose — the title is right
-      there as text, so describing the thumbnail again would just make a
-      screen reader say everything twice.
-    {%- endcomment -%}
     {% if item.image and item.image != "" %}
       <div class="feed-thumb">
         <img src="{{ item.image | escape }}" alt="" loading="lazy"
