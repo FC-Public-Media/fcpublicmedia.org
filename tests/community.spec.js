@@ -155,6 +155,83 @@ test.describe('member programs', () => {
   });
 });
 
+test.describe('member submissions', () => {
+  /** The data the page was built from. */
+  function programs() {
+    const raw = fs.readFileSync(path.join(REPO, '_data', 'member_programs.json'), 'utf8');
+    return JSON.parse(raw).items || [];
+  }
+
+  test('nothing under "Made by members" is dated in the future', async ({ page }) => {
+    // A member site marks a program `scheduled` with a future drop date, and
+    // that date rides into the feed as its pubDate. Before the split, those
+    // arrived here announcing something as published on the day it was still
+    // being finished.
+    await page.goto('/community/');
+
+    const heading = page.locator('h2', { hasText: 'Made by members' });
+    if ((await heading.count()) === 0) return;
+
+    const dates = await page.$$eval('h2', (hs) => {
+      const made = hs.find((h) => h.textContent.includes('Made by members'));
+      if (!made) return [];
+      const out = [];
+      for (let el = made.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
+        el.querySelectorAll('time[datetime]').forEach((t) => out.push(t.getAttribute('datetime')));
+      }
+      return out;
+    });
+
+    for (const when of dates) {
+      expect(new Date(when).getTime(), `${when} has not happened yet`)
+        .toBeLessThanOrEqual(Date.now());
+    }
+  });
+
+  test('the artifact pointer never reaches the page', async ({ page }) => {
+    // A feed entry carries where the finished file lives. That is for us — a
+    // page announcing something is coming has no business publishing the path
+    // to an unreleased master.
+    await page.goto('/community/');
+
+    const html = await page.content();
+    const pointers = programs()
+      .map((item) => item.enclosure && item.enclosure.url)
+      .filter(Boolean);
+
+    for (const pointer of pointers) {
+      expect(html, `${pointer} was rendered onto the page`).not.toContain(pointer);
+    }
+  });
+
+  test('an undated item is treated as published, not as forthcoming', async ({ page }) => {
+    // Plenty of feeds are sloppy about dates, and guessing that undated means
+    // upcoming would put a whole back catalogue under "coming up".
+    await page.goto('/community/');
+
+    const undated = programs().filter((item) => !item.published);
+    if (!undated.length) return;
+
+    const coming = page.locator('h2', { hasText: 'Coming up from members' });
+    if ((await coming.count()) === 0) return;
+
+    const comingText = await page.$$eval('h2', (hs) => {
+      const head = hs.find((h) => h.textContent.includes('Coming up from members'));
+      if (!head) return '';
+      let text = '';
+      for (let el = head.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
+        text += el.textContent;
+      }
+      return text;
+    });
+
+    for (const item of undated) {
+      expect(comingText, `undated "${item.title}" was listed as coming up`)
+        .not.toContain(item.title);
+    }
+  });
+});
+
 test.describe('community wayfinding', () => {
   test('the homepage band leads here', async ({ page }) => {
     await page.goto('/');
