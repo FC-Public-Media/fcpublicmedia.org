@@ -190,7 +190,7 @@ lede: What's coming up, and where to find everyone between visits.
   the source for everything.
 </p>
 
-<ul class="rows rows-events">
+<ul class="rows rows-feed">
 {% for item in made.items %}
   <li>
     <b>

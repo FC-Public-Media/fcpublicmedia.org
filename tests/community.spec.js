@@ -139,7 +139,7 @@ test.describe('member programs', () => {
     // the template, and this checks the result rather than either half.
     await page.goto('/community/');
 
-    const items = page.locator('.rows-events li');
+    const items = page.locator('.rows-feed li');
     if ((await items.count()) === 0) return;
 
     const html = await page.locator('main').innerHTML();
