@@ -58,6 +58,15 @@ jobs:
           pip install --quiet pyyaml
           python3 script/test_sync_feeds.py
 
+      # The member site template is a Jekyll site of its own, excluded from
+      # the main build — so nothing else would notice it breaking. The check
+      # is a round trip rather than just a build: the template generates a
+      # feed, and this repository's own reader parses it. That feed is the
+      # entire contract between a member site and FCPM, and it is the thing
+      # that must not silently stop working.
+      - name: Build the member site template and read its feed back
+        run: python3 script/check-template.py
+
       - name: Install test dependencies
         working-directory: tests
         run: |

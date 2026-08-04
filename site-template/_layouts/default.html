@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title | default: site.data.site.name }}</title>
+  <meta name="description" content="{{ site.data.site.tagline }}">
+
+  {%- comment -%}
+    The feed is the contract with FCPM, so it is discoverable rather than a
+    URL somebody has to be told about.
+  {%- endcomment -%}
+  <link rel="alternate" type="application/rss+xml"
+        title="{{ site.data.site.name }}"
+        href="{{ '/feed.xml' | relative_url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+</head>
+<body>
+  <main>{{ content }}</main>
+
+  <footer>
+    {%- if site.data.site.show_fcpm_credit %}
+    <p>
+      A member site of
+      <a href="https://www.fcpublicmedia.org/">Fort Collins Public Media</a>.
+    </p>
+    {%- endif %}
+    <p><a href="{{ '/feed.xml' | relative_url }}">RSS</a></p>
+  </footer>
+</body>
+</html>

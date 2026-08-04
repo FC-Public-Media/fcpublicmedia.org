@@ -190,29 +190,42 @@ lede: What's coming up, and where to find everyone between visits.
   the source for everything.
 </p>
 
-<ul class="rows rows-feed">
+<ul class="feed">
 {% for item in made.items %}
   <li>
-    <b>
-      {% if item.published %}
-        <time datetime="{{ item.published | escape }}">{{ item.published | date: "%a %-d %b" }}</time>
-      {% else %}
-        <span class="muted">Undated</span>
-      {% endif %}
-    </b>
-    <span>
-      {% if item.link and item.link != "" %}
-        <a href="{{ item.link | escape }}" rel="noopener">{{ item.title | escape }}</a>
-      {% else %}
-        {{ item.title | escape }}
-      {% endif %}
-      <span class="muted">
+    {%- comment -%}
+      A third-party image. referrerpolicy keeps us from telling YouTube which
+      page someone was on, and alt is empty on purpose — the title is right
+      there as text, so describing the thumbnail again would just make a
+      screen reader say everything twice.
+    {%- endcomment -%}
+    {% if item.image and item.image != "" %}
+      <div class="feed-thumb">
+        <img src="{{ item.image | escape }}" alt="" loading="lazy"
+             decoding="async" referrerpolicy="no-referrer">
+      </div>
+    {% endif %}
+
+    <div class="feed-body">
+      <b>
+        {% if item.link and item.link != "" %}
+          <a href="{{ item.link | escape }}" rel="noopener">{{ item.title | escape }}</a>
+        {% else %}
+          {{ item.title | escape }}
+        {% endif %}
+      </b>
+
+      <p class="feed-meta muted">
         {{ item.source | escape }}{% if item.owner and item.owner != "" %} &middot; {{ item.owner | escape }}{% endif %}
-      </span>
+        {% if item.published %}
+          &middot; <time datetime="{{ item.published | escape }}">{{ item.published | date: "%-d %b %Y" }}</time>
+        {% endif %}
+      </p>
+
       {% if item.summary and item.summary != "" %}
-        <span class="muted">{{ item.summary | escape }}</span>
+        <p class="feed-summary muted">{{ item.summary | escape }}</p>
       {% endif %}
-    </span>
+    </div>
   </li>
 {% endfor %}
 </ul>

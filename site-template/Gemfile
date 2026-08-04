@@ -1,0 +1,5 @@
+# Standalone, so this works the moment it is ejected into a repository of its
+# own. Same Jekyll as the main site — one version to think about.
+source "https://rubygems.org"
+
+gem "jekyll", "~> 4.4"

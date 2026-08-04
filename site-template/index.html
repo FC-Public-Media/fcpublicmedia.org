@@ -1,0 +1,88 @@
+---
+layout: default
+---
+{%- assign s = site.data.site -%}
+{%- assign all = site.data.programs.programs -%}
+
+<header>
+  <h1>{{ s.name }}</h1>
+  <p class="tagline">{{ s.tagline }}</p>
+  <p class="who">
+    {{ s.producer }}{% if s.location and s.location != "" %} &middot; {{ s.location }}{% endif %}
+  </p>
+</header>
+
+{% if s.about and s.about != "" %}
+  <p class="about">{{ s.about | strip_newlines | strip }}</p>
+{% endif %}
+
+{%- comment -%}
+  Platforms first, and deliberately so. Someone who wants to subscribe should
+  do it where they already listen — this page is a way to be found, not a
+  place to hold an audience.
+{%- endcomment -%}
+{%- assign platforms = s.platforms | where_exp: "p", "p.url != ''" -%}
+{% if platforms.size > 0 %}
+  <nav class="platforms">
+    <h2>Where to find it</h2>
+    <ul>
+      {% for p in platforms %}
+        <li><a href="{{ p.url }}" rel="noopener">{{ p.name }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+{% endif %}
+
+{%- comment -%}
+  Drafts never render. Scheduled items do, marked as coming — the same
+  information the feed carries, so the page and the feed cannot disagree.
+{%- endcomment -%}
+{%- assign shown = all | where_exp: "p", "p.status != 'draft'" | sort: "drop" | reverse -%}
+
+<section class="programs">
+  <h2>Programs</h2>
+
+  {% if shown.size > 0 %}
+    <ul>
+      {% for p in shown %}
+        <li>
+          {% if p.image and p.image != "" %}
+            <img src="{{ p.image }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+          {% endif %}
+          <div>
+            <h3>
+              {%- assign watch = p.links | where_exp: "l", "l.url != ''" | first -%}
+              {% if watch %}
+                <a href="{{ watch.url }}" rel="noopener">{{ p.title }}</a>
+              {% else %}
+                {{ p.title }}
+              {% endif %}
+            </h3>
+            <p class="meta">
+              {% if p.status == "scheduled" %}<b>Coming</b> {% endif %}
+              <time datetime="{{ p.drop }}">{{ p.drop | date: "%-d %B %Y" }}</time>
+              {% if p.runtime and p.runtime != "" %}&middot; {{ p.runtime }}{% endif %}
+            </p>
+            {% if p.summary and p.summary != "" %}
+              <p>{{ p.summary | strip_newlines | strip }}</p>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {%- comment -%}
+      The state a brand new site is in, and it should read as new rather than
+      broken. Whoever set this up needs to know where to type.
+    {%- endcomment -%}
+    <p>Nothing published yet.</p>
+    <p class="setup">
+      Add your first program to <code>_data/programs.yml</code>, and put your
+      name and links in <code>_data/site.yml</code>.
+    </p>
+  {% endif %}
+</section>
+
+{% if s.email and s.email != "" %}
+  <p class="contact"><a href="mailto:{{ s.email }}">{{ s.email }}</a></p>
+{% endif %}

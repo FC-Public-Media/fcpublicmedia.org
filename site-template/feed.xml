@@ -1,0 +1,85 @@
+---
+layout: null
+permalink: /feed.xml
+---
+{%- comment -%}
+  THE POINT OF THE WHOLE TEMPLATE.
+
+  This file is the contract with FCPM. script/sync-feeds.py in the main
+  repository reads it, and everything else here is for humans. A member who
+  never looks at their own site still gets listed on ours as long as this
+  keeps parsing.
+
+  RSS 2.0 rather than Atom, for one reason: <enclosure> is a first-class RSS
+  element and it is how the finished file gets pointed at. Members keep large
+  artifacts out of git, so the enclosure is the only thing that tells anyone
+  where the actual master lives.
+
+  Drafts never appear. Scheduled programs DO, carrying a future pubDate, which
+  is how FCPM sees what is coming in time to put it on a drop day.
+{%- endcomment -%}
+{%- assign s = site.data.site -%}
+{%- assign cutoff = s.feed.months | default: 24 | times: -2678400 -%}
+{%- comment -%}
+  `plus: 0` on both sides is not decoration. `date: "%s"` yields a STRING and
+  `plus:` yields an INTEGER, and Liquid raises rather than coercing when the
+  two are compared — a build failure with a line number and no explanation.
+{%- endcomment -%}
+{%- assign horizon = site.time | date: "%s" | plus: cutoff -%}
+
+{%- assign published = site.data.programs.programs
+      | where_exp: "p", "p.status != 'draft'"
+      | sort: "drop" | reverse -%}
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>{{ s.feed.title | default: s.name | xml_escape }}</title>
+    <description>{{ s.feed.description | default: s.tagline | xml_escape }}</description>
+    <link>{{ s.website | default: site.url | append: site.baseurl | xml_escape }}</link>
+    <language>en-us</language>
+    <lastBuildDate>{{ site.time | date_to_rfc822 }}</lastBuildDate>
+    {%- if s.producer and s.producer != "" %}
+    <managingEditor>{{ s.producer | xml_escape }}</managingEditor>
+    {%- endif %}
+
+    {%- for p in published %}
+    {%- assign at = p.drop | date: "%s" | plus: 0 -%}
+    {%- if at >= horizon %}
+    <item>
+      <title>{{ p.title | xml_escape }}</title>
+      {%- if p.summary and p.summary != "" %}
+      <description>{{ p.summary | strip_newlines | strip | xml_escape }}</description>
+      {%- endif %}
+
+      {%- comment -%}
+        Prefer where it can actually be watched. A member site page is a
+        second-best destination for someone who just wants to press play.
+      {%- endcomment -%}
+      {%- assign watch = p.links | where_exp: "l", "l.url != ''" | first -%}
+      {%- if watch %}
+      <link>{{ watch.url | xml_escape }}</link>
+      <guid isPermaLink="true">{{ watch.url | xml_escape }}</guid>
+      {%- else %}
+      <guid isPermaLink="false">{{ s.name | slugify }}-{{ p.title | slugify }}</guid>
+      {%- endif %}
+
+      <pubDate>{{ p.drop | date_to_rfc822 }}</pubDate>
+
+      {%- comment -%}
+        A pointer to the finished file, never the file. This is what makes a
+        feed entry actionable rather than merely informative.
+      {%- endcomment -%}
+      {%- if p.artifact and p.artifact.url and p.artifact.url != "" %}
+      <enclosure url="{{ p.artifact.url | xml_escape }}"
+                 type="{{ p.artifact.type | default: 'application/octet-stream' | xml_escape }}"
+                 length="{{ p.artifact.bytes | default: 0 }}" />
+      {%- endif %}
+
+      {%- if p.image and p.image != "" %}
+      <media:thumbnail url="{{ p.image | xml_escape }}" />
+      {%- endif %}
+    </item>
+    {%- endif %}
+    {%- endfor %}
+  </channel>
+</rss>

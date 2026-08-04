@@ -59,6 +59,25 @@ ATOM = """<?xml version="1.0"?>
 </feed>
 """
 
+# What YouTube actually sends: no atom:summary at all, and the description
+# tucked inside media:group. Reading only atom:summary left every YouTube
+# entry with no text.
+YOUTUBE = """<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:media="http://search.yahoo.com/mrss/">
+  <entry>
+    <title>A Video</title>
+    <link rel="alternate" href="https://www.youtube.com/watch?v=abc"/>
+    <published>2026-07-30T10:00:00+00:00</published>
+    <media:group>
+      <media:title>A Video</media:title>
+      <media:thumbnail url="https://i.ytimg.com/vi/abc/hqdefault.jpg"/>
+      <media:description>What the video is about.</media:description>
+    </media:group>
+  </entry>
+</feed>
+"""
+
 
 class Sanitizing(unittest.TestCase):
     def test_strips_markup(self):
@@ -125,14 +144,48 @@ class Parsing(unittest.TestCase):
         items = feeds.parse_feed(RSS.encode())
         self.assertEqual(items[0]["title"], "Episode One")
         self.assertEqual(items[0]["summary"], "About something.")
-        self.assertEqual(items[0]["media"], "https://example.com/1.mp3")
+        # The file and a picture of the file are different things and live in
+        # different fields. Only one of them belongs in an <img>.
+        self.assertEqual(items[0]["enclosure"]["url"], "https://example.com/1.mp3")
+        self.assertEqual(items[0]["enclosure"]["type"], "audio/mpeg")
+        self.assertEqual(items[0]["image"], "")
 
     def test_reads_atom_and_prefers_the_alternate_link(self):
         # A self link points back at the feed, which would send every visitor
         # to an XML document.
         items = feeds.parse_feed(ATOM.encode())
         self.assertEqual(items[0]["link"], "https://example.com/watch")
-        self.assertEqual(items[0]["media"], "https://example.com/thumb.jpg")
+        self.assertEqual(items[0]["image"], "https://example.com/thumb.jpg")
+
+    def test_reads_a_youtube_description(self):
+        # YouTube omits atom:summary entirely, so reading only that left every
+        # entry on the page with a title and nothing else.
+        items = feeds.parse_feed(YOUTUBE.encode())
+        self.assertEqual(items[0]["summary"], "What the video is about.")
+        self.assertEqual(items[0]["image"], "https://i.ytimg.com/vi/abc/hqdefault.jpg")
+
+    def test_a_thumbnail_is_never_mistaken_for_a_file(self):
+        # The distinction that matters for submissions: a feed entry says a
+        # program exists, and the enclosure says where the actual file is.
+        # A thumbnail in that slot would make an image look like a master.
+        items = feeds.parse_feed(YOUTUBE.encode())
+        self.assertEqual(items[0]["enclosure"], {})
+
+    def test_an_image_url_that_is_not_http_is_dropped(self):
+        hostile = b"""<?xml version="1.0"?>
+        <feed xmlns="http://www.w3.org/2005/Atom"
+              xmlns:media="http://search.yahoo.com/mrss/">
+          <entry><title>x</title>
+            <media:thumbnail url="javascript:alert(1)"/>
+          </entry></feed>"""
+        self.assertEqual(feeds.parse_feed(hostile)[0]["image"], "")
+
+    def test_an_enclosure_url_that_is_not_http_is_dropped(self):
+        hostile = b"""<?xml version="1.0"?><rss version="2.0"><channel>
+        <item><title>x</title>
+          <enclosure url="file:///etc/passwd" type="audio/mpeg" length="1"/>
+        </item></channel></rss>"""
+        self.assertEqual(feeds.parse_feed(hostile)[0]["enclosure"], {})
 
     def test_refuses_html_served_as_a_feed(self):
         with self.assertRaises(ValueError):

@@ -1,0 +1,14 @@
+_site/
+.jekyll-cache/
+.jekyll-metadata
+Gemfile.lock
+vendor/
+
+# Finished programs do not belong in git. Put the file wherever you already
+# keep large files and point `artifact.url` at it — see README.
+*.mp4
+*.mov
+*.wav
+*.aiff
+*.mkv
+*.prproj
