@@ -103,6 +103,32 @@ export const ACTIONS = {
     declare: ['path', 'sha', 'content_hash'],
     userVerification: true,
   },
+
+  // Put a new passkey on the site's list. The signature answering this one
+  // comes from the NEW device — it is proof that whoever is asking holds the
+  // key they are asking us to record, and nothing more. Authority to enrol is
+  // the claim, checked separately.
+  //
+  // Deliberately survivable when the claim link was forwarded: being listed
+  // does nothing on its own. See enroll.js.
+  'device.add': {
+    declare: ['credential_id', 'public_key'],
+    userVerification: true,
+    // Not signed by a device on the list, because it is not on the list yet.
+    unlisted: true,
+  },
+
+  // Let a listed device publish, or stop it. Signed by an existing device that
+  // may already publish — the owner approving a co-producer's phone from their
+  // own phone, with staff nowhere in it.
+  'device.allow': {
+    declare: ['credential_id'],
+    userVerification: true,
+  },
+  'device.revoke': {
+    declare: ['credential_id'],
+    userVerification: true,
+  },
 };
 
 /**
@@ -143,6 +169,17 @@ export function readIntent(body, { owner = '' } = {}) {
     if (typeof value !== 'string' || !value) {
       return { ok: false, detail: `${field} is missing.` };
     }
+
+    // These end up in a JSON file in somebody's repository, so the shape is
+    // checked here rather than trusted to survive a round trip. base64url and
+    // nothing else — a credential ID is 16 to 32 bytes and an SPKI key is a
+    // few hundred, so anything longer is not what it says it is.
+    if (field === 'credential_id' || field === 'public_key') {
+      if (!/^[A-Za-z0-9_-]{16,1024}$/.test(value)) {
+        return { ok: false, detail: `${field} is not a value this broker recognises.` };
+      }
+    }
+
     intent[field] = value;
   }
 

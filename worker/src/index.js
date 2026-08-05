@@ -25,16 +25,26 @@
 //
 // WHAT IS NOT BUILT YET
 // ---------------------
-// Presigning an upload to R2 and co-signing a second device. Each of them is
-// the same verification below plus one action, which is why /write was a small
-// file and not a second system.
+// Presigning an upload to R2. It is the same verification below plus one
+// action, which is why none of the endpoints that came after /verify needed a
+// second system.
 
 import { appCredential, patCredential } from './app-auth.js';
 import { challengeStore } from './challenges.js';
 import { deviceList, mayPublish } from './devices.js';
+import { addDevice, allowDevice, revokeDevice, serialize } from './enroll.js';
 import { github } from './github.js';
-import { ACTIONS, matchesIntent, readIntent } from './intent.js';
+import { ACTIONS, contentHash, matchesIntent, readIntent } from './intent.js';
 import { verifyAssertion } from './webauthn.js';
+
+// The claim verifier the BROWSER uses, imported rather than copied.
+//
+// It is pure WebCrypto with no DOM at the top level, so it runs here
+// unmodified — and one implementation cannot drift from the other, which for a
+// signature check is worth more than the tidiness of a self-contained worker
+// directory. tests/claims.spec.js drives the same file from a browser, and
+// enrol.test.mjs imports it here to catch the day somebody adds a `window`.
+import { verifyClaim } from '../../assets/js/claims.js';
 
 /* ---------------------------------------------------------------- responses */
 
@@ -75,7 +85,7 @@ function corsHeaders(request, origins) {
  * "passkeys are broken" for a day. Refusing to start with a message naming the
  * variable is cheaper than that.
  */
-function readConfig(env) {
+function readConfig(env, now = () => Date.now()) {
   const missing = [];
   const rpId = (env.RP_ID || '').trim();
   if (!rpId) missing.push('RP_ID');
@@ -97,7 +107,30 @@ function readConfig(env) {
     // Where a write lands. Read here rather than sent by the page, because
     // "commit straight to the live branch" is not a member's decision to make.
     writeMode: env.WRITE_MODE === 'direct' ? 'direct' : 'branch',
+
+    // The public halves of the claim signing keys, same list as
+    // _data/identity.yml. Public by nature — they verify, they do not sign —
+    // so they are config rather than a secret.
+    claimKeys: readClaimKeys(env.CLAIM_KEYS),
+
+    now,
   };
+}
+
+/**
+ * Parse CLAIM_KEYS, and treat a broken value as no keys at all.
+ *
+ * Refusing every enrolment with "not configured" is the right failure for a
+ * malformed list. Verifying against a half-parsed one is not.
+ */
+function readClaimKeys(value) {
+  if (!value) return [];
+  try {
+    const keys = JSON.parse(value);
+    return Array.isArray(keys) ? keys.filter((key) => key?.x && key?.y) : [];
+  } catch (error) {
+    return [];
+  }
 }
 
 /* ------------------------------------------------------------------ handlers */
@@ -185,9 +218,19 @@ async function authorize(request, { config, challenges, devices }) {
     });
   }
 
+  // device.add is signed by a device that is not on the list yet, so none of
+  // what follows can be done for it. /bind handles that case with its own
+  // rules; nothing else may, and a challenge for it presented here is spent
+  // and refused rather than quietly reinterpreted.
+  if (ACTIONS[intent.action]?.unlisted) {
+    return refuse(409, { reason: 'intent', detail: 'That challenge belongs to a different flow.' });
+  }
+
   const found = await devices.find(intent.repo, assertion.credential_id);
   if (!found.ok) {
-    return refuse(found.reason === 'unreachable' ? 503 : 403, {
+    // Three different kinds of "no": our setup, their outage, and an actual
+    // refusal. Only the last one is about the person asking.
+    return refuse({ credential: 500, unreachable: 503 }[found.reason] || 403, {
       reason: found.reason,
       detail: found.detail,
     });
@@ -317,12 +360,259 @@ async function handleWrite(request, deps) {
   });
 }
 
+/* ---------------------------------------------------------------- enrolment */
+
+// The broker chooses this path. It is never sent by a page, and intent.js
+// refuses it as a settings target, so there is no route by which somebody
+// edits the list of who may edit.
+const DEVICES = '.auth/devices.json';
+
+/**
+ * Read the device list for writing.
+ *
+ * Authenticated, so it is current — the cached raw.githubusercontent copy that
+ * devices.js reads is fine for "does this key check out" and is not fine as
+ * the first half of a read-modify-write.
+ */
+async function readDevices(repositories, repo) {
+  const found = await repositories.readFile({ repo, path: DEVICES });
+  if (!found.ok) return found;
+
+  if (found.content === null) return { ok: true, devices: [], sha: '' };
+
+  try {
+    const payload = JSON.parse(found.content);
+    if (!Array.isArray(payload?.devices)) throw new Error('shape');
+    return { ok: true, devices: payload.devices, sha: found.sha };
+  } catch (error) {
+    return { ok: false, reason: 'github', detail: `${DEVICES} is not readable.` };
+  }
+}
+
+/** Write it back. Never on a branch: a grant sitting in a pull request grants nothing. */
+async function writeDevices(repositories, repo, devices, sha, message) {
+  const content = serialize(devices);
+  return repositories.writeFile({
+    repo,
+    path: DEVICES,
+    content,
+    sha,
+    contentHash: await contentHash(content),
+    message,
+    mode: 'direct',
+  });
+}
+
+const wrote = (written) =>
+  written.ok
+    ? null
+    : json(
+        { ok: false, reason: written.reason, detail: written.detail },
+        { status: { conflict: 409, credential: 500 }[written.reason] || 502 }
+      );
+
+/**
+ * Put a new passkey on a site's list.
+ *
+ * The odd one out, because the device signing is the one being added and so is
+ * not on the list to be looked up. Three things have to hold:
+ *
+ *   1. The challenge was issued for this credential and this public key.
+ *   2. A signature over it verifies against THAT PUBLIC KEY — proof the asker
+ *      holds the private half of the thing they want recorded, rather than
+ *      somebody else's key they copied off a public device list.
+ *   3. A current claim, signed by us, naming this repository.
+ *
+ * The claim is the enrolment authority and can be forwarded. That is fine and
+ * intended: what arrives is a listed device that may not publish, unless it is
+ * the first, in which case there is nobody to approve it and nobody to protect
+ * it from. See enroll.js.
+ */
+async function handleBind(request, { config, challenges, repositories }) {
+  if (!repositories) {
+    return json({ ok: false, detail: 'This broker is not configured to write.' }, { status: 500 });
+  }
+
+  const body = await readBody(request);
+  const assertion = body?.assertion;
+  if (!assertion?.client_data_json) {
+    return json({ ok: false, detail: 'No assertion was sent.' }, { status: 400 });
+  }
+
+  let presented;
+  try {
+    presented = JSON.parse(atob(
+      String(assertion.client_data_json).replace(/-/g, '+').replace(/_/g, '/')
+    )).challenge;
+  } catch (error) {
+    return json({ ok: false, detail: 'The client data could not be read.' }, { status: 400 });
+  }
+
+  const intent = await challenges.take(presented);
+  if (!intent || intent.action !== 'device.add') {
+    return json(
+      { ok: false, reason: 'challenge', detail: 'That challenge is unknown, spent, or was issued for something else.' },
+      { status: 403 }
+    );
+  }
+
+  // Against the key in the INTENT, not one looked up anywhere. This is the
+  // only place in the broker that verifies against a key it was handed, and it
+  // is sound because the only thing it establishes is possession — the right
+  // to be recorded comes from the claim below.
+  const proved = await verifyAssertion({
+    assertion,
+    device: { public_key: intent.public_key, algorithm: null },
+    expected: {
+      challenge: presented,
+      origins: config.origins,
+      rpId: config.rpId,
+      requireUserVerification: true,
+    },
+  });
+  if (!proved.ok) {
+    return json({ ok: false, reason: proved.reason, detail: proved.detail }, { status: 403 });
+  }
+  if (assertion.credential_id !== intent.credential_id) {
+    return json(
+      { ok: false, reason: 'intent', detail: 'That signature is from a different credential.' },
+      { status: 409 }
+    );
+  }
+
+  /* ------------------------------------------------------------- the claim */
+
+  if (!config.claimKeys.length) {
+    return json(
+      { ok: false, detail: 'This broker is not configured to check claims: CLAIM_KEYS.' },
+      { status: 500 }
+    );
+  }
+
+  const claim = await verifyClaim(body.claim, config.claimKeys);
+  if (!claim.ok) {
+    const detail = {
+      expired: 'That link has expired. Ask us for a new one.',
+      signature: 'That link was not issued by us.',
+      malformed: 'That link is damaged — it may have been broken by an email client.',
+      missing: 'No link was sent.',
+    }[claim.reason] || 'That link did not check out.';
+    return json({ ok: false, reason: 'claim', detail }, { status: 403 });
+  }
+  // The claim names the site it enrols for. Without this check any claim would
+  // enrol against any site, which is the whole grant.
+  if (claim.payload.repo !== intent.repo) {
+    return json(
+      { ok: false, reason: 'claim', detail: 'That link is for a different site.' },
+      { status: 403 }
+    );
+  }
+
+  /* -------------------------------------------------------------- the list */
+
+  const list = await readDevices(repositories, intent.repo);
+  if (!list.ok) return json({ ok: false, reason: list.reason, detail: list.detail }, { status: 502 });
+
+  const added = addDevice(list.devices, {
+    credential_id: intent.credential_id,
+    public_key: intent.public_key,
+    algorithm: typeof body.algorithm === 'number' ? body.algorithm : null,
+    label: String(body.label || '').trim().slice(0, 80) || 'Unnamed device',
+    added: new Date(config.now()).toISOString(),
+  });
+  if (!added.ok) return json({ ok: false, reason: 'listed', detail: added.detail }, { status: 409 });
+
+  const written = await writeDevices(
+    repositories,
+    intent.repo,
+    added.devices,
+    list.sha,
+    `Register a device for ${claim.payload.email}`
+  );
+  const failed = wrote(written);
+  if (failed) return failed;
+
+  return json({
+    ok: true,
+    repo: intent.repo,
+    action: intent.action,
+    performed: true,
+    // The one thing the page has to say out loud. "You're set up" and "ask
+    // whoever runs this site to approve your phone" are different messages.
+    may_publish: added.granted,
+    first_device: added.granted,
+  });
+}
+
+/**
+ * Approve or revoke a device, signed by one that may already publish.
+ *
+ * Goes through authorize() unchanged: the signer has to be listed, proven, and
+ * allowed. That is exactly the check this needs, which is why there is no
+ * second copy of it here.
+ */
+async function handleDevice(request, deps) {
+  if (!deps.repositories) {
+    return json({ ok: false, detail: 'This broker is not configured to write.' }, { status: 500 });
+  }
+
+  const allowed = await authorize(request, deps);
+  if (!allowed.ok) return allowed.response;
+
+  const { intent, device } = allowed;
+  if (intent.action !== 'device.allow' && intent.action !== 'device.revoke') {
+    return json(
+      { ok: false, reason: 'intent', detail: 'That challenge was not issued for this.' },
+      { status: 409 }
+    );
+  }
+
+  const list = await readDevices(deps.repositories, intent.repo);
+  if (!list.ok) return json({ ok: false, reason: list.reason, detail: list.detail }, { status: 502 });
+
+  const change =
+    intent.action === 'device.allow'
+      ? allowDevice(list.devices, intent.credential_id)
+      : revokeDevice(list.devices, intent.credential_id);
+
+  if (!change.ok) {
+    return json({ ok: false, reason: 'listed', detail: change.detail }, { status: 409 });
+  }
+  // Already in the asked-for state. Nothing to write, and reporting a failure
+  // for something that is already true would send somebody looking for a
+  // problem that is not there.
+  if (change.already) {
+    return json({ ok: true, repo: intent.repo, action: intent.action, performed: false, already: true });
+  }
+
+  const verb = intent.action === 'device.allow' ? 'Allow' : 'Revoke';
+  const written = await writeDevices(
+    deps.repositories,
+    intent.repo,
+    change.devices,
+    list.sha,
+    `${verb} a device, approved by ${describe(device).label}`
+  );
+  const failed = wrote(written);
+  if (failed) return failed;
+
+  return json({
+    ok: true,
+    repo: intent.repo,
+    action: intent.action,
+    device: describe(device),
+    performed: true,
+  });
+}
+
 /* -------------------------------------------------------------------- router */
 
 const ROUTES = {
   '/challenge': handleChallenge,
   '/verify': handleVerify,
   '/write': handleWrite,
+  '/bind': handleBind,
+  '/device': handleDevice,
 };
 
 /**
@@ -330,12 +620,10 @@ const ROUTES = {
  * thing — routing, CORS, statuses and all — without KV or GitHub.
  */
 export function createBroker(env, { fetchImpl, now } = {}) {
-  const config = readConfig(env);
+  const config = readConfig(env, now);
   const challenges = config.missing.length
     ? null
     : challengeStore(env.CHALLENGES, { ttl: config.ttl, now });
-  const devices = deviceList({ fetchImpl });
-
   // Absent from readConfig's `missing` on purpose: /challenge and /verify work
   // without any of this, and a broker that refuses to prove anything because
   // it cannot write is worse than one that can do the half it is set up for.
@@ -359,6 +647,15 @@ export function createBroker(env, { fetchImpl, now } = {}) {
   const repositories = credential
     ? github({ credential, fetchImpl, api: env.GITHUB_API })
     : null;
+
+  // Read the device list through the API when there is a credential for it.
+  // The cached raw copy is minutes behind, which would mean a revoked device
+  // still working and — the one that would read as the feature being broken —
+  // an owner who just bound their own phone unable to approve anybody yet.
+  const devices = deviceList({
+    fetchImpl,
+    read: repositories ? (where) => repositories.readFile(where) : null,
+  });
 
   return {
     async fetch(request) {

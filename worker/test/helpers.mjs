@@ -142,6 +142,20 @@ export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main', ap
     files.set(`${repo}#${defaultBranch}/${path}`, { sha, content: 'whatever was there before\n' });
   }
 
+  const DEVICES = '.auth/devices.json';
+
+  // One repository, two ways of reading it. A device list given as `byRepo` is
+  // also a file in the repository, so the authenticated read finds the same
+  // thing the cached raw copy serves — anything else would be a fake where the
+  // two disagree, which is precisely the bug worth not having.
+  for (const [repo, held] of Object.entries(byRepo)) {
+    if (held === null || held === undefined) continue;
+    files.set(`${repo}#${defaultBranch}/${DEVICES}`, {
+      sha: 'd'.repeat(40),
+      content: typeof held === 'string' ? held : JSON.stringify(held, null, 2),
+    });
+  }
+
   const refs = new Set();
   const pulls = [];
   const written = [];
@@ -221,6 +235,10 @@ export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main', ap
       const path = decodeURI(target);
 
       if (method === 'GET') {
+        // `null` in byRepo means GitHub is having a bad minute, and it has to
+        // mean that through both readers or the test is only half a test.
+        if (byRepo[repo] === null && path === DEVICES) return json({ message: 'oh dear' }, 500);
+
         const ref = new URLSearchParams(query || '').get('ref') || defaultBranch;
         const held = files.get(`${repo}#${ref}/${path}`);
         if (!held) return json({ message: 'Not Found' }, 404);
@@ -267,7 +285,19 @@ export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main', ap
     return new Response('Not Found', { status: 404 });
   };
 
-  return { fetchImpl, written, pulls, refs, calls, app };
+  /** Put a file there before the broker looks. */
+  const seed = (repo, path, content, branch = defaultBranch) => {
+    files.set(`${repo}#${branch}/${path}`, {
+      sha: `seed${files.size}`.padEnd(40, '0'),
+      content,
+    });
+  };
+
+  /** What the repository holds now. */
+  const read = (repo, path, branch = defaultBranch) =>
+    files.get(`${repo}#${branch}/${path}`)?.content ?? null;
+
+  return { fetchImpl, written, pulls, refs, calls, app, seed, read };
 }
 
 /* ------------------------------------------------------------------ the App */

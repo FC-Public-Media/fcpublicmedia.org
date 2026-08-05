@@ -46,7 +46,20 @@
     //             A settings file that does not parse becomes a message
     //             instead of a broken site.
     //   direct  — straight to the default branch.
-    "WRITE_MODE": "branch"
+    //
+    // Device writes ignore this and are always direct: a grant sitting in an
+    // unmerged pull request grants nothing.
+    "WRITE_MODE": "branch",
+
+    // The public halves of the claim signing keys — the same list as
+    // _data/identity.yml, as JSON. Public by nature: they verify claims, they
+    // cannot mint them, which is why this is config and not a secret.
+    //
+    // Needed only by /bind. A claim is what authorises enrolling a device, and
+    // with no keys here every enrolment is refused rather than half-checked.
+    //
+    //   [{"id": "2026-08", "x": "…", "y": "…"}]
+    "CLAIM_KEYS": "[]"
   },
 
   // THE CREDENTIAL IS A GITHUB APP, AND ITS SECRETS ARE NOT HERE

@@ -57,6 +57,34 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
 
   return {
     /**
+     * Read a file, authenticated.
+     *
+     * Not raw.githubusercontent: that is served with cache headers measured in
+     * minutes, and this read is the first half of a read-modify-write. Getting
+     * a stale device list here would mean writing back a list with somebody
+     * else's change removed from it.
+     *
+     * Returns { ok: true, content, sha } — with `content: null` and `sha: ''`
+     * when there is no file yet, which is an ordinary first enrolment — or
+     * { ok: false, reason, detail }.
+     */
+    async readFile({ repo, path }) {
+      const issued = await credential(repo);
+      if (!issued.ok) return { ok: false, reason: 'credential', detail: issued.detail };
+
+      const found = await callWith(issued.token, `/repos/${repo}/contents/${encodeURI(path)}`);
+      if (found.status === 404) return { ok: true, content: null, sha: '' };
+      if (!found.ok) {
+        return { ok: false, reason: 'github', detail: `GitHub returned ${found.status}.` };
+      }
+      if (typeof found.payload?.content !== 'string') {
+        return { ok: false, reason: 'github', detail: `${path} is not a file.` };
+      }
+
+      return { ok: true, content: fromBase64(found.payload.content), sha: found.payload.sha };
+    },
+
+    /**
      * Put `content` at `path`, and return where it can be looked at.
      *
      * `sha` is the blob SHA the page read before editing. Sending it back is

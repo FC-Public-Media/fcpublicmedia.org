@@ -379,7 +379,7 @@ Claims prove an address. Passkeys prove a device. Neither proved anything *to
 us* until now, because both checks ran in the visitor's own browser against a
 challenge the visitor's own browser generated.
 
-`worker/` is where that changes. It is a Cloudflare Worker with three endpoints
+`worker/` is where that changes. It is a Cloudflare Worker with five endpoints
 and no user table:
 
 - `POST /challenge` — a page declares what it wants to do; the broker returns a
@@ -388,6 +388,8 @@ and no user table:
   signature against the public key recorded in the member's own repository at
   `.auth/devices.json`. Changes nothing, and says so.
 - `POST /write` — the same checks, then the file is written.
+- `POST /bind` — put a new passkey on a site's list.
+- `POST /device` — approve or revoke a listed device.
 
 Three properties are worth naming, because each of them is a thing that goes
 wrong when it is skipped:
@@ -449,8 +451,20 @@ Withholding the Workflows permission is what makes the `.github/` path refusal
 a second lock rather than the only one — GitHub refuses that write regardless
 of what the broker's own code does.
 
-Still to build: presigning an upload to R2, and co-signing a second device.
-Both are the same verification plus one action.
+**Enrolment, and staff leaving the loop.** `/bind` and `/device` are what move
+approval from per-submission to per-device-once. A claim link enrols a device;
+being enrolled does nothing until an existing device approves it — except for
+the first device on a site, where there is nobody to approve it and nobody to
+protect it from. So the owner sets themselves up with no staff involvement at
+all, and then approves a co-producer's phone from their own phone. A forwarded
+link is worthless the moment the owner has enrolled, which they will have,
+because they are the one who asked for the site.
+
+Two refusals worth knowing: a device cannot approve itself, and the last device
+that can publish cannot be revoked — that would leave a site nobody can change.
+
+Still to build: presigning an upload to R2. The same verification plus one
+action.
 
 `worker/README.md` has the endpoint shapes, the configuration, the token
 scoping, and an honest account of what is not built. Tests are `npm test` in
