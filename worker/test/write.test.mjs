@@ -201,12 +201,12 @@ test('content that is not what was signed for is never written', async () => {
   assert.equal(hub.written.length, 0);
 });
 
-test('a broker with no token says so, and still verifies', async () => {
+test('a broker with no credential says so, and still verifies', async () => {
   const { service, save, credential } = await setUp({ token: null });
 
   const { response, body } = await save(SETTINGS);
   assert.equal(response.status, 500);
-  assert.match(body.detail, /GITHUB_TOKEN/);
+  assert.match(body.detail, /GITHUB_APP_ID/);
 
   // The half it is configured for keeps working. A broker that refused to
   // prove anything because it cannot write would be worse than one that does

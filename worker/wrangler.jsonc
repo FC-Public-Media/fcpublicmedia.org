@@ -49,18 +49,34 @@
     "WRITE_MODE": "branch"
   },
 
-  // GITHUB_TOKEN is a SECRET and is deliberately not here:
+  // THE CREDENTIAL IS A GITHUB APP, AND ITS SECRETS ARE NOT HERE
   //
-  //     npx wrangler secret put GITHUB_TOKEN
+  //     npx wrangler secret put GITHUB_APP_ID
+  //     npx wrangler secret put GITHUB_APP_KEY
   //
-  // It is the only secret in the whole system — every other credential is a
-  // passkey on somebody's own phone — so it is the one thing whose loss is not
-  // confined to one person. Fine-grained, Contents: write and Pull requests:
-  // write, on the member repositories and nothing else. Not Actions, not
-  // Workflows, not Secrets, not Administration.
+  // A personal access token belongs to a person. It outlives their interest in
+  // the project and dies with their account, so the day somebody leaves the
+  // board is the day member sites stop saving — and nobody will connect those
+  // two events. An App belongs to the organization.
   //
-  // /challenge and /verify work without it. Only /write needs it, and only
-  // /write complains.
+  // What is stored is a private key that signs requests FOR tokens. It is not
+  // itself a token, so it cannot be replayed against the API. Each token it
+  // buys lasts an hour and is narrowed at the moment of minting to one
+  // repository and two permissions. Revoking a site is uninstalling the App
+  // from it — no list to edit and no way to forget.
+  //
+  // Permissions: Contents (write), Pull requests (write), Metadata (read).
+  // Nothing else, and especially not Workflows: withholding it means GitHub
+  // refuses a write to .github/ no matter what this code does, which is what
+  // makes the path check in intent.js a second lock rather than the only one.
+  //
+  // See worker/src/app-auth.js for the setup, including the one openssl
+  // command GitHub's key format needs.
+  //
+  // GITHUB_TOKEN is still read as a stopgap for trying this out before an App
+  // exists, and the App wins whenever both are set.
+  //
+  // /challenge and /verify work without any of it. Only /write complains.
 
   // Challenges, and nothing else. They expire on their own, so this namespace
   // needs no maintenance and holds nothing worth stealing — a challenge is
