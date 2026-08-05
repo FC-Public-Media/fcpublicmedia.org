@@ -181,10 +181,12 @@ Keep them apart.
 
 Recorded so they are not lost, in rough order of how ready they are:
 
-- **The broker.** One Cloudflare Worker serving several jobs — device
-  binding, settings editing, and eventually this. See README, "Identity", and
-  `_data/authorize.yml`. Deliberately unbuilt until something needs it enough
-  to justify operating it.
+- **The broker.** One Cloudflare Worker serving several jobs. The first layer
+  is built and tested: it issues challenges bound to a declared action and
+  verifies the assertions made over them. `worker/`. It writes nothing yet —
+  the GitHub write, the presigned upload, and co-signing a second device are
+  each that verification plus one action. Nothing is deployed, and no page
+  points at it, so the site behaves exactly as before.
 - **The site factory.** `site-template/` is scaffolded; creation, hosting and
   fast-forwarding are not. See `site-template/README.md`.
 - **Microsoft Graph.** Whether a nonce survives a published ICS decides

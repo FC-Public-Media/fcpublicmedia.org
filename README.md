@@ -50,6 +50,7 @@ assets/css/site.css      The entire visual design. One file.
 assets/js/nav.js         Ten lines. The mobile menu. That's all the JS.
 *.md                     One file per page. Filename becomes the URL.
 api/                     The small server-side piece. See "Members" below.
+worker/                  The broker. Its own Worker. See "Identity" below.
 staticwebapp.config.json Routing, redirects, auth rules.
 ```
 
@@ -317,7 +318,9 @@ any name in any handwriting, and the check-in page records whatever it is
 given. That is the baseline any of this is measured against — not a secure
 system, a clipboard.
 
-Two mechanisms are built, and they answer different questions.
+Two mechanisms are built, and they answer different questions. A third piece —
+the broker — is what makes either of them count for anything beyond the
+visitor's own browser.
 
 #### Email claims (built, unconfigured)
 
@@ -369,6 +372,47 @@ holding it can assert any address. The page's default state is the typed-address
 field, which is what almost everyone will see and is not treated as a failure:
 an address someone typed still lines their visits up with the membership list,
 and is recorded as unconfirmed so the record never claims more than it knows.
+
+#### The broker (built, undeployed)
+
+Claims prove an address. Passkeys prove a device. Neither proved anything *to
+us* until now, because both checks ran in the visitor's own browser against a
+challenge the visitor's own browser generated.
+
+`worker/` is where that changes. It is a Cloudflare Worker with two endpoints
+and no user table:
+
+- `POST /challenge` — a page declares what it wants to do; the broker returns a
+  challenge bound to that declaration, good for five minutes, good once.
+- `POST /verify` — the page sends the assertion; the broker checks the
+  signature against the public key recorded in the member's own repository at
+  `.auth/devices.json`.
+
+Three properties are worth naming, because each of them is a thing that goes
+wrong when it is skipped:
+
+- **The challenge is bound to an intent.** A challenge that is only a nonce
+  makes a verified assertion a bearer token — good for any action, because the
+  signature says nothing about what was agreed to. Here the page declares the
+  file, the blob SHA, and a hash of the content *before* the passkey prompt,
+  and the finished request has to match. The member's device signed for one
+  specific edit.
+- **The repository comes from the challenge, never the request.** So a
+  signature made for one member site cannot be redirected at another.
+- **Listed is not allowed.** A device in `.auth/devices.json` exists; whether
+  it may change anything is `may_publish` on the record, absent by default.
+  That separation is exactly what makes the forwardable enrollment link in
+  `_data/authorize.yml` safe.
+
+**It writes nothing yet**, and says so in its own responses (`performed:
+false`). Writing a file through the GitHub Contents API, presigning an upload
+to R2, and co-signing a second device are each this verification plus one
+action. Nothing is deployed and no page points at it, so the site behaves as it
+did before — `/settings/` still hands you your edited file to send over.
+
+`worker/README.md` has the endpoint shapes, the configuration, and an honest
+account of what is not built. Tests are `npm test` in that directory; they need
+nothing installed and run on every push.
 
 #### Cloudflare Access
 
