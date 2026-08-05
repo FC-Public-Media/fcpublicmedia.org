@@ -525,6 +525,19 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border: 1px solid var(--rule); resize: vertical;
 }
 
+/* Editing a settings file: monospace, no wrapping, scrolls inside itself.
+   Indentation carries meaning in YAML, so a proportional font that hides
+   alignment is actively misleading, and soft-wrapping a long line makes it
+   look indented when it is not. */
+#settings-text {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
+}
+
 /* A button that reads as a link, for a secondary action sitting inside a
    sentence. */
 .btn-link {
