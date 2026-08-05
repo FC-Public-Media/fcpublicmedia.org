@@ -10,21 +10,32 @@
 # --repo. The repository travels inside the signature, so a forwarded link
 # cannot be edited to point at somebody else's site.
 #
-# FORWARDING IS ALLOWED, ON PURPOSE
-# ---------------------------------
+# FORWARDING IS ALLOWED, ON PURPOSE — BUT ONLY FOR BINDING
+# --------------------------------------------------------
 # Someone can forward the email to a co-producer and they can bind their own
-# phone. That is wanted — a site with two people running it should not need
-# two separate invitations from us.
+# phone. That is wanted: a site with two people running it should not need two
+# separate invitations from us.
 #
 # It also means the link is a capability rather than a proof of identity. You
-# cannot have both. So the controls are not prevention, they are:
+# cannot have both.
+#
+# THAT IS ONLY ACCEPTABLE BECAUSE BINDING A DEVICE DOES NOTHING BY ITSELF.
+# A claim gets a device LISTED. Whether a listed device may publish is a
+# separate property of the record in .auth/devices.json, and it must stay
+# separate — the day forwarding a link confers the power to publish is the day
+# this design has an attack built into it. See DESIGN-NOTES.md, "Removing the
+# weekly approval".
+#
+# So the controls are not prevention, they are:
 #
 #   * short expiry — mint these with a small --days
 #   * every bound device is visible to every other one, with its label
 #   * any bound device can remove another
+#   * the intended rule when the broker exists: the FIRST device to bind is
+#     trusted, and every device after that is co-signed by an existing one
 #
-# The last two need the broker below. Until it exists, binding is a manual
-# step and this page tells the visitor to send us the record.
+# All but the first need the broker below. Until it exists, binding is a
+# manual step and this page tells the visitor to send us the record.
 
 # ------------------------------------------------------------------- relying
 #

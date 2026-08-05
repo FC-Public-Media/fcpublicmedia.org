@@ -113,6 +113,70 @@ the direct path is better when it works.
 
 ---
 
+## Removing the weekly approval
+
+**Why this is the point.** Today staff are a courier: a member puts a file on
+Dropbox, staff take it off Dropbox and put it on Cablecast. Every week, every
+episode, forever.
+
+The passkey work is not about making sign-in nice. It is about moving approval
+from **per-submission** to **per-device, once**. Approve someone's phone one
+time and they publish to their own channel every week after that without
+anybody in the middle. One act ever, instead of one act per episode. That is a
+different cost curve, and it is the whole reason any of this is worth
+operating.
+
+### Enrollment and authority are two different things
+
+`_data/authorize.yml` says forwarding a claim link is allowed on purpose. That
+is right for the case it was written for — a co-producer binding their own
+phone — and **wrong** for anything that confers publishing rights. If
+forwarding a link grants the power to publish, then the design has an attack
+built into it.
+
+They come apart cleanly:
+
+- **Enrollment** — "you may bind a device to this site." Survivable when
+  forwarded, because binding on its own does nothing.
+- **Authority** — "this device may publish." Never the claim's job. It is a
+  property of the device record in `.auth/devices.json`.
+
+The claim gets you listed. Being listed is what gets you trusted. Conflating
+the two is what makes forwarding frightening.
+
+### First device free, later devices co-signed
+
+Locking a claim to the owner's address cannot actually be enforced: possession
+of the address was proven by receiving the mail, and a forward destroys
+precisely that. So instead:
+
+1. **The first device to bind is trusted.** No staff involvement at all — the
+   owner opens their link, makes a passkey, and is done.
+2. **Every device after that is co-signed by an existing one.** The owner
+   approves a co-producer's phone from their own phone.
+
+A forwarded link is worthless the moment the owner has enrolled, which they
+will have, because they are the one who asked for the site. Staff leave the
+loop entirely and the two-people case still works.
+
+The residual risk is narrow: somebody intercepts the very first link before
+the owner opens it. Short expiry covers most of it, and the owner notices
+immediately because their own link no longer works. Mailing the owner when a
+device is added turns the rest into something detected rather than prevented,
+which is the right trade at this size.
+
+### Scope: this page assumes the notes exist
+
+/upload/ takes a title, a summary and a date rather than reading a release log
+that may not have been written yet — a producer often has not filled one in
+until the moment they submit. Preparing show notes is a separate act at a
+separate time, and folding it in would make one page responsible for two jobs
+that fail in different ways.
+
+Keep them apart.
+
+---
+
 ## Other threads not yet written up
 
 Recorded so they are not lost, in rough order of how ready they are:
