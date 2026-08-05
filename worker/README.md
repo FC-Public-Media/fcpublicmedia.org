@@ -147,18 +147,51 @@ a day.
 | `WRITE_MODE` | `branch` (default) or `direct`. Not the page's decision to make. |
 | `CHALLENGES` | KV namespace binding. `npx wrangler kv namespace create CHALLENGES`. |
 
-`GITHUB_TOKEN` is a secret, set with `npx wrangler secret put GITHUB_TOKEN`
-rather than in the config. It is the only secret in the system — every other
-credential is a passkey on somebody's own phone — so it is the one thing whose
-loss is not confined to one person. Fine-grained, **Contents: write** and
-**Pull requests: write**, on the member repositories and nothing else. Not
-Actions, not Workflows, not Secrets, not Administration. The path checks in
-`intent.js` refuse `.github/` for the same reason; a token that *cannot* write
-a workflow makes that a second lock rather than the only one.
+Plus the App's two secrets, below.
 
-`/challenge` and `/verify` work without it. A broker that refused to prove
-anything because it could not write would be worse than one doing the half it
-is set up for, so only `/write` complains.
+### The credential
+
+The passkeys mean no *member* holds a credential. They do not mean nothing
+does — GitHub only accepts GitHub credentials, so something has to hold one to
+write. The question is only what, how scoped, and how revocable.
+
+It is a **GitHub App**, and its secrets are set with `wrangler secret put`
+rather than living in the config:
+
+```sh
+npx wrangler secret put GITHUB_APP_ID
+npx wrangler secret put GITHUB_APP_KEY
+```
+
+A personal access token belongs to a person. It outlives their interest in the
+project and dies with their account, so the day somebody leaves the board is
+the day member sites stop saving — and nobody will connect those two events. An
+App belongs to the organization. The rest follows:
+
+- What is stored is a **private key that signs requests for tokens**. It is not
+  itself a token, so it cannot be replayed against the API.
+- Tokens last an hour, are minted per write, and are **narrowed at the moment
+  of minting to one repository and two permissions**. An installation covering
+  forty member sites still produces a credential good for one of them.
+- **Revoking a site is uninstalling the App from it.** No list to edit and no
+  way to forget.
+- **Workflows is not among the permissions**, so GitHub refuses a write to
+  `.github/` no matter what this code does. `intent.js` refuses it too. That is
+  what makes "two locks" true rather than a claim.
+
+Permissions when creating the App: Contents (write), Pull requests (write),
+Metadata (read). Nothing else. `src/app-auth.js` has the setup, including the
+one `openssl` command GitHub's key format needs — it hands out PKCS#1 and
+WebCrypto reads only PKCS#8, and the error for getting that wrong is
+`Invalid keyData`, so the broker checks for it and says which command to run.
+
+`GITHUB_TOKEN` is still read as a stopgap for trying this out before an App
+exists. The App wins whenever both are set, so a token left behind from an
+afternoon of experimenting cannot quietly remain the thing in use.
+
+`/challenge` and `/verify` work without any of it. A broker that refused to
+prove anything because it could not write would be worse than one doing the
+half it is set up for, so only `/write` complains.
 
 ## Running it
 

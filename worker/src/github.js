@@ -1,17 +1,9 @@
 // Writing to a member's repository.
 //
-// The broker holds one token and it is the only secret in the system. Every
-// other credential a member has is a passkey on their own phone, which is why
-// this token is worth being careful about: it is the single thing whose loss
-// is not confined to one person.
-//
-// Scope it as narrowly as GitHub allows — a fine-grained token, Contents:
-// write and Pull requests: write, on the member repositories and nothing else.
-// Not Actions, not Workflows, not Secrets, not Administration. The path checks
-// in intent.js refuse .github/ for the same reason; a token that cannot write
-// a workflow makes that a second lock rather than the only one.
-//
-//     npx wrangler secret put GITHUB_TOKEN
+// The credential comes from app-auth.js, one repository at a time, and this
+// file never sees where it came from. That is the point of the seam: the
+// question "what is allowed to write here" is answered in one place, by an App
+// installation, and not by whatever each call site happens to pass.
 //
 // WHY THE DEFAULT IS A BRANCH AND NOT THE MAIN LINE
 // -------------------------------------------------
@@ -44,8 +36,8 @@ function fromBase64(value) {
 /** A short, stable branch name. The same edit retried lands on the same one. */
 const branchFor = (hash) => `settings/${hash.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}`;
 
-export function github({ token, fetchImpl = fetch, api = API }) {
-  async function call(path, { method = 'GET', body } = {}) {
+export function github({ credential, fetchImpl = fetch, api = API }) {
+  async function callWith(token, path, { method = 'GET', body } = {}) {
     const response = await fetchImpl(`${api}${path}`, {
       method,
       headers: {
@@ -64,8 +56,6 @@ export function github({ token, fetchImpl = fetch, api = API }) {
   }
 
   return {
-    call,
-
     /**
      * Put `content` at `path`, and return where it can be looked at.
      *
@@ -77,6 +67,13 @@ export function github({ token, fetchImpl = fetch, api = API }) {
      * Returns { ok: true, mode, url } or { ok: false, reason, detail }.
      */
     async writeFile({ repo, path, content, sha, contentHash, message, mode = 'branch' }) {
+      // One token, minted for this repository and this write. If the App is
+      // not installed here, that is the answer — and it is the same answer as
+      // "this site was revoked", which is the point of revoking that way.
+      const issued = await credential(repo);
+      if (!issued.ok) return { ok: false, reason: 'credential', detail: issued.detail };
+      const call = (path_, options) => callWith(issued.token, path_, options);
+
       const put = (branch) =>
         call(`/repos/${repo}/contents/${encodeURI(path)}`, {
           method: 'PUT',

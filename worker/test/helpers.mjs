@@ -129,7 +129,7 @@ export function memoryKV() {
  * `byRepo` maps a repository to its .auth/devices.json. `undefined` is a 404
  * (no list) and `null` is a 500 (GitHub having a bad minute).
  */
-export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main' } = {}) {
+export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main', app = noApp() } = {}) {
   // Files are per branch, because that is what makes a retry different from a
   // conflict: the second attempt writes to a branch that already holds the
   // first attempt's bytes, and a fake that tracked one copy per repository
@@ -170,9 +170,32 @@ export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main' } =
       return new Response(typeof held === 'string' ? held : JSON.stringify(held), { status: 200 });
     }
 
+    // ---------------------------------------------------------- being an App
+    //
+    // The JWT is verified here rather than accepted. A broker that signed
+    // nonsense would look identical to one that signed correctly, right up
+    // until it met the real GitHub.
+    const minting = url.match(/^https:\/\/api\.github\.com\/app\/installations\/(\d+)\/access_tokens$/);
+    if (minting) {
+      const bearer = (options.headers?.Authorization || '').replace('Bearer ', '');
+      if (!(await app.verify(bearer))) return json({ message: 'Bad credentials' }, 401);
+      app.minted.push({ installation: minting[1], ...body });
+      return json(
+        { token: `ghs_${app.minted.length}`, expires_at: new Date(app.now() + 3_600_000).toISOString() },
+        201
+      );
+    }
+
     const api = url.match(/^https:\/\/api\.github\.com\/repos\/([^/]+\/[^/?]+)(.*)$/);
     if (!api) return new Response('Not Found', { status: 404 });
     const [, repo, rest] = api;
+
+    if (method === 'GET' && rest === '/installation') {
+      const bearer = (options.headers?.Authorization || '').replace('Bearer ', '');
+      if (!(await app.verify(bearer))) return json({ message: 'Bad credentials' }, 401);
+      if (!app.installedOn(repo)) return json({ message: 'Not Found' }, 404);
+      return json({ id: 42 });
+    }
 
     if (method === 'GET' && rest === '') return json({ default_branch: defaultBranch });
 
@@ -244,7 +267,73 @@ export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main' } =
     return new Response('Not Found', { status: 404 });
   };
 
-  return { fetchImpl, written, pulls, refs, calls };
+  return { fetchImpl, written, pulls, refs, calls, app };
+}
+
+/* ------------------------------------------------------------------ the App */
+
+/** For tests using a personal token: the App endpoints are never reached. */
+const noApp = () => ({
+  minted: [],
+  now: () => 1_760_000_000_000,
+  verify: async () => false,
+  installedOn: () => false,
+});
+
+/**
+ * A real RSA key pair standing in for a GitHub App.
+ *
+ * Generating one costs about a tenth of a second, so it is done once per test
+ * file rather than per test. `verify` checks the signature the broker actually
+ * produced against the public half, which is the only way to find out whether
+ * the JWT assembly is right.
+ */
+export async function fakeApp({ appId = '123456', installed = [], now = () => 1_760_000_000_000 } = {}) {
+  const pair = await crypto.subtle.generateKey(
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      modulusLength: 2048,
+      publicExponent: Uint8Array.from([1, 0, 1]),
+      hash: 'SHA-256',
+    },
+    true,
+    ['sign', 'verify']
+  );
+
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', pair.privateKey));
+  let base64 = '';
+  for (const byte of pkcs8) base64 += String.fromCharCode(byte);
+  const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(base64).replace(/(.{64})/g, '$1\n')}\n-----END PRIVATE KEY-----\n`;
+
+  const claims = [];
+
+  return {
+    appId,
+    pem,
+    minted: [],
+    claims,
+    now,
+    installedOn: (repo) => installed.includes(repo),
+
+    async verify(jwt) {
+      const parts = String(jwt).split('.');
+      if (parts.length !== 3) return false;
+
+      const bytes = (value) =>
+        Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+
+      const valid = await crypto.subtle.verify(
+        'RSASSA-PKCS1-v1_5',
+        pair.publicKey,
+        bytes(parts[2]),
+        new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+      );
+      if (!valid) return false;
+
+      claims.push(JSON.parse(new TextDecoder().decode(bytes(parts[1]))));
+      return true;
+    },
+  };
 }
 
 /** The device-list half on its own, for tests that never write. */

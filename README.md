@@ -425,6 +425,30 @@ edited file to send over, exactly as before. That fallback stays: a broker
 having a bad afternoon puts the page back where it was rather than losing
 somebody's work.
 
+**How it writes.** As a **GitHub App**, for the reasons already set out under
+"The token, and not having to manage it" above — the same argument, now with an
+implementation. `src/app-auth.js` signs a short RS256 JWT with the App's
+private key and exchanges it for an installation token.
+
+The passkeys mean no *member* holds a credential. They do not mean nothing
+does: GitHub only accepts GitHub credentials, so something has to hold one to
+write. What the device work bought is that the credential is never in a
+browser, is never per-member, and cannot move at all without a signed
+assertion bound to one specific edit arriving first.
+
+Two properties that fall out of using an App rather than a token:
+
+- **Each token is narrowed at the moment of minting** to one repository and
+  two permissions. An installation covering forty member sites still produces
+  a credential good for one of them, for one hour.
+- **Revoking a site is uninstalling the App from it.** No list to edit, and no
+  way to forget. That is also what a member sees if it was never installed, so
+  the two cases have one explanation.
+
+Withholding the Workflows permission is what makes the `.github/` path refusal
+a second lock rather than the only one — GitHub refuses that write regardless
+of what the broker's own code does.
+
 Still to build: presigning an upload to R2, and co-signing a second device.
 Both are the same verification plus one action.
 

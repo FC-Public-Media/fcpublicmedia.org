@@ -29,6 +29,7 @@
 // the same verification below plus one action, which is why /write was a small
 // file and not a second system.
 
+import { appCredential, patCredential } from './app-auth.js';
 import { challengeStore } from './challenges.js';
 import { deviceList, mayPublish } from './devices.js';
 import { github } from './github.js';
@@ -256,7 +257,10 @@ async function handleVerify(request, deps) {
 async function handleWrite(request, deps) {
   if (!deps.repositories) {
     return json(
-      { ok: false, detail: 'This broker is not configured to write: GITHUB_TOKEN.' },
+      {
+        ok: false,
+        detail: 'This broker is not configured to write: GITHUB_APP_ID and GITHUB_APP_KEY.',
+      },
       { status: 500 }
     );
   }
@@ -288,10 +292,12 @@ async function handleWrite(request, deps) {
   });
 
   if (!written.ok) {
-    // A conflict is the SHA doing its job — somebody changed the file while
-    // this member was editing. The page keeps their text and offers a reload,
-    // so this is a recoverable answer rather than an error.
-    const status = written.reason === 'conflict' ? 409 : 502;
+    // Three different things, and they are not the member's fault in the same
+    // way. A conflict is the SHA doing its job — somebody changed the file
+    // while they were editing, and the page keeps their text and offers a
+    // reload. A credential failure is our setup, including "the App is not
+    // installed here", which is what a revoked site looks like from in here.
+    const status = { conflict: 409, credential: 500 }[written.reason] || 502;
     return json({ ok: false, reason: written.reason, detail: written.detail }, { status });
   }
 
@@ -331,11 +337,27 @@ export function createBroker(env, { fetchImpl, now } = {}) {
   const devices = deviceList({ fetchImpl });
 
   // Absent from readConfig's `missing` on purpose: /challenge and /verify work
-  // without a token, and a broker that refuses to prove anything because it
-  // cannot write is worse than one that can do the half it is set up for.
+  // without any of this, and a broker that refuses to prove anything because
+  // it cannot write is worse than one that can do the half it is set up for.
   // /write reports it, and only /write.
-  const repositories = env.GITHUB_TOKEN
-    ? github({ token: env.GITHUB_TOKEN, fetchImpl, api: env.GITHUB_API })
+  //
+  // The App wins whenever both are configured, so a personal token left behind
+  // from an afternoon of trying this out cannot quietly remain the thing in
+  // use. See app-auth.js for why that ordering is not arbitrary.
+  const credential = env.GITHUB_APP_ID
+    ? appCredential({
+        appId: env.GITHUB_APP_ID,
+        privateKey: env.GITHUB_APP_KEY,
+        fetchImpl,
+        api: env.GITHUB_API,
+        now,
+      })
+    : env.GITHUB_TOKEN
+      ? patCredential(env.GITHUB_TOKEN)
+      : null;
+
+  const repositories = credential
+    ? github({ credential, fetchImpl, api: env.GITHUB_API })
     : null;
 
   return {

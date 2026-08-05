@@ -59,6 +59,11 @@ rp_id: ""
 # the browser never holds a credential that can write to a repository — a repo
 # write can add a workflow, and a workflow runs with the repository's secrets.
 #
+# BUILT, for settings; not yet for this. See worker/. The App is real there,
+# the installation token is minted per write and narrowed to one repository,
+# and the Workflows permission is deliberately never requested — so the second
+# half of the sentence above is enforced by GitHub and not only by our code.
+#
 # Empty is the shipped state. The page then completes the passkey and shows
 # the record for someone to hand over, which is a real workflow for the first
 # few members and needs nothing running.
