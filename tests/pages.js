@@ -24,6 +24,7 @@ const PAGES = [
   { path: '/book/', name: 'book' },
   { path: '/register/', name: 'register' },
   { path: '/authorize/', name: 'authorize' },
+  { path: '/upload/', name: 'upload' },
   { path: '/check-in/', name: 'check-in' },
   { path: '/check-in/poster/', name: 'check-in-poster' },
 ];
