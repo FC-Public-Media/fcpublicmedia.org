@@ -67,6 +67,16 @@ jobs:
       - name: Build the member site template and read its feed back
         run: python3 script/check-template.py
 
+      # The broker is the first thing here that actually checks a signature.
+      # Its tests need nothing installed — they generate a real key and a real
+      # assertion and run under plain Node — so there is no reason not to run
+      # them on every push. The DER-to-raw conversion is the same hand-written
+      # seam as the claim minter, in the opposite direction, and a mistake in
+      # it fails roughly one genuine sign-in in a hundred and thirty.
+      - name: Test the broker
+        working-directory: worker
+        run: npm test
+
       - name: Install test dependencies
         working-directory: tests
         run: |

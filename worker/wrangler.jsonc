@@ -1,0 +1,81 @@
+// The broker, deployed as its own Worker.
+//
+// Separate from the one at the repository root on purpose. That one has no
+// `main` at all — it is static assets and nothing else, and adding a runtime
+// to it would put executing code in front of every page on the site to serve
+// two endpoints. This one has no assets and answers only those two.
+//
+// Deploy from this directory: `npx wrangler deploy` with the repository root's
+// config out of the way.
+{
+  "name": "fcpm-broker",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-31",
+
+  "vars": {
+    // The domain the passkeys belong to. Must be exactly what /authorize/
+    // registered against — _data/authorize.yml rp_id — because it is hashed
+    // and compared against the hash inside the signed authenticator data.
+    // Wrong here means every genuine assertion is refused.
+    //
+    // Registrable domain, so one passkey covers www and any subdomain:
+    // "fcpublicmedia.org", not "www.fcpublicmedia.org".
+    "RP_ID": "fcpublicmedia.org",
+
+    // Origins allowed to ask for a challenge, and origins a ceremony may have
+    // happened at. Both checks matter and they are not the same check: the
+    // first is CORS, the second is the origin the browser recorded inside the
+    // signature. Comma-separated, exact — scheme, host, and port.
+    "ORIGINS": "https://www.fcpublicmedia.org,https://fcpublicmedia.org",
+
+    // The broker will not touch a repository outside this owner. Empty means
+    // any, which is survivable while nothing is written and is not survivable
+    // afterwards.
+    "OWNER": "fcpublicmedia",
+
+    // Seconds a challenge is good for. Long enough to find your phone,
+    // short enough that an abandoned one is not sitting there.
+    "CHALLENGE_TTL": "300",
+
+    // Where a write lands. Read here rather than sent by the page, because
+    // "commit straight to the live branch" is not a member's decision to make
+    // and anything the page sends is a member's decision by definition.
+    //
+    //   branch  — commit to a branch and open a pull request, so the
+    //             repository's own checks see the change before it is live.
+    //             A settings file that does not parse becomes a message
+    //             instead of a broken site.
+    //   direct  — straight to the default branch.
+    "WRITE_MODE": "branch"
+  },
+
+  // GITHUB_TOKEN is a SECRET and is deliberately not here:
+  //
+  //     npx wrangler secret put GITHUB_TOKEN
+  //
+  // It is the only secret in the whole system — every other credential is a
+  // passkey on somebody's own phone — so it is the one thing whose loss is not
+  // confined to one person. Fine-grained, Contents: write and Pull requests:
+  // write, on the member repositories and nothing else. Not Actions, not
+  // Workflows, not Secrets, not Administration.
+  //
+  // /challenge and /verify work without it. Only /write needs it, and only
+  // /write complains.
+
+  // Challenges, and nothing else. They expire on their own, so this namespace
+  // needs no maintenance and holds nothing worth stealing — a challenge is
+  // only useful to somebody who already holds a registered passkey.
+  //
+  // Create it once and paste the id in:
+  //     npx wrangler kv namespace create CHALLENGES
+  "kv_namespaces": [
+    {
+      "binding": "CHALLENGES",
+      "id": ""
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

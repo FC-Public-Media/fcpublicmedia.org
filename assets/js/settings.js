@@ -20,6 +20,7 @@
 // their change. Losing that field turns a rare conflict into a rare, silent
 // data loss.
 
+import { act, contentHash } from './broker.js';
 import { signIn } from './passkey.js';
 
 const config = JSON.parse(document.getElementById('settings-config').textContent);
@@ -160,39 +161,69 @@ async function save() {
     return;
   }
 
-  el('settings-status').textContent = 'Saving…';
-  try {
-    const response = await fetch(config.brokerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        repo: session.repo,
-        credentialId: session.credentialId,
-        path: config.path,
-        content: text,
-        // Sent so the write can be refused rather than clobber somebody.
-        sha,
-      }),
-    });
+  // A SECOND PROMPT, ON PURPOSE
+  // ---------------------------
+  // Signing in was wayfinding — it told this page which site the passkey
+  // belongs to, and proved nothing to anybody else. This is the ceremony that
+  // counts, and it is bound to these exact bytes, this path and this SHA. The
+  // member is approving one specific edit, at the moment they make it, rather
+  // than having approved "editing" some minutes ago.
+  el('settings-status').textContent = 'Confirming with your device…';
+  const saved = await act({
+    brokerUrl: config.brokerUrl,
+    rpId: config.rpId,
+    endpoint: '/write',
+    intent: {
+      action: 'settings.write',
+      repo: session.repo,
+      path: config.path,
+      // Sent so the write can be refused rather than clobber somebody.
+      sha,
+      content_hash: await contentHash(text),
+    },
+    payload: { content: text },
+  });
 
-    if (response.status === 409) {
+  if (!saved.ok) {
+    if (saved.reason === 'cancelled') {
+      el('settings-status').textContent = 'Not saved — the confirmation was cancelled.';
+      return;
+    }
+    if (saved.reason === 'conflict') {
       el('settings-status').textContent =
         'Somebody else changed this file while you were editing. Reload to ' +
         'get their version — your text is still in the box, so copy it first.';
       return;
     }
-    if (!response.ok) throw new Error(`the server said no (HTTP ${response.status})`);
-  } catch (error) {
+    if (saved.reason === 'not-allowed') {
+      el('settings-status').textContent =
+        'Your device is registered but not yet allowed to change this site. Ask us and we\'ll turn it on.';
+      return;
+    }
     // The edit is still in the textarea, so handing it over loses nothing.
-    el('copy-status').textContent = `We couldn't save it automatically (${error.message}).`;
+    el('copy-status').textContent = `We couldn't save it automatically (${saved.detail}).`;
     offerManually(text);
     return;
   }
 
-  el('saved-detail').textContent =
-    config.writeMode === 'branch'
+  // What was saved is now what is there, so a second save should say nothing
+  // has changed rather than writing the same bytes again.
+  original = text;
+
+  el('saved-detail').textContent = saved.result.repeated
+    ? 'That was already saved — nothing new to do.'
+    : saved.result.mode === 'branch'
       ? 'Your changes are being checked. If the file is valid they go live at the next build; if not, we\'ll tell you what was wrong.'
       : 'Your changes are in. The site rebuilds shortly.';
+
+  const link = el('saved-link');
+  if (saved.result.url) {
+    link.href = saved.result.url;
+    link.hidden = false;
+  } else {
+    link.hidden = true;
+  }
+
   show('saved');
 }
 

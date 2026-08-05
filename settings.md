@@ -9,8 +9,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
 {
   "rpId": {{ st.rp_id | jsonify }},
   "brokerUrl": {{ st.url | jsonify }},
-  "path": {{ st.path | jsonify }},
-  "writeMode": {{ st.write_mode | jsonify }}
+  "path": {{ st.path | jsonify }}
 }
 </script>
 
@@ -110,7 +109,15 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <p class="eyebrow">Saved</p>
   <h2>That's gone through</h2>
   <p class="lede" id="saved-detail"></p>
-  <p><button class="btn" data-action="reload" type="button">Keep editing</button></p>
+  <p class="hero-actions">
+    <button class="btn" data-action="reload" type="button">Keep editing</button>
+    {%- comment -%}
+      Where the change went. On the default branch mode that is a pull request
+      with the checks running on it — worth being able to look at, because "we
+      are checking it" is easier to believe when you can see the thing.
+    {%- endcomment -%}
+    <a class="btn" id="saved-link" href="#" hidden>See the change</a>
+  </p>
 </div>
 
 <div class="state" data-state="manual" hidden>

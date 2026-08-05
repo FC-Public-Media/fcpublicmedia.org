@@ -43,19 +43,31 @@ path: _data/site.yml
 
 # ------------------------------------------------------------------ the broker
 #
+# The BASE URL of the broker — it answers /challenge and /write beneath this.
+# See worker/README.md.
+#
 # Empty is the shipped state. The page then shows the edited file for the
 # member to send us, which is slow but loses nothing.
+#
+# Setting this changes what saving means. Signing in stays what it is now — a
+# way for the page to learn which site the passkey belongs to, proving nothing
+# to anybody — and saving becomes a SECOND prompt, bound to the exact bytes,
+# path and SHA being written. The member approves one specific edit at the
+# moment they make it, rather than having approved "editing" some minutes ago.
 url: ""
 
-# How an edit reaches the site once the broker exists.
+# HOW AN EDIT REACHES THE SITE IS NOT SET HERE
+# --------------------------------------------
+# It is WRITE_MODE in worker/wrangler.jsonc, on purpose: "commit straight to
+# the live branch" is not a member's decision to make, and anything the page
+# sends is a member's decision by definition. The two options are:
 #
-#   branch  — commit to a branch, let a workflow validate the YAML, and merge
-#             only if it parses. Invalid settings never reach the live site,
-#             and the member gets told what was wrong.
-#   commit  — straight to the default branch. One step fewer and one guard
+#   branch  — commit to a branch and open a pull request, let the repository's
+#             checks validate the YAML, and merge only if it parses. Invalid
+#             settings never reach the live site.
+#   direct  — straight to the default branch. One step fewer and one guard
 #             fewer: a stray tab takes their site down until somebody notices.
 #
-# `branch` by default. The whole reason the editor hands over raw text is that
-# the text matters; the price of that is that it can be wrong, and this is
-# where that gets caught.
-write_mode: branch
+# `branch` is the default. The whole reason the editor hands over raw text is
+# that the text matters; the price of that is that it can be wrong, and that is
+# where it gets caught.

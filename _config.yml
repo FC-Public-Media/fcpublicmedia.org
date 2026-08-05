@@ -58,6 +58,7 @@ exclude:
   - wrangler.jsonc   # host config, read from the repo root, not the output
   - .wrangler
   - tests    # browser tests, not site content
+  - worker   # the broker; its own Worker, deployed separately
   # A Jekyll site of its own — the scaffold copied into a member repository.
   # Built separately in CI so it cannot rot; never part of this site's output.
   - site-template
