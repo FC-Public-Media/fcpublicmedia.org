@@ -25,14 +25,13 @@
 //
 // WHAT IS NOT BUILT YET
 // ---------------------
-// This verifies. It does not write. /verify says so in its own response
-// rather than implying otherwise: `performed: false`. Writing a file through
-// the GitHub Contents API, presigning an upload, and co-signing a second
-// device are the next three steps, and each of them is this verification plus
-// one action.
+// Presigning an upload to R2 and co-signing a second device. Each of them is
+// the same verification below plus one action, which is why /write was a small
+// file and not a second system.
 
 import { challengeStore } from './challenges.js';
 import { deviceList, mayPublish } from './devices.js';
+import { github } from './github.js';
 import { ACTIONS, matchesIntent, readIntent } from './intent.js';
 import { verifyAssertion } from './webauthn.js';
 
@@ -94,6 +93,9 @@ function readConfig(env) {
     origins,
     owner: (env.OWNER || '').trim(),
     ttl: Number(env.CHALLENGE_TTL || 300),
+    // Where a write lands. Read here rather than sent by the page, because
+    // "commit straight to the live branch" is not a member's decision to make.
+    writeMode: env.WRITE_MODE === 'direct' ? 'direct' : 'branch',
   };
 }
 
@@ -133,7 +135,7 @@ async function handleChallenge(request, { config, challenges }) {
 }
 
 /**
- * Check an assertion against the challenge it claims to answer.
+ * Everything that has to be true before anything happens.
  *
  * The order below is the whole design in miniature:
  *
@@ -143,14 +145,23 @@ async function handleChallenge(request, { config, challenges }) {
  *      afterwards, but it is not what the lookup is done with.
  *   3. Verify the signature.
  *   4. Only then, check the request does what the challenge was issued for.
+ *   5. And that the device is allowed to do it, which is a different question
+ *      from whether it is registered.
+ *
+ * Returns { ok: true, body, intent, device } or { ok: false, response }. Every
+ * endpoint that does anything goes through here first, and none of them may
+ * re-implement a step of it — a second copy of this order is a second chance
+ * to get it subtly wrong.
  */
-async function handleVerify(request, { config, challenges, devices }) {
+async function authorize(request, { config, challenges, devices }) {
+  const refuse = (status, fields) => ({ ok: false, response: json({ ok: false, ...fields }, { status }) });
+
   const body = await readBody(request);
-  if (!body) return json({ ok: false, detail: 'Send JSON.' }, { status: 400 });
+  if (!body) return refuse(400, { detail: 'Send JSON.' });
 
   const assertion = body.assertion;
   if (!assertion?.client_data_json) {
-    return json({ ok: false, detail: 'No assertion was sent.' }, { status: 400 });
+    return refuse(400, { detail: 'No assertion was sent.' });
   }
 
   // The challenge is read out of the signed client data rather than taken as
@@ -162,25 +173,23 @@ async function handleVerify(request, { config, challenges, devices }) {
       String(assertion.client_data_json).replace(/-/g, '+').replace(/_/g, '/')
     )).challenge;
   } catch (error) {
-    return json({ ok: false, detail: 'The client data could not be read.' }, { status: 400 });
+    return refuse(400, { detail: 'The client data could not be read.' });
   }
 
   const intent = await challenges.take(presented);
   if (!intent) {
-    return json(
-      {
-        ok: false,
-        reason: 'challenge',
-        detail: 'That challenge is unknown, spent, or expired. Start again.',
-      },
-      { status: 403 }
-    );
+    return refuse(403, {
+      reason: 'challenge',
+      detail: 'That challenge is unknown, spent, or expired. Start again.',
+    });
   }
 
   const found = await devices.find(intent.repo, assertion.credential_id);
   if (!found.ok) {
-    const status = found.reason === 'unreachable' ? 503 : 403;
-    return json({ ok: false, reason: found.reason, detail: found.detail }, { status });
+    return refuse(found.reason === 'unreachable' ? 503 : 403, {
+      reason: found.reason,
+      detail: found.detail,
+    });
   }
 
   const result = await verifyAssertion({
@@ -194,37 +203,111 @@ async function handleVerify(request, { config, challenges, devices }) {
     },
   });
   if (!result.ok) {
-    return json({ ok: false, reason: result.reason, detail: result.detail }, { status: 403 });
+    return refuse(403, { reason: result.reason, detail: result.detail });
   }
 
   const matches = await matchesIntent(intent, body);
   if (!matches.ok) {
-    return json({ ok: false, reason: 'intent', detail: matches.detail }, { status: 409 });
+    return refuse(409, { reason: 'intent', detail: matches.detail });
   }
 
   // Listed and proven, but that is not permission. An action that changes the
   // site needs the record to say so; `verify` does not, which is what makes it
   // useful for telling somebody they are bound but not yet allowed.
   if (intent.action !== 'verify' && !mayPublish(found.device)) {
+    return refuse(403, {
+      reason: 'not-allowed',
+      detail: 'That device is registered but is not allowed to change this site yet.',
+    });
+  }
+
+  return { ok: true, body, intent, device: found.device, flags: result.flags };
+}
+
+const describe = (device) => ({
+  label: device.label || 'Unnamed device',
+  may_publish: mayPublish(device),
+});
+
+/** Check an assertion and report. Changes nothing, and says so. */
+async function handleVerify(request, deps) {
+  const allowed = await authorize(request, deps);
+  if (!allowed.ok) return allowed.response;
+
+  return json({
+    ok: true,
+    repo: allowed.intent.repo,
+    action: allowed.intent.action,
+    device: describe(allowed.device),
+    user_verified: allowed.flags.userVerified,
+    // Said out loud, because a page that treats a verification as a save would
+    // tell somebody their edit went through when nothing has been written.
+    performed: false,
+  });
+}
+
+/**
+ * Check an assertion and then do what it was for.
+ *
+ * Every meaningful decision has already been made by the time this runs. What
+ * is left is the write itself and the vocabulary for reporting how it went —
+ * which is the shape the remaining two jobs should take too.
+ */
+async function handleWrite(request, deps) {
+  if (!deps.repositories) {
     return json(
-      {
-        ok: false,
-        reason: 'not-allowed',
-        detail: 'That device is registered but is not allowed to change this site yet.',
-      },
-      { status: 403 }
+      { ok: false, detail: 'This broker is not configured to write: GITHUB_TOKEN.' },
+      { status: 500 }
     );
+  }
+
+  const allowed = await authorize(request, deps);
+  if (!allowed.ok) return allowed.response;
+
+  const { intent, body, device } = allowed;
+  if (intent.action !== 'settings.write') {
+    return json(
+      { ok: false, reason: 'intent', detail: 'That challenge was not issued for a write.' },
+      { status: 409 }
+    );
+  }
+
+  // Names the device rather than the person: the device record is the only
+  // thing we actually know, and a commit message that guessed at a name would
+  // be inventing it.
+  const message = `Update ${intent.path} from ${describe(device).label}`;
+
+  const written = await deps.repositories.writeFile({
+    repo: intent.repo,
+    path: intent.path,
+    content: body.content,
+    sha: intent.sha,
+    contentHash: intent.content_hash,
+    message,
+    mode: deps.config.writeMode,
+  });
+
+  if (!written.ok) {
+    // A conflict is the SHA doing its job — somebody changed the file while
+    // this member was editing. The page keeps their text and offers a reload,
+    // so this is a recoverable answer rather than an error.
+    const status = written.reason === 'conflict' ? 409 : 502;
+    return json({ ok: false, reason: written.reason, detail: written.detail }, { status });
   }
 
   return json({
     ok: true,
     repo: intent.repo,
     action: intent.action,
-    device: { label: found.device.label || 'Unnamed device', may_publish: mayPublish(found.device) },
-    user_verified: result.flags.userVerified,
-    // Said out loud, because a page that treats a verification as a save would
-    // tell somebody their edit went through when nothing has been written.
-    performed: false,
+    device: describe(device),
+    performed: true,
+    mode: written.mode,
+    url: written.url,
+    // True when the bytes were already there — a double tap, or a retry of a
+    // request whose answer never arrived. Nothing changed this time, and the
+    // page can say so instead of implying a second save.
+    repeated: written.repeated === true,
+    ...(written.detail ? { detail: written.detail } : {}),
   });
 }
 
@@ -233,6 +316,7 @@ async function handleVerify(request, { config, challenges, devices }) {
 const ROUTES = {
   '/challenge': handleChallenge,
   '/verify': handleVerify,
+  '/write': handleWrite,
 };
 
 /**
@@ -245,6 +329,14 @@ export function createBroker(env, { fetchImpl, now } = {}) {
     ? null
     : challengeStore(env.CHALLENGES, { ttl: config.ttl, now });
   const devices = deviceList({ fetchImpl });
+
+  // Absent from readConfig's `missing` on purpose: /challenge and /verify work
+  // without a token, and a broker that refuses to prove anything because it
+  // cannot write is worse than one that can do the half it is set up for.
+  // /write reports it, and only /write.
+  const repositories = env.GITHUB_TOKEN
+    ? github({ token: env.GITHUB_TOKEN, fetchImpl, api: env.GITHUB_API })
+    : null;
 
   return {
     async fetch(request) {
@@ -267,7 +359,7 @@ export function createBroker(env, { fetchImpl, now } = {}) {
         return json({ ok: false, detail: 'Use POST.' }, { status: 405, headers: cors });
       }
 
-      const response = await route(request, { config, challenges, devices });
+      const response = await route(request, { config, challenges, devices, repositories });
       for (const [name, value] of Object.entries(cors)) response.headers.set(name, value);
       return response;
     },

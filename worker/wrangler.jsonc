@@ -35,8 +35,32 @@
 
     // Seconds a challenge is good for. Long enough to find your phone,
     // short enough that an abandoned one is not sitting there.
-    "CHALLENGE_TTL": "300"
+    "CHALLENGE_TTL": "300",
+
+    // Where a write lands. Read here rather than sent by the page, because
+    // "commit straight to the live branch" is not a member's decision to make
+    // and anything the page sends is a member's decision by definition.
+    //
+    //   branch  — commit to a branch and open a pull request, so the
+    //             repository's own checks see the change before it is live.
+    //             A settings file that does not parse becomes a message
+    //             instead of a broken site.
+    //   direct  — straight to the default branch.
+    "WRITE_MODE": "branch"
   },
+
+  // GITHUB_TOKEN is a SECRET and is deliberately not here:
+  //
+  //     npx wrangler secret put GITHUB_TOKEN
+  //
+  // It is the only secret in the whole system — every other credential is a
+  // passkey on somebody's own phone — so it is the one thing whose loss is not
+  // confined to one person. Fine-grained, Contents: write and Pull requests:
+  // write, on the member repositories and nothing else. Not Actions, not
+  // Workflows, not Secrets, not Administration.
+  //
+  // /challenge and /verify work without it. Only /write needs it, and only
+  // /write complains.
 
   // Challenges, and nothing else. They expire on their own, so this namespace
   // needs no maintenance and holds nothing worth stealing — a challenge is

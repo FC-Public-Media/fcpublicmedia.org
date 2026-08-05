@@ -11,6 +11,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -102,6 +103,72 @@ async function stubGitHub(page, { status = 200, body = SETTINGS } = {}) {
       }),
     });
   });
+}
+
+const BROKER = 'https://broker.test';
+
+const b64u = (buffer) => buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const hashOf = (text) => b64u(crypto.createHash('sha256').update(text, 'utf8').digest());
+
+/**
+ * Point the page at a broker, and stand in for it.
+ *
+ * The signature cannot be checked here — there is no private key on this side
+ * of the virtual authenticator — but the thing worth checking can be: that the
+ * page signed the challenge THIS stub issued rather than one of its own. That
+ * is the entire difference between the broker mattering and not.
+ *
+ * Returns the record of what the page asked for and what it sent back.
+ */
+async function withBroker(page, { write } = {}) {
+  const seen = { challenges: [], writes: [] };
+
+  await page.route('**/settings/', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.text()).replace('"brokerUrl": ""', `"brokerUrl": "${BROKER}"`);
+    await route.fulfill({ response, body });
+  });
+
+  const cors = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  await page.route(`${BROKER}/**`, async (route) => {
+    const request = route.request();
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: cors });
+      return;
+    }
+
+    const body = request.postDataJSON();
+    const json = (status, payload) =>
+      route.fulfill({
+        status,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+    if (request.url().endsWith('/challenge')) {
+      const challenge = b64u(crypto.randomBytes(32));
+      seen.challenges.push({ intent: body, challenge });
+      await json(200, { ok: true, challenge, expires_in: 300, intent: body });
+      return;
+    }
+
+    // Read the challenge back out of the signed client data, which is the
+    // only copy the page could not have swapped.
+    const clientData = JSON.parse(
+      Buffer.from(body.assertion.client_data_json, 'base64url').toString('utf8')
+    );
+    seen.writes.push({ body, clientData });
+
+    const answer = write || { status: 200, payload: { ok: true, performed: true, mode: 'branch', url: 'https://github.com/x/y/pull/3', repeated: false } };
+    await json(answer.status, answer.payload);
+  });
+
+  return seen;
 }
 
 /**
@@ -255,6 +322,118 @@ test.describe('editing', () => {
 
     await expect(page.locator('[data-state="manual"]')).toBeVisible();
     await expect(page.locator('[data-state="saved"]')).toBeHidden();
+    await expect(page.locator('#email-settings')).toHaveAttribute('href', /^mailto:/);
+  });
+});
+
+test.describe('saving through the broker', () => {
+  const edited = SETTINGS.replace('Your Show', 'Jane Live');
+
+  test('it signs the challenge the broker issued, not one of its own', async ({ page }) => {
+    // The whole point of the broker. A page that generates its own challenge
+    // proves nothing to anybody, and the difference is invisible from the
+    // outside — both flows show the same prompt and both succeed.
+    const seen = await withBroker(page);
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+    await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
+    expect(seen.challenges).toHaveLength(1);
+    expect(seen.writes).toHaveLength(1);
+    expect(seen.writes[0].clientData.challenge).toBe(seen.challenges[0].challenge);
+    expect(seen.writes[0].clientData.type).toBe('webauthn.get');
+  });
+
+  test('what it declares up front is what it sends back', async ({ page }) => {
+    // The binding only works if the hash declared before the prompt describes
+    // the bytes sent after it. Nothing else in the system notices if these
+    // two drift apart — the broker would simply start refusing every save.
+    const seen = await withBroker(page);
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+    await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
+    const { intent } = seen.challenges[0];
+    expect(intent.action).toBe('settings.write');
+    expect(intent.repo).toBe(SITE);
+    expect(intent.sha).toBe('abc123def456');
+    expect(intent.content_hash).toBe(hashOf(edited));
+    expect(seen.writes[0].body.content).toBe(edited);
+  });
+
+  test('a save that goes through offers a look at it', async ({ page }) => {
+    await withBroker(page);
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+
+    await expect(page.locator('[data-state="saved"]')).toBeVisible();
+    await expect(page.locator('#saved-link')).toHaveAttribute('href', /\/pull\/3$/);
+    await expect(page.locator('#saved-detail')).toContainText('being checked');
+  });
+
+  test('an already-saved edit says so rather than claiming a second save', async ({ page }) => {
+    await withBroker(page, {
+      write: { status: 200, payload: { ok: true, performed: true, mode: 'branch', url: '', repeated: true } },
+    });
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+
+    await expect(page.locator('#saved-detail')).toContainText('already saved');
+    await expect(page.locator('#saved-link')).toBeHidden();
+  });
+
+  test('a conflict keeps their text and says where the other version is', async ({ page }) => {
+    await withBroker(page, {
+      write: { status: 409, payload: { ok: false, reason: 'conflict', detail: 'The file changed.' } },
+    });
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+
+    await expect(page.locator('#settings-status')).toContainText('Somebody else changed');
+    await expect(page.locator('[data-state="saved"]')).toBeHidden();
+    // Losing the edit here would be the whole cost of the conflict.
+    expect(await page.locator('#settings-text').inputValue()).toBe(edited);
+  });
+
+  test('a device that may not publish is told that, not that it failed', async ({ page }) => {
+    await withBroker(page, {
+      write: {
+        status: 403,
+        payload: { ok: false, reason: 'not-allowed', detail: 'Registered but not allowed.' },
+      },
+    });
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+
+    await expect(page.locator('#settings-status')).toContainText('not yet allowed');
+  });
+
+  test('a broker that is down falls back to handing the file over', async ({ page }) => {
+    await withBroker(page, {
+      write: { status: 500, payload: { ok: false, detail: 'Everything is on fire.' } },
+    });
+    await signedIn(page);
+
+    await page.locator('#settings-text').fill(edited);
+    await page.locator('#settings-save').click();
+
+    // The edit survives as something the member can send us by hand. This is
+    // the state the page was in before the broker existed, which is exactly
+    // why it is worth keeping.
+    await expect(page.locator('[data-state="manual"]')).toBeVisible();
+    await expect(page.locator('#settings-output')).toContainText('Jane Live');
     await expect(page.locator('#email-settings')).toHaveAttribute('href', /^mailto:/);
   });
 });

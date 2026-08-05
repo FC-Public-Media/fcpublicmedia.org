@@ -379,14 +379,15 @@ Claims prove an address. Passkeys prove a device. Neither proved anything *to
 us* until now, because both checks ran in the visitor's own browser against a
 challenge the visitor's own browser generated.
 
-`worker/` is where that changes. It is a Cloudflare Worker with two endpoints
+`worker/` is where that changes. It is a Cloudflare Worker with three endpoints
 and no user table:
 
 - `POST /challenge` — a page declares what it wants to do; the broker returns a
   challenge bound to that declaration, good for five minutes, good once.
 - `POST /verify` — the page sends the assertion; the broker checks the
   signature against the public key recorded in the member's own repository at
-  `.auth/devices.json`.
+  `.auth/devices.json`. Changes nothing, and says so.
+- `POST /write` — the same checks, then the file is written.
 
 Three properties are worth naming, because each of them is a thing that goes
 wrong when it is skipped:
@@ -404,15 +405,32 @@ wrong when it is skipped:
   That separation is exactly what makes the forwardable enrollment link in
   `_data/authorize.yml` safe.
 
-**It writes nothing yet**, and says so in its own responses (`performed:
-false`). Writing a file through the GitHub Contents API, presigning an upload
-to R2, and co-signing a second device are each this verification plus one
-action. Nothing is deployed and no page points at it, so the site behaves as it
-did before — `/settings/` still hands you your edited file to send over.
+**What `/settings/` does with it.** Signing in stays exactly what it was — a
+way for the page to learn which site the passkey belongs to, proving nothing to
+anybody. Saving becomes a *second* prompt, bound to those exact bytes, that
+path and that SHA. The member approves one specific edit at the moment they
+make it, rather than having approved "editing" some minutes ago. That is one
+extra tap and it is the tap that means something.
 
-`worker/README.md` has the endpoint shapes, the configuration, and an honest
-account of what is not built. Tests are `npm test` in that directory; they need
-nothing installed and run on every push.
+By default the write lands on a branch with a pull request rather than on the
+live branch, so the repository's own checks see a settings file before it goes
+live. A member editing raw YAML can produce something that does not parse, and
+the difference between catching that and not is a message versus a dead site.
+`WRITE_MODE` is a broker setting and not a page setting on purpose: "commit
+straight to the live branch" is not a member's decision to make.
+
+**Set `url` in `_data/settings.yml` to turn it on.** Empty is the shipped
+state, and nothing is deployed — so today `/settings/` still hands you your
+edited file to send over, exactly as before. That fallback stays: a broker
+having a bad afternoon puts the page back where it was rather than losing
+somebody's work.
+
+Still to build: presigning an upload to R2, and co-signing a second device.
+Both are the same verification plus one action.
+
+`worker/README.md` has the endpoint shapes, the configuration, the token
+scoping, and an honest account of what is not built. Tests are `npm test` in
+that directory; they need nothing installed and run on every push.
 
 #### Cloudflare Access
 

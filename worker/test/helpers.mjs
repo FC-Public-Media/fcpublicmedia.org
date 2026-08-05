@@ -117,15 +117,135 @@ export function memoryKV() {
   };
 }
 
-/** raw.githubusercontent, holding whatever the test says each repo holds. */
-export function fakeRaw(byRepo) {
-  return async (url) => {
-    const match = String(url).match(
-      /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/HEAD\/(.+)$/
-    );
-    const body = match && byRepo[match[1]];
-    if (body === undefined) return new Response('Not Found', { status: 404 });
-    if (body === null) return new Response('Server Error', { status: 500 });
-    return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 200 });
+/**
+ * GitHub, enough of it.
+ *
+ * Both hosts, because the broker uses one fetch for both: raw.githubusercontent
+ * for the device list and the API for the write. Stateful rather than
+ * canned — the interesting questions are "does a retry land in the same place"
+ * and "does a stale SHA get refused", and neither can be asked of a fake that
+ * answers the same thing every time.
+ *
+ * `byRepo` maps a repository to its .auth/devices.json. `undefined` is a 404
+ * (no list) and `null` is a 500 (GitHub having a bad minute).
+ */
+export function fakeGitHub(byRepo = {}, { blobs = {}, defaultBranch = 'main' } = {}) {
+  // Files are per branch, because that is what makes a retry different from a
+  // conflict: the second attempt writes to a branch that already holds the
+  // first attempt's bytes, and a fake that tracked one copy per repository
+  // could not tell the two apart. `blobs` seeds the default branch.
+  const files = new Map(); // "repo#branch/path" -> { sha, content }
+  for (const [key, sha] of Object.entries(blobs)) {
+    const parts = key.split('/');
+    const repo = parts.slice(0, 2).join('/');
+    const path = parts.slice(2).join('/');
+    files.set(`${repo}#${defaultBranch}/${path}`, { sha, content: 'whatever was there before\n' });
+  }
+
+  const refs = new Set();
+  const pulls = [];
+  const written = [];
+  const calls = [];
+
+  const json = (body, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  const base64 = (text) => {
+    let binary = '';
+    for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);
+    return btoa(binary);
   };
+
+  const fetchImpl = async (input, options = {}) => {
+    const url = String(input);
+    const method = options.method || 'GET';
+    const body = options.body ? JSON.parse(options.body) : null;
+    calls.push({ url, method, body });
+
+    const raw = url.match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/HEAD\/(.+)$/);
+    if (raw) {
+      const held = byRepo[raw[1]];
+      if (held === undefined) return new Response('Not Found', { status: 404 });
+      if (held === null) return new Response('Server Error', { status: 500 });
+      return new Response(typeof held === 'string' ? held : JSON.stringify(held), { status: 200 });
+    }
+
+    const api = url.match(/^https:\/\/api\.github\.com\/repos\/([^/]+\/[^/?]+)(.*)$/);
+    if (!api) return new Response('Not Found', { status: 404 });
+    const [, repo, rest] = api;
+
+    if (method === 'GET' && rest === '') return json({ default_branch: defaultBranch });
+
+    if (method === 'GET' && rest.startsWith('/git/ref/heads/')) {
+      return json({ object: { sha: 'f'.repeat(40) } });
+    }
+
+    if (method === 'POST' && rest === '/git/refs') {
+      const name = body.ref.replace('refs/heads/', '');
+      if (refs.has(`${repo}#${name}`)) return json({ message: 'Reference already exists' }, 422);
+      refs.add(`${repo}#${name}`);
+      // A new branch starts as a copy of the one it was cut from.
+      for (const [key, held] of [...files]) {
+        if (key.startsWith(`${repo}#${defaultBranch}/`)) {
+          files.set(key.replace(`#${defaultBranch}/`, `#${name}/`), { ...held });
+        }
+      }
+      return json({ ref: body.ref }, 201);
+    }
+
+    if (rest.startsWith('/contents/')) {
+      const [target, query] = rest.slice('/contents/'.length).split('?');
+      const path = decodeURI(target);
+
+      if (method === 'GET') {
+        const ref = new URLSearchParams(query || '').get('ref') || defaultBranch;
+        const held = files.get(`${repo}#${ref}/${path}`);
+        if (!held) return json({ message: 'Not Found' }, 404);
+        return json({ sha: held.sha, encoding: 'base64', content: base64(held.content) });
+      }
+
+      const branch = body.branch || defaultBranch;
+      const key = `${repo}#${branch}/${path}`;
+      // The SHA is the whole point: a write carrying a stale one is refused
+      // rather than allowed to discard somebody else's change.
+      if ((files.get(key)?.sha || '') !== (body.sha || '')) {
+        return json({ message: 'does not match' }, 409);
+      }
+
+      const content = new TextDecoder().decode(
+        Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0))
+      );
+      files.set(key, { sha: `${written.length}`.padStart(40, '0'), content });
+      written.push({ repo, path, branch, message: body.message, content });
+      return json({ commit: { html_url: `https://github.com/${repo}/commit/abc123` } });
+    }
+
+    if (method === 'POST' && rest === '/pulls') {
+      if (pulls.some((pull) => pull.repo === repo && pull.head === body.head)) {
+        return json({ message: 'A pull request already exists' }, 422);
+      }
+      const pull = {
+        repo,
+        head: body.head,
+        base: body.base,
+        title: body.title,
+        html_url: `https://github.com/${repo}/pull/${pulls.length + 1}`,
+      };
+      pulls.push(pull);
+      return json(pull, 201);
+    }
+
+    if (method === 'GET' && rest.startsWith('/pulls?')) {
+      const head = decodeURIComponent(new URLSearchParams(rest.slice(rest.indexOf('?'))).get('head') || '');
+      const branch = head.split(':')[1];
+      return json(pulls.filter((pull) => pull.repo === repo && pull.head === branch));
+    }
+
+    return new Response('Not Found', { status: 404 });
+  };
+
+  return { fetchImpl, written, pulls, refs, calls };
 }
+
+/** The device-list half on its own, for tests that never write. */
+export const fakeRaw = (byRepo) => fakeGitHub(byRepo).fetchImpl;

@@ -60,6 +60,13 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* The browser hides [hidden] with `display: none` at the lowest priority, so
+   ANY rule that sets display — .btn, .filter, a flex container — silently
+   un-hides it. That has bitten this file eight times already, which is why
+   there are eight `.something[hidden] { display: none }` rules further down.
+   This is the one that stops the ninth. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
 body {

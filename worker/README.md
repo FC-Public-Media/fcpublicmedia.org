@@ -14,17 +14,16 @@ This is where it becomes evidence.
 
 ## What it does today
 
-Two endpoints, and neither of them writes anything.
-
 | | |
 |---|---|
 | `POST /challenge` | Declare what you want to do. Get a challenge bound to it. |
-| `POST /verify` | Send the assertion. Find out whether it checks out. |
+| `POST /verify` | Send the assertion. Find out whether it checks out. Changes nothing. |
+| `POST /write` | Same checks, then write the file. |
 
 `/verify` answers with `performed: false`, out loud, so nothing downstream can
-mistake a verification for a save. Writing a file through the GitHub Contents
-API, presigning an upload to R2, and co-signing a second device are each this
-verification plus one action, and they come next.
+mistake a verification for a save. Presigning an upload to R2 and co-signing a
+second device are each the same verification plus one action, which is why
+`/write` was a small file and not a second system.
 
 ### Asking for a challenge
 
@@ -67,6 +66,22 @@ Base64url throughout. `assets/js/passkey.js` produces exactly this shape from
 
 The challenge is not sent as a field. It is read out of the signed client data,
 which is the only copy that cannot be swapped.
+
+`POST /write` takes the same body and, if everything checks out, writes the
+file. In `branch` mode that means a branch named after the content hash and a
+pull request, so the repository's own checks see a settings file before it goes
+live — a member editing raw YAML can produce something that does not parse, and
+the difference between catching that and not is a message versus a dead site.
+
+Two answers are worth reading carefully:
+
+- `409 conflict` — the blob SHA no longer matches, so somebody changed the file
+  while this member was editing. Their text is still in the textarea; the page
+  offers a reload.
+- `200` with `repeated: true` — the bytes were already there. A double tap, or
+  a retry of a request whose answer never arrived. Reported as a repeat rather
+  than a fresh save, because telling that member it failed is how you end up
+  with two of everything.
 
 ## The three things that make it worth having
 
@@ -129,7 +144,21 @@ a day.
 | `ORIGINS` | Comma-separated origins, exact. Used for CORS *and* checked against the origin inside the signature — two different checks. |
 | `OWNER` | Repositories outside this owner are refused. |
 | `CHALLENGE_TTL` | Seconds. Default 300. |
+| `WRITE_MODE` | `branch` (default) or `direct`. Not the page's decision to make. |
 | `CHALLENGES` | KV namespace binding. `npx wrangler kv namespace create CHALLENGES`. |
+
+`GITHUB_TOKEN` is a secret, set with `npx wrangler secret put GITHUB_TOKEN`
+rather than in the config. It is the only secret in the system — every other
+credential is a passkey on somebody's own phone — so it is the one thing whose
+loss is not confined to one person. Fine-grained, **Contents: write** and
+**Pull requests: write**, on the member repositories and nothing else. Not
+Actions, not Workflows, not Secrets, not Administration. The path checks in
+`intent.js` refuse `.github/` for the same reason; a token that *cannot* write
+a workflow makes that a second lock rather than the only one.
+
+`/challenge` and `/verify` work without it. A broker that refused to prove
+anything because it could not write would be worse than one doing the half it
+is set up for, so only `/write` complains.
 
 ## Running it
 
@@ -162,7 +191,8 @@ suite signs fifty times because one signature proves nothing about the padding.
 
 ## What is not built
 
-- **Any write.** Named above.
+- **The presigned upload to R2**, and **co-signing a second device**. Both are
+  the same verification plus one action.
 - **Rate limiting.** `/challenge` is unauthenticated by design — handing out a
   random number that expires in five minutes reveals nothing — but it is still
   a free endpoint.
