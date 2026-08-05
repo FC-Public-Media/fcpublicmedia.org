@@ -21,11 +21,12 @@ This is where it becomes evidence.
 | `POST /write` | Same checks, then write the file. |
 | `POST /bind` | Put a new passkey on a site's list. |
 | `POST /device` | Approve or revoke a listed device. |
+| `POST /upload` | Sign permission to put a file in storage. |
 
 `/verify` answers with `performed: false`, out loud, so nothing downstream can
-mistake a verification for a save. Presigning an upload to R2 is the same
-verification plus one action, which is why none of the endpoints after
-`/verify` needed a second system.
+mistake a verification for a save. All five run the same `authorize()` first
+and none of them re-implements a step of it, which is why each one after the
+first was a small addition rather than a second system.
 
 ### Asking for a challenge
 
@@ -149,6 +150,60 @@ unmerged pull request grants nothing.
 two cannot drift; a test imports it under Node to catch the day somebody adds a
 `window` reference to that file.
 
+## Uploads: `/upload`
+
+A finished episode is measured in gigabytes. The broker never sees any of it —
+it signs URLs, the browser sends the file straight to R2, and the only thing
+crossing this Worker is a few hundred bytes of JSON. Proxying would pay for the
+bandwidth twice, hold the transfer open for its whole length, and turn a
+resumable upload into one long request that fails whole.
+
+**What the signature binds to here is different, on purpose.** `/write` binds
+to a hash of the exact content. This cannot: hashing six gigabytes in a browser
+means reading the whole file before the upload starts, roughly doubling the
+wait, to protect bytes the broker never sees anyway. So an upload signature
+binds to the **grant** — this member, this site, this object key, this size,
+for this window.
+
+What that costs is worth stating rather than glossing: somebody holding the URL
+can put different bytes at that key. Somebody holding the URL is the member
+whose device just signed for it. The exposure is a member overwriting their own
+pending upload, which is a retry, not a threat.
+
+**Where it lands is decided at challenge time**, before anybody signs, and the
+prefix comes from the repository the challenge is for — so one member cannot
+aim an upload into another's space, and the page does not get a say.
+
+### Multipart
+
+A single PUT tops out at 5 GiB. Above 4 GiB the upload is split and every part
+is presigned up front, so the browser does parts → complete on its own without
+coming back.
+
+The ordering matters and is easy to get wrong: **a part URL carries `uploadId`
+in its query string, and the query string is inside the signature.** There is
+no signing against a placeholder and substituting the real id afterwards — that
+produces URLs that are well-formed and refused. So the broker starts the
+multipart upload itself first, by presigning the create call and then fetching
+that URL. A presigned URL works for whoever holds it, including us, which means
+this file needs one way of signing rather than two.
+
+### SigV4
+
+`src/sigv4.js`. Every step is exact — a query parameter sorted wrong, a path
+encoded twice, a header with a stray space — and each mistake produces a
+signature that is perfectly well-formed and rejected, with the service replying
+only that it does not match.
+
+So the test is a **known-answer test against the worked example in AWS's own
+documentation**, signature and all. A round trip against ourselves would prove
+the file agrees with itself, which was never in doubt.
+
+The one that bit during writing: `new URL()` has already percent-encoded the
+path, so running an encoder over the result turns `%20` into `%2520`. The
+canonical request and the returned URL are now built from the same string, so
+they cannot disagree.
+
 ## The device list
 
 Read from the member's own repository, public, at `.auth/devices.json`:
@@ -195,6 +250,10 @@ a day.
 | `CHALLENGE_TTL` | Seconds. Default 300. |
 | `WRITE_MODE` | `branch` (default) or `direct`. Not the page's decision to make. |
 | `CLAIM_KEYS` | Claim signing public keys as JSON, same as `_data/identity.yml`. `/bind` only. |
+| `R2_ENDPOINT` | `https://<account id>.r2.cloudflarestorage.com`. |
+| `R2_BUCKET` | Bucket name. |
+| `R2_MAX_BYTES` | Largest file accepted. `0` is no cap, which is not a decision. |
+| `UPLOAD_TTL` | Seconds a signed upload URL lives. Default six hours. |
 | `CHALLENGES` | KV namespace binding. `npx wrangler kv namespace create CHALLENGES`. |
 
 Plus the App's two secrets, below.
@@ -274,7 +333,9 @@ suite signs fifty times because one signature proves nothing about the padding.
 
 ## What is not built
 
-- **The presigned upload to R2.** The same verification plus one action.
+- **Any page that uses `/bind`, `/device` or `/upload`.** The endpoints are
+  here and tested; `/authorize/` and `/upload/` still hand the member their own
+  record to send over.
 - **Rate limiting.** `/challenge` is unauthenticated by design — handing out a
   random number that expires in five minutes reveals nothing — but it is still
   a free endpoint.

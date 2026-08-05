@@ -193,9 +193,12 @@ Recorded so they are not lost, in rough order of how ready they are:
   assertions made over them, and writes the file. `worker/`. `/settings/` uses
   it when one is configured — signing in stays wayfinding, and saving becomes
   a second prompt bound to those exact bytes. Enrolment and approval are there
-  too, as `/bind` and `/device`. Nothing is deployed and `url` is empty, so the
-  site behaves exactly as before. Still to build: the presigned upload, which
-  is that same verification plus one action.
+  too, as `/bind` and `/device`, and `/upload` signs presigned R2 URLs so a
+  finished episode goes from the browser straight to storage. Nothing is
+  deployed and `url` is empty, so the site behaves exactly as before. What is
+  left is the pages that would use `/bind`, `/device` and `/upload` — and, for
+  uploads, a bucket with a size cap and a retention rule, which is a decision
+  rather than a value.
 - **The site factory.** `site-template/` is scaffolded; creation, hosting and
   fast-forwarding are not. See `site-template/README.md`.
 - **Microsoft Graph.** Whether a nonce survives a published ICS decides

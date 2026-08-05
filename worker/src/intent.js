@@ -129,6 +129,18 @@ export const ACTIONS = {
     declare: ['credential_id'],
     userVerification: true,
   },
+
+  // Permission to put one file in object storage.
+  //
+  // Note what is NOT declared: a content hash. The broker never sees these
+  // bytes — they go straight from the browser to R2 — and hashing six
+  // gigabytes before starting would roughly double the wait to protect
+  // something we could not check anyway. What the signature binds to is the
+  // grant: this member, this site, this object, this size. See r2.js.
+  'upload.grant': {
+    declare: ['filename', 'size'],
+    userVerification: true,
+  },
 };
 
 /**
@@ -137,7 +149,7 @@ export const ACTIONS = {
  * Returns { ok: true, intent } or { ok: false, detail }. Everything here came
  * from a page and none of it is trusted, including the shape.
  */
-export function readIntent(body, { owner = '' } = {}) {
+export function readIntent(body, { owner = '', maxUpload = 0 } = {}) {
   const action = ACTIONS[body?.action];
   if (!action) return { ok: false, detail: 'That is not something this broker does.' };
 
@@ -163,6 +175,35 @@ export function readIntent(body, { owner = '' } = {}) {
       const problem = checkPath(value);
       if (problem) return { ok: false, detail: problem };
       intent.path = value;
+      continue;
+    }
+
+    if (field === 'filename') {
+      // Only ever used to build a slug, never as a path — but a name carrying
+      // separators or a leading dot is a sign of something other than a file
+      // being picked, and refusing it costs nothing.
+      if (typeof value !== 'string' || !value || value.length > 200) {
+        return { ok: false, detail: 'That is not a file name.' };
+      }
+      if (/[/\\]/.test(value) || value.startsWith('.')) {
+        return { ok: false, detail: 'That is not a file name.' };
+      }
+      intent.filename = value;
+      continue;
+    }
+
+    if (field === 'size') {
+      const bytes = Number(value);
+      if (!Number.isSafeInteger(bytes) || bytes <= 0) {
+        return { ok: false, detail: 'That is not a size.' };
+      }
+      if (maxUpload && bytes > maxUpload) {
+        return {
+          ok: false,
+          detail: `That file is larger than this site accepts (${Math.floor(maxUpload / 1e9)} GB).`,
+        };
+      }
+      intent.size = bytes;
       continue;
     }
 

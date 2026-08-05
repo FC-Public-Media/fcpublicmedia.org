@@ -59,7 +59,29 @@
     // with no keys here every enrolment is refused rather than half-checked.
     //
     //   [{"id": "2026-08", "x": "…", "y": "…"}]
-    "CLAIM_KEYS": "[]"
+    "CLAIM_KEYS": "[]",
+
+    // ------------------------------------------------------------ uploads
+    //
+    // Where finished episodes go. The broker signs a URL and the browser sends
+    // the file straight there — nothing is proxied, at any size.
+    //
+    // R2_ENDPOINT is https://<account id>.r2.cloudflarestorage.com
+    "R2_ENDPOINT": "",
+    "R2_BUCKET": "",
+
+    // Bytes. 0 means no cap, which is not a decision anybody has made — R2 is
+    // $0.015 per GB-month with 10 GB free and no egress charge, so one 6 GB
+    // episode a week is roughly $5/month after a year and $10 after two,
+    // growing forever unless something deletes. Set this alongside a retention
+    // rule rather than instead of one.
+    "R2_MAX_BYTES": "0",
+
+    // Seconds a signed upload URL is good for. Six hours, because the
+    // signature has to outlive the whole transfer and not just the request
+    // that asked for it — a member on domestic upstream moving six gigabytes
+    // is measured in hours.
+    "UPLOAD_TTL": "21600"
   },
 
   // THE CREDENTIAL IS A GITHUB APP, AND ITS SECRETS ARE NOT HERE
@@ -90,6 +112,26 @@
   // exists, and the App wins whenever both are set.
   //
   // /challenge and /verify work without any of it. Only /write complains.
+  //
+  // R2's S3 credentials are secrets too:
+  //
+  //     npx wrangler secret put R2_ACCESS_KEY_ID
+  //     npx wrangler secret put R2_SECRET_ACCESS_KEY
+  //
+  // Scoped to the one bucket, object read and write. They never leave this
+  // Worker — what the browser gets is a signature over one method and one
+  // object, expiring in hours.
+  //
+  // TWO THINGS ON THE BUCKET ITSELF, WHICH ARE NOT CODE
+  //
+  //   * CORS must allow PUT, POST and DELETE from the origins above, and must
+  //     expose the ETag header. A multipart upload cannot be completed without
+  //     reading each part's ETag, and a cross-origin response hides it unless
+  //     the bucket says otherwise. Without this, uploads under the multipart
+  //     threshold work and larger ones fail at the last step.
+  //   * A lifecycle rule to abort incomplete multipart uploads, a few days
+  //     out. Somebody closes the tab halfway and the parts stay, billed, with
+  //     nothing pointing at them.
 
   // Challenges, and nothing else. They expire on their own, so this namespace
   // needs no maintenance and holds nothing worth stealing — a challenge is

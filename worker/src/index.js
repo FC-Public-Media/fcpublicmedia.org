@@ -23,11 +23,12 @@
 // challenges that expire in five minutes. Who may do what lives in each
 // member's own repository, in public, where they can read it.
 //
-// WHAT IS NOT BUILT YET
-// ---------------------
-// Presigning an upload to R2. It is the same verification below plus one
-// action, which is why none of the endpoints that came after /verify needed a
-// second system.
+// ONE VERIFICATION, FIVE THINGS DONE WITH IT
+// ------------------------------------------
+// /verify reports, /write commits, /bind and /device change who may act, and
+// /upload signs permission to put bytes somewhere. All five run the same
+// authorize() first and none of them re-implements a step of it, which is why
+// each new one was a small addition rather than a second system.
 
 import { appCredential, patCredential } from './app-auth.js';
 import { challengeStore } from './challenges.js';
@@ -35,6 +36,7 @@ import { deviceList, mayPublish } from './devices.js';
 import { addDevice, allowDevice, revokeDevice, serialize } from './enroll.js';
 import { github } from './github.js';
 import { ACTIONS, contentHash, matchesIntent, readIntent } from './intent.js';
+import { grantUpload, objectKey } from './r2.js';
 import { verifyAssertion } from './webauthn.js';
 
 // The claim verifier the BROWSER uses, imported rather than copied.
@@ -113,6 +115,26 @@ function readConfig(env, now = () => Date.now()) {
     // so they are config rather than a secret.
     claimKeys: readClaimKeys(env.CLAIM_KEYS),
 
+    // Nothing here is optional: an endpoint with no bucket, or keys with no
+    // endpoint, is a half-configured broker that would fail at the moment
+    // somebody had already chosen a file.
+    storage:
+      env.R2_ENDPOINT && env.R2_BUCKET && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY
+        ? {
+            endpoint: env.R2_ENDPOINT,
+            bucket: env.R2_BUCKET,
+            credentials: {
+              accessKeyId: env.R2_ACCESS_KEY_ID,
+              secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+            },
+          }
+        : null,
+
+    // Long enough for a big file on a slow line to finish, since the signature
+    // has to outlive the whole transfer rather than just the request.
+    uploadTtl: Number(env.UPLOAD_TTL || 21600),
+    maxUpload: Number(env.R2_MAX_BYTES || 0),
+
     now,
   };
 }
@@ -154,8 +176,16 @@ async function handleChallenge(request, { config, challenges }) {
   const body = await readBody(request);
   if (!body) return json({ ok: false, detail: 'Send JSON.' }, { status: 400 });
 
-  const intent = readIntent(body, { owner: config.owner });
+  const intent = readIntent(body, { owner: config.owner, maxUpload: config.maxUpload });
   if (!intent.ok) return json({ ok: false, detail: intent.detail }, { status: 400 });
+
+  // Where an upload will land is decided HERE and stored with the challenge,
+  // so it is settled before anybody signs and cannot be renegotiated after.
+  // The prefix comes from the repository the challenge is for, which is what
+  // stops one member writing into another's space.
+  if (intent.intent.action === 'upload.grant') {
+    intent.intent.key = objectKey(intent.intent.repo, intent.intent.filename, config.now());
+  }
 
   const issued = await challenges.issue(intent.intent);
   return json({
@@ -357,6 +387,64 @@ async function handleWrite(request, deps) {
     // page can say so instead of implying a second save.
     repeated: written.repeated === true,
     ...(written.detail ? { detail: written.detail } : {}),
+  });
+}
+
+/* ------------------------------------------------------------------ uploads */
+
+/**
+ * Hand back permission to put one file in storage.
+ *
+ * The same authorization as everything else, and then a set of signed URLs.
+ * The bytes never come here — the broker is not a proxy at any size, which is
+ * the only way six gigabytes is a sensible thing to ask of it.
+ */
+async function handleUpload(request, deps) {
+  const { config } = deps;
+  if (!config.storage) {
+    return json(
+      {
+        ok: false,
+        detail:
+          'This broker has nowhere to put files: R2_ENDPOINT, R2_BUCKET, ' +
+          'R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.',
+      },
+      { status: 500 }
+    );
+  }
+
+  const allowed = await authorize(request, deps);
+  if (!allowed.ok) return allowed.response;
+
+  const { intent, device } = allowed;
+  if (intent.action !== 'upload.grant') {
+    return json(
+      { ok: false, reason: 'intent', detail: 'That challenge was not issued for an upload.' },
+      { status: 409 }
+    );
+  }
+
+  const granted = await grantUpload({
+    key: intent.key,
+    size: intent.size,
+    bucket: config.storage.bucket,
+    endpoint: config.storage.endpoint,
+    credentials: config.storage.credentials,
+    expires: config.uploadTtl,
+    now: config.now(),
+    fetchImpl: deps.fetchImpl,
+  });
+  if (!granted.ok) {
+    return json({ ok: false, reason: 'storage', detail: granted.detail }, { status: 502 });
+  }
+
+  return json({
+    ok: true,
+    repo: intent.repo,
+    action: intent.action,
+    device: describe(device),
+    performed: true,
+    ...granted.grant,
   });
 }
 
@@ -613,6 +701,7 @@ const ROUTES = {
   '/write': handleWrite,
   '/bind': handleBind,
   '/device': handleDevice,
+  '/upload': handleUpload,
 };
 
 /**
@@ -678,7 +767,13 @@ export function createBroker(env, { fetchImpl, now } = {}) {
         return json({ ok: false, detail: 'Use POST.' }, { status: 405, headers: cors });
       }
 
-      const response = await route(request, { config, challenges, devices, repositories });
+      const response = await route(request, {
+        config,
+        challenges,
+        devices,
+        repositories,
+        fetchImpl: fetchImpl || fetch,
+      });
       for (const [name, value] of Object.entries(cors)) response.headers.set(name, value);
       return response;
     },
