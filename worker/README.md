@@ -19,11 +19,14 @@ This is where it becomes evidence.
 | `POST /challenge` | Declare what you want to do. Get a challenge bound to it. |
 | `POST /verify` | Send the assertion. Find out whether it checks out. Changes nothing. |
 | `POST /write` | Same checks, then write the file. |
+| `POST /bind` | Put a new passkey on a site's list. |
+| `POST /device` | Approve or revoke a listed device. |
+| `POST /upload` | Sign permission to put a file in storage. |
 
 `/verify` answers with `performed: false`, out loud, so nothing downstream can
-mistake a verification for a save. Presigning an upload to R2 and co-signing a
-second device are each the same verification plus one action, which is why
-`/write` was a small file and not a second system.
+mistake a verification for a save. All five run the same `authorize()` first
+and none of them re-implements a step of it, which is why each one after the
+first was a small addition rather than a second system.
 
 ### Asking for a challenge
 
@@ -102,6 +105,105 @@ Whether it may change the site is `may_publish` on the record, absent by
 default. That separation is what makes a forwardable enrollment link safe — see
 `_data/authorize.yml`.
 
+## Enrolment: `/bind` and `/device`
+
+The rule these two encode is the one in DESIGN-NOTES: **enrolment and authority
+are different things.** A claim link can be forwarded, and that is survivable
+only because forwarding it gets somebody *listed* and nothing more.
+
+**`/bind`** puts a passkey on a site's list. It is the odd endpoint out,
+because the device doing the signing is the one being added and so cannot be
+looked up. Three things have to hold:
+
+1. The challenge was issued for this credential ID and this public key.
+2. A signature over it verifies **against that public key** — proof the asker
+   holds the private half of what they want recorded, rather than a key they
+   copied out of somebody's public device list.
+3. A current claim, signed by us, **naming this repository**.
+
+The claim is the enrolment authority. What arrives is a listed device that may
+not publish — *unless it is the first*, in which case there is nobody to
+approve it and nobody to protect it from, so it is trusted. That is "first
+device free", and `enroll.js` reads it as "is there anybody who could approve?"
+rather than "is the list empty", because a site whose only devices are
+listed-but-not-allowed still has nobody who could say yes.
+
+**`/device`** flips `may_publish`, or revokes. It goes through the same
+`authorize()` as everything else, so the signer must be listed, proven, and
+already allowed — the owner approving a co-producer's phone from their own
+phone, with staff nowhere in it.
+
+Two refusals worth knowing:
+
+- **A device cannot approve itself.** Falls out of `authorize()` rather than
+  being a special case: an unapproved device fails the `may_publish` check
+  before the action is even read.
+- **The last device that can publish cannot be revoked.** Doing it would leave
+  a site nobody can change, and the way back is staff editing the file by hand.
+
+Device writes are always direct, never on a branch — a grant sitting in an
+unmerged pull request grants nothing.
+
+`CLAIM_KEYS` is the public half of the claim signing keys, the same list as
+`_data/identity.yml`. `src/index.js` imports the browser's own
+`assets/js/claims.js` to check them rather than keeping a second copy, so the
+two cannot drift; a test imports it under Node to catch the day somebody adds a
+`window` reference to that file.
+
+## Uploads: `/upload`
+
+A finished episode is measured in gigabytes. The broker never sees any of it —
+it signs URLs, the browser sends the file straight to R2, and the only thing
+crossing this Worker is a few hundred bytes of JSON. Proxying would pay for the
+bandwidth twice, hold the transfer open for its whole length, and turn a
+resumable upload into one long request that fails whole.
+
+**What the signature binds to here is different, on purpose.** `/write` binds
+to a hash of the exact content. This cannot: hashing six gigabytes in a browser
+means reading the whole file before the upload starts, roughly doubling the
+wait, to protect bytes the broker never sees anyway. So an upload signature
+binds to the **grant** — this member, this site, this object key, this size,
+for this window.
+
+What that costs is worth stating rather than glossing: somebody holding the URL
+can put different bytes at that key. Somebody holding the URL is the member
+whose device just signed for it. The exposure is a member overwriting their own
+pending upload, which is a retry, not a threat.
+
+**Where it lands is decided at challenge time**, before anybody signs, and the
+prefix comes from the repository the challenge is for — so one member cannot
+aim an upload into another's space, and the page does not get a say.
+
+### Multipart
+
+A single PUT tops out at 5 GiB. Above 4 GiB the upload is split and every part
+is presigned up front, so the browser does parts → complete on its own without
+coming back.
+
+The ordering matters and is easy to get wrong: **a part URL carries `uploadId`
+in its query string, and the query string is inside the signature.** There is
+no signing against a placeholder and substituting the real id afterwards — that
+produces URLs that are well-formed and refused. So the broker starts the
+multipart upload itself first, by presigning the create call and then fetching
+that URL. A presigned URL works for whoever holds it, including us, which means
+this file needs one way of signing rather than two.
+
+### SigV4
+
+`src/sigv4.js`. Every step is exact — a query parameter sorted wrong, a path
+encoded twice, a header with a stray space — and each mistake produces a
+signature that is perfectly well-formed and rejected, with the service replying
+only that it does not match.
+
+So the test is a **known-answer test against the worked example in AWS's own
+documentation**, signature and all. A round trip against ourselves would prove
+the file agrees with itself, which was never in doubt.
+
+The one that bit during writing: `new URL()` has already percent-encoded the
+path, so running an encoder over the result turns `%20` into `%2520`. The
+canonical request and the returned URL are now built from the same string, so
+they cannot disagree.
+
 ## The device list
 
 Read from the member's own repository, public, at `.auth/devices.json`:
@@ -125,11 +227,13 @@ Read from the member's own repository, public, at `.auth/devices.json`:
 Public keys are the half meant to be published. Anyone can read who may edit a
 site; nobody can become them. A record with `"revoked": true` is skipped.
 
-Removing a device is not instant — raw.githubusercontent serves this with cache
-headers measured in minutes. Fine for "take my old phone off"; not fine for
-"this was stolen an hour ago", and when that needs answering the read moves
-behind an authenticated API call. `src/devices.js` says so at the point it
-matters.
+It is read **through the authenticated API whenever the broker has a
+credential**, falling back to raw.githubusercontent only for a broker set up to
+verify but not to write. That is not tidiness: raw serves this with cache
+headers measured in minutes, so a revoked device would keep working — and,
+less obviously, an owner who had just bound their own phone could not approve
+anybody until the cache caught up, which would read as the feature simply not
+working.
 
 ## Configuration
 
@@ -145,6 +249,11 @@ a day.
 | `OWNER` | Repositories outside this owner are refused. |
 | `CHALLENGE_TTL` | Seconds. Default 300. |
 | `WRITE_MODE` | `branch` (default) or `direct`. Not the page's decision to make. |
+| `CLAIM_KEYS` | Claim signing public keys as JSON, same as `_data/identity.yml`. `/bind` only. |
+| `R2_ENDPOINT` | `https://<account id>.r2.cloudflarestorage.com`. |
+| `R2_BUCKET` | Bucket name. |
+| `R2_MAX_BYTES` | Largest file accepted. `0` is no cap, which is not a decision. |
+| `UPLOAD_TTL` | Seconds a signed upload URL lives. Default six hours. |
 | `CHALLENGES` | KV namespace binding. `npx wrangler kv namespace create CHALLENGES`. |
 
 Plus the App's two secrets, below.
@@ -224,8 +333,9 @@ suite signs fifty times because one signature proves nothing about the padding.
 
 ## What is not built
 
-- **The presigned upload to R2**, and **co-signing a second device**. Both are
-  the same verification plus one action.
+- **Any page that uses `/bind`, `/device` or `/upload`.** The endpoints are
+  here and tested; `/authorize/` and `/upload/` still hand the member their own
+  record to send over.
 - **Rate limiting.** `/challenge` is unauthenticated by design — handing out a
   random number that expires in five minutes reveals nothing — but it is still
   a free endpoint.

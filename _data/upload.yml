@@ -56,6 +56,20 @@ programs_path: _data/programs.yml
 # Cablecast takes uploads in 5 MB chunks with no URL ingest, so whatever goes
 # here eventually has to push bytes rather than hand over a link. Dropbox stays
 # regardless — it is the right fallback and it is what members already use.
+#
+# THE BROKER SIDE OF THIS IS BUILT. worker/ — POST /upload signs a URL and the
+# file goes from the browser straight to R2, split into presigned parts above
+# 4 GiB. Nothing is proxied at any size.
+#
+# What it binds to is different from a settings write, on purpose: the grant
+# (this member, this site, this key, this size) rather than a hash of the
+# content, because hashing six gigabytes in a browser would roughly double the
+# wait to protect bytes the broker never sees. See worker/README.md.
+#
+# Setting this is still a decision and not just a value — a bucket, a size cap,
+# and a retention rule. R2 is $0.015 per GB-month with 10 GB free and no egress
+# charge, so one 6 GB episode a week is around $5/month after a year and $10
+# after two, growing forever unless something deletes.
 destination: ""
 
 # What to tell someone about the file while there is no destination. Written

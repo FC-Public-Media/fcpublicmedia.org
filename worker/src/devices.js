@@ -39,17 +39,20 @@ const RAW_HOST = 'https://raw.githubusercontent.com';
  * about how this behaves — a missing file, a corrupt one, a revoked device —
  * is worth testing and none of it should need GitHub to be having a good day.
  *
- * STALENESS, HONESTLY
- * -------------------
- * raw.githubusercontent serves this with its own cache headers, measured in
- * minutes, and Cloudflare will honour them. So removing a device is not
- * instant: there is a window where a deleted passkey still works. That is
- * acceptable for "take my old phone off the list" and would not be acceptable
- * for "this device was stolen an hour ago" — when the second case needs
- * answering, this read moves behind an authenticated API call that can be
- * told not to cache.
+ * TWO WAYS TO READ IT, AND WHY
+ * ----------------------------
+ * `read` is the authenticated one, and it is used whenever the broker has a
+ * credential. raw.githubusercontent is the fallback for a broker configured to
+ * verify but not to write.
+ *
+ * The difference is not tidiness. raw serves this with cache headers measured
+ * in minutes, so a broker reading it would answer from a stale copy — which
+ * means a device revoked a minute ago still works, and, less obviously, an
+ * owner who has just bound their own phone cannot approve anybody until the
+ * cache catches up. The second one would look like the feature simply not
+ * working. The authenticated read has neither problem.
  */
-export function deviceList({ fetchImpl = fetch, path = '.auth/devices.json', ref = 'HEAD' } = {}) {
+export function deviceList({ fetchImpl = fetch, read = null, path = '.auth/devices.json', ref = 'HEAD' } = {}) {
   return {
     /**
      * Returns { ok: true, device } or { ok: false, reason, detail }.
@@ -64,29 +67,48 @@ export function deviceList({ fetchImpl = fetch, path = '.auth/devices.json', ref
         return { ok: false, reason: 'unknown-device', detail: 'No credential was named.' };
       }
 
-      const url = `${RAW_HOST}/${repo}/${ref}/${path}`;
-      let response;
-      try {
-        response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
-      } catch (error) {
-        return { ok: false, reason: 'unreachable', detail: 'GitHub could not be reached.' };
-      }
+      let text;
+      if (read) {
+        const found = await read({ repo, path });
+        if (!found.ok) {
+          // "The app is not installed here" must not arrive looking like
+          // "GitHub is down". One is our setup and one is somebody else's
+          // afternoon, and they need different answers.
+          return {
+            ok: false,
+            reason: found.reason === 'credential' ? 'credential' : 'unreachable',
+            detail: found.detail,
+          };
+        }
+        if (found.content === null) {
+          return { ok: false, reason: 'no-list', detail: `${repo} has no registered devices yet.` };
+        }
+        text = found.content;
+      } else {
+        const url = `${RAW_HOST}/${repo}/${ref}/${path}`;
+        let response;
+        try {
+          response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
+        } catch (error) {
+          return { ok: false, reason: 'unreachable', detail: 'GitHub could not be reached.' };
+        }
 
-      if (response.status === 404) {
-        return {
-          ok: false,
-          reason: 'no-list',
-          detail: `${repo} has no registered devices yet.`,
-        };
-      }
-      if (!response.ok) {
-        return { ok: false, reason: 'unreachable', detail: `GitHub returned ${response.status}.` };
+        if (response.status === 404) {
+          return {
+            ok: false,
+            reason: 'no-list',
+            detail: `${repo} has no registered devices yet.`,
+          };
+        }
+        if (!response.ok) {
+          return { ok: false, reason: 'unreachable', detail: `GitHub returned ${response.status}.` };
+        }
+        text = await response.text();
       }
 
       let listed;
       try {
-        const payload = await response.json();
-        listed = payload?.devices;
+        listed = JSON.parse(text)?.devices;
       } catch (error) {
         return { ok: false, reason: 'unreadable', detail: 'The device list is not valid JSON.' };
       }
