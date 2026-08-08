@@ -1,0 +1,59 @@
+name: Sync the nonprofit list
+
+# The IRS publishes its exempt organizations file monthly, so this runs
+# monthly. A list that never refreshes cannot find an organization registered
+# since it was built — and the people most likely to be missing are exactly the
+# ones a new discount is meant to bring in.
+#
+# Monthly rather than daily because the source only changes monthly. Running it
+# more often would download 150 MB to write the same file.
+
+on:
+  schedule:
+    # The 5th, because the IRS posts early in the month and the exact day
+    # moves. Nothing depends on it landing on a particular date.
+    - cron: "0 13 5 * *"
+  workflow_dispatch:
+
+  # Changing which ZIP codes count is a change to who can find themselves, and
+  # it should take effect without waiting a month for the schedule.
+  push:
+    paths:
+      - "script/sync-nonprofits.py"
+      - ".github/workflows/sync-nonprofits.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-nonprofits
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Streams the file and retries a dropped connection — 150 MB over one
+      # connection fails often enough that a single attempt is not a plan. It
+      # refuses to write an empty result rather than replacing a good list with
+      # nothing, so a layout change upstream fails the step instead of quietly
+      # emptying the picker.
+      - name: Read the IRS master file
+        run: python3 script/sync-nonprofits.py
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- assets/nonprofits.json; then
+            echo "No change."
+            exit 0
+          fi
+
+          count=$(python3 -c 'import json; print(len(json.load(open("assets/nonprofits.json"))["orgs"]))')
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/nonprofits.json
+          git commit -m "Sync the nonprofit list: ${count} organizations"
+          git push

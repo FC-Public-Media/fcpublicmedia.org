@@ -231,7 +231,7 @@ async function requestChallenge(brokerUrl, intent) {
  * Resolves to { ok: true, repo, person, credentialId, verified, assertion }
  * or { ok: false, reason, detail }.
  */
-export async function signIn({ rpId, brokerUrl, intent } = {}) {
+export async function signIn({ rpId, brokerUrl, intent, credentialId } = {}) {
   if (!window.PublicKeyCredential || !navigator.credentials?.get) {
     return { ok: false, reason: 'unsupported' };
   }
@@ -253,11 +253,29 @@ export async function signIn({ rpId, brokerUrl, intent } = {}) {
     // being refused after the fact.
     userVerification: brokerUrl ? 'required' : 'preferred',
     timeout: 120000,
-    // No allowCredentials, deliberately. The passkeys are discoverable, so the
-    // browser offers whatever it holds for this domain and nobody has to type
-    // a username — which also means this page ships no list of who exists.
+    // No allowCredentials by default, deliberately. The passkeys are
+    // discoverable, so the browser offers whatever it holds for this domain
+    // and nobody has to type a username — which also means this page ships no
+    // list of who exists.
   };
   if (rpId) request.rpId = rpId;
+
+  // The exception is proving possession of one specific passkey, which is what
+  // enrolment needs: a device that was made a second ago is being registered,
+  // and an assertion from some OTHER passkey on the same phone would prove the
+  // wrong thing. Pinning it also means the browser does not offer a choice
+  // nobody wants to make.
+  if (credentialId) {
+    request.allowCredentials = [
+      {
+        type: 'public-key',
+        id: Uint8Array.from(
+          atob(credentialId.replace(/-/g, '+').replace(/_/g, '/')),
+          (c) => c.charCodeAt(0)
+        ),
+      },
+    ];
+  }
 
   let assertion;
   try {

@@ -26,6 +26,7 @@ const PAGES = [
   { path: '/authorize/', name: 'authorize' },
   { path: '/upload/', name: 'upload' },
   { path: '/settings/', name: 'settings' },
+  { path: '/devices/', name: 'devices' },
   { path: '/check-in/', name: 'check-in' },
   { path: '/check-in/poster/', name: 'check-in-poster' },
 ];
