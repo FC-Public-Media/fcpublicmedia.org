@@ -130,10 +130,13 @@ function render() {
     )
   );
 
-  if (allowed.length === 1) {
-    el('devices-status').textContent =
-      'The only device that can publish here, so it cannot be removed — approve another one first.';
-  }
+  // Deliberately NOT the status line. Every change redraws this list, and
+  // writing here would wipe the confirmation of what the member just did —
+  // replacing "Done." with a note about removal, which reads like a refusal.
+  el('allowed-note').textContent =
+    allowed.length === 1
+      ? 'The only device that can publish here, so it cannot be removed — approve another one first.'
+      : '';
 
   show('listing');
 }
@@ -222,6 +225,7 @@ async function authenticate() {
   }
 
   session = result;
+  el('devices-status').textContent = '';
   await load();
 }
 

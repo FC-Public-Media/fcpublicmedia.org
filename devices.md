@@ -85,6 +85,12 @@ lede: See which phones and laptops can manage your site, and approve or remove t
 
   <h3>Can publish</h3>
   <ul class="rows" id="allowed-list"></ul>
+  {%- comment -%}
+    A property of the list, not a result of anything you did — so it has its
+    own line. Sharing one with the status below meant a redraw wiped the
+    confirmation of whatever you had just done.
+  {%- endcomment -%}
+  <p class="muted" id="allowed-note"></p>
 
   <p class="muted" id="devices-status" role="status" aria-live="polite"></p>
 
