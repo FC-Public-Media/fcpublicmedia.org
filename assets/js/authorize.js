@@ -12,7 +12,7 @@
 // it is meant to be — without being re-aimed.
 
 import { verifyClaim, claimFromLocation, clearClaimFromLocation } from './claims.js';
-import { createPasskey, supported } from './passkey.js';
+import { createPasskey, signIn, supported } from './passkey.js';
 
 const config = JSON.parse(document.getElementById('authorize-config').textContent);
 
@@ -34,24 +34,63 @@ let claim = null;
 /* ------------------------------------------------------------------ sending */
 
 /**
- * Hand the device record to the broker.
+ * Register the device with the broker.
  *
- * The claim goes along with it. The broker re-verifies that signature itself
- * rather than trusting this page's word for it — the check here is only so a
- * visitor with a bad link finds out before making a passkey they cannot use.
+ * Two things have to travel: the claim, which is the authority to enrol at
+ * all, and a signature from the passkey that was just made, which is proof the
+ * asker actually holds it. The broker re-verifies both itself rather than
+ * trusting this page — the check here is only so a visitor with a bad link
+ * finds out before making a passkey they cannot use.
+ *
+ * WHY THERE IS A SECOND PROMPT
+ * ----------------------------
+ * Creating the passkey does not prove possession to anybody: that ceremony's
+ * challenge is generated here, and the alternative — having the broker issue
+ * the registration challenge and then parse the attestation object out of
+ * COSE — is a great deal of code to avoid one tap that platforms make cheap.
+ * So the device is made, and then asked to sign something we were given.
+ *
+ * Device lists are public on purpose, so anybody can read a key out of one.
+ * This is what stops somebody enrolling a key they copied.
  */
 async function send(device) {
-  const response = await fetch(config.brokerUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ claim: claim.token, device }),
+  const proof = await signIn({
+    rpId: config.rpId,
+    brokerUrl: config.brokerUrl,
+    credentialId: device.credential_id,
+    intent: {
+      action: 'device.add',
+      repo: claim.payload.repo,
+      credential_id: device.credential_id,
+      public_key: device.public_key,
+    },
   });
 
-  if (!response.ok) {
-    throw new Error(`the server said no (HTTP ${response.status})`);
+  if (!proof.ok) {
+    throw new Error(
+      proof.reason === 'cancelled'
+        ? 'the confirmation was cancelled'
+        : proof.detail || 'this device would not confirm itself'
+    );
   }
 
-  return response.json().catch(() => ({}));
+  const response = await fetch(`${config.brokerUrl.replace(/\/+$/, '')}/bind`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      assertion: proof.assertion,
+      claim: claim.token,
+      label: device.label,
+      algorithm: device.algorithm,
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.detail || `the server said no (HTTP ${response.status})`);
+  }
+
+  return body;
 }
 
 /** No broker: show the record and let the visitor pass it along. */
@@ -113,8 +152,9 @@ async function bind() {
     return;
   }
 
+  let registered;
   try {
-    await send(result.device);
+    registered = await send(result.device);
   } catch (error) {
     // The passkey exists at this point — it is on the device and cannot be
     // un-made from here. So this is a delivery failure, and the useful thing
@@ -125,10 +165,15 @@ async function bind() {
     return;
   }
 
-  el('done-detail').textContent =
-    config.writeMode === 'pull_request'
-      ? `${siteName(claim.payload.repo)} — we'll confirm once someone approves it.`
-      : `${siteName(claim.payload.repo)} is ready to manage from this device.`;
+  // The broker decides which of these is true, not this page: the first device
+  // on a site is trusted because there is nobody to approve it, and every one
+  // after arrives listed and waiting. Getting that backwards would either
+  // strand the owner or tell a co-producer they can publish when they cannot.
+  el('done-detail').textContent = registered.may_publish
+    ? `${siteName(claim.payload.repo)} is ready to manage from this device.`
+    : `This device is registered for ${siteName(claim.payload.repo)}. Whoever ` +
+      'already manages the site can approve it from their own device, and then ' +
+      'you can publish too.';
   show('done');
 }
 
