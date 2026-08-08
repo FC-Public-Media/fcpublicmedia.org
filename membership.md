@@ -15,22 +15,6 @@ is that the pricing is hard to understand — and it is the rules that are hard,
 not the amounts. See _data/membership.yml.
 {% endcomment %}
 
-## How it works
-
-<ul class="rows">
-  <li><b>{{ m.term.summary }}</b></li>
-  {%- for note in m.term.notes %}
-  <li>{{ note }}</li>
-  {%- endfor %}
-  <li><b>{{ m.nonprofit.summary }}</b></li>
-</ul>
-
-## What every membership includes
-
-{% for benefit in m.shared_benefits %}
-- {{ benefit }}
-{%- endfor %}
-
 ## Tiers
 
 <ul class="grid grid-4">
@@ -56,6 +40,22 @@ not the amounts. See _data/membership.yml.
   </li>
 {% endfor %}
 </ul>
+
+## How it works
+
+<ul class="rows">
+  <li><b>{{ m.term.summary }}</b></li>
+  {%- for note in m.term.notes %}
+  <li>{{ note }}</li>
+  {%- endfor %}
+  <li><b>{{ m.nonprofit.summary }}</b></li>
+</ul>
+
+## What every membership includes
+
+{% for benefit in m.shared_benefits %}
+- {{ benefit }}
+{%- endfor %}
 
 ## If you're with a nonprofit
 
