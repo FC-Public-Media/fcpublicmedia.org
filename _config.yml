@@ -24,12 +24,28 @@ collections:
     output: true
     permalink: /podcasts/:name/
 
+  # One file per show, and the file IS the config: canonical name, how its
+  # episodes are recognised in the Cablecast catalog, and the prose that goes
+  # on its page. Cablecast titles are episode titles, so nothing else can say
+  # what a show is — see script/propose-shows.py for why no rule works.
+  #
+  # Merging a proposal is what makes a show real. Everything unmatched stays a
+  # findable one-off rather than being forced into a group.
+  shows:
+    output: true
+    permalink: /watch/:name/
+
 defaults:
   - scope:
       path: ""
       type: podcasts
     values:
       layout: podcast
+  - scope:
+      path: ""
+      type: shows
+    values:
+      layout: show
   - scope:
       path: ""
     values:

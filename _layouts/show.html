@@ -1,0 +1,92 @@
+---
+layout: default
+---
+
+{%- comment -%}
+  One show. The page a Details button goes to.
+
+  Its episode list is a fold of the catalog, not a stored list: filter
+  _data/cablecast.json by this show's match prefixes. That means a show page
+  is never out of date with the catalog, and adding a show costs one file
+  rather than one file plus a list somebody has to remember to update.
+
+  Deliberately no per-episode page. Episodes play in a player, here or in the
+  jukebox, and a thousand thin pages would be a thousand things to keep
+  looking right for no one's benefit.
+{%- endcomment -%}
+
+{%- assign cc = site.data.cablecast -%}
+
+<article class="show">
+  <p class="eyebrow">Show</p>
+  <h1>{{ page.title }}</h1>
+
+  {%- if page.producer and page.producer != "" -%}
+    <p class="lede">Produced by {{ page.producer }}</p>
+  {%- endif -%}
+
+  {%- if page.proposed -%}
+    {%- comment -%}
+      Visible on purpose. A show whose name was guessed by a script and never
+      checked should say so where somebody will see it, not only in a comment
+      in the file. It disappears by deleting one line.
+    {%- endcomment -%}
+    <p class="transaction transaction-todo">
+      <b>This entry hasn't been checked yet.</b>
+      <span class="muted">The name was worked out from what its episodes have
+      in common, so it may not be what the people who make it call it.
+      <a href="/contact/">Tell us</a> if it's wrong.</span>
+    </p>
+  {%- endif -%}
+
+  {{ content }}
+
+  {%- comment -%}
+    Match on the normalised title the same way propose-shows.py does: lower
+    case, and the separators people vary on removed. Liquid has no regex, so
+    this replaces the punctuation that actually appears in these titles rather
+    than everything a regex would.
+  {%- endcomment -%}
+  {%- assign episodes = "" | split: "" -%}
+  {%- for item in cc.shows -%}
+    {%- assign flat = item.title | downcase | replace: ".", "" | replace: ",", "" | replace: "-", " " | replace: "_", " " | replace: "'", "" | replace: "  ", " " -%}
+    {%- for prefix in page.match.prefixes -%}
+      {%- if flat contains prefix -%}
+        {%- assign head = flat | slice: 0, prefix.size -%}
+        {%- if head == prefix -%}
+          {%- assign episodes = episodes | push: item -%}
+          {%- break -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endfor -%}
+
+  <h2>Episodes</h2>
+
+  {%- if episodes.size > 0 -%}
+    <p class="muted">{{ episodes.size }} in the archive.</p>
+
+    <ul class="rows rows-archive">
+      {%- for item in episodes -%}
+        <li>
+          <b>{{ item.title }}</b>
+          <span>
+            {%- if item.date %}{{ item.date }}{% endif -%}
+            {%- if item.category %} · {{ item.category }}{% endif -%}
+          </span>
+          {%- if item.watchable -%}
+            <a class="btn" href="{{ item.watch_url }}" rel="noopener">Watch</a>
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  {%- else -%}
+    <p class="muted">
+      Nothing in the archive matches this yet. That usually means the match
+      rules in this show's file need a hand &mdash; the titles Cablecast uses
+      may not start the way we expected.
+    </p>
+  {%- endif -%}
+
+  <p><a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse everything</a></p>
+</article>
