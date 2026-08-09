@@ -51,6 +51,14 @@ jobs:
       - name: Test the claim minter
         run: python3 script/test_mint_claim.py
 
+      # Cablecast titles are episode titles, so what counts as a "show" is a
+      # judgement no rule makes correctly — the proposer's whole job is to get
+      # close enough that a person can correct it in one edit. A regression
+      # here produces plausible-looking wrong groupings, which is the kind
+      # that gets merged.
+      - name: Test the show proposer
+        run: python3 script/test_propose_shows.py
+
       # Feed content is written by other people and lands in our HTML, so the
       # sanitizing here is load-bearing rather than cosmetic.
       - name: Test the feed reader
