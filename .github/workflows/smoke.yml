@@ -59,6 +59,14 @@ jobs:
       - name: Test the show proposer
         run: python3 script/test_propose_shows.py
 
+      # The catalog report is about somebody else's data, so nothing it finds
+      # can be fixed by editing this repository. What CAN break here is the
+      # report crying wolf — a check that lists two hundred false positives
+      # every month gets ignored, and then the month it says something true it
+      # gets ignored too. Most of its tests are about what it refuses to say.
+      - name: Test the catalog report
+        run: python3 script/test_catalog_report.py
+
       # Feed content is written by other people and lands in our HTML, so the
       # sanitizing here is load-bearing rather than cosmetic.
       - name: Test the feed reader

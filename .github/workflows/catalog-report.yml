@@ -1,0 +1,87 @@
+name: Catalog report
+
+# Once a month, line the Cablecast catalog up against itself and say what looks
+# wrong. Nothing it finds can be fixed here — the records live in Cablecast,
+# and the next sync picks up whatever gets changed there.
+#
+# WHY MONTHLY WHEN WE RELEASE WEEKLY
+# ----------------------------------
+# Because it should almost always say nothing. These are data-entry mistakes in
+# a fifteen-year-old catalog: a typo, a miscredit, one record entered twice.
+# They arrive at the rate somebody makes them, which is not weekly, and a
+# report that turns up every seven days carrying the same list is a report
+# nobody opens by March.
+#
+# QUIET MEANS QUIET
+# -----------------
+# One issue, reused. Findings update it; no findings closes it. A month with
+# nothing wrong produces no notification at all — not an issue saying "all
+# clear", which is the same noise in a friendlier voice.
+#
+# The first run will not be quiet, and that is the point of building it: there
+# is a backlog nobody could see until the archive was grouped by show.
+
+on:
+  schedule:
+    # The 12th, a few days after the show proposals, so a month's worth of
+    # catalog housekeeping arrives together rather than scattered.
+    - cron: "0 16 12 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: catalog-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Look for things that look wrong
+        run: |
+          python3 script/catalog-report.py --out /tmp/report.md > /dev/null
+          echo "count=$(python3 script/catalog-report.py --count-only)" >> "$GITHUB_ENV"
+
+      # Visible whether or not an issue gets opened, so a run that found
+      # nothing still leaves a record of having looked.
+      - name: Put it in the run summary
+        run: cat /tmp/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open, update, or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "Catalog: records that look wrong"
+        run: |
+          set -euo pipefail
+
+          existing=$(gh issue list --state open --search "$TITLE in:title" \
+            --json number,title --jq "[.[] | select(.title == \"$TITLE\")][0].number // empty")
+
+          if [ "$count" -eq 0 ]; then
+            if [ -n "$existing" ]; then
+              # Everything that was reported has been dealt with. Say so where
+              # the work was tracked, then get out of the way.
+              gh issue comment "$existing" --body \
+                "Everything previously listed here is now clean. Closing — it'll reopen if anything else turns up."
+              gh issue close "$existing"
+              echo "Closed #$existing; nothing left to report."
+            else
+              echo "Nothing to report, and no issue open. Silent."
+            fi
+            exit 0
+          fi
+
+          if [ -n "$existing" ]; then
+            # Edited rather than commented on. A monthly comment thread on a
+            # list that has not changed is how an issue becomes unreadable.
+            gh issue edit "$existing" --body-file /tmp/report.md
+            echo "Updated #$existing with $count finding(s)."
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/report.md
+            echo "Opened an issue with $count finding(s)."
+          fi
