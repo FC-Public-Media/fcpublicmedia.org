@@ -1,5 +1,5 @@
 ---
-title: Classes
+title: Learn
 lede: Short, hands-on training at the studio. Open to the public.
 ---
 

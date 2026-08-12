@@ -62,6 +62,43 @@ function watch(page) {
   return { consoleErrors, pageErrors, ownFailures, thirdPartyFailures };
 }
 
+// Markup that leaked onto the page as words.
+//
+// Liquid's whitespace-trimming comment tags eat the newlines either side of
+// themselves. Put one between a Markdown heading and a block of HTML and
+// kramdown receives them as ONE line — it reads the whole thing as heading
+// text and escapes the tag. `By category<ul class="rows rows-tight">` appeared
+// on /watch/ that way and no test noticed, because to every check we had it
+// was simply a heading with an unusual name.
+//
+// Only headings and prose are looked at. Several pages legitimately show
+// markup — /settings/ and /authorize/ display YAML and JSON in <pre> — and a
+// check that read the whole document would have to be turned off for them,
+// which is how a guard stops guarding.
+test('no page shows its own markup as text', async ({ page }) => {
+  const escaped = /&lt;\/?(?:ul|ol|li|div|p|table|section|nav|span|a|h[1-6])[\s>]/;
+  const leaked = [];
+
+  for (const { path, name } of PAGES) {
+    await page.goto(path);
+
+    const suspects = await page.$$eval('h1, h2, h3, h4, main > p, li', (nodes) =>
+      nodes.map((node) => node.innerHTML)
+    );
+
+    for (const html of suspects) {
+      if (escaped.test(html)) leaked.push(`${name}: ${html.slice(0, 80)}`);
+    }
+  }
+
+  expect(
+    leaked,
+    'escaped markup is being displayed as words — a Liquid comment has ' +
+      'probably eaten the newline between a heading and the HTML under it:\n' +
+      leaked.join('\n')
+  ).toEqual([]);
+});
+
 for (const { path, name } of PAGES) {
   test.describe(name, () => {
     test(`${name} loads cleanly`, async ({ page }) => {

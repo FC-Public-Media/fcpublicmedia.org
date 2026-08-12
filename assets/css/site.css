@@ -48,8 +48,9 @@
      inverts. The lockup is drawn on near-black in the brand sheet and the
      plate only reaches 11.7:1 on a dark ground, so this is the one surface
      that does not get to flip. */
-  --masthead:     #121417;
-  --masthead-ink: #f4f1ea;
+  --masthead:      #121417;
+  --masthead-ink:  #f4f1ea;
+  --masthead-soft: #9ba3ad;  /* secondary text on the band — 7.2:1 */
 
   /* Links. Ink with an underline, picking up red on hover — the palette
      has no fifth colour and does not need one. */
@@ -273,7 +274,11 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   color: var(--masthead-ink);
   backdrop-filter: blur(8px);
 }
-.site-head a { color: inherit; }
+/* :not(.btn) matters. A button carries its own colour pair — ink on yellow
+   for the CTA — and `.site-head a` outranks `.btn-cta`, which is a class on
+   its own. Without this the Donate button rendered paper-on-yellow at 1.4:1.
+   Same cascade mistake as the navigation, found by the same test. */
+.site-head a:not(.btn) { color: inherit; }
 
 .site-head-inner {
   display: flex; align-items: center; gap: var(--gap);
@@ -303,7 +308,9 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 .wordmark-text span {
   font-size: 0.7rem; text-transform: uppercase;
-  letter-spacing: 0.14em; color: var(--ink-soft);
+  letter-spacing: 0.14em;
+  /* --ink-soft is tuned for paper and lands at 2.7:1 here. */
+  color: var(--masthead-soft);
 }
 
 .site-nav { display: flex; align-items: center; gap: 1.4rem; }
@@ -311,14 +318,38 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   display: flex; gap: 1.35rem;
   list-style: none; margin: 0; padding: 0;
 }
-.site-nav a {
-  color: var(--ink); text-decoration: none;
+.site-nav a:not(.btn) {
+  /* `inherit`, NOT var(--ink). This said --ink and shipped invisible: the
+     masthead went dark, --ink is the dark colour, and this rule has the same
+     specificity as `.site-head a { color: inherit }` while coming later, so
+     it quietly won. Nothing caught it — the smoke tests look for links with
+     no accessible label, not for links the same colour as what is behind
+     them. tests/contrast.spec.js was written for this. */
+  color: inherit; text-decoration: none;
   font-size: var(--step--1); font-weight: 550;
   padding: 0.35rem 0;
   border-bottom: 2px solid transparent;
 }
-.site-nav a:hover { border-bottom-color: var(--rule); }
-.site-nav a[aria-current="page"] { border-bottom-color: var(--signal); }
+.site-nav a:not(.btn):hover { border-bottom-color: var(--rule); }
+.site-nav a:not(.btn)[aria-current="page"] { border-bottom-color: var(--signal); }
+
+/* A group of links under one grayed verb: "Reserve  Equipment  Studios".
+   The label is not a link and does not pretend to be one — it names what the
+   two beside it are for, which is the whole reason the menu could lose two
+   items without losing any meaning. */
+.nav-group {
+  display: flex; align-items: baseline; gap: 0.7rem;
+}
+.nav-group-label {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em;
+  font-weight: 650;
+  color: var(--masthead-soft);
+  /* Smaller, quieter, and set in caps beside the two links rather than among
+     them — the same treatment a column heading gets, so the eye reads it as a
+     label and not as a third destination. */
+  align-self: center;
+}
+.nav-group ul { gap: 1.1rem; }
 
 .nav-toggle { display: none; }
 
@@ -326,12 +357,14 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   .nav-toggle {
     display: grid; place-items: center;
     width: 2.75rem; height: 2.75rem;
-    background: none; border: 1px solid var(--rule); cursor: pointer;
+    background: none; border: 1px solid var(--masthead-soft); cursor: pointer;
   }
   .nav-toggle-bars,
   .nav-toggle-bars::before,
   .nav-toggle-bars::after {
-    display: block; width: 1.15rem; height: 2px; background: var(--ink);
+    /* --ink is the dark colour and the band is the dark surface, so this was
+       three invisible bars on a black square. */
+    display: block; width: 1.15rem; height: 2px; background: var(--masthead-ink);
   }
   .nav-toggle-bars { position: relative; }
   .nav-toggle-bars::before,
@@ -339,21 +372,32 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   .nav-toggle-bars::before { top: -6px; }
   .nav-toggle-bars::after  { top:  6px; }
 
+  /* The drawer is the masthead continuing downwards, not a light panel
+     hanging off it. It was --paper, and the links inherit the band's light
+     text, so the whole menu rendered as f4f1ea on f4f1ea — 1.00:1, every
+     item present and none of them visible. tests/contrast.spec.js found it;
+     it is the third place one `color: inherit` broke something, and by far
+     the worst, because it was the entire navigation on a phone. */
   .site-nav {
     display: none;
     position: absolute; left: 0; right: 0; top: 100%;
     flex-direction: column; align-items: stretch; gap: 0;
-    background: var(--paper);
-    border-bottom: 1px solid var(--rule);
+    background: var(--masthead);
+    border-bottom: 1px solid var(--slate);
     padding: 0.5rem 1.25rem 1.25rem;
   }
   .site-nav[data-open="true"] { display: flex; }
   .site-nav ul { flex-direction: column; gap: 0; }
   .site-nav ul a {
     display: block; padding: 0.8rem 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--slate);
     font-size: var(--step-0);
   }
+
+  /* Stacked rather than side by side once there is a column to work with,
+     so "Reserve" reads as the heading it is. */
+  .nav-group { display: block; }
+  .nav-group-label { display: block; padding: 0.9rem 0 0.35rem; }
   .site-nav .btn-cta { margin-top: 1rem; text-align: center; }
 }
 
