@@ -3,20 +3,41 @@
 # `primary` is the header. `cta` is the one highlighted button. `footer` is
 # everything that does not earn a spot in the header. Reorder by editing this
 # file — no template changes required.
+#
+# THE HEADER IS SHORT ON PURPOSE
+# ------------------------------
+# It was seven items and a button, which is a list rather than a menu. Two
+# things shortened it without losing anywhere to go:
+#
+#   * Equipment and Studios are one idea — you reserve both — so they sit
+#     under a grayed "Reserve" that names what they are for. The label is not
+#     a link; it is the thing that lets two items read as one choice.
+#   * Podcasts moved onto /watch/ entirely. It is watching, and a separate
+#     menu entry for it was asserting a distinction nobody makes.
+#
+# The names drifted towards verbs on the way. "Learn" rather than "Classes",
+# because what is taught there is about to be more than scheduled sessions;
+# "Join" rather than "Membership", because membership is what you get and
+# joining is what you do. Not carried further than that — Equipment and
+# Studios stay nouns, and the verb sits beside them instead.
 
 primary:
   - title: Watch
     url: /watch/
-  - title: Classes
+  - title: Learn
     url: /classes/
-  - title: Equipment
-    url: /equipment/
-  - title: Studios
-    url: /reservations/
-  - title: Membership
+
+  # A group, not a link. `label` is what makes the header template treat it
+  # as one; anything with a `title` is an ordinary destination.
+  - label: Reserve
+    items:
+      - title: Equipment
+        url: /equipment/
+      - title: Studios
+        url: /reservations/
+
+  - title: Join
     url: /membership/
-  - title: Podcasts
-    url: /podcasts/
   - title: Submit
     url: /submit/
 

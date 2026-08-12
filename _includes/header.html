@@ -16,12 +16,33 @@
 
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <ul>
-        {% for item in site.data.nav.primary %}
-          <li>
-            <a href="{{ item.url | relative_url }}"
-               {% if page.url contains item.url %}aria-current="page"{% endif %}>{{ item.title }}</a>
-          </li>
-        {% endfor %}
+        {%- for item in site.data.nav.primary -%}
+          {%- if item.label -%}
+            {%- comment -%}
+              A named group. The visible label is what gives the nested list
+              its accessible name, so a screen reader hears "Reserve" once as
+              a heading rather than twice as decoration — and the label is
+              deliberately not a link, because there is nowhere it would go.
+            {%- endcomment -%}
+            {%- assign group = item.label | slugify -%}
+            <li class="nav-group">
+              <span class="nav-group-label" id="nav-{{ group }}">{{ item.label }}</span>
+              <ul aria-labelledby="nav-{{ group }}">
+                {%- for child in item.items -%}
+                  <li>
+                    <a href="{{ child.url | relative_url }}"
+                       {% if page.url contains child.url %}aria-current="page"{% endif %}>{{ child.title }}</a>
+                  </li>
+                {%- endfor -%}
+              </ul>
+            </li>
+          {%- else -%}
+            <li>
+              <a href="{{ item.url | relative_url }}"
+                 {% if page.url contains item.url %}aria-current="page"{% endif %}>{{ item.title }}</a>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
       </ul>
       <a class="btn btn-cta" href="{{ site.data.nav.cta.url | relative_url }}">{{ site.data.nav.cta.title }}</a>
     </nav>

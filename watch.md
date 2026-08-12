@@ -46,15 +46,46 @@ locally.
 {% endfor %}
 </ul>
 
+{%- comment -%}
+  Podcasts live here rather than in the header. A separate menu entry for
+  them asserted a distinction nobody makes — it is watching, or near enough —
+  and the header was seven items long. Above the archive button on purpose:
+  these are things somebody might pick, and the archive is where you go when
+  nothing offered has caught you.
+{%- endcomment -%}
+## Podcasts
+
+<p class="muted">Made in our studios, by people from around Larimer County.</p>
+
+<ul class="grid grid-show">
+{% assign podcasts = site.podcasts | sort: "title" %}
+{% for show in podcasts %}
+  <li class="card">
+    <h3><a href="{{ show.url | relative_url }}">{{ show.title }}</a></h3>
+    {% if show.explicit %}<p><span class="tag tag-warn">Explicit language</span></p>{% endif %}
+    {% if show.lede and show.lede != "" %}<p class="show-meta muted">{{ show.lede }}</p>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+
+## The archive
+
 <p><a class="btn btn-primary" href="{{ '/watch/archive/' | relative_url }}">Browse the full archive</a></p>
 
-## By category
-
-{%- comment -%}
+{% comment %}
   Slugify the category name on its own. Chaining it after `append` slugifies
   the whole string including the path, turning /watch/archive/#news into
   /watch-archive-news — which is how all 38 of these links 404ed.
-{%- endcomment -%}
+
+  This comment sits ABOVE the heading, and its tags do not trim whitespace,
+  on purpose. A whitespace-trimming comment block sitting between the heading
+  and the list ate the newlines either side of itself, so kramdown received
+  the heading and the opening list tag as ONE line — read the whole thing as
+  heading text, and escaped the markup. It showed up on the page as words.
+{% endcomment %}
+
+## By category
+
 <ul class="rows rows-tight">
 {% for category in cc.categories %}
   {%- assign anchor = category.name | slugify -%}
