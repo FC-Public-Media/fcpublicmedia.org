@@ -13,20 +13,55 @@
 /* --- Tokens --------------------------------------------------------------- */
 
 :root {
-  /* Palette */
-  --ink:        #16191d;  /* body text, dark surfaces */
-  --ink-soft:   #545c66;  /* secondary text */
-  --paper:      #fbf9f5;  /* page background — warm, not white */
-  --paper-alt:  #f0ece4;  /* banded sections */
-  --rule:       #d9d3c8;  /* hairlines */
-  --signal:     #d8452a;  /* on-air red: live, urgent, primary action */
-  --signal-ink: #ffffff;
-  --accent:     #1f6a66;  /* links and quiet emphasis */
+  /* Palette — the brand sheet.
+     ------------------------------------------------------------------
+     THE ONE RULE: yellow is a SURFACE, never a text colour on paper.
+     Yellow on paper is 1.4:1, which is not a near miss — it is invisible.
+     On ink it is 11.7:1, which is why the masthead is a dark band and why
+     the plate always carries ink on top of it rather than the reverse.
 
-  /* Type. Swap these two lines to adopt real webfonts later; everything
-     else scales off them. */
-  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
-  --font-body:    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+     There is a test for this. script/test_tokens.py refuses `color:
+     var(--signal)` anywhere in this file, because the failure mode is a
+     rule that looks fine to whoever wrote it and is unreadable to
+     everybody else. */
+  --ink:        #121417;  /* body text, and the dark surfaces */
+  --slate:      #232830;  /* the second dark surface, one step up from ink */
+  --ink-soft:   #545c66;  /* secondary text */
+  --paper:      #f4f1ea;  /* page background — warm, not white */
+  --paper-alt:  #e8e3d8;  /* banded sections */
+  --rule:       #d5cfc2;  /* hairlines */
+
+  /* The plate. Fills, marks, and the current-page underline on dark.
+     Never `color:` on paper. */
+  --signal:     #ffc61a;
+  --signal-ink: #121417;  /* what sits on top of yellow — 11.7:1 */
+
+  /* On-air red. Two of them on purpose: the brand red is right for fills
+     and large marks and is only 4.1:1 on paper, which fails AA for the
+     small bold labels that need it most — an on-air badge is exactly the
+     text you cannot afford to make people squint at. The -ink variant is
+     the same hue walked dark enough to read at 6.3:1. */
+  --record:     #d93a26;
+  --record-ink: #a52c1d;
+
+  /* The masthead band. Fixed dark in BOTH schemes, unlike --ink, which
+     inverts. The lockup is drawn on near-black in the brand sheet and the
+     plate only reaches 11.7:1 on a dark ground, so this is the one surface
+     that does not get to flip. */
+  --masthead:     #121417;
+  --masthead-ink: #f4f1ea;
+
+  /* Links. Ink with an underline, picking up red on hover — the palette
+     has no fifth colour and does not need one. */
+  --accent:     #121417;
+
+  /* Type. Two faces, self-hosted — see the @font-face block below.
+     Georgia and the system sans lead the fallbacks because they are the
+     closest metric match to what is loading; with font-display: swap the
+     page renders in them first, and a poor match is what makes headlines
+     visibly jump when the real face arrives. */
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body:    Archivo, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Fluid type scale */
@@ -46,14 +81,51 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --ink:       #ece8e1;
+    --slate:     #2b313a;
     --ink-soft:  #a1a8b2;
-    --paper:     #131619;
+    --paper:     #121417;
     --paper-alt: #1c2126;
     --rule:      #2f363d;
-    --signal:    #ff6a4d;
-    --signal-ink:#1a0d09;
-    --accent:    #58bdb5;
+
+    /* Yellow survives the inversion unchanged, which is the whole appeal of
+       it — the plate is the same plate in both schemes. What changes is that
+       here it is finally safe as a text colour too. */
+    --signal:     #ffc61a;
+    --signal-ink: #121417;
+
+    /* Walked light instead of dark, for the same reason and by the same
+       amount: 4.0:1 against this background is not enough for a badge. */
+    --record:     #d93a26;
+    --record-ink: #e16151;
+
+    --accent:     #ece8e1;
   }
+}
+
+/* --- Fonts ---------------------------------------------------------------
+   Self-hosted rather than fetched from a CDN. The site has no build step and
+   no npm, and it should have no third party in the render path either — a
+   font host is one more thing that can be slow, blocked, or watching.
+
+   Both are variable, so one file covers every weight: 34 KB for Archivo and
+   119 KB for Source Serif. `swap` means text is readable immediately in the
+   fallback and never invisible while they load.
+   -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("/assets/fonts/archivo.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/assets/fonts/source-serif-4.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* --- Base ----------------------------------------------------------------- */
@@ -95,7 +167,7 @@ h3 { font-size: var(--step-1); }
 p, ul, ol, dl, table { margin: 0 0 1.1em; }
 
 a { color: var(--accent); text-decoration-thickness: 1px; }
-a:hover { color: var(--signal); }
+a:hover { color: var(--record-ink); }
 
 img { max-width: 100%; height: auto; display: block; }
 
@@ -189,12 +261,19 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* --- Header --------------------------------------------------------------- */
 
+/* A dark band, in both schemes.
+   The lockup is drawn on near-black in the brand sheet, and that is not a
+   stylistic preference — the plate is 1.4:1 on paper and 11.7:1 on ink. A
+   yellow mark on a light masthead would be a yellow mark nobody can see.
+   Revert by deleting the two colour lines; nothing else depends on it. */
 .site-head {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--slate);
   position: sticky; top: 0; z-index: 20;
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  background: color-mix(in srgb, var(--masthead) 94%, transparent);
+  color: var(--masthead-ink);
   backdrop-filter: blur(8px);
 }
+.site-head a { color: inherit; }
 
 .site-head-inner {
   display: flex; align-items: center; gap: var(--gap);
@@ -208,10 +287,13 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* The mark: a solid block, like a tally light. Deliberately not a logo — it
    is a placeholder shape that reads as intentional until a real one exists. */
+/* The plate. Rotated, because a square set straight reads as a bullet point
+   and a square set askew reads as a mark somebody chose. */
 .wordmark-mark {
-  width: 1.05rem; height: 1.05rem;
+  width: 1.15rem; height: 1.15rem;
   background: var(--signal);
   flex: none;
+  rotate: -8deg;
 }
 
 .wordmark-text { display: flex; flex-direction: column; line-height: 1.05; }
@@ -298,7 +380,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .btn-primary:hover,
 .btn-cta:hover {
   background: transparent;
-  color: var(--signal);
+  color: var(--record-ink);
+  border-color: var(--record-ink);
 }
 
 /* --- Hero ----------------------------------------------------------------- */
@@ -386,7 +469,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   font-weight: 700; padding: 0.2rem 0.5rem;
   border: 1px solid var(--rule); color: var(--ink-soft);
 }
-.tag-warn { border-color: var(--signal); color: var(--signal); }
+.tag-warn { border-color: var(--record-ink); color: var(--record-ink); }
 
 /* --- Transactions --------------------------------------------------------- */
 
@@ -457,7 +540,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .onair-label {
   text-transform: uppercase; letter-spacing: 0.1em;
   font-weight: 700; font-size: 0.72rem;
-  color: var(--signal);
+  color: var(--record-ink);
   margin-right: 0.35rem;
 }
 .onair-next { color: var(--ink-soft); }
@@ -515,11 +598,11 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
    scanning for when they sort by them. "Not aired" is the signal, so it gets
    the emphasis rather than the counts do. */
 .airings { font-variant-numeric: tabular-nums; font-weight: 600; }
-.airings-none { color: var(--signal); }
+.airings-none { color: var(--record-ink); }
 
 /* A date that has not happened yet. Same weight as an airing count — it is
    the thing being scanned for, not decoration. */
-.coming { color: var(--signal); font-variant-numeric: tabular-nums; }
+.coming { color: var(--record-ink); font-variant-numeric: tabular-nums; }
 
 /* Several short fields on one line where they belong together — a date, a
    time and a runtime read as one answer, not three questions. */
@@ -552,7 +635,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   font: inherit; color: var(--accent); cursor: pointer;
   text-decoration: underline; text-underline-offset: 0.18em;
 }
-.btn-link:hover { color: var(--signal); }
+.btn-link:hover { color: var(--record-ink); }
 
 /* Cablecast titles are frequently one long underscore-joined token —
    Midnight_Limited_1940_2026-07-14_11_59_43 — with no place to break. On a
@@ -846,4 +929,82 @@ label.btn { cursor: pointer; }
   color: var(--ink-soft);
   max-width: var(--measure);
   margin-bottom: 2rem;
+}
+
+
+/* --- The countdown -------------------------------------------------------
+   Shown while media is being fetched, before it can start.
+
+   NOT A SPINNER, quite. A spinner says "something is happening"; this says
+   "it is nearly your turn", which is the honest thing to say in the seconds
+   before a video begins. So the plate depletes around itself like a studio
+   countdown and swings rather than revolving — the easing lands it at the top
+   of each cycle so the motion reads as a beat rather than a wheel.
+
+   No numbers, deliberately. We do not know how long it will take, and a
+   number that is wrong is worse than no number.
+   -------------------------------------------------------------------------- */
+
+/* Registering the custom property is what makes the sweep animatable at all —
+   to CSS it is otherwise an opaque string, and the whole thing would jump from
+   full to empty. Where @property is unsupported the plate simply sits still,
+   which is a fine thing for it to do. */
+@property --sweep {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 360deg;
+}
+
+.countdown {
+  --size: 2.75rem;
+  --sweep: 360deg;
+
+  width: var(--size);
+  height: var(--size);
+  flex: none;
+  background: var(--signal);
+
+  /* The depleting wedge. Masked rather than drawn, so the shape stays a
+     square plate and only its coverage changes. */
+  -webkit-mask-image: conic-gradient(#000 var(--sweep), transparent 0);
+  mask-image: conic-gradient(#000 var(--sweep), transparent 0);
+
+  animation:
+    countdown-sweep 1.5s linear infinite,
+    countdown-swing 1.5s cubic-bezier(0.16, 0.84, 0.28, 1) infinite;
+}
+
+@keyframes countdown-sweep {
+  from { --sweep: 360deg; }
+  to   { --sweep: 0deg; }
+}
+
+/* Counter-clockwise, and eased so it arrives rather than arrives at speed.
+   The scale is what puts it halfway to a pulse: it settles slightly small at
+   the end of a cycle and snaps back as the next one starts. */
+@keyframes countdown-swing {
+  0%   { rotate: 0turn;      scale: 1; }
+  70%  { rotate: -0.92turn;  scale: 0.94; }
+  100% { rotate: -1turn;     scale: 1; }
+}
+
+.countdown-wrap {
+  display: flex; align-items: center; gap: 0.9rem;
+  color: var(--ink-soft); font-size: var(--step--1);
+}
+
+/* Motion that rotates is a vestibular trigger, and this rotates a full turn
+   every second and a half. Reduced motion gets the same plate holding still
+   and breathing — a change of state without a change of place. */
+@media (prefers-reduced-motion: reduce) {
+  .countdown {
+    animation: countdown-breathe 2.4s ease-in-out infinite;
+    -webkit-mask-image: none;
+    mask-image: none;
+    rotate: -8deg;
+  }
+  @keyframes countdown-breathe {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.45; }
+  }
 }

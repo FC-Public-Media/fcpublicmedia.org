@@ -51,6 +51,14 @@ jobs:
       - name: Test the claim minter
         run: python3 script/test_mint_claim.py
 
+      # The palette says yellow is a surface. That rule cannot be enforced by
+      # the palette — a rule reading `color: var(--signal)` looks reasonable
+      # to whoever writes it, renders pale yellow on cream, and is invisible
+      # to everybody else. There were nine of those before the rebrand, and
+      # they were all fine while the signal colour was red.
+      - name: Test the design tokens
+        run: python3 script/test_tokens.py
+
       # Cablecast titles are episode titles, so what counts as a "show" is a
       # judgement no rule makes correctly — the proposer's whole job is to get
       # close enough that a person can correct it in one edit. A regression
