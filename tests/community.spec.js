@@ -11,13 +11,35 @@ const path = require('path');
 
 const REPO = path.resolve(__dirname, '..');
 
-/** Class sessions as the build sees them, for comparing against the page. */
+/**
+ * Class sessions as the build sees them, with when they start.
+ *
+ * The start time is read as well as the title, and that is the whole point of
+ * this helper. The page shows only what has not happened yet — deliberately,
+ * and there is a test below for it — so a version of this that returned every
+ * title asserted that history is on display, and passed only until the first
+ * session went by. It did exactly that: "Podcasting 101" was on a Tuesday and
+ * this went red on the Wednesday, in CI, on a change about colours.
+ */
 function classSessions() {
   const raw = fs.readFileSync(path.join(REPO, '_data', 'classes.yml'), 'utf8');
-  return [...raw.matchAll(/^\s+-?\s*title:\s*(.+)$/gm)].map((m) =>
-    m[1].trim().replace(/^["']|["']$/g, '')
-  );
+  const sessions = [];
+
+  for (const block of raw.split(/^\s+- (?=title:)/m).slice(1)) {
+    const title = block.match(/^title:\s*(.+)$/m);
+    const starts = block.match(/^\s*starts:\s*(\S+)/m);
+    if (title && starts) {
+      sessions.push({
+        title: title[1].trim().replace(/^["']|["']$/g, ''),
+        starts: new Date(starts[1]),
+      });
+    }
+  }
+  return sessions;
 }
+
+/** The ones the page is actually claiming to show. */
+const upcoming = () => classSessions().filter((s) => s.starts.getTime() > Date.now());
 
 test.describe('community', () => {
   test('shows what is coming up', async ({ page }) => {
@@ -33,8 +55,19 @@ test.describe('community', () => {
     // community.yml, and then the two quietly disagree forever.
     await page.goto('/community/');
 
+    const sessions = upcoming();
+
+    // Not a vacuous pass when everything has gone by. A calendar with no
+    // future classes in it is a real thing to know about — it means the sync
+    // has stopped or nobody has scheduled anything — and a test that went
+    // quietly green on it would be hiding exactly that.
+    expect(
+      sessions.length,
+      'every session in classes.yml is in the past — the calendar needs refreshing'
+    ).toBeGreaterThan(0);
+
     const listed = await page.locator('.rows-events').innerText();
-    for (const title of classSessions()) {
+    for (const { title } of sessions) {
       expect(listed, `${title} is in classes.yml but not on /community/`).toContain(title);
     }
   });
