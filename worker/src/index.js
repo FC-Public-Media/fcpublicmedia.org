@@ -138,19 +138,29 @@ function readConfig(env, now = () => Date.now()) {
     // the balance. Booqable holds its own separate credential for the rental
     // side, so neither system can act as the other.
     //
-    // THE NAME LIES. READ THIS BEFORE USING IT ANYWHERE.
+    // WHAT "PUBLIC" MEANS IN PUBLIC_STRIPE_API_KEY.
     //
-    // PUBLIC_STRIPE_API_KEY holds a SECRET value. It was named before the
-    // distinction between Stripe's key types was settled, the secret already
-    // exists in the GitHub organization, and renaming it means minting a new
-    // key — so the name stays and the warning goes here instead.
+    // Not "safe to publish". It names WHO CAUSES THIS KEY TO BE USED, which
+    // is the more useful question. /checkout takes no passkey and
+    // authenticates nobody — a stranger on the internet makes this key act,
+    // every time. So it is restricted to exactly what a stranger may cause:
+    // writing a Checkout Session, and nothing else. No refunds, no customer
+    // list, no balance.
     //
-    // Nothing about this value is public. It is not the pk_ key, it must never
-    // be rendered into a page, logged, or returned in a response, and a
-    // reasonable person reading only the variable name would do all three.
-    // _data/payments.yml holds the genuinely public one, and
-    // script/test_no_secrets.py fails the build if anything shaped like a
-    // secret key reaches the built site.
+    // The name is a standing instruction to whoever scopes the next one. A
+    // credential named PUBLIC_ is one the public can trigger, so its
+    // permissions must stay inside what the public may do — if this endpoint
+    // ever needs to read a customer or issue a credit, that is a signal to
+    // stop and use a different key, not to widen this one.
+    //
+    // The value is still a secret and must never be rendered into a page,
+    // logged, or returned in a response. _data/payments.yml holds the
+    // genuinely publishable pk_ key, and script/test_no_secrets.py fails the
+    // build if anything shaped like a secret key reaches the built site.
+    //
+    // Staff-run work does NOT use this key. script/reprice-subscriptions.py
+    // lists and updates subscriptions, which is far outside what a stranger
+    // may cause, so it reads its own credential.
     //
     // STRIPE_KEY is still read as a fallback so a Cloudflare secret set under
     // the obvious name keeps working.

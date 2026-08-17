@@ -223,11 +223,11 @@ test('the restricted key is sent to Stripe and never comes back out', async () =
   assert.ok(!(await response.text()).includes('rk_test_pretend'), 'the key was echoed to the page');
 });
 
-test('the key is read from the misleadingly named variable it actually lives in', async () => {
-  // The organization secret is called PUBLIC_STRIPE_API_KEY and holds a
-  // restricted key, which is not public at all. The name predates the
-  // distinction being settled and renaming it means minting a new key, so the
-  // broker reads that name. Without this test the mismatch shows up as
+test('the key is read from the variable it actually lives in', async () => {
+  // PUBLIC_STRIPE_API_KEY, where "public" names who causes the key to be used
+  // rather than whether it may be published. This endpoint authenticates
+  // nobody, so a stranger makes this key act — and it is scoped to what a
+  // stranger may cause. Without this test the mismatch would surface as
   // "payments are not switched on yet" long after somebody was sure they had
   // switched them on.
   const stripe = fakeStripe();

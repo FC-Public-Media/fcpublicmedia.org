@@ -49,9 +49,25 @@ price they bought it at, and the new amount applies at their next renewal.
 Anything else would take money from people between announcements, which is
 exactly the surprise the notice period exists to prevent.
 
+WHICH KEY THIS USES, AND WHY IT IS NOT THE OTHER ONE
+----------------------------------------------------
+Not PUBLIC_STRIPE_API_KEY. That name means "the public causes this key to be
+used", so it is scoped to what a stranger is allowed to cause — writing a
+Checkout Session. This script lists every subscription in the account and
+changes what people are billed, which is nowhere near that.
+
+So it reads STAFF_STRIPE_API_KEY: a second restricted key, scoped to reading
+and writing subscriptions and prices, and never handed to anything a visitor
+can reach. Two keys rather than one widened key. If the public key were given
+enough permission to run this, then a flaw in a public endpoint would be worth
+far more than a checkout page.
+
+It also means this cannot be run by accident from a web request: the broker
+does not have this credential and could not do this if it were asked to.
+
 USAGE
 -----
-    export STRIPE_KEY=rk_live_...          # restricted; see README
+    export STAFF_STRIPE_API_KEY=rk_live_...   # restricted; see README
     python3 script/reprice-subscriptions.py            # report only
     python3 script/reprice-subscriptions.py --apply    # actually move them
 """
@@ -240,14 +256,36 @@ def main():
     )
     args = parser.parse_args()
 
-    key = os.environ.get("STRIPE_KEY", "").strip()
+    key = os.environ.get("STAFF_STRIPE_API_KEY", "").strip()
     if not key:
-        print("STRIPE_KEY is not set. See the README section on keys.", file=sys.stderr)
+        print(
+            "STAFF_STRIPE_API_KEY is not set.\n\n"
+            "This is deliberately NOT the same key the site uses. That one is "
+            "named PUBLIC_ because the public causes it to be used, so it is "
+            "scoped to writing a Checkout Session and cannot read or change a "
+            "subscription. See the README section on keys.",
+            file=sys.stderr,
+        )
         return 2
     if key.startswith("pk_"):
         print(
             "That is the publishable key. It cannot read subscriptions — use "
             "the restricted key (rk_).",
+            file=sys.stderr,
+        )
+        return 2
+    if os.environ.get("PUBLIC_STRIPE_API_KEY", "").strip() == key:
+        # Catching the shortcut before it is taken. If the same value is doing
+        # both jobs, then either this cannot run or the public key has been
+        # widened until a checkout endpoint can rewrite the membership's
+        # billing — and the second is much likelier, because it is what makes
+        # the error go away.
+        print(
+            "This is the same value as PUBLIC_STRIPE_API_KEY.\n\n"
+            "Those are meant to be two different keys with different "
+            "permissions. If this one works, the public key has been given "
+            "the power to rewrite subscriptions — which is the thing the "
+            "naming exists to prevent. Mint a separate staff key.",
             file=sys.stderr,
         )
         return 2

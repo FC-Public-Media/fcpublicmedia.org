@@ -127,21 +127,43 @@ holds the decisions; this is the operating manual.
 
 Stripe issues three kinds and they are not interchangeable.
 
-| Prefix | Public? | Where it lives |
+| Prefix | Publishable? | Where it lives |
 |---|---|---|
 | `pk_live_…` | **Yes** | `_data/payments.yml`, in git |
 | `rk_live_…` | No | GitHub org secret → Cloudflare secret |
 | `sk_live_…` | No | Not used at all |
 
-> **The secret is named `PUBLIC_STRIPE_API_KEY` and it is not public.**
->
-> It holds the restricted key. The name predates the distinction between
-> Stripe's key types being settled, and renaming it in GitHub means minting a
-> new key — so the name stays and this warning exists instead. It must never
-> be rendered into a page, logged, or returned in a response, and a reasonable
-> person reading only the variable name would do all three.
-> `script/test_no_secrets.py` fails the build if anything shaped like a secret
-> key reaches the built site, which is the real protection.
+### The naming convention: who causes the key to be used
+
+Our secrets are named for **blast radius, not visibility**. The prefix answers
+"who makes this key act?", and the answer determines how tightly it is scoped.
+
+| Name | Who triggers it | Scoped to |
+|---|---|---|
+| `PUBLIC_STRIPE_API_KEY` | A stranger on the internet | Write a Checkout Session. Nothing else. |
+| `STAFF_STRIPE_API_KEY` | A person, at a terminal | Read and write subscriptions and prices. |
+
+`/checkout` authenticates nobody — it cannot, since requiring a passkey to
+join would mean being a member before you could become one. So every use of
+that key is caused by a stranger, and it holds exactly the permission a
+stranger is allowed to cause. No refunds, no customer list, no balance.
+
+The name is a standing instruction to whoever scopes the next one: **a
+credential named `PUBLIC_` may only do what the public may do.** If a
+public endpoint ever needs to read a customer or issue a credit, that is a
+signal to reach for a different key rather than to widen this one.
+
+**`PUBLIC_` still does not mean publishable.** The value is a secret and must
+never be rendered into a page, logged, or returned in a response — only `pk_`
+may be. That is a reasonable thing to misread in a hurry, so the guarantee is
+mechanical rather than documentary: `script/test_no_secrets.py` fails the
+build if anything shaped like a secret key reaches the built site or a tracked
+file, whatever anybody believed while putting it there.
+
+The two keys are deliberately never the same value. `reprice-subscriptions.py`
+refuses to run if they match — if one key could do both jobs, the public one
+has been given the power to rewrite the membership's billing, which is exactly
+what the naming exists to prevent.
 
 ### A GitHub secret is not a Cloudflare secret
 

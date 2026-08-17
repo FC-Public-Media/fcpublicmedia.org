@@ -3,15 +3,16 @@
 
 WHY THIS IS NOT PARANOIA
 ------------------------
-The GitHub organization secret holding our restricted Stripe key is named
-PUBLIC_STRIPE_API_KEY. It holds a value that is not public in any sense: it
-acts on the Stripe account, and Stripe's own guidance is that only pk_ keys
-may be exposed. The name was chosen before that distinction was settled, and
-renaming it means minting a new key, so the name is staying.
+The restricted Stripe key is named PUBLIC_STRIPE_API_KEY, where "public" names
+who causes it to be used — /checkout authenticates nobody, so a stranger makes
+that key act — and therefore how tightly it is scoped. It is a good name and
+it is about blast radius, not visibility.
 
-Which leaves a variable called PUBLIC_… that must never be published. Somebody
-will eventually read that name, believe it, and put the value in a template —
-and they will be behaving reasonably. This is the check that catches it.
+It is also a name somebody will one day read quickly, take to mean "safe to
+expose", and put in a template. That is a reasonable misreading of a name that
+is doing something subtler than usual, and no amount of comment prevents it.
+So the guarantee is mechanical rather than documentary: whatever anybody
+believed, a secret key does not reach the built site.
 
 It is deliberately mechanical and looks at OUTPUT rather than at intent. It
 does not care how a key got there: interpolated by Liquid, pasted into a data

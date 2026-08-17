@@ -73,11 +73,15 @@ jobs:
         working-directory: worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          # THE NAME LIES: this holds a RESTRICTED key (rk_…), which is secret.
-          # It is named PUBLIC_STRIPE_API_KEY because that is what already
-          # exists in the organization and renaming it means minting a new key.
-          # Nothing about the value is public. script/test_no_secrets.py fails
-          # the build if anything shaped like it reaches the site.
+          # "PUBLIC" names who causes this key to be used, not whether it may
+          # be published: /checkout authenticates nobody, so a stranger makes
+          # this key act, and it is scoped to what a stranger may cause —
+          # writing a Checkout Session, and nothing else.
+          #
+          # The value is still secret. script/test_no_secrets.py fails the
+          # build if anything shaped like it reaches the site. Staff work uses
+          # STAFF_STRIPE_API_KEY, which is a different key with more
+          # permission and is deliberately not given to the worker.
           STRIPE: ${{ secrets.PUBLIC_STRIPE_API_KEY }}
         run: printf '%s' "$STRIPE" | npx wrangler secret put PUBLIC_STRIPE_API_KEY
 
