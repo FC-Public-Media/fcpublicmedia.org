@@ -38,7 +38,7 @@ donate:
 
 booking:
   label: Studio and bay reservations
-  provider: Bookable
+  provider: Booqable
   url: ""
   status: pending
   # Set this when booking moves to its own host, e.g. book.fcpublicmedia.org.
@@ -46,7 +46,7 @@ booking:
   # of this site rather than a scheduling tool someone bolted on.
   subdomain: ""
   note: >-
-    Staying on Bookable for now. Microsoft 365 calendar integration is being
+    Staying on Booqable for now. Microsoft 365 calendar integration is being
     developed separately; when it lands, only this entry changes.
 
 submit:

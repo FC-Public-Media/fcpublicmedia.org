@@ -89,7 +89,7 @@ that's the board's call rather than a technical one.
 | Class registration | Wix Events | Needs a provider |
 | Membership dues | Wix Pricing Plans | Needs a provider |
 | Donations | Wix Donations | Needs a provider |
-| Studio booking | Bookable | **Staying** — no change needed |
+| Studio booking | Booqable | **Staying** — no change needed |
 | Program submissions | Wix form + Dropbox | Needs a form service |
 
 Until one is chosen, each shows a visible "not set up yet" notice rather than

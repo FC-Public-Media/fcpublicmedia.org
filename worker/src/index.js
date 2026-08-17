@@ -32,6 +32,7 @@
 
 import { appCredential, patCredential } from './app-auth.js';
 import { challengeStore } from './challenges.js';
+import { lookup, readSession, returnUrl, sessionParams } from './checkout.js';
 import { deviceList, mayPublish } from './devices.js';
 import { addDevice, allowDevice, revokeDevice, serialize } from './enroll.js';
 import { github } from './github.js';
@@ -129,6 +130,46 @@ function readConfig(env, now = () => Date.now()) {
             },
           }
         : null,
+
+    // The Stripe key. A RESTRICTED key — rk_live_… — with permission to write
+    // Checkout Sessions and nothing else, which is what Stripe now recommends
+    // over sk_ for exactly this reason: if this worker is ever compromised,
+    // the key it holds cannot issue refunds, read the customer list, or move
+    // the balance. Booqable holds its own separate credential for the rental
+    // side, so neither system can act as the other.
+    //
+    // WHAT "PUBLIC" MEANS IN PUBLIC_STRIPE_API_KEY.
+    //
+    // Not "safe to publish". It names WHO CAUSES THIS KEY TO BE USED, which
+    // is the more useful question. /checkout takes no passkey and
+    // authenticates nobody — a stranger on the internet makes this key act,
+    // every time. So it is restricted to exactly what a stranger may cause:
+    // writing a Checkout Session, and nothing else. No refunds, no customer
+    // list, no balance.
+    //
+    // The name is a standing instruction to whoever scopes the next one. A
+    // credential named PUBLIC_ is one the public can trigger, so its
+    // permissions must stay inside what the public may do — if this endpoint
+    // ever needs to read a customer or issue a credit, that is a signal to
+    // stop and use a different key, not to widen this one.
+    //
+    // The value is still a secret and must never be rendered into a page,
+    // logged, or returned in a response. _data/payments.yml holds the
+    // genuinely publishable pk_ key, and script/test_no_secrets.py fails the
+    // build if anything shaped like a secret key reaches the built site.
+    //
+    // Staff-run work does NOT use this key. script/reprice-subscriptions.py
+    // lists and updates subscriptions, which is far outside what a stranger
+    // may cause, so it reads its own credential.
+    //
+    // STRIPE_KEY is still read as a fallback so a Cloudflare secret set under
+    // the obvious name keeps working.
+    //
+    // Absent from `missing` deliberately. A broker that refused to hand out
+    // challenges because nobody had set up payments yet would take the
+    // passkey work offline for a configuration step unrelated to it; /checkout
+    // reports this, and only /checkout.
+    stripe: (env.PUBLIC_STRIPE_API_KEY || env.STRIPE_KEY || '').trim() || null,
 
     // Long enough for a big file on a slow line to finish, since the signature
     // has to outlive the whole transfer rather than just the request.
@@ -693,10 +734,99 @@ async function handleDevice(request, deps) {
   });
 }
 
+/**
+ * Start a checkout.
+ *
+ * THE ONE ENDPOINT HERE THAT DOES NOT AUTHENTICATE ANYBODY
+ * -------------------------------------------------------
+ * Every other route runs authorize() first, because every other route changes
+ * something of ours — a file, a device list, permission to write bytes. This
+ * one takes money from a stranger, which is a thing strangers are supposed to
+ * be able to do. Requiring a passkey to join would mean you had to be a member
+ * to become one.
+ *
+ * So the protection is not "who are you". It is that there is nothing here
+ * worth attacking: the caller picks from a fixed list, the amount comes from
+ * our side of the wire, and the worst a hostile caller achieves is a Stripe
+ * page nobody pays. No card details pass through this worker at any point —
+ * Stripe hosts the form, which is the entire reason to use Checkout rather
+ * than build one.
+ */
+async function handleCheckout(request, { config, fetchImpl }) {
+  if (!config.stripe) {
+    return json(
+      { ok: false, reason: 'unconfigured', detail: 'Payments are not switched on yet.' },
+      { status: 503 }
+    );
+  }
+
+  const body = await readBody(request);
+  if (!body) return json({ ok: false, detail: 'Send JSON.' }, { status: 400 });
+
+  const found = lookup(body.sku);
+  if (!found.ok) return json({ ok: false, reason: 'sku', detail: found.detail }, { status: 400 });
+
+  const success = returnUrl(config.origins, body.success_path, '/thanks/');
+  const cancel = returnUrl(config.origins, body.cancel_path, '/membership/');
+  if (!success || !cancel) {
+    return json({ ok: false, detail: 'This broker has no site to return to.' }, { status: 500 });
+  }
+
+  const params = sessionParams({
+    item: found.item,
+    sku: found.sku,
+    recurring: body.recurring,
+    success,
+    cancel,
+    reference: body.reference,
+    email: body.email,
+  });
+
+  const response = await (fetchImpl || fetch)('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.stripe}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      // Stripe replays a repeated key rather than charging twice. The window
+      // is 24 hours, so this is scoped to the visit rather than to the item:
+      // somebody who genuinely buys two memberships an hour apart must get two
+      // sessions, and somebody whose phone retried the same tap must not.
+      'Idempotency-Key': crypto.randomUUID(),
+    },
+    body: params,
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    // Stripe's message names the parameter and is written for a developer, so
+    // it goes to the log and not to the visitor. What a visitor can act on is
+    // that it did not work and it was not their fault.
+    console.error('stripe', response.status, payload?.error?.message || '');
+    return json(
+      { ok: false, reason: 'stripe', detail: 'The payment page could not be created.' },
+      { status: 502 }
+    );
+  }
+
+  const session = readSession(payload);
+  if (!session.ok) {
+    return json({ ok: false, reason: 'stripe', detail: session.detail }, { status: 502 });
+  }
+
+  return json({ ok: true, url: session.url, id: session.id });
+}
+
 /* -------------------------------------------------------------------- router */
 
 const ROUTES = {
   '/challenge': handleChallenge,
+  '/checkout': handleCheckout,
   '/verify': handleVerify,
   '/write': handleWrite,
   '/bind': handleBind,

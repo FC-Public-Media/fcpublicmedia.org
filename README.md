@@ -39,7 +39,7 @@ _data/                   Content that repeats or changes. Plain YAML.
   nav.yml                Header and footer menus.
   providers.yml          The five transactions. See below.
   membership.yml         Tiers and prices.
-  facilities.yml         Bookable spaces.
+  facilities.yml         Spaces that can be booked.
   equipment.yml          What kinds of gear we have (not an inventory).
   watch.yml              Channels and carriage.
   board.yml              Board and staff roster.
@@ -101,14 +101,286 @@ many paid integrations the organization has.
 | `tickets` | Class registration | Wix Events |
 | `membership` | Dues | Wix Pricing Plans |
 | `donate` | Donations | Wix Donations |
-| `booking` | Studio and bay reservations | Bookable — staying |
+| `booking` | Studio and bay reservations | Booqable — staying |
 | `submit` | Program submissions | Wix form + Dropbox |
 
 An entry with an empty `url` renders as a visible "not wired up yet" block
 rather than a dead button, so nothing ships silently broken.
 
-Booking stays on Bookable. Microsoft 365 calendar integration is being built
+Booking stays on Booqable. Microsoft 365 calendar integration is being built
 separately; when it lands, only the `booking` entry changes.
+
+---
+
+## Taking payments
+
+Two systems, one Stripe account, and a rule about keys. `_data/payments.yml`
+holds the decisions; this is the operating manual.
+
+| What | Who charges | Where the money is decided |
+|---|---|---|
+| Membership | Stripe, via the broker | `_data/membership.yml` |
+| Class drop-in | Stripe, via the broker | `_data/classes.yml` (still TODO) |
+| Equipment rental | Booqable's own Stripe connection | Booqable |
+
+### The rule about keys
+
+Stripe issues three kinds and they are not interchangeable.
+
+| Prefix | Publishable? | Where it lives |
+|---|---|---|
+| `pk_live_…` | **Yes** | `_data/payments.yml`, in git |
+| `rk_live_…` | No | GitHub org secret → Cloudflare secret |
+| `sk_live_…` | No | Not used at all |
+
+### The naming convention: who causes the key to be used
+
+Our secrets are named for **blast radius, not visibility**. The prefix answers
+"who makes this key act?", and the answer determines how tightly it is scoped.
+
+| Name | Who triggers it | Scoped to |
+|---|---|---|
+| `PUBLIC_STRIPE_API_KEY` | A stranger on the internet | Write a Checkout Session. Nothing else. |
+| `STAFF_STRIPE_API_KEY` | A person, at a terminal | Read and write subscriptions and prices. |
+
+`/checkout` authenticates nobody — it cannot, since requiring a passkey to
+join would mean being a member before you could become one. So every use of
+that key is caused by a stranger, and it holds exactly the permission a
+stranger is allowed to cause. No refunds, no customer list, no balance.
+
+The name is a standing instruction to whoever scopes the next one: **a
+credential named `PUBLIC_` may only do what the public may do.** If a
+public endpoint ever needs to read a customer or issue a credit, that is a
+signal to reach for a different key rather than to widen this one.
+
+**`PUBLIC_` still does not mean publishable.** The value is a secret and must
+never be rendered into a page, logged, or returned in a response — only `pk_`
+may be. That is a reasonable thing to misread in a hurry, so the guarantee is
+mechanical rather than documentary: `script/test_no_secrets.py` fails the
+build if anything shaped like a secret key reaches the built site or a tracked
+file, whatever anybody believed while putting it there.
+
+The two keys are deliberately never the same value. `reprice-subscriptions.py`
+refuses to run if they match — if one key could do both jobs, the public one
+has been given the power to rewrite the membership's billing, which is exactly
+what the naming exists to prevent.
+
+### A GitHub secret is not a Cloudflare secret
+
+They are separate stores and neither can see the other. A GitHub organization
+secret is readable by GitHub Actions and nothing else; the worker runs at
+Cloudflare and reads its own environment. Putting the key in one place does
+not put it in the other, which is a thing that looks configured and is not.
+
+`.github/workflows/broker.yml` is the bridge: it deploys the broker and then
+pushes the org secret into Cloudflare's store on every run, so GitHub stays
+the single place a human ever pastes the value and a rotation reaches
+production without anybody remembering a manual step. It needs
+`CLOUDFLARE_API_TOKEN` (Cloudflare dashboard → My Profile → API Tokens → *Edit
+Cloudflare Workers*) and skips entirely until that exists.
+
+To set it by hand instead:
+
+```
+cd worker && npx wrangler secret put PUBLIC_STRIPE_API_KEY
+```
+
+It prompts, reads the value from the terminal, and stores it encrypted. It is
+never written to disk and never appears in `wrangler.jsonc`. The broker also
+accepts `STRIPE_KEY`, so a secret already set under that name keeps working.
+
+The publishable key can start a payment and do nothing else, so it is safe in
+the repository — that is what it is for. The restricted key is the one that
+acts on the account, and ours is scoped to writing Checkout Sessions and
+nothing more: if the worker were compromised tomorrow, the key it holds could
+not issue a refund, read the customer list, or move the balance. Stripe now
+recommends restricted keys over `sk_` for exactly this reason.
+
+If an `rk_` or `sk_` key ever lands in a commit, it is burned the moment it is
+pushed. Rotate it in the Stripe dashboard rather than just deleting the line.
+
+### Why the browser cannot name a price
+
+This is the only rule that really matters. A page that posts an amount to a
+checkout endpoint is a page that can post `1`, and no amount of JavaScript on
+our side changes that, because the JavaScript is theirs.
+
+So the browser posts a SKU — `membership:creator` — and the broker looks the
+amount up in a table the browser cannot reach. `worker/test/checkout.test.mjs`
+opens with that assertion and it is the reason the file exists.
+
+### Why the prices are not in the Stripe dashboard
+
+Because subscriptions are a standing promise about future prices, and we have
+to be able to show that we announced a change.
+
+A price in the Stripe dashboard has no such trail: somebody with a login edits
+a number, and the first anyone hears of it is a card statement. A price in
+`_data/membership.yml` is a commit — a red line, a green line, a reviewer, and
+a date. `git log -p _data/membership.yml` **is** the price history.
+
+Stripe still does the charging; it just does not hold the number. Every
+Checkout Session is created with an inline `price_data`, so there are no Price
+objects anywhere to drift from the data files.
+
+```
+python3 script/build-prices.py          # after editing a price
+python3 script/build-prices.py --check  # what CI runs
+```
+
+The generated `worker/src/prices.js` is committed, because the worker bundles
+it at deploy time and Cloudflare's build does not run Python. CI fails if the
+two disagree — the same shape as a lock file, and for the same reason.
+
+A price of `TODO` is skipped rather than defaulted, so an undecided figure
+cannot become a real charge. That is why the class drop-ins are not for sale
+yet.
+
+### Stripe does not know this repository exists
+
+Worth stating plainly, because it is the opposite of what it feels like.
+
+When somebody subscribes, Stripe turns our inline `price_data` into a Price
+object, pins the subscription to it, and renews against that pinned amount for
+as long as the subscription lives. It never calls back. It never re-reads
+`_data/membership.yml`. There is no webhook asking what a renewal should cost.
+
+So editing a price here changes what **new** members pay and nothing else.
+Existing subscribers keep renewing at what they signed up at — silently,
+forever. That is grandfathering, and it is a real decision some organizations
+make on purpose. FCPM never has: everybody is always on the current plan.
+
+Which means the grandfathering has to be undone deliberately:
+
+```
+python3 script/reprice-subscriptions.py            # report, changes nothing
+python3 script/reprice-subscriptions.py --apply    # move them
+```
+
+Nobody is prorated — `proration_behavior=none`, so the year already bought
+runs out at the price it was bought at and the new amount applies at the next
+renewal. Anything else takes money from people between announcements.
+
+### The order a price change happens in
+
+1. Edit the price in `_data/membership.yml`.
+2. Pull request, review, merge. **That is the price history.**
+3. New members pay the new price as soon as it deploys.
+4. Email the membership.
+5. **After the notice period has elapsed**, run `--apply`.
+6. Everyone renews at the new price on their own anniversary.
+
+Step 5 is deliberately manual. A price change that reaches people's cards the
+moment a pull request merges is a price change nobody announced, and "we told
+you thirty days ago" has to be true before the charge moves. Dry-run is the
+default so reaching for it by accident produces a report, not a bill.
+
+### One year up front is a price lock; subscribing is not
+
+The two options differ on more than convenience, and the page has to say so.
+
+Paying for the year up front **is** a price lock for that year — there is no
+renewal to reprice, so a change during those twelve months cannot reach you.
+Subscribing renews at whatever the price is on your anniversary, because there
+are no grandfathered plans.
+
+### How a nonprofit actually pays half
+
+Not by ticking a box. The old sequence was: pick a tier, pay full price, staff
+notice, somebody posts a cheque back — and organizations learned to buy the
+wrong thing deliberately and wait for the refund.
+
+The fix is not a stricter rule, it is checking **earlier**:
+
+1. `script/sync-nonprofits.py` puts the IRS 501(c)(3) list on the site.
+2. The organization picks itself off that list before paying.
+3. Staff verify the EIN and issue a Stripe promotion code.
+4. The code halves the price at checkout.
+
+Stripe holds the codes, so an unverified visitor cannot mint one and a
+verified one never has to be trusted with an amount. `allow_promotion_codes`
+is set on every session; the broker ignores a `nonprofit: true` in the request
+body entirely, and there is a test that it does.
+
+### Booqable
+
+Spelled with a q — [booqable.com](https://booqable.com), a rental system.
+
+**No credential is needed to show products or take a booking.** This is worth
+being precise about, because the two things Booqable calls "authentication"
+are for different jobs:
+
+| | What it is | Where it goes |
+|---|---|---|
+| Company ID | Public, baked into the embed snippet | `_data/payments.yml`, in git |
+| Access token | Employee-scoped, reads and writes the business | Nowhere, currently |
+
+The embed snippet carries the company ID and that is all it needs. Products,
+live availability, real pricing, cart and checkout all work from it. Booqable
+pre-populates it precisely so it can be pasted into any website's HTML, and
+their docs say to keep access tokens *out* of client-side code.
+
+So the access token buys exactly one thing we do not currently have: the
+catalog as **data at build time**, so gear appears in our own HTML rather than
+being drawn by their JavaScript after load — indexable, readable with
+JavaScript off, styled entirely by us. That is a real benefit, and it is also
+a GitHub Action, a stored secret, and a sync that can drift. Not yet.
+
+To switch reservations on: paste the snippet from Settings → Online Bookings →
+Website integration into `booqable.snippet` in `_data/payments.yml`. Until
+then `/equipment/` shows a visible "not wired up yet" block, same as the other
+unconfigured transactions.
+
+The snippet is stored **pasted, not reconstructed**. The script URL and its
+attributes are Booqable's to change, and one assembled from a guess reviews
+fine and loads nothing.
+
+### Why this is not an iframe
+
+The iframe on the current site is a **Wix constraint, not a Booqable one**.
+There are more than six items and nothing says so — you have to discover that
+the inner box scrolls. Wix's HTML element *is* an iframe, so it was the only
+thing Wix could do.
+
+Here the components are ordinary divs in our own document:
+
+```html
+<div class="booqable-datepicker"></div>
+<div class="booqable-product-list" data-per="12" data-show-search="true"></div>
+```
+
+The page grows to fit them, our stylesheet applies, and `data-per` makes the
+list **paginate with a control you can see** instead of hiding the seventh
+item below the fold of a fixed-height box. Other attributes: `data-tags`,
+`data-collections`, `data-limit`, and there are separate mount points for
+`booqable-collections`, `booqable-sidebar`, `booqable-sort` and
+`booqable-bar`.
+
+### We restyle their store into a list
+
+Their layout is a grid of cards. Ours is one item per row — thumbnail, name,
+price, add button — because gear is picked from by scanning names, and names
+read faster in a column than in a grid. A card grid also spends most of a
+phone screen on photographs of black rectangles that all look alike: six rows
+fit where one and a half cards did.
+
+That is possible because their bundle has no `attachShadow`, no custom
+elements, and ships a global stylesheet — a React app rendering into our light
+DOM, which our CSS can reach. Each override in `site.css` names the rule it is
+fighting, and they are all real rules read out of their stylesheet.
+
+The one they all descend from: `.booqable-product { min-width: 280px }` in a
+flex-wrap container. Two of those plus the gap need 576px, so a 390px phone
+could only ever show one. The width was never responsive — it is a floor, and
+the floor is wider than half a phone.
+
+**If Booqable changes their markup, these stop applying.** The failure mode is
+their card grid coming back, not a broken page. Their script does not load on
+a CI runner, so none of it is covered by a test — it is checked by looking.
+
+The script loads on `/equipment/` only, not site-wide — it is a third party,
+and there is no reason for it to run on the twenty-five pages with nothing to
+book.
 
 ---
 
@@ -1025,6 +1297,6 @@ Carried over as a to-do list, since each is a one-line fix here:
 - Several pages load slowly because of Wix widgets, including one that displays
   the weather
 - The equipment page is a photo gallery of the inventory, which is neither
-  searchable nor the question visitors are asking. Bookable is the system of
+  searchable nor the question visitors are asking. Booqable is the system of
   record and staff pick the gear, so the page should summarise categories
   rather than list items

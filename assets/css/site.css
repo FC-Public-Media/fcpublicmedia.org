@@ -1052,3 +1052,233 @@ label.btn { cursor: pointer; }
     50%      { opacity: 0.45; }
   }
 }
+
+/* --- The Booqable store on /equipment/ ------------------------------------ */
+/*
+   Booqable renders its store into our page — light DOM, no shadow root, no
+   custom elements, and a global stylesheet of its own. That is the whole
+   reason this section can exist: on Wix it is an iframe, and an iframe is a
+   sealed box you can only make taller.
+
+   Their layout is a grid of cards. This turns it into a list of rows: one
+   item per line, thumbnail, name, price, and the button to add it. Gear is
+   picked from by scanning names, and names read faster in a column than in a
+   grid — a card grid makes you read in a boustrophedon, and it spends most of
+   a phone screen on photographs of black rectangles that all look alike.
+
+   Everything below overrides a rule read out of their stylesheet rather than
+   guessed at, so each one names what it is fighting. Their selectors all
+   begin `.booqable-component`, so ours have to be at least as specific to
+   win — that is why these are not one-word rules.
+
+   The risk of overriding somebody else's markup is that they change it and
+   this quietly stops applying. Kept as small as possible for that reason, and
+   the failure mode is their card grid coming back rather than a broken page.
+   Their script does not load on a CI runner, so nothing here is covered by a
+   test — it is checked by looking. */
+
+.booqable-store {
+  /* The cart launcher floats bottom-right, over whatever is there. Without
+     this it lands on the paragraph below the store. */
+  padding-bottom: 4.5rem;
+}
+
+/*
+   THE GRID BECOMES A COLUMN.
+
+   Theirs: `display:flex; flex-wrap:wrap; gap:16px; justify-content:center`
+   with `.booqable-product { min-width:280px; max-width:320px }`. The minimum
+   width is a floor rather than a preference, and two of them plus the gap
+   need 576px — which is why a 390px phone showed exactly one per row and why
+   the seventh item was a scroll away.
+
+   One column, and each item a row. No breakpoints: a list is a list at every
+   width, and the rows get longer rather than more numerous. */
+.booqable-component .booqable-product-list-grid {
+  display: block;
+  padding: 0;
+}
+
+.booqable-component .booqable-product-list-grid .booqable-product,
+.booqable-component .booqable-product-wrapper {
+  min-width: 0;
+  max-width: none;
+  width: auto;
+  margin: 0;
+}
+
+/* Hairlines between rows rather than a shadow around each one. A card carries
+   its own edges because it floats; a row in a list does not need them, and
+   twelve drop shadows down a page is noise. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.9rem;
+  border-radius: 0;
+  box-shadow: none !important;
+  background: transparent;
+  border-bottom: 1px solid var(--rule);
+  padding: 0.7rem 0.2rem;
+}
+
+.booqable-component .booqable-product-list-grid .booqable-product:first-child .booqable-product-inner {
+  border-top: 1px solid var(--rule);
+}
+
+/*
+   THE THUMBNAIL.
+
+   Theirs: the image is `width:100%` and the no-photo placeholder is
+   `height:250px` AND `padding-bottom:100%` — both, so an item with no
+   photograph got 250px plus a square of nothing. That was most of a phone
+   screen for the 64gb sd card. In a row it is a fixed square instead, and
+   `flex: none` stops it being squeezed by a long name. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-image-wrapper {
+  flex: none;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-bottom: 0;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner img.bq-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner span.bq-no-photo {
+  width: 100%;
+  height: 100%;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner span.bq-no-photo i.bq-no-photo {
+  font-size: 18px;
+  margin: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/*
+   THE MIDDLE OF THE ROW.
+
+   Theirs: `.bq-details { height:70px; padding:15px }` with the button floated
+   right inside it, sized for the bottom of a card. Here it is the flexible
+   middle column, and the button comes out of the float and sits at the end. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+/*
+   THE NAME.
+
+   Theirs: nowrap with an ellipsis in a wrapper fixed at 17px — fine in a
+   320px card, and it is the END of our names that tells them apart, so
+   "Rokinon 50mm Lens for Sony E" and "…for Canon" clip to the same string.
+   A row is the full width of the page, so most names now fit on one line;
+   two is the ceiling for the ones that do not. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper,
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper.bq-has-prices {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: auto;
+  padding-right: 0;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+/* The price column. Right-aligned and not allowed to wrap, so the amounts
+   line up down the page and can be compared without reading each row. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-price-details {
+  flex: none;
+  margin-top: 0;
+  text-align: right;
+  white-space: nowrap;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-price-details span.bq-price {
+  color: var(--ink);
+}
+
+/* The add button, out of the float and onto the end of the row. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-button {
+  float: none;
+  flex: none;
+  padding: 0.5rem 0.7rem;
+  font-size: 1rem;
+}
+
+/* Their status pill is positioned with a negative margin to hang off the top
+   of a card image. There is no card any more, so it would hang off nothing. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-status {
+  float: none;
+  margin: 0;
+}
+
+/*
+   NARROW ROWS.
+
+   Below about a 30rem screen there is not room for name and price side by
+   side without the name losing most of its width, so the middle column
+   stacks: name on top, price under it, button still at the end. */
+@media (max-width: 30rem) {
+  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details {
+    flex-wrap: wrap;
+    gap: 0.15rem 0.9rem;
+  }
+
+  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper,
+  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper.bq-has-prices {
+    flex: 1 1 100%;
+    order: 1;
+  }
+
+  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-price-details {
+    order: 2;
+    text-align: left;
+  }
+
+  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-button {
+    order: 3;
+    margin-left: auto;
+  }
+}
+
+/*
+   DARK-ON-DARK.
+
+   Theirs: `.booqable-product-list-notice { color:#213b47 }` with no
+   background of its own. On paper that is near-black on white. On our dark
+   scheme it is near-black on near-black — the "Select your rental period for
+   prices and availability" box, present and unreadable, which is the same
+   class of bug the contrast test was written for. */
+.booqable-product-list-wrapper .booqable-product-list-notice {
+  color: var(--ink);
+  background: var(--paper-alt);
+  border-color: var(--rule);
+}
