@@ -250,6 +250,12 @@ booqable:
   # `data-show-search="true"` folds the search field in rather than needing a
   # second mount point. Also available: data-tags, data-collections,
   # data-limit.
+  #
+  # Their product list renders as a grid of cards. assets/css/site.css turns
+  # it into a list of rows — thumbnail, name, price, add — because gear is
+  # picked from by scanning names, and a card grid spends most of a phone
+  # screen on photographs of black rectangles that all look alike. Six rows
+  # fit where one and a half cards did.
   components:
     - class: booqable-datepicker
       what: Pick the dates first, so everything below shows real availability.

@@ -356,6 +356,28 @@ item below the fold of a fixed-height box. Other attributes: `data-tags`,
 `booqable-collections`, `booqable-sidebar`, `booqable-sort` and
 `booqable-bar`.
 
+### We restyle their store into a list
+
+Their layout is a grid of cards. Ours is one item per row — thumbnail, name,
+price, add button — because gear is picked from by scanning names, and names
+read faster in a column than in a grid. A card grid also spends most of a
+phone screen on photographs of black rectangles that all look alike: six rows
+fit where one and a half cards did.
+
+That is possible because their bundle has no `attachShadow`, no custom
+elements, and ships a global stylesheet — a React app rendering into our light
+DOM, which our CSS can reach. Each override in `site.css` names the rule it is
+fighting, and they are all real rules read out of their stylesheet.
+
+The one they all descend from: `.booqable-product { min-width: 280px }` in a
+flex-wrap container. Two of those plus the gap need 576px, so a 390px phone
+could only ever show one. The width was never responsive — it is a floor, and
+the floor is wider than half a phone.
+
+**If Booqable changes their markup, these stop applying.** The failure mode is
+their card grid coming back, not a broken page. Their script does not load on
+a CI runner, so none of it is covered by a test — it is checked by looking.
+
 The script loads on `/equipment/` only, not site-wide — it is a third party,
 and there is no reason for it to run on the twenty-five pages with nothing to
 book.
