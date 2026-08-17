@@ -91,6 +91,24 @@ export function sessionParams({ item, sku, recurring, success, cancel, reference
   }
   if (asSubscription) {
     params.set('line_items[0][price_data][recurring][interval]', item.interval);
+
+    // WHAT THIS METADATA IS FOR, AND WHY IT IS NOT OPTIONAL.
+    //
+    // Stripe never asks us what a subscription costs. `price_data` creates an
+    // ad-hoc Price, the subscription is pinned to it, and it renews at that
+    // amount forever — Stripe has no idea this repository exists and never
+    // fetches anything back. Left alone, that grandfathers every subscriber,
+    // which is the opposite of how FCPM has ever priced: there are no legacy
+    // plans, everybody is on the current one.
+    //
+    // So a price change has to be PUSHED to existing subscriptions, and that
+    // means being able to look at a subscription a year from now and say which
+    // tier it is. The session's own metadata does not survive onto the
+    // subscription — this does. Without it, script/reprice-subscriptions.py
+    // would have to guess a tier from an amount, which stops working the first
+    // time two tiers cost the same.
+    params.set('subscription_data[metadata][sku]', sku);
+    params.set('subscription_data[metadata][priced]', String(item.amount));
   }
 
   params.set('success_url', success);

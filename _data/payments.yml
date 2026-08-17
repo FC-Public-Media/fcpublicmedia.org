@@ -68,13 +68,64 @@ terms:
   # card networks expect to see when a cardholder disputes a renewal.
   price_change_notice_days: 30
 
+  # WHAT THE TWO OPTIONS ACTUALLY DIFFER ON
+  # ---------------------------------------
+  # Not convenience. They differ on what happens when a price changes, and
+  # that has to be said out loud on the page, because a buyer choosing between
+  # them cannot work it out.
+  #
+  #   Paying for the year up front IS a price lock, for that year. There is no
+  #   renewal to reprice, so a change during those twelve months cannot reach
+  #   you. It is the special deal, and it is special because it is prepaid.
+  #
+  #   Subscribing is the opposite: it renews at whatever the price is on your
+  #   anniversary. FCPM has never had grandfathered plans — everybody is
+  #   always on the current one — so a subscription is a standing agreement to
+  #   the current price, not to today's.
+  #
+  # Stripe will not do that second part on its own. A subscription is pinned
+  # to the amount it was created at and renews at that amount forever; Stripe
+  # never reads this repository. Moving existing subscribers onto a new price
+  # is script/reprice-subscriptions.py, run by a person AFTER the notice
+  # period below has actually elapsed.
+  lock:
+    upfront: >-
+      Paying for the year up front fixes your price for that year. Nothing can
+      change until you renew.
+    subscription: >-
+      A renewing membership is charged at the price on the day it renews. We
+      announce any change at least a month beforehand, and it applies to
+      everyone at once — we do not keep old members on old prices.
+
   # Said on the checkout page and in the confirmation email, not buried.
   summary:
     - A membership runs one year from the day you buy it.
     - You choose whether it renews. A single payment simply lapses at the end of the year.
+    - Paying up front fixes your price for that year.
     - If you choose to renew, we email you before each renewal.
     - We announce any price change at least a month before it would affect you.
+    - Everyone pays the current price. We do not keep old members on old prices.
     - You can cancel a renewal at any time, and the year you already paid for still runs out.
+
+  # How a price change actually reaches people. The steps are in order and the
+  # order is the point — step 5 must not happen before step 4 has been true
+  # for `price_change_notice_days`.
+  #
+  #   1. Edit the price in _data/membership.yml.
+  #   2. Pull request, review, merge. That is the price history.
+  #   3. New members pay the new price as soon as it deploys.
+  #   4. Email the membership. (Constant Contact, per the note below.)
+  #   5. After the notice period: python3 script/reprice-subscriptions.py --apply
+  #   6. Everyone renews at the new price on their own anniversary.
+  #
+  # Nobody is prorated at step 5. The year already bought runs out at the price
+  # it was bought at.
+  announcements:
+    # TODO — confirm. Autumn's recollection is Constant Contact; whoever holds
+    # that login should be named here, because step 4 above is a person's job
+    # and an unnamed job is nobody's.
+    channel: Constant Contact
+    owner: TODO
 
   # TODO — needs a real page before subscriptions are switched on. A link to
   # this is required on the checkout page for recurring charges.

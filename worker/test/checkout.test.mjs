@@ -152,6 +152,33 @@ test('choosing to renew makes it a yearly subscription at the same amount', asyn
   assert.equal(params.get('submit_type'), 'subscribe');
 });
 
+test('a subscription carries its tier, so it can be repriced later', async () => {
+  // Stripe never asks us what a renewal costs — the subscription is pinned to
+  // the amount it was created at and renews at that forever. Moving people
+  // onto a new price is script/reprice-subscriptions.py, and that script has
+  // to know which tier a year-old subscription is for.
+  //
+  // The session's own metadata does NOT survive onto the subscription, which
+  // is why this is set separately. Without it the script would have to guess
+  // the tier from the amount, which stops working the day two tiers cost the
+  // same — and quietly, on somebody's card.
+  const stripe = fakeStripe();
+  await broker(stripe).fetch(post({ sku: 'membership:creator', recurring: true }));
+
+  const params = stripe.calls[0].params;
+  assert.equal(params.get('subscription_data[metadata][sku]'), 'membership:creator');
+  assert.equal(params.get('subscription_data[metadata][priced]'), '7000');
+});
+
+test('a one-off payment does not pretend to be a subscription', async () => {
+  // subscription_data is rejected outright by Stripe in payment mode, so this
+  // is not merely tidy — sending it would fail every single-payment checkout.
+  const stripe = fakeStripe();
+  await broker(stripe).fetch(post({ sku: 'membership:creator' }));
+
+  assert.equal(stripe.calls[0].params.get('subscription_data[metadata][sku]'), null);
+});
+
 test('the term is stated where the money is, not only on the page they came from', async () => {
   const stripe = fakeStripe();
   await broker(stripe).fetch(post({ sku: 'membership:sponsor' }));

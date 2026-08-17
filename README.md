@@ -187,6 +187,54 @@ A price of `TODO` is skipped rather than defaulted, so an undecided figure
 cannot become a real charge. That is why the class drop-ins are not for sale
 yet.
 
+### Stripe does not know this repository exists
+
+Worth stating plainly, because it is the opposite of what it feels like.
+
+When somebody subscribes, Stripe turns our inline `price_data` into a Price
+object, pins the subscription to it, and renews against that pinned amount for
+as long as the subscription lives. It never calls back. It never re-reads
+`_data/membership.yml`. There is no webhook asking what a renewal should cost.
+
+So editing a price here changes what **new** members pay and nothing else.
+Existing subscribers keep renewing at what they signed up at — silently,
+forever. That is grandfathering, and it is a real decision some organizations
+make on purpose. FCPM never has: everybody is always on the current plan.
+
+Which means the grandfathering has to be undone deliberately:
+
+```
+python3 script/reprice-subscriptions.py            # report, changes nothing
+python3 script/reprice-subscriptions.py --apply    # move them
+```
+
+Nobody is prorated — `proration_behavior=none`, so the year already bought
+runs out at the price it was bought at and the new amount applies at the next
+renewal. Anything else takes money from people between announcements.
+
+### The order a price change happens in
+
+1. Edit the price in `_data/membership.yml`.
+2. Pull request, review, merge. **That is the price history.**
+3. New members pay the new price as soon as it deploys.
+4. Email the membership.
+5. **After the notice period has elapsed**, run `--apply`.
+6. Everyone renews at the new price on their own anniversary.
+
+Step 5 is deliberately manual. A price change that reaches people's cards the
+moment a pull request merges is a price change nobody announced, and "we told
+you thirty days ago" has to be true before the charge moves. Dry-run is the
+default so reaching for it by accident produces a report, not a bill.
+
+### One year up front is a price lock; subscribing is not
+
+The two options differ on more than convenience, and the page has to say so.
+
+Paying for the year up front **is** a price lock for that year — there is no
+renewal to reprice, so a change during those twelve months cannot reach you.
+Subscribing renews at whatever the price is on your anniversary, because there
+are no grandfathered plans.
+
 ### How a nonprofit actually pays half
 
 Not by ticking a box. The old sequence was: pick a tier, pay full price, staff

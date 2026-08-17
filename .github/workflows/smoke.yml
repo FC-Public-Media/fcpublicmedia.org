@@ -91,6 +91,14 @@ jobs:
           python3 script/test_build_prices.py
           python3 script/build-prices.py --check
 
+      # Stripe pins a subscription to the amount it was created at and renews
+      # against that forever — it never reads this repository. So "everybody is
+      # on the current price" is only true because a script makes it true, and
+      # the decisions that script makes (who moves, who is left alone, who
+      # cannot be placed) are the ones that cost somebody money if wrong.
+      - name: Test the subscription repricing
+        run: python3 script/test_reprice_subscriptions.py
+
       # The member site template is a Jekyll site of its own, excluded from
       # the main build — so nothing else would notice it breaking. The check
       # is a round trip rather than just a build: the template generates a
