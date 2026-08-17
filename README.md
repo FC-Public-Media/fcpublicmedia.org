@@ -130,8 +130,42 @@ Stripe issues three kinds and they are not interchangeable.
 | Prefix | Public? | Where it lives |
 |---|---|---|
 | `pk_live_…` | **Yes** | `_data/payments.yml`, in git |
-| `rk_live_…` | No | A Cloudflare secret, `STRIPE_KEY` |
+| `rk_live_…` | No | GitHub org secret → Cloudflare secret |
 | `sk_live_…` | No | Not used at all |
+
+> **The secret is named `PUBLIC_STRIPE_API_KEY` and it is not public.**
+>
+> It holds the restricted key. The name predates the distinction between
+> Stripe's key types being settled, and renaming it in GitHub means minting a
+> new key — so the name stays and this warning exists instead. It must never
+> be rendered into a page, logged, or returned in a response, and a reasonable
+> person reading only the variable name would do all three.
+> `script/test_no_secrets.py` fails the build if anything shaped like a secret
+> key reaches the built site, which is the real protection.
+
+### A GitHub secret is not a Cloudflare secret
+
+They are separate stores and neither can see the other. A GitHub organization
+secret is readable by GitHub Actions and nothing else; the worker runs at
+Cloudflare and reads its own environment. Putting the key in one place does
+not put it in the other, which is a thing that looks configured and is not.
+
+`.github/workflows/broker.yml` is the bridge: it deploys the broker and then
+pushes the org secret into Cloudflare's store on every run, so GitHub stays
+the single place a human ever pastes the value and a rotation reaches
+production without anybody remembering a manual step. It needs
+`CLOUDFLARE_API_TOKEN` (Cloudflare dashboard → My Profile → API Tokens → *Edit
+Cloudflare Workers*) and skips entirely until that exists.
+
+To set it by hand instead:
+
+```
+cd worker && npx wrangler secret put PUBLIC_STRIPE_API_KEY
+```
+
+It prompts, reads the value from the terminal, and stores it encrypted. It is
+never written to disk and never appears in `wrangler.jsonc`. The broker also
+accepts `STRIPE_KEY`, so a secret already set under that name keeps working.
 
 The publishable key can start a payment and do nothing else, so it is safe in
 the repository — that is what it is for. The restricted key is the one that
@@ -139,13 +173,6 @@ acts on the account, and ours is scoped to writing Checkout Sessions and
 nothing more: if the worker were compromised tomorrow, the key it holds could
 not issue a refund, read the customer list, or move the balance. Stripe now
 recommends restricted keys over `sk_` for exactly this reason.
-
-```
-cd worker && npx wrangler secret put STRIPE_KEY
-```
-
-It prompts, reads the value from the terminal, and stores it encrypted. It is
-never written to disk and never appears in `wrangler.jsonc`.
 
 If an `rk_` or `sk_` key ever lands in a commit, it is burned the moment it is
 pushed. Rotate it in the Stripe dashboard rather than just deleting the line.

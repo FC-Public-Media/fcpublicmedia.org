@@ -223,6 +223,50 @@ test('the restricted key is sent to Stripe and never comes back out', async () =
   assert.ok(!(await response.text()).includes('rk_test_pretend'), 'the key was echoed to the page');
 });
 
+test('the key is read from the misleadingly named variable it actually lives in', async () => {
+  // The organization secret is called PUBLIC_STRIPE_API_KEY and holds a
+  // restricted key, which is not public at all. The name predates the
+  // distinction being settled and renaming it means minting a new key, so the
+  // broker reads that name. Without this test the mismatch shows up as
+  // "payments are not switched on yet" long after somebody was sure they had
+  // switched them on.
+  const stripe = fakeStripe();
+  const service = createBroker(
+    {
+      RP_ID: 'fcpublicmedia.org',
+      ORIGINS: ORIGIN,
+      CHALLENGES: memoryKV(),
+      PUBLIC_STRIPE_API_KEY: 'rk_test_named_badly',
+    },
+    { fetchImpl: stripe }
+  );
+
+  const response = await service.fetch(post({ sku: 'membership:sponsor' }));
+
+  assert.equal(response.status, 200);
+  assert.equal(stripe.calls[0].authorization, 'Bearer rk_test_named_badly');
+});
+
+test('the obvious name still works, and the real one wins', async () => {
+  const stripe = fakeStripe();
+  const service = createBroker(
+    {
+      RP_ID: 'fcpublicmedia.org',
+      ORIGINS: ORIGIN,
+      CHALLENGES: memoryKV(),
+      PUBLIC_STRIPE_API_KEY: 'rk_test_from_github',
+      STRIPE_KEY: 'rk_test_set_by_hand',
+    },
+    { fetchImpl: stripe }
+  );
+
+  await service.fetch(post({ sku: 'membership:sponsor' }));
+
+  // Whichever the deploy pipeline sets is the one that gets rotated, so a
+  // leftover hand-set secret must not quietly shadow it.
+  assert.equal(stripe.calls[0].authorization, 'Bearer rk_test_from_github');
+});
+
 test('with no key configured, it says so instead of half-working', async () => {
   const stripe = fakeStripe();
   const response = await broker(stripe, { STRIPE_KEY: '' }).fetch(post({ sku: 'membership:sponsor' }));

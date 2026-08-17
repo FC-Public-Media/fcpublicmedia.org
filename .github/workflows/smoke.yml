@@ -99,6 +99,15 @@ jobs:
       - name: Test the subscription repricing
         run: python3 script/test_reprice_subscriptions.py
 
+      # The organization secret holding our restricted Stripe key is named
+      # PUBLIC_STRIPE_API_KEY, and holds a value that is not public in any
+      # sense. Somebody will eventually read that name, believe it, and put
+      # the value in a template — behaving entirely reasonably. This looks at
+      # the built output rather than at intent, so it does not matter how a
+      # key got there.
+      - name: Check no secret key reached the site
+        run: python3 script/test_no_secrets.py
+
       # The member site template is a Jekyll site of its own, excluded from
       # the main build — so nothing else would notice it breaking. The check
       # is a round trip rather than just a build: the template generates a

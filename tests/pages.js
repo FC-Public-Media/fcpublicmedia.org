@@ -42,6 +42,14 @@ const THIRD_PARTY = [
   'instagram.com',
   'facebook.com',
   'conta.cc',
+  // Booqable's embed on /equipment/. It renders the products inline rather
+  // than in an iframe, but the script itself still comes from their asset
+  // host, and it does not load on a runner with no route to it. That is their
+  // availability, not our page being broken — which is the whole reason this
+  // list exists. Whether the mount points actually get hydrated is a question
+  // for the @external suite, where a third party being down is allowed to be
+  // a red mark rather than a build failure.
+  'booqable.com',
 ];
 
 const isThirdParty = (url) => THIRD_PARTY.some((host) => url.includes(host));

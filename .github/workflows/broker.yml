@@ -1,0 +1,94 @@
+name: Deploy the broker
+
+# The site and the broker are two different deploys, and only one of them was
+# automated.
+#
+# Cloudflare's GitHub app builds and deploys the SITE (`fcpm`) on every push.
+# The broker (`fcpm-broker`) is a separate worker in worker/, and until now it
+# went out by hand with `npm run deploy` — which is fine right up to the point
+# where somebody merges a change to it and nothing happens.
+#
+# THE PROBLEM THIS ALSO SOLVES
+# ----------------------------
+# The restricted Stripe key lives in the GitHub organization's secrets. A
+# GitHub secret is readable by GitHub Actions and by nothing else — it is not
+# visible to a Cloudflare Worker at runtime, because the worker runs at
+# Cloudflare and has its own separate secret store. Putting the key in one
+# place does not put it in the other.
+#
+# So this workflow is the bridge: it reads the organization secret and pushes
+# it into Cloudflare's store, keeping GitHub as the single place a human ever
+# pastes the value.
+#
+# It is skipped entirely until CLOUDFLARE_API_TOKEN exists, the same way the
+# site deploy skips without its token — so this file can be merged before
+# anybody has created anything, and CI stays green rather than failing on
+# infrastructure that does not exist yet.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - ".github/workflows/broker.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Before deploying, not after. The broker checks signatures and takes
+      # money; shipping it and then finding out is the wrong order, and these
+      # tests need nothing installed and run in about a second.
+      - name: Test the broker
+        working-directory: worker
+        run: npm test
+
+      - name: Deploy
+        if: env.CF_TOKEN != ''
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+
+      # After the deploy, because a secret cannot be set on a worker that does
+      # not exist yet. On every run rather than only the first: this is how a
+      # rotated key reaches production, and a rotation that needs somebody to
+      # remember a manual step is a rotation that does not happen.
+      #
+      # `secret put` reads stdin, so the value is never a command-line
+      # argument — arguments show up in process listings and in the run log's
+      # command echo. It is masked as a secret either way; not putting it
+      # there in the first place is better than relying on the masking.
+      - name: Give it the Stripe key
+        if: env.CF_TOKEN != '' && env.STRIPE != ''
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # THE NAME LIES: this holds a RESTRICTED key (rk_…), which is secret.
+          # It is named PUBLIC_STRIPE_API_KEY because that is what already
+          # exists in the organization and renaming it means minting a new key.
+          # Nothing about the value is public. script/test_no_secrets.py fails
+          # the build if anything shaped like it reaches the site.
+          STRIPE: ${{ secrets.PUBLIC_STRIPE_API_KEY }}
+        run: printf '%s' "$STRIPE" | npx wrangler secret put PUBLIC_STRIPE_API_KEY
+
+      - name: Say why nothing was deployed
+        if: env.CF_TOKEN == ''
+        run: |
+          echo "### Broker deploy skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The tests ran, but nothing was deployed: the repository secret" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`CLOUDFLARE_API_TOKEN\` is not set." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Create one in the Cloudflare dashboard under My Profile," >> "$GITHUB_STEP_SUMMARY"
+          echo "API Tokens, using the *Edit Cloudflare Workers* template, and" >> "$GITHUB_STEP_SUMMARY"
+          echo "add it under Settings, Secrets and variables, Actions." >> "$GITHUB_STEP_SUMMARY"

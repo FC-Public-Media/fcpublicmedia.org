@@ -207,18 +207,27 @@ sells:
 # GitHub Action, a stored secret, and a sync that can drift. Not yet.
 booqable:
   # The snippet, copied verbatim from Booqable: Settings → Online Bookings →
-  # Website integration → "Copy to clipboard". It arrives pre-populated with
-  # the company ID.
+  # Website integration → "Copy to clipboard".
   #
-  # Pasted rather than reconstructed. The script URL and its attributes are
-  # Booqable's to change, and a snippet assembled from a guess is the kind of
-  # thing that reviews fine and loads nothing.
+  # Pasted rather than reconstructed, and this is the evidence for why. The
+  # guess was `https://SLUG.booqable.com/embed.js`. The real thing is a UUID
+  # on a different host under a versioned path — nothing about it is derivable
+  # from the company name, and a snippet assembled from a guess reviews fine
+  # and loads nothing.
   #
-  # TODO — paste it, and the equipment page starts working.
-  snippet: ""
+  # Public by design: it goes in a <script> tag on a public page, which is as
+  # public as a string gets. It is an asset identifier, not a credential — it
+  # cannot read the business the way an API access token can.
+  snippet: '<script src="https://1463eea8-db0a-45d4-9801-176111dc06a5.assets.booqable.com/v2/booqable.js"></script>'
 
-  # The same company ID, for anything that needs it on its own — the API host
-  # is https://SLUG.booqable.com/api/4/ if a build-time sync is ever wanted.
+  # NOT the same identifier as the one in the snippet above.
+  #
+  # The snippet's UUID belongs to the asset host. The API lives at
+  # https://SLUG.booqable.com/api/4/ where SLUG is the subdomain of the
+  # Booqable dashboard — a short name, not a UUID. Only needed if a build-time
+  # catalog sync is ever wanted, which today it is not. Left empty rather than
+  # filled in with the UUID, because the two are easy to confuse and a wrong
+  # value here would fail in a way that looks like the token being wrong.
   company_slug: ""
 
   # Deliberately absent: an API token. See above. If a build-time catalog sync

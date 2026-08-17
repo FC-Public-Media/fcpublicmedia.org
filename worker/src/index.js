@@ -138,11 +138,28 @@ function readConfig(env, now = () => Date.now()) {
     // the balance. Booqable holds its own separate credential for the rental
     // side, so neither system can act as the other.
     //
+    // THE NAME LIES. READ THIS BEFORE USING IT ANYWHERE.
+    //
+    // PUBLIC_STRIPE_API_KEY holds a SECRET value. It was named before the
+    // distinction between Stripe's key types was settled, the secret already
+    // exists in the GitHub organization, and renaming it means minting a new
+    // key — so the name stays and the warning goes here instead.
+    //
+    // Nothing about this value is public. It is not the pk_ key, it must never
+    // be rendered into a page, logged, or returned in a response, and a
+    // reasonable person reading only the variable name would do all three.
+    // _data/payments.yml holds the genuinely public one, and
+    // script/test_no_secrets.py fails the build if anything shaped like a
+    // secret key reaches the built site.
+    //
+    // STRIPE_KEY is still read as a fallback so a Cloudflare secret set under
+    // the obvious name keeps working.
+    //
     // Absent from `missing` deliberately. A broker that refused to hand out
     // challenges because nobody had set up payments yet would take the
     // passkey work offline for a configuration step unrelated to it; /checkout
     // reports this, and only /checkout.
-    stripe: (env.STRIPE_KEY || '').trim() || null,
+    stripe: (env.PUBLIC_STRIPE_API_KEY || env.STRIPE_KEY || '').trim() || null,
 
     // Long enough for a big file on a slow line to finish, since the signature
     // has to outlive the whole transfer rather than just the request.
