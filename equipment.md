@@ -3,6 +3,19 @@ title: Equipment
 lede: Members can borrow cameras, audio, and lighting for their own projects.
 ---
 
+## Browse and reserve online
+
+Some of our gear can be booked directly. Pick your dates and the list below
+shows what's actually free — availability is live, not a wish.
+
+{% include booqable.html %}
+
+<p class="muted">
+  Not everything is here. Anything you can't find, or aren't sure about, goes
+  through the email route below &mdash; which is also the better one if you'd
+  rather describe the shoot than pick part numbers.
+</p>
+
 ## How to borrow equipment
 
 Email [{{ site.data.org.equipment_email }}](mailto:{{ site.data.org.equipment_email }})

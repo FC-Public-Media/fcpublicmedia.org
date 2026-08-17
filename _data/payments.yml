@@ -182,19 +182,68 @@ sells:
 # and friends — that render inline, in our own page, in our own stylesheet,
 # sized by the page like any other content. No inner scrollbar, no fixed
 # height, nothing hidden below a fold that is not the real fold.
+#
+# THE EMBED NEEDS NO CREDENTIAL. This was wrong in the first draft of this
+# file, which listed an API token as though it were required to show products.
+# It is not, and the distinction is worth keeping straight:
+#
+#   The embed is authenticated by a COMPANY ID, which is public by design.
+#   Booqable pre-populates it into the snippet precisely so it can be pasted
+#   into any website's HTML. Products, live availability, real pricing, cart
+#   and checkout all work from it. Nothing secret is involved and nothing
+#   needs storing anywhere but this file.
+#
+#   The API token is a different thing entirely. Booqable's own docs say to
+#   keep it out of client-side code — it is an employee-scoped credential that
+#   can read and write the business. It buys exactly one thing we might want
+#   and cannot get from the embed: the catalog as data at BUILD time, so gear
+#   appears in our own HTML rather than being drawn by their JavaScript after
+#   the page loads.
+#
+# So the token is optional, and it is not needed for anybody to reserve
+# anything. It would only be worth adding if we want the equipment list to be
+# in the page source — indexable by search engines, readable with JavaScript
+# off, and styled entirely by us. That is a real benefit and it is also a
+# GitHub Action, a stored secret, and a sync that can drift. Not yet.
 booqable:
-  # The subdomain in the Booqable dashboard URL: https://SLUG.booqable.com.
-  # Also the API host — https://SLUG.booqable.com/api/4/.
-  # TODO — fill in.
+  # The snippet, copied verbatim from Booqable: Settings → Online Bookings →
+  # Website integration → "Copy to clipboard". It arrives pre-populated with
+  # the company ID.
+  #
+  # Pasted rather than reconstructed. The script URL and its attributes are
+  # Booqable's to change, and a snippet assembled from a guess is the kind of
+  # thing that reviews fine and loads nothing.
+  #
+  # TODO — paste it, and the equipment page starts working.
+  snippet: ""
+
+  # The same company ID, for anything that needs it on its own — the API host
+  # is https://SLUG.booqable.com/api/4/ if a build-time sync is ever wanted.
   company_slug: ""
 
-  # Read-only, for the build-time catalog sync. Booqable calls these access
-  # tokens; make one under Settings, and give it read access only, since all
-  # this repository ever does with it is list products.
-  #
-  # NOT stored here. The sync runs in GitHub Actions and reads it from the
-  # repository secret BOOQABLE_TOKEN.
-  token_secret: BOOQABLE_TOKEN
+  # Deliberately absent: an API token. See above. If a build-time catalog sync
+  # is ever wanted, that is when a BOOQABLE_TOKEN repository secret earns its
+  # keep — and it should be created read-only, since listing products is all
+  # this repository would ever do with it.
 
-  # Set true once the slug is in and the catalog sync has run once.
-  enabled: false
+  # The mount points Booqable's script hydrates. Listed here rather than
+  # hardcoded in the page so the set can change without a template edit, and
+  # so there is one place to see what the page is asking Booqable to draw.
+  #
+  # These are ordinary divs in our own document, not an iframe. That is the
+  # whole reason for doing this on our own site: the page grows to fit the
+  # content, so there is no inner scrollbar and no hidden seventh item.
+  #
+  # `booqable-product-list` takes data attributes, and two of them are aimed
+  # straight at what is wrong today. `data-per` sets how many items a page
+  # shows, so the list PAGINATES — a control you can see, with a next button —
+  # instead of hiding the seventh item below the fold of a fixed-height box.
+  # `data-show-search="true"` folds the search field in rather than needing a
+  # second mount point. Also available: data-tags, data-collections,
+  # data-limit.
+  components:
+    - class: booqable-datepicker
+      what: Pick the dates first, so everything below shows real availability.
+    - class: booqable-product-list
+      attributes: 'data-per="12" data-show-search="true"'
+      what: Every product, twelve to a page, with the search field built in.

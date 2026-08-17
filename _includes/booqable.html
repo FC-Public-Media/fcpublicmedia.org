@@ -1,0 +1,78 @@
+{%- comment -%}
+  Booqable's online store, rendered INLINE in this page.
+
+  Usage:  {% include booqable.html %}
+
+  WHY THIS IS NOT AN IFRAME
+  -------------------------
+  On the current Wix site it is one, and that is the whole complaint: the
+  frame has a fixed height, there are more than six items, and nothing tells
+  you so — you have to discover that the inner box scrolls. That is not
+  Booqable's doing. Wix's HTML element IS an iframe, so it was the only thing
+  Wix could do.
+
+  Here the components are ordinary divs in our own document, hydrated by
+  Booqable's script. The page grows to fit them, our stylesheet applies, and
+  the product list paginates with a control you can see rather than hiding
+  things below the fold of a box.
+
+  NO CREDENTIAL IS INVOLVED
+  -------------------------
+  The snippet carries a company ID, which is public by design — Booqable
+  pre-populates it so the snippet can be pasted into any website. It is not an
+  API token, and an API token would be the wrong thing to put here: Booqable's
+  own documentation says to keep those out of client-side code.
+
+  The script is loaded on THIS PAGE ONLY, not site-wide. It is a third party
+  fetching from another origin, and there is no reason for it to run on the
+  twenty-five pages that have nothing to book.
+{%- endcomment -%}
+
+{%- assign booqable = site.data.payments.booqable -%}
+
+{%- if booqable.snippet and booqable.snippet != "" -%}
+  <div class="booqable-store">
+    {%- for component in booqable.components %}
+      <div class="{{ component.class }}" {{ component.attributes }}></div>
+    {%- endfor %}
+  </div>
+
+  {%- comment -%}
+    The snippet, pasted verbatim from the Booqable dashboard.
+
+    NOT reconstructed from the company ID. Booqable's instructions are "click
+    Copy to clipboard", the exact script URL and attributes are theirs to
+    change, and a snippet assembled from a guess is the kind of thing that
+    looks right in review and loads nothing. So it is stored as the literal
+    text they give you and emitted as-is.
+
+    Rendered without escaping, which is safe for the same reason a template is
+    safe: it comes from this repository and arrives through a pull request.
+    Nothing a visitor supplies reaches it.
+
+    It goes last on purpose. If Booqable is slow or down, the rest of the page
+    — including the email route, which is how most gear is actually requested
+    — has already rendered and works.
+  {%- endcomment -%}
+  {{ booqable.snippet }}
+
+  <noscript>
+    <p class="muted">
+      Browsing availability here needs JavaScript. Email
+      <a href="mailto:{{ site.data.org.equipment_email }}">{{ site.data.org.equipment_email }}</a>
+      and we'll sort it out with you directly &mdash; that route works for
+      everything, and for a lot of members it is the easier one anyway.
+    </p>
+  </noscript>
+{%- else -%}
+  <p class="transaction transaction-todo">
+    <b>Online reservations &mdash; not wired up yet.</b>
+    <span class="muted">
+      Paste the snippet into <code>booqable.snippet</code> in
+      <code>_data/payments.yml</code>. It is in Booqable under Settings,
+      Online Bookings, Website integration &mdash; the "Copy to clipboard"
+      button. It carries a public company ID and nothing secret; there is no
+      API token to find.
+    </span>
+  </p>
+{%- endif -%}

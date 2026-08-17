@@ -255,26 +255,61 @@ body entirely, and there is a test that it does.
 
 ### Booqable
 
-Spelled with a q — [booqable.com](https://booqable.com), a rental system. Set
-`company_slug` in `_data/payments.yml`; the API is at
-`https://SLUG.booqable.com/api/4/` with `Authorization: Bearer {token}`.
+Spelled with a q — [booqable.com](https://booqable.com), a rental system.
 
-**The iframe is a Wix constraint, not a Booqable one.** On the current site
-Booqable sits in an iframe that is too short — there are more than six items
-and no sign of it unless you happen to scroll the inner frame. Wix's HTML
-element *is* an iframe, so that is the only thing Wix could do.
+**No credential is needed to show products or take a booking.** This is worth
+being precise about, because the two things Booqable calls "authentication"
+are for different jobs:
 
-On this site it does not have to be one. Booqable's real integration is a
-script plus mount points that render **inline** in our own page:
+| | What it is | Where it goes |
+|---|---|---|
+| Company ID | Public, baked into the embed snippet | `_data/payments.yml`, in git |
+| Access token | Employee-scoped, reads and writes the business | Nowhere, currently |
+
+The embed snippet carries the company ID and that is all it needs. Products,
+live availability, real pricing, cart and checkout all work from it. Booqable
+pre-populates it precisely so it can be pasted into any website's HTML, and
+their docs say to keep access tokens *out* of client-side code.
+
+So the access token buys exactly one thing we do not currently have: the
+catalog as **data at build time**, so gear appears in our own HTML rather than
+being drawn by their JavaScript after load — indexable, readable with
+JavaScript off, styled entirely by us. That is a real benefit, and it is also
+a GitHub Action, a stored secret, and a sync that can drift. Not yet.
+
+To switch reservations on: paste the snippet from Settings → Online Bookings →
+Website integration into `booqable.snippet` in `_data/payments.yml`. Until
+then `/equipment/` shows a visible "not wired up yet" block, same as the other
+unconfigured transactions.
+
+The snippet is stored **pasted, not reconstructed**. The script URL and its
+attributes are Booqable's to change, and one assembled from a guess reviews
+fine and loads nothing.
+
+### Why this is not an iframe
+
+The iframe on the current site is a **Wix constraint, not a Booqable one**.
+There are more than six items and nothing says so — you have to discover that
+the inner box scrolls. Wix's HTML element *is* an iframe, so it was the only
+thing Wix could do.
+
+Here the components are ordinary divs in our own document:
 
 ```html
-<div class="booqable-product-search"></div>
 <div class="booqable-datepicker"></div>
-<div class="booqable-collections"></div>
+<div class="booqable-product-list" data-per="12" data-show-search="true"></div>
 ```
 
-No inner scrollbar, no fixed height, our stylesheet, sized by the page like
-any other content.
+The page grows to fit them, our stylesheet applies, and `data-per` makes the
+list **paginate with a control you can see** instead of hiding the seventh
+item below the fold of a fixed-height box. Other attributes: `data-tags`,
+`data-collections`, `data-limit`, and there are separate mount points for
+`booqable-collections`, `booqable-sidebar`, `booqable-sort` and
+`booqable-bar`.
+
+The script loads on `/equipment/` only, not site-wide — it is a third party,
+and there is no reason for it to run on the twenty-five pages with nothing to
+book.
 
 ---
 
