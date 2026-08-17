@@ -82,6 +82,15 @@ jobs:
           pip install --quiet pyyaml
           python3 script/test_sync_feeds.py
 
+      # Prices are edited in _data/ and charged from a generated copy the
+      # worker bundles. If those two disagree, the page says one number and the
+      # card is charged another — silently, and for as long as it takes
+      # somebody to reconcile a bank statement. --check is the lock file.
+      - name: Test the price list, and check it is up to date
+        run: |
+          python3 script/test_build_prices.py
+          python3 script/build-prices.py --check
+
       # The member site template is a Jekyll site of its own, excluded from
       # the main build — so nothing else would notice it breaking. The check
       # is a round trip rather than just a build: the template generates a

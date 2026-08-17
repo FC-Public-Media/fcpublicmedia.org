@@ -39,7 +39,7 @@ _data/                   Content that repeats or changes. Plain YAML.
   nav.yml                Header and footer menus.
   providers.yml          The five transactions. See below.
   membership.yml         Tiers and prices.
-  facilities.yml         Bookable spaces.
+  facilities.yml         Spaces that can be booked.
   equipment.yml          What kinds of gear we have (not an inventory).
   watch.yml              Channels and carriage.
   board.yml              Board and staff roster.
@@ -101,14 +101,132 @@ many paid integrations the organization has.
 | `tickets` | Class registration | Wix Events |
 | `membership` | Dues | Wix Pricing Plans |
 | `donate` | Donations | Wix Donations |
-| `booking` | Studio and bay reservations | Bookable — staying |
+| `booking` | Studio and bay reservations | Booqable — staying |
 | `submit` | Program submissions | Wix form + Dropbox |
 
 An entry with an empty `url` renders as a visible "not wired up yet" block
 rather than a dead button, so nothing ships silently broken.
 
-Booking stays on Bookable. Microsoft 365 calendar integration is being built
+Booking stays on Booqable. Microsoft 365 calendar integration is being built
 separately; when it lands, only the `booking` entry changes.
+
+---
+
+## Taking payments
+
+Two systems, one Stripe account, and a rule about keys. `_data/payments.yml`
+holds the decisions; this is the operating manual.
+
+| What | Who charges | Where the money is decided |
+|---|---|---|
+| Membership | Stripe, via the broker | `_data/membership.yml` |
+| Class drop-in | Stripe, via the broker | `_data/classes.yml` (still TODO) |
+| Equipment rental | Booqable's own Stripe connection | Booqable |
+
+### The rule about keys
+
+Stripe issues three kinds and they are not interchangeable.
+
+| Prefix | Public? | Where it lives |
+|---|---|---|
+| `pk_live_…` | **Yes** | `_data/payments.yml`, in git |
+| `rk_live_…` | No | A Cloudflare secret, `STRIPE_KEY` |
+| `sk_live_…` | No | Not used at all |
+
+The publishable key can start a payment and do nothing else, so it is safe in
+the repository — that is what it is for. The restricted key is the one that
+acts on the account, and ours is scoped to writing Checkout Sessions and
+nothing more: if the worker were compromised tomorrow, the key it holds could
+not issue a refund, read the customer list, or move the balance. Stripe now
+recommends restricted keys over `sk_` for exactly this reason.
+
+```
+cd worker && npx wrangler secret put STRIPE_KEY
+```
+
+It prompts, reads the value from the terminal, and stores it encrypted. It is
+never written to disk and never appears in `wrangler.jsonc`.
+
+If an `rk_` or `sk_` key ever lands in a commit, it is burned the moment it is
+pushed. Rotate it in the Stripe dashboard rather than just deleting the line.
+
+### Why the browser cannot name a price
+
+This is the only rule that really matters. A page that posts an amount to a
+checkout endpoint is a page that can post `1`, and no amount of JavaScript on
+our side changes that, because the JavaScript is theirs.
+
+So the browser posts a SKU — `membership:creator` — and the broker looks the
+amount up in a table the browser cannot reach. `worker/test/checkout.test.mjs`
+opens with that assertion and it is the reason the file exists.
+
+### Why the prices are not in the Stripe dashboard
+
+Because subscriptions are a standing promise about future prices, and we have
+to be able to show that we announced a change.
+
+A price in the Stripe dashboard has no such trail: somebody with a login edits
+a number, and the first anyone hears of it is a card statement. A price in
+`_data/membership.yml` is a commit — a red line, a green line, a reviewer, and
+a date. `git log -p _data/membership.yml` **is** the price history.
+
+Stripe still does the charging; it just does not hold the number. Every
+Checkout Session is created with an inline `price_data`, so there are no Price
+objects anywhere to drift from the data files.
+
+```
+python3 script/build-prices.py          # after editing a price
+python3 script/build-prices.py --check  # what CI runs
+```
+
+The generated `worker/src/prices.js` is committed, because the worker bundles
+it at deploy time and Cloudflare's build does not run Python. CI fails if the
+two disagree — the same shape as a lock file, and for the same reason.
+
+A price of `TODO` is skipped rather than defaulted, so an undecided figure
+cannot become a real charge. That is why the class drop-ins are not for sale
+yet.
+
+### How a nonprofit actually pays half
+
+Not by ticking a box. The old sequence was: pick a tier, pay full price, staff
+notice, somebody posts a cheque back — and organizations learned to buy the
+wrong thing deliberately and wait for the refund.
+
+The fix is not a stricter rule, it is checking **earlier**:
+
+1. `script/sync-nonprofits.py` puts the IRS 501(c)(3) list on the site.
+2. The organization picks itself off that list before paying.
+3. Staff verify the EIN and issue a Stripe promotion code.
+4. The code halves the price at checkout.
+
+Stripe holds the codes, so an unverified visitor cannot mint one and a
+verified one never has to be trusted with an amount. `allow_promotion_codes`
+is set on every session; the broker ignores a `nonprofit: true` in the request
+body entirely, and there is a test that it does.
+
+### Booqable
+
+Spelled with a q — [booqable.com](https://booqable.com), a rental system. Set
+`company_slug` in `_data/payments.yml`; the API is at
+`https://SLUG.booqable.com/api/4/` with `Authorization: Bearer {token}`.
+
+**The iframe is a Wix constraint, not a Booqable one.** On the current site
+Booqable sits in an iframe that is too short — there are more than six items
+and no sign of it unless you happen to scroll the inner frame. Wix's HTML
+element *is* an iframe, so that is the only thing Wix could do.
+
+On this site it does not have to be one. Booqable's real integration is a
+script plus mount points that render **inline** in our own page:
+
+```html
+<div class="booqable-product-search"></div>
+<div class="booqable-datepicker"></div>
+<div class="booqable-collections"></div>
+```
+
+No inner scrollbar, no fixed height, our stylesheet, sized by the page like
+any other content.
 
 ---
 
@@ -1025,6 +1143,6 @@ Carried over as a to-do list, since each is a one-line fix here:
 - Several pages load slowly because of Wix widgets, including one that displays
   the weather
 - The equipment page is a photo gallery of the inventory, which is neither
-  searchable nor the question visitors are asking. Bookable is the system of
+  searchable nor the question visitors are asking. Booqable is the system of
   record and staff pick the gear, so the page should summarise categories
   rather than list items

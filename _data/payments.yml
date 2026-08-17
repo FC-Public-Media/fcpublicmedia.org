@@ -1,0 +1,149 @@
+# How FCPM takes money, and which system takes which kind.
+#
+# THE SHORT VERSION
+# -----------------
+# Stripe takes membership and class money. Booqable takes equipment rental
+# money, through its own Stripe connection. Nothing goes through Wix.
+#
+# TWO SYSTEMS, ONE STRIPE ACCOUNT, TWO CREDENTIALS
+# ------------------------------------------------
+# Booqable is already connected to the Stripe account and already charges
+# through it. We are adding a second, separate credential for our own use
+# rather than reusing whatever Booqable holds — same account, same balance,
+# same payouts, but neither system can act as the other, and either can be
+# revoked without taking the other down.
+#
+# WHICH KEYS EXIST, AND WHERE EACH ONE LIVES
+# ------------------------------------------
+# Stripe issues three kinds and they are not interchangeable:
+#
+#   pk_live_…   Publishable. Safe in public. It can start a payment and can do
+#               nothing else — this is the one below, in this file, in git.
+#   rk_live_…   Restricted. NOT public. Permissions chosen per key; ours may
+#               write Checkout Sessions and nothing else. Lives in the worker
+#               as a secret. Never in this repository.
+#   sk_live_…   Secret, unrestricted, can do anything to the account including
+#               move money out. Stripe now recommends against using these for
+#               new work. We do not have one in play and should not.
+#
+# If a key beginning `rk_` or `sk_` ever appears in a file in this repository,
+# it is compromised the moment it is pushed — treat it as burned, rotate it in
+# the Stripe dashboard, and do not merely delete the line. GitHub scans public
+# repositories for exactly this pattern and will usually tell you first.
+#
+# To set the restricted key:
+#
+#     cd worker && npx wrangler secret put STRIPE_KEY
+#
+# It prompts, reads from the terminal, and stores it encrypted at Cloudflare.
+# It is never written to disk here and never appears in wrangler.jsonc.
+
+stripe:
+  # The publishable key. Safe to commit — see above.
+  #
+  # TODO — paste from https://dashboard.stripe.com/apikeys. Use the pk_test_
+  # key while checking the flow works; nothing is charged with it and test
+  # cards are at https://docs.stripe.com/testing.
+  publishable_key: ""
+
+  # Set true once the live key is in and the board has agreed the terms below.
+  # Every buy button on the site checks this, so the whole thing can be turned
+  # off in one line without unpicking any pages.
+  live: false
+
+# ------------------------------------------------------------------ the terms
+#
+# These exist because we are about to offer subscriptions, and a subscription
+# is a standing promise about future prices. A yearly charge that changes
+# without notice is the single most common cause of a chargeback, and being
+# right about the amount does not help once the bank is involved.
+#
+# The prices themselves are NOT here. They are in _data/membership.yml, and the
+# broker charges from a copy generated out of it — so a price change is a
+# commit, a diff, and a pull request. That is the announcement flow, and it is
+# the reason prices are not kept in the Stripe dashboard where a change leaves
+# no trace. See script/build-prices.py.
+terms:
+  # TODO — board to confirm. Thirty days is the usual floor and is what the
+  # card networks expect to see when a cardholder disputes a renewal.
+  price_change_notice_days: 30
+
+  # Said on the checkout page and in the confirmation email, not buried.
+  summary:
+    - A membership runs one year from the day you buy it.
+    - You choose whether it renews. A single payment simply lapses at the end of the year.
+    - If you choose to renew, we email you before each renewal.
+    - We announce any price change at least a month before it would affect you.
+    - You can cancel a renewal at any time, and the year you already paid for still runs out.
+
+  # TODO — needs a real page before subscriptions are switched on. A link to
+  # this is required on the checkout page for recurring charges.
+  page: /policies/membership-terms/
+
+# --------------------------------------------------------------- what we sell
+#
+# Kept as a list so the pages can be generated rather than hand-maintained, and
+# so there is one place to see everything that can take a payment.
+#
+# `sku` matches the key in worker/src/prices.js. If it does not, the button
+# 400s — which is the right failure, since the alternative is charging for
+# something other than what was clicked.
+sells:
+  - what: Membership
+    sku_prefix: "membership:"
+    system: stripe
+    page: /membership/
+    note: One year from purchase, optionally renewing.
+
+  - what: Class drop-in
+    sku_prefix: "class-dropin:"
+    system: stripe
+    page: /classes/
+    note: >-
+      Not switched on — the drop-in prices in _data/classes.yml are still TODO,
+      so the generator refuses to put them up for sale.
+
+  - what: Equipment rental
+    sku_prefix: null
+    system: booqable
+    page: /equipment/
+    note: >-
+      Booqable's own checkout, on Booqable's own Stripe connection. We
+      deliberately do not sell equipment through our broker — two systems
+      charging for one booking is how somebody gets billed twice and only one
+      side knows to release the gear.
+
+# ------------------------------------------------------------------ Booqable
+#
+# Spelled with a q. It is booqable.com, a rental business system — not
+# "Bookable", which is what several files in this repository called it before
+# anybody had checked.
+#
+# WHAT IS WRONG WITH IT TODAY
+# ---------------------------
+# On Wix, Booqable is embedded in an iframe, and the iframe is too short. There
+# are more than six items available and no indication of it — you have to
+# discover that the inner frame scrolls. That is not Booqable's fault. Wix's
+# HTML element IS an iframe, so it is the only thing Wix can do.
+#
+# On our own site it does not have to be one. Booqable's real integration is a
+# script plus a set of mount points — `<div class="booqable-product-search">`
+# and friends — that render inline, in our own page, in our own stylesheet,
+# sized by the page like any other content. No inner scrollbar, no fixed
+# height, nothing hidden below a fold that is not the real fold.
+booqable:
+  # The subdomain in the Booqable dashboard URL: https://SLUG.booqable.com.
+  # Also the API host — https://SLUG.booqable.com/api/4/.
+  # TODO — fill in.
+  company_slug: ""
+
+  # Read-only, for the build-time catalog sync. Booqable calls these access
+  # tokens; make one under Settings, and give it read access only, since all
+  # this repository ever does with it is list products.
+  #
+  # NOT stored here. The sync runs in GitHub Actions and reads it from the
+  # repository secret BOOQABLE_TOKEN.
+  token_secret: BOOQABLE_TOKEN
+
+  # Set true once the slug is in and the catalog sync has run once.
+  enabled: false

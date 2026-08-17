@@ -21,7 +21,7 @@ content Google reads poorly too.
 
 ## Equipment
 
-Not a migration item. The inventory lives in Bookable, which is the system of
+Not a migration item. The inventory lives in Booqable, which is the system of
 record, and members never pick items themselves — they describe the job and
 staff pull the gear. So the site needs a category-level summary, not a
 catalogue.
