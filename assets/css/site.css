@@ -1052,3 +1052,154 @@ label.btn { cursor: pointer; }
     50%      { opacity: 0.45; }
   }
 }
+
+/* --- The Booqable store on /equipment/ ------------------------------------ */
+/*
+   Booqable renders its store into our page — light DOM, no shadow root, no
+   custom elements, and a global stylesheet of its own. That is the whole
+   reason this section can exist: on Wix it is an iframe, and an iframe is a
+   sealed box you can only make taller.
+
+   Everything below overrides a rule that was read out of their stylesheet
+   rather than guessed at, so each one names what it is fighting. Their
+   selectors all start `.booqable-component`, so ours have to be at least as
+   specific to win — that is why these are not one-word rules.
+
+   The risk of overriding somebody else's markup is that they change it and
+   this quietly stops applying. Kept as small as possible for that reason, and
+   the failure mode is their layout coming back rather than a broken page.
+   Their script does not load on a CI runner, so nothing here is covered by a
+   test — it is checked by looking. */
+
+.booqable-store {
+  /* The cart launcher floats bottom-right, over whatever is there. Without
+     this it lands on the paragraph below the store. */
+  padding-bottom: 4.5rem;
+}
+
+/*
+   ONE PER ROW ON A PHONE, AND WHY.
+
+   Theirs: `.booqable-product { min-width: 280px; max-width: 320px; flex: 1 }`
+   inside a flex-wrap container. Two 280px cards plus the gap need 576px, so a
+   390px phone can only ever fit one — the width is not responsive, it is a
+   floor, and the floor is wider than half a phone.
+
+   Grid rather than flex, so the column count is stated instead of emerging
+   from a minimum width. Two across at the narrowest: three would be about
+   115px per card, and their product name is `white-space: nowrap` with an
+   ellipsis, so "Rokinon 50mm Lens for Sony E" would render as "Rokinon 5…".
+   Three of those is worse than two readable ones. Three arrives as soon as
+   there is room for it. */
+.booqable-component .booqable-product-list-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0;
+}
+
+.booqable-component .booqable-product-list-grid .booqable-product,
+.booqable-component .booqable-product-wrapper {
+  /* min-width is the one that matters; the rest stop a cell being centred
+     inside a width narrower than the cell itself. */
+  min-width: 0;
+  max-width: none;
+  width: auto;
+  margin: 0;
+}
+
+@media (min-width: 34rem) {
+  .booqable-component .booqable-product-list-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 56rem) {
+  .booqable-component .booqable-product-list-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/*
+   THE ENORMOUS EMPTY SQUARE.
+
+   Theirs: `span.bq-no-photo { height: 250px; padding-bottom: 100% }` — both,
+   so a product with no photograph gets 250px PLUS a square's worth of
+   padding. On a phone that is most of a screen of nothing, which is what the
+   64gb sd card looked like. A square is enough to hold the place. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner span.bq-no-photo {
+  height: auto;
+  padding-bottom: 100%;
+}
+
+/*
+   NAMES THAT FIT IN A NARROWER COLUMN.
+
+   Theirs: the name is nowrap with an ellipsis, in a wrapper fixed at 17px.
+   That is fine at 320px and cuts most of our lens names off at half of it.
+
+   Three lines, not two. A 173px column fits about twelve characters a line,
+   so two lines clipped "Zoom H6 Field Recorder" to "Zoom H6 Field…" — and
+   worse, it is the END of these names that distinguishes them. "Rokinon 50mm
+   Lens for Sony E" and "Rokinon 50mm Lens for Canon" are the same string
+   until the last word. Three lines costs a little height and stops the list
+   showing two different items under one name.
+
+   The wrapper and the details block below both have to give up their fixed
+   heights, or the extra lines overflow instead of appearing. */
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+  font-size: 0.9rem;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper,
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper.bq-has-prices {
+  height: auto;
+  min-height: 2.6em;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details {
+  height: auto;
+  min-height: 4.4rem;
+  padding: 0.75rem;
+  /* Pushed to the bottom of a stretched card, so the prices and the cart
+     buttons line up across a row instead of floating at whatever height each
+     name happened to end at. */
+  margin-top: auto;
+}
+
+/* Equal heights across a row. Grid stretches the cells already; these are the
+   three nested elements inside a cell that were still sizing to their own
+   content, which is what made the bottom edges ragged. */
+.booqable-component .booqable-product-list-grid .booqable-product,
+.booqable-component .booqable-product-list-grid .booqable-product-wrapper {
+  height: 100%;
+}
+
+.booqable-component .booqable-product-wrapper .booqable-product-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+   DARK-ON-DARK.
+
+   Theirs: `.booqable-product-list-notice { color: #213b47 }` with no
+   background of its own. On paper that is near-black text on white. On our
+   dark scheme it is near-black text on near-black — the "Select your rental
+   period for prices and availability" box, present and unreadable, which is
+   the same class of bug the contrast test was written for. The cards
+   themselves keep their white ground on purpose: product photographs are cut
+   out on white, and a dark card would ring them. */
+.booqable-product-list-wrapper .booqable-product-list-notice {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--rule);
+}
