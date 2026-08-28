@@ -1,6 +1,9 @@
 ---
 layout: default
 title: FC Public Media
+
+slogan_1: Don't Just View It.
+slogan_2: Do It.
 ---
 
 {%- comment -%}
@@ -17,21 +20,33 @@ title: FC Public Media
   type only, which is a perfectly good state rather than a broken one.
 {%- endcomment -%}
 
+{%- assign c = site.data.community -%}
 <section class="hero{% if site.data.org.hero_image %} hero-photo{% endif %}"
          {% if site.data.org.hero_image %}style="--hero-image: url('{{ site.data.org.hero_image | relative_url }}')"{% endif %}>
-  <div class="wrap">
+  <div class="wrap" style="display: flex; flex-direction: row;">
     <div class="hero-panel">
       <p class="eyebrow">Fort Collins, Colorado &middot; Since {{ site.data.org.founded }}</p>
-      <h1>Don't Just View It.</h1>
-      <p class="lede">
+      <h1>{{ page.slogan_1 }}<br />{{ page.slogan_2 }}</h1>
+      <!--<p class="lede">
         Fort Collins Public Media is a community television station and studio.
         We lend the gear, teach the skills, and put local work on the air &mdash;
         for anyone who walks in.
-      </p>
+      </p>-->
       <div class="hero-actions">
-        <a class="btn btn-primary" href="{{ '/watch/' | relative_url }}">Watch now</a>
         <a class="btn" href="{{ '/membership/' | relative_url }}">Become a member</a>
+        {% for channel in c.channels %}
+          {% if channel.url and channel.url != "" %}
+            <a class="btn" href="{{ channel.url }}">{{ channel.name }}</a>
+          {% endif %}
+        {% endfor %}
       </div>
+    </div>
+    <div>
+      <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}" aria-label="Check in">
+        <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
+            alt="" width="200" height="200" loading="lazy">
+        <span>or scan</span>
+      </a>
     </div>
   </div>
 </section>
@@ -47,6 +62,7 @@ title: FC Public Media
       <p class="eyebrow">On the air</p>
       <h2>Watch the channel live</h2>
     </div>
+    <a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>
     <a class="btn" href="{{ '/watch/' | relative_url }}">All ways to watch</a>
   </div>
 
@@ -65,50 +81,3 @@ title: FC Public Media
     {% endfor %}
   </ul>
 </section>
-
-{% assign cc = site.data.cablecast %}
-{% if cc and cc.recent_local.size > 0 %}
-<section class="band">
-  <div class="wrap">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">From the archive</p>
-        <h2>Made in Fort Collins</h2>
-      </div>
-      <a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>
-    </div>
-    <ul class="grid grid-show">
-      {% for show in cc.recent_local limit: 8 %}
-        {% include show-card.html show=show %}
-      {% endfor %}
-    </ul>
-  </div>
-</section>
-{% endif %}
-
-<section class="wrap section">
-  <p class="eyebrow">What we do</p>
-  <h2>Everything here is open to members</h2>
-  <ul class="grid grid-4">
-    <li class="card">
-      <h3><a href="{{ '/equipment/' | relative_url }}">Equipment</a></h3>
-      <p>Cameras, audio, and lighting, checked out for your own projects.</p>
-    </li>
-    <li class="card">
-      <h3><a href="{{ '/reservations/' | relative_url }}">Studios</a></h3>
-      <p>A video studio, a podcast studio, and three editing bays.</p>
-    </li>
-    <li class="card">
-      <h3><a href="{{ '/classes/' | relative_url }}">Classes</a></h3>
-      <p>Hands-on training in production, editing, and finding an audience.</p>
-    </li>
-    <li class="card">
-      <h3><a href="{{ '/submit/' | relative_url }}">Submit a program</a></h3>
-      <p>Get your work on cable, streaming, and video on demand.</p>
-    </li>
-  </ul>
-</section>
-
-{% include checkin-card.html %}
-
-{% include community.html %}
