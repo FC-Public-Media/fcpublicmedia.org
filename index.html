@@ -4,50 +4,108 @@ title: FC Public Media
 
 slogan_1: Don't Just View It.
 slogan_2: Do It.
-lede: |
-    PUBLIC MEDIA is made of You.
-
-
+tagline: PUBLIC MEDIA is made of You.
 ---
 
 {%- comment -%}
-  The homepage answers three questions in order: who are we, what is on, and
-  what can I do here. No carousel — every item is visible at once and nothing
-  moves on its own.
+  The top of this page is the page. Everything that matters — who we are,
+  where to find us, how to check in, and what is happening right now — sits
+  above the fold and nothing below it is required reading.
+
+  What is deliberately NOT here: a grid of tiles for Equipment / Studios /
+  Classes / Submit, and a second copy of the community list. Those were the
+  menu rendered twice, once as a menu and once as a section, which is two
+  places to maintain and two places to disagree. If it is in the header, the
+  header is where it lives.
+
+  The channel buttons are the exception that proves it. Slack, YouTube,
+  Instagram, the newsletter, the studio itself — none of those are in the
+  menu, so listing them here is the only listing they get. Text, not icons.
 
   The hero photo is a background *behind* a solid panel, not underneath the
-  text. That is deliberate: the old site put type directly on a busy, colorful
-  studio shot, which made both the photo and the words hard to look at. Here
-  the photo can be as colorful as it likes and the words stay legible.
-
-  Drop a file at assets/img/studio.jpg and it appears. Until then the hero is
-  type only, which is a perfectly good state rather than a broken one.
+  text. Set org.hero_image and it appears. Empty is a perfectly good state.
 {%- endcomment -%}
 
 {%- assign c = site.data.community -%}
-<section class="hero{% if site.data.org.hero_image %} hero-photo{% endif %}"
-         {% if site.data.org.hero_image %}style="--hero-image: url('{{ site.data.org.hero_image | relative_url }}')"{% endif %}>
+{%- assign cc = site.data.cablecast -%}
+{%- comment -%}
+  Liquid treats "" as true — only nil and false are falsy — so `if hero_image`
+  matched an empty string and the hero rendered as a photo hero with
+  background-image: url(''): extra padding, an inset panel, and no photo. The
+  comparison has to be explicit.
+{%- endcomment -%}
+{%- assign hero_image = site.data.org.hero_image | default: '' -%}
+{%- if hero_image == '' -%}{%- assign hero_image = nil -%}{%- endif -%}
+
+{% include class-config.html %}
+
+<section class="hero{% if hero_image %} hero-photo{% endif %}"
+         data-checkin-card data-class-mode="off"
+         {% if hero_image %}style="--hero-image: url('{{ hero_image | relative_url }}')"{% endif %}>
   <div class="wrap">
+
     <div class="hero-panel">
       <p class="eyebrow">Fort Collins, Colorado &middot; Since {{ site.data.org.founded }}</p>
       <h1>{{ page.slogan_1 }}<br />{{ page.slogan_2 }}</h1>
-      <p class="lede">{{ page.lede }}</p>
-      <div class="hero-actions">
-        <a class="btn" href="{{ '/membership/' | relative_url }}">Become a member</a>
-        {% for channel in c.channels %}
-          {% if channel.url and channel.url != "" %}
-            <a class="btn" href="{{ channel.url }}">{{ channel.name }}</a>
-          {% endif %}
-        {% endfor %}
+      {%- if page.tagline %}<p class="hero-tagline">{{ page.tagline }}</p>{% endif %}
+
+      {%- comment -%}
+        Where to find us. First entry is the studio itself, which is why the
+        QR sits directly under it — the two are the same errand.
+      {%- endcomment -%}
+      <div class="hero-actions hero-channels">
+        {%- for channel in c.channels -%}
+          {%- if channel.url and channel.url != "" %}
+            <a class="btn" href="{{ channel.url | relative_url }}">{{ channel.name }}</a>
+          {%- endif -%}
+        {%- endfor %}
       </div>
+
     </div>
-    <div>
-      <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}" aria-label="Check in">
-        <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
-            alt="" width="200" height="200" loading="lazy">
-        <span>scan or tap</span>
-      </a>
-    </div>
+
+    {%- comment -%}
+      A grid child rather than part of the panel, so a phone can order it
+      directly under a running class. It is the same code either way — for a
+      class, for a bay, for someone who just walked in — which is why it says
+      "check in" and nothing more specific.
+    {%- endcomment -%}
+    <a class="checkin-card-qr hero-qr" href="{{ '/check-in/' | relative_url }}">
+      <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
+           alt="" width="200" height="200">
+      <span>Check in &mdash; scan or tap</span>
+    </a>
+
+    {%- comment -%}
+      A class in progress. Hidden until assets/js/classmode.js says otherwise,
+      from data baked in at build time with no request made. It belongs up
+      here rather than in a section further down: someone standing in the
+      doorway holding a phone should not have to scroll to find out that the
+      thing they walked in for is running.
+    {%- endcomment -%}
+    <aside class="hero-class" data-class-slot hidden>
+      <p class="eyebrow" data-class-eyebrow></p>
+      <h2 data-class-title></h2>
+      <p class="hero-class-when">
+        <span data-class-when></span><span class="muted" data-class-room></span>
+      </p>
+      <p class="hero-class-summary" data-class-summary></p>
+
+      <p class="class-late" data-class-late hidden>
+        Running late? Come anyway &mdash; you can still join.
+      </p>
+
+      <p class="class-price" data-class-price hidden>
+        Dropping in without signing up costs
+        <b>{{ site.data.classes.dropin.public }}</b>{% if site.data.classes.dropin.member %},
+        or <b>{{ site.data.classes.dropin.member }}</b> for members{% endif %}.
+      </p>
+
+      <p class="hero-actions">
+        <a class="btn btn-primary" data-class-join href="{{ '/check-in/' | relative_url }}">Check in for this class</a>
+        <a class="btn btn-link" data-class-signup href="{{ '/classes/' | relative_url }}">Other classes</a>
+      </p>
+    </aside>
+
   </div>
 </section>
 
@@ -62,10 +120,12 @@ lede: |
       <p class="eyebrow">On the air</p>
       <h2>Watch the channel live</h2>
     </div>
-    <div class="hero-actions" style="margin-top: 0;">
-      <a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>
-      <a class="btn" href="{{ '/watch/' | relative_url }}">All ways to watch</a>
-    </div>
+    {%- comment -%}
+      One button, one destination. There is no "all ways to watch" link beside
+      it because Watch is in the header, and there is no grid of recent
+      programs because the archive is the place programs are listed.
+    {%- endcomment -%}
+    {% if cc.total %}<a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>{% endif %}
   </div>
 
   <div class="embed embed-live">
@@ -83,3 +143,5 @@ lede: |
     {% endfor %}
   </ul>
 </section>
+
+<script type="module" src="{{ '/assets/js/classmode.js' | relative_url }}"></script>

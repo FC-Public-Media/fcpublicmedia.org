@@ -20,9 +20,9 @@
 - from: /community-bulletin-board
   to: /bulletin-board/
 - from: /membership/reservations
-  to: /reservations/
+  to: /reserve/
 - from: /book-online
-  to: /reservations/
+  to: /reserve/
 - from: /for-nonprofits
   to: /nonprofits/
 - from: /connect
@@ -70,19 +70,19 @@
 # describes all of them on one page.
 
 - from: /service-page/equipment-checkout
-  to: /reservations/
+  to: /reserve/
 - from: /service-page/reserve-editing-bay-1
-  to: /reservations/
+  to: /reserve/
 - from: /service-page/reserve-editing-bay-2
-  to: /reservations/
+  to: /reserve/
 - from: /service-page/reserve-editing-bay-3
-  to: /reservations/
+  to: /reserve/
 - from: /service-page/reserve-podcast-studio
-  to: /reservations/
+  to: /reserve/
 - from: /service-page/reserve-video-studio
-  to: /reservations/
+  to: /reserve/
 - from: /service-page/video-studio-with-light-technician
-  to: /reservations/
+  to: /reserve/
 
 # --------------------------------------------------------------------------
 # Wix event pages — one per class, past and upcoming, including several

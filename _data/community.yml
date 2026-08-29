@@ -67,7 +67,7 @@ channels:
 
   - name: In town
     detail: FC Public Media in action!
-    url: /community/
+    url: /meet/
 
   - name: Slack
     detail: Day-to-day chat between members and producers.

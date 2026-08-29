@@ -31,8 +31,9 @@ test.describe('class mode', () => {
     await expect(slot(page)).toBeHidden();
     await expect(card(page)).toHaveAttribute('data-class-mode', 'off');
 
-    // The ordinary check-in card is untouched.
-    await expect(page.locator('.checkin-card')).toBeVisible();
+    // The QR is unconditional. It is the same code for a class and for a bay,
+    // so a day with no class on it is still a day someone walks in and scans.
+    await expect(page.locator('.hero-qr img')).toBeVisible();
   });
 
   test('announces a class that is about to start', async ({ page }) => {
@@ -73,6 +74,32 @@ test.describe('class mode', () => {
 
     await expect(slot(page)).toBeHidden();
     await expect(card(page)).toHaveAttribute('data-class-mode', 'off');
+  });
+
+  test('puts a running class above the fold', async ({ page }) => {
+    // The whole reason class mode moved out of a band further down the page.
+    // Someone standing in the doorway holding a phone should not scroll to
+    // learn that the thing they walked in for is running — so this asserts
+    // the position, not just the presence. On a phone the card is ordered
+    // above the headline for the same reason.
+    await visitAt(page, at(20));
+
+    const box = await slot(page).boundingBox();
+    expect(box, 'the class card has no box').not.toBeNull();
+
+    const fold = page.viewportSize().height;
+    expect(box.y, 'the class card starts below the fold').toBeLessThan(fold);
+    expect(
+      box.y + box.height,
+      'the class card runs past the fold',
+    ).toBeLessThanOrEqual(fold);
+
+    // And the code goes with it. On a phone the class displaces the headline
+    // rather than the QR — someone who came for the class still has to be
+    // able to check in without scrolling.
+    const qr = await page.locator('a.hero-qr').boundingBox();
+    expect(qr, 'the QR has no box').not.toBeNull();
+    expect(qr.y + qr.height, 'the QR fell below the fold').toBeLessThanOrEqual(fold);
   });
 
   test('the join link carries no class information', async ({ page }) => {

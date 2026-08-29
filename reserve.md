@@ -1,6 +1,7 @@
 ---
-title: Studio Reservations
-lede: Book the video studio, the podcast studio, or an editing bay.
+title: Reserve
+lede: Book the video studio, the podcast studio, or an editing bay — or borrow
+  equipment to take out.
 ---
 
 [FC Public Media membership]({{ '/membership/' | relative_url }}),
@@ -15,7 +16,7 @@ By phone: {{ site.data.org.phone }}
 
 <ul class="rows">
 {% for space in site.data.facilities %}
-  <li><b>{{ space.name }}</b> <span>{{ space.slot }}</span></li>
+  <li><b>{{ space.name }}</b>{% if space.slot %} <span>{{ space.slot }}</span>{% endif %}</li>
 {% endfor %}
 </ul>
 {% include transaction.html key="booking" text="Check availability" %}

@@ -7,9 +7,8 @@ const PAGES = [
   { path: '/watch/archive/', name: 'archive' },
   { path: '/watch/under-the-marquee/', name: 'show' },
   { path: '/classes/', name: 'classes' },
-  { path: '/equipment/', name: 'equipment' },
   { path: '/membership/', name: 'membership' },
-  { path: '/reservations/', name: 'reservations' },
+  { path: '/reserve/', name: 'reserve' },
   { path: '/podcasts/', name: 'podcasts' },
   { path: '/podcasts/lcsnapshotnews/', name: 'podcast-detail' },
   { path: '/submit/', name: 'submit' },
@@ -18,8 +17,7 @@ const PAGES = [
   { path: '/nonprofits/', name: 'nonprofits' },
   { path: '/contact/', name: 'contact' },
   { path: '/about/', name: 'about' },
-  { path: '/community/', name: 'community' },
-  { path: '/board/', name: 'board' },
+  { path: '/meet/', name: 'meet' },
   { path: '/teach/', name: 'teach' },
   { path: '/policies/non-discrimination/', name: 'policy' },
   { path: '/book/', name: 'book' },
@@ -42,7 +40,7 @@ const THIRD_PARTY = [
   'instagram.com',
   'facebook.com',
   'conta.cc',
-  // Booqable's embed on /equipment/. It renders the products inline rather
+  // Booqable's embed on /reserve/. It renders the products inline rather
   // than in an iframe, but the script itself still comes from their asset
   // host, and it does not load on a runner with no route to it. That is their
   // availability, not our page being broken — which is the whole reason this
