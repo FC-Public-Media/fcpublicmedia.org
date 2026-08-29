@@ -623,7 +623,7 @@ class TemplateGuard(unittest.TestCase):
     """
 
     def test_member_program_fields_are_escaped_in_the_template(self):
-        page = (HERE.parent / "community.md").read_text(encoding="utf-8")
+        page = (HERE.parent / "meet.md").read_text(encoding="utf-8")
 
         section = page.split("made by members", 1)
         self.assertEqual(len(section), 2, "the member programs section moved or was renamed")
