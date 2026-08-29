@@ -3,8 +3,13 @@ title: About
 lede: Who we are and what the place is for.
 ---
 
-Fort Collins Public Media has been a community media resource since
-{{ site.data.org.founded }}. {{ site.data.org.legal }}
+{%- comment -%}
+  Kept on one line on purpose. Wrapped, `{{ site.data.org.founded }}` expands
+  to "2004." at the start of a line, and Markdown reads that as an ordered
+  list marker — which split this sentence in half and turned the legal line
+  into item 1.
+{%- endcomment -%}
+Fort Collins Public Media has been a community media resource since {{ site.data.org.founded }}. {{ site.data.org.legal }}
 
 <p class="transaction transaction-todo">
   <b>Mission statement and history &mdash; not written yet.</b>
@@ -17,7 +22,7 @@ Fort Collins Public Media has been a community media resource since
 ## The board
 
 The board meets in the open &mdash; anyone can come and sit in.
-<a href="/board/">Who's on it, when they meet, and how to attend</a> is on its
+<a href="/meet/#the-board">Who's on it, when they meet, and how to attend</a> is on its
 own page, along with the minutes.
 
 ## Financials and governance

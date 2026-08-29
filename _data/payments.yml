@@ -157,7 +157,7 @@ sells:
   - what: Equipment rental
     sku_prefix: null
     system: booqable
-    page: /reservations/
+    page: /reserve/
     note: >-
       Booqable's own checkout, on Booqable's own Stripe connection. We
       deliberately do not sell equipment through our broker — two systems

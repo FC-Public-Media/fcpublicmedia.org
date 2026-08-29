@@ -9,6 +9,36 @@
       </span>
     </a>
 
+    {%- comment -%}
+      Where you are: the menu word, printed beside the menu button.
+
+      The MENU LABEL, not page.title. On a desktop the menu is open and the
+      current item is underlined; on a phone the menu is a closed drawer, so
+      this is that same underline, in a bar that already exists, at no extra
+      height.
+
+      page.title is the wrong string for this and was tried first. Titles
+      describe a page's contents — "Board & Meetings", "Register for a Class"
+      — so they are long, they need truncating, and they answer a question
+      nobody asked. A menu label is short because it names a place. "Meet."
+
+      A page not in either menu prints nothing. That is not a gap to paper
+      over with page.title: it means the page does not belong to a section
+      yet, and a blank here is the honest way to notice.
+    {%- endcomment -%}
+    {%- assign here = "" -%}
+    {%- for item in site.data.nav.primary -%}
+      {%- if item.url and page.url contains item.url -%}{%- assign here = item.title -%}{%- endif -%}
+    {%- endfor -%}
+    {%- if here == "" -%}
+      {%- for item in site.data.nav.footer -%}
+        {%- if item.url and page.url contains item.url -%}{%- assign here = item.title -%}{%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+    {%- if here != "" -%}
+      <p class="site-head-here">{{ here }}</p>
+    {%- endif -%}
+
     <button class="nav-toggle" aria-expanded="false" aria-controls="site-nav">
       <span class="nav-toggle-bars" aria-hidden="true"></span>
       <span class="visually-hidden">Menu</span>

@@ -9,9 +9,11 @@
 # It was seven items and a button, which is a list rather than a menu. Two
 # things shortened it without losing anywhere to go:
 #
-#   * Equipment and Studios are one idea — you reserve both — so they sit
-#     under a grayed "Reserve" that names what they are for. The label is not
-#     a link; it is the thing that lets two items read as one choice.
+#   * Equipment and Studios were one idea — you reserve both — so they first
+#     became a grayed "Reserve" group over two links, and then stopped being
+#     two things at all. They are one page now, and the group went with them.
+#     _includes/header.html still knows how to render a group (`label` plus
+#     `items`), so bringing one back is a data edit.
 #   * Podcasts moved onto /watch/ entirely. It is watching, and a separate
 #     menu entry for it was asserting a distinction nobody makes.
 #
@@ -26,8 +28,10 @@ primary:
     url: /watch/
   - title: Learn
     url: /classes/
+  - title: Meet
+    url: /meet/
   - title: Reserve
-    url: /reservations/
+    url: /reserve/
   - title: Join
     url: /membership/
   - title: Submit
@@ -38,12 +42,8 @@ cta:
   url: /donate/
 
 footer:
-  - title: Community
-    url: /community/
   - title: About
     url: /about/
-  - title: Board & Meetings
-    url: /board/
   - title: Bulletin Board
     url: /bulletin-board/
   - title: For Nonprofits

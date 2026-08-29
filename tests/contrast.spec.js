@@ -96,7 +96,7 @@ const CHECKED = [
   { path: '/', what: 'the home page', selector: 'h1, h2, p, .lede, .muted, .eyebrow' },
   { path: '/watch/', what: 'listings', selector: 'h2, h3, .show-meta, .muted, .tag' },
   { path: '/membership/', what: 'membership', selector: 'h2, h3, p, .muted, .price' },
-  { path: '/community/', what: 'the calendar', selector: 'h2, .rows li, .muted, .coming' },
+  { path: '/meet/', what: 'the calendar', selector: 'h2, .rows li, .muted, .coming' },
 ];
 
 test.describe('contrast', () => {

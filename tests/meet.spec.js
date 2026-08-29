@@ -43,7 +43,7 @@ const upcoming = () => classSessions().filter((s) => s.starts.getTime() > Date.n
 
 test.describe('community', () => {
   test('shows what is coming up', async ({ page }) => {
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const items = page.locator('.rows-events li');
     expect(await items.count(), 'nothing in the merged list').toBeGreaterThan(0);
@@ -53,7 +53,7 @@ test.describe('community', () => {
     // The merge exists so a class is listed here by virtue of being a class.
     // If this breaks, the fix people reach for is to copy the session into
     // community.yml, and then the two quietly disagree forever.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const sessions = upcoming();
 
@@ -68,14 +68,14 @@ test.describe('community', () => {
 
     const listed = await page.locator('.rows-events').innerText();
     for (const { title } of sessions) {
-      expect(listed, `${title} is in classes.yml but not on /community/`).toContain(title);
+      expect(listed, `${title} is in classes.yml but not on /meet/`).toContain(title);
     }
   });
 
   test('is in chronological order', async ({ page }) => {
     // The sort key is epoch seconds rather than the ISO string, because two
     // events either side of a DST change carry different offsets.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const stamps = await page.$$eval('.rows-events time', (ts) =>
       ts.map((t) => new Date(t.getAttribute('datetime')).getTime())
@@ -88,7 +88,7 @@ test.describe('community', () => {
   test('shows nothing that has already happened', async ({ page }) => {
     // A calendar full of last spring is worse than an empty one — it reads as
     // abandoned rather than quiet.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const stamps = await page.$$eval('.rows-events time', (ts) =>
       ts.map((t) => new Date(t.getAttribute('datetime')).getTime())
@@ -102,7 +102,7 @@ test.describe('community', () => {
   test('says what kind of thing each entry is', async ({ page }) => {
     // Merging sources means losing the context a single-purpose page would
     // have given for free, so each row has to carry it.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     await expect(page.locator('.rows-events')).toContainText('Class');
   });
@@ -110,7 +110,7 @@ test.describe('community', () => {
   test('every listed date is real', async ({ page }) => {
     // A malformed offset in a data file renders as "Invalid Date" rather than
     // failing the build, which is exactly the kind of thing nobody notices.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const text = await page.locator('.rows-events').innerText();
     expect(text).not.toContain('Invalid');
@@ -121,7 +121,7 @@ test.describe('community', () => {
 test.describe('community channels', () => {
   test('lists somewhere to go, and skips what has no link', async ({ page }) => {
     // Slack has no invite URL yet, so it must not render as a dead entry.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const links = await page.$$eval('.rows-connect a[href]', (as) =>
       as.map((a) => a.getAttribute('href'))
@@ -138,7 +138,7 @@ test.describe('community channels', () => {
     // without a working link invites "where is it, then?", which is the one
     // question this section exists to prevent. Entries with no URL are meant
     // to be skipped entirely, and this is what proves it.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const body = await page.locator('.rows-connect').innerText();
     const linked = await page.$$eval('.rows-connect a', (as) =>
@@ -158,7 +158,7 @@ test.describe('member programs', () => {
     // The shipped state, and the one that has to do the work: nobody has sent
     // a feed yet, so the section's whole job is to ask for one. An empty
     // heading with nothing under it would ask for nothing.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const section = page.locator('main');
     await expect(section).toContainText('Made by members');
@@ -170,7 +170,7 @@ test.describe('member programs', () => {
     // introduce a script, an event handler, or a non-http link — the two
     // halves of the defence are stripping in sync-feeds.py and | escape in
     // the template, and this checks the result rather than either half.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const items = page.locator('.rows-feed li');
     if ((await items.count()) === 0) return;
@@ -200,7 +200,7 @@ test.describe('member submissions', () => {
     // that date rides into the feed as its pubDate. Before the split, those
     // arrived here announcing something as published on the day it was still
     // being finished.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const heading = page.locator('h2', { hasText: 'Made by members' });
     if ((await heading.count()) === 0) return;
@@ -225,7 +225,7 @@ test.describe('member submissions', () => {
     // A feed entry carries where the finished file lives. That is for us — a
     // page announcing something is coming has no business publishing the path
     // to an unreleased master.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const html = await page.content();
     const pointers = programs()
@@ -240,7 +240,7 @@ test.describe('member submissions', () => {
   test('an undated item is treated as published, not as forthcoming', async ({ page }) => {
     // Plenty of feeds are sloppy about dates, and guessing that undated means
     // upcoming would put a whole back catalogue under "coming up".
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
     const undated = programs().filter((item) => !item.published);
     if (!undated.length) return;
@@ -269,16 +269,16 @@ test.describe('community wayfinding', () => {
   test('the homepage band leads here', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.locator('main a[href="/community/"]').first()).toBeVisible();
+    await expect(page.locator('main a[href="/meet/"]').first()).toBeVisible();
   });
 
   test('offers concrete ways to take part', async ({ page }) => {
     // The page should not just describe a community; it should be possible to
     // act from it. Membership, classes, and the open board meeting are the
     // three that cost a newcomer the least.
-    await page.goto('/community/');
+    await page.goto('/meet/');
 
-    for (const href of ['/membership/', '/classes/', '/board/']) {
+    for (const href of ['/membership/', '/classes/', '#the-board']) {
       await expect(
         page.locator(`main a[href="${href}"]`).first(),
         `no route to ${href}`

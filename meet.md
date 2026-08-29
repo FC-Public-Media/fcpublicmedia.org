@@ -1,6 +1,5 @@
 ---
-title: Community
-lede: What's coming up, and where to find everyone between visits.
+title: Meet
 ---
 
 {%- assign com = site.data.community -%}
@@ -46,7 +45,7 @@ lede: What's coming up, and where to find everyone between visits.
   {%- assign at = meeting.starts | date: "%s" -%}
   {%- if at >= now -%}
     {%- capture row -%}
-      {{ at }}%%Board meeting%%Board meeting%%{{ meeting.starts }}%%%%/board/%%{{ meeting.note }}
+      {{ at }}%%Board meeting%%Board meeting%%{{ meeting.starts }}%%%%#the-board%%{{ meeting.note }}
     {%- endcapture -%}
     {%- assign rows = rows | push: row -%}
   {%- endif -%}
@@ -112,9 +111,8 @@ lede: What's coming up, and where to find everyone between visits.
 
 <p class="muted">
   Classes, board meetings, and everything else, in one list. Sessions also
-  show on the <a href="/classes/">classes page</a>; board meetings are on the
-  <a href="/board/">board page</a>, and
-  <a href="/board/">anyone can come to one</a>.
+  show on the <a href="/classes/">classes page</a>; board meetings are
+  <a href="#the-board">further down</a>, and anyone can come to one.
 </p>
 
 {% comment %} ------------------------------------------------ where we talk {% endcomment %}
@@ -344,7 +342,142 @@ lede: What's coming up, and where to find everyone between visits.
     <span>Made something? It can go out on the channel.</span>
   </li>
   <li>
-    <b><a href="/board/">Come to a board meeting</a></b>
+    <b><a href="#the-board">Come to a board meeting</a></b>
     <span>They're open. You don't need to be on the agenda.</span>
   </li>
 </ul>
+
+{% comment %} --------------------------------------------------- the board {% endcomment %}
+
+{%- comment -%}
+  The board used to be its own page. It is a section here now: it is one of
+  the ways you meet this place, and a whole page for it was a page.
+
+  Its headings dropped a level on the way — h2 "The board", h3 for everything
+  under it. Its own "Coming up" list went entirely: those meetings are already
+  in "What's on" at the top of this page, and rendering the same three dates
+  twice on one page is the thing the merge above exists to stop.
+{%- endcomment -%}
+
+{%- assign gov = site.data.governance -%}
+{%- assign m = gov.meetings -%}
+{%- assign org = site.data.org -%}
+
+## The board
+
+{% if m.open %}
+
+### Meetings are open
+
+Board meetings are open to anyone who wants to come. You don't need to be a
+member, you don't need to be on the agenda, and you don't need to tell us
+first &mdash; though it's a small room, so it's kind to.
+
+{% if m.schedule and m.schedule != "" %}
+  <p class="lede">{{ m.schedule }}</p>
+{% else %}
+  <p class="transaction transaction-todo">
+    <b>The meeting schedule isn't filled in yet.</b>
+    <span class="muted">Someone who wants to attend can't act on this page
+    until it is. Set <code>meetings.schedule</code> in
+    <code>_data/governance.yml</code> &mdash; plain language, like "the third
+    Tuesday of the month, 6:30pm".</span>
+  </p>
+{% endif %}
+
+<ul class="rows">
+  <li>
+    <b>Where</b>
+    <span>
+      {% if m.location and m.location != "" %}
+        {{ m.location }}
+      {% else %}
+        {{ org.address.venue }}, {{ org.address.street }},
+        {{ org.address.city }}, {{ org.address.state }} {{ org.address.zip }}
+      {% endif %}
+    </span>
+  </li>
+  {% unless m.recorded %}
+    <li>
+      <b>Recording</b>
+      <span>Meetings aren't recorded. The minutes are the record.</span>
+    </li>
+  {% endunless %}
+</ul>
+
+{% if m.what_to_expect and m.what_to_expect != "" %}
+  <p>{{ m.what_to_expect | strip_newlines | strip }}</p>
+{% endif %}
+
+<p>
+  If you want to raise something, <a href="/contact/">get in touch</a> ahead of
+  time and we'll make room for it.
+</p>
+
+{% else %}
+
+### Meetings
+
+Board meetings are not currently open to the public. <a href="/contact/">Get in
+touch</a> if there's something you'd like the board to consider.
+
+{% endif %}
+
+### Minutes
+
+{%- comment -%}
+  Deliberately understated. Minutes being available is not the same as minutes
+  being published, and the difference is the whole reason this is a paragraph
+  rather than a feature.
+{%- endcomment -%}
+
+{% if gov.minutes.url and gov.minutes.url != "" %}
+  <p>
+    Minutes from past meetings are
+    <a href="{{ gov.minutes.url }}" rel="noopener">available to look through</a>
+    if you're interested.
+    {% if gov.minutes.note %}<span class="muted">{{ gov.minutes.note | strip_newlines | strip }}</span>{% endif %}
+  </p>
+{% else %}
+  <p>
+    We keep minutes of every meeting. There's no folder linked here yet, so
+    email
+    {% assign to = gov.minutes.request_email | default: org.email %}
+    <a href="mailto:{{ to }}?subject=Board%20minutes">{{ to }}</a>
+    and we'll send them over.
+    {% if gov.minutes.note %}<span class="muted">{{ gov.minutes.note | strip_newlines | strip }}</span>{% endif %}
+  </p>
+{% endif %}
+
+### Who's on it
+
+{% assign roster = site.data.board | where_exp: "p", "p.name" %}
+{% if roster.size > 0 %}
+<ul class="grid">
+{% for person in roster %}
+  <li class="card">
+    <h4>{{ person.name }}</h4>
+    {% if person.role %}<p class="muted">{{ person.role }}</p>{% endif %}
+    {% if person.bio %}<p>{{ person.bio }}</p>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+  <p class="transaction transaction-todo">
+    <b>The roster isn't filled in yet.</b>
+    <span class="muted">Add entries to <code>_data/board.yml</code>. A name and
+    a role is enough to start; bios can follow. Board members also host studio
+    sessions, so this is worth getting right.</span>
+  </p>
+{% endif %}
+
+{% assign docs = site.data.governance.documents | where_exp: "d", "d.url" %}
+{% if docs.size > 0 %}
+### Documents
+
+<ul class="rows">
+{% for doc in docs %}
+  <li><b><a href="{{ doc.url }}" rel="noopener">{{ doc.name }}</a></b></li>
+{% endfor %}
+</ul>
+{% endif %}

@@ -303,17 +303,22 @@ test.describe('check-in entry points', () => {
   test('the homepage offers one tap to check in', async ({ page }) => {
     await page.goto('/');
 
-    const card = page.locator('.checkin-card');
-    await expect(card).toBeVisible();
+    // The QR *is* the check-in affordance on the homepage now — the code for
+    // whoever is being shown the phone, the link for whoever is holding it.
+    // There is no separate card with a button beside it, because that was the
+    // same errand offered twice.
+    const link = page.locator('a.hero-qr');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', /\/check-in\/$/);
 
-    const button = card.locator('a.btn-primary');
-    await expect(button).toHaveAttribute('href', /\/check-in\/$/);
+    // In the hero, so it is above the fold rather than scrolled to. That is
+    // the point of it being there and worth failing over.
+    const box = await link.boundingBox();
+    expect(box, 'the QR has no box').not.toBeNull();
+    expect(box.y, 'the QR is below the fold').toBeLessThan(page.viewportSize().height);
 
-    // Same code as the printed poster, and it has to actually load. It is
-    // lazy-loaded and below the fold on a phone, so scroll to it first and
-    // wait — asserting immediately would only be testing the viewport height.
-    const qr = card.locator('.checkin-card-qr img');
-    await qr.scrollIntoViewIfNeeded();
+    // Same code as the printed poster, and it has to actually load.
+    const qr = link.locator('img');
     await expect
       .poll(() => qr.evaluate((img) => img.complete && img.naturalWidth > 0), {
         message: 'the QR image did not load',

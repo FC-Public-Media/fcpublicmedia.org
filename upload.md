@@ -183,7 +183,7 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
   <p class="muted">
     Once your site has this entry, it appears in your feed with its drop date
     &mdash; and that is what puts it on
-    <a href="/community/">the community page</a> as coming up.
+    <a href="/meet/">the Meet page</a> as coming up.
   </p>
 </div>
 

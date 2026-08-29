@@ -23,4 +23,4 @@ whether retired shows get their own entries above or a single archive listing.
 
 The podcast studio is available to members.
 [See membership]({{ '/membership/' | relative_url }}) or
-[book a session]({{ '/reservations/' | relative_url }}).
+[book a session]({{ '/reserve/' | relative_url }}).
