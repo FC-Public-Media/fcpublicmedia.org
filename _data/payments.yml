@@ -256,6 +256,17 @@ booqable:
   # picked from by scanning names, and a card grid spends most of a phone
   # screen on photographs of black rectangles that all look alike. Six rows
   # fit where one and a half cards did.
+  # BROWSE-ONLY, AND THAT IS A DECISION RATHER THAN A HALF-BUILD.
+  #
+  # With the datepicker commented out, Booqable hides its own add-to-cart
+  # button and shows a notice telling you to pick a rental period using a
+  # control that is not on the page. So assets/css/site.css hides the notice
+  # and the cart outright: this is a catalogue you search, and the way to book
+  # is the email address above it.
+  #
+  # Uncomment the datepicker and two rules in the Booqable section of
+  # site.css have to come out with it — the notice/cart rule near the top and
+  # the `body > div:has(.booqable-component)` rule that hides the cart drawer.
   components:
     # - class: booqable-datepicker
     #   what: Pick the dates first, so everything below shows real availability.
