@@ -1186,230 +1186,331 @@ label.btn { cursor: pointer; }
 
 /* --- The Booqable store on /reserve/ -------------------------------------- */
 /*
-   Booqable renders its store into our page — light DOM, no shadow root, no
-   custom elements, and a global stylesheet of its own. That is the whole
-   reason this section can exist: on Wix it is an iframe, and an iframe is a
-   sealed box you can only make taller.
+   Booqable renders its store into our page — light DOM, no shadow root — so
+   this can exist at all. On Wix it is an iframe, and an iframe is a sealed box
+   you can only make taller.
 
-   Their layout is a grid of cards. This turns it into a list of rows: one
-   item per line, thumbnail, name, price, and the button to add it. Gear is
-   picked from by scanning names, and names read faster in a column than in a
-   grid — a card grid makes you read in a boustrophedon, and it spends most of
-   a phone screen on photographs of black rectangles that all look alike.
+   EVERY SELECTOR HERE STARTS WITH #main .booqable-store, AND THAT IS THE WHOLE TRICK.
 
-   Everything below overrides a rule read out of their stylesheet rather than
-   guessed at, so each one names what it is fighting. Their selectors all
-   begin `.booqable-component`, so ours have to be at least as specific to
-   win — that is why these are not one-word rules.
+   The previous version of this file did not, and none of it applied. Their
+   stylesheet is cross-origin and injected by their script at runtime, so it
+   lands AFTER ours in document order — and on an equal-specificity tie, later
+   wins. Our rules were the only ones in any readable sheet and still lost every
+   one. One extra class on the front is enough to win without !important.
 
-   The risk of overriding somebody else's markup is that they change it and
-   this quietly stops applying. Kept as small as possible for that reason, and
-   the failure mode is their card grid coming back rather than a broken page.
-   Their script does not load on a CI runner, so nothing here is covered by a
-   test — it is checked by looking. */
+   If this ever stops applying, check that first: read the computed style,
+   don't read the rule and assume.
 
-.booqable-store {
-  /* The cart launcher floats bottom-right, over whatever is there. Without
-     this it lands on the paragraph below the store. */
-  padding-bottom: 4.5rem;
-}
+   DO NOT TARGET THEIR HASHED CLASS NAMES. Booqable v2 is React with
+   styled-components, so the image sits inside `BFocalImage-dycqlh kaYfgh` and
+   those change on every deploy of theirs. Everything below goes through the
+   stable `bq-` and `booqable-` names or through structure.
+
+   BROWSE-ONLY, ON PURPOSE. The datepicker component is commented out in
+   _data/payments.yml, and without one Booqable hides its own add-to-cart
+   button and shows a notice telling you to pick a rental period using a
+   control that is not on the page. So the cart is hidden here rather than
+   half-present: this is a catalogue you search, and the way to actually book
+   is the email address above it. */
+
+#main .booqable-store { padding-bottom: 1rem; }
+
+/*
+   THE CART, WHICH IS PORTALED OUT OF THE PAGE.
+
+   Booqable appends a second .booqable-component tree straight to <body> for
+   the cart drawer and its floating launcher, so it sits outside .booqable-store
+   and nothing scoped to #main can reach it. It carries no stable class of its
+   own — the elements are `class=""` and `class="closed"` inside a hashed
+   styled-components wrapper — so this matches on structure instead.
+
+   Safe because the page's own markup puts the store inside <main id="main">,
+   and <main> is not a <div>: `body > div` matches only what they injected.
+
+   It goes because the store is browse-only. Nothing can be added to a cart
+   without a rental period, so a launcher for a cart that can never be filled
+   is a button that goes nowhere. Put the datepicker back in
+   _data/payments.yml and this rule is the one to delete. */
+body > div:has(.booqable-component) { display: none !important; }
+
+/*
+   THE NOTICE, AND THE CART.
+
+   "Select your rental period for prices and availability" points at a
+   datepicker that is not on this page, so it is an instruction nobody can
+   follow. It was also #213b47 on no background of its own — near-black on
+   near-black in our dark scheme, present and unreadable.
+
+   The cart button beside each product is hidden by THEIR code for the same
+   reason. Hiding the launcher too means the store does not offer a checkout it
+   cannot complete. */
+#main .booqable-store .booqable-product-list-notice,
+#main .booqable-store .booqable-product-inner .bq-button,
+#main .booqable-store .bq-cart-button,
+#main .booqable-store [class*="CartButton"],
+#main .booqable-store [class*="cart-launcher"] { display: none !important; }
 
 /*
    THE GRID BECOMES A COLUMN.
 
-   Theirs: `display:flex; flex-wrap:wrap; gap:16px; justify-content:center`
-   with `.booqable-product { min-width:280px; max-width:320px }`. The minimum
-   width is a floor rather than a preference, and two of them plus the gap
-   need 576px — which is why a 390px phone showed exactly one per row and why
-   the seventh item was a scroll away.
+   Theirs is flex-wrap with .booqable-product at min-width 280px, so two plus
+   the gap need 576px — which is why a 390px phone showed one per row and most
+   of the catalogue was a scroll away. Gear is picked by scanning names, and
+   names read faster down a column than across a grid. */
+#main .booqable-store .booqable-product-list-grid { display: block !important; padding: 0; }
 
-   One column, and each item a row. No breakpoints: a list is a list at every
-   width, and the rows get longer rather than more numerous. */
-.booqable-component .booqable-product-list-grid {
-  display: block;
-  padding: 0;
+#main .booqable-store .booqable-product,
+#main .booqable-store .booqable-product-wrapper {
+  min-width: 0 !important; max-width: none !important; width: auto !important; margin: 0;
 }
 
-.booqable-component .booqable-product-list-grid .booqable-product,
-.booqable-component .booqable-product-wrapper {
-  min-width: 0;
-  max-width: none;
-  width: auto;
-  margin: 0;
-}
-
-/* Hairlines between rows rather than a shadow around each one. A card carries
-   its own edges because it floats; a row in a list does not need them, and
-   twelve drop shadows down a page is noise. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner {
+#main .booqable-store .booqable-product-inner {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.9rem;
   border-radius: 0;
-  box-shadow: none !important;
+  box-shadow: none;
   background: transparent;
+  border: 0;
   border-bottom: 1px solid var(--rule);
-  padding: 0.7rem 0.2rem;
+  padding: 0.6rem 0.2rem;
+  height: auto;
 }
-
-.booqable-component .booqable-product-list-grid .booqable-product:first-child .booqable-product-inner {
+#main .booqable-store .booqable-product:first-child .booqable-product-inner {
   border-top: 1px solid var(--rule);
 }
 
 /*
    THE THUMBNAIL.
 
-   Theirs: the image is `width:100%` and the no-photo placeholder is
-   `height:250px` AND `padding-bottom:100%` — both, so an item with no
-   photograph got 250px plus a square of nothing. That was most of a phone
-   screen for the 64gb sd card. In a row it is a fixed square instead, and
-   `flex: none` stops it being squeezed by a long name. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-image-wrapper {
-  flex: none;
-  width: 3.4rem;
-  height: 3.4rem;
-  border-bottom: 0;
+   Structural, because the only classes here are hashed. The first child of the
+   row is the image cell; inside it a span with inline `display: contents`
+   passes its child straight through to this box, which is why that inline
+   style needs no fighting.
+
+   Theirs sizes the no-photo placeholder with height:250px AND
+   padding-bottom:100% — both — so an item with no picture got 250px plus a
+   square of nothing. That was most of a phone screen for an SD card. */
+#main .booqable-store .booqable-product-inner > div:first-child {
+  flex: 0 0 auto;
+  width: 3.2rem;
+  height: 3.2rem;
   border: 1px solid var(--rule);
   border-radius: 3px;
   overflow: hidden;
+  background: var(--paper);
+  position: relative;
+}
+
+#main .booqable-store .booqable-product-inner > div:first-child > span > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+/* The low-quality placeholder and the real photo are siblings; stacking them
+   lets the blurry one show until the lazy one arrives, which is what it is
+   for. */
+#main .booqable-store .booqable-product-inner > div:first-child img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No photo: their icon is absolutely placed against a 250px box that no longer
+   exists, so it is re-centred against this one. */
+#main .booqable-store .booqable-product-inner span.bq-no-photo {
   display: grid;
   place-items: center;
-}
-
-.booqable-component .booqable-product-wrapper .booqable-product-inner img.bq-product-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.booqable-component .booqable-product-wrapper .booqable-product-inner span.bq-no-photo {
-  width: 100%;
-  height: 100%;
   padding-bottom: 0;
   border-bottom: 0;
+  background: var(--paper-alt);
 }
-
-.booqable-component .booqable-product-wrapper .booqable-product-inner span.bq-no-photo i.bq-no-photo {
-  font-size: 18px;
+#main .booqable-store .booqable-product-inner i.bq-no-photo {
+  position: static;
+  font-size: 14px;
   margin: 0;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  transform: none;
+  color: var(--ink-soft);
+  opacity: 0.5;
 }
 
 /*
-   THE MIDDLE OF THE ROW.
-
-   Theirs: `.bq-details { height:70px; padding:15px }` with the button floated
-   right inside it, sized for the bottom of a card. Here it is the flexible
-   middle column, and the button comes out of the float and sits at the end. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details {
+   THE MIDDLE OF THE ROW. Theirs is a 70px tall box with the button floated
+   inside it, sized for the bottom of a card. Here it is the flexible middle. */
+#main .booqable-store .bq-details {
   flex: 1 1 auto;
   min-width: 0;
   height: auto;
   padding: 0;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.9rem;
 }
 
-/*
-   THE NAME.
-
-   Theirs: nowrap with an ellipsis in a wrapper fixed at 17px — fine in a
-   320px card, and it is the END of our names that tells them apart, so
-   "Rokinon 50mm Lens for Sony E" and "…for Canon" clip to the same string.
-   A row is the full width of the page, so most names now fit on one line;
-   two is the ceiling for the ones that do not. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper,
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper.bq-has-prices {
+#main .booqable-store .bq-product-title-wrapper,
+#main .booqable-store .bq-product-title-wrapper.bq-has-prices {
   flex: 1 1 auto;
   min-width: 0;
   height: auto;
   padding-right: 0;
 }
 
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-name {
+/* Theirs is nowrap with an ellipsis in a 17px-tall box — fine in a 320px card,
+   wrong here, because it is the END of these names that tells them apart:
+   "Rokinon 50mm Lens for Sony E" and "…for Canon" clip to the same string. */
+#main .booqable-store .bq-product-name {
   white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.3;
+  font-family: var(--font-body);
   font-size: var(--step-0);
+  font-weight: 550;
   color: var(--ink);
 }
 
-/* The price column. Right-aligned and not allowed to wrap, so the amounts
-   line up down the page and can be compared without reading each row. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-price-details {
-  flex: none;
+/* Right-aligned and never wrapped, so the amounts line up down the page and
+   can be compared without reading every row. */
+#main .booqable-store .bq-price-details {
+  flex: 0 0 auto;
   margin-top: 0;
   text-align: right;
   white-space: nowrap;
   font-size: var(--step--1);
   color: var(--ink-soft);
 }
-
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-price-details span.bq-price {
+#main .booqable-store .bq-price-details .bq-price {
   color: var(--ink);
-}
-
-/* The add button, out of the float and onto the end of the row. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-button {
-  float: none;
-  flex: none;
-  padding: 0.5rem 0.7rem;
-  font-size: 1rem;
-}
-
-/* Their status pill is positioned with a negative margin to hang off the top
-   of a card image. There is no card any more, so it would hang off nothing. */
-.booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-status {
-  float: none;
-  margin: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 /*
-   NARROW ROWS.
+   SEARCH. Theirs is a white field with a blue square on the front of it. Ours
+   is the same field the rest of the site uses, and the icon is a label rather
+   than a button, because it does not do anything a search field does not
+   already do when you type. */
+#main .booqable-store .bq-product-search-component {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+#main .booqable-store .bq-product-search-icon {
+  /* Theirs is position:absolute, so it sat on top of the placeholder text
+     rather than beside it. Static puts it back in the flex row. */
+  position: static !important;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  border: 0;
+  border-radius: 0;
+  pointer-events: none;
+}
+#main .booqable-store .bq-product-search-icon i { color: var(--ink-soft) !important; }
+#main .booqable-store .bq-product-search-input {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: var(--step-0);
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  /* Theirs is #213b47 — near-black, on our near-black. */
+  color: var(--ink) !important;
+  box-shadow: none;
+  outline: 0;
+}
+#main .booqable-store .bq-product-search-component:focus-within {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
 
-   Below about a 30rem screen there is not room for name and price side by
-   side without the name losing most of its width, so the middle column
-   stacks: name on top, price under it, button still at the end. */
+/*
+   PAGINATION. Theirs is their brand blue on white squares. Ours is the site's
+   button, and the current page is the one you cannot press. */
+#main .booqable-store .booqable-pagination { margin-top: 1.5rem; }
+#main .booqable-store .bq-pagination-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-start;
+}
+#main .booqable-store .bq-pagination-page,
+#main .booqable-store .bq-pagination-next {
+  min-width: 2.4rem;
+  padding: 0.45rem 0.6rem;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--step--1);
+  font-weight: 650;
+  text-align: center;
+  box-shadow: none;
+}
+#main .booqable-store .bq-pagination-page:hover,
+#main .booqable-store .bq-pagination-next:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+#main .booqable-store .bq-pagination-page button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* The current page is a span carrying .bq-branded, so it needs the same
+   !important the branding colour is set with. */
+#main .booqable-store .bq-pagination-page.bq-pagination-current {
+  /* One more class than the .bq-branded rule below, which would otherwise
+     win the tie on order and leave this one transparent. */
+  background-color: var(--signal) !important;
+  border-color: var(--signal);
+  color: var(--signal-ink) !important;
+}
+
+/*
+   THEIR BRAND BLUE.
+
+   #136deb, set on .bq-branded with !important, which is why these need it
+   back. It is a tenant setting rather than a stylesheet constant — Booqable
+   under Settings, Online Bookings — so changing it THERE fixes it at the
+   source, including the parts of their UI this file never sees: the quickview
+   modal, the cart drawer, the checkout. Worth doing regardless of this rule. */
+#main .booqable-store .bq-branded,
+#main .booqable-store .bq-branded-font-color {
+  background-color: transparent !important;
+  color: var(--ink) !important;
+}
+
+/*
+   NARROW ROWS. Below about 30rem there is no room for name and price side by
+   side without the name losing most of its width, so the middle column stacks:
+   name on top, price beneath it. */
 @media (max-width: 30rem) {
-  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details {
+  #main .booqable-store .bq-details {
     flex-wrap: wrap;
-    gap: 0.15rem 0.9rem;
+    align-items: flex-start;
+    gap: 0.1rem 0.9rem;
   }
-
-  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper,
-  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-product-title-wrapper.bq-has-prices {
-    flex: 1 1 100%;
-    order: 1;
-  }
-
-  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-price-details {
-    order: 2;
-    text-align: left;
-  }
-
-  .booqable-component .booqable-product-wrapper .booqable-product-inner .bq-details .bq-button {
-    order: 3;
-    margin-left: auto;
-  }
-}
-
-/*
-   DARK-ON-DARK.
-
-   Theirs: `.booqable-product-list-notice { color:#213b47 }` with no
-   background of its own. On paper that is near-black on white. On our dark
-   scheme it is near-black on near-black — the "Select your rental period for
-   prices and availability" box, present and unreadable, which is the same
-   class of bug the contrast test was written for. */
-.booqable-product-list-wrapper .booqable-product-list-notice {
-  color: var(--ink);
-  background: var(--paper-alt);
-  border-color: var(--rule);
+  #main .booqable-store .bq-product-title-wrapper,
+  #main .booqable-store .bq-product-title-wrapper.bq-has-prices { flex: 1 1 100%; }
+  #main .booqable-store .bq-price-details { text-align: left; }
 }
