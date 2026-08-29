@@ -26,16 +26,8 @@ primary:
     url: /watch/
   - title: Learn
     url: /classes/
-
-  # A group, not a link. `label` is what makes the header template treat it
-  # as one; anything with a `title` is an ordinary destination.
-  - label: Reserve
-    items:
-      - title: Equipment
-        url: /equipment/
-      - title: Studios
-        url: /reservations/
-
+  - title: Reserve
+    url: /reservations/
   - title: Join
     url: /membership/
   - title: Submit

@@ -61,14 +61,19 @@ events: []
 # hunt through pages — and if the chat platform lapses entirely, deleting its
 # entry leaves a page that still works.
 channels:
+  - name: On-site
+    detail: Studio check-in and reservations.
+    url: /reserve/
+
+  - name: In town
+    detail: FC Public Media in action!
+    url: /community/
+
   - name: Slack
     detail: Day-to-day chat between members and producers.
     primary: true
-    url: "" # TODO — invite link. Use one that does not expire.
-
-  - name: Newsletter
-    detail: What's coming up, once in a while.
-    url: https://conta.cc/3G5YyWi
+    # This link expires every 30 days and needs to be regenerated! No CI is doing that yet.
+    url: https://join.slack.com/t/fc-public-media/shared_invite/zt-48bxcjuc1-ny_RWrKbatoDTy6XMIHn9A
 
   - name: YouTube
     detail: Selected programs, reposted.
@@ -77,3 +82,7 @@ channels:
   - name: Instagram
     detail: The studio, behind the scenes.
     url: https://www.instagram.com/fcpublicmedia/
+
+  - name: Newsletter
+    detail: What's coming up, once in a while.
+    url: https://conta.cc/3G5YyWi

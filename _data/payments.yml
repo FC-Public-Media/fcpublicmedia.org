@@ -157,7 +157,7 @@ sells:
   - what: Equipment rental
     sku_prefix: null
     system: booqable
-    page: /equipment/
+    page: /reservations/
     note: >-
       Booqable's own checkout, on Booqable's own Stripe connection. We
       deliberately do not sell equipment through our broker — two systems
@@ -257,8 +257,8 @@ booqable:
   # screen on photographs of black rectangles that all look alike. Six rows
   # fit where one and a half cards did.
   components:
-    - class: booqable-datepicker
-      what: Pick the dates first, so everything below shows real availability.
+    # - class: booqable-datepicker
+    #   what: Pick the dates first, so everything below shows real availability.
     - class: booqable-product-list
       attributes: 'data-per="12" data-show-search="true"'
       what: Every product, twelve to a page, with the search field built in.

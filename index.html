@@ -4,6 +4,10 @@ title: FC Public Media
 
 slogan_1: Don't Just View It.
 slogan_2: Do It.
+lede: |
+    PUBLIC MEDIA is made of You.
+
+
 ---
 
 {%- comment -%}
@@ -23,15 +27,11 @@ slogan_2: Do It.
 {%- assign c = site.data.community -%}
 <section class="hero{% if site.data.org.hero_image %} hero-photo{% endif %}"
          {% if site.data.org.hero_image %}style="--hero-image: url('{{ site.data.org.hero_image | relative_url }}')"{% endif %}>
-  <div class="wrap" style="display: flex; flex-direction: row;">
+  <div class="wrap">
     <div class="hero-panel">
       <p class="eyebrow">Fort Collins, Colorado &middot; Since {{ site.data.org.founded }}</p>
       <h1>{{ page.slogan_1 }}<br />{{ page.slogan_2 }}</h1>
-      <!--<p class="lede">
-        Fort Collins Public Media is a community television station and studio.
-        We lend the gear, teach the skills, and put local work on the air &mdash;
-        for anyone who walks in.
-      </p>-->
+      <p class="lede">{{ page.lede }}</p>
       <div class="hero-actions">
         <a class="btn" href="{{ '/membership/' | relative_url }}">Become a member</a>
         {% for channel in c.channels %}
@@ -45,7 +45,7 @@ slogan_2: Do It.
       <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}" aria-label="Check in">
         <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
             alt="" width="200" height="200" loading="lazy">
-        <span>or scan</span>
+        <span>scan or tap</span>
       </a>
     </div>
   </div>
@@ -62,8 +62,10 @@ slogan_2: Do It.
       <p class="eyebrow">On the air</p>
       <h2>Watch the channel live</h2>
     </div>
-    <a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>
-    <a class="btn" href="{{ '/watch/' | relative_url }}">All ways to watch</a>
+    <div class="hero-actions" style="margin-top: 0;">
+      <a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse all {{ cc.total }} programs</a>
+      <a class="btn" href="{{ '/watch/' | relative_url }}">All ways to watch</a>
+    </div>
   </div>
 
   <div class="embed embed-live">
