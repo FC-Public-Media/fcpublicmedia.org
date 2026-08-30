@@ -19,7 +19,32 @@
   <meta property="og:description" content="{{ page_desc | strip_newlines | strip }}">
   <meta property="og:url" content="{{ page.url | absolute_url }}">
   <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
+  {%- comment -%}
+    "summary", not "summary_large_image". The large card wants a wide picture
+    and there is not one — the tag was declaring a format nothing could fill,
+    so shares rendered with an empty box where the image should be. A square
+    icon is exactly what the small card is for. If a real 1200x630 share image
+    ever exists, this goes back to summary_large_image and og:image points at
+    it instead.
+  {%- endcomment -%}
+  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="{{ '/assets/img/icon-512.png' | absolute_url }}">
+
+  {%- comment -%}
+    The favicon is the masthead's own mark, drawn once in assets/img/icon.svg
+    and rendered to PNG from that file rather than redrawn — so there is one
+    picture of it, not three that can disagree.
+
+    The SVG is first and modern browsers take it, which means one file answers
+    every size from a 16px tab to a bookmark bar. The PNG is for iOS, which
+    does not accept SVG for a home-screen icon.
+
+    Declaring these also stops the browser guessing at /favicon.ico, which does
+    not exist and would 404 on every page load.
+  {%- endcomment -%}
+  <link rel="icon" href="{{ '/assets/img/icon.svg' | relative_url }}" type="image/svg+xml">
+  <link rel="icon" href="{{ '/assets/img/icon-180.png' | relative_url }}" sizes="180x180" type="image/png">
+  <link rel="apple-touch-icon" href="{{ '/assets/img/icon-180.png' | relative_url }}">
 
   <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
 </head>
