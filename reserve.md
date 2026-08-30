@@ -14,9 +14,13 @@ or borrow equipment outside the studio.
 By email: [{{ site.data.org.email }}](mailto:{{ site.data.org.email }})
 By phone: {{ site.data.org.phone }}
 
-<ul class="rows">
+<ul class="rows rows-spaces">
 {% for space in site.data.facilities %}
-  <li><b>{{ space.name }}</b>{% if space.slot %} <span>{{ space.slot }}</span>{% endif %}</li>
+  <li>
+    <b>{{ space.name }}</b>
+    {%- if space.area %}<span>{{ space.area }} sq ft</span>{% endif %}
+    {%- if space.summary %}<p>{{ space.summary | strip_newlines | strip }}</p>{% endif %}
+  </li>
 {% endfor %}
 </ul>
 {% include transaction.html key="booking" text="Check availability" %}

@@ -1,23 +1,52 @@
-# Spaces that can be booked, mirroring the seven service pages on the current site.
+# The spaces, and what is in them.
+#
+# Copy and square footage from the board president, August 2026. His words are
+# kept close to verbatim — this is the one part of the site not written by us,
+# and it reads better for it.
+#
+# `area` is separate from `summary` on purpose. The number is structured so it
+# can be shown, sorted or joined against an activity later; the prose is what a
+# member actually reads. Neither has to be parsed out of the other.
+#
 # Membership is required to reserve any of these.
 
 - name: Video Studio
-  # slot: 8 hours
-  summary: TODO — dimensions, cyc wall, lighting grid, what's included.
+  area: 635
+  activities: [video, green-screen, lighting]
+  summary: >-
+    An adaptable space perfect for nearly every project. Includes a
+    state-of-the-art RGB light system, live editing board, acoustic treatment,
+    and a massive green screen to make your vision real.
 
 - name: Podcast Studio
-  # slot: 4 hours
-  summary: TODO — mic count, seats, recording setup.
+  area: 113
+  activities: [podcast, audio]
+  summary: >-
+    Room for up to four in-person guests. Acoustically treated, with
+    professional audio equipment to make your podcast sound great.
 
-- name: Editing Bay 1
-  # slot: 4 hours
-  summary: TODO — machine spec and installed software.
-
-- name: Editing Bay 2
-  # slot: 4 hours
-  summary: TODO — machine spec and installed software.
+# HOW MANY EDIT STATIONS? Three sources disagree and the number matters,
+# because it is how many people can edit at once:
+#
+#   * the old Wix site had three bookable service pages, bay 1 through bay 3
+#   * book.md says "three editing bays"
+#   * this file listed two
+#
+# The president's measurement is singular — "the Editing Bay is 318 SQ FT" —
+# and his copy is plural, "our editing bays", which reads as one room holding
+# several stations. That is what is recorded here. Confirm the count and set
+# `stations`; until then the page says nothing about how many there are, which
+# is better than saying a wrong number to somebody planning around it.
+- name: Editing Bays
+  area: 318
+  stations:
+  activities: [video, audio, editing]
+  summary: >-
+    The entire Adobe Suite for video and audio projects. These are
+    state-of-the-art machines — you can edit 4K footage and above.
 
 - name: Equipment Checkout
-  # slot: By arrangement
+  activities: [video, audio, photo]
   summary: >-
-    Handled by email rather than the booking calendar. See the Equipment page.
+    Arranged by email rather than through the booking calendar. The catalogue
+    is further down this page.

@@ -633,6 +633,20 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border-bottom: 1px solid var(--rule);
 }
 .rows li b { font-weight: 650; }
+
+/* A space is a name, a size, and a paragraph.
+
+   flex-basis is 100% but max-width is the reading measure, and the measure
+   wins — so the description takes a third column where there is room for one
+   and drops onto its own line where there is not. Two layouts, no breakpoint:
+   wide screens read name | size | description across, phones read the name and
+   the size on one line with the description under them. */
+.rows-spaces li p {
+  flex: 1 1 100%;
+  margin: 0.3rem 0 0;
+  color: var(--ink-soft);
+  max-width: var(--measure);
+}
 .rows li span { color: var(--ink-soft); font-size: var(--step--1); }
 
 /* --- Tags ----------------------------------------------------------------- */
