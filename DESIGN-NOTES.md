@@ -188,6 +188,14 @@ Keep them apart.
 
 Recorded so they are not lost, in rough order of how ready they are:
 
+- **Reserving studio time** is written up on its own, in `RESERVE-DESIGN.md`.
+  It turns `/reserve/` from a list of rooms into a list of hosts, because a
+  member cannot use a studio without one — so the thing on offer is a shift,
+  not a space. Two things there bear on the notes below: claim links have to
+  become one-to-one, which is the *opposite* of the forwarding that
+  `_data/authorize.yml` currently calls deliberate, and revocation has to stop
+  being contingent on whoever issued the link.
+
 - **The broker.** One Cloudflare Worker serving several jobs. Built and
   tested: it issues challenges bound to a declared action, verifies the
   assertions made over them, and writes the file. `worker/`. `/settings/` uses
