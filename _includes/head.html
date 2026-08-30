@@ -47,4 +47,29 @@
   <link rel="apple-touch-icon" href="{{ '/assets/img/icon-180.png' | relative_url }}">
 
   <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+
+  {%- comment -%}
+    Inline and in the head, because anything else paints the wrong colours
+    first and then corrects itself — a white flash on a page somebody asked to
+    be dark, on every navigation.
+
+    It only ever ADDS dark. Light is the default and needs no script, so with
+    scripting off, storage blocked, or this failing outright, the page is the
+    one the site wants anyway. Nothing here prompts anybody about any of it.
+
+    The try/catch is not defensive padding: reading localStorage THROWS rather
+    than returning null when storage is blocked, which is a real setting real
+    people turn on, and an uncaught error here would stop the rest of the
+    head.
+  {%- endcomment -%}
+  <script>
+    (function () {
+      var pref = null;
+      try { pref = localStorage.getItem('theme'); } catch (e) { pref = null; }
+      var dark = pref === 'dark' ||
+        (pref === 'system' && window.matchMedia &&
+         window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
 </head>
