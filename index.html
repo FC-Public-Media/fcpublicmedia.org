@@ -142,6 +142,97 @@ tagline: PUBLIC MEDIA is made of You.
       <li><b>{{ channel.name }}</b> <span>{{ channel.detail }}</span></li>
     {% endfor %}
   </ul>
+
+  {%- comment -%}
+    WHAT ACTUALLY WENT OUT, not what was recently catalogued.
+
+    _data/airings.json is the station's own broadcast log — every slot Cablecast
+    ran over the last year, filler excluded — so `last` is a real airing date.
+    cablecast.json's `date` is a catalog date and several dozen records share
+    one, which would have rendered as eight programmes all claiming the same
+    day.
+
+    The join and the stringify are the ones watch/archive.md already uses: the
+    id has to be a string before it will index the JSON object, and Liquid
+    returns nothing rather than complaining when it does not match.
+
+    Sorting is the delimited-string idiom, because Liquid cannot sort objects
+    by a key it has to look up. ISO dates sort lexicographically, so a plain
+    string sort is a date sort here.
+
+    AND THEN ONE PER PRODUCER, WHICH IS THE PART THAT MATTERS.
+
+    The date alone does not discriminate: the channel runs most of its
+    catalogue on a loop, so the entire top forty shares a single last-aired
+    date. Sorting by it and taking eight does not give you the eight most
+    recent things, it gives you eight arbitrary rows from a tie — and whoever
+    has the most programmes in the catalogue wins the whole strip. Sorted
+    naively this was six consecutive episodes of one serial, then fourteen of
+    the top sixteen from a single producer.
+
+    So the strip is deduplicated by producer. Same honest claim — all of these
+    did air recently — and eight different people instead of one. Anything
+    with no producer recorded is allowed through, since there is nothing to
+    collide on.
+
+    The delimiters around each name matter: `contains` on a bare concatenation
+    would match any producer whose name is a substring of another's.
+  {%- endcomment -%}
+  {%- assign air = site.data.airings -%}
+  {%- assign aired = "" | split: "" -%}
+  {%- for show in cc.shows -%}
+    {%- assign key = show.id | append: "" -%}
+    {%- assign a = air.shows[key] -%}
+    {%- if a and a.last and a.last != "" -%}
+      {%- capture row -%}{{ a.last }}%%{{ show.id }}{%- endcapture -%}
+      {%- assign aired = aired | push: row -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {%- assign aired = aired | sort | reverse -%}
+
+  {% if aired.size > 0 %}
+    <div class="section-head section-head-sub">
+      <div>
+        <p class="eyebrow">Recently on the channel</p>
+      </div>
+    </div>
+    <ul class="grid grid-show">
+      {%- assign seen = "|" -%}
+      {%- assign shown = 0 -%}
+      {% for row in aired %}
+        {%- if shown < 8 -%}
+          {%- assign parts = row | split: "%%" -%}
+          {%- comment -%}
+            Both pulled into their own variables because Jekyll's include tag
+            takes plain variables or quoted strings only — `aired=parts[0]` is
+            a parse error, not a lookup.
+          {%- endcomment -%}
+          {%- assign aired_on = parts[0] -%}
+          {%- assign id = parts[1] | plus: 0 -%}
+          {%- assign show = cc.shows | where: "id", id | first -%}
+          {%- if show -%}
+            {%- assign who = show.producer | default: "" | strip -%}
+            {%- capture stamp -%}{{ who }}|{%- endcapture -%}
+            {%- comment -%}
+              An explicit flag, not `seen contains stamp == false`. Liquid has
+              no parentheses and no boolean negation of a `contains`, so that
+              expression parses as something else entirely and quietly lets
+              duplicates through — which it did, twice, from one producer.
+            {%- endcomment -%}
+            {%- assign duplicate = false -%}
+            {%- if who != "" and seen contains stamp -%}
+              {%- assign duplicate = true -%}
+            {%- endif -%}
+            {%- unless duplicate -%}
+              {%- assign seen = seen | append: stamp -%}
+              {%- assign shown = shown | plus: 1 -%}
+              {% include show-card.html show=show aired=aired_on %}
+            {%- endunless -%}
+          {%- endif -%}
+        {%- endif -%}
+      {% endfor %}
+    </ul>
+  {% endif %}
 </section>
 
 <script type="module" src="{{ '/assets/js/classmode.js' | relative_url }}"></script>

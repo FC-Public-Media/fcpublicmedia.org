@@ -9,41 +9,66 @@
 # member actually reads. Neither has to be parsed out of the other.
 #
 # Membership is required to reserve any of these.
+#
+# THE FLOOR PLAN USES THE BUILDING'S LABELS, NOT OURS. On
+# assets/img/floor-plan.png the rooms read CONTROL ROOM, STUDIO and OFFICE:
+#
+#   CONTROL ROOM  318 sq ft  ->  Editing Bays
+#   STUDIO        635 sq ft  ->  Video Studio
+#   OFFICE        113 sq ft  ->  Podcast Studio
+#
+# The square footage matches, so the plan is right — it is named for the
+# building rather than for what we do in there. Anybody reading the page and
+# the plan together will hit that mismatch, which is why `plan_label` is here
+# and why the page captions it rather than leaving someone to work it out.
 
 - name: Video Studio
+  plan_label: STUDIO
   area: 635
+  couples_with: Podcast Studio
   activities: [video, green-screen, lighting]
   summary: >-
     An adaptable space perfect for nearly every project. Includes a
     state-of-the-art RGB light system, live editing board, acoustic treatment,
     and a massive green screen to make your vision real.
 
+# ACOUSTICALLY COUPLED TO THE VIDEO STUDIO. Sound carries between the two, so
+# booking either one takes both off the calendar. They stay listed separately
+# because they are different things to come here and do — the coupling is a
+# scheduling fact, not a description of the rooms.
 - name: Podcast Studio
+  plan_label: OFFICE
   area: 113
+  couples_with: Video Studio
   activities: [podcast, audio]
   summary: >-
     Room for up to four in-person guests. Acoustically treated, with
     professional audio equipment to make your podcast sound great.
 
-# HOW MANY EDIT STATIONS? Three sources disagree and the number matters,
-# because it is how many people can edit at once:
+# TWO STATIONS, IN ONE ROOM, AND "EDITING BAY" MEANS BOTH.
 #
-#   * the old Wix site had three bookable service pages, bay 1 through bay 3
-#   * book.md says "three editing bays"
-#   * this file listed two
+# The word is stratified and that is not a mistake to tidy away: the room is
+# the editing bay, and each of the two computer stations in it is also an
+# editing bay. Both are what people here say.
 #
-# The president's measurement is singular — "the Editing Bay is 318 SQ FT" —
-# and his copy is plural, "our editing bays", which reads as one room holding
-# several stations. That is what is recorded here. Confirm the count and set
-# `stations`; until then the page says nothing about how many there are, which
-# is better than saying a wrong number to somebody planning around it.
+# There were three. One machine was retired, and the third lingered on the Wix
+# site as a bookable service — harmless there, because picking a station was a
+# soft reservation and staff just sat you at whichever was free. It is a real
+# number here, so it is two.
+#
+# The stations are meant to be interchangeable and are both dual-monitor. What
+# differs is superficial and account-shaped — whose OneDrive is signed in — and
+# there is a plan to put them on a small LAN so work can move between them when
+# something goes wrong mid-session.
 - name: Editing Bays
+  plan_label: CONTROL ROOM
   area: 318
-  stations:
+  stations: 2
   activities: [video, audio, editing]
   summary: >-
     The entire Adobe Suite for video and audio projects. These are
-    state-of-the-art machines — you can edit 4K footage and above.
+    state-of-the-art machines — you can edit 4K footage and above. Two
+    stations, both dual-monitor, and a window straight into the video studio.
 
 - name: Equipment Checkout
   activities: [video, audio, photo]
