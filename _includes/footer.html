@@ -47,12 +47,12 @@
     than no control at all — the visitor is left wondering what they broke.
   {%- endcomment -%}
   <div class="wrap">
-    <fieldset class="theme-picker" data-theme-picker hidden>
-      <legend>Colours</legend>
-      <label><input type="radio" name="theme" value="light"><span>Light</span></label>
-      <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
-      <label><input type="radio" name="theme" value="system"><span>Match my system</span></label>
-    </fieldset>
+    <p class="theme-toggle" data-theme-toggle hidden>
+      <label>
+        <input type="checkbox" data-theme-input>
+        <span>Match my system colours</span>
+      </label>
+    </p>
   </div>
 
   <div class="wrap foot-legal">

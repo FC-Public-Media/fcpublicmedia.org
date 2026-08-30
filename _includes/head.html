@@ -66,10 +66,14 @@
     (function () {
       var pref = null;
       try { pref = localStorage.getItem('theme'); } catch (e) { pref = null; }
-      var dark = pref === 'dark' ||
-        (pref === 'system' && window.matchMedia &&
-         window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+      // Only one preference exists: follow the system, or do not. Anything
+      // else stored — including `dark` from the three-way this replaced — is
+      // read as "follow", which is the closest surviving intent.
+      var follow = pref && pref !== 'light';
+      if (follow && window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
     })();
   </script>
 </head>
