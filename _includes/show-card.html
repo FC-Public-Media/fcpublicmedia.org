@@ -3,6 +3,17 @@
   Usage: {% include show-card.html show=item %}
 {%- endcomment -%}
 {%- assign s = include.show -%}
+{%- comment -%}
+  `aired` is optional. Pass it and the card shows when the programme last went
+  out instead of its catalogue date — which is what a strip headed "recently on
+  the channel" is actually claiming. Without it the card is unchanged, so the
+  archive and the show pages carry on showing the catalogue date they mean.
+
+  The two are not close. A programme that aired last week can carry a catalogue
+  date of 2021, and a card that says "recently" over "2021-12-28" reads as a
+  bug.
+{%- endcomment -%}
+{%- assign shown_date = include.aired | default: s.date -%}
 <li class="card card-show">
   {% if s.thumb and s.thumb != "" %}
     <a class="show-thumb" href="{{ s.watch_url }}">
@@ -12,7 +23,7 @@
   <h3><a href="{{ s.watch_url }}">{{ s.title }}</a></h3>
   <p class="show-meta">
     {% if s.category and s.category != "" %}{{ s.category }}{% endif %}
-    {% if s.date and s.date != "" %}<span class="muted"> &middot; {{ s.date }}</span>{% endif %}
+    {% if shown_date and shown_date != "" %}<span class="muted"> &middot; {{ shown_date }}</span>{% endif %}
     {% unless s.watchable %}<span class="tag">Cable only</span>{% endunless %}
   </p>
   {% if s.producer and s.producer != "" %}
