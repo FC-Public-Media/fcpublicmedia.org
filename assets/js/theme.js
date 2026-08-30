@@ -11,10 +11,20 @@
 // group who mostly own a dark system already. One toggle is a state you can
 // read at a glance; three radios is a decision.
 //
-// THE TOGGLE LOOKS INERT ON A LIGHT SYSTEM, and that is expected rather than
-// broken. Switching it on changes nothing until the machine goes dark, which
-// is exactly what "match my system" promises. The label says match, not dark,
-// for that reason.
+// IT IS NOT SHOWN TO ANYBODY IT CANNOT HELP.
+//
+// On a machine already set to light, matching the system means light, so the
+// toggle would change nothing when pressed. Explaining that in a label is
+// worse than not offering it: a control that visibly does nothing reads as
+// broken, and the visitor is left wondering what they missed.
+//
+// So it appears when the system is dark — where it is the difference between
+// light and dark, and reads simply as "make it dark", which is what almost
+// everybody looking for it wants — or when somebody has already turned it on,
+// so a setting is never invisible to the person who set it.
+//
+// The visibility is re-evaluated when the system flips, so somebody on a light
+// laptop at noon finds the control there at sunset without reloading.
 //
 // STORAGE IS BEST-EFFORT AND NEVER MENTIONED. Reading localStorage THROWS when
 // storage is blocked rather than returning null, and blocking it is a real
@@ -68,12 +78,14 @@ function apply(pref) {
 const control = document.querySelector('[data-theme-toggle]');
 const input = document.querySelector('[data-theme-input]');
 
+/** Worth offering only when pressing it would do something, or already has. */
+const worthShowing = () => systemIsDark() || read() === FOLLOW;
+
 if (control && input) {
   const current = read();
   apply(current);
   input.checked = current === FOLLOW;
-
-  control.hidden = false;
+  control.hidden = !worthShowing();
 
   input.addEventListener('change', () => {
     const pref = input.checked ? FOLLOW : FIXED;
@@ -82,12 +94,14 @@ if (control && input) {
   });
 
   // Somebody following their system who flips the laptop to dark at sunset
-  // should not have to reload to see it.
+  // should not have to reload — and somebody who could not see this control
+  // at noon should find it there once it means something.
   if (window.matchMedia) {
     window
       .matchMedia('(prefers-color-scheme: dark)')
       .addEventListener('change', () => {
-        if (read() === FOLLOW) apply(FOLLOW);
+        apply(read());
+        control.hidden = !worthShowing();
       });
   }
 }

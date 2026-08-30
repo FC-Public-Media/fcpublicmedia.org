@@ -68,16 +68,33 @@ test.describe('colour scheme', () => {
     await context.close();
   });
 
-  test('does nothing visible on a light system, which is the promise', async ({ browser }) => {
-    // Not a bug. "Match my system" on a light system means light, and it
-    // starts mattering the day that machine goes dark. The label says match
-    // rather than dark for exactly this reason.
+  test('is not offered to somebody it cannot help', async ({ browser }) => {
+    // On a machine already set to light, matching the system means light, so
+    // pressing this would change nothing. A control that visibly does nothing
+    // reads as broken and leaves the visitor wondering what they missed, so it
+    // is simply not there.
     const context = await browser.newContext({ colorScheme: 'light' });
     const page = await context.newPage();
     await page.goto('/');
 
-    await page.locator('[data-theme-input]').check();
+    await expect(page.locator('[data-theme-toggle]')).toBeHidden();
     expect(await background(page)).toBe(PAPER);
+    await context.close();
+  });
+
+  test('appears when the machine goes dark, without a reload', async ({ browser }) => {
+    // The light-laptop-at-noon case. The control shows up once it means
+    // something, and the page does NOT change on its own — nobody asked for
+    // dark, and deciding for them is the thing this whole setting avoids.
+    const context = await browser.newContext({ colorScheme: 'light' });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('[data-theme-toggle]')).toBeHidden();
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+
+    await expect(page.locator('[data-theme-toggle]')).toBeVisible();
+    expect(await background(page), 'the page changed without being asked').toBe(PAPER);
     await context.close();
   });
 
