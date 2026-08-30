@@ -957,38 +957,25 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 .filter-count { margin: 0.5rem 0 0; font-size: var(--step--1); color: var(--ink-soft); }
 
-/* The colour control. Quiet on purpose — it is a preference, not a feature,
-   and it sits at the bottom because somebody who wants it will look there.
-   `hidden` in the markup until theme.js reveals it. */
-.theme-picker {
-  border: 0;
+/* The colour control. One toggle, quiet, at the bottom — it is a preference,
+   not a feature, and somebody who wants it will look there. `hidden` in the
+   markup until theme.js reveals it, because a checkbox that cannot do anything
+   is worse than no checkbox. */
+.theme-toggle {
   margin: 0 0 1rem;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 1rem;
-}
-.theme-picker[hidden] { display: none; }
-.theme-picker legend {
-  padding: 0;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-.theme-picker label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
   font-size: var(--step--1);
+}
+.theme-toggle[hidden] { display: none; }
+.theme-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--ink-soft);
   cursor: pointer;
 }
-.theme-picker input { accent-color: var(--signal); }
-.theme-picker label:hover { color: var(--ink); }
-.theme-picker input:checked + span { color: var(--ink); font-weight: 650; }
+.theme-toggle label:hover { color: var(--ink); }
+.theme-toggle input { accent-color: var(--signal); }
+.theme-toggle input:checked + span { color: var(--ink); font-weight: 650; }
 
 /* --- Footer --------------------------------------------------------------- */
 

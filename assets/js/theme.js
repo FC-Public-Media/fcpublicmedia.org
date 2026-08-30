@@ -1,32 +1,47 @@
-// Which colours, and remembering it if we are allowed to.
+// Follow the system, or don't. That is the whole setting.
 //
-// Light is the default and is what the stylesheet does on its own. This file
-// exists for two things: honouring a stored preference of `dark` or `system`,
-// and drawing the control that sets one. The head carries a copy of the first
-// half inline, because doing it here would mean painting light and correcting
-// it — a flash on every navigation for exactly the people who asked for dark.
+// LIGHT IS THE DEFAULT AND IT IS NOT A CHOICE ANYBODY HAS TO MAKE. The palette
+// reads well in light and the dark scheme was called drab, so following the
+// system by default was handing most visitors the weaker of the two without
+// asking. Off means light. On means whatever their machine says, which for
+// almost everybody who goes looking for this is dark.
 //
-// STORAGE IS BEST-EFFORT AND NEVER MENTIONED.
+// WHY NOT A THIRD "DARK" OPTION. It only differs from "follow" for somebody
+// whose system is light but who wants a dark site anyway, and that is a small
+// group who mostly own a dark system already. One toggle is a state you can
+// read at a glance; three radios is a decision.
 //
-// Reading or writing localStorage THROWS when storage is blocked, rather than
-// returning null, and blocking it is a real setting real people turn on. So
-// every access is wrapped, and when it fails the choice is held in a variable
-// for the life of the page instead. That visitor gets a working control that
-// forgets between navigations, which is a smaller loss than being told about
-// it. Nothing here ever asks anybody to change their settings.
+// THE TOGGLE LOOKS INERT ON A LIGHT SYSTEM, and that is expected rather than
+// broken. Switching it on changes nothing until the machine goes dark, which
+// is exactly what "match my system" promises. The label says match, not dark,
+// for that reason.
+//
+// STORAGE IS BEST-EFFORT AND NEVER MENTIONED. Reading localStorage THROWS when
+// storage is blocked rather than returning null, and blocking it is a real
+// setting real people turn on. Every access is wrapped; when it fails the
+// choice lives in a variable for as long as the page does. That visitor gets a
+// toggle that works and forgets on the next navigation, which is a smaller
+// loss than being told about it. Nothing here ever asks anybody to change
+// their settings.
 
 const STORE = 'theme';
-const DEFAULT = 'light';
+const FOLLOW = 'system';
+const FIXED = 'light';
 
 /** Set when storage is refused, so the choice still holds for this page. */
 let inMemory = null;
 
 function read() {
+  let stored = null;
   try {
-    return localStorage.getItem(STORE) || inMemory || DEFAULT;
+    stored = localStorage.getItem(STORE);
   } catch (error) {
-    return inMemory || DEFAULT;
+    stored = null;
   }
+  const pref = stored || inMemory || FIXED;
+  // Anything that is not an explicit `light` counts as following — including
+  // `dark` left over from the three-way this replaced.
+  return pref === FIXED ? FIXED : FOLLOW;
 }
 
 function write(value) {
@@ -41,40 +56,38 @@ function write(value) {
 const systemIsDark = () =>
   window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-/** The attribute the stylesheet actually reads. Only ever `dark` or absent. */
+/** The attribute the stylesheet reads. Only ever `dark`, or absent. */
 function apply(pref) {
-  const dark = pref === 'dark' || (pref === 'system' && systemIsDark());
-  if (dark) {
+  if (pref === FOLLOW && systemIsDark()) {
     document.documentElement.setAttribute('data-theme', 'dark');
   } else {
     document.documentElement.removeAttribute('data-theme');
   }
 }
 
-const picker = document.querySelector('[data-theme-picker]');
+const control = document.querySelector('[data-theme-toggle]');
+const input = document.querySelector('[data-theme-input]');
 
-if (picker) {
+if (control && input) {
   const current = read();
   apply(current);
+  input.checked = current === FOLLOW;
 
-  const chosen = picker.querySelector(`input[value="${current}"]`);
-  if (chosen) chosen.checked = true;
+  control.hidden = false;
 
-  picker.hidden = false;
-
-  picker.addEventListener('change', (event) => {
-    const value = event.target.value;
-    write(value);
-    apply(value);
+  input.addEventListener('change', () => {
+    const pref = input.checked ? FOLLOW : FIXED;
+    write(pref);
+    apply(pref);
   });
 
-  // Somebody on `system` who flips their laptop to dark at sunset should not
-  // have to reload to see it.
+  // Somebody following their system who flips the laptop to dark at sunset
+  // should not have to reload to see it.
   if (window.matchMedia) {
     window
       .matchMedia('(prefers-color-scheme: dark)')
       .addEventListener('change', () => {
-        if (read() === 'system') apply('system');
+        if (read() === FOLLOW) apply(FOLLOW);
       });
   }
 }
