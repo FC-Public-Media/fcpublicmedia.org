@@ -41,6 +41,20 @@
 
   </div>
 
+  {%- comment -%}
+    Hidden until assets/js/theme.js reveals it. With scripting off these
+    controls could not do anything, and three dead radio buttons are worse
+    than no control at all — the visitor is left wondering what they broke.
+  {%- endcomment -%}
+  <div class="wrap">
+    <fieldset class="theme-picker" data-theme-picker hidden>
+      <legend>Colours</legend>
+      <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+      <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+      <label><input type="radio" name="theme" value="system"><span>Match my system</span></label>
+    </fieldset>
+  </div>
+
   <div class="wrap foot-legal">
     <p>{{ org.legal }}</p>
     <p>&copy; {{ org.founded }}&ndash;{{ site.time | date: '%Y' }} {{ org.name }}</p>

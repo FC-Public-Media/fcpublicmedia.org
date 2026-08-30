@@ -50,7 +50,15 @@ def tokens(block="root"):
     before this did the slicing, which is a good argument for the slicing.
     """
     text = CSS.read_text(encoding="utf-8")
-    dark = text.index("prefers-color-scheme: dark")
+
+    # Sliced at the SELECTOR, not at "prefers-color-scheme: dark". The dark
+    # palette is chosen by attribute now so that a visitor can override it —
+    # a media query cannot be overridden, which is why "follow my system" was
+    # impossible before. The old marker still appears in this file, but only
+    # inside the comment explaining that, so slicing on it would have kept
+    # working by luck and broken the day somebody reworded a comment.
+    marker = ':root[data-theme="dark"]'
+    dark = text.index(marker)
     text = text[dark:] if block == "dark" else text[:dark]
     return dict(re.findall(r"(--[a-z-]+):\s*(#[0-9a-fA-F]{6})", text))
 

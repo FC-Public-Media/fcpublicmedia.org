@@ -79,28 +79,48 @@
   --gap: clamp(1rem, 0.7rem + 1.4vw, 2rem);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink:       #ece8e1;
-    --slate:     #2b313a;
-    --ink-soft:  #a1a8b2;
-    --paper:     #121417;
-    --paper-alt: #1c2126;
-    --rule:      #2f363d;
+/* --- The dark scheme ------------------------------------------------------
 
-    /* Yellow survives the inversion unchanged, which is the whole appeal of
-       it — the plate is the same plate in both schemes. What changes is that
-       here it is finally safe as a text colour too. */
-    --signal:     #ffc61a;
-    --signal-ink: #121417;
+   LIGHT IS THE DEFAULT NOW, INCLUDING FOR SOMEBODY WHOSE SYSTEM IS DARK.
 
-    /* Walked light instead of dark, for the same reason and by the same
-       amount: 4.0:1 against this background is not enough for a badge. */
-    --record:     #d93a26;
-    --record-ink: #e16151;
+   The palette reads well in light and the dark scheme was described as drab —
+   too much slate — so following the system was handing most visitors the
+   weaker of the two. Dark is still here and still maintained; it is opt-in.
 
-    --accent:     #ece8e1;
-  }
+   Selected by attribute rather than by `@media (prefers-color-scheme: dark)`,
+   and that is what makes "follow my system" possible at all. A media query
+   cannot be overridden by a choice — it either applies or it does not — so a
+   visitor who wanted light on a dark laptop had nothing to press. Here the
+   media query is consulted by assets/js/theme.js, which resolves a stored
+   preference of `system` into this attribute.
+
+   The consequence worth stating: with JavaScript off nobody gets dark, ever.
+   That is the correct fallback rather than a regression, because light is the
+   default the site wants. Nothing prompts anybody to turn scripting on. */
+
+:root { color-scheme: light; }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink:       #ece8e1;
+  --slate:     #2b313a;
+  --ink-soft:  #a1a8b2;
+  --paper:     #121417;
+  --paper-alt: #1c2126;
+  --rule:      #2f363d;
+
+  /* Yellow survives the inversion unchanged, which is the whole appeal of
+     it — the plate is the same plate in both schemes. What changes is that
+     here it is finally safe as a text colour too. */
+  --signal:     #ffc61a;
+  --signal-ink: #121417;
+
+  /* Walked light instead of dark, for the same reason and by the same
+     amount: 4.0:1 against this background is not enough for a badge. */
+  --record:     #d93a26;
+  --record-ink: #e16151;
+
+  --accent:     #ece8e1;
 }
 
 /* --- Fonts ---------------------------------------------------------------
@@ -936,6 +956,39 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   background: var(--paper); color: var(--ink);
 }
 .filter-count { margin: 0.5rem 0 0; font-size: var(--step--1); color: var(--ink-soft); }
+
+/* The colour control. Quiet on purpose — it is a preference, not a feature,
+   and it sits at the bottom because somebody who wants it will look there.
+   `hidden` in the markup until theme.js reveals it. */
+.theme-picker {
+  border: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 1rem;
+}
+.theme-picker[hidden] { display: none; }
+.theme-picker legend {
+  padding: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.theme-picker label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.theme-picker input { accent-color: var(--signal); }
+.theme-picker label:hover { color: var(--ink); }
+.theme-picker input:checked + span { color: var(--ink); font-weight: 650; }
 
 /* --- Footer --------------------------------------------------------------- */
 
