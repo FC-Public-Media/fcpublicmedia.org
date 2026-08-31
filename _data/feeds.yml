@@ -46,8 +46,8 @@ total: 24
 # drops off instead of sitting at the bottom forever.
 months: 18
 
-sources: # []
- - name: AutumnTaughtEm
-   url:  https://www.youtube.com/feeds/videos.xml?channel_id=UCCPJ-2ga6qYBhJ259lNzXKA
-   kind: video          # podcast | video | writing
-   owner: Autumn Valenta        # optional — who makes it
+sources: []
+ # - name: AutumnTaughtEm
+ #   url:  https://www.youtube.com/feeds/videos.xml?channel_id=UCCPJ-2ga6qYBhJ259lNzXKA
+ #   kind: video          # podcast | video | writing
+ #   owner: Autumn Valenta        # optional — who makes it
