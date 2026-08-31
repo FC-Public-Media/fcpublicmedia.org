@@ -117,4 +117,4 @@ Email [{{ site.data.org.email }}](mailto:{{ site.data.org.email }}) or call
   "email": {{ site.data.org.email | jsonify }}
 }
 </script>
-<script type="module" src="{{ '/assets/js/nonprofit.js' | relative_url }}"></script>
+<script type="module" src="{{ '/assets/js/nonprofit.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

@@ -177,4 +177,4 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-<script type="module" src="{{ '/assets/js/authorize.js' | relative_url }}"></script>
+<script type="module" src="{{ '/assets/js/authorize.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

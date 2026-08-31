@@ -299,4 +299,4 @@ lede: One tap when you get here. Your visits stay on your own phone.
   <button class="btn" id="forget-button" type="button">Forget this device</button>
 </p>
 
-<script type="module" src="{{ '/assets/js/checkin.js' | relative_url }}"></script>
+<script type="module" src="{{ '/assets/js/checkin.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

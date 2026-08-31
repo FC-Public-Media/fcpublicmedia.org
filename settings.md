@@ -139,4 +139,4 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <pre class="code-block"><code id="settings-output"></code></pre>
 </div>
 
-<script type="module" src="{{ '/assets/js/settings.js' | relative_url }}"></script>
+<script type="module" src="{{ '/assets/js/settings.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
