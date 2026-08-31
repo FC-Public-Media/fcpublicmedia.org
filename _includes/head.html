@@ -46,7 +46,26 @@
   <link rel="icon" href="{{ '/assets/img/icon-180.png' | relative_url }}" sizes="180x180" type="image/png">
   <link rel="apple-touch-icon" href="{{ '/assets/img/icon-180.png' | relative_url }}">
 
-  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+  {%- comment -%}
+    THE ?v IS WHY YOU CAN STOP LOOKING FOR A PURGE BUTTON.
+
+    _headers gives /assets/* a one hour max-age, and these URLs never used to
+    change — so a browser that had already fetched site.css kept the old one
+    for an hour after a deploy. That is the BROWSER's copy, which no amount of
+    purging at Cloudflare can reach. And there is no purge button for a
+    pages.dev hostname anyway: purge is a zone feature, and pages.dev is
+    Cloudflare's zone rather than ours.
+
+    The build time changes the URL, so a deploy is the cache bust. HTML is
+    already served must-revalidate, so the new HTML asks for the new URL
+    immediately.
+
+    Now that the URLs move, /assets/css/* and /assets/js/* could safely take a
+    much longer max-age than an hour. Left alone deliberately — the images and
+    fonts under /assets/ are NOT versioned, and getting the precedence between
+    overlapping _headers rules wrong would cache a floor plan for a year.
+  {%- endcomment -%}
+  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}?v={{ site.time | date: '%s' }}">
 
   {%- comment -%}
     Inline and in the head, because anything else paints the wrong colours

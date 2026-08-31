@@ -187,4 +187,4 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
   </p>
 </div>
 
-<script type="module" src="{{ '/assets/js/upload.js' | relative_url }}"></script>
+<script type="module" src="{{ '/assets/js/upload.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

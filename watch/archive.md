@@ -109,4 +109,4 @@ permalink: /watch/archive/
   </ul>
 {% endfor %}
 
-<script src="{{ '/assets/js/archive-filter.js' | relative_url }}" defer></script>
+<script src="{{ '/assets/js/archive-filter.js' | relative_url }}?v={{ site.time | date: '%s' }}" defer></script>

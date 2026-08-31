@@ -111,4 +111,4 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   </p>
 </div>
 
-<script type="module" src="{{ '/assets/js/devices.js' | relative_url }}"></script>
+<script type="module" src="{{ '/assets/js/devices.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
