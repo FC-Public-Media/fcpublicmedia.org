@@ -5,7 +5,7 @@
    "name": "News"
   },
   {
-   "count": 191,
+   "count": 195,
    "name": "Arts and Culture"
   },
   {
@@ -25,11 +25,11 @@
    "name": "Horror"
   },
   {
-   "count": 42,
+   "count": 43,
    "name": "Religious - Christian"
   },
   {
-   "count": 35,
+   "count": 36,
    "name": "Uncategorized"
   },
   {
@@ -61,7 +61,7 @@
    "name": "Finance"
   },
   {
-   "count": 12,
+   "count": 13,
    "name": "Fort Collins Comedy"
   },
   {
@@ -146,8 +146,106 @@
   }
  ],
  "fetched": null,
- "local_total": 378,
+ "local_total": 379,
  "recent": [
+  {
+   "category": "Religious - Christian",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1509",
+   "id": 1509,
+   "local": false,
+   "notes": "",
+   "producer": "Kathy Duchesne",
+   "seconds": 1710,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5921",
+   "title": "The Life of Summer - Maturity - The Life in Us - given by Gabriele Kathy Duchesne",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1509",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1508",
+   "id": 1508,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1701,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5914",
+   "title": "Paltrocast - Katseye Director Nadia Hallgren _ Kristoffer Polaha _ Ready For The World_s Melvin Riley Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1508",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1506",
+   "id": 1506,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1713,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5907",
+   "title": "Paltrocast - Michael Wandmacher _ Anthrax_s Frank Bello Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1506",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1505",
+   "id": 1505,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1688,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5901",
+   "title": "Paltrocast - Makini Big Mak Manu _ Bai Ling _ Elisabeth Harnois _ Nick Lyon Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1505",
+   "watchable": true
+  },
+  {
+   "category": "Fort Collins Comedy",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1504",
+   "id": 1504,
+   "local": true,
+   "notes": "",
+   "producer": "Cody  Boterman",
+   "seconds": 187,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5894",
+   "title": "Top Dog Sports Update - full Cody Boterman_2026-08-25_16_16_23",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1504",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1502",
+   "id": 1502,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1718,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5880",
+   "title": "Paltrocast - Cast _ Crew From The Sun Never Sets _ Mooch Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1502",
+   "watchable": true
+  },
+  {
+   "category": "",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1501",
+   "id": 1501,
+   "local": false,
+   "notes": "",
+   "producer": "Nate Keen",
+   "seconds": 456,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5873",
+   "title": "Alice in Wonderland",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1501",
+   "watchable": true
+  },
   {
    "category": "Arts and Culture",
    "date": "2026-08-12",
@@ -385,107 +483,23 @@
    "title": "Paltrocast - Billy Morrison _ Future Palace_s Maria Lessing Darren Paltrowitz",
    "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1483",
    "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1482",
-   "id": 1482,
-   "local": false,
-   "notes": "Midnight",
-   "producer": "Nate Keen",
-   "seconds": 3686,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5736",
-   "title": "Midnight_Limited_1940_2026-07-14_11_59_43",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1482",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1479",
-   "id": 1479,
-   "local": false,
-   "notes": "ashley",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1690,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5717",
-   "title": "Paltrocast - Stars of FROM _ Ashley Williams _ C.O.F.F.I.N._s Ben Portnoy Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1479",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1478",
-   "id": 1478,
-   "local": false,
-   "notes": "Yellen",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1740,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5721",
-   "title": "Paltrocast - Stars of They Fight _ Sheldon Yellen _ Martin Luther McCoy Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1478",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1477",
-   "id": 1477,
-   "local": false,
-   "notes": "Joan",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1736,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5707",
-   "title": "Paltrocast - Stars of FROM _ Man Of War _ Joan As Police Woman Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1477",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1476",
-   "id": 1476,
-   "local": false,
-   "notes": "",
-   "producer": "Darren Paltrowitz",
-   "seconds": 0,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5707",
-   "title": "Paltrocast - Stars of FROM _ Man Of War _ Joan As Police Woman Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1476",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1475",
-   "id": 1475,
-   "local": false,
-   "notes": "Katerina Nicole",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1727,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5699",
-   "title": "Paltrocast - Katerina Nicole _ Stars Of Death On The Brandywine Darren Paltrowitz_2026-07-14_11_19_21",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1475",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-14",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1474",
-   "id": 1474,
-   "local": false,
-   "notes": "Paltrocast",
-   "producer": "Darren Paltrowitz",
-   "seconds": 0,
-   "thumb": "",
-   "title": "Paltrocast - Katerina Nicole _ Stars Of Death On The Brandywine Darren Paltrowitz_2026-07-14_11_12_38",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1474",
-   "watchable": true
   }
  ],
  "recent_local": [
+  {
+   "category": "Fort Collins Comedy",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1504",
+   "id": 1504,
+   "local": true,
+   "notes": "",
+   "producer": "Cody  Boterman",
+   "seconds": 187,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5894",
+   "title": "Top Dog Sports Update - full Cody Boterman_2026-08-25_16_16_23",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1504",
+   "watchable": true
+  },
   {
    "category": "Local Information",
    "date": "2026-08-12",
@@ -807,23 +821,107 @@
    "title": "Snapshot News with Louise Cutler",
    "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1261",
    "watchable": true
-  },
-  {
-   "category": "FoCo Local Programs",
-   "date": "2024-07-21",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1242",
-   "id": 1242,
-   "local": true,
-   "notes": "At the beginning of COVID-19 this documentary shares the story of the impact of families from the immigrant community that lost their jobs, had no access to health care, food inequity, and the stress on the families\u2019 mental health.",
-   "producer": "Betty Aragon Mitotes",
-   "seconds": 2801,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/4051",
-   "title": "Web Hispanic Community Voices- The Impact of Covid-19 Final Film Betty Aragon",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1242",
-   "watchable": true
   }
  ],
  "shows": [
+  {
+   "category": "Religious - Christian",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1509",
+   "id": 1509,
+   "local": false,
+   "notes": "",
+   "producer": "Kathy Duchesne",
+   "seconds": 1710,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5921",
+   "title": "The Life of Summer - Maturity - The Life in Us - given by Gabriele Kathy Duchesne",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1509",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1508",
+   "id": 1508,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1701,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5914",
+   "title": "Paltrocast - Katseye Director Nadia Hallgren _ Kristoffer Polaha _ Ready For The World_s Melvin Riley Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1508",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1506",
+   "id": 1506,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1713,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5907",
+   "title": "Paltrocast - Michael Wandmacher _ Anthrax_s Frank Bello Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1506",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1505",
+   "id": 1505,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1688,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5901",
+   "title": "Paltrocast - Makini Big Mak Manu _ Bai Ling _ Elisabeth Harnois _ Nick Lyon Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1505",
+   "watchable": true
+  },
+  {
+   "category": "Fort Collins Comedy",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1504",
+   "id": 1504,
+   "local": true,
+   "notes": "",
+   "producer": "Cody  Boterman",
+   "seconds": 187,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5894",
+   "title": "Top Dog Sports Update - full Cody Boterman_2026-08-25_16_16_23",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1504",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1502",
+   "id": 1502,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1718,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5880",
+   "title": "Paltrocast - Cast _ Crew From The Sun Never Sets _ Mooch Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1502",
+   "watchable": true
+  },
+  {
+   "category": "",
+   "date": "2026-08-25",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1501",
+   "id": 1501,
+   "local": false,
+   "notes": "",
+   "producer": "Nate Keen",
+   "seconds": 456,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5873",
+   "title": "Alice in Wonderland",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1501",
+   "watchable": true
+  },
   {
    "category": "Arts and Culture",
    "date": "2026-08-12",
@@ -15847,7 +15945,7 @@
    "watchable": false
   }
  ],
- "total": 1073,
- "untitled_omitted": 427,
- "watchable": 752
+ "total": 1080,
+ "untitled_omitted": 429,
+ "watchable": 759
 }
