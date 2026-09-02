@@ -61,10 +61,20 @@ include:
   - _redirects
   - _headers
 
+# Repository documentation is NOT site content. A .md file with no front matter
+# is copied verbatim rather than rendered, so anything left off this list ends
+# up fetchable at its own public URL — MANIFEST.md, REDIRECTS.md and
+# RESERVE-DESIGN.md all were, which is how this was noticed. REDIRECTS.md is a
+# map of the old Wix address space and RESERVE-DESIGN.md is internal planning
+# about how the board rosters and hosts itself; neither belongs on the website.
 exclude:
   - README.md
   - CONTENT-TODO.md
   - DESIGN-NOTES.md
+  - ADVOCATE.md
+  - RESERVE-DESIGN.md
+  - MANIFEST.md
+  - REDIRECTS.md
   - Gemfile
   - Gemfile.lock
   - vendor
