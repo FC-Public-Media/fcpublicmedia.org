@@ -48,27 +48,87 @@ workflows in `.github/`, the scripts in `script/` — and follow those rather
 than reinvent them. Belt and suspenders. Several routes to the same outcome is
 the point, not duplication to be cleaned up.
 
-## Health, in three kinds
+## Health, in four kinds
 
 ### 1. Things that decay on a clock
 
 The category with the fewest moving parts and the most value, because nothing
 here fails loudly. It just goes quietly wrong one day.
 
-- **The Slack invite** in `_data/community.yml` expires every thirty days. The
-  file says so, in a comment, and says no CI is regenerating it. It is the
-  primary channel on the community page.
-- **Claim signing keys.** `_data/identity.yml` currently holds none, so this is
-  future rather than live — but the rotation rule is already written down and
-  it has a trap in it: deleting a key invalidates links already sitting in
-  people's inboxes. Old keys must outlive their claims.
-- **Third-party embeds and their tokens.** Booqable's snippet, the Cablecast
-  player, the newsletter link. None expire today. Any of them could.
-- **The redirect map.** `_data/redirects.yml` describes an address space that
-  belongs to a Wix site FCPM is leaving. It is correct now and will not stay
-  correct forever.
+Credentials are the biggest instance of this and have their own section below.
+What is left here is everything else that has a shelf life:
 
-### 2. Whether the people we depend on are still there
+- **The Slack invite** in `_data/community.yml`. It is the primary channel on
+  the community page, it expires every thirty days, the file says so in a
+  comment, and it says no CI is regenerating it. It is also the one credential
+  in this project whose age is fully readable from the git history — see below.
+- **Claim signing keys.** `_data/identity.yml` holds none today, so this is
+  future rather than live. The rotation rule is already written down and has a
+  trap in it: deleting a key invalidates links already sitting in people's
+  inboxes, so old keys must outlive their claims.
+- **Third-party embeds.** Booqable's snippet, the Cablecast player, the
+  newsletter link. None expire today. Any of them could, and none would
+  announce it.
+- **The redirect map.** `_data/redirects.yml` describes an address space
+  belonging to a Wix site FCPM is leaving. Correct now; will not stay correct.
+
+### 2. Whether our credentials are being rotated
+
+A standing concern in its own right, and deliberately **not** something to
+solve here. Nobody is asking the advocate to rotate anything. The job is to
+notice, periodically, that rotation is or is not happening, and to turn that
+into a question somebody can answer.
+
+This is a research task, and the repository is a better source than it looks.
+
+**What the git history can tell you.** When a credential lives in the repo,
+the last time its line changed *is* the last time it was rotated. `git log -L`
+or a blame on that line dates it exactly. The Slack invite in
+`_data/community.yml` is the worked example: it expires every thirty days, so
+the age of that line is the answer, and the answer is almost certainly "too
+old".
+
+**What the git history cannot tell you, and this is the more important half.**
+Most of what this project depends on is *referenced* here and *stored*
+somewhere else — which is correct, and is exactly why nobody can see when it
+was last rotated:
+
+| Credential | Where it lives | Visible from the repo |
+|---|---|---|
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | GitHub repository secrets | Reference only |
+| `CLOUDFLARE_API_TOKEN` | GitHub repository secrets | Reference only |
+| `STRIPE_KEY` (secret half) | Worker secret | Reference only |
+| `PUBLIC_STRIPE_API_KEY` | GitHub secret, publishable half | Reference only |
+| `GITHUB_APP_ID` / `GITHUB_APP_KEY` | Worker secret | Reference only |
+| `GITHUB_TOKEN` (the Worker's own) | Worker secret | Reference only |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | Worker secret | Reference only |
+| Claim signing private key | A file kept out of git | Reference only |
+| The Slack invite | `_data/community.yml` | **Fully datable** |
+
+For everything marked *reference only*, the repository can still establish the
+**earliest possible age** — the commit that introduced the reference — and can
+say plainly that no later evidence exists. That is enough to ask the question:
+
+> *The deploy token was wired up in March and there is no record of it being
+> replaced since. Whoever holds the Cloudflare account: has it been rotated,
+> and does it expire?*
+
+**Why this matters more than it sounds.** A deploy token that quietly expires
+does not announce itself. The site simply stops updating, and the person who
+notices is whoever next wonders why their change never appeared — possibly
+weeks later, possibly a board member who assumes the site is just wrong. The
+same is true of the GitHub App key and the R2 credentials: nothing breaks
+loudly, things just stop working.
+
+**Two things the advocate must never do here.**
+
+1. **Never read, print, or copy a secret value.** Establishing that a
+   credential exists and when it was last touched requires none of them.
+2. **Never move a secret into the repository to make it observable.** The
+   reason these are unobservable is the reason they are safe. Trading that for
+   a tidier report is the single worst outcome this document could cause.
+
+### 3. Whether the people we depend on are still there
 
 The named worry, and the reason this is not paranoia: **if Cablecast were to go
 out of business, this site would lose its entire programme catalogue, its
@@ -98,7 +158,7 @@ still lands here: PEG funding is being wound down. Anything on this site that
 generates revenue — memberships, rentals, hourly studio hire — gets more
 important as that goes.
 
-### 3. Whether the site is still telling the truth
+### 4. Whether the site is still telling the truth
 
 Failures here are not crashes. They are pages that keep building, keep passing
 the tests, and quietly say something untrue.
