@@ -75,6 +75,7 @@ exclude:
   - RESERVE-DESIGN.md
   - MANIFEST.md
   - REDIRECTS.md
+  - advocate.yml       # seat declarations for .advocate-engine, not site content
   - Gemfile
   - Gemfile.lock
   - vendor
