@@ -48,7 +48,7 @@ workflows in `.github/`, the scripts in `script/` — and follow those rather
 than reinvent them. Belt and suspenders. Several routes to the same outcome is
 the point, not duplication to be cleaned up.
 
-## Health, in four kinds
+## Health, in five kinds
 
 ### 1. Things that decay on a clock
 
@@ -128,7 +128,28 @@ loudly, things just stop working.
    reason these are unobservable is the reason they are safe. Trading that for
    a tidier report is the single worst outcome this document could cause.
 
-### 3. Whether the people we depend on are still there
+### 3. Whether we can still be paid
+
+Named as a concern in its own right, and the answer today is uncomfortable:
+**nothing on this site can take money except Booqable equipment rental.**
+`payments.yml` carries an empty Stripe publishable key with `live` false, and
+all five entries in `providers.yml` are `placeholder` or `pending` — tickets,
+membership, donations and program submission all still point at Wix in their
+notes.
+
+Three things are meant to sell: membership and class drop-ins through Stripe,
+equipment through Booqable. Only the third is wired, and class drop-in prices
+are still `TODO`, which is why class mode hides pricing rather than showing a
+number nobody approved.
+
+This matters more each year, because PEG funding is being wound down.
+
+**Watch:** that every entry in `providers.yml` is either live or has a person
+and a reason recorded against it. **Never set a price or pick a provider** —
+those are board decisions, and a plausible guess at either is worse than a
+blank.
+
+### 4. Whether the people we depend on are still there
 
 The named worry, and the reason this is not paranoia: **if Cablecast were to go
 out of business, this site would lose its entire programme catalogue, its
@@ -158,7 +179,7 @@ still lands here: PEG funding is being wound down. Anything on this site that
 generates revenue — memberships, rentals, hourly studio hire — gets more
 important as that goes.
 
-### 4. Whether the site is still telling the truth
+### 5. Whether the site is still telling the truth
 
 Failures here are not crashes. They are pages that keep building, keep passing
 the tests, and quietly say something untrue.
@@ -202,6 +223,25 @@ reasons, and the reasons are in the code next to them:
 - **Claim links forward on purpose** — see `_data/authorize.yml`.
   `RESERVE-DESIGN.md` proposes reversing that. Until somebody decides, the
   current behaviour is intended.
+
+## Seats
+
+The concerns above are held as seats in `advocate.yml` — the only file
+`.advocate-engine` asks of this repository. One seat is one concern, kept on
+`advocate/<name>`, worked in short visits by whoever turns up.
+
+A seat is declared by **who it speaks for**, not by a list of tasks: a
+`constituency`, the things that constituency actually says out loud, and two or
+three goals. That is the framework's shape and it is the right one — a task
+list goes stale, whereas "the treasurer who has to answer whether we can take
+money" does not.
+
+Every session is `local`. Nothing calls out, nothing runs unattended, and no
+credential is needed to hold a seat. `writes: []` throughout, which is the
+honest default: an advocate proposes, a person decides.
+
+A seat exists once it has spoken. Until then it is an intention, and the
+council page says so.
 
 ## How to report
 
