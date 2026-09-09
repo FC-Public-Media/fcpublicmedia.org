@@ -1,13 +1,14 @@
 # Review notes — what people have said about the site
 
-**Nothing in this file is decided.** It is a record of feedback as it arrived,
-kept close to verbatim, so that it is in front of us while we work instead of
-sitting in an inbox. Autumn has to digest it before any of it becomes a change.
+**Feedback arrives here undecided.** It is a record of what people said, kept
+close to verbatim, so that it is in front of us while we work instead of
+sitting in an inbox. Nothing is authoritative on arrival; Autumn rules on it.
 
-Read it as *"this was said"*, never as *"this is the plan."* When something
-here does become the plan, it moves — into the page, into `_data/`, or into
-[CONTENT-TODO.md](CONTENT-TODO.md) as a decision that has actually been made —
-and the entry here gets struck through with a pointer to where it went.
+So read every entry as *"this was said"* until it carries an outcome. A round
+that has been ruled on says so at its head, and a note that has shipped is
+struck through with a pointer to where it went. **Struck through means it is in
+the site — the page is the authority then, not this file.** Round 1 is ruled
+on; anything still open is collected at the foot of it.
 
 The value of the file is the second column of every table: **where the note
 lands in the repo.** Feedback arrives as prose about a page; work happens in a
@@ -20,6 +21,13 @@ the history of what was asked for stays legible even after it is superseded.
 ---
 
 ## Round 1 — Bryan, board president, 4 September 2026
+
+> **Ruled on by Autumn, 9 September 2026. Most of this has shipped.** She read
+> the round and answered: *"his wording is ideal"*, the events calendar goes on
+> /meet/ rather than the homepage, and — as a standing order now in
+> [CLAUDE.md](CLAUDE.md) — his plainer rendering of our copy is to be treated
+> as authoritative, because ours is over-written. Entries below carry their
+> outcome. What is still open is collected at the foot of the file.
 
 Two annotated PDFs, printed from the staged site: `Home Page.pdf` and
 `Reserve Page.pdf`. His convention, stated at the top of each: *"Bryan's
@@ -38,18 +46,26 @@ of the home page looks great!"*
 
 | What he said | Where it lands |
 |---|---|
-| Suggestion: replace the tagline **"PUBLIC MEDIA is made of You."** with **"You are PUBLIC MEDIA"** | `tagline:` in the front matter of `index.html`. One line. |
-| *"I'd like a mission statement before scrolling down to the Watch Page. Maybe in front of a photo of the studio."* | New block in `index.html` between the hero and Watch; the photo is `org.hero_image`, currently `""`. |
-| His proposed mission statement: *"Fort Collins Public Media offers the equipment, training, and artistic space for Northern Coloradans to craft their visions into reality."* | Wants a home in `_data/org.yml` if it is going to appear in more than one place — and it will, because `/about` needs it too. |
+| ~~Suggestion: replace the tagline **"PUBLIC MEDIA is made of You."** with **"You are PUBLIC MEDIA"**~~ **Shipped.** | `tagline:` in the front matter of `index.html`. |
+| ~~*"I'd like a mission statement before scrolling down to the Watch Page. Maybe in front of a photo of the studio."*~~ **Shipped, without the photo** — there isn't one yet, and a band styled around a missing image reads as broken. Type only, same call the hero makes. | `index.html`, between the on-air bar and the Watch section. |
+| ~~His proposed mission statement: *"Fort Collins Public Media offers the equipment, training, and artistic space for Northern Coloradans to craft their visions into reality."*~~ **Shipped**, verbatim. | `org.mission` in `_data/org.yml`. Still to be rendered on `/about/` when that page has the rest of its content. |
 | *"After the Mission Statement I think it'd be beneficial to have an Events Calendar"* — listing **Classes**, **Meetups**, and **Video Events** *("E.G. Comic Con")* | See the note below. This is the one that is not small. |
 
-**The events calendar is a scope change, not a section.** MANIFEST §7 defers a
-*live class schedule* — class times, currently typed into `_data/classes.yml`,
-eventually read from the Microsoft 365 calendar. Bryan is asking for something
-wider: meetups and outside video events like Comic Con are not classes, they
-are not in `classes.yml`, and nobody is currently maintaining a list of them
-anywhere. Before this can be built somebody has to say **where the events come
-from**. Deciding that is the work; rendering them is an afternoon.
+**Answered: it goes on /meet/, not the homepage.** Autumn's call, and it turned
+out to need no new machinery at all — `meet.md` already merges three sources
+into one chronological list, and `_data/community.yml` already had a `kind`
+field the template rendered but the documentation never mentioned. Classes come
+from `classes.yml`, board meetings from `governance.yml`, and meetups and video
+events go in `community.yml` as `kind: Meetup` and `kind: Video event`. Both
+are now documented there with worked examples, Comic Con included.
+
+The homepage deliberately does **not** get the list. Her reasoning: showing the
+class that is *running right now* has earned its place for check-in and
+visibility, but a whole calendar is a reason to visit /meet/ rather than a
+reason to lengthen the front page.
+
+What is left is not engineering — somebody has to actually enter the events,
+which is a standing job rather than a one-off.
 
 The mission statement and the studio photo are the same errand as the About
 page and the `hero_image` slot, both of which have been waiting on exactly this
@@ -79,11 +95,12 @@ things it changes that are worth noticing before it is pasted in:
 
 | What he said | Where it lands |
 |---|---|
-| *"I like having the floorplan on the page. However I don't think it needs to be at the top. I think a video/slideshow of the space will be a better selling point. The floor plan might be better at the bottom as extra information"* | `reserve.md` — the `<figure class="floor-plan">` moves out of `.reserve-intro` to the foot of the page. The captioning logic and `plan_label` come with it unchanged. |
-| *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* | New `image:` key per entry in `_data/facilities.yml`, and markup for it in the `rows-spaces` list. |
+| ~~*"I like having the floorplan on the page. However I don't think it needs to be at the top... The floor plan might be better at the bottom as extra information"*~~ **Shipped.** The video/slideshow half is not — it waits on footage. | `reserve.md`. The `.reserve-intro` wrapper went with it: it was a two-column grid that existed only to stand the plan beside the intro, and left to itself it would have reserved 17rem for nothing. |
+| *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* **Accepted — Autumn is taking him up on it**, and pulling what she can from Google Drive besides. Old Wix pictures are a **read**, which is all we ever do to Wix; see CLAUDE.md. | Not built yet, on purpose: an `image:` key with no images behind it is a schema nobody can fill. New `image:` per entry in `_data/facilities.yml` plus markup in `rows-spaces`, the day the photographs land. |
 
-**He is offering to shoot the photography.** That is the single biggest
-unblock in the file. CONTENT-TODO's Assets section asks for *"photography of
+**He is offering to shoot the photography, and Autumn has accepted.** She is
+also pulling what she can out of Google Drive, where the material exists but is
+scattered. That is the single biggest unblock in the file. CONTENT-TODO's Assets section asks for *"photography of
 the space, the gear, and people using both"*, and it is the dependency under
 the hero photo, the per-facility pictures, and the video/slideshow he wants
 where the floor plan is now. Taking him up on it is worth doing before the
@@ -121,24 +138,23 @@ followed by a new paragraph:
 > User of FC Public Media equipment must agree to FC Public Media's Equipment
 > Terms and Conditions."*
 
-Two things in there are policy, not copy, and are the reason this section
-should not be pasted in without an answer:
+**Both went in as written.** They travel together: his numbered list drops the
+credit card and his paragraph picks it up, so the requirement is stated once
+rather than twice. Two things about that are worth keeping in view.
 
-- **The credit card changes meaning.** The page currently says *"a credit card
-  for a temporary charge as collateral"* — a hold. His paragraph says *"a
-  valid credit card for late fees and incidentals"* — a card kept on file to
-  be charged against. Those are different arrangements and the second is the
-  one people ask questions about. Which is it?
-- **It cites a document that does not exist.** *"FC Public Media's Equipment
-  Terms and Conditions"* has no page and no PDF on the site. CONTENT-TODO
-  already carries "host as a page or keep as a PDF" as an open decision; this
-  sentence promotes it to blocking, because copy that names an agreement and
-  then does not link to it is worse than copy that never mentioned one.
-
-Note also that his numbered list drops the credit card from the list and moves
-it into the paragraph. If both go in as written, the requirement is stated once
-rather than twice — which is probably the intent, but it means the two edits
-travel together.
+- **The credit card changed meaning, and that is now live copy.** The page used
+  to say *"a credit card for a temporary charge as collateral"* — a hold. It
+  now says *"a valid credit card for late fees and incidentals"* — a card kept
+  on file to be charged against. Autumn ruled his wording ideal, so this is
+  decided rather than open, but it is a **policy** difference and not a
+  rephrasing. Somebody should confirm that is how equipment checkout actually
+  works in practice, because the page now promises it.
+- **It cites a document that does not exist. This one is still open.**
+  *"FC Public Media's Equipment Terms and Conditions"* has no page and no PDF.
+  CONTENT-TODO already carried "host as a page or keep as a PDF" as an open
+  decision; the sentence shipping promotes it to **blocking**, because copy
+  that names an agreement and cannot link to it is worse than copy that never
+  mentioned one. It is deliberately unlinked rather than linked to a 404.
 
 ### Not commented on
 
@@ -151,27 +167,42 @@ reserve page, and everything below the hero on the home page, he passed over.
 
 ---
 
-## What is actually blocked on Autumn
+## Still open after round 1
 
-Pulled out of the above so it is not buried in prose. None of these are
-copy edits; each changes what the site claims.
+Ruled on 9 September 2026. What survives, in order of how much it matters.
 
-1. **Equipment: hold, or card on file for fees?** The two phrasings describe
-   different arrangements.
-2. **Equipment Terms and Conditions** — the new copy names it. It needs to
-   exist, or the sentence needs to change.
-3. **Where do calendar events come from?** Classes are in `_data/classes.yml`.
-   Meetups and outside video events are nowhere.
-4. **Is equipment checkout self-serve or staff-picked?** His intro rewrite
-   implies the first; the rest of the site says the second.
-5. **Video or slideshow** for the space, in the slot the floor plan vacates.
+1. **Equipment Terms and Conditions must now exist.** The reserve page names
+   the document in shipped copy and cannot link to it. Page under `policies/`
+   or a PDF — either is fine, neither has been chosen. **This is the one that
+   should not sit.**
+2. **Does equipment checkout work the way the page now says it does?** Two
+   things to confirm against practice rather than against each other: the card
+   is now described as being held for *late fees and incidentals* rather than
+   as a hold, and Bryan's *"check out production equipment"* reads more
+   self-serve than `_data/facilities.yml`'s *"arranged by email"*. Both are
+   defensible; neither has been checked with the people who run it.
+3. **Video or slideshow of the spaces**, in the slot the floor plan vacated.
+   Different builds, and both wait on footage that does not exist yet.
+4. **Somebody has to enter the events.** The calendar works and is documented;
+   `community.yml` currently holds `events: []`.
 
-## What can be done as soon as somebody says yes
+## Waiting on photographs
 
-Small, self-contained, no decision underneath them:
+Not blocked on a decision — blocked on files. Autumn is pulling from Google
+Drive and Bryan is shooting new ones. Three things unlock the moment they land,
+and all three are small:
 
-- Tagline → "You are PUBLIC MEDIA" (`index.html` front matter).
-- Mission statement into `_data/org.yml`, rendered on the home page and `/about`.
-- Floor plan moves to the foot of `reserve.md`.
-- `image:` key on `_data/facilities.yml` entries, once photographs exist.
-- `org.equipment_email` → `equipment@fcpublicmedia.org`, **on 1 November 2026**.
+- The homepage mission band takes a photo behind it, the way `org.hero_image`
+  already can.
+- `image:` per entry in `_data/facilities.yml`, rendered in `rows-spaces`.
+- Whatever goes at the top of the reserve page where the plan used to be.
+
+Old pictures may also be on the Wix site. **Retrieving them is a read**, which
+is the only thing we ever do to Wix — see [CLAUDE.md](CLAUDE.md).
+
+## Diarised
+
+- **1 November 2026** — `org.equipment_email` becomes
+  `equipment@fcpublicmedia.org`. It is `fcpmequipment@gmail.com` until then and
+  Bryan announces the change in the October newsletter. One line in
+  `_data/org.yml`, and nothing in this repository will remind anyone.

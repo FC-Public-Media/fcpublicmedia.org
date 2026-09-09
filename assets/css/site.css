@@ -616,8 +616,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 /* Supporting art, not the subject. It floats beside the opening paragraphs on
    a wide screen and goes full width above them on a phone, where a 40% float
    would leave two words per line beside it. */
+/* At the foot of the page the plan is an appendix, so it is set apart with a
+   rule rather than running on from the equipment catalogue above it. */
 .floor-plan {
-  margin: 0 0 1.25rem;
+  margin: clamp(3rem, 6vw, 5rem) 0 1.25rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
   max-width: 22rem;
 }
 .floor-plan img {
@@ -633,38 +637,21 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   color: var(--ink-soft);
 }
 
-/* Two columns rather than a float.
+/* THE TWO-COLUMN INTRO IS GONE, and this note is what is left of it.
 
-   Floated, the plan shortened the first two rows of the spaces list and not
-   the rest, so the right-aligned size column jumped three hundred pixels
-   partway down the list. Clearing the float fixed that and left a hole under
-   the heading instead. A float makes text flow around a picture; this is a
-   picture beside an introduction, which is a two-column layout, and saying so
-   costs one wrapper and behaves the same at every width. */
-@media (min-width: 46rem) {
-  .reserve-intro {
-    display: grid;
-    grid-template-columns: 1fr 17rem;
-    gap: 0 2.5rem;
-    align-items: start;
-  }
-  /* Everything except the plan stacks down the left. The plan spans the whole
-     block on the right, so the column beside it is the introduction, the
-     heading and the contact details together rather than one short paragraph
-     with three hundred pixels of nothing under it. */
-  .reserve-intro > * { grid-column: 1; }
-  .reserve-intro .floor-plan {
-    grid-column: 2;
-    /* `span 99`, not `1 / -1`. -1 counts back from the last line of the
-       EXPLICIT grid, and there is no explicit grid here — the rows are all
-       implicit — so `1 / -1` quietly resolves to row 1 alone. The figure then
-       made row 1 as tall as itself and the heading below it fell past the
-       bottom of the picture, which is the exact gap this was meant to close. */
-    grid-row: 1 / span 99;
-    align-self: start;
-    margin: 0.25rem 0 0;
-  }
-}
+   The plan used to sit beside the introduction in a `.reserve-intro` grid.
+   Getting there took two tries worth recording, because both failures are
+   easy to repeat: floated, the plan shortened the first two rows of the
+   spaces list and not the rest, so the right-aligned size column jumped three
+   hundred pixels partway down; and `grid-row: 1 / -1` silently resolved to
+   row 1 alone, because -1 counts back from the last line of the EXPLICIT grid
+   and every row there was implicit.
+
+   None of it applies now. The board president moved the plan to the foot of
+   the page in September 2026, so there is no second column and no wrapper —
+   keeping the grid would have reserved 17rem for a figure that is no longer
+   in it. If a picture ever stands beside the introduction again, `span 99`
+   rather than `1 / -1` is the part to remember. */
 
 /* --- Cards and grids ------------------------------------------------------ */
 
@@ -792,6 +779,21 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 .section-head h2 { margin: 0; }
 .section-head .eyebrow { margin-bottom: 0.35rem; }
+
+/* --- Mission statement ---------------------------------------------------- */
+
+/* One sentence, set large, with no heading over it. A heading saying "Our
+   Mission" above a sentence that already says so is the label twice. It is
+   wider than --measure because it is display type rather than reading type —
+   at 38rem it wrapped into four short lines and looked like a pull quote it
+   is not. */
+.mission-statement {
+  font-size: var(--step-2);
+  line-height: 1.25;
+  max-width: 48rem;
+  margin: 0;
+  text-wrap: balance;
+}
 
 /* --- On-air bar ----------------------------------------------------------- */
 

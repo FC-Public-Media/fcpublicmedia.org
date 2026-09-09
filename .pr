@@ -1,1 +1,70 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Bryan's wording, and the events calendar goes to Meet
+Acts on round 1 of the president's review, now that you've ruled on it. His
+phrasing goes in verbatim throughout — see the companion PR for why that's now
+a standing order rather than a one-off.
+
+## What changed
+
+**Homepage.** Tagline is now *"You are PUBLIC MEDIA"*. His mission statement is
+in `org.mission` and renders as its own band between the on-air bar and the
+Watch section — "before scrolling down to the Watch Page", as he asked.
+
+I did **not** build the photo behind it. There's no photograph of the studio in
+the repo, and a band styled around an image it doesn't have reads as broken
+rather than restrained. It's type only, which is the same call the hero already
+makes about `hero_image`, and the photo drops in later with no rework.
+
+**Reserve page.** His intro replaces ours — it names Adobe, which the old
+sentence buried, and is shorter. Floor plan moved to the foot of the page as
+"extra information", his words. Equipment copy is his list plus his terms
+paragraph.
+
+**Events → Meet.** Your call, and it needed no new machinery: `meet.md` already
+merged classes, board meetings and `community.yml` into one chronological list,
+and `community.yml` already had a `kind` field the template rendered but the
+docs never mentioned. Meetups and video events are now documented there with
+worked examples, Comic Con included. The homepage is untouched — the running
+class stays, the list doesn't go there, for the reason you gave.
+
+## Two things to look at
+
+**The floor plan move deleted a wrapper.** `.reserve-intro` was a two-column
+grid whose only job was standing the plan beside the introduction. With the
+plan at the bottom it would have reserved a 17rem column for nothing and
+squeezed the intro into what was left — so the wrapper and its media query are
+gone. The CSS comment explaining the two ways that layout previously broke is
+kept, since both are easy to repeat.
+
+**The equipment terms sentence now names a document that doesn't exist.** It
+shipped because you said his wording is ideal, and I think that's right, but it
+leaves the page asserting that users "must agree to FC Public Media's Equipment
+Terms and Conditions" with nothing behind it. It's deliberately unlinked rather
+than pointed at a 404, and it's flagged as **BLOCKING** in CONTENT-TODO. It's
+the one thing here that shouldn't sit.
+
+Related: the credit card wording changed meaning as it went in — "temporary
+charge as collateral" (a hold) became "valid credit card for late fees and
+incidentals" (a card on file). That's policy, not phrasing. Worth confirming
+that's how checkout actually works, since the page now promises it.
+
+## Verified
+
+Ruby is working on this machine again (see the toolchain PR), so this is the
+first branch here that's had a real build rather than a YAML parse:
+
+- `bundle exec jekyll build` — clean, 0.75s.
+- Rendered output checked: tagline, mission band, and the reserve page in the
+  right order — intro, Spaces, Equipment, terms paragraph, floor plan last.
+- No internal `.md` docs in `_site/`.
+- Grepped the Playwright suite first: nothing references the tagline,
+  `.reserve-intro`, `.floor-plan`, or the equipment copy. The 245 browser tests
+  run on this PR in CI, which is where I'd rather they run than from a local
+  install.
+
+## Not done
+
+- No `image:` key on facilities — a schema with no images behind it is one
+  nobody can fill. It goes in the day the photographs land.
+- `/about/` doesn't render `org.mission` yet; that page still needs its history
+  and roster, so it's a CONTENT-TODO item rather than a change here.
+- `equipment_email` is untouched. It changes 1 November, not now.
