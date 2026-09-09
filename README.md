@@ -1218,22 +1218,73 @@ A static site can't accept a form post. Two options, both fine:
 ## Deploying to Cloudflare
 
 This is the fastest path to a real URL on a real domain, and it is what the
-demo runs on.
+live site runs on.
 
 Cloudflare now creates new projects as **Workers** rather than Pages, and the
 two behave differently at deploy time. This repository is set up for the
 Workers flow, which is what you get by default today.
 
-Point the Cloudflare GitHub app at this repository and set:
+**GitHub Actions builds and publishes it.** `.github/workflows/deploy.yml`
+runs `bundle exec jekyll build` and then `npx wrangler deploy` on every push to
+`main`. Cloudflare's own git integration is not used and should stay
+disconnected.
 
-| Setting | Value |
-|---|---|
-| Build command | `bundle exec jekyll build` |
-| Deploy command | `npx wrangler deploy` |
-| Build output directory | `_site` |
-| Root directory | `/` (leave it alone) |
+| What | Where | Value |
+|---|---|---|
+| `CLOUDFLARE_PAGES_TOKEN` | organization **secret** | An API token from the *Edit Cloudflare Workers* template |
+| `CLOUDFLARE_PAGES_PROJECT` | repository **variable** | The project name — `fcpm`, matching `wrangler.jsonc` |
+| `CLOUDFLARE_ACCOUNT_ID` | repository **variable**, optional | Only if the token can see more than one account |
 
 Everything else is in `wrangler.jsonc`, which is committed.
+
+### Why we build here rather than letting Cloudflare do it
+
+Cloudflare's git integration did this job until it began reporting the
+repository as **damaged** and stopped deploying. Nothing in the repository was
+actually broken — CI was green throughout, and still is.
+
+The likely cause is worth writing down, because the next person will otherwise
+work it out again from scratch. `.advocate-engine` is a submodule, added
+2026-09-04, pinned to a commit that is not at the tip of a branch. Cloudflare's
+builder clones shallow and then initialises submodules, which is exactly the
+combination that cannot fetch such a commit — and a superproject whose
+submodule will not resolve is fairly described as damaged.
+
+**The asymmetry is the evidence.** `actions/checkout` does not fetch submodules
+unless asked, and the site build has never needed one: nothing in `_site` comes
+from `.advocate-engine`. So CI kept working for precisely the reason Cloudflare
+stopped.
+
+Two consequences worth keeping:
+
+- **Do not add `submodules: true` to the checkout in `deploy.yml`.** It would
+  import the failure this arrangement steps around, and buy nothing.
+- **A build we can read beats a build we cannot.** The logs are in the Actions
+  tab, the build gates every pull request already, and one fewer external
+  builder can break without anybody being told.
+
+### What was lost, and what it would cost to get back
+
+Cloudflare's integration gave every pull request a preview URL. This does not —
+a pull request builds, and stops there, because there is one live copy and a
+pull request must not become it.
+
+If previews are wanted, `wrangler versions upload` uploads a version and prints
+its URL without promoting it to production. That is a deliberate addition
+rather than an oversight, and it needs the token to carry a little more
+permission.
+
+### Why `wrangler deploy` and not `wrangler pages deploy`
+
+Because this is a Worker with static assets, not a classic Pages project.
+`wrangler pages deploy` does not publish to the same place: it would create a
+**second** site, at its own address, with the custom domain still pointing at
+the first. Two live copies of one website is the failure to avoid, not a step
+on the way to anything.
+
+The secret and variable are named `…_PAGES_…` because that is what the static
+host is called in conversation. The names are ours; the product underneath is
+Workers.
 
 ### Why wrangler.jsonc has to be committed
 
@@ -1251,22 +1302,19 @@ guessing, not the build. Committing `wrangler.jsonc` skips the guess.
 
 ### Notes
 
-- **`bundle exec` is deliberate.** Cloudflare finds the `Gemfile` and runs
-  `bundle install` on its own, so plain `jekyll build` also works. Prefixing
-  with `bundle exec` guarantees the bundled Jekyll rather than whatever
-  happens to be on `PATH`.
-- **`_site` appears twice** — in the dashboard and in `wrangler.jsonc` under
+- **`bundle exec` is deliberate.** It guarantees the bundled Jekyll rather
+  than whatever happens to be on `PATH`.
+- **`_site` appears twice** — in the workflow and in `wrangler.jsonc` under
   `assets.directory`. Both need it. It is Jekyll's default and is not
   overridden in `_config.yml`.
-- **`.ruby-version` pins Ruby 3.2.2**, the default in Cloudflare's build
-  image, and CI reads the same file. Without it the builder can fall back to
-  a Ruby too old for Jekyll 4. Do not delete it.
-- **Leave the root directory as `/`.** The `api/` folder is Azure Functions
-  source, not a second site, and `_config.yml` excludes it from the output.
-  There is one buildable component here, at the root.
+- **`.ruby-version` pins Ruby 3.2.2**, and `.tool-versions` says the same for
+  asdf. CI reads `.ruby-version`. Do not delete either.
 - **`Gemfile.lock` is intentionally not committed.** A lock file resolved on a
   different platform is a common cause of `bundle install` failures on hosted
   builders. Jekyll is the only direct dependency.
+- **The broker deploys separately**, from `.github/workflows/broker.yml`, with
+  its own token — `CLOUDFLARE_API_TOKEN`, not the one above. See "A GitHub
+  secret is not a Cloudflare secret".
 
 ### If you are on classic Pages instead
 
