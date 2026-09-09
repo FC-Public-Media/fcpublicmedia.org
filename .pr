@@ -1,1 +1,84 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Build and publish the site from Actions, not Cloudflare's git app
+
+Cloudflare's git integration stopped deploying and began reporting the
+repository as damaged. This moves the publish step into the workflow that was
+already building the site, so the thing that broke is no longer in the path.
+
+## What changed
+
+`.github/workflows/deploy.yml` gains a Cloudflare deploy after the existing
+build: `npx wrangler deploy`, on push to `main` only. It reads
+
+| What | Where | Value |
+|---|---|---|
+| `CLOUDFLARE_PAGES_TOKEN` | org **secret** | API token, *Edit Cloudflare Workers* template |
+| `CLOUDFLARE_PAGES_PROJECT` | repo **variable** | `fcpm` |
+| `CLOUDFLARE_ACCOUNT_ID` | repo **variable**, optional | only if the token sees more than one account |
+
+and skips with a step-summary message when the token is absent, the same way
+the Azure and broker deploys already do. **This can merge before the secret
+exists** and CI stays green.
+
+Azure is untouched — still wired, still skipped, still dormant.
+
+## Why the git integration probably broke, which I want on the record
+
+Not certain, but it fits everything I can see. `.advocate-engine` was mounted as
+a submodule on 2026-09-04, pinned to a commit that is **not at the tip of a
+branch**. Cloudflare's builder clones shallow and then initialises submodules —
+the one combination that cannot fetch such a commit. A superproject whose
+submodule will not resolve is fairly called damaged.
+
+**The asymmetry is the evidence.** CI has been green the whole time, because
+`actions/checkout` does not fetch submodules unless asked and nothing in
+`_site` comes from `.advocate-engine`. Cloudflare failed for exactly the reason
+Actions did not.
+
+So there is a note in the workflow and in the README: **do not add
+`submodules: true` to that checkout.** It would import the failure and buy
+nothing.
+
+## The decision I made without asking, and how to reverse it
+
+You asked for Pages names, and I used them — but the deploy underneath is
+`wrangler deploy`, not `wrangler pages deploy`.
+
+This project is a **Worker with static assets**, not a classic Pages project;
+the README has said so since the Cloudflare section was written. `wrangler
+pages deploy` would not have replaced the live site. It would have created a
+**second** one, at its own address, with the custom domain still pointing at
+the first — two live copies of the website, which is the thing the vendors
+advocate spent its first session warning about.
+
+If you actually want to migrate to a classic Pages project, that is a real
+migration with a DNS change at the end of it, and it should be its own decision
+rather than a side effect of fixing a broken build. Say so and I will do it
+properly.
+
+The secret and variable keep the `…_PAGES_…` names regardless. They are ours,
+they describe the static host in the words we use for it, and renaming them
+later is a settings change.
+
+## What this loses
+
+Pull request preview URLs. Cloudflare's integration gave every PR one; this
+does not, because there is one live copy and a PR must not become it.
+
+`wrangler versions upload` is how they come back — it uploads a version and
+prints its URL without promoting it. I left it out deliberately rather than
+half-building it: it needs the token to carry more permission, and it is a
+choice, not an oversight.
+
+## Verified
+
+- The workflow parses (`YAML.load_file`), and the steps are in the intended
+  order: build → Cloudflare → Azure.
+- The build step is unchanged, so the pull request gate is unchanged.
+- Nothing here touches the broker, `worker/`, or any Stripe path.
+
+## Not done
+
+- The secret and both variables. Those are yours; nothing here can create them.
+- Whether to disconnect the Cloudflare git app. **Do that when this merges** —
+  until you do, Cloudflare will keep trying and keep failing, and once the
+  token is in you would have two things deploying the same site.

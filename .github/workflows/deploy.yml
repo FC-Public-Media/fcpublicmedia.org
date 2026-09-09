@@ -23,6 +23,12 @@ jobs:
     # Secrets cannot be referenced directly in an `if:` expression.
     env:
       SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+      # The site's own Cloudflare credential, deliberately not the broker's.
+      # Two tokens for two things means either can be revoked or rotated
+      # without taking the other down, and a token that only publishes the
+      # site cannot also redeploy the thing that takes money.
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+      CF_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
     steps:
       - uses: actions/checkout@v5
 
@@ -41,6 +47,80 @@ jobs:
         run: bundle exec jekyll build --trace
         env:
           JEKYLL_ENV: production
+
+      # ---------------------------------------------------------- Cloudflare
+      #
+      # THE SITE IS DEPLOYED FROM HERE NOW, NOT BY CLOUDFLARE'S GIT APP.
+      #
+      # Cloudflare's own git integration used to do this: it cloned the
+      # repository, ran the build, and ran `npx wrangler deploy` itself. It
+      # then began reporting the repository as damaged and stopped deploying.
+      #
+      # Whatever the cause, a build we can read beats a build we cannot. This
+      # job already produces `_site/` and already gates every pull request; all
+      # that was missing was the upload. Cloudflare's builder becomes one less
+      # thing that can be broken without anybody being told.
+      #
+      # A LIKELY CAUSE, WRITTEN DOWN SO NOBODY RE-DERIVES IT
+      # ----------------------------------------------------
+      # `.advocate-engine` was mounted as a submodule on 2026-09-04, and its
+      # pin is a commit on a non-default branch of that repository. Cloudflare's
+      # builder clones shallow and then initialises submodules, which is the
+      # exact combination that cannot fetch a commit that is not at a branch
+      # tip — and a superproject whose submodule will not resolve is reasonably
+      # described as damaged.
+      #
+      # The evidence for it is the asymmetry: CI has been green throughout,
+      # because `actions/checkout` does NOT fetch submodules unless asked, and
+      # the site build has never needed one. This workflow keeps that property.
+      # Do not add `submodules: true` to the checkout above — nothing in `_site`
+      # comes from `.advocate-engine`, and adding it would import the failure
+      # we are stepping around.
+      #
+      # WHY `wrangler deploy` AND NOT `wrangler pages deploy`
+      # -----------------------------------------------------
+      # This project is a Worker with static assets, not a classic Pages
+      # project — see README, "Deploying to Cloudflare". `wrangler pages deploy`
+      # would not replace the live site; it would CREATE a second one, at its
+      # own address, with the custom domain still pointing at the first. Two
+      # live copies of the site is the thing to avoid, not a step on the way.
+      - name: Set up Node for wrangler
+        if: github.event_name == 'push' && env.CF_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Only on push. A pull request builds but does not publish — there is one
+      # live copy and a PR must not become it.
+      #
+      # `--name` comes from a repository VARIABLE rather than a secret because
+      # it is not one: it is the project name, visible in the Cloudflare
+      # dashboard and in every deployment URL. Overriding it here rather than
+      # relying on `wrangler.jsonc` alone means renaming the project is a
+      # settings change and not a commit.
+      - name: Deploy to Cloudflare
+        if: github.event_name == 'push' && env.CF_TOKEN != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          # Optional. Wrangler infers the account when the token can only see
+          # one. Set this variable if the token's owner has more than one, or
+          # the deploy stops with "more than one account available".
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --name "$CF_PROJECT"
+
+      - name: Say why the site was not published
+        if: github.event_name == 'push' && env.CF_TOKEN == ''
+        run: |
+          echo "### Cloudflare deploy skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The site built, but nothing was published: the organization" >> "$GITHUB_STEP_SUMMARY"
+          echo "secret \`CLOUDFLARE_PAGES_TOKEN\` is not set, or is not shared" >> "$GITHUB_STEP_SUMMARY"
+          echo "with this repository." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Create it in the Cloudflare dashboard under My Profile, API" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tokens, from the *Edit Cloudflare Workers* template. Set the" >> "$GITHUB_STEP_SUMMARY"
+          echo "repository variable \`CLOUDFLARE_PAGES_PROJECT\` to the project" >> "$GITHUB_STEP_SUMMARY"
+          echo "name as well — without it the deploy has nothing to name." >> "$GITHUB_STEP_SUMMARY"
 
       # Deployment is skipped until someone creates the Azure Static Web App
       # and adds its token as a repository secret. Until then the build still
