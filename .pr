@@ -1,1 +1,74 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Pin Ruby with asdf, and say so where tools can see it
+Your Ruby wasn't in ruins for a Ruby reason. Two things were wrong on the
+machine and neither was obvious from the error:
+
+**1. A stale `LDFLAGS` in `~/.zprofile` was breaking every compile on the box.**
+
+```
+export LDFLAGS="-L/usr/local/opt/openssl@1.1/lib"
+export CPPFLAGS="-I/usr/local/opt/openssl@1.1/include"
+```
+
+Homebrew removed `openssl@1.1` some time ago, so those pointed at nothing. And
+because they were *global exports*, every `./configure` on the machine
+inherited a `-L` to a directory that doesn't exist. Ruby died at `checking
+whether LDFLAGS is valid... no` — an error that names your shell profile
+nowhere. This was not a Ruby problem; anything you'd tried to compile would
+have failed the same way.
+
+**2. rbenv was a corpse.** `~/.rbenv/shims` was still there and still first on
+PATH, but the `rbenv` binary was gone, so `eval "$(rbenv init -)"` failed on
+every login shell with `command not found: rbenv`. No ruby-build plugin either,
+so it couldn't have installed a Ruby even if it had run.
+
+You did already install asdf — 0.20.0, via brew, linked. It just had no plugins
+and nothing was pointing at it.
+
+## What I changed on the machine
+
+Backed up `~/.zprofile` first (`~/.zprofile.bak-20260909-111309`).
+
+- Removed the two dead `openssl@1.1` exports, with a comment saying why so they
+  don't come back. `PKG_CONFIG_PATH` and the cryptography flag are untouched.
+- Replaced the `rbenv init` line with asdf's shims on PATH. asdf 0.20 is the Go
+  rewrite — there's no `asdf.sh` to source, you just put the shims first.
+- `~/.asdfrc` gets `legacy_version_file = yes`, so asdf honours a plain
+  `.ruby-version` in repos that only have one.
+- Installed Ruby 3.2.2 and set it as the home default.
+
+`~/.rbenv` I have **left alone** — it's dead weight and nothing references it
+any more, but deleting a directory in your home isn't mine to do unasked. Say
+the word and it goes.
+
+## What changed in the repo
+
+`.tool-versions`, pinning `ruby 3.2.2` — the native, visible thing you asked
+for. It sits alongside `.ruby-version`, which is what `ruby/setup-ruby` reads
+in both workflows, so the two have to agree.
+
+Two files pinning one version is a drift waiting to happen, and the failure is
+quiet: CI keeps passing on one version while everyone develops against another.
+So there's a guard in `smoke.yml` that fails the build if they disagree. Five
+lines, runs before anything else.
+
+README's "Running it" gains a Ruby section covering asdf setup, the two-file
+arrangement, and the `LDFLAGS` trap — written down because it took an afternoon
+to find and will be completely invisible to the next person.
+
+## One decision I did not make for you
+
+**Ruby 3.2.2 is end-of-life** — ruby-build says so during the install, and it
+gets no more security updates. Moving to 3.3 or 3.4 is one line in each file,
+but it changes the Ruby that builds the deployed site, so it's a deliberate
+change rather than something to slip into a toolchain PR. Flagged in the README
+and left alone here. Happy to do it as its own PR.
+
+## Verified
+
+- `bundle install` — 35 gems, clean, Jekyll 4.4.1.
+- `bundle exec jekyll build` — clean.
+- `asdf current ruby` inside the repo resolves 3.2.2 *from `.tool-versions`*,
+  not from the home default.
+- The drift guard tested both ways: passes when the files agree, and correctly
+  fails with `.tool-versions` set to 3.4.1.
+- `smoke.yml` parses as YAML.

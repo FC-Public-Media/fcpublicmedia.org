@@ -26,6 +26,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # The Ruby version is pinned in two files: .ruby-version for this action
+      # and .tool-versions for asdf locally. They have to agree, and nothing
+      # else would notice if they stopped — CI would keep passing on one
+      # version while everyone developed against another. One line is cheaper
+      # than finding that out from a bug.
+      - name: Ruby is pinned to the same version in both files
+        run: |
+          ci=$(cat .ruby-version)
+          local=$(awk '$1 == "ruby" { print $2 }' .tool-versions)
+          if [ "$ci" != "$local" ]; then
+            echo "::error::.ruby-version says $ci, .tool-versions says $local"
+            exit 1
+          fi
+          echo "Both pin Ruby $ci"
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
