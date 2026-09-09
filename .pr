@@ -1,0 +1,73 @@
+Collate the president's review notes, without acting on them
+Bryan sent two annotated PDFs on 4 September — `Home Page.pdf` and
+`Reserve Page.pdf`, printed from the staged site with his comments in red.
+This puts them in the repository where we work, instead of in an inbox.
+
+**No site copy changes here.** That is the point of the PR. You said you have
+to digest this before it is authoritative, so nothing he suggested has been
+applied — not the tagline, not the intro rewrite, not the equipment paragraph.
+The new file records what was said and where each note would land if you say
+yes.
+
+## What's in it
+
+- **`REVIEW-NOTES.md`** — new. Round 1 is Bryan's two PDFs, quoted close to
+  verbatim, organised by page. Structured to take more rounds as they arrive
+  (you mentioned more emails), newest at the bottom.
+- **`_config.yml`** — excludes it from the Jekyll build. Non-front-matter `.md`
+  files get copied verbatim to a public URL otherwise; the file's own comment
+  says MANIFEST, REDIRECTS and RESERVE-DESIGN all leaked that way once. This
+  one is unratified board feedback plus a list of what we think is unresolved,
+  so it is the worst candidate for that.
+- **`CONTENT-TODO.md`** — five pointers, on the items his notes actually touch.
+  CONTENT-TODO stays the list of what is needed; nothing moved out of it.
+
+## The five things that are genuinely yours to call
+
+Everything else is a copy edit. These change what the site claims:
+
+1. **Credit card: a hold, or a card on file?** The page says "a temporary
+   charge as collateral." His paragraph says "a valid credit card for late fees
+   and incidentals." Different arrangements, and the second is the one members
+   ask about.
+2. **Equipment Terms and Conditions** — his copy names the document by title.
+   It does not exist. The copy can't ship ahead of the document.
+3. **Where do events come from?** He wants a calendar of classes, meetups and
+   outside video events (Comic Con). Classes are in `_data/classes.yml`;
+   meetups and video events have no source anywhere. That is the work — the
+   rendering is an afternoon.
+4. **Is equipment checkout self-serve or staff-picked?** His intro rewrite
+   says "check out production equipment"; the rest of the site says members
+   describe the job and staff pull the gear.
+5. **Video or slideshow** in the slot the floor plan would vacate. Different
+   builds.
+
+## Two things worth acting on regardless
+
+**He offered to shoot the photography.** *"I can take and send you the
+pictures."* That is the dependency under the hero photo, a picture per
+facility, and the slideshow — three things that have been waiting on it. Worth
+taking him up on before the layout work, because how that section is designed
+depends on what the pictures look like.
+
+**There is a dated change: 1 November 2026.** `equipment@fcpublicmedia.org` is
+live in M365; he switches equipment requests to it on that date and announces
+it in the October newsletter. Until then `fcpmequipment@gmail.com` stands. It
+is one line in `_data/org.yml` and it is exactly the kind of thing that gets
+sailed past — TODO: it probably wants a real reminder, or an advocate seat,
+rather than a sentence in a notes file. I did not build one; say the word.
+
+## Verified
+
+`_config.yml` parses and `REVIEW-NOTES.md` is in `exclude` — checked with
+Ruby's YAML loader. I could **not** run a Jekyll build to confirm the file
+stays out of `_site/`: `bundle exec jekyll` reports the gem is missing in this
+worktree. The exclude entry is textually identical in form to the six around
+it, so the risk is low, but it is asserted rather than observed.
+
+## Deliberately not done
+
+- No page copy touched.
+- No `image:` key added to `_data/facilities.yml` — that waits on photographs.
+- No advocate seat for the November date.
+- His mission statement is quoted, not installed in `_data/org.yml`.

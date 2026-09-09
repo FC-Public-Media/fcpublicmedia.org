@@ -8,6 +8,12 @@ read programmatically. Those items need a human to copy them over, and they are
 also a decent argument for the migration: content that a script can't read is
 content Google reads poorly too.
 
+Some of what follows now has feedback attached to it. That feedback lives in
+[REVIEW-NOTES.md](REVIEW-NOTES.md) and is **not decided** — it is what was
+said, not what we are doing. Items below carry a pointer where a note applies.
+This file stays the list of what is still needed; nothing moves out of it
+until somebody has actually chosen.
+
 ## Blocked — content is inside a Wix widget
 
 | Page | What's missing |
@@ -39,17 +45,22 @@ knows the kit. Ten minutes, not a data-entry project.
   stated anywhere.
 - **Class listings.** The only content on the site with a schedule. Needs to
   come from the ticketing provider or a `_data/classes.yml` file — not
-  hand-maintained in `classes.md`.
+  hand-maintained in `classes.md`. Bryan has asked for a wider *events*
+  calendar — meetups and outside video events as well as classes — which have
+  no source at all today. See REVIEW-NOTES, round 1.
 - **Bulletin board mechanism.** Data file the maintainers edit, or a submission
   form with approval. Depends on volume.
 - **Nonprofit production pricing.** Currently unpublished. Publish or don't.
 - **Equipment terms and conditions.** Host as a page or keep as a PDF.
+  Newly urgent: Bryan's suggested equipment copy names the document by title,
+  so the copy cannot ship ahead of the document. See REVIEW-NOTES, round 1.
 - **Programming schedule.** Link out to Cablecast or embed it.
 
 ## Never existed and probably should
 
 - **An about page.** The current site has none, which is unusual for a
-  nonprofit asking for donations.
+  nonprofit asking for donations. Bryan has proposed a mission statement and
+  wants it on the home page too — see REVIEW-NOTES, round 1.
 - **Board and staff roster.** Board members host studio sessions, so the public
   has a reason to know who they are.
 - **Financials.** EIN, Form 990, annual report.
@@ -79,6 +90,10 @@ on the site at the next weekly sync.
 ## Assets
 
 - A real logo. The current wordmark uses a plain block as a placeholder mark.
-- Photography of the space, the gear, and people using both.
+- Photography of the space, the gear, and people using both. **Bryan has
+  offered to shoot these.** It is the dependency under the home page hero
+  photo, a picture per facility, and the video or slideshow he wants on the
+  reserve page — so it is worth collecting before that layout work, not after.
+  See REVIEW-NOTES, round 1.
 - Webfonts, if desired. Swap the two `--font-*` lines at the top of
   `assets/css/site.css`; everything scales off them.
