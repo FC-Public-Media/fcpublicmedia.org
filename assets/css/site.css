@@ -618,6 +618,28 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
    would leave two words per line beside it. */
 /* At the foot of the page the plan is an appendix, so it is set apart with a
    rule rather than running on from the equipment catalogue above it. */
+/* A photograph introducing a page, as distinct from .floor-plan's diagram.
+   Full measure and no border: a photo of people wants to be looked at, and a
+   hairline around it reads as a document scan. Height is capped rather than
+   left to the file, because these arrive from phones in whatever aspect the
+   photographer was holding and a portrait one would otherwise push the whole
+   page below the fold. */
+.page-photo {
+  margin: 0 0 clamp(1.5rem, 4vw, 2.5rem);
+}
+.page-photo img {
+  display: block;
+  width: 100%;
+  max-height: 26rem;
+  object-fit: cover;
+  background: var(--paper-alt);
+}
+.page-photo figcaption {
+  margin-top: 0.5rem;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
 .floor-plan {
   margin: clamp(3rem, 6vw, 5rem) 0 1.25rem;
   padding-top: 1.5rem;
@@ -676,6 +698,24 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .card a { text-decoration: none; }
 .card a:hover { text-decoration: underline; }
 .card-foot { margin-top: auto; padding-top: 0.9rem; }
+
+/* A person's photo in a roster card. Square rather than 16/9 like .feed-thumb:
+   these are headshots, and a portrait cropped to widescreen loses the head.
+   The aspect-ratio is enforced here rather than trusted from the file, because
+   the files will arrive from several phones and one scanner. */
+.card-portrait {
+  width: clamp(4.5rem, 30%, 7rem);
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--paper-alt);
+  border-radius: 50%;
+}
+.card-portrait img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Office hours are the actionable line in a bio, so they do not inherit the
+   muted grey that .card p applies to everything else in the card. */
+.office-hours { color: var(--ink) !important; }
+.office-hours b { display: block; font-weight: 650; font-size: var(--step--1); }
 
 .card .price,
 .price {

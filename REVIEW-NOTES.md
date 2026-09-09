@@ -8,15 +8,20 @@ So read every entry as *"this was said"* until it carries an outcome. A round
 that has been ruled on says so at its head, and a note that has shipped is
 struck through with a pointer to where it went. **Struck through means it is in
 the site — the page is the authority then, not this file.** Round 1 is ruled
-on; anything still open is collected at the foot of it.
+on. **Round 2 is not** — its machinery is built but nothing it asks for is
+visible yet, and the difference matters. Anything still open is collected at
+the foot of each round.
 
 The value of the file is the second column of every table: **where the note
 lands in the repo.** Feedback arrives as prose about a page; work happens in a
 particular file. Doing that translation once, while the note is fresh, is most
 of what this file is for.
 
-More rounds are expected. Each gets its own section, newest at the bottom, so
-the history of what was asked for stays legible even after it is superseded.
+Each round gets its own section, newest at the bottom, so the history of what
+was asked for stays legible even after it is superseded. Bryan called round 2
+his *"last notes"*, so his pass over the staged site is complete — but this
+file is for whoever reviews next, not for him specifically, and it should not
+be closed off.
 
 ---
 
@@ -186,16 +191,102 @@ Ruled on 9 September 2026. What survives, in order of how much it matters.
 4. **Somebody has to enter the events.** The calendar works and is documented;
    `community.yml` currently holds `events: []`.
 
+## Round 2 — Bryan, board president, 9 September 2026
+
+> **Not ruled on.** Both notes have had their *machinery* built, because both
+> were unbuildable-into-nothing otherwise — but neither is visible on the site
+> yet, and both wait on content rather than on code. Read the outcomes below as
+> "the site can now accept this", not "the site now does this".
+
+Plain email this time rather than annotated PDFs, and he calls it **"last notes
+from bryan"** — so with Home, Reserve, Meet and Learn covered, his pass over
+the staged site is complete. It is also by far the shortest round, which is
+worth reading as a result rather than as a lull.
+
+### Meet page
+
+| What he said | Where it lands |
+|---|---|
+| *"I'd like to see office hours posted on the page."* | Nowhere on its own — see the sub-note, which is how he wants it done. |
+| *"If we have a board directors section, we can post each board member's office hours in their mini-bios."* | **Machinery shipped.** `office_hours` per person in `_data/board.yml`, rendered inside the roster card on `/meet/`. |
+
+We do have a board directors section, so his conditional resolves: it is
+"Who's on it", the last part of **The board** on `/meet/`. It used to be a page
+of its own.
+
+**This renders nothing today, and that is the finding.** `_data/board.yml` is
+an empty list — it has been since it was written — so a field for each board
+member's hours produces exactly zero board members' hours. The president has
+now asked for something on the site that cannot appear until the roster is
+filled in, which quietly promotes **"Board and staff roster"** in
+[CONTENT-TODO.md](CONTENT-TODO.md) from *never existed and probably should* to
+*a named person is waiting on it*.
+
+Two smaller things fell out of building it:
+
+- **`photo` was documented and never rendered.** `_data/board.yml` has offered
+  a `photo` field since the file was written; `meet.md` ignored it. An optional
+  field that silently does nothing is worse than no field at all, because the
+  first person to set one concludes the site is broken rather than that the
+  template is. It renders now.
+- **There is deliberately no studio-wide office-hours setting.** He tied the
+  hours to people, and a second org-level field would be a second place to look
+  and a second thing to contradict. If the studio ever keeps hours belonging to
+  nobody in particular, `address.note` in `_data/org.yml` already says *"Open
+  by appointment"* and is where that would go.
+
+### Learn page
+
+| What he said | Where it lands |
+|---|---|
+| *"Only note, picture on the page of people teaching classes."* | **Machinery shipped, waiting on a file.** `photo:` in `_data/classes.yml`, rendered at the top of `/classes/`. |
+
+*"Only note"* is doing real work in that sentence: everything else on the page
+passed, including the standing admission that class listings have no home yet.
+
+**One reading was chosen and it should be checked.** *"People teaching
+classes"* can mean a single photograph of instruction happening, or a portrait
+of each instructor beside their class. The first is what was built — one photo
+at the top of the page — because it is cheap, it needs one file rather than a
+roster of instructors the site does not model, and it is trivially replaced by
+the second if that is what he meant. `_data/classes.yml` sessions carry no
+`instructor` field at all today, so the per-instructor reading is a genuinely
+larger piece of work and not one to start on a guess.
+
+Also settled while building it: **`alt` is required, not optional.** A `src`
+with an empty `alt` is not rendered. These are photographs of identifiable
+people doing a specific thing, which is the exact case where a decorative empty
+`alt` is the wrong answer, and a guard is more reliable than a note.
+
+## Still open after round 2
+
+1. **The board roster.** Names and roles at minimum, and Bryan's office hours
+   with them. Nothing he asked for on `/meet/` appears until this exists.
+2. **A photograph of a class in progress.** Same dependency as everything under
+   *Waiting on photographs* below, and now with a specific brief: people
+   teaching, not the room and not the gear.
+3. **Which reading of the Learn photo he meant** — one picture of instruction,
+   or one per instructor. Answerable in a sentence by asking him.
+
 ## Waiting on photographs
 
 Not blocked on a decision — blocked on files. Autumn is pulling from Google
-Drive and Bryan is shooting new ones. Three things unlock the moment they land,
-and all three are small:
+Drive and Bryan is shooting new ones. Five things unlock the moment they land,
+and all five are small:
 
 - The homepage mission band takes a photo behind it, the way `org.hero_image`
   already can.
 - `image:` per entry in `_data/facilities.yml`, rendered in `rows-spaces`.
 - Whatever goes at the top of the reserve page where the plan used to be.
+- **A class in progress**, for the top of `/classes/` — `photo.src` and
+  `photo.alt` in `_data/classes.yml`. Round 2, and the one with a brief
+  attached: *people teaching*, not an empty studio.
+- **Headshots for the board roster**, `photo` per person in `_data/board.yml`.
+  Not asked for, but the field renders now and the roster has to be written
+  either way.
+
+Two of these are now things a named person has asked to see, which is a
+different kind of waiting from the other three.
 
 Old pictures may also be on the Wix site. **Retrieving them is a read**, which
 is the only thing we ever do to Wix — see [CLAUDE.md](CLAUDE.md).

@@ -3,6 +3,27 @@ title: Learn
 lede: Short, hands-on training at the studio. Open to the public.
 ---
 
+{%- comment -%}
+  The picture Bryan asked for. Above "Upcoming" rather than below it, because
+  the thing it has to answer is "what is this like" — which is a question
+  somebody asks before they read a schedule, not after.
+
+  Set it in _data/classes.yml under `photo`. A src with no alt is not rendered
+  at all: these are photographs of identifiable people, and shipping one with
+  an empty alt is the failure this guard exists to make impossible rather than
+  merely discouraged.
+{%- endcomment -%}
+{%- assign shot = site.data.classes.photo -%}
+{%- if shot and shot.src != "" and shot.alt != "" %}
+<figure class="page-photo">
+  <img src="{{ shot.src | relative_url }}" alt="{{ shot.alt | escape }}"
+       loading="lazy" decoding="async">
+  {%- if shot.caption and shot.caption != "" %}
+  <figcaption>{{ shot.caption }}</figcaption>
+  {%- endif %}
+</figure>
+{%- endif %}
+
 ## Upcoming
 
 <p class="transaction transaction-todo">

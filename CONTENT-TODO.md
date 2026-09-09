@@ -66,8 +66,14 @@ knows the kit. Ten minutes, not a data-entry project.
   missing** — Bryan's wording is in `org.mission` and renders on the homepage;
   `/about/` should pull the same value rather than a second copy. What that
   page still needs is the history and the roster.
-- **Board and staff roster.** Board members host studio sessions, so the public
-  has a reason to know who they are.
+- **Board and staff roster. Now blocking a request.** Board members host studio
+  sessions, so the public has a reason to know who they are — and Bryan has now
+  asked for **office hours on `/meet/`**, to sit in each board member's
+  mini-bio. The field exists (`office_hours` in `_data/board.yml`, rendered in
+  the roster card) but `board.yml` is an empty list, so nothing he asked for
+  appears until somebody writes the names down. A name and a role is enough to
+  publish someone; bios, photos and hours can follow per person. See
+  REVIEW-NOTES round 2.
 - **Financials.** EIN, Form 990, annual report.
 - **Facility descriptions.** The booking pages list durations but not what's
   actually in each room.
@@ -100,7 +106,11 @@ on the site at the next weekly sync.
   Drive. Older pictures may still be on the Wix site, which we **read and never
   write** — see CLAUDE.md. This is the dependency under a photo behind the
   homepage mission band, a picture per facility, and whatever goes at the top
-  of the reserve page now the floor plan has moved down. All three are small
-  and all three wait on files. See REVIEW-NOTES.
+  of the reserve page now the floor plan has moved down. Round 2 added two
+  more, both with somewhere to go already: **a picture of a class in progress**
+  for the top of `/classes/` (`photo` in `_data/classes.yml` — Bryan's brief is
+  *people teaching*, not the room) and **headshots for the board roster**
+  (`photo` per person in `_data/board.yml`). All five are small and all five
+  wait on files. See REVIEW-NOTES.
 - Webfonts, if desired. Swap the two `--font-*` lines at the top of
   `assets/css/site.css`; everything scales off them.

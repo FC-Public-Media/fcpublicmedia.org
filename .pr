@@ -1,1 +1,100 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Bryan's Meet and Learn notes: office hours, and a picture of a class
+
+His last round, and the shortest — two notes, one per page. Both are built.
+**Neither is visible on the site yet**, and that is the thing worth reading
+this PR for rather than a caveat at the end of it.
+
+## What he asked for
+
+**Meet.** *"I'd like to see office hours posted on the page."* With a
+sub-bullet: *"If we have a board directors section, we can post each board
+member's office hours in their mini-bios."*
+
+**Learn.** *"Only note, picture on the page of people teaching classes."*
+
+## What is in here
+
+- `office_hours` per person in `_data/board.yml`, rendered inside the roster
+  card on `/meet/`, above the bio.
+- `photo` per person in the same file — which has been *documented* since the
+  file was written and was never rendered by `meet.md`. An optional field that
+  silently does nothing is worse than no field, because the first person to set
+  one concludes the site is broken rather than the template.
+- `photo:` (`src`, `alt`, `caption`) in `_data/classes.yml`, rendered at the
+  top of `/classes/`.
+- Round 2 written up in REVIEW-NOTES, CONTENT-TODO updated, and two CSS rules.
+
+## The finding: this renders nothing today
+
+`_data/board.yml` is an empty list and has been since it was written. So a
+field for each board member's office hours currently produces zero board
+members' hours, and the president has asked for something that cannot appear
+until somebody types the roster in.
+
+That is not a reason to hold the PR — the field has to exist before the content
+can go anywhere — but it does mean **"Board and staff roster" has quietly
+changed category.** It was under *never existed and probably should*. It is now
+a named person waiting on a named thing, and I moved it in CONTENT-TODO to say
+so. A name and a role is enough to publish someone; hours, bios and photos can
+follow per person.
+
+Same shape on Learn: the photo slot is real, the photograph does not exist.
+That one joins the pile already waiting on your Google Drive pull and Bryan's
+shoot — with a brief attached now, which the others don't have: *people
+teaching*, not the room and not the gear.
+
+## One judgement call you should check
+
+*"People teaching classes"* has two readings: **one photograph of instruction
+happening**, or **a portrait of each instructor** beside their class. I built
+the first.
+
+Reasoning: it needs one file rather than a roster of instructors the site does
+not model at all — `_data/classes.yml` sessions have no `instructor` field
+today — and if he meant the second, the first is thrown away cheaply rather
+than being in the way. But it is a guess about someone's intent and it is
+answerable by asking him one question, so I have not treated it as settled.
+It's logged as open in REVIEW-NOTES round 2.
+
+## Two smaller decisions, stated so they can be overruled
+
+- **No studio-wide office-hours field.** He tied hours to people, and an
+  org-level one would be a second place to look and a second thing to
+  contradict. If the studio ever keeps hours belonging to nobody in particular,
+  `org.yml`'s `address.note` already says "Open by appointment" and is where
+  that goes.
+- **`alt` is required, not optional.** A `src` with an empty `alt` is not
+  rendered at all. These are photographs of identifiable people doing a
+  specific thing — the exact case where a decorative empty `alt` is wrong — and
+  a guard holds better than a comment asking nicely.
+
+## Verified
+
+Ruby works locally now, so this is checked by running it rather than by
+reading it.
+
+- `bundle exec jekyll build` clean.
+- **Empty states**: no `card-portrait`, no `office-hours`, no `page-photo` in
+  the built output, and `/meet/` still shows the roster TODO.
+- **Populated states**, via temporary fixtures since no real data exists: a
+  member with photo + hours + bio renders all three in order; a member with
+  only name + role renders no stray markup; the Learn photo renders with its
+  caption.
+- **The alt guard**, deliberately: `src` set with `alt` empty produces no
+  `<figure>` at all.
+- Fixtures removed and the build re-run to confirm the empty states came back.
+- Full Playwright suite, 575 passing.
+
+## Unrelated, but you should know
+
+`main` is red and it is not us. All three of last round's merges failed the
+smoke job at `playwright install --with-deps`, because Google's apt repo served
+a `Packages.gz` whose hash didn't match a `Release` file republished minutes
+earlier. I re-ran it once; it failed identically. The tests themselves pass —
+I ran the same 575 locally against merged `main` and they're green.
+
+It should clear when Google's mirrors converge. If it doesn't, the fix is to
+drop the `google-chrome.list` apt source before installing, since we use
+Playwright's bundled Chromium and never Google's Chrome — but that's a change
+to CI to work around somebody else's outage, so I'd rather wait a few hours
+than ship it reflexively.
