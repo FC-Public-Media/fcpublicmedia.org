@@ -30,6 +30,41 @@ bundle exec jekyll serve
 Then open <http://localhost:4000>. Edits rebuild automatically. There is no npm,
 no bundler, no CSS preprocessor, and no plugins.
 
+### Ruby
+
+The version is **3.2.2**, and it is written down twice on purpose:
+
+```
+.ruby-version      what CI reads (ruby/setup-ruby, in both workflows)
+.tool-versions     what asdf reads locally
+```
+
+They must agree. Two files is the cost of the two tools not sharing a format;
+the alternative is a local toolchain that silently differs from the one that
+deploys the site, which is worse and harder to notice.
+
+With [asdf](https://asdf-vm.com/) installed:
+
+```
+asdf plugin add ruby
+asdf install          # reads .tool-versions
+```
+
+If your Ruby is the one macOS ships (`/usr/bin/ruby`, 2.6.x), nothing here will
+work — Jekyll 4 needs 3.x. `ruby -v` inside this directory should say 3.2.2.
+
+**A trap worth knowing about**, because it cost an afternoon: `LDFLAGS` and
+`CPPFLAGS` exported globally from a shell profile are inherited by every
+`./configure`, including the one that builds Ruby. If they point at a Homebrew
+package that has since been removed — `openssl@1.1` is the usual culprit — the
+build dies at `checking whether LDFLAGS is valid... no` and the error names
+your profile not at all. Set such flags per-command, never as a login export.
+
+**3.2.2 reached end of life** and no longer gets security updates. Moving to a
+supported 3.3 or 3.4 is a one-line change in both files, but it changes the
+Ruby that builds the deployed site, so it wants doing deliberately rather than
+in passing.
+
 ## How it's laid out
 
 ```
