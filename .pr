@@ -1,1 +1,60 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Stop recording video for tests that pass, and use the whole runner
+
+The smoke workflow takes about six minutes and **329 seconds of it is one
+step**. Everything else is noise: Ruby setup 5s, the Jekyll build 1s, all
+seven Python test steps together under 10s. The Playwright suite is the run.
+
+Two changes in `tests/playwright.config.js`. Neither touches a test, and no
+coverage is lost.
+
+## `video: 'retain-on-failure'` → `'on-first-retry'`
+
+The setting does not mean what it reads like. It cannot record only failures,
+because nothing knows a test will fail until it has — so it records **every**
+test start to finish and deletes the file when the test passes. The cost is
+paid on the ninety-nine that pass, for the one that does not.
+
+`retries: 1` was already set, so a failing test runs a second time, and that
+second run is the one you would actually watch. Recording only there keeps the
+diagnosis and stops paying for it on every green run.
+
+Trace and screenshot are untouched — both are genuinely failure-only.
+
+## `workers: '100%'` in CI
+
+`fullyParallel: true` was set, but Playwright defaults to half the machine's
+cores. A standard GitHub runner has four, so the suite was running two at a
+time. Locally it stays `undefined` — saturating a laptop that is also running
+an editor is not a kindness.
+
+## What I did not do
+
+**I left the two projects alone.** Every test runs twice, once as Desktop
+Chrome and once as a Pixel 5, and dropping `mobile` from pull requests would
+roughly halve the time again.
+
+It is the obvious next cut and I think it is the wrong one. This site is read
+on phones — class mode, check-in, the reserve flow — and mobile-only breakage
+is exactly what a desktop-only PR gate stops catching. That is a coverage
+decision rather than a performance one, so it should be made deliberately and
+by you, not folded into a speed change.
+
+If the run is still too slow after this, say so and we can look at it as a
+tradeoff with its own argument.
+
+## Verified
+
+Config loaded with a stubbed `@playwright/test` and the resolved values
+printed, under CI and not:
+
+| | CI | local |
+|---|---|---|
+| `workers` | `"100%"` | default |
+| `video` | `on-first-retry` | `on-first-retry` |
+| `retries` | 1 | 0 |
+| projects | desktop, mobile | desktop, mobile |
+
+`trace: retain-on-failure` and `screenshot: only-on-failure` unchanged.
+
+The real measurement is the next run of this workflow, which happens on this
+pull request. Compare it against the 329s step.

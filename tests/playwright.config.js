@@ -18,6 +18,11 @@ const LOCAL_PORT = 4567;
 module.exports = defineConfig({
   testDir: '.',
   fullyParallel: true,
+  // Playwright defaults to half the machine's cores, which on a standard
+  // GitHub runner is two of four — so a suite marked fullyParallel spent most
+  // of its time not being parallel. Locally, `undefined` keeps the default:
+  // saturating a laptop that is also running an editor is not a kindness.
+  workers: process.env.CI ? '100%' : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   // The html reporter is what the failure artifact in CI is made of — without
@@ -38,7 +43,18 @@ module.exports = defineConfig({
     // whole point when the thing that broke only breaks on a phone.
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    // `on-first-retry`, NOT `retain-on-failure`, and the difference is the
+    // whole reason this run got slow.
+    //
+    // `retain-on-failure` does not mean "record when it fails" — it cannot,
+    // because nothing knows a test will fail until it has. It records EVERY
+    // test, start to finish, and deletes the file when the test passes. The
+    // cost is paid on the ninety-nine that pass, for the one that does not.
+    //
+    // `retries: 1` is already set below, so a failing test runs a second time
+    // and that is the run worth watching anyway. Recording only there keeps
+    // the diagnosis and stops paying for it on every green run.
+    video: 'on-first-retry',
   },
 
   projects: [
