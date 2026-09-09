@@ -133,18 +133,39 @@
   //     out. Somebody closes the tab halfway and the parts stay, billed, with
   //     nothing pointing at them.
 
+  // ------------------------------------------------------- the KV namespace
+  //
   // Challenges, and nothing else. They expire on their own, so this namespace
   // needs no maintenance and holds nothing worth stealing — a challenge is
   // only useful to somebody who already holds a registered passkey.
   //
-  // Create it once and paste the id in:
-  //     npx wrangler kv namespace create CHALLENGES
-  "kv_namespaces": [
-    {
-      "binding": "CHALLENGES",
-      "id": ""
-    }
-  ],
+  // THE BINDING IS ABSENT ON PURPOSE, AND IT HAS TO BE.
+  //
+  // Wrangler validates this whole file before it runs ANY command, and it
+  // rejects a `kv_namespaces` entry whose `id` is the empty string:
+  //
+  //     ✘ "kv_namespaces[0]" bindings should have a string "id" field
+  //
+  // So a placeholder entry does not describe work still to do — it locks the
+  // directory, and the first thing it refuses is the very command that would
+  // produce the missing value. Shipping the block empty made the instruction
+  // beneath it impossible to follow from the directory it has to be run in.
+  //
+  // Absent is safe. src/index.js reports a missing CHALLENGES binding as a
+  // configuration problem and the broker answers `unconfigured` rather than
+  // crashing, which is what every other unset thing here already does.
+  //
+  // TO SET IT UP:
+  //
+  //     cd worker && npx wrangler kv namespace create CHALLENGES
+  //
+  // It prints an id. Paste this block back in, with that id in place of the
+  // placeholder, and commit it — the id is not a secret, it names a namespace
+  // and grants nothing:
+  //
+  //     "kv_namespaces": [
+  //       { "binding": "CHALLENGES", "id": "<the id it printed>" }
+  //     ],
 
   "observability": {
     "enabled": true

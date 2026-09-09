@@ -254,7 +254,7 @@ a day.
 | `R2_BUCKET` | Bucket name. |
 | `R2_MAX_BYTES` | Largest file accepted. `0` is no cap, which is not a decision. |
 | `UPLOAD_TTL` | Seconds a signed upload URL lives. Default six hours. |
-| `CHALLENGES` | KV namespace binding. `npx wrangler kv namespace create CHALLENGES`. |
+| `CHALLENGES` | KV namespace binding. Absent until you create one — `npx wrangler kv namespace create CHALLENGES`, then add the `kv_namespaces` block. See `wrangler.jsonc`. |
 
 Plus the App's two secrets, below.
 
