@@ -1224,55 +1224,104 @@ Cloudflare now creates new projects as **Workers** rather than Pages, and the
 two behave differently at deploy time. This repository is set up for the
 Workers flow, which is what you get by default today.
 
-**GitHub Actions builds and publishes it.** `.github/workflows/deploy.yml`
-runs `bundle exec jekyll build` and then `npx wrangler deploy` on every push to
-`main`. Cloudflare's own git integration is not used and should stay
-disconnected.
+**Cloudflare builds and publishes it, from the git connection.** Point the
+Cloudflare GitHub app at this repository and set:
 
-| What | Where | Value |
-|---|---|---|
-| `CLOUDFLARE_PAGES_TOKEN` | organization **secret** | An API token from the *Edit Cloudflare Workers* template |
-| `CLOUDFLARE_PAGES_PROJECT` | repository **variable** | The project name — `fcpm`, matching `wrangler.jsonc` |
-| `CLOUDFLARE_ACCOUNT_ID` | repository **variable**, optional | Only if the token can see more than one account |
+| Setting | Value |
+|---|---|
+| Build command | `bundle exec jekyll build` |
+| Deploy command | `npx wrangler deploy` |
+| Non-production branch deploy command | `npx wrangler versions upload` |
+| Path / root directory | `/` |
+| Build output directory | `_site` |
+
+**`/` is the whole repository, and it matters.** That one field is both the
+working directory for those commands and where wrangler starts looking for its
+config, and both want the root: the `Gemfile` is there, `wrangler.jsonc` is
+there, and `assets.directory` inside it resolves relative to the config file.
+Pointing it at `worker/` would deploy the **broker** instead of the site —
+that directory is a second, complete Worker config with a `main` and no
+assets.
 
 Everything else is in `wrangler.jsonc`, which is committed.
 
-### Why we build here rather than letting Cloudflare do it
+### There is a second, dormant path in Actions
 
-Cloudflare's git integration did this job until it began reporting the
-repository as **damaged** and stopped deploying. Nothing in the repository was
-actually broken — CI was green throughout, and still is.
+`.github/workflows/deploy.yml` can also build and publish, with `npx wrangler
+deploy`, on push to `main`. **It does nothing unless a token exists:**
 
-The likely cause is worth writing down, because the next person will otherwise
-work it out again from scratch. `.advocate-engine` is a submodule, added
+| What | Where | Value |
+|---|---|---|
+| `CLOUDFLARE_PAGES_TOKEN` | organization **secret** | API token, *Edit Cloudflare Workers* template, **account-scoped** |
+| `CLOUDFLARE_PAGES_PROJECT` | repository **variable** | The project name — `fcpm`, matching `wrangler.jsonc` |
+| `CLOUDFLARE_ACCOUNT_ID` | repository **variable**, optional | Only if the token can see more than one account |
+
+**These two are an either/or, not a belt and braces.** Set that secret while
+the git connection is live and both will publish the same site on every push.
+Whichever you pick, turn the other off in the same sitting — disconnect the
+GitHub app, or leave the secret unset.
+
+The Actions path exists because the git connection broke once and may break
+the same way again; it is a spare, kept unarmed. **No zone scope on the
+token** — Wix holds DNS for this domain, so there is no Cloudflare zone to
+scope to.
+
+### Why the git connection broke once, and the warning that came out of it
+
+Cloudflare's builder began reporting the repository as **damaged** and stopped
+deploying. Deleting and recreating the project fixed it. Nothing in the
+repository was ever broken — CI was green throughout, and still is.
+
+A hypothesis, recorded because it is cheap to keep and expensive to re-derive,
+and **not** because it was confirmed. `.advocate-engine` is a submodule, added
 2026-09-04, pinned to a commit that is not at the tip of a branch. Cloudflare's
 builder clones shallow and then initialises submodules, which is exactly the
 combination that cannot fetch such a commit — and a superproject whose
 submodule will not resolve is fairly described as damaged.
 
-**The asymmetry is the evidence.** `actions/checkout` does not fetch submodules
-unless asked, and the site build has never needed one: nothing in `_site` comes
-from `.advocate-engine`. So CI kept working for precisely the reason Cloudflare
-stopped.
+**The asymmetry is what suggested it**, and it is suggestive rather than
+conclusive. `actions/checkout` does not fetch submodules unless asked, and the
+site build has never needed one: nothing in `_site` comes from
+`.advocate-engine`. So CI kept working throughout, which is consistent with the
+theory and does not prove it.
 
 Two consequences worth keeping:
 
-- **Do not add `submodules: true` to the checkout in `deploy.yml`.** It would
-  import the failure this arrangement steps around, and buy nothing.
-- **A build we can read beats a build we cannot.** The logs are in the Actions
-  tab, the build gates every pull request already, and one fewer external
-  builder can break without anybody being told.
+- **Do not add `submodules: true` to the checkout in `deploy.yml`.** Nothing in
+  `_site` comes from `.advocate-engine`, so it would buy nothing and might
+  import the failure.
+- **Recreating the project is a cheap first move** if this happens again. It is
+  what actually cleared it, before anybody proved why.
 
-### What was lost, and what it would cost to get back
+### Where it is served, and why the domain still says Wix
 
-Cloudflare's integration gave every pull request a preview URL. This does not —
-a pull request builds, and stops there, because there is one live copy and a
-pull request must not become it.
+Wix holds DNS for `fcpublicmedia.org` and the apex still serves the old Wix
+site. The new site is reachable at:
 
-If previews are wanted, `wrangler versions upload` uploads a version and prints
-its URL without promoting it to production. That is a deliberate addition
-rather than an oversight, and it needs the token to carry a little more
-permission.
+- `fcpm.<subdomain>.workers.dev` — always, straight from Cloudflare
+- **`new.fcpublicmedia.org`** — a CNAME in Wix's DNS pointing at that
+  workers.dev hostname
+
+**The CNAME is enough.** Cloudflare issues a real certificate for
+`new.fcpublicmedia.org` even though it is not authoritative for the zone, so
+this needs no zone transfer, no nameserver change, and no move of the domain
+registration. That is worth stating plainly because the opposite is easy to
+assume and would turn a DNS record into a migration.
+
+So **"get Cloudflare serving" and "put the new site on the real domain" are
+separate**, and only the second is a cutover: it is the day `www` and the apex
+stop pointing at Wix.
+
+### Preview URLs
+
+The non-production branch deploy command is `npx wrangler versions upload`,
+which uploads a version and prints its URL without promoting it to production.
+That is where per-branch previews come from, and it is a reason to prefer the
+git connection over the Actions path.
+
+The Actions path does not do this. A pull request builds and stops there,
+because there is one live copy and a pull request must not become it. Adding
+previews there would mean giving that token more permission.
 
 ### Why `wrangler deploy` and not `wrangler pages deploy`
 
