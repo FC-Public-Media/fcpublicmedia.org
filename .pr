@@ -1,1 +1,60 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+What stands between us and taking money, in order
+
+A runbook. `PAYMENTS-CHECKLIST.md`, excluded from the build like every other
+internal document, listing everything left before FCPM can take a payment on
+its own website — and who can do each piece.
+
+No code changes. This is the thing to read before touching any of it.
+
+## Why it exists
+
+The Stripe machinery here is finished and switched off, and those two facts
+look identical from outside. `_data/payments.yml` explains beautifully *why*
+each piece is the way it is, across 240 lines, and answers "what is left"
+nowhere. That question came up today and took me an hour of reading to answer.
+
+## The headline
+
+**The machinery is done.** The broker is written, 119 tests pass, prices
+generate from `_data/` and CI fails if the two disagree, repricing existing
+subscribers is written, the nonprofit half-rate cannot be self-claimed.
+Nothing needs designing.
+
+What is missing is **four values, one namespace, one page, and two board
+decisions** — and one build step that is genuinely ours.
+
+## Three things I found that I do not think were known
+
+**1. The KV namespace has no id.** `worker/wrangler.jsonc` declares a binding
+called `CHALLENGES` with `"id": ""`. A binding with no namespace behind it
+cannot deploy, so this blocks the broker regardless of tokens. Adding
+`CLOUDFLARE_API_TOKEN` without also running `wrangler kv namespace create`
+just moves the failure one step later.
+
+**2. `/membership/` is publishing the word TODO right now.** `membership.md`
+renders `tier.summary` unconditionally, and three of the four tiers say
+`TODO`. That is live, today, on the public site. I have deliberately **not**
+fixed it here — it is a one-line guard and it belongs with the buy-button
+work, not in a documentation PR that would then conflict with it.
+
+**3. Nothing on the site calls the broker.** `POST /checkout` is implemented,
+tested and routed, and no page, include or script sends it anything. So even
+with every key in place, a visitor could not pay. The contract is in the file.
+`/thanks/` — the default success page — does not exist either.
+
+## What I did not do
+
+- **I set no price, picked no provider, and wrote no tier benefit.** Those are
+  board decisions; `ADVOCATE.md` and the data files both say a plausible guess
+  is worse than a blank, and I agree.
+- **I did not build the buy button.** It is the one remaining item that is
+  ours rather than yours, it touches money, and it deserves its own review.
+  Say the word and it is the next PR.
+- **I did not touch `_data/payments.yml`.** Nothing in it is wrong.
+
+## For the board meeting
+
+If one thing gets decided today, the cheapest with the most unblocked behind
+it is **2.3, the class drop-in prices** — two numbers. `build-prices.py`
+already refuses to sell an unpriced thing, so those two figures are the whole
+blocker on class sales.
