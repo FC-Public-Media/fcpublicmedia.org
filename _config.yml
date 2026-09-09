@@ -67,9 +67,14 @@ include:
 # RESERVE-DESIGN.md all were, which is how this was noticed. REDIRECTS.md is a
 # map of the old Wix address space and RESERVE-DESIGN.md is internal planning
 # about how the board rosters and hosts itself; neither belongs on the website.
+#
+# REVIEW-NOTES.md is the one to be most careful about. It is unratified board
+# feedback quoted verbatim, alongside a list of what we think is unresolved —
+# fine internally, and not something to serve to the public at a guessable URL.
 exclude:
   - README.md
   - CONTENT-TODO.md
+  - REVIEW-NOTES.md
   - DESIGN-NOTES.md
   - ADVOCATE.md
   - RESERVE-DESIGN.md
