@@ -26,6 +26,27 @@
 lead_minutes: 90
 late_minutes: 45
 
+# A photograph for the top of /classes/.
+#
+# Bryan's whole note on that page was that it wants a picture of people
+# teaching classes — not the room, not the gear. A class is people showing
+# other people how to do something, and a photo of an empty studio says the
+# opposite of what the page is selling.
+#
+# Left empty the page is type only, the same arrangement as `hero_image` in
+# _data/org.yml: it reads as intentional rather than broken, so there is no
+# rush and nothing to disable when the file does not exist yet.
+#
+# `alt` is not optional when `src` is set. This is a photo of identifiable
+# people doing a specific thing, which is exactly the case where a decorative
+# empty alt is wrong — describe who is doing what.
+photo:
+  src: ""
+  alt: ""
+  # Optional. A caption earns its place by saying something the picture does
+  # not — which class, or when. Leave it off rather than restating the alt.
+  caption: ""
+
 # Drop-in pricing for someone who turns up without having signed up.
 #
 # This is not a ticketing system: people who signed up already paid through

@@ -451,13 +451,40 @@ touch</a> if there's something you'd like the board to consider.
 
 ### Who's on it
 
+{%- comment -%}
+  Office hours sit in the card rather than in a table of their own, which is
+  how Bryan asked for them: they belong to a person, and a visitor deciding
+  whether to drive over wants to know whose door they are knocking on.
+
+  Rendered before the bio on purpose. The bio is why you would want to meet
+  someone; the hours are how you actually can, and burying the actionable half
+  under two sentences of prose is the usual way that goes wrong.
+
+  `photo` has been documented in _data/board.yml since the file was written
+  and was never rendered anywhere — an optional field that silently does
+  nothing is worse than no field, because the first person to set it concludes
+  the site is broken.
+{%- endcomment -%}
+
 {% assign roster = site.data.board | where_exp: "p", "p.name" %}
 {% if roster.size > 0 %}
 <ul class="grid">
 {% for person in roster %}
   <li class="card">
+    {% if person.photo and person.photo != "" %}
+      <div class="card-portrait">
+        <img src="{{ person.photo | escape }}" alt="" loading="lazy"
+             decoding="async">
+      </div>
+    {% endif %}
     <h4>{{ person.name }}</h4>
     {% if person.role %}<p class="muted">{{ person.role }}</p>{% endif %}
+    {% if person.office_hours and person.office_hours != "" %}
+      <p class="office-hours">
+        <b>Office hours</b>
+        <span>{{ person.office_hours | strip_newlines | strip }}</span>
+      </p>
+    {% endif %}
     {% if person.bio %}<p>{{ person.bio }}</p>{% endif %}
   </li>
 {% endfor %}
@@ -466,8 +493,10 @@ touch</a> if there's something you'd like the board to consider.
   <p class="transaction transaction-todo">
     <b>The roster isn't filled in yet.</b>
     <span class="muted">Add entries to <code>_data/board.yml</code>. A name and
-    a role is enough to start; bios can follow. Board members also host studio
-    sessions, so this is worth getting right.</span>
+    a role is enough to start; bios, photos and
+    <code>office_hours</code> can follow. Board members also host studio
+    sessions, so this is worth getting right &mdash; and the office hours Bryan
+    asked to see on this page are per-person, so they appear here or nowhere.</span>
   </p>
 {% endif %}
 

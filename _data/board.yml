@@ -1,18 +1,35 @@
-# Board and staff roster, rendered on /board/.
+# Board and staff roster, rendered on /meet/ under "Who's on it".
 #
 # Empty rather than full of TODOs, because a live page showing three cards
 # saying "TODO" is worse than one saying plainly that the roster isn't filled
 # in yet. The page handles both, and the empty state says where to look.
 #
-# A name and a role is enough to publish someone. `bio` and `photo` are
-# optional and can follow later — nobody should be held off the page waiting
-# for a headshot.
+# A name and a role is enough to publish someone. `bio`, `photo` and
+# `office_hours` are optional and can follow later — nobody should be held off
+# the page waiting for a headshot.
 #
 # Order here is the order on the page. Officers first is the usual convention.
+#
+# OFFICE HOURS
+# ------------
+# Bryan asked for office hours on this page, and for each board member's to sit
+# in their mini-bio rather than in a table of their own. That is why the field
+# is here per person and not a block in _data/governance.yml: the hours belong
+# to a human, and a visitor wants to know *whose* door they are knocking on.
+#
+# Write them the way you would say them — "Tuesdays 4–6pm, or by appointment".
+# Not a machine-readable schedule: nothing computes against this, and the one
+# reader is somebody deciding whether to drive over. A member with no hours is
+# simply rendered without them, so there is no need to invent any.
+#
+# There is no studio-wide office hours field on purpose. If the studio ever
+# keeps hours that are nobody's in particular, `address.note` in
+# _data/org.yml is where that already lives ("Open by appointment").
 
 []
 # - name: Jane Doe
 #   role: Board Chair
+#   office_hours: Tuesdays 4–6pm, or by appointment
 #   bio: >-
 #     One or two sentences. What they do, why they're here.
 #   photo: ""
