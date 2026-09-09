@@ -139,33 +139,36 @@
   // needs no maintenance and holds nothing worth stealing — a challenge is
   // only useful to somebody who already holds a registered passkey.
   //
-  // THE BINDING IS ABSENT ON PURPOSE, AND IT HAS TO BE.
+  // NEVER LEAVE `id` AS AN EMPTY STRING. Delete the whole block instead.
   //
-  // Wrangler validates this whole file before it runs ANY command, and it
-  // rejects a `kv_namespaces` entry whose `id` is the empty string:
+  // Wrangler validates this file before it runs ANY command, and rejects an
+  // entry whose `id` is `""`:
   //
   //     ✘ "kv_namespaces[0]" bindings should have a string "id" field
   //
-  // So a placeholder entry does not describe work still to do — it locks the
-  // directory, and the first thing it refuses is the very command that would
-  // produce the missing value. Shipping the block empty made the instruction
-  // beneath it impossible to follow from the directory it has to be run in.
+  // A placeholder therefore does not describe work still to do — it locks the
+  // directory, and the first thing it refuses is `kv namespace create`, the
+  // command that would produce the missing value. That deadlock shipped here
+  // for a while and cost somebody an evening.
   //
-  // Absent is safe. src/index.js reports a missing CHALLENGES binding as a
+  // Absent is safe: src/index.js reports a missing CHALLENGES binding as a
   // configuration problem and the broker answers `unconfigured` rather than
-  // crashing, which is what every other unset thing here already does.
+  // crashing, the same as every other unset thing in this file. So if this
+  // namespace ever has to be replaced, remove the block, create the new one,
+  // and put it back — do not blank the id in place.
   //
-  // TO SET IT UP:
-  //
+  // Created with:
   //     cd worker && npx wrangler kv namespace create CHALLENGES
   //
-  // It prints an id. Paste this block back in, with that id in place of the
-  // placeholder, and commit it — the id is not a secret, it names a namespace
-  // and grants nothing:
-  //
-  //     "kv_namespaces": [
-  //       { "binding": "CHALLENGES", "id": "<the id it printed>" }
-  //     ],
+  // THE ID IS NOT A SECRET. It names a namespace and grants nothing — reading
+  // the data still needs a token bound to the account. It is committed for the
+  // same reason the R2 bucket name would be: config, not a credential.
+  "kv_namespaces": [
+    {
+      "binding": "CHALLENGES",
+      "id": "e7fe562219db4d009c5d5a15b68a1097"
+    }
+  ],
 
   "observability": {
     "enabled": true

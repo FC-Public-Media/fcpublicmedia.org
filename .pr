@@ -1,1 +1,55 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Give the broker its namespace
+
+`CHALLENGES` exists now. This binds it.
+
+```jsonc
+"kv_namespaces": [
+  { "binding": "CHALLENGES", "id": "e7fe562219db4d009c5d5a15b68a1097" }
+],
+```
+
+Item 1.1 on `PAYMENTS-CHECKLIST.md` is struck — the first thing on that list to
+go.
+
+## The id is committed on purpose
+
+It names a namespace and grants nothing; reading the data still needs a token
+bound to the account. Same class of thing as the R2 bucket name or the Booqable
+company id — config, not a credential. `script/test_no_secrets.py` would object
+if it were otherwise.
+
+## The comment is rewritten as a warning rather than an instruction
+
+The old text explained why the binding was *absent*. It is not absent anymore,
+so that would have read as describing a state the file was no longer in. What
+replaces it is the part still worth knowing:
+
+> **NEVER LEAVE `id` AS AN EMPTY STRING. Delete the whole block instead.**
+
+Because the trap survives the fix. If this namespace ever has to be replaced,
+the instinct is to blank the id and fill it back in — and that instantly locks
+the directory again, refusing `kv namespace create`, the command that would
+produce the replacement. Removing the block is safe;
+`src/index.js` reports a missing binding as `unconfigured` like every other
+unset thing here.
+
+## A correction
+
+I said the namespace would be titled `fcpm-broker-CHALLENGES`, on the basis
+that wrangler prefixes with the worker name. It does not — it is titled plainly
+**`CHALLENGES`**. Nothing depends on the title, but the record should be right.
+
+## Verified
+
+- `worker/wrangler.jsonc` parses; binding resolves to the id above.
+- `npx wrangler kv namespace list` from `worker/` now runs — the directory
+  accepts commands again, which it did not before #63.
+- The listed namespace's id matches what is committed here.
+- Broker tests: **119 passing**.
+
+## What this still does not unblock
+
+The broker cannot deploy yet. `.github/workflows/broker.yml` needs
+`CLOUDFLARE_API_TOKEN` as an org secret, and that is a different thing from
+being logged in with `wrangler login` — the OAuth session on a laptop is not
+readable by GitHub Actions. Item 1.2.
