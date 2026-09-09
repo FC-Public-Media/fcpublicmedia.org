@@ -73,6 +73,7 @@ include:
 # fine internally, and not something to serve to the public at a guessable URL.
 exclude:
   - README.md
+  - CLAUDE.md
   - CONTENT-TODO.md
   - REVIEW-NOTES.md
   - DESIGN-NOTES.md
