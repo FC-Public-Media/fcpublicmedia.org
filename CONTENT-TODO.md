@@ -45,22 +45,27 @@ knows the kit. Ten minutes, not a data-entry project.
   stated anywhere.
 - **Class listings.** The only content on the site with a schedule. Needs to
   come from the ticketing provider or a `_data/classes.yml` file — not
-  hand-maintained in `classes.md`. Bryan has asked for a wider *events*
-  calendar — meetups and outside video events as well as classes — which have
-  no source at all today. See REVIEW-NOTES, round 1.
+  hand-maintained in `classes.md`. The wider *events* calendar Bryan asked for
+  is **settled and built**: it lives on `/meet/`, which already merges classes,
+  board meetings and `_data/community.yml`. Meetups and video events go in the
+  last of those with a `kind`. What is missing is entries, not code.
 - **Bulletin board mechanism.** Data file the maintainers edit, or a submission
   form with approval. Depends on volume.
 - **Nonprofit production pricing.** Currently unpublished. Publish or don't.
-- **Equipment terms and conditions.** Host as a page or keep as a PDF.
-  Newly urgent: Bryan's suggested equipment copy names the document by title,
-  so the copy cannot ship ahead of the document. See REVIEW-NOTES, round 1.
+- **Equipment terms and conditions. BLOCKING.** Host as a page or keep as a
+  PDF. The reserve page now says in shipped copy that users "must agree to FC
+  Public Media's Equipment Terms and Conditions" — the sentence went in with
+  the rest of Bryan's wording, and there is nothing to link it to. It is
+  deliberately unlinked rather than pointed at a 404. See REVIEW-NOTES.
 - **Programming schedule.** Link out to Cablecast or embed it.
 
 ## Never existed and probably should
 
 - **An about page.** The current site has none, which is unusual for a
-  nonprofit asking for donations. Bryan has proposed a mission statement and
-  wants it on the home page too — see REVIEW-NOTES, round 1.
+  nonprofit asking for donations. **The mission statement is no longer
+  missing** — Bryan's wording is in `org.mission` and renders on the homepage;
+  `/about/` should pull the same value rather than a second copy. What that
+  page still needs is the history and the roster.
 - **Board and staff roster.** Board members host studio sessions, so the public
   has a reason to know who they are.
 - **Financials.** EIN, Form 990, annual report.
@@ -90,10 +95,12 @@ on the site at the next weekly sync.
 ## Assets
 
 - A real logo. The current wordmark uses a plain block as a placeholder mark.
-- Photography of the space, the gear, and people using both. **Bryan has
-  offered to shoot these.** It is the dependency under the home page hero
-  photo, a picture per facility, and the video or slideshow he wants on the
-  reserve page — so it is worth collecting before that layout work, not after.
-  See REVIEW-NOTES, round 1.
+- Photography of the space, the gear, and people using both. **In progress:**
+  Bryan is shooting new ones and Autumn is pulling what exists out of Google
+  Drive. Older pictures may still be on the Wix site, which we **read and never
+  write** — see CLAUDE.md. This is the dependency under a photo behind the
+  homepage mission band, a picture per facility, and whatever goes at the top
+  of the reserve page now the floor plan has moved down. All three are small
+  and all three wait on files. See REVIEW-NOTES.
 - Webfonts, if desired. Swap the two `--font-*` lines at the top of
   `assets/css/site.css`; everything scales off them.

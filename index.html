@@ -4,7 +4,7 @@ title: FC Public Media
 
 slogan_1: Don't Just View It.
 slogan_2: Do It.
-tagline: PUBLIC MEDIA is made of You.
+tagline: You are PUBLIC MEDIA
 ---
 
 {%- comment -%}
@@ -111,6 +111,30 @@ tagline: PUBLIC MEDIA is made of You.
 
 {%- comment -%} Filled in by assets/js/onair.js; hidden until it succeeds. {%- endcomment -%}
 <div class="onair-bar" data-onair hidden></div>
+
+{%- comment -%}
+  THE MISSION STATEMENT, BEFORE YOU REACH THE CHANNEL.
+
+  Asked for by the board president in his September 2026 review: a mission
+  statement before scrolling down to the Watch section, "maybe in front of a
+  photo of the studio". The words are his and are kept verbatim — see
+  CLAUDE.md on why his phrasing is not ours to improve.
+
+  The photo half is deliberately not built. There is no photograph of the
+  studio in this repository yet, and a band styled around an image it does not
+  have reads as broken rather than restrained. Type only is the same call the
+  hero already makes about org.hero_image, and it is a perfectly good state.
+  When the photography arrives this is where it goes.
+
+  Renders nothing at all if org.mission is empty, so the page closes up around
+  it rather than leaving a gap.
+{%- endcomment -%}
+{%- assign mission = site.data.org.mission | default: '' | strip_newlines | strip -%}
+{%- if mission != '' %}
+<section class="wrap section mission">
+  <p class="mission-statement">{{ mission }}</p>
+</section>
+{%- endif %}
 
 {% include featured.html %}
 

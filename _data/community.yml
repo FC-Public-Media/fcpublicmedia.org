@@ -31,17 +31,46 @@ blurb: >-
 #
 # Each entry needs `title` and `starts`. Optional: `ends`, `where`, `note`,
 # `url` (a link for more detail — leave it off and the entry is plain text,
-# which is fine).
+# which is fine), and `kind`.
+#
+# `kind` IS THE LABEL SHOWN BESIDE THE EVENT, and it is free text, not an
+# enum. Classes render as "Class" and board meetings as "Board meeting"
+# because those come from their own files; anything here defaults to "Event"
+# if you leave it off. Write what the thing actually is.
+#
+# THIS IS THE EVENTS CALENDAR. The board president asked in September 2026 for
+# a calendar covering classes, meetups, and outside video events — Comic Con
+# was his example — and this page is where it goes rather than the homepage.
+# The homepage keeps showing the class that is running right now, which has
+# earned its place for check-in and visibility; a whole list is a reason to
+# come to /meet/, not a reason to lengthen the front page.
+#
+# So the three kinds he named map like this:
+#
+#   Classes             _data/classes.yml, already merged in
+#   Meetups             here, kind: Meetup
+#   Video events        here, kind: Video event
+#
+# Nothing new had to be built for that. What was missing was somebody adding
+# the entries, which is a standing job rather than a one-off.
 #
 # Empty is an honest state and the page says so plainly rather than showing a
 # grid of nothing. A short list is not a problem; a list that pretends to be
 # longer than it is would be.
 events: []
 # - title: Members' work night
+#   kind: Meetup
 #   starts: "2026-09-04T18:00:00-06:00"
 #   ends: "2026-09-04T21:00:00-06:00"
 #   where: Studio A
 #   note: Bring whatever you're editing. No agenda.
+#
+# - title: Fort Collins Comic Con
+#   kind: Video event
+#   starts: "2026-10-17T10:00:00-06:00"
+#   where: Drake Centre
+#   url: https://example.org/
+#   note: We're shooting it. Come and help.
 
 # ------------------------------------------------------------ where we talk
 #
