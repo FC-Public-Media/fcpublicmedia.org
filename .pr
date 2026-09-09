@@ -1,1 +1,61 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Stop the empty KV binding locking the worker directory
+
+`npx wrangler kv namespace create CHALLENGES` cannot be run from `worker/`,
+which is a problem, because that is the directory the instruction to run it is
+written in.
+
+```
+✘ [ERROR] Processing wrangler.jsonc configuration:
+    - "kv_namespaces[0]" bindings should have a string "id" field but got
+      {"binding":"CHALLENGES","id":""}.
+```
+
+Wrangler validates the whole config before it runs **any** command. So a
+placeholder entry does not describe work still to do — it locks the directory,
+and the first thing it refuses is the command that would produce the missing
+value. A perfect deadlock, shipped, with the way out written directly above it.
+
+## The fix
+
+Remove the block. The binding is now **absent** rather than present-and-empty,
+and the comment explains why absent is the correct shipped state instead of
+reading as an oversight the next person should tidy up by re-adding a
+placeholder.
+
+Absent is safe, and that is not an assumption — `src/index.js:102` already
+handles it:
+
+```js
+if (!env.CHALLENGES) missing.push('CHALLENGES (the KV namespace binding)');
+```
+
+A missing binding is reported as a configuration problem and the broker answers
+`unconfigured`, exactly as it already does for `RP_ID`, `ORIGINS`, the R2
+values and the GitHub App. Every other unset thing in this worker degrades that
+way; the KV binding was the one that took the directory down with it.
+
+## Also updated, so the instruction is the same in all three places
+
+- **`worker/wrangler.jsonc`** — the block is gone, replaced by the reason it is
+  gone and the shape to paste back once you have an id.
+- **`worker/README.md`** — the bindings table said the binding exists.
+- **`PAYMENTS-CHECKLIST.md`** — item 1.1 said the id goes into
+  `kv_namespaces[0].id`, which no longer exists to put it in.
+
+## The id is not a secret
+
+Worth saying, because it looks like one and the instinct will be to hide it. A
+namespace id names a namespace. It grants nothing — reaching the data still
+requires a token bound to the account. Commit it like any other config.
+
+## Verified
+
+- `worker/wrangler.jsonc` parses with comments stripped; `kv_namespaces` is
+  absent and `name` is still `fcpm-broker`.
+- Broker tests: **119 passing**, unchanged. They inject `env` directly, so they
+  never depended on the declaration.
+
+## What this does not do
+
+It does not create the namespace — that needs your account. After this,
+`cd worker && npx wrangler kv namespace create CHALLENGES` will actually run.

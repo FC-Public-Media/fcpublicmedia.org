@@ -26,17 +26,22 @@ repository, and none of them is a decision.
 
 | # | What | Where it goes | Blocks |
 |---|---|---|---|
-| 1.1 | Create the KV namespace: `cd worker && npx wrangler kv namespace create CHALLENGES` | the printed id → `worker/wrangler.jsonc`, `kv_namespaces[0].id` (currently `""`) | **the broker deploying at all** |
+| 1.1 | Create the KV namespace: `cd worker && npx wrangler kv namespace create CHALLENGES` | add a `kv_namespaces` block to `worker/wrangler.jsonc` with the printed id | **the broker deploying at all** |
 | 1.2 | A Cloudflare API token, *Edit Cloudflare Workers* template | org secret `CLOUDFLARE_API_TOKEN` | the broker deploying |
 | 1.3 | The restricted Stripe key (`rk_live_…`, scoped to writing Checkout Sessions) | org secret `PUBLIC_STRIPE_API_KEY` | the broker charging |
 | 1.4 | The publishable key (`pk_live_…` or `pk_test_…`) | `_data/payments.yml`, `stripe.publishable_key` | nothing yet — it is for the page |
 | 1.5 | The broker's deployed URL | `_data/settings.yml`, the broker `url` | the site reaching the broker |
 
-**1.1 is the one that surprises people.** `worker/wrangler.jsonc` declares a KV
-binding called `CHALLENGES` with an empty id. A binding with no namespace
-behind it cannot be deployed, so this blocks everything downstream of it —
-including the two steps in `broker.yml` that are currently skipping for a
+**1.1 is the one that surprises people.** The broker needs a KV namespace for
+WebAuthn challenges, and it has none, so this blocks everything downstream of
+it — including the two steps in `broker.yml` that are currently skipping for a
 different reason. Fixing the token without fixing this just moves the failure.
+
+The binding is deliberately **absent** from `worker/wrangler.jsonc` rather than
+present-and-empty. Wrangler validates the whole file before running any
+command and rejects an entry whose `id` is `""` — so a placeholder locked the
+directory and refused the very command that produces the id. Add the block
+once you have it; the file explains the shape.
 
 **On the naming of 1.3.** The secret is called `PUBLIC_STRIPE_API_KEY` and its
 value is not public in any sense. The name says *who causes the key to be
