@@ -1,1 +1,72 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Say how the site actually deploys, because the README now says the opposite
+
+#59 was written while Cloudflare's git connection was broken, and it argued for
+moving the deploy into Actions. You fixed the connection instead — deleted the
+project, remade it, reconnected — and the README on `main` now tells the next
+reader to do something you deliberately did not do. My error, merged.
+
+## What is now true, and what this says
+
+**Cloudflare's git connection builds and publishes the site.** The section
+carries the actual settings, which came up twice today because they were not
+written down anywhere findable:
+
+| Setting | Value |
+|---|---|
+| Build command | `bundle exec jekyll build` |
+| Deploy command | `npx wrangler deploy` |
+| Non-production branch deploy command | `npx wrangler versions upload` |
+| Path / root directory | `/` |
+| Build output directory | `_site` |
+
+With the reason `/` matters: that one field is both the working directory and
+where wrangler starts looking for config, and pointing it at `worker/` would
+deploy the **broker** over the site.
+
+**The Actions path is described as what it now is — a spare, kept unarmed.** It
+publishes nothing while `CLOUDFLARE_PAGES_TOKEN` is unset, which it is. The
+section says plainly that the two are an **either/or**: set that secret while
+the git connection is live and both will publish on every push.
+
+## Three things that were wrong or missing
+
+**The token needs no zone scope.** I told you to scope it to
+`fcpublicmedia.org`. Wix holds DNS, so there is no Cloudflare zone to scope to.
+Account-scoped only.
+
+**A CNAME is enough for a custom hostname, and I said it was not.** I claimed a
+Wix CNAME pointing at `workers.dev` could not get a certificate. It can, and
+yours has:
+
+```
+new.fcpublicmedia.org → HTTP 200 · server: cloudflare
+subject=CN=new.fcpublicmedia.org · issuer=Google Trust Services WE1 · expires Nov 15 2026
+```
+
+That is a real cert for a hostname Cloudflare is not authoritative for. So
+there is now a section saying it out loud: **"get Cloudflare serving" and "put
+the new site on the real domain" are separate**, no nameserver change is
+needed, and only the second is a cutover. The opposite is easy to assume and
+would turn a DNS record into a migration.
+
+**Preview URLs are not lost.** #59 said moving to Actions would cost them. The
+non-production deploy command is `npx wrangler versions upload`, so the git
+connection gives you per-branch previews — which is now written down as a
+reason to prefer it.
+
+## The submodule theory is downgraded, not deleted
+
+It read as settled and it is not. Recreating the project is what actually
+cleared the fault, before anybody proved why, so the text now says the
+asymmetry is *suggestive rather than conclusive* and adds the more useful
+advice: **recreating the project is the cheap first move if it happens again.**
+
+The one hard warning survives — do not add `submodules: true` to the checkout
+in `deploy.yml`. Nothing in `_site` comes from `.advocate-engine`.
+
+## Not done
+
+The dormant Actions deploy is left in place. Removing it is a real option and
+it is yours: it is a second path that can only fire if you arm it, which is
+also true of the Azure block sitting above it, and the vendors advocate has
+already filed the general shape of that concern. Say the word and it goes.
