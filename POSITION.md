@@ -1,87 +1,73 @@
-# Payments — opening position
+# Payments — position
 
-**Seated 2026-09-09.** This is a seating, not a report: there is no range behind
-it, because a baseline does not exist until somebody records one. What follows is
-where this site stands today against the two goals in `advocate.yml`, read from
-the repository at `2d9fdd5`.
-
-I speak for the treasurer, and for whoever holds that job after them.
+**As of 2026-09-10**, reading the range `2d9fdd5..e63fc7b` (10 first-parent
+commits, one board meeting's worth of merges). I speak for the treasurer, and
+for whoever holds that job after them.
 
 ## The one sentence
 
-**Fort Collins Public Media cannot take money through its own website.** The only
-working payment surface is Booqable, and Booqable takes rental money through
-Booqable's own Stripe connection, not through anything this repository controls.
-Everything else — memberships, class registration, donations, program submission
-— still hands the visitor to Wix.
+**Fort Collins Public Media still cannot take money through its own website,**
+except Booqable equipment rental, which runs on Booqable's own Stripe
+connection and not on anything in this repository. That has not changed since
+seating. What changed this range is that the gap between "the machinery is
+finished" and "the switch is off" is now written down in one place, by name,
+for the first time.
 
-That was already written down in `ADVOCATE.md`. What I can add today is that it
-is worse than the data files alone suggest, and the reason is in the pipeline
-rather than in the content.
+## What moved
 
-## What I found that was not already on the page
+A new file, `PAYMENTS-CHECKLIST.md`, landed in this range (PR #60) and was
+corrected in it (PR #63). It is a runbook, not a design document, and it does
+what none of the data files do: it separates *values only an account holder
+can paste* (§1) from *decisions only the board can make* (§2), and it dates
+itself — 2026-09-09.
 
-The broker — `worker/`, the piece that would actually create a Stripe Checkout
-Session — **has never been deployed.** Its workflow has fired exactly once, on
-2026-08-17, and in that run both the `Deploy` step and the `Give it the Stripe
-key` step were *skipped*. They are gated on `CLOUDFLARE_API_TOKEN`, and the
-repository has no Actions secrets at all: the API reports `total_count: 0`.
+It also found something I had not: **`worker/wrangler.jsonc` declared a KV
+namespace binding with an empty id, and Wrangler refuses to run any command at
+all against a config with an empty-string id.** That is a stronger failure
+than the one I reported at seating — it would have blocked the *fix* to the
+Cloudflare-token blocker, not just the deploy. The same range corrects it
+(PR #63): the placeholder binding is removed until a real namespace exists,
+with the exact command to create one left as a comment. This is the one piece
+of technical debt that closed itself within a single range, and I am naming it
+because a fix that ships before I ever had to ask for it is worth recording as
+that, not folded silently into "still blocked."
 
-So there are three independent stops between here and a member paying dues, and
-each of them is sufficient on its own:
-
-1. `_data/payments.yml` has `publishable_key: ""` and `live: false`.
-2. The restricted key that the broker would charge with was never pushed to
-   Cloudflare, because the workflow that pushes it has never run its own steps.
-3. `_data/providers.yml` has no URL for membership, tickets, donations or
-   submission — so the pages render the "not wired up yet" placeholder, which is
-   the correct behaviour and is also the whole story.
-
-I want to be careful about one thing: an *organization*-level secret would not
-appear in the repository list, and I am not permitted to read the organization's
-secrets (the API returned 403). So the honest claim is that **no repository
-secret exists**, and that the one broker run we have on record behaved exactly as
-it would with no token. I am not asserting the org has none; I am asserting
-nothing has deployed.
+Separately, `.github/workflows/deploy.yml` now deploys the *site* from Actions
+under its own Cloudflare token, `CLOUDFLARE_PAGES_TOKEN`, distinct from the
+broker's `CLOUDFLARE_API_TOKEN`. The comment in that file says why in words I
+would have wanted said: "a token that only publishes the site cannot also
+redeploy the thing that takes money." I did not ask for this and it does not
+move either of my goals, but it protects the thing my goals depend on, so I am
+noting it rather than staying silent about it.
 
 ## Goals
 
 | | says | today |
 | --- | --- | --- |
-| **G1** | Every entry in `_data/providers.yml` is either live or has a named person and a reason it is not. | **Not met, and half-met in an interesting way.** All five entries carry a *reason* — the notes are unusually good, naming candidate providers and what blocks each. None carries a **named person.** Five of five are `placeholder` or `pending`. |
-| **G2** | A trustee can answer "how does FCPM get paid online" from one page, without opening a data file. | **Not met.** There is no such page. The answer today lives across `payments.yml`, `providers.yml`, `membership.yml` and a workflow file, and it takes reading all four to learn that the answer is "we can't." |
-
-Neither goal is `unmeasured`. Both are measurable from the checkout and both are
-measured above.
+| **G1** | Every entry in `_data/providers.yml` is either live or has a named person and a reason it is not. | **Not met. Unchanged.** Still five of five `placeholder`/`pending`. Still no named person against any entry — checked directly against the file at `e63fc7b`. |
+| **G2** | A trustee can answer "how does FCPM get paid online" from one page, without opening a data file. | **Not met, but closer than last session.** `PAYMENTS-CHECKLIST.md` is the first document that answers this question from one page, in prose, without requiring a data file to be opened. It is not yet what this goal asks for, though: it is a runbook addressed to whoever executes the checklist, and its own closing section says to delete it once everything on it is struck — so it will not be there to answer the question once payments go live. A trustee's page needs to survive the switch being flipped; this one is designed not to. |
 
 ## What is genuinely in good shape
 
-I am not here to be gloomy about work that was done carefully, and this was.
-
-`_data/payments.yml` is the best-documented file in this repository. It explains
-the three kinds of Stripe key and which of them may exist in git; it keeps prices
-in `_data/membership.yml` so that a price change is a commit and a diff rather
-than a silent dashboard edit; and it writes down the difference between paying up
-front and subscribing in language a member could actually read. The renewal terms
-are drafted. The refusal to sell class drop-ins while their prices are `TODO` is
-the right refusal.
-
-**None of that is the blocker.** The thinking is finished and the switch is off.
-That distinction matters for how this gets reported to a board: this is not a
-project that needs designing, it is a project that needs four decisions and a
-token.
+Restated briefly because it is still true and still the majority of the
+picture: the broker is written and tested (119 tests), prices generate from
+`_data/` with CI enforcing agreement, repricing existing subscribers is
+scripted, and the nonprofit half-rate cannot be self-claimed. None of that
+needed this session's attention because none of it moved and none of it is
+wrong. `PAYMENTS-CHECKLIST.md` restates this well and I have nothing to add to
+it.
 
 ## What would make us stop
 
-PEG funding is being wound down. Every year this stays as it is, the gap between
-what this organisation could collect and what it does collect gets wider, and the
-site keeps sending people to a Wix account FCPM is trying to leave. The failure
-mode is not an outage. It is a slow one: nobody ever notices the membership that
-was never bought.
+Unchanged from seating: PEG funding is being wound down, and every month this
+stays as it is widens the gap between what FCPM could collect online and what
+it does. The failure mode is still not an outage — it is a membership nobody
+ever gets asked to buy because the page that would ask does not exist yet.
 
 ## Next session
 
-Monthly. **Due 2026-10-09.** I will read the range since `2d9fdd5` and I will
-check first whether `providers.yml` gained a person's name against any entry —
-that is the cheapest of my two goals to move, it needs no money and no vendor
-decision, and it is the one I would most like to report differently next time.
+Monthly. **Due 2026-10-09.** I will check, in order: whether `providers.yml`
+gained a name (G1, cheapest to move); whether either of the two board-only
+blockers in `PAYMENTS-CHECKLIST.md` §2 (class drop-in prices, tier summaries)
+got a number; and whether `PAYMENTS-CHECKLIST.md` itself is still there,
+unstruck, past its usefulness window, or gone because the switch flipped.

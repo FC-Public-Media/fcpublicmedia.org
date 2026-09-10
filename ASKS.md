@@ -18,17 +18,20 @@ nobody does.
 Five entries. It does not require deciding a vendor, setting a price, or spending
 anything, and it is the only one of my asks that a single meeting could finish.
 
-## A2 · A recorded answer to "is the broker meant to be deployed yet?"
+## A2 · A recorded answer to "is the broker meant to be deployed yet?" — `answered`
 
-`status: draft` · `target: whoever holds the Cloudflare account` · `first said: 2026-09-09`
+`status: answered` · `target: whoever holds the Cloudflare account` · `first said: 2026-09-09` · `answered: 2026-09-10`
 
-**Shape:** an operator who does not hold the token can tell, from the repository,
-whether the undeployed broker is *waiting* or *abandoned*.
+**Shape asked for:** an operator who does not hold the token can tell, from the
+repository, whether the undeployed broker is *waiting* or *abandoned*.
 
-Right now those two states look identical: a green workflow that skipped its own
-deploy. I am not asking for the token to be created — that may well be premature,
-and it is not mine to decide. I am asking that the answer be written down, so the
-next person to look does not have to reconstruct it from a run log.
+**What happened:** `PAYMENTS-CHECKLIST.md` (merged this range, PR #60, then
+corrected in PR #63) records exactly this — a numbered list of what blocks
+deployment, none of it a decision, each with what it blocks. It even found a
+sharper version of the question I asked: one of the blockers was a config
+error that would have looked identical to "waiting," and it got named and
+fixed in the same range. I am not asking for anything further here; the thing
+this ask wanted now exists in the repository and I have cited it.
 
 ## A3 · One page that says how FCPM takes money
 
@@ -42,6 +45,11 @@ The last clause is the part I care about. A hand-written summary that nobody
 updates would be worse than the data files, because it would be confidently
 wrong instead of merely scattered. Generated from `providers.yml` and
 `payments.yml` would satisfy this; hand-maintained would not.
+
+**Not satisfied by `PAYMENTS-CHECKLIST.md`**, new this range. It is the
+closest thing produced so far, and it is hand-maintained on purpose — it is a
+runbook meant to be struck down to nothing and then deleted, not a standing
+page. This ask is for the page that exists *after* that runbook is gone.
 
 ## A4 · Two numbers for class drop-ins
 
