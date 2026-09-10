@@ -1,0 +1,99 @@
+name: Deploy to Cloudflare (manual fallback)
+
+# ALTERNATIVE deploy path — NOT the primary one.
+#
+# Production deploys are handled by Cloudflare's git integration, which builds
+# and deploys on every push to main using wrangler.jsonc. This workflow exists
+# for when that is unavailable — a broken repository connection, a build image
+# that stops detecting Ruby, or a day when you would simply rather Cloudflare
+# not hold repository access. It builds here and pushes the finished directory
+# up instead.
+#
+# The same shape as DiscoveryWritten/lesbistrology's `deploy.yml`, deliberately.
+# That repository has run both paths against one Worker for a while and the
+# arrangement is proven; two of Autumn's projects agreeing on how this is done
+# is worth more than either of them being individually clever.
+#
+# IT IS MANUAL-ONLY SO IT CANNOT DOUBLE-DEPLOY.
+#
+# This is the important line. An earlier version of this ran on `push` and was
+# kept harmless by the token being absent — which made an ordinary act, adding
+# an organization secret, into a way to start publishing the same site twice
+# without meaning to. Safety that depends on a credential NOT existing is not
+# safety; it is a landmine with a note on it. The trigger is the guard now.
+#
+# If you switch to this path permanently: disconnect the repository in the
+# Cloudflare dashboard FIRST, then add a `push: branches: [main]` trigger.
+#
+# Required, before this can do anything:
+#   CLOUDFLARE_PAGES_TOKEN   organization secret. Cloudflare dashboard → My
+#                            Profile → API Tokens → *Edit Cloudflare Workers*.
+#                            Account-scoped; no zone, because Wix holds DNS
+#                            for this domain and there is no zone here to name.
+#   CLOUDFLARE_ACCOUNT_ID    secret or variable, either works. Only needed when
+#                            the token can see more than one account.
+#
+# Optional:
+#   CLOUDFLARE_PAGES_PROJECT repository variable. Overrides the `name` in
+#                            wrangler.jsonc. Leave it unset and `fcpm` is used,
+#                            which is almost always what you want — a wrong
+#                            name here CREATES A SECOND WORKER rather than
+#                            updating yours.
+
+on:
+  workflow_dispatch:
+
+# One at a time. Two overlapping deploys of the same Worker is a race whose
+# loser silently wins.
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build and publish
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        # Deliberately NOT `submodules: true`. Nothing in _site comes from
+        # .advocate-engine, and fetching it is the leading suspect in why
+        # Cloudflare's own builder once called this repository damaged.
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          # Same file CI reads and the same version .tool-versions pins, so
+          # this build cannot drift onto a different Ruby from every other one.
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Build
+        run: bundle exec jekyll build --trace
+        env:
+          JEKYLL_ENV: production
+
+      # Refuse rather than publish something wrong. A deploy of an empty or
+      # half-built directory is worse than no deploy: it replaces a working
+      # site with a broken one and reports success.
+      - name: Check the build produced a site
+        run: |
+          test -f _site/index.html || { echo "::error::_site/index.html is missing — refusing to deploy"; exit 1; }
+          echo "_site: $(find _site -type f | wc -l | tr -d ' ') files"
+
+      - name: Publish to Cloudflare
+        if: env.CF_TOKEN != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      - name: Say why nothing was published
+        if: env.CF_TOKEN == ''
+        run: |
+          echo "### Nothing was published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The site built, but the organization secret" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`CLOUDFLARE_PAGES_TOKEN\` is not set, or is not shared with" >> "$GITHUB_STEP_SUMMARY"
+          echo "this repository. See the header of this workflow." >> "$GITHUB_STEP_SUMMARY"
