@@ -63,6 +63,31 @@ unobservability *is* the safety.
 The complaint is not that I cannot see them. It is that **nobody has written down
 who can**, and that person is the entire control.
 
+## C5 · Our own inventory has a phantom entry and a missing one
+
+`status: draft` · `source: observed` · `first said: 2026-09-10`
+
+`ADVOCATE.md`'s credential table lists `STRIPE_KEY` and `PUBLIC_STRIPE_API_KEY`
+as two separate credentials. They are one: the worker reads the second and
+falls back to the first, and both hold the same restricted secret key. Neither
+is the "publishable half" the table calls it — the real publishable key isn't
+a credential at all, it's meant to be public and lives in a data file. The
+codebase already carries comments warning people away from exactly this
+misreading. My own table did not listen to its own codebase.
+
+Meanwhile a real, new credential — `CLOUDFLARE_PAGES_TOKEN`, added this range
+so Actions can deploy the site as a spare to Cloudflare's git connection — has
+no row at all.
+
+Both halves of this complaint are the same shape: the list I check credentials
+against is not itself being kept current, and I found that out by reading the
+code rather than by the list telling me. I cannot fix `ADVOCATE.md` myself —
+it isn't mine to write — so this sits as a complaint until whoever maintains
+it does.
+
 ---
 
-**Nothing closed this session.** First session; there was nothing to close.
+**Nothing closed this session.** All four prior complaints are still live and
+none has ripened past `draft` — the range gave them company (C5) rather than
+resolution. C1's number moved (eighteen days to seventeen) but its status
+didn't.

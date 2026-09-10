@@ -48,3 +48,22 @@ This one overlaps with an ask the payments seat is holding. I am recording it
 from my side rather than deferring, because the answer matters to me for a
 different reason: an unrotated key and an uncreated key need very different
 follow-ups, and I cannot pick one without knowing which I have.
+
+## A4 · An inventory that moves when the credentials do
+
+`status: draft` · `target: FCPM board / whoever maintains ADVOCATE.md` · `first said: 2026-09-10`
+
+**Shape:** when a pull request adds, removes, or renames a secret this site
+depends on, the inventory that names it changes in the same pull request —
+not discovered later by an advocate reading the workflow files by hand.
+
+This range added a real credential (`CLOUDFLARE_PAGES_TOKEN`) with no row for
+it, on top of an inventory that already miscounted an existing one (Stripe's
+secret was listed as two credentials; it is one — see C5). Neither mistake was
+dangerous by itself, but a list that drifts from what the workflows actually
+reference is a list nobody can safely stop double-checking, which defeats the
+point of keeping one.
+
+Deliberately not specified: whether that is a checklist item on the PR
+template, a script that greps workflow files for `secrets.` and diffs the
+result against the table, or something else. Any of those satisfy the shape.
