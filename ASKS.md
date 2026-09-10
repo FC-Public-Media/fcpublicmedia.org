@@ -33,6 +33,12 @@ about a run, not a statement of intent, and the two look identical.
 This is the recorded decision G2 asks for. It would close the goal whichever way
 it went.
 
+**Update, 2026-09-10:** the shape of this ask is not hypothetical work — this
+round the repository did exactly this, unprompted, for a different pair
+(Cloudflare's git connection versus its new Actions path): the either/or is
+written into the README, in plain language, in the same commit that created
+the second path. That is the template. Nobody has yet applied it to Azure.
+
 ## A3 · A note in the repository saying what the Cablecast mirror is and is not
 
 `status: draft` · `target: whoever maintains the sync` · `first said: 2026-09-09`

@@ -72,6 +72,34 @@ don't know who has that login" seen from a different angle — theirs is about
 access, mine is about who receives the mail. I have not spoken to that seat and I
 am not speaking for it.
 
+## V6 · The host stopped deploying and nobody was told — a person had to notice
+
+`status: draft` · `source: observed` · `first said: 2026-09-10`
+
+Cloudflare's git-connected builder began reporting this repository as
+*damaged* and stopped deploying. Nothing paged anyone. CI stayed green
+throughout, because CI never touched the Cloudflare side of the pipeline — the
+only way anyone would have found this is by noticing the live site had gone
+stale, or by opening the Cloudflare dashboard for an unrelated reason.
+
+The fix, recreating the project, worked before anyone confirmed why it broke.
+That is a fine way to unblock a Tuesday and a bad way to learn whether it will
+happen again.
+
+The response — a second, GitHub-Actions-based deploy path — is a spare, not a
+fix, and it is deliberately "unarmed": it does nothing until someone sets a
+token. If the git connection breaks the same way twice, nothing here fails
+over on its own. A person still has to notice the first time, and a person
+still has to notice the second.
+
+This is the same shape as V1 and V5 from a different angle: not "is the vendor
+still there," but "would we know if the way we depend on it quietly stopped
+working." I am recording it here rather than folding it into V1, because the
+remedy people will reach for — better monitoring — is uptime monitoring, which
+my seat is explicitly not for. I don't yet know what the right shape is. See
+V3, which is the same family of complaint about a different dormant path.
+
 ---
 
-**Nothing closed this session.** First session; there was nothing to close.
+**Nothing closed this session.** Nothing genuinely resolved or went stale —
+V1–V5 are all still true as stated. One new draft, V6.
