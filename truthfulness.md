@@ -1,115 +1,106 @@
 # Seat · truthfulness
 
-`advocate/truthfulness` · last spoke **2026-09-09** · 1 session(s) · 10 draft · 0 ready
+`advocate/truthfulness` · last spoke **2026-09-10** · 2 session(s) · 12 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
 
 ## Position
 
-### Truthfulness — opening position
+### Truthfulness — position
 
-**Seated 2026-09-09.** A seating, not a report: no range, baseline recorded at
-`2d9fdd5`, and a reading of the repository as it stands.
+**As of 2026-09-10.** Second session. Range: `2d9fdd5..e63fc7b`, ten merged
+pull requests, 2026-09-09.
 
 I speak for the member who reads the site, believes it, and turns up.
 
 ## The one sentence
 
-**Today is a board meeting day, and the page that invites the public to board
-meetings cannot say when they are.**
+**The reserve page now asks a member to agree to a document that does not
+exist, and the people who wrote the sentence said so in writing before it
+shipped.**
 
-`_data/governance.yml` has `meetings.open: true` and `meetings.schedule: ""`. So
-`/meet/` tells a visitor the board's meetings are open to them — which is true,
-and is a genuinely good thing to say — and then falls back to *"The meeting
-schedule isn't filled in yet."* There is a meeting today. Nobody reading the
-website could have known.
+PR #56 put *"Any User of FC Public Media equipment must agree to FC Public
+Media's Equipment Terms and Conditions"* on `reserve.md`. No such page or PDF
+exists anywhere in this repository. This is not something I found that the
+maintainers missed — `REVIEW-NOTES.md`, merged in the same range, already
+calls it *"the one that should not sit,"* and `CONTENT-TODO.md` marks it
+**BLOCKING**. The gap here is not attention. It is that the sentence went
+live in the same commit that flagged it as not ready to.
 
-I want to be exact about the failure, because it is not the one it looks like.
-**The site does not lie.** It says plainly that it does not know. That empty
-state was written deliberately and it is the right behaviour. The problem is that
-an invitation nobody can accept is not an invitation, and it degrades quietly:
-each meeting that passes unannounced makes the open-meetings promise slightly
-less true without any page ever becoming wrong.
+Full account in `COMPLAINTS.md` T7.
 
-## The calendar is empty, and everything in it is in the past
+## What moved, against my goals
 
-Both entries in `_data/classes.yml` have already happened:
+Ten PRs merged. Most of what's in them is outside my constituency entirely —
+deploy pipeline (#59, #62), Ruby toolchain (#57), test speed (#61), the
+payments checklist and KV bootstrap (#60, #63) are the payments seat's
+concern, not mine. Two touched what I watch:
 
-| | |
-| --- | --- |
-| Podcasting 101 | 2026-08-11 — **29 days ago** |
-| Social Media Marketing 101 | 2026-08-26 — **14 days ago** |
-
-So `/meet/` renders "Nothing on the calendar right now" and the front page's
-class strip stays hidden. `_data/governance.yml` has `upcoming: []`, so the
-merged list on `/community/` has nothing to add.
-
-The constitution predicted this exactly — *"every class in the calendar is
-currently in the past, so two surfaces render empty and nothing complains"* — and
-it is still true a week after it was written. Nothing has complained. That is the
-category this whole seat exists for: it builds, it passes, it says nothing, and
-it is wrong in the sense that matters, which is that a person looking for a class
-concludes there are none.
-
-Again the site's own behaviour is careful. `/meet/` says, in as many words, that
-an organisation with nothing scheduled is not a broken one. That is honest. It is
-just not what is happening here — what is happening here is that the file has not
-been edited since August.
-
-## `TODO` in the page source, and a guard that holds
-
-The homepage contains this, baked into the HTML:
-
-> Dropping in without signing up costs **TODO**, or **TODO** for members.
-
-I went looking for whether that ever reaches a reader, and **it does not.**
-`assets/js/classmode.js:54` hides the block when `dropin.public === 'TODO'`, on
-top of the whole class panel being hidden unless a class is live right now. Two
-independent guards, and the explicit `=== 'TODO'` comparison is somebody having
-thought about precisely this.
-
-So the honest finding is small and I am recording it as small: the string is in
-the served source, readable by anyone who views source or reads the page without
-JavaScript, and invisible on the rendered page. It is a residue, not a leak. What
-makes it worth a line at all is that the guard is the only thing between here and
-a member being quoted a price of "TODO" during a live class, and the guard lives
-in a JavaScript file rather than next to the prices.
-
-## The one address that goes nowhere
-
-`REDIRECTS.md` reports **1 unaccounted for**, and it is `/equipment`. That is the
-committed state of a report generated by `script/redirect-report.py`. I did not
-regenerate it: it needs a built site and a live request to the Wix sitemaps, and
-running it would rewrite a file in the subject repository, which is not mine to
-do.
+- **#56 (bryans-wording)** — the board president's copy review landing on
+  `index.html`, `reserve.md`, `_data/community.yml`, `_data/org.yml`. This is
+  where T7 came from. It also added a real events calendar (`community.yml`
+  `events:`, still `[]` — nobody has entered anything yet) and a verbatim
+  mission statement, neither of which asserts anything stale or false.
+- **#58 (bryans-meet-and-learn-notes)** — added `office_hours` and `photo` to
+  `_data/board.yml` and rendered them on `/meet/`. The roster itself is still
+  `[]`; nothing here changes G1 or G2. One thing outside every seat, flagged
+  and not claimed: the new `person.photo` render in `meet.md` hardcodes
+  `alt=""` on what would be a photograph of a named, identifiable board
+  member, with none of the guard `classes.md`'s own photo field has (alt
+  required whenever src is set). Nobody holds accessibility as a seat. I am
+  raising a hand, not opening a complaint.
 
 ## Goals
 
 | | says | today |
 | --- | --- | --- |
-| **G1** | No page asserts a date, a price or an availability that is out of date. | **Not met, though carefully.** No page asserts a *stale* date — the empty states are honest. But `/meet/` and the front page both present an availability picture ("nothing scheduled") that is an artefact of an unedited data file rather than a fact about the organisation, and `governance.yml` promises open meetings without a schedule on a day one is happening. |
-| **G2** | Every internal link resolves, including anchors, and `REDIRECTS.md` reports nothing unaccounted for. | **Half measured, half `unmeasured`.** `REDIRECTS.md` reports one unaccounted address, `/equipment` — that half is measured and failing. The link-and-anchor half is **`unmeasured`**: nothing in this repository checks internal links, the Playwright suite covers behaviour rather than link integrity, and I will not estimate a number I did not compute. |
+| **G1** | No page asserts a date, a price or an availability that is out of date. | **Not met, and worse by one.** The two stale findings from last session are unchanged: `governance.yml`'s meeting schedule is still `""` while `meetings.open: true`, and both classes in `classes.yml` are a day further into the past (30 and 15 days now) than they were at last count. New this session: `reserve.md` now asserts an obligation — an agreement a member must make — that has no referent at all. That is a different failure mode than "stale": it was never true, not even on the day it shipped. |
+| **G2** | Every internal link resolves, including anchors, and `REDIRECTS.md` reports nothing unaccounted for. | **Unchanged.** `REDIRECTS.md` still reports one unaccounted address, `/equipment`. The link-and-anchor half stays `unmeasured` — nothing in this range added a link check, and T7 is not a broken link at all (it's deliberately unlinked prose), so even a link checker built tomorrow would not have caught it. |
 
-I am reporting `unmeasured` rather than guessing, because a plausible number here
-would be worse than an admission.
+## T1–T6, checked against this range
+
+None closed. I looked before adding T7, as the method asks:
+
+- `_data/governance.yml` is byte-identical to the last session's baseline —
+  T1 stands.
+- The two class dates in `_data/classes.yml` are untouched — T2 stands, one
+  day worse.
+- `classmode.js`'s TODO guard is untouched — T4 stands, same shape.
+- `REDIRECTS.md` still names `/equipment` unaccounted for — T5 stands.
+- No link-checking machinery appeared in this range — T6 stands.
+- T3 (no page signals its own freshness) is the general form of T2 and has
+  no single line to check; it stands by inheritance.
+
+## Something worth recording about how this range was built
+
+Last session's note was that the site kept handling things honestly before I
+had to say so. This range is the opposite instance of the same discipline,
+and it is worth being precise about which: **the maintainers' own review
+caught this exact problem, on the record, before I did — and shipped it
+anyway.** That is not dishonesty. `REVIEW-NOTES.md` is unusually candid about
+its own gaps; nothing here was hidden. But a defect that is named in the same
+commit that ships it is a different thing from a defect nobody has looked at,
+and my seat exists for the member reading the page today, who cannot see
+`REVIEW-NOTES.md` and has only the sentence on `reserve.md` to go on. The
+gap between "we know" and "it's fixed" is exactly the gap this seat watches,
+regardless of how well-documented the gap is on the inside.
 
 ## What would make us stop
 
-Nothing here crashes. A member reads the site, believes it, drives to Mathews
-Street, and finds that the thing they read about was in August. They do not file
-a bug. They conclude that FCPM is not very active, and they are wrong, and the
-site told them so.
-
-That is the failure this seat is for, and it costs a member rather than an
-engineer, which is why nobody upstream ever sees it.
+Unchanged from last session in kind, widened by one instance: a member reads
+a promise on this site — a meeting they can attend, a class that's on, a
+form they can agree to — and acts on it or is stopped by it, and in each
+case the promise was not true when they read it. They don't file a bug. They
+conclude something about FC Public Media that isn't warranted, and the site
+is what told them so.
 
 ## Next session
 
-Monthly. **Due 2026-10-09.** The first thing I will check is whether
-`_data/classes.yml` has an entry with a date in the future. It is the single
-cheapest indicator of whether this site is being kept, and it is a one-line
-read.
+Monthly. **Due 2026-10-09.** I will re-check `_data/classes.yml` for a
+future date, `_data/governance.yml`'s schedule field, and whether T7 has a
+document to point to — that last one is the cheapest and most urgent of the
+three, since the site's own maintainers already ranked it first.
 
 ## Complaints
 
@@ -192,6 +183,37 @@ correct behaviour and is why I know. The complaint is that a known-unaccounted
 address has stayed known-unaccounted, which is the state a loud report is
 supposed to make uncomfortable.
 
+## T7 · You're asking me to agree to a document that doesn't exist
+
+`status: draft` · `source: observed` · `first said: 2026-09-10`
+
+PR #56, merged this range, shipped this sentence to `reserve.md`: *"Any User of
+FC Public Media equipment must agree to FC Public Media's Equipment Terms and
+Conditions."* There is no such page and no such PDF anywhere in this
+repository. I checked.
+
+I am not the one who found this. `REVIEW-NOTES.md`, merged in the same range,
+already says so in its own words: *"It cites a document that does not exist.
+This one is still open,"* and ranks it first on the post-review punch list —
+*"this is the one that should not sit."* `CONTENT-TODO.md` marks it
+**BLOCKING**. The people who wrote the copy know exactly what they shipped.
+
+So my complaint is not that nobody noticed — they did, immediately, in
+writing, in the same commit range. It is that the sentence is live on the
+reserve page anyway, asking a member for an agreement that does not exist to
+be read, while the people who could make it exist have already named it as
+the most urgent thing left on the list. A member reading this page today has
+no way to know that "should not sit" and "sitting" are both true of the same
+sentence at once.
+
+Related, same commit, smaller: the same paragraph changed what the credit
+card on file is *for* — from a temporary hold to a card kept for "late fees
+and incidentals," a different arrangement, not just different wording.
+`REVIEW-NOTES.md` flags this too, as unconfirmed against how checkout
+actually runs. I am not opening a separate complaint for it; it is the same
+shape — copy that now promises something nobody has verified is true — and it
+travelled here in the same sentence.
+
 ## T6 · Nothing here checks that our own links work
 
 `status: draft` · `source: simulated` · `first said: 2026-09-09`
@@ -210,7 +232,12 @@ shape is, and the honest state of my thinking is "there is a hole here."
 
 ---
 
-**Nothing closed this session.** First session; there was nothing to close.
+**2026-09-10:** Checked T1–T6 against the range. None closed — `governance.yml`
+is byte-identical, the two classes are a day further into the past, the TODO
+guard is untouched, `/equipment` is still unaccounted for, no link check was
+added. T7 opened, `observed`, evidenced by the site's own `REVIEW-NOTES.md`.
+
+**2026-09-09:** Nothing closed. First session; there was nothing to close.
 
 ## Asks
 
@@ -258,6 +285,28 @@ mechanism for saying "we chose this" exists and is used. `/equipment` just has
 not been through it. Either answer closes my goal; I have no view on which is
 right.
 
+## A5 · A way to know, before copy ships, that what it names exists
+
+`status: draft` · `target: whoever reviews content before merge` · `first said: 2026-09-10`
+
+**Shape:** an editor approving copy that names a policy, a document, or an
+agreement needs to know whether that thing exists yet, at the point of
+approving it, not after.
+
+This is not A4. A4 is a broken hyperlink — a technical check could catch it.
+"Must agree to FC Public Media's Equipment Terms and Conditions" is not a
+link at all; it is prose naming a document, deliberately left unlinked rather
+than pointed at a 404, so nothing a crawler runs would ever flag it. The
+review that would catch it already happened — `REVIEW-NOTES.md` caught it in
+the same commit that shipped it — which tells me the gap is not noticing, it
+is that noticing and shipping happened in the same breath with nothing
+between them.
+
+I have no view on what closes this. A checklist item, a rule that named
+documents ship together with the copy that cites them, or nothing at all if
+the org decides "ship the promise, backfill the document fast" is an
+acceptable order for a small team — that is a judgment call I don't hold.
+
 ## A4 · Some way to know our internal links resolve
 
 `status: draft` · `target: whoever maintains the tests` · `first said: 2026-09-09`
@@ -272,90 +321,89 @@ cover test design, and the constitution is explicit that an advocate reading the
 existing automation and following it beats inventing a parallel one. There may
 already be a route to this through `script/` that I have not found.
 
-## Last session note — 2026-09-09
+## Last session note — 2026-09-10
 
-### 2026-09-09 — seating
+### 2026-09-10
 
-**Range:** none. First session, baseline at `2d9fdd5`. No range to read, and I
-did not manufacture one.
+**Range:** `2d9fdd5..e63fc7b`, ten merged pull requests, all merged
+2026-09-09. Work order arrived via `sessions/PENDING.md`, deleted per
+instruction.
 
-**Constitution read:** `ADVOCATE.md` and my sub-constitution
-`#5-whether-the-site-is-still-telling-the-truth`. It is the most specific section
-in the document — it lists the exact Liquid failures that have shipped here, and
-it tells me to read the *computed* style rather than the rule. I took that as the
-general instruction it is, and it is why I checked `classmode.js` before writing
-T4 instead of reporting the raw HTML as a leak.
+(An earlier, untracked `sessions/2026-09-10.md` was sitting in this
+workspace claiming "nothing merged since the last session." That was wrong
+against the actual range and I am overwriting it rather than carrying it
+forward — I don't know how it got here, but the ten commits above are real
+and first-parent on the subject since `2d9fdd5`, confirmed with
+`git log --first-parent`.)
 
 ## What I read
 
-`_data/classes.yml`, `_data/governance.yml`, `_data/board.yml`, `_data/org.yml`,
-`index.html`, `meet.md`, `assets/js/classmode.js`, `REDIRECTS.md`, `_config.yml`
-(the `exclude:` list), and the listing of `tests/` and `script/`.
+The stat and full diff of all ten first-parent merges; the diffs of
+`_data/classes.yml`, `_data/board.yml`, `_data/governance.yml`, `meet.md`,
+`classes.md`, `index.html`, `reserve.md`, `_data/community.yml`,
+`_data/org.yml` against the prior baseline; `_data/facilities.yml`,
+`CONTENT-TODO.md`, and `REVIEW-NOTES.md` in full; `REDIRECTS.md`.
 
 ## The finding
 
-Today is a board meeting day and `/meet/` cannot say when board meetings are.
-That is T1 and A1, and it is the item I would put in front of a trustee first —
-not because it is the largest but because it is one line, and because the person
-it fails is exactly the person the page was written for.
+`reserve.md` now cites "FC Public Media's Equipment Terms and Conditions" as
+something a member must agree to, and no such document exists. That is T7 in
+`COMPLAINTS.md`. What makes it worth a session rather than a routine draft:
+the site's own `REVIEW-NOTES.md`, merged in the same range, already named
+this exact sentence as the top item on its post-review punch list — "the one
+that should not sit" — and it shipped anyway. I did not find something the
+maintainers missed. I found the gap between them knowing and the page being
+live, which is a narrower and more useful thing to say than "there's a
+broken promise here."
 
-## Something I want to record about how this site is built
+## What I checked and did not change
 
-Three times this session I went to write a complaint and found the site had
-already handled it honestly: `/meet/` has a real empty state that says an
-organisation with nothing scheduled is not a broken one; the drop-in price block
-is guarded twice against `TODO`; `_config.yml` excludes the internal documents
-that were once served by accident.
-
-**None of that changed the findings, and all of it changed their severity.** The
-site is not telling untruths. It is telling the truth about data that stopped
-being maintained, which is a different problem with a different owner — it
-belongs to whoever edits the files, not to whoever writes the templates. A future
-holder of this seat should expect that shape and check for the guard before
-raising the alarm.
+T1 (board meeting schedule), T2 (stale classes), T4 (TODO in source), T5
+(`/equipment` unaccounted), T6 (no link checker) — all checked against this
+range and none moved. `governance.yml` is byte-identical to last session.
+`classes.yml`'s two dates are untouched, now 30 and 15 days stale rather than
+29 and 14. I tried to close one before adding T7, per the method, and found
+nothing to close.
 
 ## Tally
 
-Complaints: **6 draft** (three `observed`, three `simulated`), 0 open, 0 ready.
-Asks: **4 draft**. Nothing closed; first session.
+Complaints: **7 draft** (four `observed`, three `simulated`), 0 open, 0
+ready. 0 closed. Asks: **5 draft**, 0 promoted. Nothing withdrawn.
 
 ## What I deliberately did not say
 
-- **I invented nothing.** No class, no date, no price, no board member, no
-  meeting schedule. The constitution says a plausible guess in any of those is
-  worse than a blank, and the blanks are doing their job.
-- **I did not run `script/redirect-report.py`.** It needs a built site and a live
-  request to the Wix sitemaps, and it *rewrites* `REDIRECTS.md` — a write to the
-  subject repository, which I hold no grant for. I read the committed report
-  instead and said that is what I did.
-- **I did not report the link-and-anchor half of G2 as passing or failing.** It
-  is `unmeasured`, because nothing measures it and I am not going to estimate.
-- **I did not touch the deliberate debts.** The missing `<h1>` under
-  `_layouts/page.html`, light-by-default, the browse-only Booqable store, the
-  unrendered `_data/hosts.yml`, and the forwarding claim links are all listed in
-  the constitution as decided, with reasons, and an advocate that tidies those
-  away is worse than none.
-- **I did not raise the empty `_data/board.yml`.** It is empty on purpose, the
-  file says why, and the page has an honest empty state. `CONTENT-TODO.md` holds
-  the roster as a content decision, which is where it belongs and is not mine.
-- **I did not treat `CONTENT-TODO.md` as my backlog.** It is a list of content
-  the organisation has not written. My seat is about the site saying untrue
-  things, not incomplete ones, and conflating the two would make me a second
-  content tracker nobody asked for.
+- **I did not open a second complaint for the credit-card wording change**
+  (temporary hold → card charged for late fees and incidentals). Same
+  commit, same shape — copy promising something nobody has confirmed against
+  practice — and `REVIEW-NOTES.md` is already tracking it as its own open
+  item. Folding it into T7 rather than multiplying entries for one commit.
+- **I did not treat the new `person.photo`/`alt=""` render in `meet.md` as a
+  complaint.** It looks like an accessibility gap — a real photo of a named
+  person with a hardcoded empty alt, unlike the guarded pattern
+  `classes.md`'s own photo field uses — but accessibility is not named as
+  anyone's seat in `advocate.yml`, and mine is about assertions being false,
+  not about markup quality. I raised it as one line in `POSITION.md`, flagged
+  as outside every seat, and I am not covering it because I noticed it.
+- **I did not treat the new events calendar (`community.yml` `events: []`)
+  as a finding.** It's new machinery with nothing in it yet — an honest empty
+  state, the same shape the constitution already taught me to recognize as
+  correct rather than broken.
+- **I did not re-litigate the deliberate debts** in `ADVOCATE.md` — the
+  missing `<h1>`, light-by-default, the browse-only Booqable store, the
+  unrendered parts of `hosts.yml`, forwarding claim links. None of them moved
+  in this range and they are not mine to tidy regardless.
+- **I did not invent a document for T7.** Not a page, not a PDF, not
+  placeholder text for the Equipment Terms and Conditions. That decision
+  belongs to whoever the review notes say it belongs to.
+- **I did not treat `REVIEW-NOTES.md` as my own backlog**, even though it is
+  unusually candid and does half my job for me by naming its own gaps. I
+  cited it as evidence for T7; I did not copy its other open items into my
+  files. Its punch list is the maintainers' own, not mine to adopt wholesale.
 
-## Timeline, recorded because it will not be obvious later
+## Next session
 
-Seated **2026-09-09** — the morning of a board meeting. **The council was not
-ready for that meeting.** All four seats were filled today and none of us had a
-range; this position is a baseline, not a report to a board. The intent is to be
-in step for the **October** meeting, which is the first one where this seat will
-have a real range and a second data point.
-
-My cadence is **monthly**. Next session **2026-10-09**.
-
-## What I would look at next
-
-Whether `_data/classes.yml` contains a future date. One line to read, and it
-tells me more about whether this site is being kept than anything else I could
-check.
+Monthly. **Due 2026-10-09.** First check: whether T7 has a document to point
+to — it's the cheapest close available and the site's own maintainers
+already ranked it first. Second: whether `_data/classes.yml` has gained a
+future date. Third: `_data/governance.yml`'s schedule field.
 
