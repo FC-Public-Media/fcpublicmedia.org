@@ -1245,26 +1245,51 @@ assets.
 
 Everything else is in `wrangler.jsonc`, which is committed.
 
-### There is a second, dormant path in Actions
+### There is a second path in Actions, and it only runs when you say so
 
-`.github/workflows/deploy.yml` can also build and publish, with `npx wrangler
-deploy`, on push to `main`. **It does nothing unless a token exists:**
+`.github/workflows/deploy-cloudflare.yml` builds and publishes the same site
+with `wrangler deploy`. It is **`workflow_dispatch` only** — Actions tab, Run
+workflow — so it cannot fire on its own.
 
 | What | Where | Value |
 |---|---|---|
 | `CLOUDFLARE_PAGES_TOKEN` | organization **secret** | API token, *Edit Cloudflare Workers* template, **account-scoped** |
-| `CLOUDFLARE_PAGES_PROJECT` | repository **variable** | The project name — `fcpm`, matching `wrangler.jsonc` |
-| `CLOUDFLARE_ACCOUNT_ID` | repository **variable**, optional | Only if the token can see more than one account |
+| `CLOUDFLARE_ACCOUNT_ID` | secret or variable | Only if the token can see more than one account |
+| `CLOUDFLARE_PAGES_PROJECT` | repository **variable**, optional | Overrides `name` in `wrangler.jsonc`. A wrong value **creates a second Worker** |
 
-**These two are an either/or, not a belt and braces.** Set that secret while
-the git connection is live and both will publish the same site on every push.
-Whichever you pick, turn the other off in the same sitting — disconnect the
-GitHub app, or leave the secret unset.
+**Manual-only is the safety, and that is deliberate.** An earlier version ran on
+`push` and was kept harmless by the token being absent — which turned an
+ordinary act, adding an organization secret, into a way to start publishing the
+same site twice by accident. Safety that depends on a credential *not* existing
+is a landmine with a note on it. The trigger is the guard instead, so the secret
+can exist for the broker's sake without arming anything.
 
-The Actions path exists because the git connection broke once and may break
-the same way again; it is a spare, kept unarmed. **No zone scope on the
-token** — Wix holds DNS for this domain, so there is no Cloudflare zone to
-scope to.
+This is the same arrangement `DiscoveryWritten/lesbistrology` uses, on purpose.
+Two projects agreeing about how this is done is worth more than either being
+individually clever.
+
+To switch to it permanently: **disconnect the repository in the Cloudflare
+dashboard first**, then add a `push: branches: [main]` trigger.
+
+### When the git build fails
+
+Two failures have been seen, and they look nothing alike.
+
+**`Could not locate Gemfile or .bundle/ directory`, with an empty
+`Detected the following tools from environment:` line.** The checkout was
+empty or partial — bundler ran, so the image was fine; there was simply no
+repository under it. **This is not the Root directory setting.** `/` is
+correct and is what `lesbistrology` uses successfully. Look at the GitHub App's
+access to the repository instead; this appeared while several of the account's
+git connections were being reauthorized.
+
+**The repository reported as damaged.** Deleting and recreating the project
+cleared it. See below.
+
+**Neither takes the site down.** A failed build leaves the last good deployment
+serving, so there is time to look properly. Check what actually changed in
+`_site` before treating it as urgent — a run of merges that only touch
+excluded files publishes identical bytes.
 
 ### Why the git connection broke once, and the warning that came out of it
 
@@ -1319,9 +1344,9 @@ which uploads a version and prints its URL without promoting it to production.
 That is where per-branch previews come from, and it is a reason to prefer the
 git connection over the Actions path.
 
-The Actions path does not do this. A pull request builds and stops there,
-because there is one live copy and a pull request must not become it. Adding
-previews there would mean giving that token more permission.
+The Actions fallback does not do this — it publishes to production or nothing,
+which is the right shape for something you invoke by hand when the usual path
+is down.
 
 ### Why `wrangler deploy` and not `wrangler pages deploy`
 
