@@ -42,6 +42,28 @@ mechanism for saying "we chose this" exists and is used. `/equipment` just has
 not been through it. Either answer closes my goal; I have no view on which is
 right.
 
+## A5 · A way to know, before copy ships, that what it names exists
+
+`status: draft` · `target: whoever reviews content before merge` · `first said: 2026-09-10`
+
+**Shape:** an editor approving copy that names a policy, a document, or an
+agreement needs to know whether that thing exists yet, at the point of
+approving it, not after.
+
+This is not A4. A4 is a broken hyperlink — a technical check could catch it.
+"Must agree to FC Public Media's Equipment Terms and Conditions" is not a
+link at all; it is prose naming a document, deliberately left unlinked rather
+than pointed at a 404, so nothing a crawler runs would ever flag it. The
+review that would catch it already happened — `REVIEW-NOTES.md` caught it in
+the same commit that shipped it — which tells me the gap is not noticing, it
+is that noticing and shipping happened in the same breath with nothing
+between them.
+
+I have no view on what closes this. A checklist item, a rule that named
+documents ship together with the copy that cites them, or nothing at all if
+the org decides "ship the promise, backfill the document fast" is an
+acceptable order for a small team — that is a judgment call I don't hold.
+
 ## A4 · Some way to know our internal links resolve
 
 `status: draft` · `target: whoever maintains the tests` · `first said: 2026-09-09`

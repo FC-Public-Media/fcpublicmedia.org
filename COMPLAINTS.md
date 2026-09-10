@@ -77,6 +77,37 @@ correct behaviour and is why I know. The complaint is that a known-unaccounted
 address has stayed known-unaccounted, which is the state a loud report is
 supposed to make uncomfortable.
 
+## T7 · You're asking me to agree to a document that doesn't exist
+
+`status: draft` · `source: observed` · `first said: 2026-09-10`
+
+PR #56, merged this range, shipped this sentence to `reserve.md`: *"Any User of
+FC Public Media equipment must agree to FC Public Media's Equipment Terms and
+Conditions."* There is no such page and no such PDF anywhere in this
+repository. I checked.
+
+I am not the one who found this. `REVIEW-NOTES.md`, merged in the same range,
+already says so in its own words: *"It cites a document that does not exist.
+This one is still open,"* and ranks it first on the post-review punch list —
+*"this is the one that should not sit."* `CONTENT-TODO.md` marks it
+**BLOCKING**. The people who wrote the copy know exactly what they shipped.
+
+So my complaint is not that nobody noticed — they did, immediately, in
+writing, in the same commit range. It is that the sentence is live on the
+reserve page anyway, asking a member for an agreement that does not exist to
+be read, while the people who could make it exist have already named it as
+the most urgent thing left on the list. A member reading this page today has
+no way to know that "should not sit" and "sitting" are both true of the same
+sentence at once.
+
+Related, same commit, smaller: the same paragraph changed what the credit
+card on file is *for* — from a temporary hold to a card kept for "late fees
+and incidentals," a different arrangement, not just different wording.
+`REVIEW-NOTES.md` flags this too, as unconfirmed against how checkout
+actually runs. I am not opening a separate complaint for it; it is the same
+shape — copy that now promises something nobody has verified is true — and it
+travelled here in the same sentence.
+
 ## T6 · Nothing here checks that our own links work
 
 `status: draft` · `source: simulated` · `first said: 2026-09-09`
@@ -95,4 +126,9 @@ shape is, and the honest state of my thinking is "there is a hole here."
 
 ---
 
-**Nothing closed this session.** First session; there was nothing to close.
+**2026-09-10:** Checked T1–T6 against the range. None closed — `governance.yml`
+is byte-identical, the two classes are a day further into the past, the TODO
+guard is untouched, `/equipment` is still unaccounted for, no link check was
+added. T7 opened, `observed`, evidenced by the site's own `REVIEW-NOTES.md`.
+
+**2026-09-09:** Nothing closed. First session; there was nothing to close.
