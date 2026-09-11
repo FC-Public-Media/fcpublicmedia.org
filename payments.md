@@ -1,6 +1,6 @@
 # Seat · payments
 
-`advocate/payments` · last spoke **2026-09-10** · 2 session(s) · 5 draft · 0 ready
+`advocate/payments` · last spoke **2026-09-11** · 3 session(s) · 5 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -238,90 +238,9 @@ Explicitly **not** my decision and I will not suggest a figure. My out-of-scope
 says so and it is right: a plausible guess at a price is worse than a blank,
 because a blank is obviously unfinished and a guess is not.
 
-## Last session note — 2026-09-10
+## Last session note — 2026-09-11
 
-### 2026-09-10
+### 2026-09-11
 
-**Range:** `2d9fdd5..e63fc7b`, 10 first-parent commits (nine merged PRs plus
-one merge of `main`'s own tip) — one board meeting's worth.
-
-**Constitution read:** `ADVOCATE.md`, `#3-whether-we-can-still-be-paid`.
-Unchanged since seating; nothing in it needed correcting.
-
-## What I read
-
-The full diff of the range against `_data/payments.yml`, `_data/providers.yml`,
-`_data/membership.yml`, `_data/classes.yml`, `worker/wrangler.jsonc`,
-`worker/README.md`, `.github/workflows/broker.yml`, `.github/workflows/deploy.yml`
-and `.github/workflows/smoke.yml`, plus the two commits that carry
-`PAYMENTS-CHECKLIST.md` in full (`daf1172`, `96555bb`). I confirmed
-`_data/providers.yml`, `_data/membership.yml` and the drop-in pricing block in
-`_data/classes.yml` are byte-identical to seating by reading them at `e63fc7b`
-directly — no diff touched them this range.
-
-I did not query GitHub's API this session. Last session I read the broker
-workflow's run history and secret list from outside the checkout and flagged
-that as a boundary case. This session the same fact — that the broker is
-undeployed and why — is written down inside the repository itself, in
-`PAYMENTS-CHECKLIST.md`, so I did not need to reach past it.
-
-## What moved, against my two questions
-
-**Does my constituency notice this?** Yes, once: `PAYMENTS-CHECKLIST.md`
-landed (PR #60) and was corrected in the same range (PR #63, the KV-namespace
-fix). Everything else in the range — Ruby version pinning, Wix wording, the
-president's review notes, faster smoke tests, deploying the site itself from
-Actions — is real work and none of it is mine. I checked each for a payments
-angle and found one incidental one, noted below, and nothing else.
-
-**Does it move a goal?** G1: no. G2: partially — see `POSITION.md`.
-
-## What changed in the three files
-
-- **`COMPLAINTS.md`**: P1, P4 and P5 moved `draft → open`, each because
-  `PAYMENTS-CHECKLIST.md` gave me a concrete artifact to point at instead of
-  only a simulated worry. P2 and P3 are untouched — nothing in the range bears
-  on either.
-- **`ASKS.md`**: **A2 closed, `answered`.** It asked for the waiting-vs-abandoned
-  question to be recorded in the repository; `PAYMENTS-CHECKLIST.md` now does
-  exactly that, and better than I would have written it — it found a config
-  bug I had missed and the same range fixed it. A3 got a one-line note that
-  the checklist does not satisfy it (it is a runbook designed to delete itself;
-  A3 wants the page that outlives that). A1 and A4 are untouched.
-- **`POSITION.md`**: rewritten whole. Same one-sentence headline as seating —
-  it has not changed — with the checklist's arrival as the session's finding,
-  and a note on the deploy-token separation in `deploy.yml` that protects the
-  broker's blast radius without moving either of my goals.
-
-## Tally
-
-Complaints: 3 open (P1, P4, P5), 2 draft (P2, P3), 0 ready. Asks: 1 answered
-(A2), 3 draft (A1, A3, A4). One closed, none added — the first time this seat
-has retired something since being seated.
-
-## What I deliberately did not say
-
-- **I did not credit or question who wrote `PAYMENTS-CHECKLIST.md`.** Its
-  commits are authored `advocate <advocate@users.noreply.github.com>`, merged
-  into `main` — which is not a shape my own seat's `writes: []` permits me
-  today. Whether that authorship predates the current grant, or is a different
-  mechanism entirely, is not something I can settle from this checkout, and it
-  is not my question to chase: I report what the content says, not who is
-  allowed to say it.
-- **I did not treat the KV-namespace fix as closing P4.** The broker is still
-  undeployed. What closed was a trap that would have made the *next* fix
-  attempt fail silently too — worth naming precisely, not worth overclaiming.
-- **I did not fold the `CLOUDFLARE_PAGES_TOKEN` change into a new complaint.**
-  It touches Cloudflare tokens and it touches deploys, but it deploys the site,
-  not the broker, and it does not move either of my goals. I noted it once in
-  `POSITION.md` and left it there.
-- **I did not suggest a price, a provider, or a tier benefit.** Same refusal
-  as last session, same reason.
-
-## What I would look at next
-
-Whether `PAYMENTS-CHECKLIST.md` is still there next session, whether anything
-on it got struck, and whether `providers.yml` gained a name — in that order,
-because the checklist is the newest artifact and the fastest-moving one right
-now.
+Subject unchanged at `e63fc7b`. Nothing merged since the last session; nothing to say.
 
