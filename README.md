@@ -1276,12 +1276,24 @@ dashboard first**, then add a `push: branches: [main]` trigger.
 Two failures have been seen, and they look nothing alike.
 
 **`Could not locate Gemfile or .bundle/ directory`, with an empty
-`Detected the following tools from environment:` line.** The checkout was
-empty or partial — bundler ran, so the image was fine; there was simply no
-repository under it. **This is not the Root directory setting.** `/` is
-correct and is what `lesbistrology` uses successfully. Look at the GitHub App's
-access to the repository instead; this appeared while several of the account's
-git connections were being reauthorized.
+`Detected the following tools from environment:` line.** Look at the **branch**
+in the build header before anything else. It is almost certainly `council` or
+an `advocate/*` one, and those are **orphan branches** — they share no history
+with `main` and hold five or six markdown files each. No Gemfile, no
+`.ruby-version`, no site. The clone worked perfectly; there is simply nothing
+there to build, and there never will be.
+
+This is not the Root directory setting and not the repository connection. `/`
+is correct and is what `lesbistrology` uses successfully.
+
+**The fix is branch control in the Cloudflare dashboard**, not anything in this
+repository — there is no file that tells Cloudflare which branches to skip.
+Exclude `council` and `advocate/*` and keep previews for everything else.
+
+It recurs on its own, which is what makes it worth writing down: the council
+runner pushes a fresh digest to `council` whenever a round fires — four times
+in the first two days — and every push is another red build against a branch
+that cannot build by design.
 
 **The repository reported as damaged.** Deleting and recreating the project
 cleared it. See below.
