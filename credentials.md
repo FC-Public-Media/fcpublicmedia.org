@@ -1,6 +1,6 @@
 # Seat · credentials
 
-`advocate/credentials` · last spoke **2026-09-11** · 3 session(s) · 9 draft · 0 ready
+`advocate/credentials` · last spoke **2026-09-12** · 4 session(s) · 9 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -298,9 +298,9 @@ Deliberately not specified: whether that is a checklist item on the PR
 template, a script that greps workflow files for `secrets.` and diffs the
 result against the table, or something else. Any of those satisfy the shape.
 
-## Last session note — 2026-09-11
+## Last session note — 2026-09-12
 
-### 2026-09-11
+### 2026-09-12
 
 Subject unchanged at `e63fc7b`. Nothing merged since the last session; nothing to say.
 

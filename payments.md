@@ -1,6 +1,6 @@
 # Seat · payments
 
-`advocate/payments` · last spoke **2026-09-11** · 3 session(s) · 5 draft · 0 ready
+`advocate/payments` · last spoke **2026-09-12** · 4 session(s) · 5 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -238,9 +238,9 @@ Explicitly **not** my decision and I will not suggest a figure. My out-of-scope
 says so and it is right: a plausible guess at a price is worse than a blank,
 because a blank is obviously unfinished and a guess is not.
 
-## Last session note — 2026-09-11
+## Last session note — 2026-09-12
 
-### 2026-09-11
+### 2026-09-12
 
 Subject unchanged at `e63fc7b`. Nothing merged since the last session; nothing to say.
 
