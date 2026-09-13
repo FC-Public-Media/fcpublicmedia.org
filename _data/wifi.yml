@@ -1,0 +1,56 @@
+# The guest Wi-Fi, and the poster that gets people onto it.
+#
+# Regenerate the code after changing anything here:
+#   FCPM_WIFI_PASSWORD='…' python3 script/make-wifi-qr.py
+#
+# THE PASSWORD IS NOT IN THIS FILE AND MUST NOT BE PUT IN IT
+# ----------------------------------------------------------
+# This repository is public and the site it builds is public. A Wi-Fi QR
+# encodes the password in plain, decodable form — a QR is not encryption, it
+# is a font — so committing the generated SVG publishes the password just as
+# surely as typing it here would. Both are therefore kept out: the password
+# comes from the environment at generation time, and
+# `assets/img/wifi-qr.svg` is gitignored.
+#
+# The distinction that matters is not "who could learn it" — anyone standing
+# in the lobby can read the poster — it is *how far the lobby reaches*. On the
+# wall, the password is available to people who are already in the building.
+# On fcpublicmedia.org it is available to anyone, anywhere, forever, including
+# in git history after it is removed. Those are different decisions and only
+# the first one has been made.
+#
+# If FCPM decides publishing it is fine, that is a real decision and it is
+# theirs. It is a small change — drop the gitignore line and commit the SVG —
+# but it should be made deliberately, in a PR that says so, and not by
+# somebody tidying up.
+
+# ------------------------------------------------------------------ network
+
+network:
+  # UNCONFIRMED. Taken from the saved networks on Autumn's laptop, which lists
+  # both "FC Public WiFi" and "FC Public Media Guest". Nobody has said which
+  # one guests are meant to use, and an SSID is not a thing to guess at: a
+  # poster with the wrong name on it sends every guest to a network that
+  # rejects them, and it fails silently — the code scans fine.
+  #
+  # Confirm the name, then set `confirmed: true`. The generator refuses to run
+  # until you do.
+  ssid: FC Public WiFi
+
+  # wpa    — WPA/WPA2/WPA3 with a password. The normal case.
+  # open   — no password at all.
+  # wep    — ancient and broken; here only because the format has it.
+  security: wpa
+
+  # true if the network does not broadcast its name.
+  hidden: false
+
+  confirmed: false
+
+# ------------------------------------------------------------------- poster
+
+poster:
+  title: Guest Wi-Fi
+  note: >-
+    Point your camera at the code and tap the notification. It joins you
+    automatically — there is nothing to type and no sign-in page.
