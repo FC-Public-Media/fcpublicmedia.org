@@ -28,6 +28,21 @@ WHAT COUNTS AS SECRET-SHAPED
 `pk_live_` and `pk_test_` are absent from that list on purpose. Publishable
 keys are meant to be in the page — refusing them would make this check
 something people switch off, and a check people switch off protects nothing.
+
+THE GUEST WI-FI PASSWORD IS THE SAME PROBLEM WEARING A COSTUME
+--------------------------------------------------------------
+A Wi-Fi QR code encodes the password as plain text. A QR is not encryption,
+it is a font — `assets/img/wifi-qr.svg` committed here would publish the
+guest password to anyone who points a phone at a public repository, and it
+would not look like publishing a password while you did it. That is exactly
+the misreading this file exists to make impossible, so the same mechanical
+treatment applies: the generated code is gitignored, and these tests fail if
+it, or a `WIFI:` payload, or a password field in `_data/wifi.yml`, is ever
+tracked.
+
+The poster is meant for the lobby, where everyone reading it is already in
+the building. Publishing it to fcpublicmedia.org is a different decision and
+FCPM has not made it. See the header of `_data/wifi.yml`.
 """
 
 import pathlib
@@ -48,6 +63,20 @@ SECRET = re.compile(r"\b(?:rk|sk)_(?:live|test|org)_[A-Za-z0-9]{8,}")
 # but they have no distinctive prefix to match on. The Stripe shapes are the
 # ones that can be caught mechanically, and catching those is worth doing
 # even though it is not everything.
+
+# A Wi-Fi join payload, but only one carrying a key: `P:` with something in
+# it. `WIFI:T:nopass;S:Guest;;` is an open network and discloses nothing, and
+# prose about the format — which _data/wifi.yml and wifi/poster.md are full of
+# — has no payload in it at all.
+# Assembled rather than written out for the same reason the shapes above use
+# an ellipsis: spelled in one piece, the pattern's own source is a payload and
+# this file fails its own check. test_this_file_does_not_trip_its_own_wifi_check
+# is what keeps that honest.
+WIFI_KEY = re.compile(r"WIFI:" + r"[^\n]{0,300}?;" + r"P:[^;\n]+;")
+
+# The generated code. Gitignored; this asserts that the gitignore is doing its
+# job, because a `git add -f` or a rewritten ignore file is silent otherwise.
+WIFI_QR = "assets/img/wifi-qr.svg"
 
 
 def tracked_files():
@@ -124,6 +153,114 @@ class NothingSecretIsPublished(unittest.TestCase):
             "sk_org_" + "9kLmNoPqRsTu",
         ):
             self.assertTrue(SECRET.search(shape), f"{shape[:10]}… was not caught")
+
+    def test_no_tracked_file_carries_a_wifi_password(self):
+        found = []
+        for path in tracked_files():
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            if WIFI_KEY.search(text):
+                found.append(str(path.relative_to(REPO)))
+
+        self.assertEqual(
+            found,
+            [],
+            "A Wi-Fi join payload with a password in it is committed. Change the "
+            "password on the router — it is public now, and deleting the line "
+            "does not remove it from git history:\n" + "\n".join(found),
+        )
+
+    def test_the_built_site_does_not_carry_the_wifi_code(self):
+        # Not the same guarantee as the tracked-file check, and this is the
+        # one that catches the realistic accident. CI builds from a clean
+        # checkout and so can never have the code — but README, "Deploying to
+        # Cloudflare", documents `npx wrangler deploy` from a local checkout
+        # as the fallback when Actions is unavailable, and it publishes
+        # whatever `_site` happens to contain. Somebody who generated the
+        # poster an hour earlier would ship the password without touching a
+        # file that git can see.
+        if not SITE.exists():
+            self.skipTest("no _site — run `bundle exec jekyll build` first")
+
+        stray = SITE / "assets" / "img" / "wifi-qr.svg"
+        self.assertFalse(
+            stray.exists(),
+            "The guest Wi-Fi code is in _site. That is fine for printing the "
+            "poster and NOT fine to deploy — a manual `wrangler deploy` "
+            "publishes it. Before deploying:\n"
+            "    rm assets/img/wifi-qr.svg && bundle exec jekyll build",
+        )
+
+    def test_the_generated_wifi_code_is_not_tracked(self):
+        tracked = {str(path.relative_to(REPO)) for path in tracked_files()}
+        self.assertNotIn(
+            WIFI_QR,
+            tracked,
+            f"{WIFI_QR} is committed. The password is readable from it with any "
+            "phone. Remove it, change the password, and see the header of "
+            "_data/wifi.yml for why it is generated locally instead.",
+        )
+
+    def test_the_wifi_data_file_declares_no_password(self):
+        # The specific mistake the file invites: somebody finds a config with
+        # an SSID in it, reasonably expects the password next to it, and adds
+        # the field the generator deliberately does not read.
+        config = REPO / "_data" / "wifi.yml"
+        if not config.exists():
+            self.skipTest("no _data/wifi.yml")
+
+        declared = [
+            line
+            for line in config.read_text(encoding="utf-8").splitlines()
+            if re.match(r"\s*(password|passphrase|psk|key)\s*:\s*\S", line)
+        ]
+        self.assertEqual(
+            declared,
+            [],
+            "_data/wifi.yml declares a password. It is rendered into a public "
+            "site from a public repository; the generator takes the password "
+            "from the environment for this reason:\n" + "\n".join(declared),
+        )
+
+    def test_the_wifi_check_catches_a_payload_when_there_is_one(self):
+        # A scanner that never matches passes every time and proves nothing.
+        #
+        # The scheme is assembled from a name rather than written out, for the
+        # same reason the Stripe shapes above use an ellipsis: a file that
+        # contains a complete example payload fails its own check, and the
+        # obvious fix for that is to weaken the pattern.
+        scheme = "WIFI:"
+        for shape in (
+            f"{scheme}T:WPA;S:FC Public WiFi;P:correcthorse;;",
+            f"{scheme}S:Guest;T:WPA;P:hunter2;H:true;;",
+            f'{scheme}T:WPA;S:Cafe\\;Guest;P:p@ss\\,word;;',
+        ):
+            self.assertTrue(WIFI_KEY.search(shape), f"{shape[:14]}… was not caught")
+
+    def test_this_file_does_not_trip_its_own_wifi_check(self):
+        # Not redundant with the tracked-file sweep: this file is the one most
+        # likely to acquire a literal payload, and the sweep's failure message
+        # would read as a real leak when it was a test fixture.
+        self.assertIsNone(
+            WIFI_KEY.search(pathlib.Path(__file__).read_text(encoding="utf-8")),
+            "test_no_secrets.py contains a complete WIFI: payload. Build the "
+            "examples from parts instead of weakening the pattern.",
+        )
+
+    def test_wifi_prose_and_open_networks_are_not_mistaken_for_a_password(self):
+        # This file, _data/wifi.yml and wifi/poster.md all discuss the format
+        # at length, and an open network has nothing to disclose. If any of
+        # those tripped it, the check would be switched off within a week.
+        for benign in (
+            "the WIFI: scheme puts the password in a P: field",
+            "WIFI:T:nopass;S:FC Public WiFi;;",
+            "a WIFI: payload is not encryption",
+        ):
+            self.assertIsNone(WIFI_KEY.search(benign), f"{benign!r} was treated as a password")
 
     def test_prose_about_keys_is_not_mistaken_for_one(self):
         # The README and several data files discuss rk_live_ and sk_live_ at

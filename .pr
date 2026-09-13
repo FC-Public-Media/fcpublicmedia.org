@@ -1,1 +1,118 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+A guest Wi-Fi poster, and the password it deliberately does not publish
+
+Autumn asked for a QR that puts a device on the Wi-Fi. The generic tool for
+making one is going into station-node (tiliv/station-node#59) because it is
+useful anywhere; this is the FCPM half, because it is FCPM's network and FCPM
+should hold and manage it.
+
+    _data/wifi.yml          the network. Not the password.
+    script/make-wifi-qr.py  generates assets/img/wifi-qr.svg, gitignored
+    wifi/poster.md          /wifi/poster/ — print it, tape it up
+    script/test_no_secrets.py  three new mechanical guards
+
+To use it, once the SSID is confirmed:
+
+    python3 script/make-wifi-qr.py      # prompts for the password
+
+Then print /wifi/poster/. iOS Camera and Android Camera read the `WIFI:` scheme
+natively — a guest points a phone at it and is on. Nobody reads a password out
+loud across the lobby, and nobody mistypes it.
+
+## The decision this PR does NOT make
+
+**The password is not in this repository and the generated code is gitignored.**
+
+A QR is not encryption. It is a font. `assets/img/wifi-qr.svg` committed here
+would publish the guest password to anyone who points a phone at a public
+repository, and it would not *look* like publishing a password while you did
+it — which is precisely the misreading `test_no_secrets.py` already exists to
+make impossible, so it seemed right to extend that file rather than add a new
+one beside it.
+
+The distinction is not "who could learn it" — anyone standing in the lobby can
+read the poster. It is *how far the lobby reaches.* On the wall, the audience
+is people already in the building. On fcpublicmedia.org it is everyone,
+forever, including in git history after somebody removes the line.
+
+**If FCPM would rather just publish it, that is a legitimate choice and it is
+theirs.** Plenty of venues print the guest password on the menu. It is a small
+change — drop the gitignore line, commit the SVG, delete two tests — but it
+should be a decision somebody makes on purpose, in a PR that says so, not
+something that happens because committing the file was convenient. I have
+deliberately not made it either way.
+
+## TODO before this can print anything: confirm the SSID
+
+`_data/wifi.yml` currently guesses **`FC Public WiFi`**, taken from the saved
+networks on Autumn's laptop — which also lists `FC Public Media Guest`, and
+nobody has said which one guests are meant to use. The laptop's Wi-Fi was off,
+so this could not be read from the network itself.
+
+`confirmed: false` gates it, and the generator refuses to run until somebody
+who knows sets it true. That is not ceremony: a poster with the wrong SSID
+scans perfectly and joins nothing, and there is no symptom to debug from — the
+guest just assumes the Wi-Fi is broken. It is the same hazard `check-in/
+poster.md` already warns about for its URL.
+
+Two lines to change, both in `_data/wifi.yml`.
+
+## The two silent failures in the format, both handled
+
+`WIFI:` payloads fail by *scanning fine and joining nothing*, which is worse
+than failing to scan:
+
+- `\ ; , : "` are structure, not text. An SSID of `Carnegie;Guest` truncates at
+  the semicolon and yields a valid code for a network named `Carnegie`.
+- An all-hex SSID or password (`deadbeef`, `abc123`) is read as raw bytes
+  unless quoted.
+
+The backslash in that first list is the one worth naming, because it looks
+redundant and is not — it is the escape character itself. Leaving it out of
+the character class is the easy version of this bug, it only shows up on the
+one password that contains a backslash, and I wrote it that way first.
+
+## Verified
+
+- **Round-tripped, not eyeballed.** Generated the SVG, rasterised it, and
+  decoded it back with the system Vision framework
+  (`VNDetectBarcodesRequest`). `WIFI:T:WPA;S:FC Public WiFi;P:…;;` came back
+  byte-identical, including a password with a space in it.
+- **Payloads cross-checked** against the independently round-trip-verified
+  station-node tool, across four cases: WPA, escaped SSID and password, open
+  network, all-hex-plus-hidden. All four identical.
+- **`bundle exec jekyll build` is clean**, and the poster page was inspected
+  rendered, in both states — with the code present and without it. The page is
+  `sitemap: false` and does not appear in the built sitemap.
+- **`script/test_no_secrets.py`: 12 tests, all passing.** The three new
+  guards were each watched to fail on purpose before being left green.
+  `script/` is already on the `_config.yml` exclude list, so no change was
+  needed there.
+
+## The `_site` guard is the one that earns its keep
+
+The tracked-file checks catch the obvious mistake. The one that would actually
+happen is different: CI builds from a clean checkout and so can never have the
+code, but README documents `npx wrangler deploy` from a local checkout as the
+fallback when Actions is unavailable, and that publishes whatever `_site`
+contains. Somebody who printed the poster an hour earlier would ship the
+password without touching a single file git can see.
+
+So there is a check for that specifically, and its failure message says what
+to do rather than just that something is wrong. It fires only when `_site`
+exists, which is exactly when a manual deploy is possible.
+
+## Notes
+
+- `.advocate-engine` is pinned 5 commits behind its `origin/main`. Reported,
+  not touched — that is its own PR, by whoever owns it.
+- `make-qr.py`'s docstring says it is "the one script here that is not
+  standard-library-only". That was already untrue (`build-prices.py` and
+  `sync-feeds.py` both import yaml) and this adds a third; `make-wifi-qr.py`
+  uses PyYAML rather than the regex trick next door, since the config is
+  nested. Left alone rather than corrected in an unrelated diff.
+- The password is prompted for rather than taken as an argument, so it stays
+  out of shell history and out of `ps` output. `FCPM_WIFI_PASSWORD` is there
+  for scripting.
+- Nobody has scanned one of these with an actual phone. The decoder says the
+  bytes are right; it does not say iOS is happy. Worth one real scan before
+  this gets laminated.

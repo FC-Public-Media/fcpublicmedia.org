@@ -21,3 +21,8 @@ test-results/
 # Claim signing keys — never committed.
 *-key.pem
 __pycache__/
+
+# The Wi-Fi QR encodes the guest password in decodable form. Generated
+# locally by script/make-wifi-qr.py and printed; never committed. See the
+# header of _data/wifi.yml.
+assets/img/wifi-qr.svg
