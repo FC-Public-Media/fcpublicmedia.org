@@ -1,1 +1,54 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+The guest network is FC Public Media Guest, and it has gone missing before
+
+Fills in the TODO left by #66. Autumn confirmed which network guests are meant
+to use: **FC Public Media Guest**. The laptop also remembers `FC Public WiFi`,
+which is not it and is not what a guest should be handed — that was the wrong
+guess #66 shipped behind a gate, and the gate did its job.
+
+`confirmed: true` now, so `script/make-wifi-qr.py` runs. It prompts for the
+password, which means nobody has to send the password to anybody to get a
+poster out of this — staff runs it, prints `/wifi/poster/`, done.
+
+## The other half of what she said
+
+Her exact words were *"is/was ours — it went away for a bit."*
+
+The name is settled. Whether the network is **up** is a separate fact, and it
+is the one this design was quietly assuming. A web page pointing at a missing
+network is a nuisance for as long as it is missing. A printed poster is a claim
+frozen on a wall: it goes on confidently naming a network that is not
+broadcasting, and the guest standing in front of it cannot tell that apart from
+a bad code. They conclude the Wi-Fi is broken and stop trying — and the poster
+is what told them it should have worked.
+
+So two things, neither of which is a guess about FCPM's operations:
+
+- **`/wifi/poster/` grows a "Before you print it" section**: check on a phone
+  that the network is actually broadcasting. Confirming the name and confirming
+  it is up are different checks, and only the second one expires.
+- **The poster itself gets one line under the code**, rendered only if
+  `poster.fallback` is set: *"Can't see this network? Tell us — it may be down
+  rather than you."* Without something like it, a guest whose phone finds
+  nothing has been told by a poster that it should have worked, and reasonably
+  concludes the fault is theirs.
+
+**That line is a placeholder and is marked as one.** Per CLAUDE.md our copy is
+over-written and Bryan's ear is better; this is also the kind of line that
+should name whoever a guest should actually ask, and I do not know how the
+front of that building works. Replace it. It is one string in `_data/wifi.yml`
+and the poster drops the line entirely if it is blank.
+
+## Verified
+
+- Generator passes the gate and produces the right network. Round-tripped
+  again through the system Vision decoder:
+  `WIFI:T:WPA;S:FC Public Media Guest;P:…;;` came back byte-identical.
+- `bundle exec jekyll build` clean; poster inspected rendered, with the code
+  present and without.
+- `script/test_no_secrets.py` — 12 tests, all passing.
+
+## Still outstanding
+
+Nobody has scanned one of these with an actual phone, and nobody has confirmed
+the guest network is currently broadcasting. Both want doing before this is
+laminated; neither is something a checkout can answer.

@@ -27,15 +27,26 @@
 # ------------------------------------------------------------------ network
 
 network:
-  # UNCONFIRMED. Taken from the saved networks on Autumn's laptop, which lists
-  # both "FC Public WiFi" and "FC Public Media Guest". Nobody has said which
-  # one guests are meant to use, and an SSID is not a thing to guess at: a
-  # poster with the wrong name on it sends every guest to a network that
-  # rejects them, and it fails silently — the code scans fine.
+  # Confirmed by Autumn, 2026-09-13: the guest network is ours and this is it.
+  # The laptop also remembers "FC Public WiFi", which is not this and is not
+  # what a guest should be handed.
   #
-  # Confirm the name, then set `confirmed: true`. The generator refuses to run
-  # until you do.
-  ssid: FC Public WiFi
+  # IT HAS DISAPPEARED BEFORE, AND THAT MATTERS MORE HERE THAN ELSEWHERE
+  # -------------------------------------------------------------------
+  # Autumn's words were "is/was ours — it went away for a bit". So this SSID
+  # is right, and it has also, at least once, simply not been there.
+  #
+  # A web page that points at a missing network is a nuisance for as long as
+  # the network is missing. A printed poster is a claim frozen on a wall: it
+  # keeps confidently naming a network that is not broadcasting, and the guest
+  # standing in front of it has no way to tell the difference between "the
+  # code is wrong" and "the network is down". They conclude the Wi-Fi is
+  # broken and stop trying.
+  #
+  # So: look at a phone and confirm the network is actually there before
+  # printing this, not just before changing this file. That is a different
+  # check from confirming the name, and it is the one that expires.
+  ssid: FC Public Media Guest
 
   # wpa    — WPA/WPA2/WPA3 with a password. The normal case.
   # open   — no password at all.
@@ -45,7 +56,9 @@ network:
   # true if the network does not broadcast its name.
   hidden: false
 
-  confirmed: false
+  # The NAME is confirmed. This does not claim the network is currently up —
+  # see above. It gates the generator so nobody prints a guess.
+  confirmed: true
 
 # ------------------------------------------------------------------- poster
 
@@ -54,3 +67,14 @@ poster:
   note: >-
     Point your camera at the code and tap the notification. It joins you
     automatically — there is nothing to type and no sign-in page.
+
+  # Printed under the code. It exists because this network has gone missing
+  # before: without a line like this, a guest whose phone finds nothing has
+  # been told by a poster that it should have worked, and concludes the fault
+  # is theirs. Naming the possibility costs one line and saves that.
+  #
+  # Placeholder wording — replace it with however staff would actually say it,
+  # and with whoever a guest should actually ask. Do not leave it guessing at
+  # the building.
+  fallback: >-
+    Can't see this network? Tell us — it may be down rather than you.

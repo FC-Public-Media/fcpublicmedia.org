@@ -27,6 +27,9 @@ sitemap: false
 
   <p class="poster-url">{{ wifi.network.ssid }}</p>
   <p class="poster-note">{{ wifi.poster.note }}</p>
+  {%- if wifi.poster.fallback %}
+  <p class="poster-note">{{ wifi.poster.fallback }}</p>
+  {%- endif %}
 </div>
 {% else %}
 <p class="transaction transaction-todo">
@@ -56,6 +59,17 @@ sitemap: false
     to fail.</span>
   </p>
   {% endunless %}
+
+  <h2>Before you print it</h2>
+
+  <p>Look at a phone and check that
+  <b>{{ wifi.network.ssid }}</b> is actually broadcasting. This network has
+  gone missing before, and a poster is a claim frozen on a wall &mdash; it goes
+  on confidently naming a network that is not there, and a guest cannot tell
+  that from a bad code. They conclude the Wi-Fi is broken and stop trying.</p>
+
+  <p>Confirming the name and confirming the network is up are two different
+  checks. Only the second one expires.</p>
 
   <h2>Why the code is not in the repository</h2>
 
