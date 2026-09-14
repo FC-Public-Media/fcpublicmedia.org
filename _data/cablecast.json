@@ -5,7 +5,7 @@
    "name": "News"
   },
   {
-   "count": 195,
+   "count": 198,
    "name": "Arts and Culture"
   },
   {
@@ -148,6 +148,48 @@
  "fetched": null,
  "local_total": 379,
  "recent": [
+  {
+   "category": "Arts and Culture",
+   "date": "2026-09-08",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1512",
+   "id": 1512,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1738,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5941",
+   "title": "Paltrocast - Berner _ Santiago Cruz _ M Social Times Square x U.S. Open Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1512",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-09-08",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1511",
+   "id": 1511,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1707,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5935",
+   "title": "Paltrocast - Eric Steckel _ Juicy Finau Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1511",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-09-08",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1510",
+   "id": 1510,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1717,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5929",
+   "title": "Paltrocast - Matt Lange _ Gate Singer Gunnhild Sundli Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1510",
+   "watchable": true
+  },
   {
    "category": "Religious - Christian",
    "date": "2026-08-25",
@@ -440,48 +482,6 @@
    "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5756",
    "title": "Paltrocast - Reeve Carney _ Eva Noblezada _ Stars Of Shark Week Darren Paltrowitz",
    "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1486",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-28",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1485",
-   "id": 1485,
-   "local": false,
-   "notes": "bowie",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1729,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5761",
-   "title": "Paltrocast - Sondre Lerche _ John Ross Bowie Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1485",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-28",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1484",
-   "id": 1484,
-   "local": false,
-   "notes": "chef duff",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1737,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5749",
-   "title": "Paltrocast - Kendyl Berna _ Chef Duff Goldman _ Be Decent Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1484",
-   "watchable": true
-  },
-  {
-   "category": "Arts and Culture",
-   "date": "2026-07-28",
-   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1483",
-   "id": 1483,
-   "local": false,
-   "notes": "palt",
-   "producer": "Darren Paltrowitz",
-   "seconds": 1744,
-   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5744",
-   "title": "Paltrocast - Billy Morrison _ Future Palace_s Maria Lessing Darren Paltrowitz",
-   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1483",
    "watchable": true
   }
  ],
@@ -824,6 +824,48 @@
   }
  ],
  "shows": [
+  {
+   "category": "Arts and Culture",
+   "date": "2026-09-08",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1512",
+   "id": 1512,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1738,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5941",
+   "title": "Paltrocast - Berner _ Santiago Cruz _ M Social Times Square x U.S. Open Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1512",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-09-08",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1511",
+   "id": 1511,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1707,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5935",
+   "title": "Paltrocast - Eric Steckel _ Juicy Finau Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1511",
+   "watchable": true
+  },
+  {
+   "category": "Arts and Culture",
+   "date": "2026-09-08",
+   "embed_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-vod-embed?showId=1510",
+   "id": 1510,
+   "local": false,
+   "notes": "",
+   "producer": "Darren Paltrowitz",
+   "seconds": 1717,
+   "thumb": "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/dynamicthumbnails/5929",
+   "title": "Paltrocast - Matt Lange _ Gate Singer Gunnhild Sundli Darren Paltrowitz",
+   "watch_url": "https://reflect-fcpublicmedia.cablecast.tv/internetchannel/show/1510",
+   "watchable": true
+  },
   {
    "category": "Religious - Christian",
    "date": "2026-08-25",
@@ -15945,7 +15987,7 @@
    "watchable": false
   }
  ],
- "total": 1080,
+ "total": 1083,
  "untitled_omitted": 429,
- "watchable": 759
+ "watchable": 762
 }
