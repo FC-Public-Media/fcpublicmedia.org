@@ -1,1 +1,67 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Seat a node study: keep watching station-node for the shape FCPM grows into
+## Why
+
+Autumn, 2026-09-15: *"FCPM will become exactly like what we're prototyping over there"* —
+station-node — and *"FCPM as a repo can be a 'node' by construction."* She asked for an advocate
+seat for that study.
+
+A seat rather than a plan, for the same reason the library engine's `stacks` seat is one: what was
+asked for is **ongoing study** of a prototype that is still moving, and a seat is the thing that
+keeps looking. A plan written today would describe station-node as of today.
+
+## What this adds
+
+- **`node` seat** in `advocate.yml` — local, monthly, `writes: []`, like the other four.
+  Constituency and voice are **relayed** from Autumn's own words, not simulated; hers to sharpen.
+- **§6 in `ADVOCATE.md`**, *Whether we are becoming a node*, as the seat's sub-constitution. Set
+  apart from the five health concerns because it is a study, not a decay check.
+
+What the section records as her direction:
+
+| | |
+|---|---|
+| library, with its categories | wanted |
+| proofing, as a service the node offers | wanted, not ready |
+| bottles | later |
+| journal | not wanted — FCPM has its own methods |
+
+## Worth arguing with
+
+- **Member-site provisioning is folded in as a hypothesis**, not a decision: in the node design a
+  site the node keeps is a *library holding under a category*, so "how do we provision sites"
+  might be answered by the library admitting a holding rather than by a new template. If that is
+  wrong, provisioning deserves its own seat and should come out of this one.
+- **Which repository is the node** is G2, and it is the real fork. station-node holds its sites
+  in `library/`; FCPM's only repo *is* the site. Either this repo becomes the node, or a sibling
+  FC-Public-Media repo does and holds this one. Nothing gets mounted until that is answered.
+
+## Needs you
+
+- **The board choices.** You said you made some after talking with board members and want to lean
+  on what they offer for imagining what public media puts in those categories. They are not
+  written anywhere I could find, so G4 is phrased to ask rather than guess. A paragraph in reply
+  is enough to sharpen the seat.
+- **G2 above.**
+
+## Verified
+
+- `advocate.yml` parses, and the new seat has the same keys as its siblings.
+- ADVOCATE.md anchor `#6-whether-we-are-becoming-a-node` matches the heading GitHub will generate.
+- This repo is **public** and station-node and proofing are **private**, so the section describes
+  the concepts in its own words and links only the public library engine. Nothing machine-specific
+  went in.
+
+## Deliberately not done
+
+- **No engine mounted.** `.library-engine` waits on G2.
+- **`.advocate-engine` pin not bumped.** It is 5 commits behind origin (including *a seat checks
+  its mail* and *seat branch must start from origin*). Reported, not bumped — that is its own PR.
+- **The local checkout was left alone.** `~/Project/FCPM/fcpublicmedia.org` is 13 behind with an
+  uncommitted `worker/wrangler.jsonc` rewrite from 2026-09-09 that is not mine; this was built
+  in a separate worktree from `origin/main`.
+- **Known friction, recorded in §6:** the engine only gives a seat work when *this* repo's range
+  moves, and this seat's subject moves elsewhere. The upstream fix is the filed petition
+  `corpus-seats-cannot-speak`. Until it lands this seat speaks when the site moves or when run
+  by hand.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
