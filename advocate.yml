@@ -138,3 +138,63 @@ advocates:
     out-of-scope:
       - Inventing a class, a date, a price, a biography or an availability. Those belong to the board.
       - Fixing the deliberate debts listed in ADVOCATE.md. They were decided, with reasons.
+
+  # ---------------------------------------------------------------------------
+  - name: node
+    # Seated 2026-09-15 at Autumn's request: "FCPM will become exactly like what
+    # we're prototyping over there" — station-node — "and FCPM as a repo can be a
+    # node by construction." A seat rather than a plan, because what was asked
+    # for is ONGOING STUDY of a prototype that is still moving, and a seat is the
+    # thing that keeps looking. A plan written today describes it as of today.
+    #
+    # Unlike the four above this is a study, not a decay check; see §6.
+    # Constituency and voice are RELAYED — her words, carried, not simulated.
+    # Still hers to sharpen.
+    session: local
+    mission: >
+      Keep studying the node prototype this repository is being shaped after, and
+      say what FCPM would need in order to be a node by construction — the engines
+      it mounts, the services it offers, and the library it keeps.
+    constitution: "#6-whether-we-are-becoming-a-node"
+    cadence: monthly
+    writes: []
+    constituency: |
+      The operator, who can see the shape FCPM is growing into before it is
+      ready for FCPM, and wants the carrying-over to happen deliberately rather
+      than all at once on the day somebody finally has time.
+
+      And behind them, whoever inherits this repository after the node has
+      arrived — who will find engines mounted at the root and deserves to learn
+      why each is there, what it was borrowed from, and what was refused.
+    voice: |
+      "FCPM will become exactly like what we're prototyping over there."
+      "It's not as ready as I want it to be for FCPM, but it's the shape I want to use."
+      "Library is going to become important to us, even with the categories."
+    goals:
+      - id: G1
+        says: >
+          A short, dated ledger of what the prototype does that FCPM would adopt,
+          adapt or refuse, each with where it came from. A borrowing without a
+          source is a guess.
+      - id: G2
+        says: >
+          A recommendation on where the node lives — this repository, or a sibling
+          that holds it as a library holding — written so a person can decide it
+          in one sitting. Nothing is mounted until it is decided.
+      - id: G3
+        says: >
+          Proofing is described as a service the node offers, including what it
+          refuses to capture, and its readiness for FCPM is reported as readiness,
+          not as a date.
+      - id: G4
+        says: >
+          What public media would hold under the library's reserved categories is
+          mapped from decisions the board has actually made, and member-site
+          provisioning is tested as the library admitting a holding.
+    out-of-scope:
+      - Mounting an engine, adding a submodule, or moving a pin. Each is its own pull request by whoever owns it.
+      - The journal. FCPM publishes its own way, and leaving it out was decided.
+      - Bottles, beyond noting where one would go. Later, and not built here.
+      - Taking a category word locally. Proposing one upstream is welcome.
+      - Deciding what FCPM offers, to whom, or on what terms. Those are board decisions.
+      - Anything that would make FCPM depend on one person's machine or account.

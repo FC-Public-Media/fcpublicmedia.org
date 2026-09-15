@@ -206,6 +206,72 @@ the tests, and quietly say something untrue.
 - **Internal documents served at public URLs.** A `.md` without front matter is
   copied verbatim. Four were reachable before this was noticed.
 
+## A study, not a health check
+
+### 6. Whether we are becoming a node
+
+The five concerns above are about things decaying. This one is about where the
+repository is heading, and its job is to keep looking rather than to catch
+anything going wrong.
+
+**The direction.** FCPM is being shaped after a node prototype Autumn is
+building elsewhere, in a private repository called `station-node`. In that
+design **a node is anyone running engines**: small, separately maintained
+pieces of software mounted into a repository as `.<name>-engine` submodules,
+each doing one job. `.advocate-engine`, already here, is the first. The intent
+is for FCPM to be a node *by construction* — the engines it runs, the services
+it offers and the knowledge it keeps are declared in the repository itself,
+not held in someone's head or behind somebody's login.
+
+Her words: *"It's not as ready as I want it to be for FCPM, but it's the shape
+I want to use."* That is why this is a study and not a migration. The prototype
+is ahead of us and still moving; the job is to keep watching it and write down
+what carries over, what has to change on the way, and what should be refused.
+
+**What is expected to arrive, and what is not:**
+
+| | | |
+|---|---|---|
+| **The library** | wanted | [`library.anecdote.channel`](https://github.com/FCCN-ANTIBODY/library.anecdote.channel) keeps knowledge somebody gave it, lists what it holds, and lends it out without a front desk. Its **categories** matter here: `media`, `voices`, `trade`, `city` and `library` are reserved words, and a public-media organisation plausibly holds several of them. |
+| **Proofing, as a service** | wanted, not ready | A service the node would offer the people it serves. Not ready for FCPM yet; the shape is what is being adopted. |
+| **Bottles** | later | The crate things travel in. Not needed now, and likely to be tried. |
+| **The journal** | not wanted | FCPM has its own ways of publishing. Leaving it out is a decision, not an omission. |
+
+**Provisioning member sites is probably the same question.** `site-template/`
+is scaffolded; creating, hosting and fast-forwarding a member site are not (see
+DESIGN-NOTES.md, *the site factory*). In the node design, the sites a node
+keeps are **holdings in its library**, filed under a category — not copies of a
+template. If that holds, provisioning a member site is the library admitting a
+holding, and the question this repository has carried for a long time gets its
+answer from the library rather than from a better template. That is a
+hypothesis for the seat to test, not a decision.
+
+**The first open question: where the node lives.** In the prototype the node is
+its own repository, and the websites it serves are holdings inside it. FCPM has
+one repository and it is the website. So either this repository becomes the
+node, or a sibling repository becomes the node and holds this one. The answer
+decides where every future engine is mounted. The seat recommends; a person
+decides.
+
+**What the seat must not do:**
+
+- **Mount an engine, add a submodule, or move a pin.** Each is a change with
+  its own pull request, made by whoever owns it.
+- **Make FCPM depend on one person's machine.** A node by construction runs on
+  any ordinary device — the same no-allegiance position this document already
+  takes about vendors.
+- **Take a category word locally.** Proposing one upstream is welcome; the
+  library's `CATEGORIES.md` says why taking one is not ours to do.
+- **Invent what FCPM offers.** Which services, for whom, on what terms — those
+  are board decisions. Where the study needs one, it asks.
+
+**A known friction.** The engine only gives a seat work when something in this
+repository has changed. This seat's subject mostly changes somewhere else, so
+in a quiet month it will open, find nothing, and close. That is correct under
+the engine's rules; letting a seat name what it reads has been proposed
+upstream and not built. Until it is, this seat speaks when the site moves or
+when somebody runs it by hand.
+
 ## Debts that are deliberate
 
 An advocate that tidies these away is worse than none. Each was decided, with
