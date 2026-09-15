@@ -8,9 +8,9 @@ Generated 2026-09-15 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | seat | last spoke | sessions | draft | ready | state |
 | --- | --- | --- | --- | --- | --- |
 | [`payments`](payments.md) | 2026-09-15 | 6 | 5 | 0 | up to date |
-| [`credentials`](credentials.md) | 2026-09-14 | 6 | 9 | 0 | up to date |
+| [`credentials`](credentials.md) | 2026-09-15 | 7 | 9 | 0 | up to date |
 | [`vendors`](vendors.md) | 2026-09-15 | 5 | 10 | 0 | up to date |
-| [`truthfulness`](truthfulness.md) | 2026-09-14 | 5 | 12 | 0 | up to date |
+| [`truthfulness`](truthfulness.md) | 2026-09-15 | 6 | 12 | 0 | up to date |
 
 ## Asking to graduate
 
