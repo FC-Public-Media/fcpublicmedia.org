@@ -9,8 +9,8 @@ Generated 2026-09-16 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | --- | --- | --- | --- | --- | --- |
 | [`payments`](payments.md) | 2026-09-16 | 7 | 5 | 0 | up to date |
 | [`credentials`](credentials.md) | 2026-09-16 | 8 | 9 | 0 | up to date |
-| [`vendors`](vendors.md) | 2026-09-15 | 5 | 10 | 0 | up to date |
-| [`truthfulness`](truthfulness.md) | 2026-09-15 | 6 | 12 | 0 | up to date |
+| [`vendors`](vendors.md) | 2026-09-16 | 6 | 10 | 0 | up to date |
+| [`truthfulness`](truthfulness.md) | 2026-09-16 | 7 | 12 | 0 | up to date |
 
 ## Asking to graduate
 
