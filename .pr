@@ -1,1 +1,52 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+The site is the node: G2 is decided, and the reason is Jekyll's
+
+Escalation a31b asked two questions of the node-study seat. This answers the second.
+
+## Decided
+
+Her words, 2026-09-16:
+
+> i do think the site is the node because itll build with its resources handy in jekyll
+> data. The -node paradigm gives us site clusters that share a build root context
+
+**This repository is the node.** Not a sibling holding the site as a library holding.
+
+The argument is Jekyll's, and it only runs one way. A node's holdings sit under its own
+root — so if the site *is* the node, every holding is inside the build root and reachable
+from `_data`. The library becomes readable by the site that keeps it, for free, with no
+copying step and nothing to keep in sync.
+
+Invert it and the site is a holding *inside* the node. Its build root is then a
+subdirectory that cannot see its siblings, and every shared resource needs a mechanism
+somebody has to build and maintain.
+
+The unit that buys is the one she named: a **site cluster sharing one build root context**.
+That is also what turns member-site provisioning — G4 — into the library admitting a
+holding, rather than a deployment problem.
+
+## What changed in the file
+
+G2 was *"a recommendation on where the node lives, written so a person can decide it in
+one sitting."* The person decided, so the goal advances rather than closing: write down
+the **consequences** — what moves to the root, what `_data` may and may not reach into,
+and what a second site in the cluster would need.
+
+The decision and its reasoning are kept as a comment on the goal rather than deleted with
+it. A later reader needs to know this was *chosen*, and on what grounds — not merely that
+it is so. That is the seat's whole premise, and the escalation exists because two such
+choices had already gone unwritten.
+
+Mounting anything is still out of scope and still its own pull request by whoever owns it.
+
+## Verified
+
+`advocate.yml` parses; the node seat still carries G1–G4.
+
+## Still open — the other half of a31b
+
+**G4 needs your paragraph.** You said you made choices after talking with board members,
+and want to use them to imagine what public media offers under the library's categories.
+They are not written anywhere an agent can find. The seat runs without them; it just
+cannot become concrete. a31b stays open for that alone, and I have narrowed it to say so.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -177,10 +177,32 @@ advocates:
           adapt or refuse, each with where it came from. A borrowing without a
           source is a guess.
       - id: G2
+        # DECIDED 2026-09-16, by Autumn, and kept here as a goal rather than
+        # deleted because the reasoning is the part that has to survive: a
+        # later reader needs to know this was chosen, and on what grounds,
+        # not merely that it is so.
+        #
+        #   "i do think the site is the node because itll build with its
+        #    resources handy in jekyll data. The -node paradigm gives us site
+        #    clusters that share a build root context"
+        #
+        # THIS REPOSITORY IS THE NODE. The argument is Jekyll's, and it only
+        # works in one direction. A node's holdings sit under its own root, so
+        # if the site IS the node, every holding is inside the build root and
+        # reachable from `_data` — the library becomes readable by the site
+        # that keeps it, for free, with no copying step and nothing to keep in
+        # sync. Put the node in a sibling and the site becomes a holding
+        # *inside* it; the site's build root is then a subdirectory that cannot
+        # see its siblings, and every shared resource needs a mechanism.
+        #
+        # The unit that buys is a SITE CLUSTER sharing one build root context,
+        # which is what makes member-site provisioning (G4) a library admitting
+        # a holding rather than a deployment problem.
         says: >
-          A recommendation on where the node lives — this repository, or a sibling
-          that holds it as a library holding — written so a person can decide it
-          in one sitting. Nothing is mounted until it is decided.
+          The consequences of the site being the node are written down: what
+          moves to the root, what `_data` may reach into and what it may not,
+          and what a second site in the cluster would need. Mounting is still
+          its own pull request by whoever owns it.
       - id: G3
         says: >
           Proofing is described as a service the node offers, including what it
