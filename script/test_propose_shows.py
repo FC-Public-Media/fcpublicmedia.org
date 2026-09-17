@@ -172,7 +172,7 @@ class TheRealCatalog(unittest.TestCase):
         # in CI rather than in a workflow run at three in the morning.
         import json
 
-        catalog_path = HERE.parent / "_data" / "cablecast.json"
+        catalog_path = HERE.parent / "site" / "_data" / "cablecast.json"
         if not catalog_path.exists():
             self.skipTest("no catalog checked out")
 

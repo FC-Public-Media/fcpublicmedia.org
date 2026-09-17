@@ -10,7 +10,7 @@ writing down properly. When somebody subscribes, the broker creates the
 Checkout Session with an inline `price_data`. Stripe turns that into a Price
 object, pins the subscription to it, and renews against that pinned Price for
 as long as the subscription lives. It never calls back. It never re-reads
-_data/membership.yml. There is no webhook where we get asked "what does this
+site/_data/membership.yml. There is no webhook where we get asked "what does this
 cost now?" — the question is never put.
 
 So editing a price in this repository changes what NEW members pay and nothing
@@ -25,12 +25,12 @@ something, on a schedule — and this is that something.
 
 WHERE IT SITS IN THE ANNOUNCEMENT FLOW
 --------------------------------------
-    1. Somebody edits a price in _data/membership.yml.
+    1. Somebody edits a price in site/_data/membership.yml.
     2. Pull request, review, merge. That is the price history, with a date and
        a name on it.
     3. New members pay the new price from the moment it deploys.
     4. The membership is emailed — Constant Contact — with at least the notice
-       period in _data/payments.yml (30 days as it stands).
+       period in site/_data/payments.yml (30 days as it stands).
     5. AFTER that notice has run, this script is applied. Existing
        subscriptions move to the new price.
     6. Everybody renews at the same price on their own anniversary.
@@ -90,7 +90,7 @@ def catalog():
 
     Parsed out of the generated module rather than regenerated from the YAML,
     on purpose: this has to reason about what is actually deployed. If the
-    generated file has drifted from _data/ then CI is already failing, and
+    generated file has drifted from site/_data/ then CI is already failing, and
     fixing that is a separate job from repricing anybody.
     """
     with open(PRICES, encoding="utf-8") as handle:
@@ -319,7 +319,7 @@ def main():
         print(
             "\nNothing was changed. Before running with --apply, check that the "
             "announcement has actually gone out and that the notice period in "
-            "_data/payments.yml has elapsed — the whole reason this is a "
+            "site/_data/payments.yml has elapsed — the whole reason this is a "
             "separate step is so a merge cannot move anybody's payment."
         )
         return 0

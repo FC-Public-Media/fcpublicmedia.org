@@ -32,17 +32,17 @@ something people switch off, and a check people switch off protects nothing.
 THE GUEST WI-FI PASSWORD IS THE SAME PROBLEM WEARING A COSTUME
 --------------------------------------------------------------
 A Wi-Fi QR code encodes the password as plain text. A QR is not encryption,
-it is a font — `assets/img/wifi-qr.svg` committed here would publish the
+it is a font — `site/assets/img/wifi-qr.svg` committed here would publish the
 guest password to anyone who points a phone at a public repository, and it
 would not look like publishing a password while you did it. That is exactly
 the misreading this file exists to make impossible, so the same mechanical
 treatment applies: the generated code is gitignored, and these tests fail if
-it, or a `WIFI:` payload, or a password field in `_data/wifi.yml`, is ever
+it, or a `WIFI:` payload, or a password field in `site/_data/wifi.yml`, is ever
 tracked.
 
 The poster is meant for the lobby, where everyone reading it is already in
 the building. Publishing it to fcpublicmedia.org is a different decision and
-FCPM has not made it. See the header of `_data/wifi.yml`.
+FCPM has not made it. See the header of `site/_data/wifi.yml`.
 """
 
 import pathlib
@@ -66,7 +66,7 @@ SECRET = re.compile(r"\b(?:rk|sk)_(?:live|test|org)_[A-Za-z0-9]{8,}")
 
 # A Wi-Fi join payload, but only one carrying a key: `P:` with something in
 # it. `WIFI:T:nopass;S:Guest;;` is an open network and discloses nothing, and
-# prose about the format — which _data/wifi.yml and wifi/poster.md are full of
+# prose about the format — which site/_data/wifi.yml and site/wifi/poster.md are full of
 # — has no payload in it at all.
 # Assembled rather than written out for the same reason the shapes above use
 # an ellipsis: spelled in one piece, the pattern's own source is a payload and
@@ -76,7 +76,7 @@ WIFI_KEY = re.compile(r"WIFI:" + r"[^\n]{0,300}?;" + r"P:[^;\n]+;")
 
 # The generated code. Gitignored; this asserts that the gitignore is doing its
 # job, because a `git add -f` or a rewritten ignore file is silent otherwise.
-WIFI_QR = "assets/img/wifi-qr.svg"
+WIFI_QR = "site/assets/img/wifi-qr.svg"
 
 
 def tracked_files():
@@ -133,7 +133,7 @@ class NothingSecretIsPublished(unittest.TestCase):
         # The specific mistake the naming invites: someone reads
         # PUBLIC_STRIPE_API_KEY, believes it, and pastes the restricted key
         # into the field that gets rendered into every page.
-        payments = (REPO / "_data" / "payments.yml").read_text(encoding="utf-8")
+        payments = (REPO / "site" / "_data" / "payments.yml").read_text(encoding="utf-8")
         declared = re.search(r"publishable_key:\s*[\"']?([^\"'\s]*)", payments)
         value = declared.group(1) if declared else ""
 
@@ -192,7 +192,7 @@ class NothingSecretIsPublished(unittest.TestCase):
             "The guest Wi-Fi code is in _site. That is fine for printing the "
             "poster and NOT fine to deploy — a manual `wrangler deploy` "
             "publishes it. Before deploying:\n"
-            "    rm assets/img/wifi-qr.svg && bundle exec jekyll build",
+            "    rm site/assets/img/wifi-qr.svg && bundle exec jekyll build",
         )
 
     def test_the_generated_wifi_code_is_not_tracked(self):
@@ -202,16 +202,16 @@ class NothingSecretIsPublished(unittest.TestCase):
             tracked,
             f"{WIFI_QR} is committed. The password is readable from it with any "
             "phone. Remove it, change the password, and see the header of "
-            "_data/wifi.yml for why it is generated locally instead.",
+            "site/_data/wifi.yml for why it is generated locally instead.",
         )
 
     def test_the_wifi_data_file_declares_no_password(self):
         # The specific mistake the file invites: somebody finds a config with
         # an SSID in it, reasonably expects the password next to it, and adds
         # the field the generator deliberately does not read.
-        config = REPO / "_data" / "wifi.yml"
+        config = REPO / "site" / "_data" / "wifi.yml"
         if not config.exists():
-            self.skipTest("no _data/wifi.yml")
+            self.skipTest("no site/_data/wifi.yml")
 
         declared = [
             line
@@ -221,7 +221,7 @@ class NothingSecretIsPublished(unittest.TestCase):
         self.assertEqual(
             declared,
             [],
-            "_data/wifi.yml declares a password. It is rendered into a public "
+            "site/_data/wifi.yml declares a password. It is rendered into a public "
             "site from a public repository; the generator takes the password "
             "from the environment for this reason:\n" + "\n".join(declared),
         )
@@ -252,7 +252,7 @@ class NothingSecretIsPublished(unittest.TestCase):
         )
 
     def test_wifi_prose_and_open_networks_are_not_mistaken_for_a_password(self):
-        # This file, _data/wifi.yml and wifi/poster.md all discuss the format
+        # This file, site/_data/wifi.yml and site/wifi/poster.md all discuss the format
         # at length, and an open network has nothing to disclose. If any of
         # those tripped it, the check would be switched off within a week.
         for benign in (

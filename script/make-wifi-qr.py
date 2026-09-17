@@ -5,11 +5,11 @@
     FCPM_WIFI_PASSWORD='…' python3 script/make-wifi-qr.py
 
 Run it when the network name or the password changes. Reads the network from
-`_data/wifi.yml`; the password never appears in that file or in this one.
+`site/_data/wifi.yml`; the password never appears in that file or in this one.
 
 THE OUTPUT IS GITIGNORED, ON PURPOSE
 ------------------------------------
-`assets/img/wifi-qr.svg` is not committed, and this is the one way this script
+`site/assets/img/wifi-qr.svg` is not committed, and this is the one way this script
 differs from `make-qr.py` next door — that one commits its output so the build
 needs no QR library.
 
@@ -20,7 +20,7 @@ numbers of steps. The poster is meant to hang in the lobby, where the audience
 is people already in the building; fcpublicmedia.org has a rather larger one.
 
 So: staff runs this, prints the page, tapes it up. Nothing is published. See
-the header of `_data/wifi.yml` for what it would take to change that, and why
+the header of `site/_data/wifi.yml` for what it would take to change that, and why
 it is FCPM's decision rather than a convenience.
 """
 
@@ -30,8 +30,8 @@ import re
 import sys
 
 HERE = os.path.dirname(__file__)
-OUT = os.path.join(HERE, "..", "assets", "img", "wifi-qr.svg")
-CONFIG = os.path.join(HERE, "..", "_data", "wifi.yml")
+OUT = os.path.join(HERE, "..", "site", "assets", "img", "wifi-qr.svg")
+CONFIG = os.path.join(HERE, "..", "site", "_data", "wifi.yml")
 
 # In a WIFI: payload these five characters are structure, not text. An SSID of
 # `Carnegie;Guest` unescaped produces a working code for a network called
@@ -73,7 +73,7 @@ def payload(network, password):
     security = (network.get("security") or "wpa").lower()
     kind = {"wpa": "WPA", "wep": "WEP", "open": "nopass"}.get(security)
     if kind is None:
-        raise SystemExit("Unknown security %r in _data/wifi.yml — use wpa, wep, or open" % security)
+        raise SystemExit("Unknown security %r in site/_data/wifi.yml — use wpa, wep, or open" % security)
 
     parts = ["WIFI:", "T:%s;" % kind, "S:%s;" % field(network["ssid"])]
     if kind != "nopass":
@@ -96,7 +96,7 @@ def main():
 
     if not network.get("confirmed"):
         raise SystemExit(
-            "_data/wifi.yml says confirmed: false, so the network name is still a\n"
+            "site/_data/wifi.yml says confirmed: false, so the network name is still a\n"
             "guess and this will not generate a poster from it. A printed code with\n"
             "the wrong SSID is worse than no code — it scans, and joins nothing.\n"
             "Confirm the name with FCPM, then set confirmed: true."

@@ -80,7 +80,7 @@ test('nothing can be bought that is not on the list', async () => {
 });
 
 test('a price nobody has decided yet is not for sale', () => {
-  // _data/classes.yml has "TODO" where the drop-in prices will go. The
+  // site/_data/classes.yml has "TODO" where the drop-in prices will go. The
   // generator skips those rather than defaulting them, so the failure is a
   // 400 rather than a class that costs nothing. This is the assertion that
   // notices if somebody makes the generator "more forgiving".

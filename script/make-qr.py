@@ -18,18 +18,18 @@ import os
 import re
 import sys
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "assets", "img", "check-in-qr.svg")
-CONFIG = os.path.join(os.path.dirname(__file__), "..", "_data", "checkin.yml")
+OUT = os.path.join(os.path.dirname(__file__), "..", "site", "assets", "img", "check-in-qr.svg")
+CONFIG = os.path.join(os.path.dirname(__file__), "..", "site", "_data", "checkin.yml")
 
 
 def read_url():
-    """Pull `url:` out of _data/checkin.yml without needing a YAML parser."""
+    """Pull `url:` out of site/_data/checkin.yml without needing a YAML parser."""
     with open(CONFIG) as f:
         for line in f:
             match = re.match(r"^url:\s*(\S+)", line)
             if match:
                 return match.group(1)
-    raise SystemExit("No `url:` found in _data/checkin.yml")
+    raise SystemExit("No `url:` found in site/_data/checkin.yml")
 
 
 def main():

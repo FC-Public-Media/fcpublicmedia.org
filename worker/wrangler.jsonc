@@ -14,7 +14,7 @@
 
   "vars": {
     // The domain the passkeys belong to. Must be exactly what /authorize/
-    // registered against — _data/authorize.yml rp_id — because it is hashed
+    // registered against — site/_data/authorize.yml rp_id — because it is hashed
     // and compared against the hash inside the signed authenticator data.
     // Wrong here means every genuine assertion is refused.
     //
@@ -52,7 +52,7 @@
     "WRITE_MODE": "branch",
 
     // The public halves of the claim signing keys — the same list as
-    // _data/identity.yml, as JSON. Public by nature: they verify claims, they
+    // site/_data/identity.yml, as JSON. Public by nature: they verify claims, they
     // cannot mint them, which is why this is config and not a secret.
     //
     // Needed only by /bind. A claim is what authorises enrolling a device, and

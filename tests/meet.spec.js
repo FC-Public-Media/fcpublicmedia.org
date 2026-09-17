@@ -22,7 +22,7 @@ const REPO = path.resolve(__dirname, '..');
  * this went red on the Wednesday, in CI, on a change about colours.
  */
 function classSessions() {
-  const raw = fs.readFileSync(path.join(REPO, '_data', 'classes.yml'), 'utf8');
+  const raw = fs.readFileSync(path.join(REPO, 'site', '_data', 'classes.yml'), 'utf8');
   const sessions = [];
 
   for (const block of raw.split(/^\s+- (?=title:)/m).slice(1)) {
@@ -43,10 +43,10 @@ const upcoming = () => classSessions().filter((s) => s.starts.getTime() > Date.n
 
 /**
  * An empty calendar is a REAL STATE, not a broken one, and the page says so
- * deliberately — see the "Nothing on the calendar right now" branch in meet.md.
+ * deliberately — see the "Nothing on the calendar right now" branch in site/meet.md.
  *
  * These tests used to assert there was always something upcoming, so that a
- * stale _data/classes.yml went red. The intention was good and the effect was
+ * stale site/_data/classes.yml went red. The intention was good and the effect was
  * not: every session went into the past, and the suite sat red for eighteen
  * hours over a content problem while real regressions — class mode being dead
  * on the homepage, two 404s in the internal links — hid in the same wall of
@@ -217,7 +217,7 @@ test.describe('member programs', () => {
 test.describe('member submissions', () => {
   /** The data the page was built from. */
   function programs() {
-    const raw = fs.readFileSync(path.join(REPO, '_data', 'member_programs.json'), 'utf8');
+    const raw = fs.readFileSync(path.join(REPO, 'site', '_data', 'member_programs.json'), 'utf8');
     return JSON.parse(raw).items || [];
   }
 

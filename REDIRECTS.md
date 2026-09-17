@@ -10,7 +10,7 @@ same address, 13 deliberately dropped, 1 unaccounted for.**
 Redirects are permanent (HTTP 301), which tells search engines to move their
 records across rather than treat the new address as a duplicate.
 
-They are generated from one file, `_data/redirects.yml`, into both the
+They are generated from one file, `site/_data/redirects.yml`, into both the
 Cloudflare and Azure formats — so whichever host the site ends up on, the list
 cannot drift.
 

@@ -13,7 +13,7 @@
 // merge only happens if it builds — so the worst case is an open pull request
 // and a message, instead of a broken site and a phone call.
 //
-// _data/settings.yml has the same argument written for the person reading it.
+// site/_data/settings.yml has the same argument written for the person reading it.
 
 import { contentHash as hashOf } from './intent.js';
 

@@ -41,7 +41,7 @@ space in a week is start times plus durations. No private API needed to answer
 "where could this fit".
 
 **Shows already count their own runs.** `runCount` is on the show record —
-32 for the one sampled. That is all-time, whereas `_data/airings.json` is a
+32 for the one sampled. That is all-time, whereas `site/_data/airings.json` is a
 365-day window and also carries *last aired*, which `runCount` cannot answer.
 Both are worth having; neither replaces the other.
 
@@ -128,7 +128,7 @@ operating.
 
 ### Enrollment and authority are two different things
 
-`_data/authorize.yml` says forwarding a claim link is allowed on purpose. That
+`site/_data/authorize.yml` says forwarding a claim link is allowed on purpose. That
 is right for the case it was written for — a co-producer binding their own
 phone — and **wrong** for anything that confers publishing rights. If
 forwarding a link grants the power to publish, then the design has an attack
@@ -193,7 +193,7 @@ Recorded so they are not lost, in rough order of how ready they are:
   member cannot use a studio without one — so the thing on offer is a shift,
   not a space. Two things there bear on the notes below: claim links have to
   become one-to-one, which is the *opposite* of the forwarding that
-  `_data/authorize.yml` currently calls deliberate, and revocation has to stop
+  `site/_data/authorize.yml` currently calls deliberate, and revocation has to stop
   being contingent on whoever issued the link.
 
 - **The broker.** One Cloudflare Worker serving several jobs. Built and

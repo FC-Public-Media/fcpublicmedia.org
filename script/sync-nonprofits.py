@@ -153,7 +153,7 @@ def collect(rows):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", default="assets/nonprofits.json")
+    parser.add_argument("--out", default="site/assets/nonprofits.json")
     parser.add_argument("--source", default=SOURCE)
     args = parser.parse_args(argv)
 

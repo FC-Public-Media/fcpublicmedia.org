@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull calendar events into _data/calendar.json at build time.
+"""Pull calendar events into site/_data/calendar.json at build time.
 
     python3 script/sync-calendar.py --ics "https://outlook.office365.com/....ics"
     python3 script/sync-calendar.py --ics "$FCPM_CALENDAR_ICS" --weeks 8
@@ -66,7 +66,7 @@ import re
 import sys
 import urllib.request
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "_data", "calendar.json")
+OUT = os.path.join(os.path.dirname(__file__), "..", "site", "_data", "calendar.json")
 
 # Outlook frequently writes Windows zone names into TZID rather than IANA
 # identifiers, and zoneinfo has never heard of "Mountain Standard Time". These
@@ -223,7 +223,7 @@ def main():
         raise SystemExit(
             "No calendar source. Pass --ics <url>, --file <path>, or set "
             "FCPM_CALENDAR_ICS.\n"
-            "Until one exists, _data/classes.yml is edited by hand and the site "
+            "Until one exists, site/_data/classes.yml is edited by hand and the site "
             "uses that."
         )
 

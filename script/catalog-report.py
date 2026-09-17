@@ -45,7 +45,7 @@ import pathlib
 import re
 import sys
 
-DEFAULT_CATALOG = "_data/cablecast.json"
+DEFAULT_CATALOG = "site/_data/cablecast.json"
 
 # How alike two titles have to be before one looks like a typo of the other.
 # 0.90 finds "democrracy now" and "brickwall"; loosening it starts pairing

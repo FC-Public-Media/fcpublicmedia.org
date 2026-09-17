@@ -2,10 +2,10 @@ name: Sync Cablecast catalog and airings
 
 # Two jobs in one, both on the same weekly tick:
 #
-#   1. Refresh _data/cablecast.json from the station's Cablecast catalog, so
+#   1. Refresh site/_data/cablecast.json from the station's Cablecast catalog, so
 #      new programs appear in the archive without anyone doing anything.
 #   2. Rebuild the site even when nothing changed, so date-windowed entries in
-#      _data/featured.yml actually expire. A feature that ended on Tuesday
+#      site/_data/featured.yml actually expire. A feature that ended on Tuesday
 #      should not still be on the homepage on Friday just because nobody
 #      pushed a commit.
 #
@@ -37,20 +37,20 @@ jobs:
       - name: Commit if the catalog changed
         id: commit
         run: |
-          if git diff --quiet -- _data/cablecast.json _data/airings.json; then
+          if git diff --quiet -- site/_data/cablecast.json site/_data/airings.json; then
             echo "No catalog or schedule changes."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          before=$(git show HEAD:_data/cablecast.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["total"])')
-          after=$(python3 -c 'import json; print(json.load(open("_data/cablecast.json"))["total"])')
+          before=$(git show HEAD:site/_data/cablecast.json | python3 -c 'import json,sys; print(json.load(sys.stdin)["total"])')
+          after=$(python3 -c 'import json; print(json.load(open("site/_data/cablecast.json"))["total"])')
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          aired=$(python3 -c 'import json; print(json.load(open("_data/airings.json"))["totals"]["distinct"])')
+          aired=$(python3 -c 'import json; print(json.load(open("site/_data/airings.json"))["totals"]["distinct"])')
 
-          git add _data/cablecast.json _data/airings.json
+          git add site/_data/cablecast.json site/_data/airings.json
           git commit -m "Sync Cablecast: ${before} to ${after} programs, ${aired} aired this year"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"

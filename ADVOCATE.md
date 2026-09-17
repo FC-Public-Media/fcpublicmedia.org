@@ -58,18 +58,18 @@ here fails loudly. It just goes quietly wrong one day.
 Credentials are the biggest instance of this and have their own section below.
 What is left here is everything else that has a shelf life:
 
-- **The Slack invite** in `_data/community.yml`. It is the primary channel on
+- **The Slack invite** in `site/_data/community.yml`. It is the primary channel on
   the community page, it expires every thirty days, the file says so in a
   comment, and it says no CI is regenerating it. It is also the one credential
   in this project whose age is fully readable from the git history — see below.
-- **Claim signing keys.** `_data/identity.yml` holds none today, so this is
+- **Claim signing keys.** `site/_data/identity.yml` holds none today, so this is
   future rather than live. The rotation rule is already written down and has a
   trap in it: deleting a key invalidates links already sitting in people's
   inboxes, so old keys must outlive their claims.
 - **Third-party embeds.** Booqable's snippet, the Cablecast player, the
   newsletter link. None expire today. Any of them could, and none would
   announce it.
-- **The redirect map.** `_data/redirects.yml` describes an address space
+- **The redirect map.** `site/_data/redirects.yml` describes an address space
   belonging to a Wix site FCPM is leaving. Correct now; will not stay correct.
 
 ### 2. Whether our credentials are being rotated
@@ -84,7 +84,7 @@ This is a research task, and the repository is a better source than it looks.
 **What the git history can tell you.** When a credential lives in the repo,
 the last time its line changed *is* the last time it was rotated. `git log -L`
 or a blame on that line dates it exactly. The Slack invite in
-`_data/community.yml` is the worked example: it expires every thirty days, so
+`site/_data/community.yml` is the worked example: it expires every thirty days, so
 the age of that line is the answer, and the answer is almost certainly "too
 old".
 
@@ -103,7 +103,7 @@ was last rotated:
 | `GITHUB_TOKEN` (the Worker's own) | Worker secret | Reference only |
 | `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | Worker secret | Reference only |
 | Claim signing private key | A file kept out of git | Reference only |
-| The Slack invite | `_data/community.yml` | **Fully datable** |
+| The Slack invite | `site/_data/community.yml` | **Fully datable** |
 
 For everything marked *reference only*, the repository can still establish the
 **earliest possible age** — the commit that introduced the reference — and can
@@ -185,7 +185,7 @@ Failures here are not crashes. They are pages that keep building, keep passing
 the tests, and quietly say something untrue.
 
 - **Content that has gone stale rather than wrong.** Every class in
-  `_data/classes.yml` is currently in the past, so the calendar on `/meet/` and
+  `site/_data/classes.yml` is currently in the past, so the calendar on `/meet/` and
   the "Coming up" strip on the front page both render empty and nothing
   complains. This is live today.
 - **`TODO` reaching a public page.** The `transaction-todo` block is designed to
@@ -246,12 +246,20 @@ holding, and the question this repository has carried for a long time gets its
 answer from the library rather than from a better template. That is a
 hypothesis for the seat to test, not a decision.
 
-**The first open question: where the node lives.** In the prototype the node is
-its own repository, and the websites it serves are holdings inside it. FCPM has
-one repository and it is the website. So either this repository becomes the
-node, or a sibling repository becomes the node and holds this one. The answer
-decides where every future engine is mounted. The seat recommends; a person
-decides.
+**The first open question is answered: this repository is the node.** Decided by
+Autumn on 2026-09-16, and the website moved into `site/` on 2026-09-17 to make
+room for the rest of it. The reasoning, the consequences, and the parts of the
+original reasoning that turned out to be wrong are in [NODE.md](NODE.md); the
+seat's job now is to keep that file true rather than to keep recommending.
+
+**What the seat borrows, and what it does not.** Also 2026-09-17, and it
+narrows G1 and G4 both: *"FCPM does not need to take cues from station-node
+about what to keep in its library per se. It is definitely up to us what we are
+bringing over."* The prototype is borrowed from for its **shape**. What goes in
+the library is FCPM's own decision, made against what public media here can
+actually offer — so "station-node holds it" is not by itself an argument that
+FCPM should. Saying where a borrowing came from is still owed; a borrowing
+without a source is a guess.
 
 **What the seat must not do:**
 
@@ -277,16 +285,16 @@ when somebody runs it by hand.
 An advocate that tidies these away is worse than none. Each was decided, with
 reasons, and the reasons are in the code next to them:
 
-- **No `<h1>` on pages under `_layouts/page.html`.** The heading was the menu
+- **No `<h1>` on pages under `site/_layouts/page.html`.** The heading was the menu
   word repeated at a cost of 240px; the masthead prints the menu word instead.
   Accessibility will want a heading here eventually. Known, deferred, not an
   oversight.
 - **Light is the default even on a dark system**, and the colour toggle is
   hidden from anyone whose system is already light.
 - **The Booqable store is browse-only.** No datepicker, so no cart.
-- **`_data/hosts.yml` is rendered by nothing.** Publishing a person's name is a
+- **`site/_data/hosts.yml` is rendered by nothing.** Publishing a person's name is a
   decision, not a side effect of recording it.
-- **Claim links forward on purpose** — see `_data/authorize.yml`.
+- **Claim links forward on purpose** — see `site/_data/authorize.yml`.
   `RESERVE-DESIGN.md` proposes reversing that. Until somebody decides, the
   current behaviour is intended.
 

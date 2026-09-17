@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull the Cablecast catalog into _data/cablecast.json.
+"""Pull the Cablecast catalog into site/_data/cablecast.json.
 
 Cablecast's public API needs no key and sends Access-Control-Allow-Origin: *,
 so this could run in the browser. It runs at build time instead, because a
@@ -19,7 +19,7 @@ import sys
 import urllib.request
 
 BASE = "https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/v1"
-OUT = os.path.join(os.path.dirname(__file__), "..", "_data", "cablecast.json")
+OUT = os.path.join(os.path.dirname(__file__), "..", "site", "_data", "cablecast.json")
 
 # How many recent shows the homepage and /watch/ pull from. The full archive
 # page uses everything.

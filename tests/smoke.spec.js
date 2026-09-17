@@ -135,7 +135,7 @@ for (const { path, name } of PAGES) {
       // was happy with it.
       await expect(page).toHaveTitle(/^[^\s—|-].*[^\s—|-]$/);
 
-      // At most one, not exactly one. Pages under _layouts/page.html carry no
+      // At most one, not exactly one. Pages under site/_layouts/page.html carry no
       // h1: the masthead prints the menu word instead, which costs no height.
       // Accessibility will want a heading here eventually — that is a known,
       // deliberate debt, not an oversight. Pages that do have one (the

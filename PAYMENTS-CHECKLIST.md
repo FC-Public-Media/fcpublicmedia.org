@@ -4,14 +4,14 @@
 order it has to happen.** Written 2026-09-09.
 
 This is a runbook, not a design document. The design is in
-[`_data/payments.yml`](_data/payments.yml), which is the best-commented file
+[`site/_data/payments.yml`](site/_data/payments.yml), which is the best-commented file
 here and explains *why* each of these exists. This file only answers "what is
 left, and who can do it."
 
 ## The short version
 
 The machinery is finished and switched off. The broker is written, its 119
-tests pass, the price list generates from `_data/` and CI fails if the two
+tests pass, the price list generates from `site/_data/` and CI fails if the two
 disagree. **Nothing here needs designing.** What is missing is four values,
 one namespace, one page, and two board decisions.
 
@@ -29,8 +29,8 @@ repository, and none of them is a decision.
 | ~~1.1~~ | ~~Create the KV namespace~~ | **Done 2026-09-09.** `CHALLENGES`, bound in `worker/wrangler.jsonc` | — |
 | 1.2 | A Cloudflare API token, *Edit Cloudflare Workers* template | org secret `CLOUDFLARE_API_TOKEN` | the broker deploying |
 | 1.3 | The restricted Stripe key (`rk_live_…`, scoped to writing Checkout Sessions) | org secret `PUBLIC_STRIPE_API_KEY` | the broker charging |
-| 1.4 | The publishable key (`pk_live_…` or `pk_test_…`) | `_data/payments.yml`, `stripe.publishable_key` | nothing yet — it is for the page |
-| 1.5 | The broker's deployed URL | `_data/settings.yml`, the broker `url` | the site reaching the broker |
+| 1.4 | The publishable key (`pk_live_…` or `pk_test_…`) | `site/_data/payments.yml`, `stripe.publishable_key` | nothing yet — it is for the page |
+| 1.5 | The broker's deployed URL | `site/_data/settings.yml`, the broker `url` | the site reaching the broker |
 
 ~~**1.1 is the one that surprises people.**~~ **Struck 2026-09-09** — the
 namespace exists and is bound. Kept because the trap is worth remembering: the
@@ -52,13 +52,13 @@ These are not ours and a plausible guess at any of them is worse than a blank.
 
 | # | Decision | Where it lands |
 |---|---|---|
-| 2.1 | What each membership tier actually includes | `_data/membership.yml`, `tiers[].includes` — all four are `[]` |
-| 2.2 | Tier summaries for Student, Creator and Producer | `_data/membership.yml`, `tiers[].summary` — all three say `TODO` |
-| 2.3 | Class drop-in prices, public and member | `_data/classes.yml`, `dropin` — both `TODO` |
-| 2.4 | Who owns emailing the membership before a price change | `_data/payments.yml`, `terms.announcements.owner` — says `TODO` |
-| 2.5 | Confirm 30 days' notice before a price change | `_data/payments.yml`, `terms.price_change_notice_days` |
+| 2.1 | What each membership tier actually includes | `site/_data/membership.yml`, `tiers[].includes` — all four are `[]` |
+| 2.2 | Tier summaries for Student, Creator and Producer | `site/_data/membership.yml`, `tiers[].summary` — all three say `TODO` |
+| 2.3 | Class drop-in prices, public and member | `site/_data/classes.yml`, `dropin` — both `TODO` |
+| 2.4 | Who owns emailing the membership before a price change | `site/_data/payments.yml`, `terms.announcements.owner` — says `TODO` |
+| 2.5 | Confirm 30 days' notice before a price change | `site/_data/payments.yml`, `terms.price_change_notice_days` |
 
-**2.1 and 2.2 are live on the public site right now.** `membership.md` renders
+**2.1 and 2.2 are live on the public site right now.** `site/membership.md` renders
 `tier.summary` unconditionally, so `/membership/` currently publishes the word
 "TODO" to visitors under three of the four tiers.
 
@@ -70,13 +70,13 @@ refusal is correct. It is also the entire blocker.
 
 ## 3. A page that has to exist before subscriptions
 
-`_data/payments.yml` points `terms.page` at **`/policies/membership-terms/`**,
-which **does not exist** — `policies/` contains only `non-discrimination.md`.
+`site/_data/payments.yml` points `terms.page` at **`/policies/membership-terms/`**,
+which **does not exist** — `site/policies/` contains only `non-discrimination.md`.
 
 A link to recurring-payment terms is required on the checkout page for
 subscriptions; it is what the card networks expect to see when a cardholder
 disputes a renewal. The text is largely written already, in
-`_data/payments.yml` under `terms.summary` and `terms.lock`. It needs a page
+`site/_data/payments.yml` under `terms.summary` and `terms.lock`. It needs a page
 built from it, not new wording.
 
 **One-off payments do not need this.** If the goal is to take money soon, sell
@@ -86,7 +86,7 @@ the up-front year first and leave renewals until the page exists.
 
 **Nothing on the site calls the broker.** `POST /checkout` is implemented,
 tested and routed; no page, include or script sends it anything.
-`membership.md` renders tiers and prices as static cards with no buy button.
+`site/membership.md` renders tiers and prices as static cards with no buy button.
 
 So even with every value above in place, a visitor could not pay. This is
 code rather than a value or a decision, and it is the one remaining item that
@@ -102,7 +102,7 @@ POST <broker>/checkout      { sku, recurring, success_path, cancel_path, referen
 
 `sku` is `membership:` plus the slugified tier name — `membership:creator`.
 The browser is trusted with the sku and nothing else: the amount comes from
-`worker/src/prices.js`, which is generated from `_data/`, so a page claiming a
+`worker/src/prices.js`, which is generated from `site/_data/`, so a page claiming a
 different price gets the real one and a page inventing a sku gets a 400.
 
 A success page at **`/thanks/`** is needed too — it is the default
@@ -113,7 +113,7 @@ A success page at **`/thanks/`** is needed too — it is the default
 Last, and only once 1 and 2 are done:
 
 ```yaml
-# _data/payments.yml
+# site/_data/payments.yml
 stripe:
   live: true
 ```
@@ -128,7 +128,7 @@ list above and conclude nothing has been done.
 
 - **The broker is written and tested.** 119 tests, passing, covering routing,
   CORS, statuses, signature checking and the refusals.
-- **Prices cannot drift.** They are edited in `_data/`, generated into
+- **Prices cannot drift.** They are edited in `site/_data/`, generated into
   `worker/src/prices.js`, and CI fails if the two disagree — so the page and
   the card cannot disagree about an amount.
 - **The price history is the git history**, which is why prices are not kept

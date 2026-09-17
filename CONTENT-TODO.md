@@ -20,7 +20,7 @@ until somebody has actually chosen.
 |---|---|
 | `/donate` | Entire page. Suggested amounts, recurring options, the case for support, and which processor is in use. |
 | `/bulletin-board` | Entire page. Unknown what's posted or how it's submitted. |
-| `_podcasts/*` (all 8) | Descriptions, hosts, player embeds, subscribe links. |
+| `site/_podcasts/*` (all 8) | Descriptions, hosts, player embeds, subscribe links. |
 | `/policies/non-discrimination` | The statement text. Copy verbatim, don't paraphrase. |
 | `/submit` | The full legal agreement text. |
 | `/teach` | The instructor application questions. |
@@ -32,7 +32,7 @@ record, and members never pick items themselves — they describe the job and
 staff pull the gear. So the site needs a category-level summary, not a
 catalogue.
 
-What's needed is four one-line descriptions in `_data/equipment.yml`
+What's needed is four one-line descriptions in `site/_data/equipment.yml`
 ("camcorders, mirrorless bodies, and a cinema camera"), written by someone who
 knows the kit. Ten minutes, not a data-entry project.
 
@@ -44,10 +44,10 @@ knows the kit. Ten minutes, not a data-entry project.
   what actually differs between Sponsor, Student, Creator, and Producer isn't
   stated anywhere.
 - **Class listings.** The only content on the site with a schedule. Needs to
-  come from the ticketing provider or a `_data/classes.yml` file — not
-  hand-maintained in `classes.md`. The wider *events* calendar Bryan asked for
+  come from the ticketing provider or a `site/_data/classes.yml` file — not
+  hand-maintained in `site/classes.md`. The wider *events* calendar Bryan asked for
   is **settled and built**: it lives on `/meet/`, which already merges classes,
-  board meetings and `_data/community.yml`. Meetups and video events go in the
+  board meetings and `site/_data/community.yml`. Meetups and video events go in the
   last of those with a `kind`. What is missing is entries, not code.
 - **Bulletin board mechanism.** Data file the maintainers edit, or a submission
   form with approval. Depends on volume.
@@ -69,7 +69,7 @@ knows the kit. Ten minutes, not a data-entry project.
 - **Board and staff roster. Now blocking a request.** Board members host studio
   sessions, so the public has a reason to know who they are — and Bryan has now
   asked for **office hours on `/meet/`**, to sit in each board member's
-  mini-bio. The field exists (`office_hours` in `_data/board.yml`, rendered in
+  mini-bio. The field exists (`office_hours` in `site/_data/board.yml`, rendered in
   the roster card) but `board.yml` is an empty list, so nothing he asked for
   appears until somebody writes the names down. A name and a role is enough to
   publish someone; bios, photos and hours can follow per person. See
@@ -108,9 +108,9 @@ on the site at the next weekly sync.
   homepage mission band, a picture per facility, and whatever goes at the top
   of the reserve page now the floor plan has moved down. Round 2 added two
   more, both with somewhere to go already: **a picture of a class in progress**
-  for the top of `/classes/` (`photo` in `_data/classes.yml` — Bryan's brief is
+  for the top of `/classes/` (`photo` in `site/_data/classes.yml` — Bryan's brief is
   *people teaching*, not the room) and **headshots for the board roster**
-  (`photo` per person in `_data/board.yml`). All five are small and all five
+  (`photo` per person in `site/_data/board.yml`). All five are small and all five
   wait on files. See REVIEW-NOTES.
 - Webfonts, if desired. Swap the two `--font-*` lines at the top of
-  `assets/css/site.css`; everything scales off them.
+  `site/assets/css/site.css`; everything scales off them.

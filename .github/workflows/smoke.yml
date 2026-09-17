@@ -97,7 +97,7 @@ jobs:
           pip install --quiet pyyaml
           python3 script/test_sync_feeds.py
 
-      # Prices are edited in _data/ and charged from a generated copy the
+      # Prices are edited in site/_data/ and charged from a generated copy the
       # worker bundles. If those two disagree, the page says one number and the
       # card is charged another — silently, and for as long as it takes
       # somebody to reconcile a bank statement. --check is the lock file.

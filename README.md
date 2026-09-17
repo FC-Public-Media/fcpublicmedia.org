@@ -67,33 +67,41 @@ in passing.
 
 ## How it's laid out
 
+**The website is `site/`. Everything else at the root is the rest of the node** —
+the services, the tooling, the documents. `NODE.md` says why, and what the root
+is allowed to become.
+
 ```
-_config.yml              Site settings. ~40 lines, all commented.
-_data/                   Content that repeats or changes. Plain YAML.
-  org.yml                Address, email, phone, socials.
-  nav.yml                Header and footer menus.
-  providers.yml          The five transactions. See below.
-  membership.yml         Tiers and prices.
-  facilities.yml         Spaces that can be booked.
-  equipment.yml          What kinds of gear we have (not an inventory).
-  watch.yml              Channels and carriage.
-  board.yml              Board and staff roster.
-_layouts/                Three of them: default, page, podcast.
-_includes/               Four: head, header, footer, transaction.
-_podcasts/               One file per show. Shares the podcast layout.
-assets/css/site.css      The entire visual design. One file.
-assets/js/nav.js         Ten lines. The mobile menu. That's all the JS.
-*.md                     One file per page. Filename becomes the URL.
-api/                     The small server-side piece. See "Members" below.
-worker/                  The broker. Its own Worker. See "Identity" below.
-staticwebapp.config.json Routing, redirects, auth rules.
+_config.yml                Site settings. ~40 lines, all commented.
+                           Stays at the root; `source: site` points it down.
+site/                      EVERYTHING THE PUBLIC GETS. Jekyll sees only this.
+  *.md                     One file per page. Filename becomes the URL.
+  _data/                   Content that repeats or changes. Plain YAML.
+    org.yml                Address, email, phone, socials.
+    nav.yml                Header and footer menus.
+    providers.yml          The five transactions. See below.
+    membership.yml         Tiers and prices.
+    facilities.yml         Spaces that can be booked.
+    equipment.yml          What kinds of gear we have (not an inventory).
+    watch.yml              Channels and carriage.
+    board.yml              Board and staff roster.
+  _layouts/                Three of them: default, page, podcast.
+  _includes/               Four: head, header, footer, transaction.
+  _podcasts/               One file per show. Shares the podcast layout.
+  assets/css/site.css      The entire visual design. One file.
+  assets/js/nav.js         Ten lines. The mobile menu. That's all the JS.
+  staticwebapp.config.json Routing, redirects, auth rules.
+api/                       The small server-side piece. See "Members" below.
+worker/                    The broker. Its own Worker. See "Identity" below.
+script/                    Build tooling and the syncs. Never published.
+site-template/             The scaffold a member site is cut from.
 ```
 
 That's the whole thing. Nine template files and a stylesheet.
 
 ### Adding a page
 
-Create `something.md` in the root:
+Create `something.md` in `site/`:
 
 ```markdown
 ---
@@ -104,11 +112,11 @@ lede: One sentence under the heading.
 Write in Markdown.
 ```
 
-It's live at `/something/`. Add it to `_data/nav.yml` if it belongs in a menu.
+It's live at `/something/`. Add it to `site/_data/nav.yml` if it belongs in a menu.
 
 ### Adding a podcast
 
-Copy any file in `_podcasts/` and edit the front matter. It appears on
+Copy any file in `site/_podcasts/` and edit the front matter. It appears on
 `/podcasts/` automatically and gets its own page.
 
 ### Why so little Jekyll
@@ -127,7 +135,7 @@ reason someone doesn't contribute.
 ## The five transactions
 
 Everything on this site that isn't a static file goes through
-`_data/providers.yml` and `_includes/transaction.html`. That's on purpose:
+`site/_data/providers.yml` and `site/_includes/transaction.html`. That's on purpose:
 switching a vendor is a one-line edit, and it's impossible to lose track of how
 many paid integrations the organization has.
 
@@ -149,13 +157,13 @@ separately; when it lands, only the `booking` entry changes.
 
 ## Taking payments
 
-Two systems, one Stripe account, and a rule about keys. `_data/payments.yml`
+Two systems, one Stripe account, and a rule about keys. `site/_data/payments.yml`
 holds the decisions; this is the operating manual.
 
 | What | Who charges | Where the money is decided |
 |---|---|---|
-| Membership | Stripe, via the broker | `_data/membership.yml` |
-| Class drop-in | Stripe, via the broker | `_data/classes.yml` (still TODO) |
+| Membership | Stripe, via the broker | `site/_data/membership.yml` |
+| Class drop-in | Stripe, via the broker | `site/_data/classes.yml` (still TODO) |
 | Equipment rental | Booqable's own Stripe connection | Booqable |
 
 ### The rule about keys
@@ -164,7 +172,7 @@ Stripe issues three kinds and they are not interchangeable.
 
 | Prefix | Publishable? | Where it lives |
 |---|---|---|
-| `pk_live_…` | **Yes** | `_data/payments.yml`, in git |
+| `pk_live_…` | **Yes** | `site/_data/payments.yml`, in git |
 | `rk_live_…` | No | GitHub org secret → Cloudflare secret |
 | `sk_live_…` | No | Not used at all |
 
@@ -251,8 +259,8 @@ to be able to show that we announced a change.
 
 A price in the Stripe dashboard has no such trail: somebody with a login edits
 a number, and the first anyone hears of it is a card statement. A price in
-`_data/membership.yml` is a commit — a red line, a green line, a reviewer, and
-a date. `git log -p _data/membership.yml` **is** the price history.
+`site/_data/membership.yml` is a commit — a red line, a green line, a reviewer, and
+a date. `git log -p site/_data/membership.yml` **is** the price history.
 
 Stripe still does the charging; it just does not hold the number. Every
 Checkout Session is created with an inline `price_data`, so there are no Price
@@ -278,7 +286,7 @@ Worth stating plainly, because it is the opposite of what it feels like.
 When somebody subscribes, Stripe turns our inline `price_data` into a Price
 object, pins the subscription to it, and renews against that pinned amount for
 as long as the subscription lives. It never calls back. It never re-reads
-`_data/membership.yml`. There is no webhook asking what a renewal should cost.
+`site/_data/membership.yml`. There is no webhook asking what a renewal should cost.
 
 So editing a price here changes what **new** members pay and nothing else.
 Existing subscribers keep renewing at what they signed up at — silently,
@@ -298,7 +306,7 @@ renewal. Anything else takes money from people between announcements.
 
 ### The order a price change happens in
 
-1. Edit the price in `_data/membership.yml`.
+1. Edit the price in `site/_data/membership.yml`.
 2. Pull request, review, merge. **That is the price history.**
 3. New members pay the new price as soon as it deploys.
 4. Email the membership.
@@ -347,7 +355,7 @@ are for different jobs:
 
 | | What it is | Where it goes |
 |---|---|---|
-| Company ID | Public, baked into the embed snippet | `_data/payments.yml`, in git |
+| Company ID | Public, baked into the embed snippet | `site/_data/payments.yml`, in git |
 | Access token | Employee-scoped, reads and writes the business | Nowhere, currently |
 
 The embed snippet carries the company ID and that is all it needs. Products,
@@ -362,7 +370,7 @@ JavaScript off, styled entirely by us. That is a real benefit, and it is also
 a GitHub Action, a stored secret, and a sync that can drift. Not yet.
 
 To switch reservations on: paste the snippet from Settings → Online Bookings →
-Website integration into `booqable.snippet` in `_data/payments.yml`. Until
+Website integration into `booqable.snippet` in `site/_data/payments.yml`. Until
 then `/equipment/` shows a visible "not wired up yet" block, same as the other
 unconfigured transactions.
 
@@ -431,7 +439,7 @@ Azure Static Web Apps does this without a user table:
 2. SWA calls **`api/GetRoles`** once, with the visitor's email.
 3. That function looks up whether the email has paid dues and hasn't expired,
    and returns `["member"]` or `[]`.
-4. `staticwebapp.config.json` gates `/members/*` on that role.
+4. `site/staticwebapp.config.json` gates `/members/*` on that role.
 
 The membership record itself is the only thing FCPM stores: an email address
 and a paid-through date. The natural home is a **SharePoint list in the
@@ -471,7 +479,7 @@ poster.
 ### Location
 
 Checking in requires being at the studio. Coordinates, radius, and re-check
-interval are in `_data/checkin.yml`.
+interval are in `site/_data/checkin.yml`.
 
 - Tap **Check in**. If you are within 200m, done.
 - If not, the check-in is held as **pending**: the page shows the distance and
@@ -645,7 +653,7 @@ them keep it**.
 
 2. Receiving the mail is the proof — only the holder of that mailbox gets it.
 3. Opening the link verifies an ECDSA P-256 signature against the public key in
-   `_data/identity.yml` and stores the token on that device.
+   `site/_data/identity.yml` and stores the token on that device.
 
 **The token is kept whole, not just the address read out of it.** That is the
 part with any value. A page verifying a signature in the visitor's own browser
@@ -667,7 +675,7 @@ Consequences worth knowing before turning it on:
   It appears in no access log, ours or Cloudflare's.
 - **There is no revocation.** With no server there is nowhere to keep a
   revocation list. A claim is good until it expires (`days:` in
-  `_data/identity.yml`, default 120) or until its signing key is removed from
+  `site/_data/identity.yml`, default 120) or until its signing key is removed from
   the list, which invalidates every claim that key signed.
 - **A claim is not a login.** No session, no sign-out, no password. It says
   "the holder of this device received mail at this address". Do not gate
@@ -713,7 +721,7 @@ wrong when it is skipped:
 - **Listed is not allowed.** A device in `.auth/devices.json` exists; whether
   it may change anything is `may_publish` on the record, absent by default.
   That separation is exactly what makes the forwardable enrollment link in
-  `_data/authorize.yml` safe.
+  `site/_data/authorize.yml` safe.
 
 **What `/settings/` does with it.** Signing in stays exactly what it was — a
 way for the page to learn which site the passkey belongs to, proving nothing to
@@ -729,7 +737,7 @@ the difference between catching that and not is a message versus a dead site.
 `WRITE_MODE` is a broker setting and not a page setting on purpose: "commit
 straight to the live branch" is not a member's decision to make.
 
-**Set `url` in `_data/settings.yml` to turn it on.** Empty is the shipped
+**Set `url` in `site/_data/settings.yml` to turn it on.** Empty is the shipped
 state, and nothing is deployed — so today `/settings/` still hands you your
 edited file to send over, exactly as before. That fallback stays: a broker
 having a bad afternoon puts the page back where it was rather than losing
@@ -809,11 +817,11 @@ Almost nothing happens in this repository. That is the appeal.
 3. Set the policy to Allow with the rule *Emails ending in* `@` — that is,
    anyone who can prove an email address. This is a check-in, not a vault.
 
-**In this repository:** set `identity.mode: access` in `_data/checkin.yml`.
+**In this repository:** set `identity.mode: access` in `site/_data/checkin.yml`.
 That is the whole change.
 
 **How the result is caught.** After a visitor authenticates, Cloudflare sets a
-`CF_Authorization` cookie on the hostname. `assets/js/checkin.js` then calls:
+`CF_Authorization` cookie on the hostname. `site/assets/js/checkin.js` then calls:
 
 ```
 GET /cdn-cgi/access/get-identity   →   { "email": "…", "name": "…", … }
@@ -918,7 +926,7 @@ The station's Cablecast instance has a public API that needs no key and sends
 2011, 740 of them watchable online, 1,462 with thumbnails, across 36
 categories and 80 producers. That is the archive, and it was already there.
 
-`script/sync-cablecast.py` pulls it into `_data/cablecast.json` (standard
+`script/sync-cablecast.py` pulls it into `site/_data/cablecast.json` (standard
 library only, nothing to install):
 
 ```
@@ -931,7 +939,7 @@ if anything changed.
 Snapshotting at build time rather than fetching in the browser means the
 archive is real HTML — indexable, findable with ⌘F, and still there if
 Cablecast is down. The one thing that *is* live is the "on now" strip
-(`assets/js/onair.js`), which reads the schedule directly because a weekly
+(`site/assets/js/onair.js`), which reads the schedule directly because a weekly
 snapshot cannot tell you what is playing right now. It removes itself if the
 request fails.
 
@@ -945,11 +953,11 @@ actually made, so the site features local production separately.
 The homepage knows when a class is running and rearranges itself around it.
 Two gears, deliberately separate:
 
-**The build** bakes `_data/classes.yml` into the page as inline JSON. Session
+**The build** bakes `site/_data/classes.yml` into the page as inline JSON. Session
 titles, times, rooms, and drop-in prices come along with the HTML.
 
 **The browser** reads the wall clock and decides. No request, no API, no key —
-`assets/js/classmode.js` is arithmetic on numbers already in memory. A page
+`site/assets/js/classmode.js` is arithmetic on numbers already in memory. A page
 built last night knows about tonight's class. It re-checks each minute while
 the tab is visible, so a page left open switches on by itself when the class
 starts and off again when it ends.
@@ -960,7 +968,7 @@ three the block stays hidden and the ordinary check-in card is untouched.
 
 ### One QR, two pages, one answer
 
-`assets/js/classes.js` holds the window logic. The homepage and the check-in
+`site/assets/js/classes.js` holds the window logic. The homepage and the check-in
 page both import it and run it over the same baked-in schedule, so they cannot
 disagree about whether a class is on.
 
@@ -1014,15 +1022,15 @@ unambiguous.
 
 ### Where the schedule comes from
 
-`_includes/class-config.html` picks a source, in this order:
+`site/_includes/class-config.html` picks a source, in this order:
 
-1. **`_data/calendar.json`** — written by `script/sync-calendar.py` from the
+1. **`site/_data/calendar.json`** — written by `script/sync-calendar.py` from the
    Microsoft 365 calendar. Used whenever it has anything in it.
-2. **`_data/classes.yml`** — hand-maintained. The fallback, and what the site
+2. **`site/_data/classes.yml`** — hand-maintained. The fallback, and what the site
    uses today.
 
 Switching is a matter of configuring a source and running the sync. No
-template change, and `assets/js/classes.js` never learns where the data came
+template change, and `site/assets/js/classes.js` never learns where the data came
 from.
 
 ```
@@ -1091,7 +1099,7 @@ completed drop-in payment.
 This is not ticketing. People who signed up already paid through registration;
 this is only the walk-in case.
 
-**Every price in `_data/classes.yml` is a placeholder.** Nothing renders the
+**Every price in `site/_data/classes.yml` is a placeholder.** Nothing renders the
 price block until real figures replace them.
 
 ### What is not built
@@ -1099,11 +1107,11 @@ price block until real figures replace them.
 Tier-aware pricing — showing someone their own rate rather than the public one
 — needs the device to know the member's tier, which needs identity, which
 needs Access or a Worker. The payment hand-off itself is blocked on the same
-provider decision as everything else in `_data/providers.yml`.
+provider decision as everything else in `site/_data/providers.yml`.
 
 ## Featuring things on the homepage
 
-`_data/featured.yml` is the whole content management system. It is a list.
+`site/_data/featured.yml` is the whole content management system. It is a list.
 Add an entry to put something on the front page; it removes itself when `ends`
 passes. Four archetypes — `class`, `event`, `show`, `notice` — which is what
 the actual pattern of announcements looks like.
@@ -1119,7 +1127,7 @@ the page closes up around it. An empty `featured.yml` is a valid state.
 
 `/book/` and `/register/` frame a Microsoft Form inside our own pages, so
 nobody is handed a `forms.office.com` URL and asked to trust it. Configure
-them in `_data/forms.yml`.
+them in `site/_data/forms.yml`.
 
 Both paths are chosen to work equally well as subdomains — `book.` and
 `register.` read naturally, `/booking/` and `/sign-up/` redirect in for
@@ -1195,14 +1203,14 @@ Three things carry most of that, in order of effect per unit of work:
    after — so the external page only has to collect a time. Send people back
    to a page here on completion.
 3. **Carry the tokens across.** The palette, type scale, and spacing all live
-   in the `:root` block of `assets/css/site.css`. Where the booking host
+   in the `:root` block of `site/assets/css/site.css`. Where the booking host
    allows custom CSS or a logo and color, copy those values rather than
    re-picking them by eye.
 
 What not to spend effort on: recreating this site's header on the booking
 host. Partial imitation reads worse than an honest, clean handoff.
 
-Set `booking.subdomain` in `_data/providers.yml` once the host is chosen.
+Set `booking.subdomain` in `site/_data/providers.yml` once the host is chosen.
 
 ## Forms
 
@@ -1242,6 +1250,12 @@ there, and `assets.directory` inside it resolves relative to the config file.
 Pointing it at `worker/` would deploy the **broker** instead of the site —
 that directory is a second, complete Worker config with a `main` and no
 assets.
+
+**Moving the site into `site/` did not change any of these five fields**, which
+was the point of leaving `_config.yml` at the root and setting `source:` in it
+rather than moving the config down. The command is still run from `/`, still
+writes `_site`, and wrangler still finds `wrangler.jsonc` beside it. Nobody had
+to open the Cloudflare dashboard.
 
 Everything else is in `wrangler.jsonc`, which is committed.
 
@@ -1399,9 +1413,11 @@ from the output, so the redirect handling below applies either way.
 ### Redirects and headers
 
 Cloudflare Pages reads `_redirects` and `_headers` from the root of the
-published output. Azure reads `staticwebapp.config.json`. **All three are
-generated from `_data/redirects.yml`** at build time, so the hosts cannot
-drift apart — add a redirect once and both get it.
+published output, and Azure reads `staticwebapp.config.json` from there. Their
+sources are `site/_redirects`, `site/_headers` and `site/staticwebapp.config.json`
+— the site directory is the build root, so all three land where the hosts look.
+**All three are generated from `site/_data/redirects.yml`** at build time, so the
+hosts cannot drift apart — add a redirect once and both get it.
 
 The 20 legacy Wix URLs therefore keep working on either host, which matters:
 those are the links currently indexed by Google and sitting in other people's

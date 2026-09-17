@@ -21,7 +21,7 @@ import pathlib
 import re
 import unittest
 
-CSS = pathlib.Path(__file__).resolve().parent.parent / "assets" / "css" / "site.css"
+CSS = pathlib.Path(__file__).resolve().parent.parent / "site" / "assets" / "css" / "site.css"
 
 
 def lin(channel):
