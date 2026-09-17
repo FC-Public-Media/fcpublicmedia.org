@@ -68,8 +68,9 @@ in passing.
 ## How it's laid out
 
 **The website is `site/`. Everything else at the root is the rest of the node** —
-the services, the tooling, the documents. `NODE.md` says why, and what the root
-is allowed to become.
+the services, the tooling, the documents. [`NODE.md`](NODE.md) says why, and
+what the root is allowed to become; [`STATION.md`](STATION.md) says what the
+station around it is for.
 
 ```
 _config.yml                Site settings. ~40 lines, all commented.
