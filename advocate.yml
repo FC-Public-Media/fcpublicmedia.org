@@ -59,7 +59,7 @@ advocates:
       "Which of these are actually switched on?"
     goals:
       - id: G1
-        says: Every entry in _data/providers.yml is either live or has a named person and a reason it is not.
+        says: Every entry in site/_data/providers.yml is either live or has a named person and a reason it is not.
       - id: G2
         says: A trustee can answer "how does FCPM get paid online" from one page, without opening a data file.
     out-of-scope:
@@ -172,6 +172,16 @@ advocates:
       "Library is going to become important to us, even with the categories."
     goals:
       - id: G1
+        # NARROWED 2026-09-17, by Autumn:
+        #
+        #   "FCPM does not need to take cues from station-node about what to
+        #    keep in its library per se. It is definitely up to us what we are
+        #    bringing over."
+        #
+        # The prototype is borrowed from for its SHAPE. What goes in the
+        # library is FCPM's own decision, so "station-node holds it" is not by
+        # itself an argument that FCPM should. Saying where a borrowing came
+        # from is still owed.
         says: >
           A short, dated ledger of what the prototype does that FCPM would adopt,
           adapt or refuse, each with where it came from. A borrowing without a
@@ -198,11 +208,26 @@ advocates:
         # The unit that buys is a SITE CLUSTER sharing one build root context,
         # which is what makes member-site provisioning (G4) a library admitting
         # a holding rather than a deployment problem.
+        #
+        # DELIVERED 2026-09-17 as NODE.md, when the website moved into `site/`.
+        # One correction it carries, because a later reader should have it
+        # rather than the claim above: a holding is NOT reachable from `_data`
+        # "with no copying step". Jekyll resolves `data_dir` through
+        # `sanitized_path`, which refuses to leave `source:`, so no build root
+        # can read its siblings — the boundary does not move when the root
+        # does. A symlink crosses it and is a trap: measured here, it is read
+        # by an ordinary build and SILENTLY ignored under `--safe`. What being
+        # one repository actually buys is that the five existing syncs write
+        # into `site/_data/` by a relative path in the same working tree,
+        # rather than across a submodule pin. That is worth more than the
+        # version that was claimed for it.
+        #
+        # The goal stays open as maintenance: NODE.md has to keep being true.
         says: >
-          The consequences of the site being the node are written down: what
-          moves to the root, what `_data` may reach into and what it may not,
-          and what a second site in the cluster would need. Mounting is still
-          its own pull request by whoever owns it.
+          NODE.md stays true: what is at the root and what is in `site/`, what
+          `site/_data` may reach into and what it may not, and what a second
+          site in the cluster would need. Mounting is still its own pull request
+          by whoever owns it.
       - id: G3
         says: >
           Proofing is described as a service the node offers, including what it

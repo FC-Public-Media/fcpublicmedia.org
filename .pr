@@ -1,1 +1,132 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+The website moves into site/, and the root becomes the node
+
+> I don't wanna change the build system per se, but I need to scoot it into a
+> suitable prefix. And I think just the word site is gonna be fine, because
+> what we're doing next to it is carving out ways for this thing to act more
+> like station node.
+
+This is the room-making change, done before the member-site factory rather than
+during it. It is almost entirely a `git mv`.
+
+## What moved
+
+Everything the public gets is now under `site/` — the pages, `_data`,
+`_layouts`, `_includes`, `_podcasts`, `_shows`, `assets`, `policies`, `wifi`,
+`_headers`, `_redirects`, `robots.txt`, `sitemap.xml`, `staticwebapp.config.json`.
+
+The root keeps everything else: `api/` and `worker/` (services, already beside
+the site rather than in it), `script/`, `tests/`, `site-template/`, the
+documents, `Gemfile`, `wrangler.jsonc`, `.advocate-engine`.
+
+## The mechanism is one line
+
+```yaml
+# _config.yml, still at the root
+source: site
+```
+
+`_config.yml` deliberately did **not** move down with the site. Jekyll looks for
+its config in the directory it is run from, *before* it has read any `source:`
+setting — so a config inside the source directory would have to be named on the
+command line every time, in CI, at the host, and by hand.
+
+Because it stayed, nothing else had to change:
+
+| | |
+|---|---|
+| Build command | `bundle exec jekyll build`, unchanged |
+| Working directory | repository root, unchanged |
+| Output | `_site/` at the root, unchanged |
+| `wrangler.jsonc` | unchanged |
+| **Cloudflare dashboard** | **not touched** — root `/`, build command and output dir are all still correct |
+
+That last row was the thing worth designing around. The live deploy is
+Cloudflare's git integration, configured in their dashboard, which no agent can
+change and which nothing in this repository would have told us had gone stale.
+
+## Verified
+
+- **The published bytes are identical.** `origin/main` and this branch were each
+  built and the two `_site` trees compared file by file. Every one of the 67
+  files matches, modulo the `?v=<mtime>` cache-busting token, which changes
+  because `git mv` touched the files.
+- **Every Python test passes**: calendar, claim minter, tokens, show proposer,
+  catalog report, price list (`--check` too), repricing, feed reader, the
+  no-secrets scan, and the member-template round trip.
+- **The broker's 119 tests pass.** One real break was found here and fixed:
+  `worker/src/index.js` imports the browser's own `assets/js/claims.js` rather
+  than keeping a second copy of the claim verifier, and that import crossed the
+  boundary the move created.
+- **Playwright: 571 passed.** Two failures are this laptop, not the branch —
+  `upload.spec.js` shells out to a `python3` with no PyYAML (CI installs it),
+  and `smoke.spec.js:78` walks 26 pages against a 30s timeout and takes ~22s
+  alone, so it times out under parallel load. Both reproduce on `main`.
+
+## An exclude list disappeared, and that is the point
+
+`_config.yml` carried an `exclude:` of eleven internal documents, because a
+`.md` file with no front matter is copied verbatim to a public URL. MANIFEST,
+REDIRECTS and RESERVE-DESIGN had each been published that way and taken back;
+REVIEW-NOTES.md is the one that mattered — unratified board feedback, verbatim,
+one guessable URL from anyone.
+
+The list is gone and nothing replaced it. The documents are at the root, outside
+`source:`, so Jekyll cannot see them. The failure mode was *forgetting to add a
+file to a list*, and there is no longer a list to forget. `CLAUDE.md` now says
+that instead.
+
+## NODE.md, which is the node seat's G2 finally delivered
+
+G2 asked for the consequences of the site being the node to be written down.
+They are, and the file carries **a correction to the reasoning recorded on
+2026-09-16**, because a later reader deserves it rather than the claim:
+
+> a holding is reachable from `_data`, for free, with no copying step
+
+That is not how Jekyll works. `data_dir` resolves through `sanitized_path`,
+which refuses to leave `source:` — **no build root can read its siblings**, and
+moving the root does not move the boundary. A symlink crosses it and is a trap:
+measured here on 2026-09-17, a symlinked directory in `site/_data/` is read by
+an ordinary build and **silently ignored** under `--safe`. No warning, no error,
+the page just renders blank.
+
+What being one repository actually buys is better than what was claimed for it:
+the five syncs that already exist (`sync-cablecast`, `sync-schedule`,
+`sync-calendar`, `sync-feeds`, `sync-nonprofits`) write into `site/_data/` by a
+relative path in the same working tree. A node holding is the easiest case of a
+pattern the repository has used all along — no network, no key, no submodule pin
+to go stale. The sibling-repository arrangement would have made every one of
+those five a cross-repository problem.
+
+NODE.md also records what a second site in the cluster would need, so the
+member-site factory starts from findings rather than from a blank page. The
+sharpest one: **two sites that each get a copy of the header will have two
+different headers within a year**, and Jekyll has no cross-source include path,
+so a shared layer needs deciding early. A staging step in `script/` matches how
+everything else here already works.
+
+## Also recorded, from the same conversation
+
+> FCPM does not need to take cues from station-node about what to keep in its
+> library per se. It is definitely up to us what we are bringing over.
+
+This narrows the node seat's G1 and G4 and is written into `advocate.yml` and
+`ADVOCATE.md` §6: the prototype is borrowed from for its **shape**; what goes in
+the library is FCPM's own decision. "station-node holds it" is not by itself an
+argument that FCPM should.
+
+## Deliberately not done
+
+- **Nothing is mounted.** No engine, no submodule, no pin moved. That has been
+  out of scope for the node seat since it was seated, and it stays out.
+- **No `library/`.** That is G4, and it is waiting on your paragraph about what
+  the board decided — escalation `9605`, still open, still blocking nothing else.
+- **`site` is singular on purpose.** If a cluster arrives, member sites go under
+  `sites/<name>/` rather than renaming this one.
+
+## Worth a look
+
+The path sweep touched prose in ~40 files. Two false positives were caught and
+reverted: `_data/site.yml` in `worker/README.md` and `tests/settings.spec.js` is
+a path in a **member's** repository, not ours. If you spot another, it will be
+of exactly that kind — a path that was never ours to move.
