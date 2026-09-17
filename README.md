@@ -70,7 +70,8 @@ in passing.
 **The website is `site/`. Everything else at the root is the rest of the node** —
 the services, the tooling, the documents. [`NODE.md`](NODE.md) says why, and
 what the root is allowed to become; [`STATION.md`](STATION.md) says what the
-station around it is for.
+station around it is for; [`TENANCY.md`](TENANCY.md) says what it is for other
+people's sites, which is the direction the root is currently emptying in.
 
 ```
 _config.yml                Site settings. ~40 lines, all commented.

@@ -14,7 +14,9 @@ can find.
 Companion documents: [`NODE.md`](NODE.md) for the shape of the repository
 itself, and [`DESIGN-NOTES.md`](DESIGN-NOTES.md) for the services this posture
 is *for* — the digitization station and workstation sign-in are written up
-there.
+there. [`TENANCY.md`](TENANCY.md) came from a later briefing the same day and
+**limits this one**: the workflows here travel to FCPM, but station-node's
+stranger-at-the-studio role explicitly does not travel to a tenant.
 
 ---
 
