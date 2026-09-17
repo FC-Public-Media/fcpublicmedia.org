@@ -1,1 +1,66 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Take down api/: the Azure sign-in was a second identity system we are not going to have
+
+> So right now we've got this API folder, which to me looks like an Azure
+> function. I'm gonna say let's take it down. I don't know what it was doing. It
+> looked like a login feature, but it does not work the way we're gonna work. So
+> I want it gone.
+
+It was a login feature. `api/src/functions/GetRoles.js` is the whole membership
+mechanism of the **Azure** path: Static Web Apps signs somebody in through Entra
+ID, calls `GetRoles` once with their email, bakes whatever roles come back into
+the session, and `staticwebapp.config.json` gates routes on them.
+
+It was a stub. The lookup was a `TODO` with three options listed and none
+chosen, so it has never returned a role to anybody.
+
+And it is the wrong shape regardless, which is the actual reason to remove it
+rather than finish it: **FCPM's identity is passkeys through the broker in
+`worker/`** — enrolment, assertion, signed claims, all built and tested. Keeping
+a second sign-in belonging to a host we do not deploy to means two answers to
+"who is this person", and the one that was never wired up is the one sitting in
+the config.
+
+## What went with it, and why it had to
+
+Deleting the function on its own would leave configuration describing a login
+that cannot happen, which reads as a working feature to the next person. So:
+
+- **`.github/workflows/deploy.yml`** loses `api_location: "api"`. It named the
+  folder.
+- **`site/staticwebapp.config.json`** loses `auth.rolesSource`, the `/login` and
+  `/logout` rewrites, the two `.auth` 404s, the `/members/*` and `/api/members/*`
+  role gates, and the `401 → /login` override.
+
+**None of that was reachable.** There is no `/members/` area in this repository —
+`membership.md` is a public page — and nothing anywhere links `/login` or
+`/logout`. The config was gating routes that do not exist behind a sign-in
+nothing offered.
+
+What is left in that file is redirects, headers, the 404 fallback and the
+trailing-slash rule, which is all it was ever doing for the site that actually
+publishes.
+
+## Verified
+
+- Builds. The generated `staticwebapp.config.json` is **valid JSON** — worth
+  saying because removing the role-gate lines moved where the Liquid loop's
+  comma has to go, so the separator is now emitted by `forloop.last` instead of
+  riding on a fixed entry above it.
+- **49 redirects in, 49 out, on both hosts.** `site/_data/redirects.yml` has 49
+  entries, `_redirects` has 49 lines and the SWA config has 49 routes. The two
+  hosts still cannot drift.
+- `test_no_secrets`, `test_tokens` and the broker's 119 tests pass.
+- `NODE.md`'s three mentions of `api/` are updated in the same commit, since
+  this is what made them wrong.
+
+## Not done here, and worth a separate decision
+
+**The rest of the Azure path is still present** — `deploy.yml` still builds and
+would still deploy to Static Web Apps if `AZURE_STATIC_WEB_APPS_API_TOKEN` were
+ever set, and `staticwebapp.config.json` is still generated. I left it because
+you asked for `api/` specifically, and because `deploy.yml` is the build gate on
+every pull request.
+
+If Cloudflare Workers is the answer and Azure is not coming back, that whole
+path can go too and the build gate can move into `smoke.yml`, which already
+builds. Say the word and it is a small PR.

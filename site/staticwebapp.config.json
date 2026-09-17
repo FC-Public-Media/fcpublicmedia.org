@@ -11,25 +11,27 @@ sitemap: false
   of them stale. Everything else here is Azure-specific and hand-written.
 
   Harmless on Cloudflare Pages, which ignores it.
+
+  NO AUTH HERE ANY MORE. This file used to carry Entra ID sign-in, a
+  `/members/*` role gate and a `rolesSource` pointing at an Azure Function in
+  `api/`. That function is deleted: FCPM's identity is passkeys through the
+  broker in `worker/`, not a second sign-in belonging to a host we do not
+  deploy to. Config describing a login that does not exist is worse than no
+  config, because it reads as a working feature.
+
+  What is left is redirects, headers and the 404 fallback, which is all this
+  file was ever doing for the site that is actually published.
 {%- endcomment -%}
 {
   "trailingSlash": "always",
 
   "routes": [
-    { "route": "/login", "rewrite": "/.auth/login/aad" },
-    { "route": "/logout", "rewrite": "/.auth/logout" },
-    { "route": "/.auth/login/github", "statusCode": 404 },
-    { "route": "/.auth/login/twitter", "statusCode": 404 },
-
-    { "route": "/members/*", "allowedRoles": ["member"] },
-    { "route": "/api/members/*", "allowedRoles": ["member"] }
-    {%- for r in site.data.redirects %},
-    { "route": "{{ r.from }}", "redirect": "{{ r.to }}", "statusCode": 301 }
+    {%- for r in site.data.redirects %}
+    { "route": "{{ r.from }}", "redirect": "{{ r.to }}", "statusCode": 301 }{% unless forloop.last %},{% endunless %}
     {%- endfor %}
   ],
 
   "responseOverrides": {
-    "401": { "statusCode": 302, "redirect": "/login" },
     "404": { "rewrite": "/404.html" }
   },
 
@@ -46,9 +48,5 @@ sitemap: false
 
   "mimeTypes": {
     ".webmanifest": "application/manifest+json"
-  },
-
-  "auth": {
-    "rolesSource": "/api/GetRoles"
   }
 }

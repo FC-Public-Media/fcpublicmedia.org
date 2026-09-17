@@ -79,7 +79,6 @@ to do. The node is the container for that second thing.
 _config.yml          the site's config. Stays here; `source: site` points down.
 Gemfile              one gem. Jekyll.
 site/                THE WEBSITE. Jekyll sees this and nothing else.
-api/                 Azure Functions. A service. Deployed separately.
 worker/              the broker. Its own Cloudflare Worker. Deployed separately.
 script/              build tooling and the syncs.
 site-template/       the scaffold a member site is cut from. Its own Jekyll site.
@@ -88,9 +87,9 @@ tests/               browser tests.
 ```
 
 The rule is short: **`site/` is what the public gets. The root is everything
-else.** `api/` and `worker/` were already services sitting beside the site
-rather than inside it, which is part of why this move was cheap — the repository
-had half of this shape before anybody named it.
+else.** `worker/` was already a service sitting beside the site rather than
+inside it, which is part of why this move was cheap — the repository had half of
+this shape before anybody named it.
 
 ### One thing the move fixed on its way past
 
@@ -249,9 +248,9 @@ the scripts and the workflows now says so.
   is open for exactly that, and nothing else is blocked by it.
 - **No engines but one.** `.advocate-engine` is mounted. Nothing else is, and
   mounting is out of scope for the node seat by construction.
-- **No services described as services yet.** `api/` and `worker/` are services
-  in fact; G3 asks for proofing to be *described* as one, including what it
-  refuses to capture. That is prose nobody has written.
+- **No services described as services yet.** `worker/` is a service in fact;
+  G3 asks for proofing to be *described* as one, including what it refuses to
+  capture. That is prose nobody has written.
 
 The seat's goals are in [`advocate.yml`](advocate.yml) under `node`, and the
 constitution they answer to is §6 of [`ADVOCATE.md`](ADVOCATE.md).
