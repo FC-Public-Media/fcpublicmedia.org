@@ -6,12 +6,14 @@ Everything below is about *shape*. Nothing here mounts an engine, adds a
 submodule, or moves a pin — each of those is its own pull request by whoever
 owns it, and that has been the node seat's rule since it was seated.
 
-Two companions, and the division between them is worth knowing before you pick
-one. **This file is the repository**: what is at the root, what is in `site/`,
-and what `site/_data` can reach. [`STATION.md`](STATION.md) is **the station**:
-the machines, the crews, the public-repository rule, and which engines arrive in
-what order. [`DESIGN-NOTES.md`](DESIGN-NOTES.md) is **the services** the other
-two exist to make possible.
+Three companions, and the division between them is worth knowing before you
+pick one. **This file is the repository**: what is at the root, what is in
+`site/`, and what `site/_data` can reach. [`STATION.md`](STATION.md) is **the
+station**: the machines, the crews, the public-repository rule, and which
+engines arrive in what order. [`TENANCY.md`](TENANCY.md) is **the tenancy**:
+other people's sites published from here, and it is where *What a second site in
+the cluster would need*, below, is now carried forward. [`DESIGN-NOTES.md`](DESIGN-NOTES.md)
+is **the services** the other three exist to make possible.
 
 ---
 
