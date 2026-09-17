@@ -184,6 +184,210 @@ Keep them apart.
 
 ---
 
+## Digitizing somebody's tapes, and giving them more than a thumb drive
+
+From a spoken briefing, 2026-09-17. Quotations are dictated speech, lightly
+de-garbled where speech-to-text mangled a proper noun. Nothing here is built.
+
+**The digitization station is the pet use case.** FCPM runs a bay that takes
+people's physical media and turns it into files. The question is what we hand
+back.
+
+> I want to make a product where we are importing video for people, and we're
+> not just capturing it into a capture card and sending them a video on a thumb
+> drive. I wanna give them everything they could ask for from us. I wanna give
+> them the UI to look at it.
+>
+> This isn't, like, an HTML file on a thumb drive. We can deliver their results
+> privately to them. They can come into the studio to get large files too.
+
+### Contact sheets are the ancestor, not AI-gen proofing
+
+This correction is the most useful thing in the briefing and it is worth
+protecting, because the two ideas share a repository and are easy to conflate.
+
+`.proofing-engine` today is about **AI generation** — sweeping what a generator
+made and deciding which outputs are any good. FCPM is not doing AI-gen capture.
+What FCPM wants is the *other* thing in that repository:
+
+> We were crawling Google Drive videos, and requesting **byte ranges** for them
+> in order to generate frames at intervals. And the aspirational notes there
+> were: you had a UI for this. You could zoom in. You might wanna see new
+> thumbnails — click on a range to see thumbnails there, between here and here.
+> Maybe you want it to be every five seconds instead of twenty. We can do that,
+> and we can keep the frames.
+
+So the mechanism is: **fetch byte ranges of a remote video, decode frames at an
+interval, render a grid, and let the interval be a thing you change by pointing
+at part of the timeline.** Not a transcode, not a download.
+
+And the shared ground with proofing is ideological rather than technical:
+
+> I was talking about the proofing repository mostly because that was where I
+> imagined different people could look at what they've got and decide what they
+> like. That's the part where ideologically proofing and contact sheets share
+> some ground. And I think I want proofing to gain what I was talking about in
+> the contact sheets thing.
+
+**Proofing already has half of this.** Its sweep view renders `image`, `video`
+and `audio` in a grid, and a video tile has no controls because *"the pointer is
+the playhead"* — moving across a tile seeks to that fraction of the duration.
+What it does not have is interval extraction over byte ranges from a remote
+file, a zoomable interval, or kept frames.
+
+**It should gain that in proofing, not in a fork here.**
+
+> The proofing engine might get a new set of faces here. But I don't wanna be
+> editing it only for FCPM.
+
+### The permission model is the interesting part
+
+> The Google Drive example is the easiest first case, because anything that we
+> do is fantastic. What we don't wanna do is have them give us edit permission
+> to their folder sources. So what I think should happen is that they could give
+> us a folder with a shortcut to their stuff inside of it in Google Drive itself.
+> That way we can read it, but **by construction** we don't have the ability to
+> edit it.
+
+This is the good idea to keep. A Drive shortcut inherits the target's
+permissions rather than the containing folder's, so a customer can put a
+shortcut to their own footage inside a folder shared with us and we get read
+access to the bytes without any grant that could destroy the original. **The
+safety is structural rather than procedural** — nobody has to remember not to
+write, because there is nothing to write with.
+
+It is the same argument the Wix standing order in `CLAUDE.md` makes from the
+other direction, and the same argument `_config.yml` now makes about internal
+documents: an arrangement where the mistake is impossible beats one where it is
+merely forbidden.
+
+### Start with a script
+
+> We will be granting an AI worker to even do it. But otherwise, we just need to
+> make a script. We don't need an AI worker yet — we can do tooling that does
+> this stuff, and it could even write into their own folder for now. We don't
+> have to keep these files local per se. They're scratch. They're temp space.
+
+An explicit permission to build the boring version first. The AI worker is a
+later shape of the same pipe, not a prerequisite.
+
+`DiscoveryWritten/stagecraft` has already proven the heavy end is available —
+*"the stagecraft product has proven that I can use the workstation GPUs
+cooperatively to do renders"* — but it is not required for this, and the note is
+that we may not need it: *"I don't know if we have to. Maybe the process is just
+as well."*
+
+### Tapes arrive from us, and go down the same pipe
+
+> If it's VHS stuff, you have to do it at normal speed. That's not a practical
+> way to do it otherwise without inventing some weird physical equipment. So
+> we'll have the sources for those in studio, and we're gonna wanna put them
+> through the same pipe, but they're gonna arrive from us. And we'll get to
+> deliver those however we want. We could do Google Drive again for starters.
+
+Two intakes, one pipe. A customer's Drive link and a tape captured in the studio
+differ only in where the file starts life; everything downstream — frames, the
+grid, the delivery — should not care which.
+
+Real-time capture is also the sizing constraint nobody can engineer away: an
+hour of tape costs an hour of a machine, which is what makes *"our station
+getting video constantly spit out of it"* the normal state rather than a burst.
+
+### Where the files live
+
+> We have a few file storage services, but not specifically for something like
+> this, so it doesn't really fit yet. We will handle certain of the big file
+> delivery, but **the workstation libraries are gonna be where they live even if
+> they're not committed.** Large things don't have to be committed, especially
+> if they're just transient and don't really matter to the code or the station
+> configuration itself.
+
+A library holding does not have to be bytes in git. That is worth stating
+plainly here, because it is the first case in this repository where the library
+is being asked to know about something it is deliberately not carrying.
+
+**The drive it lands on is being partitioned now**, and the partitions are not
+interchangeable:
+
+> Right now I'm partitioning a little network drive. I'm trying to make about
+> four gigabytes per box — it's like a thirty-two gig drive, so it's a little
+> less than four gigs each. They're gonna have different uses. We're gonna
+> coordinate on them. It's gonna be a network drive. If it's plugged into the
+> real FCPM station and shared to a network that way, also fine.
+
+Eight partitions, one per box, under four gigabytes each. Small enough that
+*where a capture goes* is a real decision rather than a default, which is
+probably why the partitioning is happening before the pipe exists.
+
+### The one AI-gen-shaped thing FCPM would want
+
+Not capture — routing:
+
+> If we did have someone using a browser and we had an alternate route
+> available — like they could have our own private extension loaded — then when
+> they are looking at stock photos and they wanna download a thing, our tool can
+> shuttle it to the right place.
+
+A private extension that puts a downloaded asset in the correct partition for
+the box you are sitting at. It is proofing's capture idea aimed at stock
+footage instead of at generated images, and it is the only part of the AI-gen
+posture that transfers.
+
+## Signing in to a workstation with the passkeys we already have
+
+Same briefing. This one is closer to buildable than it looks, because most of
+the machinery is already in this repository.
+
+**What the studio does today:**
+
+> We have computers that have a PIN on one account, and you open a browser
+> profile, and you can pick any of our profiles to open a browser window for.
+> It could be done better, but it's clear that no one has tackled it yet.
+
+One shared OS account, and identity is whichever browser profile you clicked.
+
+**What is wanted**: the passkey system doubling as a way to get into the
+machines. And the mechanism comes from a part of `ablative` that is not being
+brought over:
+
+> I am conceiving of something in ablative that was called **the shroud**, that
+> works like a tool I use to kinda hide the screen. We're not gonna do any of
+> that — but it did have a mechanism in it where I could put a QR code on the
+> screen, and you could get in with your phone. And we could know exactly who
+> you are **without accounts on the device**, on the workstation, because you're
+> using your phone to get in.
+
+### Why this is nearer than it sounds
+
+Every piece of it exists here already, built for other reasons:
+
+| piece | where it already is |
+|---|---|
+| Passkey enrolment and assertion | the broker, `worker/` — `/bind` and `/device` |
+| Signed, forwardable claims | `script/mint-claim.py`, `_data/identity.yml`, `assets/js/claims.js` |
+| A QR code standing in for a session | `/check-in/`, `script/make-qr.py`, `_data/checkin.yml` |
+| Identity policy written down | `_data/authorize.yml` |
+
+A workstation sign-in is *check-in with a different consequence*. That is a
+strong hint the thing to build is a new consumer of the broker rather than a new
+system beside it.
+
+### The constraint that shapes it
+
+> It's not the only way to get in, but I wanted it to be possible. We don't have
+> to lock it per se. Not everyone wants to pull their phone out, especially if
+> they're old. So there are gonna be multiple ways to do this stuff.
+
+**Phone-as-key is one door, never the only door**, and any design that makes the
+QR path load-bearing is wrong on arrival. The failure this prevents is specific
+and it is an access failure: an older member standing in front of a machine that
+will not let them work until they produce a smartphone.
+
+Note also that this cuts against a claim currently in
+`_data/authorize.yml` — that forwarding a claim link is deliberate and allowed.
+A link that opens a workstation is exactly the case `RESERVE-DESIGN.md` already
+flagged as needing one-to-one claims. **The two notes should be read together.**
+
 ## Other threads not yet written up
 
 Recorded so they are not lost, in rough order of how ready they are:
