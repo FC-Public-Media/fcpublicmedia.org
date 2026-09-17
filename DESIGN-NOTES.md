@@ -410,9 +410,9 @@ Every piece of it exists here already, built for other reasons:
 | piece | where it already is |
 |---|---|
 | Passkey enrolment and assertion | the broker, `worker/` — `/bind` and `/device` |
-| Signed, forwardable claims | `script/mint-claim.py`, `_data/identity.yml`, `assets/js/claims.js` |
-| A QR code standing in for a session | `/check-in/`, `script/make-qr.py`, `_data/checkin.yml` |
-| Identity policy written down | `_data/authorize.yml` |
+| Signed, forwardable claims | `script/mint-claim.py`, `site/_data/identity.yml`, `site/assets/js/claims.js` |
+| A QR code standing in for a session | `/check-in/`, `script/make-qr.py`, `site/_data/checkin.yml` |
+| Identity policy written down | `site/_data/authorize.yml` |
 
 A workstation sign-in is *check-in with a different consequence*. That is a
 strong hint the thing to build is a new consumer of the broker rather than a new
@@ -430,7 +430,7 @@ and it is an access failure: an older member standing in front of a machine that
 will not let them work until they produce a smartphone.
 
 Note also that this cuts against a claim currently in
-`_data/authorize.yml` — that forwarding a claim link is deliberate and allowed.
+`site/_data/authorize.yml` — that forwarding a claim link is deliberate and allowed.
 A link that opens a workstation is exactly the case `RESERVE-DESIGN.md` already
 flagged as needing one-to-one claims. **The two notes should be read together.**
 

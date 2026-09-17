@@ -1,1 +1,44 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Cleanup after the site/ move: four paths #72 carried in from before it
+
+#72 was branched from `main` before #70 landed, so its new sections cite four
+paths by where they lived under the old layout. The merge was clean — git had no
+reason to notice — and these are the residue.
+
+| line | was | is |
+|---|---|---|
+| the "already here" table | `_data/identity.yml`, `assets/js/claims.js` | `site/_data/…`, `site/assets/…` |
+| the same table | `_data/checkin.yml` | `site/_data/checkin.yml` |
+| the same table | `_data/authorize.yml` | `site/_data/authorize.yml` |
+| the flagged collision | `_data/authorize.yml` | `site/_data/authorize.yml` |
+
+Prose only. Nothing executable reads these.
+
+## What else I checked, since this is a cleanup pass
+
+**The #72 merge conflict was resolved correctly.** I went looking for collateral
+and found none — `main`'s copies of the three lines #70 had rewritten
+(`site/_data/airings.json` at :44 and `site/_data/authorize.yml` at :131 and
+:446) all survived intact, and every section of the digitization note is
+present. I said in chat that three of #70's fixes had been reverted; I had the
+diff direction backwards and they had not.
+
+**`main` is functionally sound.** Built it and ran everything: the site builds,
+no root document reaches `_site`, and all twelve check suites pass — calendar,
+claim minter, tokens, show proposer, catalog report, price list plus `--check`,
+repricing, feed reader, no-secrets, the member-template round trip, and the
+broker's 119 tests.
+
+**The path changes are confirmed in production, not just locally.** `987f807`
+is the scheduled nonprofit sync running *after* #70 merged, and it wrote to
+`site/assets/nonprofits.json`. That is the first workflow to exercise the new
+layout unattended, and it did the right thing.
+
+**A full re-audit found nothing else.** The only remaining unprefixed paths are
+the six lines in `README.md`'s directory tree, which are correct because they
+are indented *underneath* `site/`, and `site-template/README.md`, which
+describes a member's own repository.
+
+## Still open, reported and not touched
+
+`.advocate-engine` is **5 commits behind `origin/main`**. Advancing a pin is its
+own pull request by whoever owns it.
