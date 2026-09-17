@@ -229,21 +229,30 @@ custom domain with a certificate.
 
 ### Cloudflare or Azure?
 
-Both, for now, and that is not indecision.
+**Cloudflare**, and it is no longer both.
 
-**Cloudflare Pages** is the demo host: it attaches to the domain in minutes
-and needs no Azure setup. It serves static files, which is all this site
-currently is.
+**Cloudflare** is the live host. It attaches to the domain in minutes, serves
+static files, and — the part that settled it — `worker/` is already a Worker
+there. Autumn, 2026-09-17: *"that's the one I wanna keep around, because that's
+for Cloudflare. I think I made us a Pages site, but I wanna use a Worker. And so
+it's still in the cards."* Identity, uploads and payments all go through that
+Worker.
 
-**Azure Static Web Apps** is where this goes if members-only pages are
-wanted, because it bundles static hosting, Entra ID sign-in, and a small
-serverless API into one free resource inside the Microsoft 365 tenant the
-organization already has. Cloudflare Pages can do auth and functions too, but
-not with Entra sitting right there.
+**Azure Static Web Apps** used to be the answer to *"where does this go if
+members-only pages are wanted"*, because it bundles static hosting, Entra ID
+sign-in and a small serverless API into one free resource inside the Microsoft
+365 tenant FCPM already has. **That argument is retired.** The sign-in it was
+offering is the one deleted on 2026-09-17 along with `api/` — see
+[`identity.md`](identity.md) — so what is left of the Azure path is a static
+host with no advantage over the one already serving the site.
 
-Nothing about the site favours one over the other — that is the point of it
-being static files. `_site/` deploys anywhere, both hosts build from the same
-command, and the redirect list feeds both. Switching later is a DNS change,
-not a rewrite.
+The workflow and the config are still here and still build, and they are cheap
+to keep: `deploy.yml` gates every pull request, and it deploys nothing without a
+token nobody has set. But nothing is planned for it.
+
+Nothing about the *site* favours one host over the other — that is the point of
+it being static files. `_site/` deploys anywhere, both hosts build from the same
+command, and the redirect list feeds both. Switching is still a DNS change, not
+a rewrite. What has changed is that there is no longer a reason to switch.
 
 ---
