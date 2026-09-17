@@ -30,8 +30,8 @@ The contents may fluctuate while we maintain the following:
 3. semi-managed multi-tenant standalone sites
 4. intermediate artifacts we use to build sites and video.
 
-Some on-site APIs may be supplied by the public using self-service requests we publish on
-our website. Transparency in our library tooling means that you can observe progress.
+Some on-site APIs may be used by the public via self-service requests on our website.
+Transparency in our library tooling means that you can observe progress.
 
 Digital artifacts for delivery may be published in their age-key encrypted form for the
 owner to retrieve with authorization. Alternatively, artifacts can be transferred using
