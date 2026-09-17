@@ -214,6 +214,88 @@ The 20 legacy Wix URLs therefore keep working on either host, which matters:
 those are the links currently indexed by Google and sitting in other people's
 bookmarks.
 
+## Collapsing the config files, and what each one costs
+
+Measured 2026-09-17, because *"I'd like to find a way to collapse some configs"*
+turns out to be four separate questions with four different answers, and the
+expensive one is easy to walk into by accident.
+
+Six things sit at the repository root. What reads each, and whether it can move:
+
+| | read by | can it move? |
+|---|---|---|
+| `_config.yml` | Jekyll | **no, not for free.** See below |
+| `Gemfile` | bundler, and Cloudflare's build image | **probably not.** See below |
+| `.ruby-version` | `ruby/setup-ruby`, and Cloudflare's build image | only if Cloudflare reads `.tool-versions` |
+| `.tool-versions` | asdf, locally | only if everyone accepts a global pin |
+| `wrangler.jsonc` | wrangler, from the directory it runs in | no |
+| `advocate.yml` | `.advocate-engine` | untested |
+
+### `_config.yml` cannot move without changing the host's build command
+
+**Jekyll looks for `_config.yml` in the directory it is run from, before it has
+read any `source:` setting.** It will not find one inside `source:`.
+
+Measured, with the file moved to `site/config/_config.yml`:
+
+- `bundle exec jekyll build` prints **`Configuration file: none`**, takes the
+  *repository root* as the source, warns that the `default` layout is missing,
+  and dies on a Liquid exception in `site/watch/archive.md`. It does not fail
+  fast and it does not mention the config.
+- `bundle exec jekyll build --config site/config/_config.yml` works, and the
+  output is **byte-for-byte identical** to the build from the root.
+
+So the move costs exactly one flag, in four places: `deploy.yml`,
+`deploy-cloudflare.yml`, `smoke.yml` — and **the Cloudflare dashboard's build
+command**, which is git-connected, is what publishes the live site, and is the
+one field no agent can read or set. Getting that wrong does not fail the build;
+it publishes a broken site and reports success.
+
+**Not worth it for tidiness alone.** If the build command is ever being edited
+for another reason, take this with it.
+
+### The Gemfile can move, but Cloudflare probably needs it where it is
+
+`.bundle/config` at the root, holding `BUNDLE_GEMFILE: "site/config/Gemfile"`,
+is read by bundler automatically — so `bundle exec jekyll build` keeps working
+with no Gemfile at the root and no change to any command. Verified locally.
+
+**The unverified part is the one that matters.** Nothing in this repository runs
+`bundle install`; the live build works because Cloudflare's image detects a Ruby
+project and installs gems itself. If that detection keys on a Gemfile at the
+root directory, moving it means no gems, and `bundle exec` fails at the host
+while passing everywhere else. That cannot be tested from here.
+
+It trades one visible file for one hidden directory, so the tidiness gain is
+close to zero anyway.
+
+### The version pins are the only collapse actually worth having
+
+Two files pin one version — `.ruby-version` for `ruby/setup-ruby` and
+Cloudflare, `.tool-versions` for asdf — **and `smoke.yml` carries a step whose
+entire job is checking that they agree.** Collapsing them removes a file *and* a
+CI step, which is the only one of these four that makes the repository simpler
+rather than just rearranged.
+
+`ruby/setup-ruby` takes either file by name, so CI does not care which survives.
+The two ends do:
+
+- **Keep `.tool-versions`, drop `.ruby-version`** — the better shape, because
+  asdf reads `.tool-versions` natively and nothing needs per-user
+  configuration. **Blocked on one fact: does Cloudflare's build image read
+  `.tool-versions`?** Their image is asdf-based, so probably, but "probably" is
+  not good enough for the thing that builds the public site. One look at the
+  dashboard or their docs settles it.
+- **Keep `.ruby-version`, drop `.tool-versions`** — safe at the host, and it
+  breaks local development quietly. asdf only reads `.ruby-version` when
+  `legacy_version_file = yes` is set in `~/.asdfrc`, which is per-user and off
+  by default, so a collaborator at the repository root silently gets whatever
+  global Ruby they have. That is the exact failure the `smoke.yml` check was
+  written to catch, reintroduced one level down.
+
+So: **the first, once somebody confirms Cloudflare reads `.tool-versions`.** Not
+the second.
+
 ## Deploying to Azure Static Web Apps
 
 `.github/workflows/deploy.yml` builds with Jekyll and deploys to Azure Static
