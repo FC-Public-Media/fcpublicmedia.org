@@ -54,7 +54,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: "_site"
-          api_location: "api"
           skip_app_build: true
 
       - name: Note skipped deploy
