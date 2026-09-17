@@ -18,3 +18,9 @@ need only batch out data on a regular schedule to control delivery.
 Consider this site format open on the operating table until I change
 this note to say otherwise. My file structure isn't supposed to impress
 you yet.
+
+## Philosophies
+
+- menus offer verbs
+- periodic execution is stronger than realtime pipes
+- databases are not CPU processes
