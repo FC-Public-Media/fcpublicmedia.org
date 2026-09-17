@@ -240,6 +240,52 @@ file, a zoomable interval, or kept frames.
 > The proofing engine might get a new set of faces here. But I don't wanna be
 > editing it only for FCPM.
 
+### The pipeline already exists, and it has never been committed
+
+Looked for while writing this note, and found: **`~/Project/contact-sheets` is a
+complete, working implementation of most of the above.** It is not a sketch. It
+has a cache contract, a disk floor, a resume story, and a list of its own known
+failures.
+
+| | |
+|---|---|
+| `process-all.sh` → `process-clip.sh` → `assemble.sh` | folder, clip, sheet. Extraction is idempotent: a clip gets a `.done` marker and is never re-read |
+| `proof.sh`, `proof-all.sh`, `proof-rates.conf` | proofing at configurable rates — *"every five seconds instead of twenty"*, already parameterised |
+| `ranges.py` | writes a **ranges document** (CSV + JSON), one row per range, clip-relative *and* wall-clock time |
+| `segment.py` | camera settled versus in transit |
+| `make-sheet-html.py`, `build-site.py` | the sheet, and a publishable static site assembled from the cache |
+| `reconcile.py` | what is on the phone and not on Drive |
+
+It reads Google Drive through the local CloudStorage mount, and its own notes say
+streaming *"pulls byte ranges into Drive's local cache as it goes"* — which is
+the byte-range behaviour from the briefing, arrived at from the filesystem side
+rather than over HTTP.
+
+Two of its documented design positions are worth importing wholesale, because
+they are the same instincts this repository already runs on:
+
+> The sheet is how a person finds a moment, this is how a tool finds the same
+> moment. Two artifacts, one source of truth each.
+
+> Cutting, if it happens, is a separate step that writes NEW files to a NEW
+> folder and reads this document as input.
+
+**It has zero commits.** Not "few" — the repository was `git init`-ed, a
+considered `.gitignore` was written, a `CLAUDE.md` was written, and then nothing
+was ever committed: 46 untracked entries, no branches, no remote, no reflog. It
+also has no address in the node's library, so nothing can petition it, serve it,
+or name it.
+
+That is worth saying here rather than anywhere else, because it changes what
+"start with a script" means. **The script is written.** What is missing is not
+the capability; it is history, an address, and a decision about where it lives.
+Three of its known problems are already documented in its own `CLAUDE.md` — most
+sharply that `assemble.sh` deletes the previous sheet *before* running montage,
+so an interrupted assemble leaves an empty directory rather than a stale sheet.
+
+Placement is Autumn's call and nothing here should assume it. What FCPM needs
+from it is the capability, and the note above says that belongs in proofing.
+
 ### The permission model is the interesting part
 
 > The Google Drive example is the easiest first case, because anything that we
