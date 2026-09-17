@@ -1,14 +1,18 @@
 # The multi-tenant turn
 
-Written 2026-09-17 from **two** spoken briefings by Autumn, the same day as
+Written 2026-09-17 from **three** spoken briefings by Autumn, the same day as
 [`STATION.md`](STATION.md) and [`NODE.md`](NODE.md) and continuous with them.
 **Every quotation is dictated speech**, lightly de-garbled where speech-to-text
-mangled a proper noun (`Jecal` → Jekyll) and not otherwise.
+mangled a proper noun (`Jecal` → Jekyll, `Cloudflare Flair pages` → Cloudflare
+Pages) and not otherwise.
 
-The first briefing set the frame and left the central thing unnamed. The second
-one — *The factory, and what it is for*, below — answered most of what the first
-one asked and moved the subject onto `site-template/`. **Read both; the second
-supersedes the first in two places and says so where it does.**
+| | |
+|---|---|
+| **The multi-tenant turn** | the frame. The central thing deliberately unnamed. |
+| **The factory, and what it is for** | `site-template/`, and most of what the first briefing asked. **Supersedes the first in two places** and says so where it does. |
+| **Where the sites get served** | the hosting offer, and whose Cloudflare account a tenant lands in. |
+
+Read in order. Each one narrows the last.
 
 **Almost nothing here is built.** This file exists so that the next session
 starts from what has already been said and measured rather than from scratch,
@@ -772,7 +776,207 @@ transcript is complete.
 
 ---
 
-## Which of the questions above are now answered
+# Where the sites get served, and whose account that is
+
+Third briefing, 2026-09-17, short and structural. `Cloudflare Flair pages` is
+de-garbled to **Cloudflare Pages** — see *the product names do not agree* below,
+because this repository does not actually use that product and the difference
+turns out to matter.
+
+> What I'm really talking about is the SaaS component of me offering by default,
+> building and releasing into Cloudflare Pages on my **anecdote dot channel
+> constellation**. But **if they buy a domain name, it can show up here.** We
+> don't necessarily have to put it on anecdote constellation. It could go into
+> Fort Collins public media account. Right? **I'm not trying to take their
+> stuff.** But I think we want the SaaS thing. And I think my account needs it.
+> But we'll talk about migrating FCPM's resources to another account because
+> we're dealing with it so far.
+
+`anecdote.channel` is the constellation the engines already come from —
+`advocate.anecdote.channel` is mounted here, and `library.anecdote.channel` is
+the one whose reserved category words `ADVOCATE.md` already quotes. So the
+default hosting namespace and the engine namespace are the same place.
+
+---
+
+## A purchased domain is the account boundary
+
+Two deployment homes, and the thing that moves a site between them is not a
+tier, a policy or a conversation:
+
+| where the site lands | when |
+|---|---|
+| **her account**, under the `anecdote.channel` constellation | by default. This is the SaaS offer. |
+| **FCPM's own account**, on the member's domain | *"if they buy a domain name"* |
+| nowhere — we do not build it | ejected, or affiliated-only |
+
+**That is an unusually clean mechanism and it should be kept.** The thing a
+member pays for is the thing that moves their site out of the default account.
+Nothing has to be administered, nobody has to be told they have outgrown the
+free tier, and there is no case-by-case judgement about who deserves what. The
+purchase *is* the signal.
+
+It also means the tenancy list from the second briefing gains a third field.
+It was *in the list* and *do we build it*; it is now **in the list**, **do we
+build it**, and **where does it land**.
+
+*"It can show up here"* is read as FCPM's Cloudflare account rather than this
+repository, because she names that account in the next breath. Worth confirming
+if anything gets built on it.
+
+---
+
+## "I'm not trying to take their stuff" — and the architecture already honours it
+
+This is the sentence a member would most want to hear, and the second briefing
+already made it true rather than merely intended.
+
+**The account is a deployment target, not a system of record.** Because a
+project is the member's own repository and FCPM holds only a submodule pin,
+hosting a site in her Cloudflare account confers nothing on her:
+
+- the canonical bytes are in a repository the **member** owns;
+- FCPM's claim on it is one gitlink, and removing that gitlink is the whole
+  withdrawal;
+- moving the site to a different Cloudflare account is a **deploy-target
+  change** — rebuild the same source, point it somewhere else.
+
+So defaulting to her account is safe rather than presumptuous, and it is safe
+*because of a decision already made*. The usual failure mode of a hosted offer
+is that the platform ends up holding the content, and leaving means extracting
+it. Nothing here holds anybody's content. Say that to a member in those words;
+it is the strongest thing this design has to offer them.
+
+**The corollary is the honest one:** hosting in her account means FCPM does not
+control where its members' sites are served from either. That is the argument
+for the migration she deferred, and it is a succession question rather than a
+trust question — *"we own nothing"* cuts both ways. It is also a small one, for
+exactly the reason above: no data is at stake, only a deploy target.
+
+---
+
+## Migrating FCPM's resources: deferred, and what it will touch
+
+> we'll talk about migrating FCPM's resources to another account because we're
+> dealing with it so far.
+
+Deferred by her. What the repository already says about the ground it will land
+on, measured rather than assumed:
+
+**Production does not deploy from a workflow.** It deploys from **Cloudflare's
+own git integration**, which builds on every push to `main` using
+`wrangler.jsonc`. `deploy-cloudflare.yml` is a manual-only fallback.
+
+**And it is manual-only for a reason that this migration will walk straight
+into.** From its header, verbatim:
+
+> IT IS MANUAL-ONLY SO IT CANNOT DOUBLE-DEPLOY. […] An earlier version of this
+> ran on `push` and was kept harmless by the token being absent — which made an
+> ordinary act, adding an organization secret, into a way to start publishing
+> the same site twice without meaning to. **Safety that depends on a credential
+> NOT existing is not safety; it is a landmine with a note on it.**
+
+A two-account factory is *exactly* the thing that adds credentials to an
+organisation secret. **The hazard that workflow disarmed must not be rearmed by
+the factory.** Whatever deploys tenants needs its account selection to be
+explicit per tenant, and a trigger that cannot fire twice for one site.
+
+**The multi-account case is already half-anticipated.**
+`CLOUDFLARE_PAGES_TOKEN` is an **organisation** secret, and
+`CLOUDFLARE_ACCOUNT_ID` is documented as *"only needed when the token can see
+more than one account"* — so the configuration has a slot for this and nothing
+uses it yet.
+
+**This is the `vendors` seat's G2 arriving from a different direction.** That
+goal asks for *a recorded decision about deploying twice, to Azure and to
+Cloudflare, rather than it continuing by default*. PR #74 is taking `api/` down,
+which settles the Azure half. The account question is the same subject: where
+this organisation's deploys live, decided rather than inherited. The
+`credentials` seat gains a second account to date and rotate.
+
+### The product names do not agree with the product
+
+She said Pages. This repository deploys a **Worker with static assets** —
+`wrangler.jsonc` has no `main`, and its own comment says *"This is a static
+site: no main, no runtime, nothing to execute."* Yet the secrets are named
+`CLOUDFLARE_PAGES_TOKEN` and `CLOUDFLARE_PAGES_PROJECT`.
+
+So the drift is already in the repository, and the factory is the moment it
+stops being cosmetic: Pages and Workers-with-assets are two products with
+different deploy mechanics, and a factory has to pick one deliberately. If it
+picks Pages, these names finally mean what they say. If it picks Workers
+assets — which is what the flagship site is proven on — the names should be
+corrected so nobody configures the wrong product from a secret name.
+
+Either way this stays true, and it was already in the second briefing:
+`wrangler.jsonc` names exactly one `assets.directory`, so **N tenants is N
+configs and N deploys** whichever product is chosen.
+
+---
+
+## The first zone question this arrangement has ever had
+
+From the same workflow header, and it is load-bearing here:
+
+> Account-scoped; no zone, because **Wix holds DNS for this domain** and there
+> is no zone here to name.
+
+FCPM's own domain has never needed a Cloudflare zone, because its DNS is
+somewhere else entirely. *"If they buy a domain name"* is therefore the first
+time this setup has to answer **who holds the zone** — and that is a different
+question from which account deploys, even though Cloudflare tends to couple
+them. **Confirm the coupling before any design leans on it**; it is a
+documentation check, not a guess worth making here.
+
+It matters beyond plumbing: **whoever holds the zone can take the site off the
+internet.** That is a stronger power than serving it, and there are three
+candidate holders — the member, FCPM, and her. The member buying the domain is
+the natural holder, and *"I'm not trying to take their stuff"* points the same
+way, but it has not been said and it would be the one place where the hosting
+offer could quietly acquire real leverage over somebody.
+
+---
+
+## Does this give the general engine its second consumer?
+
+The second briefing's reason for *not* generalising was specific and it was the
+absence of a second case:
+
+> I've been trying to think of another use case to bundle with this, but so far,
+> I don't have one.
+
+And now:
+
+> I think we want the SaaS thing. **And I think my account needs it.**
+
+**That sentence has two readings and they give opposite answers.** One sentence
+from her settles it; nothing should be built toward either in the meantime.
+
+1. **`anecdote.channel` is only the default namespace** — the place FCPM's
+   member sites happen to land, because she already has the account and the
+   constellation. Then there is still one use case with one deployment, and
+   *build the specific thing and graduate it later* stands exactly as recorded.
+2. **`anecdote.channel` wants a factory of its own** — her constellation
+   publishing its own properties through the same machinery, for her own
+   reasons. Then there are two consumers, in two organisations, with different
+   tenants and different accounts. That is the second case she went looking for
+   and could not find.
+
+Reading 2 also fits the shape of the requirement she stated last time: it makes
+the **account a configuration value rather than a constant**, which is the same
+move as a residency declaration that has to be plural. That consistency is
+suggestive and it is not evidence. *"My account needs it"* is at least as
+naturally read as *I want this offer to exist on my account*, which is
+reading 1.
+
+**Recommendation: assume reading 1 and build for it.** It is the cheaper
+assumption, it is what she said last briefing, and reading 2 is reachable from
+it by making one constant into a setting — which is precisely what *"graduate
+what we make into it"* asks for.
+
+---
+
+## Where every question now stands
 
 | first briefing asked | now |
 |---|---|
@@ -795,6 +999,19 @@ transcript is complete.
    miss the promised day for everybody.
 5. **Staying listed while private.** Deferred by her, but *unhook* is what
    happens by default whether it is chosen or not.
+
+### And what the third briefing opened
+
+1. **Is `anecdote.channel` the default namespace, or the general engine's second
+   consumer?** One sentence settles it. Recommendation above: assume the former.
+2. **Who holds the zone** when a member buys a domain. Not the same question as
+   which account deploys, and whoever holds it can take the site down.
+3. **Pages or Workers-with-assets**, decided rather than inherited — and the
+   `CLOUDFLARE_PAGES_*` secret names corrected to match whichever wins.
+4. **The double-deploy landmine must not be rearmed.** A two-account factory is
+   exactly the act `deploy-cloudflare.yml` was made manual-only to prevent.
+5. **Migrating FCPM's resources to its own account.** Deferred by her, and it is
+   the `vendors` seat's G2 arriving from a different direction.
 
 ---
 
