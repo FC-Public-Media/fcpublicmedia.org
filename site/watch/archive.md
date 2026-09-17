@@ -41,7 +41,7 @@ permalink: /watch/archive/
 
 <p class="muted">
   This page is generated from the station's Cablecast catalog by
-  <code>script/sync-cablecast.py</code>. It is plain HTML, so it can be
+  <code>site/bin/sync-cablecast.py</code>. It is plain HTML, so it can be
   searched with your browser's find command and indexed by search engines &mdash;
   neither of which was true when this history lived only inside Cablecast.
 </p>

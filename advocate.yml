@@ -34,7 +34,7 @@ report:
   branch: council
   wiki: false
 
-constitution: ADVOCATE.md
+constitution: docs/ADVOCATE.md
 
 mission: >
   What would make this site stop being true, stop being paid for, or stop being

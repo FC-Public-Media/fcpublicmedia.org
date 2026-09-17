@@ -45,7 +45,7 @@ import { verifyAssertion } from './webauthn.js';
 // It is pure WebCrypto with no DOM at the top level, so it runs here
 // unmodified — and one implementation cannot drift from the other, which for a
 // signature check is worth more than the tidiness of a self-contained worker
-// directory. tests/claims.spec.js drives the same file from a browser, and
+// directory. site/tests/claims.spec.js drives the same file from a browser, and
 // enrol.test.mjs imports it here to catch the day somebody adds a `window`.
 import { verifyClaim } from '../../site/assets/js/claims.js';
 
@@ -155,10 +155,10 @@ function readConfig(env, now = () => Date.now()) {
     //
     // The value is still a secret and must never be rendered into a page,
     // logged, or returned in a response. site/_data/payments.yml holds the
-    // genuinely publishable pk_ key, and script/test_no_secrets.py fails the
+    // genuinely publishable pk_ key, and site/bin/test_no_secrets.py fails the
     // build if anything shaped like a secret key reaches the built site.
     //
-    // Staff-run work does NOT use this key. script/reprice-subscriptions.py
+    // Staff-run work does NOT use this key. site/bin/reprice-subscriptions.py
     // lists and updates subscriptions, which is far outside what a stranger
     // may cause, so it reads its own credential.
     //

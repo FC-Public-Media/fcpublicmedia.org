@@ -62,7 +62,7 @@ stripe:
 # broker charges from a copy generated out of it — so a price change is a
 # commit, a diff, and a pull request. That is the announcement flow, and it is
 # the reason prices are not kept in the Stripe dashboard where a change leaves
-# no trace. See script/build-prices.py.
+# no trace. See site/bin/build-prices.py.
 terms:
   # TODO — board to confirm. Thirty days is the usual floor and is what the
   # card networks expect to see when a cardholder disputes a renewal.
@@ -86,7 +86,7 @@ terms:
   # Stripe will not do that second part on its own. A subscription is pinned
   # to the amount it was created at and renews at that amount forever; Stripe
   # never reads this repository. Moving existing subscribers onto a new price
-  # is script/reprice-subscriptions.py, run by a person AFTER the notice
+  # is site/bin/reprice-subscriptions.py, run by a person AFTER the notice
   # period below has actually elapsed.
   lock:
     upfront: >-
@@ -115,7 +115,7 @@ terms:
   #   2. Pull request, review, merge. That is the price history.
   #   3. New members pay the new price as soon as it deploys.
   #   4. Email the membership. (Constant Contact, per the note below.)
-  #   5. After the notice period: python3 script/reprice-subscriptions.py --apply
+  #   5. After the notice period: python3 site/bin/reprice-subscriptions.py --apply
   #   6. Everyone renews at the new price on their own anniversary.
   #
   # Nobody is prorated at step 5. The year already bought runs out at the price

@@ -47,7 +47,7 @@ jobs:
       # Reads site/_shows/ first, so anything already configured — or already
       # proposed and still open — is not proposed again.
       - name: Find the clusters
-        run: python3 script/propose-shows.py --min "${{ inputs.min_episodes || 3 }}" --json > /tmp/proposals.json
+        run: python3 site/bin/propose-shows.py --min "${{ inputs.min_episodes || 3 }}" --json > /tmp/proposals.json
 
       - name: Open one pull request per show
         env:
@@ -83,10 +83,10 @@ jobs:
             # The body FIRST. Writing the file makes this show configured
             # rather than proposed, and asking for the description of a
             # proposal that no longer exists fails — which it should, and did.
-            python3 script/propose-shows.py --body "$slug" > /tmp/body.md
+            python3 site/bin/propose-shows.py --body "$slug" > /tmp/body.md
 
             git checkout -B "$branch" "origin/$base"
-            python3 script/propose-shows.py --write --only "$slug"
+            python3 site/bin/propose-shows.py --write --only "$slug"
 
             if git diff --quiet; then
               echo "$slug: nothing to write"

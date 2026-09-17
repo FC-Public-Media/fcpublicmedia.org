@@ -13,7 +13,7 @@
 # We do not ask the visitor to prove anything to us. We prove something to
 # them, and let them keep it.
 #
-#   1. Staff mint a claim for an address:  script/mint-claim.py --email …
+#   1. Staff mint a claim for an address:  site/bin/mint-claim.py --email …
 #   2. The claim is a short signed token, delivered as a link, sent by email.
 #      Receiving it is the proof — only the holder of that mailbox gets it.
 #   3. Opening the link verifies the signature in the browser against the
@@ -45,7 +45,7 @@ issuer: Fort Collins Public Media
 #
 # Generate the first one with:
 #
-#   python3 script/mint-claim.py --new-key claim-key.pem
+#   python3 site/bin/mint-claim.py --new-key claim-key.pem
 #
 # which prints the block to paste below and writes the private key to a file
 # you keep out of git (.gitignore already covers *-key.pem).

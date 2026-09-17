@@ -1,1 +1,131 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Tidy the root: bin/ and tests/ into site/, everything written down into docs/, README emptied
+
+> It's our repository to make messy. However, it's too messy for how little is
+> going on so far. I wanna be able to show it to someone, and that readme is,
+> like, eighteen miles long.
+
+The root, before and after:
+
+| before | after |
+|---|---|
+| `ADVOCATE.md` `CLAUDE.md` `CONTENT-TODO.md` `DESIGN-NOTES.md` `Gemfile` `MANIFEST.md` `NODE.md` `PAYMENTS-CHECKLIST.md` `README.md` `REDIRECTS.md` `RESERVE-DESIGN.md` `REVIEW-NOTES.md` `STATION.md` `_config.yml` `advocate.yml` `wrangler.jsonc` `api/` `script/` `site/` `site-template/` `tests/` `worker/` | `CLAUDE.md` `Gemfile` `README.md` `_config.yml` `advocate.yml` `wrangler.jsonc` `api/` `docs/` `site/` `site-template/` `worker/` |
+
+Thirteen loose documents became one directory. (`api/` goes in #74.)
+
+## `script/` → `site/bin/`, `tests/` → `site/tests/`
+
+> Script is a lot of stuff for us, but it is support so far for the site itself.
+> So I would like to supply those in the site directory. That needs to be some
+> kind of bin folder in there instead. Those are tasks that a worker would wanna
+> call on, and they just belong in that context. The tests are pretty much the
+> same way.
+
+Done, and it reads better up close: a sync that writes `_data/` now sits one
+level above the thing it writes, so its paths are `../_data/...` instead of
+`../site/_data/...`. Every script's path constants were rewritten rather than
+patched — the convention is now `SITE` for the build root and `REPO` for the
+node, stated in a comment at the top of each.
+
+**The catch, and what I did about it.** `site/` is the Jekyll source, so
+anything in it publishes unless excluded. Two `exclude:` entries bring back a
+list that #70 deleted on the grounds that lists are a hazard — so this is not
+the same list, and the difference is the point:
+
+- The old one named **eleven documents, one line per file**, and the failure
+  mode was the twelfth. Three of them reached a public URL that way; the one
+  that mattered was `REVIEW-NOTES.md`, unratified board feedback, verbatim.
+- These are **two directories**. Adding a script or a spec needs no edit here,
+  so there is nothing to forget.
+- And it is now **checked, not trusted**:
+  `site/bin/test_nothing_internal_is_published.py` fails if `_site/bin/` or
+  `_site/tests/` exists, or if anything ending `.py`, `.spec.js`,
+  `package-lock.json` or `playwright.config.js` reaches the output. It runs in
+  `smoke.yml` and it has a test asserting that its own guard would catch the
+  files it is guarding, because a check that cannot fail proves nothing.
+
+Documents stay outside `source:` — the root or `docs/` — where Jekyll cannot see
+them at all. That property is unchanged and is why `docs/` is safe.
+
+## The README is empty
+
+> If you think that there is anything inside the readme that you wanna save,
+> I'm gonna suggest you move it to somewhere else, and we're gonna truncate the
+> readme so that it's empty.
+
+Zero bytes. **Nothing was deleted** — all seventeen sections of the 68 KB
+original are in `docs/`, split by subject and otherwise unchanged apart from
+paths:
+
+| | |
+|---|---|
+| `docs/running-it.md` | the idea, building locally, the tree, adding a page, tests |
+| `docs/payments.md` | the five transactions, Stripe, hosted forms, Booqable, forms |
+| `docs/identity.md` | members and sign-in, and all of check-in |
+| `docs/programming.md` | Cablecast, class mode, featuring things on the homepage |
+| `docs/deploying.md` | Cloudflare, and Azure |
+| `docs/known-issues.md` | what is wrong and known to be wrong |
+
+I split rather than pruned deliberately. Deciding what to *delete* from 68 KB of
+accumulated operational knowledge is a bigger judgment than "move it somewhere
+else", and `git log` was never going to be where you look for the Cloudflare
+build settings. **If you want it thinned, point at what is dead and that is a
+second pass.** The one thing I would not lose from it is the "Path / root
+directory `/`" reasoning in `docs/deploying.md`: it is the only written record
+of five dashboard fields no agent can read.
+
+`docs/README.md` is the index, and says why the root README is empty and that a
+short one comes back when the shape stops moving.
+
+## Verified
+
+- Site builds; output unchanged in shape. **Nothing from `bin/`, `tests/` or
+  `docs/` reaches `_site`.**
+- All thirteen check suites pass from their new homes — calendar, claim minter,
+  tokens, show proposer, catalog report, price list plus `--check`, repricing,
+  feed reader, no-secrets, the new publish guard, member-template round trip,
+  and the broker's 119 tests.
+- **Three real breaks found and fixed on the way**, and the first two were
+  invisible to a text search for `script/`:
+  1. `worker/test/enroll.test.mjs` resolved `mint-claim.py` through
+     `'..', '..', 'script'` — the path was split across quoted segments.
+  2. Six `*.spec.js` files defined `REPO` as one level up from `tests/`, which
+     is now `site/` and not the repository. Renamed to `SITE_DIR` — and `SITE`
+     was already taken in three of them by `'fcpublicmedia/janes-show'`, which
+     is why the first rename failed to parse.
+  3. **My own sweep corrupted a regex.** `meet.spec.js` had
+     `toMatch(/<\s*script/i)` and the rewrite turned it into
+     `/<\s*site/bin/i`, which is a syntax error, not a wrong path. Every
+     touched `.js`, `.mjs` and `.py` file is now syntax-checked, and that is how
+     it was caught.
+- The generated `_data/*.json` files carry a `_note` naming the script that
+  wrote them; those are updated, still valid JSON, and match what the scripts
+  now emit, so the next sync produces no churn.
+
+## Notes
+
+- **`advocate.yml` now points at `docs/ADVOCATE.md`.** The seats' constitution
+  moved with everything else; the engine reads a path, so this is the whole
+  change.
+- **`redirect-report.py` writes `docs/REDIRECTS.md`** now.
+- **This is one PR rather than four** because the pieces share their files:
+  you cannot move `script/` without rewriting every mention of it, most mentions
+  were in the README, and the README is being emptied. Splitting it would have
+  meant doing the same reference work twice and resolving the conflict by hand.
+- **It does not touch `api/`**, so it and #74 are independent. If #74 lands
+  first, one line in `docs/running-it.md`'s tree and one in `docs/NODE.md`'s
+  want deleting.
+
+## #75 and this one collide, and the fix is an order
+
+**Merge [#75](../../pull/75) first.** It adds `TENANCY.md` at the root and edits
+`NODE.md`, `README.md` and `STATION.md` there; this one moves two of those into
+`docs/` and truncates the third to zero bytes. Whichever lands second has to be
+resolved by hand, and I would rather it were this one, because relocating files
+is what this PR is *for* — so I can take #75's edits, move `TENANCY.md` into
+`docs/` with its siblings, and add it to the index, in one rebase.
+
+Merged the other way round, `TENANCY.md` is the one document left loose at a
+root that this PR just finished emptying, and somebody has to notice.
+
+Nothing is stacked: this branch is cut from `main` and does not depend on #75.
+It is only the order of merging that matters.

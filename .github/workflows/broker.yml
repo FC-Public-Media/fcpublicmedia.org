@@ -78,7 +78,7 @@ jobs:
           # this key act, and it is scoped to what a stranger may cause —
           # writing a Checkout Session, and nothing else.
           #
-          # The value is still secret. script/test_no_secrets.py fails the
+          # The value is still secret. site/bin/test_no_secrets.py fails the
           # build if anything shaped like it reaches the site. Staff work uses
           # STAFF_STRIPE_API_KEY, which is a different key with more
           # permission and is deliberately not given to the worker.

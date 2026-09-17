@@ -155,7 +155,7 @@ test('choosing to renew makes it a yearly subscription at the same amount', asyn
 test('a subscription carries its tier, so it can be repriced later', async () => {
   // Stripe never asks us what a renewal costs — the subscription is pinned to
   // the amount it was created at and renews at that forever. Moving people
-  // onto a new price is script/reprice-subscriptions.py, and that script has
+  // onto a new price is site/bin/reprice-subscriptions.py, and that script has
   // to know which tier a year-old subscription is for.
   //
   // The session's own metadata does NOT survive onto the subscription, which

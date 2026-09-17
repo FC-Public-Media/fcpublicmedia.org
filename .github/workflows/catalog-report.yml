@@ -44,8 +44,8 @@ jobs:
 
       - name: Look for things that look wrong
         run: |
-          python3 script/catalog-report.py --out /tmp/report.md > /dev/null
-          echo "count=$(python3 script/catalog-report.py --count-only)" >> "$GITHUB_ENV"
+          python3 site/bin/catalog-report.py --out /tmp/report.md > /dev/null
+          echo "count=$(python3 site/bin/catalog-report.py --count-only)" >> "$GITHUB_ENV"
 
       # Visible whether or not an issue gets opened, so a run that found
       # nothing still leaves a record of having looked.

@@ -70,7 +70,7 @@ export function returnUrl(origins, path, fallback) {
  * Stripe takes form encoding with bracketed keys rather than JSON, so this
  * builds URLSearchParams directly. `price_data` is inline on purpose: there
  * are no Price objects in the Stripe dashboard to drift from site/_data/, and the
- * price history lives in git. See script/build-prices.py.
+ * price history lives in git. See site/bin/build-prices.py.
  */
 export function sessionParams({ item, sku, recurring, success, cancel, reference, email }) {
   const params = new URLSearchParams();
@@ -104,7 +104,7 @@ export function sessionParams({ item, sku, recurring, success, cancel, reference
     // So a price change has to be PUSHED to existing subscriptions, and that
     // means being able to look at a subscription a year from now and say which
     // tier it is. The session's own metadata does not survive onto the
-    // subscription — this does. Without it, script/reprice-subscriptions.py
+    // subscription — this does. Without it, site/bin/reprice-subscriptions.py
     // would have to guess a tier from an amount, which stops working the first
     // time two tiers cost the same.
     params.set('subscription_data[metadata][sku]', sku);
@@ -119,7 +119,7 @@ export function sessionParams({ item, sku, recurring, success, cancel, reference
   // Not by asking. The old sequence was: pick a tier, pay full price, staff
   // notice, somebody posts a cheque back — and organizations learned to buy
   // the wrong thing on purpose and wait for the refund. The fix was never a
-  // stricter rule, it was checking earlier: script/sync-nonprofits.py puts the
+  // stricter rule, it was checking earlier: site/bin/sync-nonprofits.py puts the
   // IRS list on the site, an organization picks itself off it, and staff have
   // an EIN to verify before any money moves.
   //

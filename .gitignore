@@ -13,9 +13,9 @@ node_modules/
 .dev.vars
 
 # Playwright
-tests/node_modules/
-tests/playwright-report/
-tests/test-results/
+site/tests/node_modules/
+site/tests/playwright-report/
+site/tests/test-results/
 test-results/
 
 # Claim signing keys — never committed.
@@ -23,6 +23,6 @@ test-results/
 __pycache__/
 
 # The Wi-Fi QR encodes the guest password in decodable form. Generated
-# locally by script/make-wifi-qr.py and printed; never committed. See the
+# locally by site/bin/make-wifi-qr.py and printed; never committed. See the
 # header of site/_data/wifi.yml.
 site/assets/img/wifi-qr.svg

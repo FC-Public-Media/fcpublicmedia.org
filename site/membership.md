@@ -90,7 +90,7 @@ not the amounts. See _data/membership.yml.
   every nonprofit — a new one, a chapter of a national body, or one operating
   under a fiscal sponsor will not be there. So this can never be a gate, and
   the way through is always visible rather than a fallback you reach by
-  failing. See script/sync-nonprofits.py.
+  failing. See site/bin/sync-nonprofits.py.
 {%- endcomment -%}
 <p class="muted">
   Not listed? That happens &mdash; new organizations, chapters, and anyone

@@ -32,7 +32,7 @@
 // it slightly wrong and roughly one signature in every hundred and thirty
 // fails while the rest pass, which reads as "flaky authenticator" for months.
 //
-// script/mint-claim.py has the same seam in the other direction.
+// site/bin/mint-claim.py has the same seam in the other direction.
 
 /* --------------------------------------------------------------------- bytes */
 

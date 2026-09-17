@@ -58,13 +58,13 @@ jobs:
       # Cheap, no browser needed, and the failure mode it guards against is a
       # class showing at the wrong hour rather than an obvious error.
       - name: Test the calendar parser
-        run: python3 script/test_sync_calendar.py
+        run: python3 site/bin/test_sync_calendar.py
 
       # The signature conversion between openssl and WebCrypto is hand-written,
       # and a mistake in it produces tokens that look fine and verify nowhere.
-      # tests/claims.spec.js checks the other half of the same seam.
+      # site/tests/claims.spec.js checks the other half of the same seam.
       - name: Test the claim minter
-        run: python3 script/test_mint_claim.py
+        run: python3 site/bin/test_mint_claim.py
 
       # The palette says yellow is a surface. That rule cannot be enforced by
       # the palette — a rule reading `color: var(--signal)` looks reasonable
@@ -72,7 +72,7 @@ jobs:
       # to everybody else. There were nine of those before the rebrand, and
       # they were all fine while the signal colour was red.
       - name: Test the design tokens
-        run: python3 script/test_tokens.py
+        run: python3 site/bin/test_tokens.py
 
       # Cablecast titles are episode titles, so what counts as a "show" is a
       # judgement no rule makes correctly — the proposer's whole job is to get
@@ -80,7 +80,7 @@ jobs:
       # here produces plausible-looking wrong groupings, which is the kind
       # that gets merged.
       - name: Test the show proposer
-        run: python3 script/test_propose_shows.py
+        run: python3 site/bin/test_propose_shows.py
 
       # The catalog report is about somebody else's data, so nothing it finds
       # can be fixed by editing this repository. What CAN break here is the
@@ -88,14 +88,14 @@ jobs:
       # every month gets ignored, and then the month it says something true it
       # gets ignored too. Most of its tests are about what it refuses to say.
       - name: Test the catalog report
-        run: python3 script/test_catalog_report.py
+        run: python3 site/bin/test_catalog_report.py
 
       # Feed content is written by other people and lands in our HTML, so the
       # sanitizing here is load-bearing rather than cosmetic.
       - name: Test the feed reader
         run: |
           pip install --quiet pyyaml
-          python3 script/test_sync_feeds.py
+          python3 site/bin/test_sync_feeds.py
 
       # Prices are edited in site/_data/ and charged from a generated copy the
       # worker bundles. If those two disagree, the page says one number and the
@@ -103,8 +103,8 @@ jobs:
       # somebody to reconcile a bank statement. --check is the lock file.
       - name: Test the price list, and check it is up to date
         run: |
-          python3 script/test_build_prices.py
-          python3 script/build-prices.py --check
+          python3 site/bin/test_build_prices.py
+          python3 site/bin/build-prices.py --check
 
       # Stripe pins a subscription to the amount it was created at and renews
       # against that forever — it never reads this repository. So "everybody is
@@ -112,7 +112,7 @@ jobs:
       # the decisions that script makes (who moves, who is left alone, who
       # cannot be placed) are the ones that cost somebody money if wrong.
       - name: Test the subscription repricing
-        run: python3 script/test_reprice_subscriptions.py
+        run: python3 site/bin/test_reprice_subscriptions.py
 
       # The organization secret holding our restricted Stripe key is named
       # PUBLIC_STRIPE_API_KEY, and holds a value that is not public in any
@@ -121,7 +121,15 @@ jobs:
       # the built output rather than at intent, so it does not matter how a
       # key got there.
       - name: Check no secret key reached the site
-        run: python3 script/test_no_secrets.py
+        run: python3 site/bin/test_no_secrets.py
+
+      # `site/bin/` and `site/tests/` live inside the Jekyll source, so they are
+      # two `exclude:` entries away from being published. That is one line of
+      # config between internal tooling and a public URL, and the last time this
+      # repository trusted an exclude list three documents reached the internet.
+      # The list is short and stable now; this is what makes it checkable.
+      - name: Check nothing internal reached the site
+        run: python3 site/bin/test_nothing_internal_is_published.py
 
       # The member site template is a Jekyll site of its own, excluded from
       # the main build — so nothing else would notice it breaking. The check
@@ -130,7 +138,7 @@ jobs:
       # entire contract between a member site and FCPM, and it is the thing
       # that must not silently stop working.
       - name: Build the member site template and read its feed back
-        run: python3 script/check-template.py
+        run: python3 site/bin/check-template.py
 
       # The broker is the first thing here that actually checks a signature.
       # Its tests need nothing installed — they generate a real key and a real
@@ -143,13 +151,13 @@ jobs:
         run: npm test
 
       - name: Install test dependencies
-        working-directory: tests
+        working-directory: site/tests
         run: |
           npm ci
           npx playwright install --with-deps chromium
 
       - name: Run smoke tests
-        working-directory: tests
+        working-directory: site/tests
         run: npx playwright test --grep-invert @external
 
       # Only on the scheduled run, and allowed to fail: this is a report on
@@ -157,7 +165,7 @@ jobs:
       - name: Check embeds and outbound links
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
-        working-directory: tests
+        working-directory: site/tests
         run: npx playwright test --grep @external
 
       # test-results/ carries the screenshot, video, and trace for each
@@ -169,7 +177,7 @@ jobs:
         with:
           name: playwright-report
           path: |
-            tests/playwright-report/
-            tests/test-results/
+            site/tests/playwright-report/
+            site/tests/test-results/
           if-no-files-found: warn
           retention-days: 14

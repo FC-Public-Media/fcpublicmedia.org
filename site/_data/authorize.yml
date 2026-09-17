@@ -6,7 +6,7 @@
 # makes a passkey. The public half of that passkey is what authorizes the
 # device to change their site's settings later.
 #
-# The link is a signed claim naming the repository — see script/mint-claim.py
+# The link is a signed claim naming the repository — see site/bin/mint-claim.py
 # --repo. The repository travels inside the signature, so a forwarded link
 # cannot be edited to point at somebody else's site.
 #

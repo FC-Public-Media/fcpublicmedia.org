@@ -44,7 +44,7 @@ sitemap: false
 
   <p>From a checkout of this repository:</p>
 
-  <pre><code>python3 script/make-wifi-qr.py</code></pre>
+  <pre><code>python3 site/bin/make-wifi-qr.py</code></pre>
 
   <p>It asks for the password rather than taking it as an argument, so the
   password stays out of your shell history. Then print this page.</p>
