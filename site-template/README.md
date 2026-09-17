@@ -28,7 +28,7 @@ someone else is allowed to read.
 
 One file matters more than all the pages: `/feed.xml`.
 
-That feed is what FCPM reads (`script/sync-feeds.py` in the main repository),
+That feed is what FCPM reads (`site/bin/sync-feeds.py` in the main repository),
 and it is the whole contract. Everything else on the site is for humans; the
 feed is for us. A member who never looks at their own site still gets listed
 on ours as long as the feed keeps working.

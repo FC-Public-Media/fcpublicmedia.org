@@ -169,7 +169,7 @@ title: Meet
 {% comment %} ------------------------------------------------ made by members {% endcomment %}
 
 {%- comment -%}
-  Read from _data/member_programs.json, which script/sync-feeds.py builds from
+  Read from _data/member_programs.json, which site/bin/sync-feeds.py builds from
   the feeds listed in _data/feeds.yml. Nothing is fetched in the browser.
 
   EVERY STRING BELOW WAS WRITTEN BY SOMEBODY ELSE. The sync already strips

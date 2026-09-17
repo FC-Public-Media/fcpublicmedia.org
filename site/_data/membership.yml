@@ -48,7 +48,7 @@ term:
 # nobody wants to pay the wrong amount on purpose and hope.
 #
 # The fix is not a stricter rule, it is doing the check EARLIER. See
-# script/sync-nonprofits.py: the IRS publishes every 501(c)(3), so an
+# site/bin/sync-nonprofits.py: the IRS publishes every 501(c)(3), so an
 # organization can pick their own name off a list and staff get an EIN to
 # check, before any money moves.
 #

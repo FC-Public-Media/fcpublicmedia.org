@@ -1,6 +1,6 @@
 // Verifying an email claim in the browser.
 //
-// A claim is minted by script/mint-claim.py and arrives as a link:
+// A claim is minted by site/bin/mint-claim.py and arrives as a link:
 //
 //     /check-in/#claim=v1.<payload>.<signature>
 //

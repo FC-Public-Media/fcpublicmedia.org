@@ -48,7 +48,7 @@ jobs:
       # broke rather than the whole internet. One member's host having a bad
       # morning is expected and leaves the last good data in place.
       - name: Read the feeds
-        run: python3 script/sync-feeds.py
+        run: python3 site/bin/sync-feeds.py
 
       - name: Commit if anything changed
         run: |

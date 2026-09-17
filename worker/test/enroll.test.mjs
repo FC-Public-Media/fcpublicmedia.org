@@ -5,7 +5,7 @@
 // because forwarding it gets somebody LISTED and nothing more. If that ever
 // stops being true, the whole reason staff can leave the loop goes with it.
 //
-// The claims here are minted by script/mint-claim.py — the real script, run as
+// The claims here are minted by site/bin/mint-claim.py — the real script, run as
 // a subprocess — rather than assembled by the test. The broker's claim
 // checking is worth nothing if it agrees with a fixture instead of with the
 // thing that actually issues links.
@@ -26,7 +26,7 @@ const ORIGIN = 'https://www.fcpublicmedia.org';
 const REPO = 'fcpublicmedia/janes-show';
 const DEVICES = '.auth/devices.json';
 
-const SCRIPT = path.resolve(import.meta.dirname, '..', '..', 'script', 'mint-claim.py');
+const SCRIPT = path.resolve(import.meta.dirname, '..', '..', 'site', 'bin', 'mint-claim.py');
 
 /* ------------------------------------------------- a real claim signing key */
 

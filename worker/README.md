@@ -329,7 +329,7 @@ a flaky authenticator for months.
 inverting the decoder, so the round trip is a check and not a mirror, and the
 suite signs fifty times because one signature proves nothing about the padding.
 
-`script/mint-claim.py` has the same seam in the other direction.
+`site/bin/mint-claim.py` has the same seam in the other direction.
 
 ## What is not built
 

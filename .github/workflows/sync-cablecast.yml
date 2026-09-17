@@ -26,13 +26,13 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Fetch the catalog
-        run: python3 script/sync-cablecast.py
+        run: python3 site/bin/sync-cablecast.py
 
       # The airing history, from the same source on the same tick. It is a
       # join on the show ids the step above just fetched, so running them apart
       # would let the archive show counts for programs it no longer lists.
       - name: Fetch the airing history
-        run: python3 script/sync-schedule.py
+        run: python3 site/bin/sync-schedule.py
 
       - name: Commit if the catalog changed
         id: commit

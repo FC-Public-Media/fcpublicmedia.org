@@ -32,7 +32,7 @@
 # EVERYTHING HERE IS UNTRUSTED
 # ----------------------------
 # Titles and descriptions are written by other people, on servers we do not
-# run, and they land in our HTML. script/sync-feeds.py strips markup and
+# run, and they land in our HTML. site/bin/sync-feeds.py strips markup and
 # rejects any link that is not http(s), and the template escapes on top of
 # that. Do not remove either half.
 

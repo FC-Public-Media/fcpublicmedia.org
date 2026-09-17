@@ -1,7 +1,7 @@
 # The guest Wi-Fi, and the poster that gets people onto it.
 #
 # Regenerate the code after changing anything here:
-#   FCPM_WIFI_PASSWORD='…' python3 script/make-wifi-qr.py
+#   FCPM_WIFI_PASSWORD='…' python3 site/bin/make-wifi-qr.py
 #
 # THE PASSWORD IS NOT IN THIS FILE AND MUST NOT BE PUT IN IT
 # ----------------------------------------------------------

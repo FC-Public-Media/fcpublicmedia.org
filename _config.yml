@@ -47,7 +47,7 @@ collections:
   # One file per show, and the file IS the config: canonical name, how its
   # episodes are recognised in the Cablecast catalog, and the prose that goes
   # on its page. Cablecast titles are episode titles, so nothing else can say
-  # what a show is — see script/propose-shows.py for why no rule works.
+  # what a show is — see site/bin/propose-shows.py for why no rule works.
   #
   # Merging a proposal is what makes a show real. Everything unmatched stays a
   # findable one-off rather than being forced into a group.
@@ -81,9 +81,33 @@ include:
   - _redirects
   - _headers
 
-# NOTHING IS EXCLUDED, AND THAT IS THE POINT OF `source: site`.
+# TWO DIRECTORIES ARE EXCLUDED, AND NOTHING ELSE EVER SHOULD BE.
 #
-# There used to be a list here, and it was a standing hazard. A `.md` file with
+# `bin/` and `tests/` live inside the site because that is the context they
+# serve — the syncs write `_data/`, the browser tests drive the built pages —
+# but neither is content and neither may be published.
+#
+# THIS IS NOT THE OLD LIST COMING BACK. That list named eleven *documents*, one
+# line per file, and the failure mode was forgetting to add the twelfth: a `.md`
+# with no front matter is copied verbatim to a public URL, and MANIFEST,
+# REDIRECTS and RESERVE-DESIGN each reached one that way. REVIEW-NOTES.md was
+# the one that mattered — unratified board feedback, verbatim, one guessable URL
+# from anyone.
+#
+# These are two DIRECTORIES. Adding a script or a spec needs no edit here, so
+# there is nothing to forget. `site/bin/test_nothing_internal_is_published.py`
+# fails the build if either one reaches `_site` anyway, which is the difference
+# between a rule and a habit.
+#
+# Internal DOCUMENTS still live outside `source:` — at the repository root and
+# in `docs/` — where Jekyll cannot see them at all. Never put one in `site/`.
+exclude:
+  - bin
+  - tests
+
+# The history, kept because it is the reason for the rule above.
+#
+# There used to be a much longer list here, and it was a standing hazard. A `.md` file with
 # no front matter is copied verbatim rather than rendered, so any internal
 # document left off the list ended up fetchable at its own public URL —
 # MANIFEST.md, REDIRECTS.md and RESERVE-DESIGN.md all were, which is how it was

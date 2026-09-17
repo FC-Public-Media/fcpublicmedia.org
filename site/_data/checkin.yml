@@ -11,7 +11,7 @@
 # copy would take.
 
 # The URL the QR code points at. Regenerate the code after changing it:
-#   python3 script/make-qr.py
+#   python3 site/bin/make-qr.py
 url: https://www.fcpublicmedia.org/check-in/
 
 # --------------------------------------------------------------- location

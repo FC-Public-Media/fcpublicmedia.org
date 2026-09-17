@@ -10,7 +10,7 @@ sitemap: false
 <p class="no-print muted">
   Print this page. The code below points at
   <code>{{ ci.url }}</code>. If that URL ever changes, regenerate the code with
-  <code>python3 script/make-qr.py</code> — a printed code with the wrong URL is
+  <code>python3 site/bin/make-qr.py</code> — a printed code with the wrong URL is
   worse than no code at all.
 </p>
 

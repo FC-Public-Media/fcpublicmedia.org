@@ -4,8 +4,8 @@ Rules that hold across sessions, for anyone — human or agent — working in th
 repository. They are here rather than in a commit message because they are the
 kind of thing that gets re-derived wrongly by whoever shows up next.
 
-Not a style guide. See [DESIGN-NOTES.md](DESIGN-NOTES.md) for how the site is
-built and [CONTENT-TODO.md](CONTENT-TODO.md) for what it still needs.
+Not a style guide. See [docs/DESIGN-NOTES.md](docs/DESIGN-NOTES.md) for how the site is
+built and [docs/CONTENT-TODO.md](docs/CONTENT-TODO.md) for what it still needs.
 
 ---
 
@@ -28,10 +28,10 @@ Why this is a standing order and not a preference:
   mistake made through the connector cannot be undone by us.
 - **Divergence is the specific hazard.** We are mid-migration. Wix is still the
   system of record for content nobody has moved yet — that is exactly what
-  CONTENT-TODO.md is a list of. The moment both sites are being edited, they
+  docs/CONTENT-TODO.md is a list of. The moment both sites are being edited, they
   start disagreeing about the same fact, and the *old* one wins, because the
   old one is the one actually published.
-- **Reading is the whole job anyway.** REDIRECTS.md is generated from Wix's own
+- **Reading is the whole job anyway.** docs/REDIRECTS.md is generated from Wix's own
   sitemaps rather than a list someone typed, which is why it is a check rather
   than a claim. That pattern only works in one direction.
 
@@ -39,7 +39,7 @@ Why this is a standing order and not a preference:
 locked inside a Wix widget and could not be scraped; checking what a page
 currently says before rewriting it here; reading the sitemaps; and — the live
 errand as of September 2026 — **retrieving old photographs of the spaces**,
-which Bryan believes are still up there. See REVIEW-NOTES.md, round 1.
+which Bryan believes are still up there. See docs/REVIEW-NOTES.md, round 1.
 
 If something genuinely has to change *on Wix* — taking a page down, fixing a
 redirect at the source — **say so and stop.** A human does it in the Wix admin.
@@ -88,7 +88,7 @@ so far.
 
 ## Feedback is recorded before it is acted on
 
-[REVIEW-NOTES.md](REVIEW-NOTES.md) holds what people have said about the site,
+[docs/REVIEW-NOTES.md](docs/REVIEW-NOTES.md) holds what people have said about the site,
 close to verbatim, with the file each note lands in. Add to it when feedback
 arrives; strike an entry through when it ships.
 
@@ -99,9 +99,9 @@ This used to be a list — an `exclude:` in `_config.yml` that every new interna
 document had to be added to, in the same commit that created it. It was not
 reliable: a `.md` file with no front matter is copied verbatim to a public URL,
 and MANIFEST, REDIRECTS and RESERVE-DESIGN each leaked that way once, because
-the list is only as good as whoever remembered it. REVIEW-NOTES.md is the one
+the list is only as good as whoever remembered it. docs/REVIEW-NOTES.md is the one
 that mattered — unratified board feedback, quoted verbatim, one guessable URL
 away from anyone.
 
 So: **a new internal document goes at the root.** Never move one into `site/`,
-and do not restore the exclude list to make that safe. See `NODE.md`.
+and do not restore the exclude list to make that safe. See `docs/NODE.md`.

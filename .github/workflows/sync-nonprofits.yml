@@ -19,7 +19,7 @@ on:
   # it should take effect without waiting a month for the schedule.
   push:
     paths:
-      - "script/sync-nonprofits.py"
+      - "site/bin/sync-nonprofits.py"
       - ".github/workflows/sync-nonprofits.yml"
 
 permissions:
@@ -41,7 +41,7 @@ jobs:
       # nothing, so a layout change upstream fails the step instead of quietly
       # emptying the picker.
       - name: Read the IRS master file
-        run: python3 script/sync-nonprofits.py
+        run: python3 site/bin/sync-nonprofits.py
 
       - name: Commit if anything changed
         run: |
