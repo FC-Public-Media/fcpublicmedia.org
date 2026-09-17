@@ -1,6 +1,6 @@
 # FC Public Media
 
-We are non-profit Public Media, formerly FCPAN-76.
+We are non-profit Public Media, formerly FCPAN-97.
 
 We serve Fort Collins, Colorado so that its public media can be filled with what they say.
 
