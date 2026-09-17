@@ -97,7 +97,6 @@ site/                      EVERYTHING THE PUBLIC GETS. Jekyll sees only this.
   staticwebapp.config.json Routing, redirects, auth rules.
   bin/                     Build tooling and the syncs. Excluded, never published.
   tests/                   Browser tests. Excluded, never published.
-api/                       The small server-side piece. See [identity.md](identity.md).
 worker/                    The broker. Its own Worker. See [identity.md](identity.md).
 site-template/             The scaffold a member site is cut from.
 docs/                      This directory. Everything written down.

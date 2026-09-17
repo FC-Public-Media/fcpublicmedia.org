@@ -39,9 +39,9 @@ Two annotated PDFs, printed from the staged site: `Home Page.pdf` and
 comments/suggestions are in italicized and in red."* Highlighting in yellow
 marks the passage he is talking about, not a change.
 
-He is [`hosts.yml`](site/_data/hosts.yml)'s Bryan — board president and the booker —
+He is [`hosts.yml`](../site/_data/hosts.yml)'s Bryan — board president and the booker —
 and the same person the facilities copy came from in August, which is why the
-[`facilities.yml`](site/_data/facilities.yml) summaries come back highlighted rather
+[`facilities.yml`](../site/_data/facilities.yml) summaries come back highlighted rather
 than rewritten. He is reading his own words.
 
 His overall verdict on the home page, verbatim: *"After this I think the rest

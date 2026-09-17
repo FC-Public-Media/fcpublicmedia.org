@@ -117,11 +117,16 @@ Three slots at the root, then:
 | the tenancy thing | **unnamed.** This is the talk. |
 | very basic configuration | **implied, small on purpose.** *"there might be"* is doing real work — it is not certain anything is owed here at all. |
 
-**"Mostly empty" is a target, not a description.** The root currently holds
-eleven markdown documents, `api/`, `worker/`, `script/`, `tests/`,
-`site-template/`, a Gemfile and four config files. *"We're gonna move more"*
-means that list is expected to shrink, and no session should read the present
-clutter as the settled shape.
+**"Mostly empty" is a target, and the root has moved toward it since this was
+written.** When this paragraph was drafted the root held eleven markdown
+documents, `api/`, `worker/`, `script/`, `tests/`, `site-template/`, a Gemfile
+and four config files. Since then `api/` has been deleted, `script/` and
+`tests/` have become `site/bin/` and `site/tests/`, and the documents have moved
+into `docs/`. What is left is `CLAUDE.md`, an empty `README.md`, `Gemfile`,
+`_config.yml`, `advocate.yml`, `wrangler.jsonc`, and four directories.
+
+*"We're gonna move more"* still stands. Nobody should read the present shape as
+settled, in either direction.
 
 ---
 
@@ -167,7 +172,7 @@ From `NODE.md`, which worked this out before there was a reason to:
 3. **Shared markup must be staged, not symlinked.** Jekyll has no cross-source
    include path. Measured in this repository: a symlinked `_data` directory is
    read by a normal build and **silently ignored** under `--safe`. A staging
-   step in `script/` is the option that matches how everything else here works.
+   step in `site/bin/` is the option that matches how everything else here works.
 4. **`sites/<name>/` is already the reserved name** if tenants live in this
    repository. `site/` is deliberately singular and every path in the docs,
    scripts and workflows now says so.
@@ -175,7 +180,7 @@ From `NODE.md`, which worked this out before there was a reason to:
 ### And half of it is already built
 
 `site-template/` is a complete Jekyll site, cut as a scaffold rather than an
-example, and `script/check-template.py` builds it on every push and reads its
+example, and `site/bin/check-template.py` builds it on every push and reads its
 feed back **with this repository's own reader** — because `/feed.xml` is the
 entire contract between a member site and FCPM.
 
@@ -456,7 +461,7 @@ worth checking now rather than on the day somebody asks.
 ### Measured: what removal from the list does today, and what it leaves
 
 The existing member-feed pipeline is the closest thing to this that is actually
-running. `site/_data/feeds.yml` is the list; `script/sync-feeds.py` reads it
+running. `site/_data/feeds.yml` is the list; `site/bin/sync-feeds.py` reads it
 daily and commits `site/_data/member_programs.json`.
 
 - **Removing an entry from `feeds.yml` does drop their items.** Carry-forward is

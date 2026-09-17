@@ -17,6 +17,7 @@ describe a repository that is being rebuilt underneath it.
 |---|---|
 | [`NODE.md`](NODE.md) | **the repository.** What is at the root, what is in `site/`, what `site/_data` may reach into, and what a second site in a cluster would need |
 | [`STATION.md`](STATION.md) | **the station.** The machines, the crews, the public-repository rule, and which engines arrive in what order |
+| [`TENANCY.md`](TENANCY.md) | **the tenancy.** Other people's sites published from here — the factory, ejection, and what a member site is owed |
 | [`DESIGN-NOTES.md`](DESIGN-NOTES.md) | **the services.** Work taken far enough to be resumed and deliberately not built — the digitization station, workstation sign-in, member scheduling |
 
 ## How to work on it

@@ -4,7 +4,7 @@
 order it has to happen.** Written 2026-09-09.
 
 This is a runbook, not a design document. The design is in
-[`site/_data/payments.yml`](site/_data/payments.yml), which is the best-commented file
+[`site/_data/payments.yml`](../site/_data/payments.yml), which is the best-commented file
 here and explains *why* each of these exists. This file only answers "what is
 left, and who can do it."
 

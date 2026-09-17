@@ -17,25 +17,45 @@ Who somebody is, how they prove it, and what happens at the door.
 The current site has no real accounts, and it doesn't need them. What it needs
 is a way to tell whether the person asking to book a studio has paid.
 
-Azure Static Web Apps does this without a user table:
+**Identity is the broker in `worker/`** — passkeys, enrolment and assertion at
+`/bind` and `/device`, signed claims minted by `site/bin/mint-claim.py` and
+verified by `site/assets/js/claims.js`. It is built and tested. See
+`docs/deploying.md` for how it ships, and `docs/DESIGN-NOTES.md` for where it is
+going: workstation sign-in is the same machinery with a different consequence.
 
-1. A visitor clicks sign in and authenticates against **Entra ID**. FCPM never
-   stores a password and never has one to leak.
-2. SWA calls **`api/GetRoles`** once, with the visitor's email.
-3. That function looks up whether the email has paid dues and hasn't expired,
-   and returns `["member"]` or `[]`.
-4. `site/staticwebapp.config.json` gates `/members/*` on that role.
-
-The membership record itself is the only thing FCPM stores: an email address
-and a paid-through date. The natural home is a **SharePoint list in the
+The membership record itself is the only thing FCPM would store: an email
+address and a paid-through date. The natural home is a **SharePoint list in the
 existing Microsoft 365 tenant**, read through Microsoft Graph — no new vendor,
-no new bill, and board members can see and edit it without touching code.
+no new bill, and board members can see and edit it without touching code. That
+part is still unbuilt and still the right shape.
 
 The write side is the payment redirect: a member pays, the provider sends them
 back or fires a webhook, and that records the dues. Signing in by itself never
 grants membership.
 
-`api/src/functions/GetRoles.js` is a working stub with the lookup left as a TODO.
+### There was a second sign-in here, and it was removed
+
+Until 2026-09-17 this section described an **Azure** path instead: Static Web
+Apps authenticating a visitor against Entra ID, calling an
+`api/GetRoles` function with their email, and gating `/members/*` on whatever
+roles came back.
+
+It is gone. `api/` is deleted and `site/staticwebapp.config.json` no longer
+carries `auth`, the `/login` and `/logout` rewrites or the role gates. Three
+reasons, and the third is the one that matters:
+
+- The lookup was never written — a `TODO` with three options and none chosen,
+  so it never returned a role to anybody.
+- Nothing was gated. There is no `/members/` area in this repository, and
+  nothing linked `/login`.
+- **Two identity systems is one too many.** FCPM's answer to "who is this
+  person" is the broker. A second one, belonging to a host we do not deploy to,
+  was a config file describing a feature that could not happen — which reads as
+  a working feature to whoever finds it next.
+
+Kept here rather than deleted because the *shape* was not wrong: sign-in that
+stores no password, a role decided by a lookup rather than a user table, and the
+payment redirect as the only writer. The broker does the same things.
 
 ## Check-in
 
