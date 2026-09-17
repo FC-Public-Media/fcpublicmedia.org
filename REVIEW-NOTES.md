@@ -39,9 +39,9 @@ Two annotated PDFs, printed from the staged site: `Home Page.pdf` and
 comments/suggestions are in italicized and in red."* Highlighting in yellow
 marks the passage he is talking about, not a change.
 
-He is [`hosts.yml`](_data/hosts.yml)'s Bryan — board president and the booker —
+He is [`hosts.yml`](site/_data/hosts.yml)'s Bryan — board president and the booker —
 and the same person the facilities copy came from in August, which is why the
-[`facilities.yml`](_data/facilities.yml) summaries come back highlighted rather
+[`facilities.yml`](site/_data/facilities.yml) summaries come back highlighted rather
 than rewritten. He is reading his own words.
 
 His overall verdict on the home page, verbatim: *"After this I think the rest
@@ -51,14 +51,14 @@ of the home page looks great!"*
 
 | What he said | Where it lands |
 |---|---|
-| ~~Suggestion: replace the tagline **"PUBLIC MEDIA is made of You."** with **"You are PUBLIC MEDIA"**~~ **Shipped.** | `tagline:` in the front matter of `index.html`. |
-| ~~*"I'd like a mission statement before scrolling down to the Watch Page. Maybe in front of a photo of the studio."*~~ **Shipped, without the photo** — there isn't one yet, and a band styled around a missing image reads as broken. Type only, same call the hero makes. | `index.html`, between the on-air bar and the Watch section. |
-| ~~His proposed mission statement: *"Fort Collins Public Media offers the equipment, training, and artistic space for Northern Coloradans to craft their visions into reality."*~~ **Shipped**, verbatim. | `org.mission` in `_data/org.yml`. Still to be rendered on `/about/` when that page has the rest of its content. |
+| ~~Suggestion: replace the tagline **"PUBLIC MEDIA is made of You."** with **"You are PUBLIC MEDIA"**~~ **Shipped.** | `tagline:` in the front matter of `site/index.html`. |
+| ~~*"I'd like a mission statement before scrolling down to the Watch Page. Maybe in front of a photo of the studio."*~~ **Shipped, without the photo** — there isn't one yet, and a band styled around a missing image reads as broken. Type only, same call the hero makes. | `site/index.html`, between the on-air bar and the Watch section. |
+| ~~His proposed mission statement: *"Fort Collins Public Media offers the equipment, training, and artistic space for Northern Coloradans to craft their visions into reality."*~~ **Shipped**, verbatim. | `org.mission` in `site/_data/org.yml`. Still to be rendered on `/about/` when that page has the rest of its content. |
 | *"After the Mission Statement I think it'd be beneficial to have an Events Calendar"* — listing **Classes**, **Meetups**, and **Video Events** *("E.G. Comic Con")* | See the note below. This is the one that is not small. |
 
 **Answered: it goes on /meet/, not the homepage.** Autumn's call, and it turned
-out to need no new machinery at all — `meet.md` already merges three sources
-into one chronological list, and `_data/community.yml` already had a `kind`
+out to need no new machinery at all — `site/meet.md` already merges three sources
+into one chronological list, and `site/_data/community.yml` already had a `kind`
 field the template rendered but the documentation never mentioned. Classes come
 from `classes.yml`, board meetings from `governance.yml`, and meetups and video
 events go in `community.yml` as `kind: Meetup` and `kind: Video event`. Both
@@ -100,8 +100,8 @@ things it changes that are worth noticing before it is pasted in:
 
 | What he said | Where it lands |
 |---|---|
-| ~~*"I like having the floorplan on the page. However I don't think it needs to be at the top... The floor plan might be better at the bottom as extra information"*~~ **Shipped.** The video/slideshow half is not — it waits on footage. | `reserve.md`. The `.reserve-intro` wrapper went with it: it was a two-column grid that existed only to stand the plan beside the intro, and left to itself it would have reserved 17rem for nothing. |
-| *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* **Accepted — Autumn is taking him up on it**, and pulling what she can from Google Drive besides. Old Wix pictures are a **read**, which is all we ever do to Wix; see CLAUDE.md. | Not built yet, on purpose: an `image:` key with no images behind it is a schema nobody can fill. New `image:` per entry in `_data/facilities.yml` plus markup in `rows-spaces`, the day the photographs land. |
+| ~~*"I like having the floorplan on the page. However I don't think it needs to be at the top... The floor plan might be better at the bottom as extra information"*~~ **Shipped.** The video/slideshow half is not — it waits on footage. | `site/reserve.md`. The `.reserve-intro` wrapper went with it: it was a two-column grid that existed only to stand the plan beside the intro, and left to itself it would have reserved 17rem for nothing. |
+| *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* **Accepted — Autumn is taking him up on it**, and pulling what she can from Google Drive besides. Old Wix pictures are a **read**, which is all we ever do to Wix; see CLAUDE.md. | Not built yet, on purpose: an `image:` key with no images behind it is a schema nobody can fill. New `image:` per entry in `site/_data/facilities.yml` plus markup in `rows-spaces`, the day the photographs land. |
 
 **He is offering to shoot the photography, and Autumn has accepted.** She is
 also pulling what she can out of Google Drive, where the material exists but is
@@ -127,7 +127,7 @@ in Microsoft 365:
 
 So `org.equipment_email` stays `fcpmequipment@gmail.com` until **1 November
 2026** and becomes `equipment@fcpublicmedia.org` on it. One line in
-`_data/org.yml`, on a date that is easy to sail past. It should be somebody's
+`site/_data/org.yml`, on a date that is easy to sail past. It should be somebody's
 diary entry and not just a line in this file.
 
 His suggested replacement for the "please help us by knowing in advance" list:
@@ -166,7 +166,7 @@ rather than twice. Two things about that are worth keeping in view.
 Worth recording, because silence on a staged page is weak evidence of assent
 and it is useful to know what he did look at. The **"Check availability — not
 wired up yet"** placeholder for Booqable appears in his printout and he did not
-remark on it, so the `booking` entry in `_data/providers.yml` stays `pending`
+remark on it, so the `booking` entry in `site/_data/providers.yml` stays `pending`
 on the same terms as before. Everything below the equipment section on the
 reserve page, and everything below the hero on the home page, he passed over.
 
@@ -177,14 +177,14 @@ reserve page, and everything below the hero on the home page, he passed over.
 Ruled on 9 September 2026. What survives, in order of how much it matters.
 
 1. **Equipment Terms and Conditions must now exist.** The reserve page names
-   the document in shipped copy and cannot link to it. Page under `policies/`
+   the document in shipped copy and cannot link to it. Page under `site/policies/`
    or a PDF — either is fine, neither has been chosen. **This is the one that
    should not sit.**
 2. **Does equipment checkout work the way the page now says it does?** Two
    things to confirm against practice rather than against each other: the card
    is now described as being held for *late fees and incidentals* rather than
    as a hold, and Bryan's *"check out production equipment"* reads more
-   self-serve than `_data/facilities.yml`'s *"arranged by email"*. Both are
+   self-serve than `site/_data/facilities.yml`'s *"arranged by email"*. Both are
    defensible; neither has been checked with the people who run it.
 3. **Video or slideshow of the spaces**, in the slot the floor plan vacated.
    Different builds, and both wait on footage that does not exist yet.
@@ -208,13 +208,13 @@ worth reading as a result rather than as a lull.
 | What he said | Where it lands |
 |---|---|
 | *"I'd like to see office hours posted on the page."* | Nowhere on its own — see the sub-note, which is how he wants it done. |
-| *"If we have a board directors section, we can post each board member's office hours in their mini-bios."* | **Machinery shipped.** `office_hours` per person in `_data/board.yml`, rendered inside the roster card on `/meet/`. |
+| *"If we have a board directors section, we can post each board member's office hours in their mini-bios."* | **Machinery shipped.** `office_hours` per person in `site/_data/board.yml`, rendered inside the roster card on `/meet/`. |
 
 We do have a board directors section, so his conditional resolves: it is
 "Who's on it", the last part of **The board** on `/meet/`. It used to be a page
 of its own.
 
-**This renders nothing today, and that is the finding.** `_data/board.yml` is
+**This renders nothing today, and that is the finding.** `site/_data/board.yml` is
 an empty list — it has been since it was written — so a field for each board
 member's hours produces exactly zero board members' hours. The president has
 now asked for something on the site that cannot appear until the roster is
@@ -224,22 +224,22 @@ filled in, which quietly promotes **"Board and staff roster"** in
 
 Two smaller things fell out of building it:
 
-- **`photo` was documented and never rendered.** `_data/board.yml` has offered
-  a `photo` field since the file was written; `meet.md` ignored it. An optional
+- **`photo` was documented and never rendered.** `site/_data/board.yml` has offered
+  a `photo` field since the file was written; `site/meet.md` ignored it. An optional
   field that silently does nothing is worse than no field at all, because the
   first person to set one concludes the site is broken rather than that the
   template is. It renders now.
 - **There is deliberately no studio-wide office-hours setting.** He tied the
   hours to people, and a second org-level field would be a second place to look
   and a second thing to contradict. If the studio ever keeps hours belonging to
-  nobody in particular, `address.note` in `_data/org.yml` already says *"Open
+  nobody in particular, `address.note` in `site/_data/org.yml` already says *"Open
   by appointment"* and is where that would go.
 
 ### Learn page
 
 | What he said | Where it lands |
 |---|---|
-| *"Only note, picture on the page of people teaching classes."* | **Machinery shipped, waiting on a file.** `photo:` in `_data/classes.yml`, rendered at the top of `/classes/`. |
+| *"Only note, picture on the page of people teaching classes."* | **Machinery shipped, waiting on a file.** `photo:` in `site/_data/classes.yml`, rendered at the top of `/classes/`. |
 
 *"Only note"* is doing real work in that sentence: everything else on the page
 passed, including the standing admission that class listings have no home yet.
@@ -249,7 +249,7 @@ classes"* can mean a single photograph of instruction happening, or a portrait
 of each instructor beside their class. The first is what was built — one photo
 at the top of the page — because it is cheap, it needs one file rather than a
 roster of instructors the site does not model, and it is trivially replaced by
-the second if that is what he meant. `_data/classes.yml` sessions carry no
+the second if that is what he meant. `site/_data/classes.yml` sessions carry no
 `instructor` field at all today, so the per-instructor reading is a genuinely
 larger piece of work and not one to start on a guess.
 
@@ -276,12 +276,12 @@ and all five are small:
 
 - The homepage mission band takes a photo behind it, the way `org.hero_image`
   already can.
-- `image:` per entry in `_data/facilities.yml`, rendered in `rows-spaces`.
+- `image:` per entry in `site/_data/facilities.yml`, rendered in `rows-spaces`.
 - Whatever goes at the top of the reserve page where the plan used to be.
 - **A class in progress**, for the top of `/classes/` — `photo.src` and
-  `photo.alt` in `_data/classes.yml`. Round 2, and the one with a brief
+  `photo.alt` in `site/_data/classes.yml`. Round 2, and the one with a brief
   attached: *people teaching*, not an empty studio.
-- **Headshots for the board roster**, `photo` per person in `_data/board.yml`.
+- **Headshots for the board roster**, `photo` per person in `site/_data/board.yml`.
   Not asked for, but the field renders now and the roster has to be written
   either way.
 
@@ -296,4 +296,4 @@ is the only thing we ever do to Wix — see [CLAUDE.md](CLAUDE.md).
 - **1 November 2026** — `org.equipment_email` becomes
   `equipment@fcpublicmedia.org`. It is `fcpmequipment@gmail.com` until then and
   Bryan announces the change in the October newsletter. One line in
-  `_data/org.yml`, and nothing in this repository will remind anyone.
+  `site/_data/org.yml`, and nothing in this repository will remind anyone.

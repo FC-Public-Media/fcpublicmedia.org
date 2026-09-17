@@ -64,7 +64,7 @@ POST /verify
 }
 ```
 
-Base64url throughout. `assets/js/passkey.js` produces exactly this shape from
+Base64url throughout. `site/assets/js/passkey.js` produces exactly this shape from
 `navigator.credentials.get()`, so no page has to know the field names.
 
 The challenge is not sent as a field. It is read out of the signed client data,
@@ -103,7 +103,7 @@ compared afterwards and a mismatch is a 409.
 **Listed is not allowed.** Being in `.auth/devices.json` means a device exists.
 Whether it may change the site is `may_publish` on the record, absent by
 default. That separation is what makes a forwardable enrollment link safe — see
-`_data/authorize.yml`.
+`site/_data/authorize.yml`.
 
 ## Enrolment: `/bind` and `/device`
 
@@ -145,8 +145,8 @@ Device writes are always direct, never on a branch — a grant sitting in an
 unmerged pull request grants nothing.
 
 `CLAIM_KEYS` is the public half of the claim signing keys, the same list as
-`_data/identity.yml`. `src/index.js` imports the browser's own
-`assets/js/claims.js` to check them rather than keeping a second copy, so the
+`site/_data/identity.yml`. `src/index.js` imports the browser's own
+`site/assets/js/claims.js` to check them rather than keeping a second copy, so the
 two cannot drift; a test imports it under Node to catch the day somebody adds a
 `window` reference to that file.
 
@@ -244,12 +244,12 @@ a day.
 
 | | |
 |---|---|
-| `RP_ID` | The domain the passkeys belong to. Must equal `rp_id` in `_data/authorize.yml`. |
+| `RP_ID` | The domain the passkeys belong to. Must equal `rp_id` in `site/_data/authorize.yml`. |
 | `ORIGINS` | Comma-separated origins, exact. Used for CORS *and* checked against the origin inside the signature — two different checks. |
 | `OWNER` | Repositories outside this owner are refused. |
 | `CHALLENGE_TTL` | Seconds. Default 300. |
 | `WRITE_MODE` | `branch` (default) or `direct`. Not the page's decision to make. |
-| `CLAIM_KEYS` | Claim signing public keys as JSON, same as `_data/identity.yml`. `/bind` only. |
+| `CLAIM_KEYS` | Claim signing public keys as JSON, same as `site/_data/identity.yml`. `/bind` only. |
 | `R2_ENDPOINT` | `https://<account id>.r2.cloudflarestorage.com`. |
 | `R2_BUCKET` | Bucket name. |
 | `R2_MAX_BYTES` | Largest file accepted. `0` is no cap, which is not a decision. |

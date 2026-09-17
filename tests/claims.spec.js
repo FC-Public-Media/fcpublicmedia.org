@@ -1,6 +1,6 @@
 // Email claims, checked across the seam.
 //
-// script/mint-claim.py signs with openssl. assets/js/claims.js verifies with
+// script/mint-claim.py signs with openssl. site/assets/js/claims.js verifies with
 // WebCrypto. Those are two different implementations of the same standard,
 // joined by a hand-written DER conversion, and the failure mode is a token
 // that looks perfect and verifies nowhere.

@@ -3,7 +3,7 @@
 
 Two things are being guarded, and they fail in opposite directions.
 
-The first is drift: a price edited in _data/ that never reaches the broker.
+The first is drift: a price edited in site/_data/ that never reaches the broker.
 That one is quiet — the page says $70, the card is charged $60, and nobody
 finds out until somebody reconciles a bank statement. `--check` in CI is the
 guard; the test here is that `--check` actually notices.

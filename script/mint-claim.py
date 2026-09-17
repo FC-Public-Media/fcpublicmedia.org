@@ -4,7 +4,7 @@
 A claim is a short token saying "Fort Collins Public Media asserts that this
 address was mailed a link on this date". It is signed with a private key held
 by whoever runs this script, and verified in the browser against the public
-half published in _data/identity.yml.
+half published in site/_data/identity.yml.
 
     Generate a signing key (once):
 
@@ -158,7 +158,7 @@ def new_key(path):
 
 
 def public_block(key_path):
-    """The YAML fragment for _data/identity.yml describing this key."""
+    """The YAML fragment for site/_data/identity.yml describing this key."""
     der = openssl(["ec", "-in", key_path, "-pubout", "-outform", "DER"])
     x, y = spki_to_point(der)
 
@@ -244,7 +244,7 @@ def main(argv=None):
     if args.new_key:
         block = new_key(args.new_key)
         print(f"Private key written to {args.new_key} — keep it out of git.\n")
-        print("Paste this into the `keys:` list in _data/identity.yml:\n")
+        print("Paste this into the `keys:` list in site/_data/identity.yml:\n")
         print(f'  - id: "{block["id"]}"')
         print(f'    x: "{block["x"]}"')
         print(f'    y: "{block["y"]}"')

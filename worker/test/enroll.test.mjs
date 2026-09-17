@@ -348,10 +348,10 @@ test('an unconfigured claim list refuses every enrolment rather than half-checki
 /* ------------------------------------------------------------ the import */
 
 test('the browser’s claim verifier runs here unmodified', async () => {
-  // index.js imports assets/js/claims.js rather than keeping a second copy.
+  // index.js imports site/assets/js/claims.js rather than keeping a second copy.
   // The day somebody adds a top-level `window` to that file, this fails here
   // instead of in production.
-  const claims = await import('../../assets/js/claims.js');
+  const claims = await import('../../site/assets/js/claims.js');
 
   assert.equal(typeof claims.verifyClaim, 'function');
   const checked = await claims.verifyClaim(claimFor('jane@example.com'), JSON.parse(CLAIM_KEYS));

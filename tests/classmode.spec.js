@@ -2,7 +2,7 @@
 // Without that these tests would only pass in August 2026 between six and
 // eight in the evening, which is not a test.
 //
-// Session times come from _data/classes.yml. Podcasting 101 runs
+// Session times come from site/_data/classes.yml. Podcasting 101 runs
 // 2026-08-11 18:00–20:00 in Denver, which is 2026-08-12 00:00–02:00 UTC.
 // lead_minutes is 90, late_minutes is 45.
 

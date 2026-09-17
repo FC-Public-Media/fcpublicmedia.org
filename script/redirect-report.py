@@ -29,7 +29,7 @@ OUT = os.path.join(ROOT, "REDIRECTS.md")
 BASE = "https://www.fcpublicmedia.org"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; fcpm-migration-audit/1.0)"}
 
-# Deliberately allowed to 404. See the note in _data/redirects.yml.
+# Deliberately allowed to 404. See the note in site/_data/redirects.yml.
 DROPPED_PREFIXES = ("/product-page/", "/category/")
 
 GROUP_LABELS = {
@@ -58,10 +58,10 @@ def path_of(loc):
 
 
 def read_redirects():
-    """Parse _data/redirects.yml without requiring PyYAML."""
+    """Parse site/_data/redirects.yml without requiring PyYAML."""
     rules = {}
     src = None
-    for line in open(os.path.join(ROOT, "_data", "redirects.yml")):
+    for line in open(os.path.join(ROOT, "site", "_data", "redirects.yml")):
         line = line.split("#")[0].rstrip()
         m = re.match(r"^- from:\s*(\S+)", line)
         if m:
@@ -127,7 +127,7 @@ same address, {counts['dropped']} deliberately dropped, {len(gaps)} unaccounted 
 Redirects are permanent (HTTP 301), which tells search engines to move their
 records across rather than treat the new address as a duplicate.
 
-They are generated from one file, `_data/redirects.yml`, into both the
+They are generated from one file, `site/_data/redirects.yml`, into both the
 Cloudflare and Azure formats — so whichever host the site ends up on, the list
 cannot drift.
 

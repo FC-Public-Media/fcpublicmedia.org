@@ -21,7 +21,7 @@
 //     write to .github/ regardless of what this code does. intent.js refuses
 //     it too. Two locks, which is what that README claim needs to be true.
 //
-// _data/authorize.yml said "a GitHub App installation token" from the start.
+// site/_data/authorize.yml said "a GitHub App installation token" from the start.
 // This is that.
 //
 // SETUP

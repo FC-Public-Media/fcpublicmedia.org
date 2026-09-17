@@ -9,7 +9,7 @@ const { test, expect } = require('@playwright/test');
 
 const PATH = '/check-in/';
 
-// Carnegie Center for Creativity, from _data/checkin.yml.
+// Carnegie Center for Creativity, from site/_data/checkin.yml.
 const STUDIO = { latitude: 40.5849119, longitude: -105.0735292 };
 // Old Town Square, roughly 700m away — outside the 200m radius, close enough
 // to be a realistic "on my way" position.

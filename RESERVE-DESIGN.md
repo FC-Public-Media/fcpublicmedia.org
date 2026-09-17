@@ -263,7 +263,7 @@ allows.
 
 ### Single-use links, and what has to change
 
-`_data/authorize.yml` currently documents forwarding as *deliberate* — a claim
+`site/_data/authorize.yml` currently documents forwarding as *deliberate* — a claim
 link is a capability, and a co-producer forwarding it to bind their own phone
 is a wanted behaviour. The new requirement is the opposite: **one link, one
 device, and paying it forward means minting another.**

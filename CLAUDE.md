@@ -61,7 +61,7 @@ and check out production equipment" says more, in fewer words, than the
 paragraph it replaced.
 
 The repository already worked this out once, before anybody made it a rule.
-From the top of [`_data/facilities.yml`](_data/facilities.yml):
+From the top of [`site/_data/facilities.yml`](site/_data/facilities.yml):
 
 > Copy and square footage from the board president, August 2026. His words are
 > kept close to verbatim — this is the one part of the site not written by us,
@@ -92,8 +92,16 @@ so far.
 close to verbatim, with the file each note lands in. Add to it when feedback
 arrives; strike an entry through when it ships.
 
-It is excluded from the Jekyll build in `_config.yml`, along with every other
-internal document. A `.md` file with no front matter is copied verbatim to a
-public URL otherwise — MANIFEST, REDIRECTS and RESERVE-DESIGN each leaked that
-way once. **Any new internal doc goes on that exclude list in the same commit
-that creates it.**
+**Internal documents live at the repository root, and that is what keeps them
+unpublished.** Jekyll's `source:` is `site/`, so it never sees the root at all.
+
+This used to be a list — an `exclude:` in `_config.yml` that every new internal
+document had to be added to, in the same commit that created it. It was not
+reliable: a `.md` file with no front matter is copied verbatim to a public URL,
+and MANIFEST, REDIRECTS and RESERVE-DESIGN each leaked that way once, because
+the list is only as good as whoever remembered it. REVIEW-NOTES.md is the one
+that mattered — unratified board feedback, quoted verbatim, one guessable URL
+away from anyone.
+
+So: **a new internal document goes at the root.** Never move one into `site/`,
+and do not restore the exclude list to make that safe. See `NODE.md`.

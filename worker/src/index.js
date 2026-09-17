@@ -47,7 +47,7 @@ import { verifyAssertion } from './webauthn.js';
 // signature check is worth more than the tidiness of a self-contained worker
 // directory. tests/claims.spec.js drives the same file from a browser, and
 // enrol.test.mjs imports it here to catch the day somebody adds a `window`.
-import { verifyClaim } from '../../assets/js/claims.js';
+import { verifyClaim } from '../../site/assets/js/claims.js';
 
 /* ---------------------------------------------------------------- responses */
 
@@ -112,7 +112,7 @@ function readConfig(env, now = () => Date.now()) {
     writeMode: env.WRITE_MODE === 'direct' ? 'direct' : 'branch',
 
     // The public halves of the claim signing keys, same list as
-    // _data/identity.yml. Public by nature — they verify, they do not sign —
+    // site/_data/identity.yml. Public by nature — they verify, they do not sign —
     // so they are config rather than a secret.
     claimKeys: readClaimKeys(env.CLAIM_KEYS),
 
@@ -154,7 +154,7 @@ function readConfig(env, now = () => Date.now()) {
     // stop and use a different key, not to widen this one.
     //
     // The value is still a secret and must never be rendered into a page,
-    // logged, or returned in a response. _data/payments.yml holds the
+    // logged, or returned in a response. site/_data/payments.yml holds the
     // genuinely publishable pk_ key, and script/test_no_secrets.py fails the
     // build if anything shaped like a secret key reaches the built site.
     //

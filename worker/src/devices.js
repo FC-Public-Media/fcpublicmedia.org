@@ -1,7 +1,7 @@
 // Finding the public key a signature has to verify against.
 //
 // The device list lives in the member's own repository, not in a database
-// here. That was decided in _data/authorize.yml and it holds up: the grants
+// here. That was decided in site/_data/authorize.yml and it holds up: the grants
 // travel with the repo when it is handed over, and die with it when it is
 // deleted. Nothing is orphaned in a service nobody remembers paying for.
 //
@@ -135,5 +135,5 @@ export function deviceList({ fetchImpl = fetch, read = null, path = '.auth/devic
   };
 }
 
-/** Listed is not the same as allowed. See _data/authorize.yml. */
+/** Listed is not the same as allowed. See site/_data/authorize.yml. */
 export const mayPublish = (device) => device?.may_publish === true;

@@ -157,7 +157,7 @@ class TheRealCatalog(unittest.TestCase):
     def test_it_runs_on_what_cablecast_actually_contains(self):
         import json
 
-        path = HERE.parent / "_data" / "cablecast.json"
+        path = HERE.parent / "site" / "_data" / "cablecast.json"
         if not path.exists():
             self.skipTest("no catalog checked out")
 

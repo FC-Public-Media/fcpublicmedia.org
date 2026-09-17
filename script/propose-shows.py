@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Propose a `_shows/` entry for anything in the catalog that looks like a series.
+"""Propose a `site/_shows/` entry for anything in the catalog that looks like a series.
 
 WHY A CONFIG AND NOT A RULE
 ---------------------------
@@ -45,8 +45,8 @@ import pathlib
 import re
 import sys
 
-DEFAULT_CATALOG = "_data/cablecast.json"
-DEFAULT_SHOWS = "_shows"
+DEFAULT_CATALOG = "site/_data/cablecast.json"
+DEFAULT_SHOWS = "site/_shows"
 
 # Below this it is a one-off, not a series. Three is deliberately low: a show
 # that has aired three times is a show, and a proposal nobody wants is closed
@@ -301,7 +301,7 @@ local: {local}
 # Cablecast RECORD dates, not broadcast dates. Much of the older catalog was
 # bulk-loaded — these 49 episodes all carry dates two days apart in 2020 —
 # so treat this as "when we got it", not "when it aired". Real airing history
-# is in _data/airings.json.
+# is in site/_data/airings.json.
 catalog_first: {proposal['first']}
 catalog_last: {proposal['last']}
 ---

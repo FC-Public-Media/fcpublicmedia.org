@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Reads _shows/ first, so anything already configured — or already
+      # Reads site/_shows/ first, so anything already configured — or already
       # proposed and still open — is not proposed again.
       - name: Find the clusters
         run: python3 script/propose-shows.py --min "${{ inputs.min_episodes || 3 }}" --json > /tmp/proposals.json
@@ -93,7 +93,7 @@ jobs:
               continue
             fi
 
-            git add "_shows/$slug.md"
+            git add "site/_shows/$slug.md"
             git commit -m "Propose $slug as a show"
             git push -f origin "$branch"
 

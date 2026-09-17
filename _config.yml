@@ -3,6 +3,21 @@
 # Deliberately small. Everything Jekyll needs is in this file; there are no
 # plugins, no theme gem, and no build step beyond `jekyll build`. If you can
 # read YAML and HTML you can maintain this site.
+#
+# THE SITE IS `site/`, AND THIS FILE STAYS AT THE ROOT.
+#
+# The repository is a node; the website is one thing the node keeps, and it
+# lives under `site/`. `source:` below is the whole mechanism. The build is
+# still `bundle exec jekyll build` run from the repository root, still writes
+# `_site/` at the root, and `wrangler.jsonc` still finds it there — so the
+# host's build command, the workflows and the deploy did not change when the
+# site moved. See NODE.md for what else the root is for.
+#
+# This file is deliberately NOT inside `site/`. Jekyll looks for `_config.yml`
+# in the directory it is run from, before it has read any `source:` setting, so
+# a config inside the source directory would have to be passed on the command
+# line every time — in CI, at the host, and by hand. One `source:` line here
+# costs nothing and keeps `jekyll build` bare.
 
 title: Fort Collins Public Media
 tagline: Gear, training, and studio space for Fort Collins storytellers.
@@ -13,12 +28,17 @@ description: >-
 url: https://www.fcpublicmedia.org
 baseurl: ""
 
+# Everything the public gets is under here. Anything outside it — the docs, the
+# scripts, the broker, the seats — cannot be published by accident, because
+# Jekyll never looks at it.
+source: site
+
 # /classes.md becomes /classes/ — clean URLs, no .html anywhere.
 permalink: pretty
 markdown: kramdown
 
 # The only collection. Podcast pages are all the same shape, so they live in
-# _podcasts/ and share one layout instead of being eight near-identical pages.
+# site/_podcasts/ and share one layout instead of being eight near-identical pages.
 collections:
   podcasts:
     output: true
@@ -61,38 +81,20 @@ include:
   - _redirects
   - _headers
 
-# Repository documentation is NOT site content. A .md file with no front matter
-# is copied verbatim rather than rendered, so anything left off this list ends
-# up fetchable at its own public URL — MANIFEST.md, REDIRECTS.md and
-# RESERVE-DESIGN.md all were, which is how this was noticed. REDIRECTS.md is a
-# map of the old Wix address space and RESERVE-DESIGN.md is internal planning
-# about how the board rosters and hosts itself; neither belongs on the website.
+# NOTHING IS EXCLUDED, AND THAT IS THE POINT OF `source: site`.
 #
-# REVIEW-NOTES.md is the one to be most careful about. It is unratified board
-# feedback quoted verbatim, alongside a list of what we think is unresolved —
-# fine internally, and not something to serve to the public at a guessable URL.
-exclude:
-  - README.md
-  - CLAUDE.md
-  - CONTENT-TODO.md
-  - REVIEW-NOTES.md
-  - DESIGN-NOTES.md
-  - ADVOCATE.md
-  - RESERVE-DESIGN.md
-  - MANIFEST.md
-  - REDIRECTS.md
-  - PAYMENTS-CHECKLIST.md
-  - advocate.yml       # seat declarations for .advocate-engine, not site content
-  - Gemfile
-  - Gemfile.lock
-  - vendor
-  - api      # Azure Functions source; deployed separately, never published
-  - script   # build tooling, not site content
-  - node_modules
-  - wrangler.jsonc   # host config, read from the repo root, not the output
-  - .wrangler
-  - tests    # browser tests, not site content
-  - worker   # the broker; its own Worker, deployed separately
-  # A Jekyll site of its own — the scaffold copied into a member repository.
-  # Built separately in CI so it cannot rot; never part of this site's output.
-  - site-template
+# There used to be a list here, and it was a standing hazard. A `.md` file with
+# no front matter is copied verbatim rather than rendered, so any internal
+# document left off the list ended up fetchable at its own public URL —
+# MANIFEST.md, REDIRECTS.md and RESERVE-DESIGN.md all were, which is how it was
+# noticed. REVIEW-NOTES.md was the one that mattered: unratified board feedback,
+# quoted verbatim, one guessable URL away from the public.
+#
+# The list is gone because the failure it guarded against can no longer happen.
+# Internal documents live at the repository root, outside `source:`, so Jekyll
+# does not see them at all. Forgetting to add one to a list is no longer a way
+# to publish it; you would have to put it inside `site/` on purpose.
+#
+# So: a new internal document goes at the root. Do not move one into `site/`,
+# and do not reintroduce this list to make that safe — it was never reliably
+# safe, which is the whole reason for the move.

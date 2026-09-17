@@ -5,7 +5,7 @@
 // A SKU, and whether to make it recurring. That is the entire list.
 //
 // It is not trusted with the amount. `catalog` below is bundled into the
-// worker at deploy time from _data/, so a page asking for
+// worker at deploy time from site/_data/, so a page asking for
 // "membership:creator" gets 7000 cents whatever it claims to believe, and a
 // page asking for "membership:free-actually" gets a 400. This is the only
 // property in this file that really matters; everything else is manners.
@@ -69,7 +69,7 @@ export function returnUrl(origins, path, fallback) {
  *
  * Stripe takes form encoding with bracketed keys rather than JSON, so this
  * builds URLSearchParams directly. `price_data` is inline on purpose: there
- * are no Price objects in the Stripe dashboard to drift from _data/, and the
+ * are no Price objects in the Stripe dashboard to drift from site/_data/, and the
  * price history lives in git. See script/build-prices.py.
  */
 export function sessionParams({ item, sku, recurring, success, cancel, reference, email }) {
