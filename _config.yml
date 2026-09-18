@@ -1,0 +1,11 @@
+# Enough to build, and no more.
+#
+# This branch is a place (see PLACE). It carries a config only because the host
+# builds every branch and a branch that cannot build sits red forever. The site
+# it produces is one page saying what this branch is.
+#
+# Do not grow this file. If something here needs `main`'s configuration, it
+# probably belongs on `main`.
+
+title: The FCPM library
+source: site
