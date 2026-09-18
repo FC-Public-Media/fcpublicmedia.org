@@ -1,1 +1,54 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+The front door is not /station, and the escalation system does not come
+
+Capturing the 2026-09-18 briefing while it is fresh. **Only the parts whose
+meaning is unambiguous are written down**; the transcription was rough and three
+things I could not read with confidence are asked in the PR conversation rather
+than guessed into the file.
+
+Nothing is built. Nothing is mounted.
+
+## Decided
+
+**The station is not the thing at the root.** *"It's not a problem that there
+are bespoke pages that this station node might want to provide. The dilemma is
+that it shouldn't be the root page."* And on the prototype's shape specifically:
+*"I don't think there should be something served on `/station` at all. It's in
+need of a root page that you don't need to guess at URLs to understand."*
+
+**The front door exists to be looked at, including by things that are not
+people.** A bay is not a private machine and the repository is public, so
+another station on the LAN should not have to be let in: *"it shouldn't be
+complicated. It's a front door for the damn thing. It's not a secret."*
+
+**The escalation system is refused.** It is yours and personal, and the reason
+given is specific: these machines are bolted down and do not change their
+configuration much. *"Escalation might just mean telling the board president a
+thing. It's not really this repository's job."* Recorded as a standing refusal
+so nothing here grows an escalation log.
+
+**The journal is taken, as the provider of a base system page** — which is a
+**reversal** worth flagging, because `docs/ADVOCATE.md` §6 still lists the
+journal under *not wanted*. That entry was about publishing; this is about the
+root page having a provider. I have not edited §6, because the seat's own
+constitution is not mine to rewrite on a voice note — but the two now disagree,
+and one of them should win.
+
+**One repository, one journal.** Two checkouts is not two journals. The plural
+is machines, never holdings.
+
+## Recorded as open, not designed
+
+The landing is a landing *for* making a passkey on your own device — for your own
+sake, not the site's — and receiving a grant, combining Stagecraft's grant system
+with a passkey flow. It fixes a gap you named precisely: until now, starting a
+grant meant carrying a short code and some knowledge over by hand, and **there
+was nowhere to land first**.
+
+The unsolved part is written down so it is not rediscovered: **how does the site
+learn the passkey gesture happened, on a local network with no DNS to hit?**
+Your three directions are listed unchosen — optical return to a reader, the
+library's antenna, or neither because they are already on the Wi-Fi. I would bet
+on the third and have not said so in the file.
+
+The "you" work is named, spelled as a word, marked as having no engine yet, and
+explicitly left for its own session.
