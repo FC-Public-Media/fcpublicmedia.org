@@ -282,6 +282,111 @@ talk, and a petition asserting a split would be deciding it in the hallway.
 
 ---
 
+## The front door, and why it is not `/station`
+
+From a spoken briefing, 2026-09-18. Transcription was rough; only the parts
+whose meaning is unambiguous are recorded, and two open questions are named at
+the end rather than guessed at.
+
+**The station is not the thing at the root.** That is the decision:
+
+> It's not a problem that there are bespoke pages that this station node might
+> want to provide. The dilemma is that it shouldn't be the root page.
+
+On the prototype, `/station/` is a semi-privileged report *about* the station,
+and she has ruled that shape out for the landing:
+
+> I don't think there should be something served on `/station` at all. It's in
+> need of a root page that you don't need to guess at URLs to understand.
+
+### What the front door is for
+
+**Being looked at, by things that are not people.** A bay is not a private
+machine, the repository is public, and another station on the LAN wanting to see
+this one should not have to be let in:
+
+> I want these stations to be, from the LAN's perspective — if one of the other
+> stations wants to look at the other station, it shouldn't be complicated. It's
+> a front door for the damn thing. It's not a secret.
+
+So the landing is a **passive, public surface on the machine's own `.local`
+address**, carrying a link onward. Separate from anything you have to sign in
+for.
+
+### What it is a landing *for*
+
+The thing a visitor is about to do, and the reason the page has to exist at all:
+**make a passkey on their own device, to identify themselves for their own sake,
+and receive a grant.**
+
+> The passkey flow is supposed to get you in to get your grant.
+
+That combines two things already built elsewhere — the grant system from
+`DiscoveryWritten/stagecraft`, generalised, and a passkey flow — and it fixes a
+gap she named precisely: until now, starting a grant meant carrying a short code
+and some knowledge over to the machine by hand. **There was nowhere to land
+first.**
+
+This is the "you" work — spelled `you`, a word and not a letter, and no engine
+by that name exists yet. Its load-bearing idea is that the passkey is *for the
+person*, not for the site: once the gesture is made, they can keep notes on
+somebody else's domain in their own offline storage. **That is a separate
+conversation and is deliberately not designed here.**
+
+### The unsolved part, stated so it is not rediscovered
+
+**How does the site learn that the passkey gesture happened, on a local network?**
+
+> If this were a public page, you could just hit a DNS address. But this is a
+> local page. You're on a local network, and you're interfacing with this thing
+> without the web.
+
+Three directions, hers, none chosen:
+
+- **Optical return.** The station shows something a reader takes back — a card
+  scanner, or similar. *"Not a very complicated dealio."*
+- **The antenna.** The library's inbound surface: one discrete page or service
+  whose job is taking things in from outside and bringing them in. Receipts
+  generated from random IPs on the web are a fine thing for it to carry.
+- **Neither, because of the Wi-Fi.** *"If they're already on the Wi-Fi, we might
+  not have to go that far."* Cheapest by a distance, and it is the case that
+  actually describes somebody standing in the building.
+
+## Two things FCPM takes from the prototype and one it refuses
+
+**Refused: the escalation system.** It is hers, personal, and it does not come:
+
+> These are machines that are gonna be bolted down the way that they are.
+> They're not changing their configuration much. So we don't need a giant
+> escalation system. Escalation might just mean telling the board president a
+> thing. It's not really this repository's job to do it. We're not gonna use the
+> escalation system from my personal stuff.
+
+Failed work that needs somebody told goes somewhere else. Nothing in this
+repository should grow an escalation log, and an agent that wants one should
+write to the board instead.
+
+**Taken: the journal, as the thing that serves a base system.** Which is a
+reversal — `ADVOCATE.md` §6 still lists the journal under *not wanted*, on the
+grounds that FCPM publishes its own way. That was about publishing. This is
+about the root page having a provider:
+
+> Usually, when I do that, it's the journal engine that provides this. If
+> there's a journal, or any base system page, that starts including the stuff we
+> want, we can do that.
+
+Mounting is still its own pull request by whoever owns it, and nothing here
+mounts anything.
+
+**One repository, one journal.** Said twice and worth keeping, because the
+two-bay arrangement invites the wrong inference:
+
+> Even though we're installing this in two places on the machines, it's not like
+> there are two journals. They're not two repositories.
+
+Two checkouts of one repository. The plural is machines (see `machines/`), never
+holdings.
+
 ## What is deliberately not here
 
 - **Agents running on FCPM machines.** In the cards, not immediate. Machine
