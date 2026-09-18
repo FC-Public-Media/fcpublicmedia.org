@@ -387,6 +387,72 @@ two-bay arrangement invites the wrong inference:
 Two checkouts of one repository. The plural is machines (see `machines/`), never
 holdings.
 
+## The journal: wanted, and most of what was wanted already exists
+
+Decided 2026-09-18, reversing the *not wanted* entry in `ADVOCATE.md` §6. The
+refusal was about **publishing** — FCPM has its own ways — and this is about the
+root page having a **provider**. Different jobs.
+
+> I do think I want the journal engine. We're just not entirely strapped in yet
+> for what our first move with it is going to be. It's probably going to be a
+> shared journal system where it's okay to keep working on `/journal` in main.
+
+**First move: `/journal` on `main`, and the prefixes stay.** *"We're gonna stay
+with the `/journal` and `/site` prefixes until we know what we're doing. Journal
+can power what we've done. It's just that journal can do more."*
+
+### The thing she described is already built
+
+The interesting version was a library-style treatment: journal content coming
+from a branch rather than a prefix, so that **two blogs can run on one
+repository** — which is how two split-identity machines get their separateness
+without becoming two repositories.
+
+**That is not a feature request. It is the journal engine's existing model.**
+From its own orientation:
+
+> It is per-branch content. One repository serving several places branches per
+> destination and each branch carries its own `NAME`, so **the number of branches
+> is the number of nodes** — disclosed rather than inferred. A push whose `NAME`
+> is addressed elsewhere is mail for another party.
+
+So the primitive is there: a branch with its own `/NAME` and its own `journal/`
+is a second node publishing from the same repository. Nothing needs petitioning
+for it, and an item asking for it would be asking for shipped behaviour.
+
+What remains is FCPM's own decision — **what the second branch would be for.**
+Per bay is the obvious reading of *split identity*, and it is not obviously
+right: two bays are two machines, not two voices, and the journal's unit is a
+destination rather than a host.
+
+### The mount has to go inside `site/`, and that is new
+
+A consequence of the build root moving on 2026-09-18, and worth knowing before
+anybody adds a submodule.
+
+The engine is **referenced as a path inside the mounting site** — its own config
+excludes `.journal-engine/` from the build, which only makes sense if the engine
+sits in the source tree. Jekyll cannot reach outside `source:`; that is the same
+wall `site/_data` hits.
+
+So the two engines want different homes, and the rule is clean:
+
+| | where | because |
+|---|---|---|
+| `.advocate-engine` | the node root | it **runs**. Nothing in the build reads it |
+| `.journal-engine` | **`site/`** | the **build reads it** — layouts, includes, plugins |
+
+Mounting it at the node root beside the advocate engine would look consistent
+and would not work.
+
+**Nothing is mounted here.** Adding a submodule is its own pull request by
+whoever owns it, and that has not changed. Two things are worth checking in that
+pull request rather than after it: `journal/` content would live at
+`site/journal/`, and this repository has a documented history of Cloudflare
+calling it *damaged* when a submodule could not resolve under a shallow clone —
+the unconfirmed hypothesis in [`deploying.md`](deploying.md) names
+`.advocate-engine` for exactly that.
+
 ## What is deliberately not here
 
 - **Agents running on FCPM machines.** In the cards, not immediate. Machine
