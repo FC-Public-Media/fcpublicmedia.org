@@ -35,26 +35,39 @@ no bundler, no CSS preprocessor, and no plugins.
 
 ### Ruby
 
-The version is **3.2.2**, and it is written down twice on purpose:
+The version is **3.2.2**, and `.ruby-version` is the only file that says so.
+
+It used to be written down twice — `.ruby-version` for CI, `.tool-versions` for
+asdf — with a CI step whose whole job was checking the two agreed. That is gone
+as of 2026-09-17, and `.tool-versions` with it. Two reasons:
+
+- **Cloudflare's build image reads `.ruby-version`** (or a `RUBY_VERSION` build
+  variable) and nothing else. It never read `.tool-versions`, so that file was
+  never protecting the build that publishes the site.
+- **Its presence is a known hazard on Cloudflare.** The builder detects
+  `.tool-versions` undocumentedly and can fail the whole build with
+  `error occurred while installing tools or dependencies`, with no way to turn
+  the behaviour off. See `deploying.md`.
+
+With [asdf](https://asdf-vm.com/) installed, asdf does *not* read
+`.ruby-version` by default — it needs one line, once, per machine:
 
 ```
-.ruby-version      what CI reads (ruby/setup-ruby, in both workflows)
-.tool-versions     what asdf reads locally
-```
-
-They must agree. Two files is the cost of the two tools not sharing a format;
-the alternative is a local toolchain that silently differs from the one that
-deploys the site, which is worse and harder to notice.
-
-With [asdf](https://asdf-vm.com/) installed:
-
-```
+echo 'legacy_version_file = yes' >> ~/.asdfrc
 asdf plugin add ruby
-asdf install          # reads .tool-versions
+asdf install 3.2.2
 ```
 
-If your Ruby is the one macOS ships (`/usr/bin/ruby`, 2.6.x), nothing here will
-work — Jekyll 4 needs 3.x. `ruby -v` inside this directory should say 3.2.2.
+**If you skip that, nothing silently goes wrong.** The `Gemfile` carries
+`ruby ">= 3.2"` — a floor, not a second pin — so the wrong Ruby announces
+itself in one line:
+
+```
+Your Ruby version is 2.6.10, but your Gemfile specified >= 3.2
+```
+
+which is the whole reason the floor is there. If your Ruby is the one macOS
+ships (`/usr/bin/ruby`, 2.6.x), nothing here will work — Jekyll 4 needs 3.x.
 
 **A trap worth knowing about**, because it cost an afternoon: `LDFLAGS` and
 `CPPFLAGS` exported globally from a shell profile are inherited by every
@@ -64,9 +77,11 @@ build dies at `checking whether LDFLAGS is valid... no` and the error names
 your profile not at all. Set such flags per-command, never as a login export.
 
 **3.2.2 reached end of life** and no longer gets security updates. Moving to a
-supported 3.3 or 3.4 is a one-line change in both files, but it changes the
-Ruby that builds the deployed site, so it wants doing deliberately rather than
-in passing.
+supported 3.3 or 3.4 is now a **one-line change in one file**, which is what
+collapsing the pin bought — but it still changes the Ruby that builds the
+deployed site, so it wants doing deliberately rather than in passing. Note that
+Cloudflare's own default is already 3.4.4, so the gap is only as wide as
+`.ruby-version` says it is.
 
 ## How it's laid out
 

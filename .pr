@@ -1,1 +1,80 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Collapse the Ruby pin to one file — and it had to be the other one
+
+Two files pinned one version, and `smoke.yml` carried a step whose whole job was
+checking they agreed. Now there is one file and no step.
+
+**But it collapsed the opposite way to the plan, and you should know why before
+merging.** The plan was *keep `.tool-versions`, drop `.ruby-version`* — your
+*"we don't need ruby-version sitting around in root"*. I said that was blocked on
+one fact I could not check. I checked it, and it came back against us twice.
+
+## Fact one: Cloudflare reads `.ruby-version`, and never read `.tool-versions`
+
+Their build image documents exactly three ways to set Ruby — the
+`.ruby-version` file, the `RUBY_VERSION` environment variable, and a build
+variable on the dashboard. `.tool-versions` is not among them; the only version
+files they list are for Node and Python.
+
+Their current default is **Ruby 3.4.4**. So deleting `.ruby-version` would not
+have failed the build — it would have quietly moved the host onto a different
+Ruby from CI and from local, with nothing left to notice. That is worse than
+failing.
+
+## Fact two: your link. `.tool-versions` is an active hazard there
+
+The write-up you sent is the decisive one, and it is worse than "unsupported":
+
+> the mere presence of this file in your project will break your build on
+> Cloudflare, without any way to turn off this behavior
+
+Cloudflare's builder *detects* `.tool-versions` undocumentedly and can fail the
+whole build with `Failed: error occurred while installing tools or
+dependencies`. `SKIP_DEPENDENCY_INSTALL` does not help. The published workaround
+is to rename the file and set versions through build variables; **deleting it is
+the same fix with one fewer file.**
+
+So the file that had to survive is the one you named as expendable — and the
+collapse is also the removal of a hazard. Not a bust at all.
+
+## What it cost, and what pays for it
+
+asdf reads `.ruby-version` only when `legacy_version_file = yes` is set in
+`~/.asdfrc`, which is per-user and off by default. So without something in the
+way, a contributor at the root gets whatever Ruby their shell hands them and
+finds out from a confusing Jekyll error — the exact failure the deleted CI step
+existed to catch.
+
+**The `Gemfile` now carries `ruby ">= 3.2"`.** A floor, deliberately not a second
+pin, so bumping `.ruby-version` stays a one-file change. Measured here against
+the Ruby macOS ships:
+
+```
+$ /usr/bin/bundle check
+Your Ruby version is 2.6.10, but your Gemfile specified >= 3.2
+```
+
+One line, names the version, refuses before Jekyll is reached. **That is a better
+guard than the CI step it replaces**, because it fires where the mistake is made
+rather than one push later.
+
+## Also recorded
+
+- **`docs/running-it.md`** — one pin, the `~/.asdfrc` line for anyone who wants
+  asdf to keep selecting Ruby automatically, and the fact that skipping it is
+  safe now. Bumping off end-of-life 3.2.2 is a one-file change now, and worth
+  noting that Cloudflare's own default is already 3.4.4.
+- **`docs/deploying.md`** — the two facts with their sources, and the guess above
+  them left in place rather than quietly corrected, because the reasoning is the
+  useful part.
+- **A third thing to rule out** added to *When the git build fails*: this
+  repository carried a `.tool-versions` from 2026-09-09 until today. It does
+  **not** explain either failure on record — neither error matches, and the
+  `Gemfile` failure predates the file — but it is the cheapest thing to check if
+  a build ever dies in the tool-detection phase, and the variable is gone now.
+
+## Verified
+
+Builds; all thirteen check suites pass. The only behaviour change outside the
+documentation is that `bundle` now refuses Ruby below 3.2 with a clear message.
+
+Sources: [Cloudflare build image](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/) · [Cloudflare Workers choke on asdf .tool-versions](https://www.codejam.info/2026/02/cloudflare-workers-choke-asdf-tool-versions.html)

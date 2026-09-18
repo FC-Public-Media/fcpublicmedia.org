@@ -63,8 +63,9 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          # Same file CI reads and the same version .tool-versions pins, so
-          # this build cannot drift onto a different Ruby from every other one.
+          # The same file every other build reads, and the only place the
+          # version is written, so no build here can drift onto a different
+          # Ruby. Cloudflare's own builder reads it too.
           ruby-version: .ruby-version
           bundler-cache: true
 
