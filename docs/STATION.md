@@ -425,33 +425,72 @@ Per bay is the obvious reading of *split identity*, and it is not obviously
 right: two bays are two machines, not two voices, and the journal's unit is a
 destination rather than a host.
 
-### The mount has to go inside `site/`, and that is new
+### The journal has nothing to do with the website
 
-A consequence of the build root moving on 2026-09-18, and worth knowing before
-anybody adds a submodule.
+Correcting a wrong reading from earlier the same day, because the wrong version
+is the intuitive one and somebody will arrive at it again.
 
-The engine is **referenced as a path inside the mounting site** — its own config
-excludes `.journal-engine/` from the build, which only makes sense if the engine
-sits in the source tree. Jekyll cannot reach outside `source:`; that is the same
-wall `site/_data` hits.
+> The journal engine is not for the site at all. It's going to run as it's going
+> to run already. Literally no change. Forget that the site exists when we're
+> installing the journal. It's as if the site doesn't even exist.
 
-So the two engines want different homes, and the rule is clean:
+**The journal is a second, separate build, rooted at the node root.** It is not
+machinery that `site/`'s Jekyll build consumes, and nothing about it is
+configured in `site/_config.yml`. From the engine's own `bin/build.sh`:
 
-| | where | because |
-|---|---|---|
-| `.advocate-engine` | the node root | it **runs**. Nothing in the build reads it |
-| `.journal-engine` | **`site/`** | the **build reads it** — layouts, includes, plugins |
+```sh
+eng="${JOURNAL_ENGINE:-journal}"
+export BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$eng/Gemfile}"
+"$eng/bin/sync.sh"
+bundle exec jekyll build --config "$eng/_config.yml,_config.yml" --destination _site
+```
 
-Mounting it at the node root beside the advocate engine would look consistent
-and would not work.
+Run from the node root. Its own Gemfile, its own config merged under the node's
+own `_config.yml`, its own `_site`. Two builds, one repository, touching nothing
+of each other's.
 
-**Nothing is mounted here.** Adding a submodule is its own pull request by
-whoever owns it, and that has not changed. Two things are worth checking in that
-pull request rather than after it: `journal/` content would live at
-`site/journal/`, and this repository has a documented history of Cloudflare
-calling it *damaged* when a submodule could not resolve under a shallow clone —
-the unconfirmed hypothesis in [`deploying.md`](deploying.md) names
-`.advocate-engine` for exactly that.
+### The mount is at the node root, and that is the whole declaration
+
+> When you submodule an engine, that is canonically the only behavior that a
+> node-like system — the station node or the civic node — is going to use to read
+> about who is installed, which engines are installed. It doesn't mean anything
+> to anyone in the entire universe if you submodule the journal engine inside the
+> site.
+
+`.journal-engine` at the node root, beside `.advocate-engine`. **The submodule
+*is* the declaration** — presence is the claim, the same rule `machines/` runs
+on. A submodule under `site/` would be a directory nothing reads.
+
+`NCCV/cite-fort-collins` already mounts it this way and the engine ships a
+GitHub Action that honours `$JOURNAL_ENGINE`, so the mount path is
+configuration rather than convention-by-accident.
+
+### Which makes the build-root move a prerequisite, not tidiness
+
+This is the part worth carrying forward. The journal build wants three things at
+**the node root**, and until 2026-09-18 the website had all three:
+
+| the journal wants | the site had it until |
+|---|---|
+| `_config.yml` at the node root | `#86` moved it to `site/_config.yml` |
+| `_site` as its output | `#86` moved the site's output to `site/_site` |
+| the root to be a build root it owns | `#86` gave the root back |
+
+So *"I do want to change the config to go to site"* and *"I do think I want the
+journal engine"* are the same decision arriving twice. **Mount the journal before
+that move lands and the two builds fight over the same two paths.**
+
+What the node root would then hold, once mounted: `.journal-engine/`, a
+`journal/` of content, a `NAME`, and a `_config.yml` that is the node's — not the
+site's.
+
+### Still not mounted here
+
+Adding a submodule remains its own pull request by whoever owns it. Worth
+checking in that pull request rather than after it: this repository has a
+documented history of Cloudflare reporting it **damaged** when a submodule could
+not resolve under a shallow clone, and the unconfirmed hypothesis in
+[`deploying.md`](deploying.md) names `.advocate-engine` for precisely that.
 
 ## What is deliberately not here
 
