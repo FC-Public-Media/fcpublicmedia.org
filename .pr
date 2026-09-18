@@ -1,1 +1,131 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Isolate the member template: data on one side, the managed core on the other
+The reevaluation you asked for. `site-template/` is now the terse thing, and the
+managed half is beside it.
+
+```
+site-template/          _data/site.yml, _data/programs.yml, .gitignore
+member-site-core/       _config.yml, _layouts/, assets/css/, index.html, feed.xml, Gemfile
+```
+
+**A member's repository is two YAML files and a `.gitignore`.** No markup, no
+config, no Gemfile. That is the answer to *"if we can get things done with just
+a configuration."*
+
+## First — your interpretation, and it is not what I did
+
+> What I think you've done is make site template capable of being the basis of
+> the canonical site too.
+
+**No.** What I did was make the *builder* stop special-casing `site` — a site is
+a directory with a `_config.yml`, so `site/` is one manifest entry like any
+other. `site-template/` could never have initialized `site`: different layouts,
+different data, different content, entirely different site. They are peers to
+the builder, not interchangeable.
+
+You said it does not necessarily need to be the case, and it isn't, so nothing
+was built on that reading.
+
+## The FCPM credit is gone, not made optional
+
+> even seeing the option to show it gives me the ick. I see that on other sites,
+> and it's like, it feels like we are petitioning them to, like, become a brand
+> object, which isn't even false, but it feels greasy.
+
+Three places, all removed:
+
+- the footer block in the layout — deleted, not made conditional;
+- `show_fcpm_credit` out of the member's `_data/site.yml`;
+- and one you did not name: the managed config carried
+  `description: A Fort Collins Public Media member site.` as a **default**. A
+  default that says something about a member's site on their behalf is wrong on
+  every site until somebody notices and corrects it. Title and description now
+  come only from the member's own data.
+
+**The composed output contains zero mentions of Fort Collins Public Media.**
+Checked, not assumed.
+
+## A collision is the eject signal
+
+The builder stages `member-site-core/`, then the member's files on top. If a
+member carries a file the core also provides, it reports **`diverged`** and
+**refuses to build** rather than picking a winner.
+
+Silently preferring ours would publish a site that is not the one they wrote,
+which is the one unforgivable behaviour in a tenancy built on *we own nothing*.
+It is the same fact `--ff-only` failing used to carry, noticed at build time
+instead of at update time. For a tenant that is news, not a defect; for our own
+scaffold it is a bug in the split, and the exit code says so.
+
+This also settles the prune floor — **option 1, ejecting injects**. The template
+prunes to data, and ejecting means composing the core into their repository as a
+commit. Recorded as your call.
+
+## The README, and the voice
+
+`site-template/README.md` → `docs/member-sites.md`, because that one is for the
+crew and *"would never land in a real site templated thing."*
+
+**The template now has no README at all.** The audience-facing one is yours to
+write, and it is deliberately absent rather than stubbed — a placeholder that
+ships to every member site is precisely what somebody forgets to delete, which
+is the argument the fixtures file already makes about invented example shows.
+
+I also flagged in the moved file that its *"discoverability at a local level"*
+framing is superseded by the burnout framing, rather than rewriting it in a
+voice you have reserved.
+
+## Your naming question has an answer already in the constellation
+
+`member-site-core/` is a provisional name and says so in the tree. **The journal
+engine is already exactly this thing** — I read it at
+`station-node/.journal-engine`:
+
+> the shared, **content-less Jekyll machinery** a civic node mounts at
+> `.journal-engine/` … It ships layouts, includes, plugins, assets, `skel/`
+> boilerplate, and `bin/` build scripts — **never articles.**
+
+Your managed core is *the engine*. Your terse template is *`skel/`*. And the
+term you thought it already had, for content with no index file, is **`journal/`
+where disk path == URL path** — which is your wildcard-to-path-prefix idea
+already named.
+
+The sharpest borrowing is **`/NAME`**: one line, the address a build is meant to
+be reached at, **site-owned and never engine-owned**, which `bin/sync.sh` is
+forbidden from overwriting. Deliberately not `CNAME`, because *"canonical here
+means a proven copy, not the only copy."* For a tenancy built on owning nothing,
+that is governance written into a file format. TENANCY.md now carries the whole
+comparison line by line.
+
+**It also makes the folder-versus-submodule worry smaller than it looked.** Both
+get submoduled, for different reasons — the engine because it is shared
+machinery, each member site because it is somebody else's content we only
+borrow. The cadence is weekly and the build is already sequential and isolated
+per site, so hydrate a batch, build it, drop it. And committing the built tree
+is what the five existing syncs already do at smaller size.
+
+**I did not mount the journal engine.** Engine mounts are their own PR by
+whoever owns it — STATION.md's rule since the node seat was seated — and this
+PR is already the template reevaluation you asked for. Say the word and it is
+the next one.
+
+## Your build failure
+
+`Error: Unknown engine site/.ruby on ubuntu-24.04` — `setup-ruby` was handed
+`site/.ruby-version` as a path when it wants a literal. It was on the
+`build-root-is-site` branch and **is already fixed** by commit `3889038`, before
+that branch merged. Main is green; nothing is outstanding.
+
+## Verified
+
+- `python3 bin/test_build_sites.py` — **27 tests, OK**, including composition,
+  the collision rule, the isolation ordering, a test that `site-template/`
+  carries no markup, and a real build of both sites.
+- `python3 site/bin/check-template.py` — feed round trip still passes on the
+  composed template. It now borrows `compose()` rather than reimplementing it,
+  so CI and the cadence build cannot disagree about what a member site is.
+  `smoke.yml` already installs PyYAML in that job — checked, one job.
+- `test_no_secrets.py` 12 OK, `test_nothing_internal_is_published.py` 4 OK.
+- Every relative link in `docs/` resolves; four stale references to the moved
+  README repointed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
