@@ -126,6 +126,43 @@ who ejects, not for a member who is hosted.
 The principle is GitHub Pages': **the defaults live in the host, not the
 tenant.**
 
+### Publishing, and what delisting does
+
+`bin/build-sites.py --publish` copies each built tenant into
+`site/member-sites/<name>/` and commits nothing itself — the cadence workflow
+commits, the same bargain the `_data` syncs make.
+
+**A site is published as its `name`, not its path.** The name is the public
+address: the subdomain label and the folder. The path is where we happen to
+check their repository out. Keeping them separate means moving a checkout
+cannot silently change somebody's address.
+
+**Removing an entry from `sites.yml` takes the site down.** `--publish` prunes
+published directories that are no longer listed, and that is the whole point of
+it: otherwise *"delisting is the whole withdrawal"* is a thing we say rather
+than a thing we do, and a published tree that only grows would keep serving
+somebody who asked us to stop.
+
+Three guards on that, because a recursive delete driven by a config file wants
+them:
+
+- only **direct subdirectories** of the publish root are considered, so a
+  listing page or a `.gitkeep` at the root survives;
+- the root must resolve **inside the repository**, checked on the shape of the
+  path before anything is read from disk;
+- **`--only` prunes nothing at all.** A single-site run sees one entry, so
+  every other site would look unlisted — which would take every member's site
+  down at once, and is the worst bug available here.
+
+**A tenant that failed to build keeps what it published last time.** The
+cadence promises that new work appears, not that old work vanishes the first
+morning somebody's data file will not parse.
+
+`site/_data/member_sites.json` is the list, written as data rather than as a
+page so FCPM's own site can render it with a Liquid loop. **It carries no
+timestamp** — a payload that records when it ran differs every run and commits
+a file every week to say it looked. The commit is the timestamp.
+
 ### Composition, and the collision that means "eject"
 
 `bin/build-sites.py` stages `member-site-core/` and then the member's own files
