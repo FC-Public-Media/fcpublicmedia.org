@@ -1,6 +1,6 @@
 # Seat · truthfulness
 
-`advocate/truthfulness` · last spoke **2026-09-17** · 8 session(s) · 12 draft · 0 ready
+`advocate/truthfulness` · last spoke **2026-09-18** · 9 session(s) · 12 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -321,9 +321,9 @@ cover test design, and the constitution is explicit that an advocate reading the
 existing automation and following it beats inventing a parallel one. There may
 already be a route to this through `script/` that I have not found.
 
-## Last session note — 2026-09-17
+## Last session note — 2026-09-18
 
-### 2026-09-17
+### 2026-09-18
 
 Subject unchanged at `e63fc7b`. Nothing merged since the last session; nothing to say.
 
