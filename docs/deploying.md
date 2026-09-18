@@ -178,6 +178,83 @@ nameservers carrying everything. Wix's own caveat is worth knowing before the
 flip — once a domain is connected by pointing, Wix will not help manage records
 it no longer hosts.
 
+### What Wix's nameservers actually serve, read on 2026-09-17
+
+The plan is to move nameservers to Cloudflare and keep the apex on Wix by
+**pointing** — Cloudflare becomes authoritative, and its zone carries Wix's own
+records instead of Wix's nameservers carrying everything. **The whole risk of
+that flip is a record that existed at Wix and does not exist at Cloudflare**,
+and the ones that go missing are never the website's.
+
+Read directly from `ns4.wixdns.net` with `dig`, because Cloudflare's import scan
+cannot enumerate subdomains it was not told about:
+
+| Name | Type | Value | Proxy |
+|---|---|---|---|
+| `@` | A | `185.230.63.171` | **DNS only** |
+| `@` | A | `185.230.63.107` | **DNS only** |
+| `@` | A | `185.230.63.186` | **DNS only** |
+| `www` | CNAME | `cdn3.wixdns.net` | **DNS only** |
+| `new` | CNAME | `fcpm.autumn-e2c.workers.dev` | **DNS only** — see below |
+| `@` | MX 10 | `fcpublicmedia-org.mail.protection.outlook.com` | — |
+| `@` | TXT | `v=spf1 include:spf.protection.outlook.com -all` | — |
+| `@` | TXT | `ms15993575` | — |
+| `autodiscover` | CNAME | `autodiscover.outlook.com` | **DNS only** |
+| `lyncdiscover` | CNAME | `webdir.online.lync.com` | **DNS only** |
+| `sip` | CNAME | `sipdir.online.lync.com` | **DNS only** |
+| `enterpriseregistration` | CNAME | `enterpriseregistration.windows.net` | **DNS only** |
+| `enterpriseenrollment` | CNAME | `enterpriseenrollment.manage.microsoft.com` | **DNS only** |
+| `_sipfederationtls._tcp` | SRV | `100 1 5061 sipfed.online.lync.com` | — |
+| `_sip._tls` | SRV | `100 1 443 sipdir.online.lync.com` | — |
+
+No wildcard, no CAA, no `_dmarc`, and no custom DKIM selectors.
+
+**Re-read it immediately before flipping.** This is a snapshot; the zone is
+somebody else's until the nameservers move.
+
+#### The three things that break, in order of how quietly they do it
+
+**1. Email, and it is on Microsoft 365.** The MX, the SPF TXT and the
+`ms15993575` verification record are the highest-consequence rows in that table
+and they have nothing to do with the website, which is exactly why a
+website-focused migration loses them. **The SPF record ends in `-all`** — a hard
+fail — so losing it does not merely weaken authentication, it makes receivers
+*reject* mail FCPM sends. Inbound stops if the MX goes; outbound starts bouncing
+if the SPF goes.
+
+**2. The five Microsoft service CNAMEs and the two SRV records.**
+`lyncdiscover`, `sip`, `enterpriseregistration`, `enterpriseenrollment` and the
+two `_sip*` SRVs are what Cloudflare's scan is least likely to find, because
+nothing advertises them. Nobody notices for weeks, and then a device will not
+enrol or Teams federation fails, and it is not connected to a DNS change made
+last month.
+
+**3. Proxying the Wix records.** Every row above marked **DNS only** must be the
+grey cloud, not the orange one. Wix serves the apex on shared infrastructure
+with its own certificates and host-based routing; putting Cloudflare's proxy in
+front of it is the classic version of this mistake and it takes the public site
+down rather than degrading it.
+
+#### `new.fcpublicmedia.org` points into a personal account
+
+`fcpm.autumn-e2c.workers.dev` is a Worker in **`autumn-e2c`**, which is not
+FCPM's Cloudflare account. So the live site is served today from a Worker in a
+personal account, and the CNAME is what makes that invisible.
+
+That is the account-migration question arriving as a concrete fact rather than a
+principle, and it has a specific edge: a **Workers Custom Domain requires the
+zone and the Worker to be in the same account.** Once `fcpublicmedia.org` is
+active in FCPM's account, `new` can either stay a plain DNS-only CNAME to the
+`workers.dev` hostname — which keeps working and keeps the dependency — or
+become a proper Custom Domain, which requires the Worker to live in FCPM's
+account first. Decide it deliberately; do not let the flip decide it.
+
+#### Verifying afterwards
+
+Flip, wait for the zone to go Active, then dig every name in the table above
+against Cloudflare's nameservers and diff it against the table. Answers that
+differ are the work; answers that are empty are the bug.
+
 ### Preview URLs
 
 The non-production branch deploy command is `npx wrangler versions upload`,
