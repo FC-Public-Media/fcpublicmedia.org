@@ -48,31 +48,20 @@ to open the Cloudflare dashboard.
 
 Everything else is in `wrangler.jsonc`, which is committed.
 
-### There is a second path in Actions, and it only runs when you say so
+### One deploy path
 
-`.github/workflows/deploy-cloudflare.yml` builds and publishes the same site
-with `wrangler deploy`. It is **`workflow_dispatch` only** — Actions tab, Run
-workflow — so it cannot fire on its own.
+**Cloudflare's git build is the only thing that publishes this site.** A second,
+`workflow_dispatch`-only Action existed until 2026-09-17 and was removed: two
+ways to publish one site is a way to be confused about which one did.
 
-| What | Where | Value |
-|---|---|---|
-| `CLOUDFLARE_PAGES_TOKEN` | organization **secret** | API token, *Edit Cloudflare Workers* template, **account-scoped** |
-| `CLOUDFLARE_ACCOUNT_ID` | secret or variable | Only if the token can see more than one account |
-| `CLOUDFLARE_PAGES_PROJECT` | repository **variable**, optional | Overrides `name` in `wrangler.jsonc`. A wrong value **creates a second Worker** |
+Nothing here now reads `CLOUDFLARE_PAGES_TOKEN`, `CLOUDFLARE_PAGES_PROJECT` or
+`CLOUDFLARE_ACCOUNT_ID` — the organization secret can go once you are satisfied
+no other repository in the org wants it. The broker's `CLOUDFLARE_API_TOKEN` is
+a different secret and is unaffected.
 
-**Manual-only is the safety, and that is deliberate.** An earlier version ran on
-`push` and was kept harmless by the token being absent — which turned an
-ordinary act, adding an organization secret, into a way to start publishing the
-same site twice by accident. Safety that depends on a credential *not* existing
-is a landmine with a note on it. The trigger is the guard instead, so the secret
-can exist for the broker's sake without arming anything.
-
-This is the same arrangement `DiscoveryWritten/lesbistrology` uses, on purpose.
-Two projects agreeing about how this is done is worth more than either being
-individually clever.
-
-To switch to it permanently: **disconnect the repository in the Cloudflare
-dashboard first**, then add a `push: branches: [main]` trigger.
+One thing that workflow taught is kept in [`TENANCY.md`](TENANCY.md), where the
+factory design is the thing that needs it: **safety that depends on a credential
+not existing is a landmine with a note on it.**
 
 ### When the git build fails
 
@@ -297,10 +286,10 @@ Measured, with the file moved to `site/config/_config.yml`:
 - `bundle exec jekyll build --config site/config/_config.yml` works, and the
   output is **byte-for-byte identical** to the build from the root.
 
-So the move costs exactly one flag, in four places: `deploy.yml`,
-`deploy-cloudflare.yml`, `smoke.yml` — and **the Cloudflare dashboard's build
-command**, which is git-connected, is what publishes the live site, and is the
-one field no agent can read or set. Getting that wrong does not fail the build;
+So the move costs exactly one flag, in three places: `deploy.yml`,
+`smoke.yml` — and **the Cloudflare dashboard's build command**, which is
+git-connected, is what publishes the live site, and is the one field no agent
+can read or set. Getting that wrong does not fail the build;
 it publishes a broken site and reports success.
 
 **Not worth it for tidiness alone.** If the build command is ever being edited
