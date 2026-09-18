@@ -1,0 +1,16 @@
+# Managed. A member does not edit this file, and does not need to have it.
+#
+# `title` and `description` come from _data/site.yml, which the member owns.
+# They are not repeated here: a default that says something about the site on
+# the member's behalf is a default somebody has to notice and correct, and it
+# would be wrong on every site until they did.
+#
+# No plugins, no theme gem, no npm, no CSS preprocessor.
+
+permalink: pretty
+
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor

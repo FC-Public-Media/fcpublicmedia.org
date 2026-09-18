@@ -39,6 +39,19 @@
 # A `tenant` whose directory is not on disk is NOT an error. An unhydrated
 # gitlink is the normal resting state of this list; the builder says `absent`
 # and moves on.
+#
+# COMPOSITION. `core` below is what FCPM supplies to a member site at build
+# time — layouts, stylesheet, config, the feed. A `scaffold` or `tenant` is
+# built by staging `core` and then the site's own files on top of it, so a
+# member's repository holds only what is theirs. `site` does not compose; it is
+# ours and it is whole.
+#
+# If a site carries a file that `core` also provides, the builder reports
+# `diverged` rather than picking a winner. That collision is the eject signal —
+# the member has taken the markup somewhere of their own — and silently
+# discarding their version would be the one unforgivable behaviour here.
+
+core: member-site-core
 
 sites:
   - path: site
@@ -48,6 +61,7 @@ sites:
   - path: site-template
     role: scaffold
     why: >-
-      The member site scaffold. Building it here is what stops it rotting
-      unnoticed; site/bin/check-template.py separately proves its feed is still
-      readable, which is the part that is actually a contract.
+      What a member's own repository holds — two data files and a .gitignore,
+      and deliberately no markup. Composed with `core` and built here so it
+      cannot rot unnoticed; site/bin/check-template.py separately proves the
+      composed feed is still readable, which is the part that is a contract.

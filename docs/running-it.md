@@ -120,7 +120,10 @@ site/                      EVERYTHING THE PUBLIC GETS. Jekyll sees only this.
   bin/                     Build tooling and the syncs. Excluded, never published.
   tests/                   Browser tests. Excluded, never published.
 worker/                    The broker. Its own Worker. See [identity.md](identity.md).
-site-template/             The scaffold a member site is cut from.
+site-template/             What a member's own repository holds: two data
+                           files and a .gitignore. No markup.
+member-site-core/          What FCPM supplies at build time: config, layout,
+                           stylesheet, index, feed. See docs/member-sites.md.
 docs/                      This directory. Everything written down.
 ```
 

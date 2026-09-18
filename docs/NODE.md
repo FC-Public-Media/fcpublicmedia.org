@@ -91,7 +91,8 @@ site/                THE WEBSITE, and the build root. Jekyll runs from in here.
 docs/                everything written down. Outside `source:`, so unpublishable.
 machines/            one profile per host this can plausibly run on. See its README.
 worker/              the broker. Its own Cloudflare Worker. Deployed separately.
-site-template/       the scaffold a member site is cut from. Its own Jekyll site.
+site-template/       what a member's own repository holds. Data only, no markup.
+member-site-core/    what FCPM supplies to a member site at build time.
 ```
 
 The rule is short: **`site/` is what the public gets. The root is everything

@@ -39,11 +39,34 @@ def fake_runner(returncode=0, stdout="", stderr=""):
 
 
 def site_at(tmp, name, with_index=True):
+    """A whole site — the `site` role, which does not compose."""
     d = tmp / name
     (d / "_site").mkdir(parents=True)
     (d / "_config.yml").write_text("title: x\n")
     if with_index:
         (d / "_site" / "index.html").write_text("<html></html>")
+    return d
+
+
+def core_at(tmp, name="core"):
+    """What FCPM supplies: config and markup, no content."""
+    d = tmp / name
+    (d / "_layouts").mkdir(parents=True)
+    (d / "_config.yml").write_text("permalink: pretty\n")
+    (d / "index.html").write_text("---\nlayout: default\n---\n")
+    (d / "_layouts" / "default.html").write_text("{{ content }}")
+    return d
+
+
+def member_at(tmp, name, extra=None):
+    """What a member's repository holds: data, and nothing else."""
+    d = tmp / name
+    (d / "_data").mkdir(parents=True)
+    (d / "_data" / "site.yml").write_text("name: Theirs\n")
+    for path, body in (extra or {}).items():
+        target = d / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(body)
     return d
 
 
@@ -53,6 +76,19 @@ class ManifestTests(unittest.TestCase):
         by_path = {e.path: e for e in entries}
         self.assertEqual(by_path["site"].role, "site")
         self.assertEqual(by_path["site-template"].role, "scaffold")
+
+    def test_the_manifest_names_a_core_that_exists(self):
+        core = bs.load_core()
+        self.assertTrue(core, "sites.yml must name a core for composed sites")
+        self.assertTrue((bs.REPO / core).is_dir(), f"{core} is not a directory")
+
+    def test_the_template_holds_no_markup(self):
+        """The whole point of the split: a member's repository is data."""
+        template = bs.REPO / "site-template"
+        markup = [str(p.relative_to(template)) for p in template.rglob("*")
+                  if p.is_file() and p.suffix in (".html", ".xml", ".css")
+                  and not bs._ignored(p)]
+        self.assertEqual(markup, [], "site-template/ should carry no markup")
 
     def test_unknown_role_is_refused_with_the_valid_ones_named(self):
         with self.assertRaises(ValueError) as caught:
@@ -100,9 +136,10 @@ class BuildOutcomeTests(unittest.TestCase):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
 
     def test_an_unhydrated_tenant_is_absent_not_a_failure(self):
+        core_at(self.tmp)
         status, detail = bs.build(
             bs.Entry(path="nobody", role="tenant"), repo=self.tmp,
-            runner=fake_runner(),
+            runner=fake_runner(), core="core",
         )
         self.assertEqual(status, "absent")
         self.assertIn("not hydrated", detail)
@@ -115,9 +152,10 @@ class BuildOutcomeTests(unittest.TestCase):
         self.assertIn("manifest says a site is", detail)
 
     def test_liquid_errors_on_stdout_are_kept(self):
-        site_at(self.tmp, "t")
+        core_at(self.tmp)
+        member_at(self.tmp, "t")
         status, detail = bs.build(
-            bs.Entry(path="t", role="tenant"), repo=self.tmp,
+            bs.Entry(path="t", role="tenant"), repo=self.tmp, core="core",
             runner=fake_runner(returncode=1, stdout="Liquid Exception: boom"),
         )
         self.assertEqual(status, "failed")
@@ -126,12 +164,86 @@ class BuildOutcomeTests(unittest.TestCase):
     def test_success_with_no_index_is_a_failure(self):
         """A zero exit and an empty directory is the dangerous case: deploying
         it replaces a working site with nothing and reports success."""
-        site_at(self.tmp, "t", with_index=False)
+        core_at(self.tmp)
+        member_at(self.tmp, "t")
         status, detail = bs.build(
-            bs.Entry(path="t", role="tenant"), repo=self.tmp, runner=fake_runner(),
+            bs.Entry(path="t", role="tenant"), repo=self.tmp, core="core",
+            runner=fake_runner(),
         )
         self.assertEqual(status, "failed")
         self.assertIn("no index.html", detail)
+
+    def test_a_composed_site_is_missing_its_core(self):
+        member_at(self.tmp, "t")
+        status, detail = bs.build(
+            bs.Entry(path="t", role="tenant"), repo=self.tmp, core="nope",
+            runner=fake_runner(),
+        )
+        self.assertEqual(status, "failed")
+        self.assertIn("sites.yml", detail)
+
+
+class CompositionTests(unittest.TestCase):
+    """core first, member on top, and a collision means eject."""
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.core = core_at(self.tmp)
+        self.dest = self.tmp / "staged"
+        self.dest.mkdir()
+
+    def test_a_member_of_two_data_files_gets_a_whole_site(self):
+        member = member_at(self.tmp, "m")
+        collisions = bs.compose(self.core, member, self.dest)
+        self.assertEqual(collisions, [])
+        for path in ("_config.yml", "index.html", "_layouts/default.html",
+                     "_data/site.yml"):
+            self.assertTrue((self.dest / path).is_file(), f"{path} missing")
+
+    def test_member_data_is_not_clobbered_by_core(self):
+        member = member_at(self.tmp, "m")
+        bs.compose(self.core, member, self.dest)
+        self.assertEqual((self.dest / "_data" / "site.yml").read_text(),
+                         "name: Theirs\n")
+
+    def test_a_member_carrying_managed_markup_is_a_collision(self):
+        member = member_at(self.tmp, "m",
+                           extra={"_layouts/default.html": "MINE"})
+        collisions = bs.compose(self.core, member, self.dest)
+        self.assertEqual(collisions, ["_layouts/default.html"])
+
+    def test_a_collision_never_silently_prefers_ours(self):
+        """The one unforgivable behaviour: building a site that is not the one
+        the member wrote, without saying so."""
+        member = member_at(self.tmp, "m",
+                           extra={"_layouts/default.html": "MINE"})
+        bs.compose(self.core, member, self.dest)
+        # Core's copy is what got staged, which is exactly why the collision is
+        # returned and the caller must refuse to build on it.
+        self.assertEqual((self.dest / "_layouts" / "default.html").read_text(),
+                         "{{ content }}")
+
+    def test_build_output_and_caches_are_never_composed_in(self):
+        member = member_at(self.tmp, "m", extra={
+            "_site/index.html": "stale",
+            ".jekyll-cache/x": "junk",
+            "Gemfile.lock": "junk",
+        })
+        bs.compose(self.core, member, self.dest)
+        self.assertFalse((self.dest / "_site").exists())
+        self.assertFalse((self.dest / ".jekyll-cache").exists())
+        self.assertFalse((self.dest / "Gemfile.lock").exists())
+
+    def test_a_diverged_tenant_reports_rather_than_builds(self):
+        member_at(self.tmp, "t", extra={"index.html": "MINE"})
+        ran = []
+        status, detail = bs.build(
+            bs.Entry(path="t", role="tenant"), repo=self.tmp, core="core",
+            runner=lambda cmd, **kw: ran.append(cmd) or subprocess.CompletedProcess(cmd, 0),
+        )
+        self.assertEqual(status, "diverged")
+        self.assertIn("index.html", detail)
+        self.assertEqual(ran, [], "a diverged site must not be built")
 
 
 class ExitPolicyTests(unittest.TestCase):
@@ -156,6 +268,12 @@ class ExitPolicyTests(unittest.TestCase):
             self.assertTrue(bs.is_fatal(entry, "failed"))
             self.assertTrue(bs.is_fatal(entry, "absent"))
 
+    def test_divergence_is_news_for_a_tenant_and_a_bug_for_us(self):
+        """A member who has taken the markup somewhere of their own is not a
+        defect in this repository. Our own scaffold doing it is."""
+        self.assertFalse(bs.is_fatal(bs.Entry(path="t", role="tenant"), "diverged"))
+        self.assertTrue(bs.is_fatal(bs.Entry(path="p", role="scaffold"), "diverged"))
+
     def test_a_built_site_is_never_fatal(self):
         for role in ("site", "scaffold", "tenant"):
             self.assertFalse(bs.is_fatal(bs.Entry(path="p", role=role), "built", True))
@@ -166,21 +284,30 @@ class IsolationTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
+        core_at(self.tmp)
         for name in ("first", "broken", "last"):
-            site_at(self.tmp, name)
+            member_at(self.tmp, name)
 
     def test_every_site_is_attempted_even_after_one_fails(self):
         attempted = []
 
         def runner(cmd, **kwargs):
-            source = cmd[cmd.index("--source") + 1]
-            attempted.append(pathlib.Path(source).name)
-            if "broken" in source:
+            # --source is a staging directory now, so identify the site by the
+            # destination, which still sits beside the site's own source.
+            dest = pathlib.Path(cmd[cmd.index("--destination") + 1])
+            name = dest.parent.name
+            attempted.append(name)
+            dest.mkdir(parents=True, exist_ok=True)
+            if name == "broken":
                 return subprocess.CompletedProcess(cmd, 1, "Liquid Exception", "")
+            (dest / "index.html").write_text("<html></html>")
             return subprocess.CompletedProcess(cmd, 0, "", "")
 
         entries = [bs.Entry(path=n, role="tenant") for n in ("first", "broken", "last")]
-        outcomes = [(e, *bs.build(e, repo=self.tmp, runner=runner)) for e in entries]
+        outcomes = [
+            (e, *bs.build(e, repo=self.tmp, runner=runner, core="core"))
+            for e in entries
+        ]
 
         self.assertEqual(attempted, ["first", "broken", "last"],
                          "the run must continue past a failure")
@@ -196,9 +323,10 @@ class RealBuildTest(unittest.TestCase):
         except (OSError, subprocess.CalledProcessError):
             self.skipTest("bundler is not available here")
 
+        core = bs.load_core()
         for entry in bs.load_manifest():
             with self.subTest(site=entry.path):
-                status, detail = bs.build(entry, repo=bs.REPO)
+                status, detail = bs.build(entry, repo=bs.REPO, core=core)
                 self.assertEqual(status, "built", f"{entry.path}: {detail}")
 
 

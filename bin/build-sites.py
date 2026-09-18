@@ -6,11 +6,14 @@
     python3 bin/build-sites.py --only site      build one
     python3 bin/build-sites.py --strict         a tenant failure is fatal too
 
-This is the first piece of the member-site factory. It exists because the
-repository now has exactly the shape a factory needs and nothing was using it:
-`site/` became a self-contained Jekyll project, and `site-template/` is another
-one beside it. A site is a directory with a `_config.yml` in it. There is no
-longer a "the site" to special-case.
+This is the member-site factory. `site/` is a self-contained Jekyll project, so
+there is no longer a "the site" to special-case — it is one entry in sites.yml
+like any other.
+
+A member's site is NOT self-contained, and deliberately so: `site-template/`
+holds two data files, and `member-site-core/` holds the config and the markup.
+They are composed at build time. See `compose()`, and docs/member-sites.md for
+where the line is drawn and why.
 
 WHY ONE TOOLCHAIN FOR ALL OF THEM
 ---------------------------------
@@ -29,10 +32,10 @@ member's repository needs no Gemfile, no lockfile and no Ruby pin to be built
 here, because the host brought all three. GitHub Pages works the same way and
 it is the reason "almost no config" is achievable rather than aspirational.
 
-(What that means for how hard `site-template/` can be pruned is a live
-question, and it is not this script's to answer. See docs/TENANCY.md, "What the
-pruner is actually blocked on" — every file the prune removes is one the member
-no longer has on the day they eject.)
+(The prune question this used to defer is settled: the template is pruned to
+data, and ejecting means composing the core into the member's repository as a
+commit rather than leaving it behind. That is option 1 from docs/TENANCY.md,
+"What the pruner is actually blocked on", chosen by her on 2026-09-18.)
 
 WHY A FAILURE DOES NOT STOP THE RUN
 -----------------------------------
@@ -70,8 +73,10 @@ resting state of the list, not a fault.
 
 import argparse
 import pathlib
+import shutil
 import subprocess
 import sys
+import tempfile
 
 try:
     import yaml
@@ -95,6 +100,10 @@ TOOLCHAIN = REPO / "site"
 BUILT = {"site": True, "scaffold": True, "tenant": False}
 ROLES = set(BUILT) | {"listed"}
 
+# Roles whose source is only half a site: the other half is `core` from
+# sites.yml, staged underneath it at build time. `site` is ours and whole.
+COMPOSED = {"scaffold", "tenant"}
+
 
 class Entry:
     def __init__(self, path, role, why=""):
@@ -117,6 +126,44 @@ class Entry:
         return BUILT.get(self.role, False)
 
 
+def compose(core, site, dest):
+    """Stage `core`, then `site` on top of it, into `dest`.
+
+    Returns the list of paths the site carries that core also provides.
+
+    THAT LIST IS THE EJECT SIGNAL, not an error to resolve. A member whose
+    repository contains a layout has taken the markup somewhere of their own,
+    and the one thing this must never do is quietly prefer ours and build a
+    site that is not the one they wrote. It is the same fact that
+    `git merge upstream/main --ff-only` failing used to carry, noticed at build
+    time instead of at update time.
+
+    Core is copied first so that `dest` is a complete site even when the member
+    supplies almost nothing, which is the normal case: two data files.
+    """
+    collisions = []
+    for source in (core, site):
+        if not source.is_dir():
+            continue
+        for path in sorted(source.rglob("*")):
+            if path.is_dir() or _ignored(path):
+                continue
+            target = dest / path.relative_to(source)
+            if target.exists() and source is site:
+                collisions.append(str(path.relative_to(source)))
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+    return collisions
+
+
+def _ignored(path):
+    """Build output and local bookkeeping are never part of a site's source."""
+    parts = set(path.parts)
+    return bool(parts & {"_site", ".jekyll-cache", ".git", "vendor"}) or \
+        path.name in {"Gemfile.lock", ".DS_Store"}
+
+
 def load_manifest(path=MANIFEST):
     data = yaml.safe_load(path.read_text()) or {}
     entries = [Entry(**e) for e in data.get("sites", [])]
@@ -128,41 +175,74 @@ def load_manifest(path=MANIFEST):
     return entries
 
 
-def build(entry, repo=None, runner=subprocess.run):
+def load_core(path=MANIFEST):
+    """The directory FCPM supplies to every composed site, or None."""
+    data = yaml.safe_load(path.read_text()) or {}
+    core = data.get("core")
+    return core or None
+
+
+def build(entry, repo=None, runner=subprocess.run, core=None):
     """Build one site. Returns (status, detail).
 
-    status is one of: built, failed, absent, skipped.
+    status is one of: built, failed, diverged, absent, skipped.
+
+    A composed site (`scaffold`, `tenant`) is staged into a temporary
+    directory: `core` first, then the site's own files on top. Its `_site` is
+    still written beside the site's source, so the output lands where a deploy
+    would look for it and the staging area is disposable.
     """
+    repo = repo or REPO
     if not entry.builds:
         return "skipped", f"role {entry.role} is never built"
 
-    source = (repo or REPO) / entry.path
-    if not (source / "_config.yml").is_file():
+    source = repo / entry.path
+    composed = entry.role in COMPOSED
+
+    if not source.is_dir() or (not composed and not (source / "_config.yml").is_file()):
         # For a tenant this is an unhydrated gitlink and entirely expected. For
         # one of ours it means somebody moved a directory without editing
         # sites.yml, which main() treats as fatal.
         if entry.required:
-            return "absent", "no _config.yml where the manifest says a site is"
+            return "absent", "nothing where the manifest says a site is"
         return "absent", "not hydrated"
 
-    result = runner(
-        ["bundle", "exec", "jekyll", "build",
-         "--source", str(source),
-         "--destination", str(source / "_site")],
-        cwd=(repo or REPO) / "site", capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        # Liquid errors land on stdout, not stderr, and are the whole reason
-        # anybody reads this output — so keep both.
-        return "failed", (result.stdout or "") + (result.stderr or "")
+    with tempfile.TemporaryDirectory() as tmp:
+        if composed:
+            core_dir = repo / (core or "")
+            if core is None or not core_dir.is_dir():
+                return "failed", f"core {core!r} is not a directory — see sites.yml"
+            staged = pathlib.Path(tmp) / "staged"
+            staged.mkdir()
+            collisions = compose(core_dir, source, staged)
+            if collisions:
+                # Deliberately not resolved. See compose().
+                return "diverged", (
+                    "carries file(s) that " + str(core) + " also provides: "
+                    + ", ".join(collisions)
+                )
+        else:
+            staged = source
 
-    if not (source / "_site" / "index.html").is_file():
-        # A zero exit with no index is worse than a failure: deploying it
-        # replaces a working site with an empty one and reports success.
-        return "failed", "build reported success but produced no index.html"
+        destination = source / "_site"
+        result = runner(
+            ["bundle", "exec", "jekyll", "build",
+             "--source", str(staged),
+             "--destination", str(destination)],
+            cwd=repo / "site", capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            # Liquid errors land on stdout, not stderr, and are the whole
+            # reason anybody reads this output — so keep both.
+            return "failed", (result.stdout or "") + (result.stderr or "")
 
-    files = sum(1 for _ in (source / "_site").rglob("*") if _.is_file())
-    return "built", f"{files} files"
+        if not (destination / "index.html").is_file():
+            # A zero exit with no index is worse than a failure: deploying it
+            # replaces a working site with an empty one and reports success.
+            return "failed", "build reported success but produced no index.html"
+
+        files = sum(1 for _ in destination.rglob("*") if _.is_file())
+        return "built", f"{files} files"
 
 
 def is_fatal(entry, status, strict=False):
@@ -171,7 +251,7 @@ def is_fatal(entry, status, strict=False):
     A tenant that did not build is not our defect — that is the whole point of
     building each site independently. `--strict` reads it the other way.
     """
-    if status == "failed":
+    if status in ("failed", "diverged"):
         return strict or entry.required
     if status == "absent":
         return entry.required
@@ -209,7 +289,8 @@ def main(argv=None):
             print(f"  {e.path:<16} {e.role:<9} {'builds' if e.builds else 'listed only'}")
         return 0
 
-    outcomes = [(e, *build(e, repo=REPO)) for e in entries]
+    core = load_core()
+    outcomes = [(e, *build(e, repo=REPO, core=core)) for e in entries]
     print(f"{len(outcomes)} site(s):")
     failures = report([(e.path, s, d) for e, s, d in outcomes])
 
@@ -218,6 +299,12 @@ def main(argv=None):
     if fatal:
         print(f"\nFAILED: {', '.join(fatal)}", file=sys.stderr)
         return 1
+    diverged = [p for p, s, _ in
+                [(e.path, s, d) for e, s, d in outcomes] if s == "diverged"]
+    if diverged:
+        print(f"\nDIVERGED: {', '.join(diverged)} — these carry their own copy "
+              "of managed files. That is the eject signal, not a build error.",
+              file=sys.stderr)
     if failures:
         print(f"\n{len(failures)} tenant site(s) failed and were skipped. The "
               "cadence is kept for everybody else.", file=sys.stderr)

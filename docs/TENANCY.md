@@ -245,13 +245,86 @@ hold, there's no risk to checking it out anywhere."*
 
 For tenants that sharpens into something worth stating plainly, because it will
 surprise somebody: **hosted tenant repositories are public, so publishing state
-is scheduling and never secrecy.** `site-template/README.md` already says so —
+is scheduling and never secrecy.** [`member-sites.md`](member-sites.md) already says so —
 `draft` is *"being worked on,"* visible to anyone reading the repo, *"which is
 fine — a repo is not a stage."* A tenant who needs genuine pre-release secrecy
 ejects, goes private, and keeps submitting a feed.
 
 This is the part most likely to be mis-sold when the product is described to a
 board or a member. Say it first, not in the FAQ.
+
+---
+
+## The managed core is an engine, and that word already exists
+
+Recorded 2026-09-18, when she asked for a better name than *site template* for
+the managed half:
+
+> if site template is the managed core, I would accept that. I might want it to
+> have a better name in that situation. because it is the ejected managed bit
+> that when it merges with the actual site template would be those files added
+> in to the site template.
+
+**The journal engine is already exactly this, and it has the vocabulary.** From
+`journal.anecdote.channel`'s `AGENTS.md`, mounted one node over at
+`station-node/.journal-engine`:
+
+> the shared, **content-less Jekyll machinery** a civic node mounts at
+> `.journal-engine/` to render its own self-hosted public record. It ships
+> layouts, includes, plugins, assets, `skel/` boilerplate, and `bin/` build
+> scripts — **never articles**.
+
+Line for line against what FCPM needs:
+
+| she described | the journal engine calls it |
+|---|---|
+| the managed core — config, layout, stylesheet, feed | **the engine**: content-less machinery, never content |
+| the terse template a member's repo holds | **`skel/`** — boilerplate synced to the mounting site |
+| *"we own nothing"* | *"engines are hidden; **content is canonical**"* |
+| ejecting merges the managed bits in | *"assets are synced in from here at build time — change the engine, never the synced copies downstream"* |
+| member sites served as folders under a wildcard | *"content under `journal/`, where **disk path == URL path**"* |
+| the index file being irrelevant | **`/NAME`**: one line, the address that build is meant to be reached at — **site-owned, never engine-owned**, and `bin/sync.sh` will never overwrite it |
+
+**`/NAME` is the sharpest borrowing available.** It is deliberately not `CNAME`,
+because *"canonical here means a proven copy, not the only copy"* — a site
+states its own address, the engine never writes it, and the same content may be
+canonical in two places at once. For a tenancy built on *we own nothing*, a
+convention where the address is the site's own property and the machinery is
+forbidden from touching it is not a detail; it is the governance written into a
+file format.
+
+**So the better name for `member-site-core/` is an engine**, by the antibody
+`.<subdomain>-engine` convention — and her own instinct that it *"could even be
+another repository"* is what that convention is for. The name in the tree today
+is provisional and says so.
+
+### And it inverts what an engine is for here
+
+> this might be a situation where we're not trying to submodule an engine like I
+> was coming at it before in order to do the factorization. But instead, it's
+> oriented the other way around. **You submodule the thing you want to
+> factorize.**
+
+Both, in fact, and they are different mounts: the **engine** is submoduled
+because it is shared machinery, and each **member site** is submoduled because
+it is somebody else's content that we only borrow. The journal engine already
+runs exactly that arrangement — a mounting site holds the engine at
+`.journal-engine/` and its own content beside it.
+
+**Which makes the folder-versus-submodule question smaller than it looked.** Her
+worry was commit noise from keeping member sites in a folder here, against the
+cost of checking out every submodule for a central build. But the cadence is
+weekly and the build is already sequential and isolated per site, so hydrating
+a batch, building it, and dropping it is a shape the builder already has.
+
+> So submodules and built artifacts could both live in this repo hypothetically.
+> And then on, like, a weekly cadence, when the sites get built, it... that's the
+> big chunky commit every month.
+
+Committing the built artifact is what the five existing syncs already do — write
+the output, commit it, and let the commit be the record. A weekly build that
+commits one tree of `/<member>/` folders is that pattern at a larger size, and
+it is the same tree a wildcard-to-path-prefix host would serve.
 
 ---
 
@@ -311,7 +384,7 @@ to be answered before that work can finish.
 
 ## The problem is burnout, and it is not discoverability
 
-This supersedes the framing in `site-template/README.md`, and the difference
+This supersedes the framing in [`member-sites.md`](member-sites.md), and the difference
 matters enough to state before anything else.
 
 The template's README says the problem is **local discoverability** — that a
@@ -623,7 +696,7 @@ get things done with just a configuration."*
 
 **The prune and the eject story pull directly against each other.**
 
-`site-template/README.md` promises *"Ejecting should cost them nothing but a
+[`member-sites.md`](member-sites.md) promises *"Ejecting should cost them nothing but a
 decision."* That promise is currently kept by the member's repository already
 containing everything needed to build the site alone. **Every file the prune
 removes is a file FCPM supplies — and therefore a file the member does not have

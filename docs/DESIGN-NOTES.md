@@ -458,7 +458,7 @@ Recorded so they are not lost, in rough order of how ready they are:
   uploads, a bucket with a size cap and a retention rule, which is a decision
   rather than a value.
 - **The site factory.** `site-template/` is scaffolded; creation, hosting and
-  fast-forwarding are not. See `site-template/README.md`.
+  fast-forwarding are not. See [`member-sites.md`](member-sites.md).
 - **Microsoft Graph.** Whether a nonce survives a published ICS decides
   whether Graph is needed at all. Ten minutes with one published calendar
   settles it. See README, "Calendar".
