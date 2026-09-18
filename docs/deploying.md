@@ -309,6 +309,23 @@ variables instead; deleting it outright is the same fix with one fewer file.
 So the file that had to survive was the one that was *not* named as expendable —
 and removing the other one is both the collapse and the removal of a hazard.
 
+#### Where the file came from, so it does not come back
+
+It was not a decision made here. Autumn, 2026-09-17:
+
+> I told my agents in my projects folder to unify tools. And so that's probably
+> what happened. This repository is allowed to not listen to my personal dev
+> advice. I didn't realize we hit this repo.
+
+That generalises, and it is now a standing order in `AGENTS.md`: **guidance about
+unifying tooling across a personal projects folder is not guidance about here.**
+This repository is org-owned, public, and built by a host with its own opinion
+about version files.
+
+Which is her own machine's rule read the other way round — its toolkit note says
+divergence is allowed and belongs written down *in the diverging project*, never
+by editing the shared list. This is that, written down.
+
 #### What it cost, and the thing that pays for it
 
 asdf does not read `.ruby-version` unless `legacy_version_file = yes` is set in
