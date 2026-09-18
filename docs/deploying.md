@@ -276,6 +276,102 @@ Flip, wait for the zone to go Active, then dig every name in the table above
 against Cloudflare's nameservers and diff it against the table. Answers that
 differ are the work; answers that are empty are the bug.
 
+### Serving member sites: a wildcard subdomain onto a path prefix
+
+The plan, her words, 2026-09-18:
+
+> we publish the actual built versions of the site to main in a member sites
+> folder, and we're mapping that member sites as, like, part of the DNS prefix
+> reroute
+
+So `<member>.fcpublicmedia.org` serves what is committed at
+`site/member-sites/<member>/`, and the built tree is committed rather than
+generated at request time — the same bargain the five `_data` syncs already
+make, at a larger size. Her name for it: *"the big chunky commit every month."*
+
+Two things were measured before any of this gets built, because both would have
+been found the hard way.
+
+#### It has to be under `site/`, and that is not obvious
+
+**The build root is `site/`.** A `member-sites/` directory at the repository
+root is not part of the build, is not copied into `_site`, and is therefore not
+served by anything — and nothing would report an error, because a root
+directory being unpublished is the *correct* behaviour that
+`site/bin/test_nothing_internal_is_published.py` exists to guarantee.
+
+So the folder goes at **`site/member-sites/`**, inside the build root, where it
+is content rather than station.
+
+**And Jekyll passes already-built HTML through untouched.** Measured
+2026-09-18: a file at `site/member-sites/probe/index.html` containing
+`{{ site.title }}` and `{% if x %}y{% endif %}` came out of
+`bundle exec jekyll build` **byte-for-byte identical**. Jekyll only applies
+Liquid to files with YAML front matter, and built output has none, so a
+member's page cannot be mangled by our build even when it contains text that
+looks like a template.
+
+That is the whole reason this works with one build and one deploy rather than
+needing a second pipeline.
+
+#### The rewrite needs a Worker, and Transform Rules cannot do it
+
+This is the part that looks free and is not.
+
+**A URL Rewrite under Transform Rules is the obvious tool and it will not
+work.** Transform Rules are available on every plan — 10 active rules on Free —
+but **regular expressions are Business and Enterprise only.** Turning
+`<member>.fcpublicmedia.org/x` into `/member-sites/<member>/x` means capturing
+a label out of the hostname and putting it into the path, which is a dynamic
+capture. Without regex there is no way to express it, and no number of static
+rules substitutes.
+
+**And the default serving order is backwards for this.** With static assets and
+a Worker script both configured, *"Cloudflare will first attempt to serve static
+assets if one matches the incoming request"*. A request for
+`<member>.fcpublicmedia.org/` matches the root `index.html` — FCPM's own
+homepage — so every member subdomain would serve our front page and nothing
+would look broken enough to investigate.
+
+Two ways to fix the order, and they trade against different things:
+
+| | how | costs |
+|---|---|---|
+| **One Worker** | add `main` to `site/wrangler.jsonc` and `"run_worker_first": true` to its `assets` block; the script reads the hostname and rewrites the path | the main site stops being *"no main, no runtime, nothing to execute"* — every request to the public site now runs a script |
+| **Two Workers** | leave `site/` as pure assets; a second Worker on the `*.fcpublicmedia.org/*` route, with the built member sites as **its own** asset directory | a second deploy, and member sites are not also reachable as a path on the main domain unless added deliberately |
+
+Route precedence favours the second: *"the most specific route pattern wins,"*
+so `www.fcpublicmedia.org/*` keeps beating `*.fcpublicmedia.org/*` and the main
+site is unaffected. A second Worker is also an established pattern here —
+`worker/` is already one.
+
+**The one-Worker option is what she described**, because it keeps the listing
+and the sites in one tree: *"the index file in this listing of submodules, like,
+right next to them, is exactly what we could publish on our own site."* That
+index only lives beside the sites if the sites are inside `site/`.
+
+`run_worker_first` also accepts an array of paths rather than `true` — but the
+discriminator here is the **hostname**, not the path, so the selective form does
+not help and it has to be `true`.
+
+**All of this needs the zone on Cloudflare**, because a wildcard DNS record and
+a Worker route both live in the zone. That is the nameserver move, which is the
+same prerequisite as everything else in this section.
+
+#### And `baseurl` is the detail that will bite
+
+The member site build deliberately sets no `baseurl` — see `member-sites.md`,
+which arrives with the template split — and that is correct for a site served at
+the root of its own subdomain: with a **rewrite** rather than a redirect, the
+browser stays on `<member>.fcpublicmedia.org`, so a root-absolute `/feed.xml`
+resolves to `<member>.fcpublicmedia.org/feed.xml` and gets rewritten too.
+
+The consequence is that **the same build is not correct at
+`www.fcpublicmedia.org/member-sites/<member>/`** — every link and stylesheet
+there would 404 against the main site's root. If both addresses should work, the
+path form needs its own build with `baseurl` set, or it redirects to the
+subdomain. Worth deciding before somebody links to the path form.
+
 ### Preview URLs
 
 The non-production branch deploy command is `npx wrangler versions upload`,
