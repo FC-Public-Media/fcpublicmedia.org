@@ -1,1 +1,116 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+The factory builds every site: sites.yml and bin/build-sites.py
+Multitenancy stops being the name of a session and starts being code. Four
+files, no deploys, nothing structural.
+
+```
+sites.yml               the canonical list
+bin/build-sites.py      builds each site independently
+bin/test_build_sites.py 17 tests
+docs/TENANCY.md         two of its stated constraints retired, marked in place
+```
+
+## The restructure did most of the work already
+
+When the build root moved into `site/`, that directory became a **self-contained
+Jekyll project** — its own `_config.yml`, `Gemfile`, `.ruby-version`,
+`wrangler.jsonc`. `site/` stopped being *the* site and became *a* site, and
+`site-template/` is already another one beside it. **A site is a directory with
+a `_config.yml` in it**, and there is no longer anything to special-case.
+
+So the factory had two real inputs before it had a factory, and this PR is
+mostly wiring rather than invention.
+
+## `sites.yml` — one list, four roles
+
+The gitlink says where a site's repository is; this says what we do about it.
+Both committed, which is what *"a canonical list, and it is backed in by the
+repository"* buys: the list cannot drift from what was reviewed, and delisting
+somebody is a reviewable act.
+
+| role | built | published | failing it is ours |
+|---|---|---|---|
+| `site` | yes | yes | **yes** |
+| `scaffold` | yes | no | **yes** |
+| `tenant` | yes | yes | no |
+| `listed` | never | never | — |
+
+**One list rather than three**, because a site we publish, a site somebody
+ejected, and a producer who never started with us are the same kind of thing — a
+pointer with a policy. Three registries would have needed a fourth for the case
+with no ejection event to key off.
+
+## The cadence promise, in code
+
+*"We promise a cadence that we can meet instead of real time, which is the crux
+of it all."* But *"building kinda all at once"* puts one broken tenant in the
+same run as every healthy one — so:
+
+- every site is built **independently**, and the run continues past a failure;
+- a `tenant` failure is reported and **does not** make the run non-zero, because
+  it is not a defect in this repository;
+- `--strict` reads it the other way when you want the harsher check;
+- an unhydrated tenant is **`absent`, not a failure** — a mostly-unhydrated list
+  is the normal resting state, per *"they don't all have to be there"*.
+
+There is a test that asserts the run attempts `first`, `broken`, `last` in order
+and that none of it is fatal, because that ordering *is* the promise.
+
+Also refuses a zero exit with no `index.html`: deploying that replaces a working
+site with an empty one and reports success.
+
+## What I measured, and it retires two documented costs
+
+**With an explicit `--source`, Jekyll reads `<source>/_config.yml` — not one in
+the working directory.** Verified by building `site-template/` from `site/`'s
+bundle and getting a page titled *"Your Show"*.
+
+So **one toolchain builds every site**: one Ruby, one Gemfile, one lockfile, all
+at the host. That is *"defaults live in the host, not in the tenant"* arriving as
+plumbing, and it means **a member's repository needs no Gemfile, no lockfile and
+no Ruby pin to be built here.**
+
+`TENANCY.md` listed four costs for a second site. Two are now gone — a second
+site needs no `-c`, and `_site` is already per-site — and I marked them
+superseded in place rather than quietly editing, with the measurement. The
+config generator from item 1 is still wanted; it is just only that now.
+
+**This is also a data point for the prune question**, though not an answer: the
+managed build does not need the tenant's `Gemfile`. Whether it should go anyway
+still depends on your call about whether ejection injects files back, which is
+still open and still where the pruner is blocked.
+
+## What it deliberately does not do
+
+**It does not deploy.** Which Cloudflare account a tenant lands in is decided in
+prose and not in configuration — your constellation by default, FCPM's account
+once a member buys a domain. Building is the half that is fully specified, so it
+is the half that is built.
+
+**No workflow.** You had me remove a deploy workflow two days ago to stop two
+paths being confusable, and adding a scheduled one in the same week wants your
+say-so rather than my initiative. The cadence run is `python3
+bin/build-sites.py` and it is ready to be put on a schedule the moment you want
+one — that is the obvious next commit, not a missing piece.
+
+**It does not touch `site-template/`'s contents**, so it cannot collide with the
+pruning work.
+
+## Verified
+
+- `python3 bin/test_build_sites.py` — **17 tests, OK**, including a real build of
+  both `site/` and `site-template/`.
+- `python3 site/bin/test_no_secrets.py` — 12 tests, OK (2 skipped).
+- `--only` builds one; `--only <unknown>` exits 2 with a named error; `--list`
+  builds nothing.
+- Build output lands in each site's `_site`, already gitignored at any depth;
+  the tree is clean after a full run.
+
+## One environment note
+
+`bin/build-sites.py` needs PyYAML, guarded with the same message
+`site/bin/sync-feeds.py` uses. On this machine the bare `python3` does not have
+it — `uv run --with pyyaml python bin/build-sites.py` is how I ran it. Worth
+knowing before it goes in a workflow, where it is one `pip install` line like
+the existing syncs.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
