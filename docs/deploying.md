@@ -89,6 +89,15 @@ git connections were being reauthorized.
 **The repository reported as damaged.** Deleting and recreating the project
 cleared it. See below.
 
+**A third thing to rule out first, now that it is known.** Cloudflare's builder
+detects `.tool-versions` files undocumentedly, and their presence alone can fail
+a build with `error occurred while installing tools or dependencies`. This
+repository carried one from 2026-09-09 until it was deleted on 2026-09-17. That
+does **not** explain either failure above — neither error matches, and the
+`Gemfile` failure predates the file — but it is the cheapest thing to check if a
+build ever fails in the tool-detection phase, and the file is gone now, so the
+variable is gone with it.
+
 **Neither takes the site down.** A failed build leaves the last good deployment
 serving, so there is time to look properly. Check what actually changed in
 `_site` before treating it as urgent — a run of merges that only touch
@@ -184,8 +193,10 @@ guessing, not the build. Committing `wrangler.jsonc` skips the guess.
 - **`_site` appears twice** — in the workflow and in `wrangler.jsonc` under
   `assets.directory`. Both need it. It is Jekyll's default and is not
   overridden in `_config.yml`.
-- **`.ruby-version` pins Ruby 3.2.2**, and `.tool-versions` says the same for
-  asdf. CI reads `.ruby-version`. Do not delete either.
+- **`.ruby-version` pins Ruby 3.2.2**, and it is the only file that does.
+  Cloudflare's builder reads it; so does `ruby/setup-ruby`, by name, in every
+  workflow. Do not delete it, and do not add a `.tool-versions` beside it — see
+  *The version pins* below for what that costs.
 - **`Gemfile.lock` is intentionally not committed.** A lock file resolved on a
   different platform is a common cause of `bundle install` failures on hosted
   builders. Jekyll is the only direct dependency.
@@ -220,14 +231,15 @@ Measured 2026-09-17, because *"I'd like to find a way to collapse some configs"*
 turns out to be four separate questions with four different answers, and the
 expensive one is easy to walk into by accident.
 
-Six things sit at the repository root. What reads each, and whether it can move:
+Six things sat at the repository root when this was written; five do now. What
+reads each, and whether it can move:
 
 | | read by | can it move? |
 |---|---|---|
 | `_config.yml` | Jekyll | **no, not for free.** See below |
 | `Gemfile` | bundler, and Cloudflare's build image | **probably not.** See below |
-| `.ruby-version` | `ruby/setup-ruby`, and Cloudflare's build image | only if Cloudflare reads `.tool-versions` |
-| `.tool-versions` | asdf, locally | only if everyone accepts a global pin |
+| `.ruby-version` | `ruby/setup-ruby`, and Cloudflare's build image | **no.** It is the only pin now; see below |
+| ~~`.tool-versions`~~ | ~~asdf, locally~~ | **deleted 2026-09-17.** See below |
 | `wrangler.jsonc` | wrangler, from the directory it runs in | no |
 | `advocate.yml` | `.advocate-engine` | untested |
 
@@ -269,32 +281,74 @@ while passing everywhere else. That cannot be tested from here.
 It trades one visible file for one hidden directory, so the tidiness gain is
 close to zero anyway.
 
-### The version pins are the only collapse actually worth having
+### The version pins: collapsed, and the fact came back the other way
 
-Two files pin one version — `.ruby-version` for `ruby/setup-ruby` and
-Cloudflare, `.tool-versions` for asdf — **and `smoke.yml` carries a step whose
-entire job is checking that they agree.** Collapsing them removes a file *and* a
-CI step, which is the only one of these four that makes the repository simpler
-rather than just rearranged.
+**Done, 2026-09-17. `.tool-versions` is deleted; `.ruby-version` is the only
+pin.** The `smoke.yml` step that checked the two agreed is gone with it, because
+there is nothing left to compare.
 
-`ruby/setup-ruby` takes either file by name, so CI does not care which survives.
-The two ends do:
+This went the opposite way to the guess above, and the guess is left in the
+history rather than quietly corrected because the reasoning is the useful part.
+Two facts settled it, and neither was checkable without looking it up:
 
-- **Keep `.tool-versions`, drop `.ruby-version`** — the better shape, because
-  asdf reads `.tool-versions` natively and nothing needs per-user
-  configuration. **Blocked on one fact: does Cloudflare's build image read
-  `.tool-versions`?** Their image is asdf-based, so probably, but "probably" is
-  not good enough for the thing that builds the public site. One look at the
-  dashboard or their docs settles it.
-- **Keep `.ruby-version`, drop `.tool-versions`** — safe at the host, and it
-  breaks local development quietly. asdf only reads `.ruby-version` when
-  `legacy_version_file = yes` is set in `~/.asdfrc`, which is per-user and off
-  by default, so a collaborator at the repository root silently gets whatever
-  global Ruby they have. That is the exact failure the `smoke.yml` check was
-  written to catch, reintroduced one level down.
+**1. Cloudflare reads `.ruby-version`, not `.tool-versions.`** Their build image
+documents exactly three ways to set Ruby — the `.ruby-version` file, the
+`RUBY_VERSION` environment variable, and a build variable on the dashboard — and
+`.tool-versions` is not among them. Their current default is **Ruby 3.4.4**, so
+deleting `.ruby-version` would not have failed the build; it would have silently
+moved the host onto a different Ruby from CI and local, which is worse.
 
-So: **the first, once somebody confirms Cloudflare reads `.tool-versions`.** Not
-the second.
+**2. `.tool-versions` is an active hazard there, undocumented.** Cloudflare's
+builder *does* detect the file, and its presence alone can fail a build with
+`Failed: error occurred while installing tools or dependencies` — with no way to
+turn the behaviour off, and `SKIP_DEPENDENCY_INSTALL` does not help. See
+[the write-up Autumn found](https://www.codejam.info/2026/02/cloudflare-workers-choke-asdf-tool-versions.html).
+The published workaround is to rename it and set versions through build
+variables instead; deleting it outright is the same fix with one fewer file.
+
+So the file that had to survive was the one that was *not* named as expendable —
+and removing the other one is both the collapse and the removal of a hazard.
+
+#### Where the file came from, so it does not come back
+
+It was not a decision made here. Autumn, 2026-09-17:
+
+> I told my agents in my projects folder to unify tools. And so that's probably
+> what happened. This repository is allowed to not listen to my personal dev
+> advice. I didn't realize we hit this repo.
+
+That generalises, and it is now a standing order in `AGENTS.md`: **guidance about
+unifying tooling across a personal projects folder is not guidance about here.**
+This repository is org-owned, public, and built by a host with its own opinion
+about version files.
+
+Which is her own machine's rule read the other way round — its toolkit note says
+divergence is allowed and belongs written down *in the diverging project*, never
+by editing the shared list. This is that, written down.
+
+#### What it cost, and the thing that pays for it
+
+asdf does not read `.ruby-version` unless `legacy_version_file = yes` is set in
+`~/.asdfrc`, which is per-user and off by default. Without something in the way,
+a contributor at the repository root would get whatever Ruby their shell hands
+them and find out from a confusing Jekyll error — the exact failure the deleted
+`smoke.yml` step existed to catch.
+
+**The `Gemfile` now carries `ruby ">= 3.2"`.** A floor, not a second pin, so
+bumping `.ruby-version` stays a one-file change. Measured on this machine with
+the Ruby macOS ships:
+
+```
+$ /usr/bin/bundle check
+Your Ruby version is 2.6.10, but your Gemfile specified >= 3.2
+```
+
+One line, names the version, refuses before Jekyll is reached. That is a better
+guard than the CI step it replaces, because it fires where the mistake is made
+rather than after a push.
+
+`docs/running-it.md` has the `~/.asdfrc` line for anyone who wants asdf to keep
+selecting Ruby automatically.
 
 ## Deploying to Azure Static Web Apps
 
