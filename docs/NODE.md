@@ -88,6 +88,7 @@ site/                THE WEBSITE. Jekyll sees this and nothing else.
   bin/               build tooling and the syncs. Excluded from the build.
   tests/             browser tests. Excluded from the build.
 docs/                everything written down. Outside `source:`, so unpublishable.
+machines/            one profile per host this can plausibly run on. See its README.
 worker/              the broker. Its own Cloudflare Worker. Deployed separately.
 site-template/       the scaffold a member site is cut from. Its own Jekyll site.
 ```
