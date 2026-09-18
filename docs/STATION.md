@@ -387,6 +387,111 @@ two-bay arrangement invites the wrong inference:
 Two checkouts of one repository. The plural is machines (see `machines/`), never
 holdings.
 
+## The journal: wanted, and most of what was wanted already exists
+
+Decided 2026-09-18, reversing the *not wanted* entry in `ADVOCATE.md` §6. The
+refusal was about **publishing** — FCPM has its own ways — and this is about the
+root page having a **provider**. Different jobs.
+
+> I do think I want the journal engine. We're just not entirely strapped in yet
+> for what our first move with it is going to be. It's probably going to be a
+> shared journal system where it's okay to keep working on `/journal` in main.
+
+**First move: `/journal` on `main`, and the prefixes stay.** *"We're gonna stay
+with the `/journal` and `/site` prefixes until we know what we're doing. Journal
+can power what we've done. It's just that journal can do more."*
+
+### The thing she described is already built
+
+The interesting version was a library-style treatment: journal content coming
+from a branch rather than a prefix, so that **two blogs can run on one
+repository** — which is how two split-identity machines get their separateness
+without becoming two repositories.
+
+**That is not a feature request. It is the journal engine's existing model.**
+From its own orientation:
+
+> It is per-branch content. One repository serving several places branches per
+> destination and each branch carries its own `NAME`, so **the number of branches
+> is the number of nodes** — disclosed rather than inferred. A push whose `NAME`
+> is addressed elsewhere is mail for another party.
+
+So the primitive is there: a branch with its own `/NAME` and its own `journal/`
+is a second node publishing from the same repository. Nothing needs petitioning
+for it, and an item asking for it would be asking for shipped behaviour.
+
+What remains is FCPM's own decision — **what the second branch would be for.**
+Per bay is the obvious reading of *split identity*, and it is not obviously
+right: two bays are two machines, not two voices, and the journal's unit is a
+destination rather than a host.
+
+### The journal has nothing to do with the website
+
+Correcting a wrong reading from earlier the same day, because the wrong version
+is the intuitive one and somebody will arrive at it again.
+
+> The journal engine is not for the site at all. It's going to run as it's going
+> to run already. Literally no change. Forget that the site exists when we're
+> installing the journal. It's as if the site doesn't even exist.
+
+**The journal is a second, separate build, rooted at the node root.** It is not
+machinery that `site/`'s Jekyll build consumes, and nothing about it is
+configured in `site/_config.yml`. From the engine's own `bin/build.sh`:
+
+```sh
+eng="${JOURNAL_ENGINE:-journal}"
+export BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$eng/Gemfile}"
+"$eng/bin/sync.sh"
+bundle exec jekyll build --config "$eng/_config.yml,_config.yml" --destination _site
+```
+
+Run from the node root. Its own Gemfile, its own config merged under the node's
+own `_config.yml`, its own `_site`. Two builds, one repository, touching nothing
+of each other's.
+
+### The mount is at the node root, and that is the whole declaration
+
+> When you submodule an engine, that is canonically the only behavior that a
+> node-like system — the station node or the civic node — is going to use to read
+> about who is installed, which engines are installed. It doesn't mean anything
+> to anyone in the entire universe if you submodule the journal engine inside the
+> site.
+
+`.journal-engine` at the node root, beside `.advocate-engine`. **The submodule
+*is* the declaration** — presence is the claim, the same rule `machines/` runs
+on. A submodule under `site/` would be a directory nothing reads.
+
+`NCCV/cite-fort-collins` already mounts it this way and the engine ships a
+GitHub Action that honours `$JOURNAL_ENGINE`, so the mount path is
+configuration rather than convention-by-accident.
+
+### Which makes the build-root move a prerequisite, not tidiness
+
+This is the part worth carrying forward. The journal build wants three things at
+**the node root**, and until 2026-09-18 the website had all three:
+
+| the journal wants | the site had it until |
+|---|---|
+| `_config.yml` at the node root | `#86` moved it to `site/_config.yml` |
+| `_site` as its output | `#86` moved the site's output to `site/_site` |
+| the root to be a build root it owns | `#86` gave the root back |
+
+So *"I do want to change the config to go to site"* and *"I do think I want the
+journal engine"* are the same decision arriving twice. **Mount the journal before
+that move lands and the two builds fight over the same two paths.**
+
+What the node root would then hold, once mounted: `.journal-engine/`, a
+`journal/` of content, a `NAME`, and a `_config.yml` that is the node's — not the
+site's.
+
+### Still not mounted here
+
+Adding a submodule remains its own pull request by whoever owns it. Worth
+checking in that pull request rather than after it: this repository has a
+documented history of Cloudflare reporting it **damaged** when a submodule could
+not resolve under a shallow clone, and the unconfirmed hypothesis in
+[`deploying.md`](deploying.md) names `.advocate-engine` for precisely that.
+
 ## What is deliberately not here
 
 - **Agents running on FCPM machines.** In the cards, not immediate. Machine

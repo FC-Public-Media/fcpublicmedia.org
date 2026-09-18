@@ -235,7 +235,7 @@ what carries over, what has to change on the way, and what should be refused.
 | **The library** | wanted | [`library.anecdote.channel`](https://github.com/FCCN-ANTIBODY/library.anecdote.channel) keeps knowledge somebody gave it, lists what it holds, and lends it out without a front desk. Its **categories** matter here: `media`, `voices`, `trade`, `city` and `library` are reserved words, and a public-media organisation plausibly holds several of them. |
 | **Proofing, as a service** | wanted, not ready | A service the node would offer the people it serves. Not ready for FCPM yet; the shape is what is being adopted. |
 | **Bottles** | later | The crate things travel in. Not needed now, and likely to be tried. |
-| **The journal** | not wanted | FCPM has its own ways of publishing. Leaving it out is a decision, not an omission. |
+| **The journal** | **wanted, 2026-09-18** | Reversed. It was refused as a *publishing* system — *"FCPM has its own ways of publishing"* — and it is wanted as the thing that **provides a base system page** at the repository root. Those are different jobs. *"Usually, when I do that, it's the journal engine that provides this."* See `STATION.md`. |
 
 **Provisioning member sites is probably the same question.** `site-template/`
 is scaffolded; creating, hosting and fast-forwarding a member site are not (see
