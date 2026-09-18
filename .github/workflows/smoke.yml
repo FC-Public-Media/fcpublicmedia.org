@@ -28,9 +28,12 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: site/.ruby-version
+          # `.ruby-version` is a magic literal to this action, not a path — it
+          # resolves it inside `working-directory`. Writing `site/.ruby-version`
+          # gets parsed as an engine name and fails with "Unknown engine".
+          ruby-version: .ruby-version
           bundler-cache: true
-          # The build root is `site/`; the Gemfile is there and so is the lock.
+          # The build root is `site/`; the version file and the Gemfile are there.
           working-directory: site
 
       - uses: actions/setup-node@v4
