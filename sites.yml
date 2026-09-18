@@ -1,0 +1,53 @@
+# Every site this node knows about. THIS FILE IS THE CANONICAL LIST.
+#
+# Her words, 2026-09-17, about member sites arriving as submodules under the
+# library's trade area:
+#
+#   "these are submodules that we might hydrate in something to build them, but
+#    they don't all have to be there. But it is a canonical list, and it is
+#    backed in by the repository."
+#
+# So: the gitlink is the pointer and this file is the policy. Git records where
+# a site's repository is; this records what we do about it. Both are committed,
+# which is what "backed in by the repository" buys — the list cannot drift from
+# what was reviewed, and removing an entry is a reviewable act.
+#
+# WHY ONE LIST AND NOT THREE. A site we publish, a site somebody ejected, and a
+# site that was never ours all appear here, because they are the same kind of
+# thing: a pointer with a policy. Only `role` differs. Modelling them as three
+# registries would need a fourth for the case that has no ejection event to key
+# off — a producer who never started with us and just wants to be listed.
+#
+# ROLES
+#
+#   site      Ours. Built and published. A failure here is our failure and the
+#             build reports non-zero.
+#
+#   scaffold  The shape a member site is cut from. Built on every run so it
+#             cannot quietly rot, and never published. Also our failure.
+#
+#   tenant    A member's own repository, hydrated here to be built. Built and
+#             published on the promised cadence — but a failure is REPORTED AND
+#             NOT FATAL, because one member's unparseable data file must not
+#             make every other member miss the promised day.
+#
+#   listed    Enumerated and nothing else. Ejected, gone private, or never ours
+#             to begin with. Never built, never fetched. Delisting is removing
+#             the entry, and that is the whole of it — see docs/TENANCY.md,
+#             "We own nothing, and delisting is the whole withdrawal."
+#
+# A `tenant` whose directory is not on disk is NOT an error. An unhydrated
+# gitlink is the normal resting state of this list; the builder says `absent`
+# and moves on.
+
+sites:
+  - path: site
+    role: site
+    why: fcpublicmedia.org itself. Cloudflare builds this one from the git connection.
+
+  - path: site-template
+    role: scaffold
+    why: >-
+      The member site scaffold. Building it here is what stops it rotting
+      unnoticed; site/bin/check-template.py separately proves its feed is still
+      readable, which is the part that is actually a contract.

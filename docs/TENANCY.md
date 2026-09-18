@@ -182,6 +182,37 @@ From `NODE.md`, which worked this out before there was a reason to:
    repository. `site/` is deliberately singular and every path in the docs,
    scripts and workflows now says so.
 
+#### Items 1 and 2 above are superseded, and it got easier
+
+The build root moved into `site/` on 2026-09-18, which made that directory a
+**self-contained Jekyll project** — its own `_config.yml`, `Gemfile`,
+`.ruby-version` and `wrangler.jsonc`, all read relative to the directory the
+build runs in. The list above was written when one config at the repository
+root had to serve everything, and two of its four costs simply stopped
+existing:
+
+- **A second site does not need a second `-c`.** It is a sibling directory with
+  its own config, built exactly the way `site/` is. `site/` stopped being *the*
+  site and became *a* site.
+- **`_site` is already several.** Each site writes its own, and `wrangler.jsonc`
+  is already per-site, which was item 2's requirement rather than its problem.
+
+**And one measurement makes the managed build cheap.** With an explicit
+`--source`, Jekyll reads `<source>/_config.yml` rather than one in the working
+directory — verified 2026-09-18 by building `site-template/` from `site/`'s
+bundle and getting a page titled *"Your Show"*. So **one toolchain builds every
+site**: one Ruby, one Gemfile, one lockfile, at the host.
+
+That is the *"defaults live in the host, not in the tenant"* principle turning
+up as plumbing. A member's repository needs no Gemfile, no lockfile and no Ruby
+pin in order to be built here. `bin/build-sites.py` does this, and
+[`sites.yml`](../sites.yml) is the canonical list it reads.
+
+**The generator from item 1 is still wanted** — *"almost no config"* means
+something writes a tenant's `_config.yml` from whatever little the tenant
+declares. What changed is that it is now only that, rather than also a solution
+to a build-plumbing problem.
+
 ### And half of it is already built
 
 `site-template/` is a complete Jekyll site, cut as a scaffold rather than an
