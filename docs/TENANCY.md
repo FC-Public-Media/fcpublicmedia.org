@@ -870,10 +870,12 @@ on, measured rather than assumed:
 
 **Production does not deploy from a workflow.** It deploys from **Cloudflare's
 own git integration**, which builds on every push to `main` using
-`wrangler.jsonc`. `deploy-cloudflare.yml` is a manual-only fallback.
+`wrangler.jsonc`. There is no second path: a `workflow_dispatch`-only fallback
+existed until 2026-09-17 and was removed — *"we don't wanna get confused about
+that"* — so the git build is the only thing that publishes this site.
 
-**And it is manual-only for a reason that this migration will walk straight
-into.** From its header, verbatim:
+**The removed workflow left behind one lesson this migration will walk straight
+into.** It was manual-only by deliberate design, and its header said why:
 
 > IT IS MANUAL-ONLY SO IT CANNOT DOUBLE-DEPLOY. […] An earlier version of this
 > ran on `push` and was kept harmless by the token being absent — which made an
@@ -1044,7 +1046,8 @@ what we make into it"* asks for.
    new projects as Workers now, which is what this repository already runs.
    Standardise on it, and correct the legacy `CLOUDFLARE_PAGES_*` names.
 4. **The double-deploy landmine must not be rearmed.** A two-account factory is
-   exactly the act `deploy-cloudflare.yml` was made manual-only to prevent.
+   exactly the act that the removed manual workflow had to be trigger-guarded
+   against. The workflow is gone; the hazard returns with the factory.
 5. **Migrating FCPM's resources to its own account.** Deferred by her, and it is
    the `vendors` seat's G2 arriving from a different direction.
 
