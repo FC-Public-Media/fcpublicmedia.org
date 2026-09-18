@@ -53,6 +53,21 @@
 
 core: member-site-core
 
+# Where built tenant sites are committed. It is INSIDE `site/` deliberately:
+# the build root is `site/`, so a directory at the repository root is not
+# copied into `_site` and would be served by nothing — with no error, because
+# a root directory being unpublished is the behaviour
+# site/bin/test_nothing_internal_is_published.py exists to guarantee. See
+# docs/deploying.md, "Serving member sites off a wildcard subdomain."
+#
+# A site is published as its `name`, not its path: the name is the public
+# address and the path is where we happen to check the repository out.
+#
+# REMOVING AN ENTRY FROM THE LIST BELOW TAKES THE SITE DOWN. `--publish` prunes
+# published directories that are no longer listed, because otherwise delisting
+# is something we say rather than something we do.
+publish_to: site/member-sites
+
 sites:
   - path: site
     role: site

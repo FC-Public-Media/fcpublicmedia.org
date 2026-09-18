@@ -18,6 +18,7 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 
 
 def load():
@@ -314,6 +315,205 @@ class IsolationTests(unittest.TestCase):
         self.assertEqual([s for _, s, _ in outcomes], ["built", "failed", "built"])
         self.assertFalse(any(bs.is_fatal(e, s) for e, s, _ in outcomes),
                          "one member's broken site must not fail the run")
+
+
+class PublishTests(unittest.TestCase):
+    """Publishing, and the pruning that makes delisting real."""
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.root = "site/member-sites"
+        (self.tmp / self.root).mkdir(parents=True)
+
+    def built(self, name, body="hi"):
+        """A site that has been built, ready to publish."""
+        d = self.tmp / name / "_site"
+        d.mkdir(parents=True)
+        (d / "index.html").write_text(body)
+        return d
+
+    def published(self, name, body="old"):
+        d = self.tmp / self.root / name
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.html").write_text(body)
+        return d
+
+    def names(self):
+        return sorted(p.name for p in (self.tmp / self.root).iterdir() if p.is_dir())
+
+    def test_a_built_site_lands_under_its_public_name(self):
+        self.built("members/their-repo", body="theirs")
+        entry = bs.Entry(path="members/their-repo", role="tenant", name="their-show")
+        target = bs.publish(entry, self.tmp, self.root)
+        self.assertEqual(target.name, "their-show")
+        self.assertEqual((target / "index.html").read_text(), "theirs")
+
+    def test_publishing_replaces_rather_than_merges(self):
+        """A file the member deleted must not survive in the published copy."""
+        self.published("show", body="old")
+        (self.tmp / self.root / "show" / "gone.html").write_text("stale")
+        self.built("members/show", body="new")
+        bs.publish(bs.Entry(path="members/show", role="tenant", name="show"),
+                   self.tmp, self.root)
+        self.assertEqual((self.tmp / self.root / "show" / "index.html").read_text(), "new")
+        self.assertFalse((self.tmp / self.root / "show" / "gone.html").exists())
+
+    def test_delisting_takes_the_site_down(self):
+        """The governance promise: removing the entry is the withdrawal."""
+        self.published("stays")
+        self.published("withdrew")
+        removed = bs.prune({"stays"}, self.tmp, self.root)
+        self.assertEqual(removed, ["withdrew"])
+        self.assertEqual(self.names(), ["stays"])
+
+    def test_pruning_leaves_files_at_the_root_alone(self):
+        self.published("stays")
+        (self.tmp / self.root / "index.html").write_text("the listing page")
+        (self.tmp / self.root / ".gitkeep").write_text("")
+        bs.prune({"stays"}, self.tmp, self.root)
+        self.assertTrue((self.tmp / self.root / "index.html").is_file())
+        self.assertTrue((self.tmp / self.root / ".gitkeep").is_file())
+
+    def test_pruning_refuses_to_leave_the_repository(self):
+        with self.assertRaises(ValueError) as caught:
+            bs.prune(set(), self.tmp, "../../../etc")
+        self.assertIn("outside the repository", str(caught.exception))
+
+    def test_pruning_an_absent_root_is_not_an_error(self):
+        self.assertEqual(bs.prune(set(), self.tmp, "site/nope"), [])
+
+    def test_the_listing_has_no_timestamp(self):
+        """A payload carrying the time it ran commits a file every cadence to
+        record that it looked. sync-feeds.py learned this already."""
+        target = bs.write_listing({"b", "a"}, self.tmp, self.root)
+        first = target.read_bytes()
+        second_target = bs.write_listing({"a", "b"}, self.tmp, self.root)
+        self.assertEqual(first, second_target.read_bytes())
+        self.assertNotIn(b"generated", first)
+
+    def test_the_listing_is_sorted_and_carries_the_prefix(self):
+        import json
+        target = bs.write_listing({"zed", "alpha"}, self.tmp, self.root)
+        payload = json.loads(target.read_text())
+        self.assertEqual([s["name"] for s in payload["sites"]], ["alpha", "zed"])
+        self.assertEqual(payload["prefix"], "member-sites")
+
+
+class PublishPolicyTests(unittest.TestCase):
+    def test_only_tenants_are_published_by_us(self):
+        """`site` is published by the host's own git build, and the scaffold
+        must never reach the public — it would put "Your Show" on the live
+        site."""
+        self.assertTrue(bs.Entry(path="p", role="tenant").publishes)
+        self.assertFalse(bs.Entry(path="p", role="site").publishes)
+        self.assertFalse(bs.Entry(path="p", role="scaffold").publishes)
+        self.assertFalse(bs.Entry(path="p", role="listed").publishes)
+
+    def test_the_public_name_defaults_to_the_last_path_segment(self):
+        self.assertEqual(bs.Entry(path="members/their-show", role="tenant").name,
+                         "their-show")
+        self.assertEqual(bs.Entry(path="members/x/", role="tenant").name, "x")
+
+    def test_the_name_is_independent_of_the_path(self):
+        """Moving a checkout must not change somebody's address."""
+        entry = bs.Entry(path="elsewhere/repo", role="tenant", name="their-show")
+        self.assertEqual(entry.name, "their-show")
+
+    def test_the_manifest_names_a_publish_root_inside_the_build_root(self):
+        root = bs.load_publish_root()
+        self.assertTrue(root, "sites.yml must name publish_to")
+        self.assertTrue(root.startswith("site/"),
+                        "published sites must be inside the build root or "
+                        "nothing serves them")
+
+
+class EndToEndPublishTests(unittest.TestCase):
+    """main() over a synthetic repository, with the build faked out.
+
+    The one this class exists for is `--only` not pruning. Everything else here
+    is reachable from the unit tests; that behaviour is only reachable from
+    main(), and getting it wrong takes every member's site off the internet at
+    once.
+    """
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        core_at(self.tmp)
+        site_at(self.tmp, "site")
+        (self.tmp / "site" / "_data").mkdir(parents=True, exist_ok=True)
+        for name in ("alpha", "beta"):
+            member_at(self.tmp, f"members/{name}")
+        self.manifest = self.tmp / "sites.yml"
+        self.write_manifest(["alpha", "beta"])
+
+        def runner(cmd, **kwargs):
+            dest = pathlib.Path(cmd[cmd.index("--destination") + 1])
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "index.html").write_text("built")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        self.patches = [
+            unittest.mock.patch.object(bs, "REPO", self.tmp),
+            unittest.mock.patch.object(bs, "MANIFEST", self.manifest),
+            unittest.mock.patch.object(bs.subprocess, "run", runner),
+        ]
+        for patch in self.patches:
+            patch.start()
+        self.addCleanup(lambda: [p.stop() for p in self.patches])
+
+    def write_manifest(self, members):
+        entries = "".join(
+            f"  - path: members/{m}\n    role: tenant\n" for m in members
+        )
+        self.manifest.write_text(
+            "core: core\npublish_to: site/member-sites\nsites:\n"
+            "  - path: site\n    role: site\n" + entries
+        )
+
+    def names(self):
+        root = self.tmp / "site" / "member-sites"
+        return sorted(p.name for p in root.iterdir() if p.is_dir()) if root.is_dir() else []
+
+    def test_publishing_lands_every_listed_tenant(self):
+        self.assertEqual(bs.main(["--publish"]), 0)
+        self.assertEqual(self.names(), ["alpha", "beta"])
+
+    def test_delisting_a_member_takes_their_site_down(self):
+        bs.main(["--publish"])
+        self.write_manifest(["alpha"])
+        bs.main(["--publish"])
+        self.assertEqual(self.names(), ["alpha"])
+
+    def test_only_never_prunes_the_sites_it_did_not_look_at(self):
+        """The worst available bug: a one-site run deleting everyone else."""
+        bs.main(["--publish"])
+        self.assertEqual(self.names(), ["alpha", "beta"])
+        bs.main(["--publish", "--only", "members/alpha"])
+        self.assertEqual(self.names(), ["alpha", "beta"],
+                         "--only must not take beta down")
+
+    def test_a_failed_tenant_keeps_what_it_published_last_time(self):
+        """The cadence promises new work appears, not that old work vanishes
+        the first morning somebody's data file will not parse."""
+        bs.main(["--publish"])
+
+        def failing(cmd, **kwargs):
+            dest = pathlib.Path(cmd[cmd.index("--destination") + 1])
+            if dest.parent.name == "beta":
+                return subprocess.CompletedProcess(cmd, 1, "Liquid Exception", "")
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "index.html").write_text("built")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with unittest.mock.patch.object(bs.subprocess, "run", failing):
+            self.assertEqual(bs.main(["--publish"]), 0)
+        self.assertEqual(self.names(), ["alpha", "beta"])
+
+    def test_publishing_without_a_publish_root_refuses(self):
+        self.manifest.write_text(
+            "core: core\nsites:\n  - path: site\n    role: site\n"
+        )
+        self.assertEqual(bs.main(["--publish"]), 2)
 
 
 class RealBuildTest(unittest.TestCase):

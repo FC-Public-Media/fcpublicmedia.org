@@ -72,6 +72,7 @@ resting state of the list, not a fault.
 """
 
 import argparse
+import json
 import pathlib
 import shutil
 import subprocess
@@ -106,7 +107,7 @@ COMPOSED = {"scaffold", "tenant"}
 
 
 class Entry:
-    def __init__(self, path, role, why=""):
+    def __init__(self, path, role, why="", name=None):
         if role not in ROLES:
             raise ValueError(
                 f"{path}: unknown role {role!r}. Expected one of "
@@ -115,6 +116,17 @@ class Entry:
         self.path = path
         self.role = role
         self.why = why
+        # The name is the PUBLIC ADDRESS — the subdomain label and the folder a
+        # site is published into. It defaults to the last path segment, but it
+        # is separate from the path on purpose: where a repository is checked
+        # out is our business and the address is the member's, and moving one
+        # must not silently change the other.
+        self.name = name or path.rstrip("/").split("/")[-1]
+
+    @property
+    def publishes(self):
+        """Ours is published by the host's own git build, not by us."""
+        return self.role == "tenant"
 
     @property
     def builds(self):
@@ -164,8 +176,8 @@ def _ignored(path):
         path.name in {"Gemfile.lock", ".DS_Store"}
 
 
-def load_manifest(path=MANIFEST):
-    data = yaml.safe_load(path.read_text()) or {}
+def load_manifest(path=None):
+    data = yaml.safe_load((path or MANIFEST).read_text()) or {}
     entries = [Entry(**e) for e in data.get("sites", [])]
     seen = set()
     for e in entries:
@@ -175,14 +187,87 @@ def load_manifest(path=MANIFEST):
     return entries
 
 
-def load_core(path=MANIFEST):
+def load_core(path=None):
     """The directory FCPM supplies to every composed site, or None."""
-    data = yaml.safe_load(path.read_text()) or {}
+    data = yaml.safe_load((path or MANIFEST).read_text()) or {}
     core = data.get("core")
     return core or None
 
 
-def build(entry, repo=None, runner=subprocess.run, core=None):
+def load_publish_root(path=None):
+    """Where built tenant sites are committed, or None."""
+    data = yaml.safe_load((path or MANIFEST).read_text()) or {}
+    return data.get("publish_to") or None
+
+
+def publish(entry, repo, publish_root):
+    """Copy a built site into the published tree. Returns the destination."""
+    built = repo / entry.path / "_site"
+    target = repo / publish_root / entry.name
+    if target.exists():
+        shutil.rmtree(target)
+    shutil.copytree(built, target)
+    return target
+
+
+def prune(keep, repo, publish_root):
+    """Remove published sites that are no longer in the list.
+
+    **This is what makes delisting real.** Removing an entry from sites.yml has
+    to take the site off the internet, or "delisting is the whole withdrawal"
+    is a thing we say rather than a thing we do. A published tree that only
+    ever grows would keep serving somebody who asked us to stop.
+
+    Only direct subdirectories of the publish root are considered, and only
+    inside it — files at the root (an index, a .gitkeep) are left alone.
+    """
+    root = (repo / publish_root).resolve()
+
+    # The containment check comes FIRST, before asking whether the directory
+    # exists. Checking existence first meant a path that escaped the
+    # repository and happened not to exist returned quietly instead of
+    # refusing — so the guard passed precisely when it had least information.
+    # A recursive delete should refuse on the shape of the path, not on what
+    # is currently on disk.
+    if root != repo.resolve() and repo.resolve() not in root.parents:
+        raise ValueError(f"refusing to prune outside the repository: {root}")
+    if root == repo.resolve():
+        raise ValueError("refusing to prune the repository root")
+    if not root.is_dir():
+        return []
+
+    removed = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir() or child.name in keep:
+            continue
+        shutil.rmtree(child)
+        removed.append(child.name)
+    return removed
+
+
+def write_listing(published, repo, publish_root):
+    """The list of published sites, as data.
+
+    Written as JSON into `site/_data/` like the five syncs, so FCPM's own pages
+    can render the listing with a Liquid loop. Deliberately NOT an HTML index:
+    what that page says, and in whose voice, is not this script's business.
+    """
+    target = repo / "site" / "_data" / "member_sites.json"
+
+    # NO TIMESTAMP. sync-feeds.py learned this one already: a payload carrying
+    # the time it was generated differs on every run, so the cadence commits a
+    # file every week to record that it looked. The commit is the timestamp.
+    # Without one, this file changes only when the list of sites changes.
+    payload = {
+        "prefix": publish_root.removeprefix("site/"),
+        "sites": [{"name": n} for n in sorted(published)],
+    }
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2) + "\n")
+    return target
+
+
+def build(entry, repo=None, runner=None, core=None):
     """Build one site. Returns (status, detail).
 
     status is one of: built, failed, diverged, absent, skipped.
@@ -193,6 +278,7 @@ def build(entry, repo=None, runner=subprocess.run, core=None):
     would look for it and the staging area is disposable.
     """
     repo = repo or REPO
+    runner = runner or subprocess.run
     if not entry.builds:
         return "skipped", f"role {entry.role} is never built"
 
@@ -275,6 +361,9 @@ def main(argv=None):
     ap.add_argument("--only", metavar="PATH", help="build just this one")
     ap.add_argument("--strict", action="store_true",
                     help="a tenant failure is fatal too")
+    ap.add_argument("--publish", action="store_true",
+                    help="copy built tenant sites into the published tree, "
+                         "remove ones no longer listed, and rewrite the listing")
     args = ap.parse_args(argv)
 
     entries = load_manifest()
@@ -293,6 +382,35 @@ def main(argv=None):
     outcomes = [(e, *build(e, repo=REPO, core=core)) for e in entries]
     print(f"{len(outcomes)} site(s):")
     failures = report([(e.path, s, d) for e, s, d in outcomes])
+
+    if args.publish:
+        publish_root = load_publish_root()
+        if not publish_root:
+            print("error: sites.yml names no publish_to", file=sys.stderr)
+            return 2
+        # Only what built. A tenant that failed keeps whatever it published
+        # last time rather than being taken down for a typo — the cadence is a
+        # promise about new work appearing, not about old work vanishing.
+        published = [e.name for e, s, _ in outcomes if e.publishes and s == "built"]
+        for entry, status, _ in outcomes:
+            if entry.publishes and status == "built":
+                publish(entry, REPO, publish_root)
+
+        # Kept, rather than pruned: everything that built now, plus anything
+        # still listed as a tenant whose build did not succeed this run.
+        keep = {e.name for e, _, _ in outcomes if e.publishes}
+
+        # A single-site run prunes nothing. Its `outcomes` is one entry, so
+        # every other published site would look unlisted and be taken down —
+        # which is the worst possible bug in this script and the reason it is
+        # spelled out rather than guarded by a condition somewhere.
+        removed = [] if args.only else prune(keep, REPO, publish_root)
+
+        listing = write_listing(keep, REPO, publish_root)
+        print(f"\npublished {len(published)} site(s) into {publish_root}/")
+        if removed:
+            print(f"  delisted, and taken down: {', '.join(removed)}")
+        print(f"  listing: {listing.relative_to(REPO)}")
 
     fatal = [e.path for e, status, _ in outcomes if is_fatal(e, status, args.strict)]
 
