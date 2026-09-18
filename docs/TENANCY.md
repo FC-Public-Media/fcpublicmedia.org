@@ -126,8 +126,9 @@ written.** When this paragraph was drafted the root held eleven markdown
 documents, `api/`, `worker/`, `script/`, `tests/`, `site-template/`, a Gemfile
 and four config files. Since then `api/` has been deleted, `script/` and
 `tests/` have become `site/bin/` and `site/tests/`, and the documents have moved
-into `docs/`. What is left is `CLAUDE.md`, an empty `README.md`, `Gemfile`,
-`_config.yml`, `advocate.yml`, `wrangler.jsonc`, and four directories.
+into `docs/`. Then on 2026-09-18 the build root became `site/`, and the config,
+the Gemfile, the Ruby pin and `wrangler.jsonc` went in with it. What is left at
+the root is `AGENTS.md`, `README.md`, `advocate.yml`, and the directories.
 
 *"We're gonna move more"* still stands. Nobody should read the present shape as
 settled, in either direction.

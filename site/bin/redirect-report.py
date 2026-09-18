@@ -26,7 +26,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, "..")            # site/, what Jekyll builds from
 REPO = os.path.join(SOURCE, "..")            # the node
-SITE = os.path.join(REPO, "_site")           # what Jekyll built
+SITE = os.path.join(SOURCE, "_site")        # what Jekyll built, inside the build root
 OUT = os.path.join(REPO, "docs", "REDIRECTS.md")
 
 BASE = "https://www.fcpublicmedia.org"

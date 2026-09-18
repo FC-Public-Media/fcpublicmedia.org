@@ -302,7 +302,7 @@ access to the bytes without any grant that could destroy the original. **The
 safety is structural rather than procedural** — nobody has to remember not to
 write, because there is nothing to write with.
 
-It is the same argument the Wix standing order in `CLAUDE.md` makes from the
+It is the same argument the Wix standing order in `AGENTS.md` makes from the
 other direction, and the same argument `_config.yml` now makes about internal
 documents: an arrangement where the mistake is impossible beats one where it is
 merely forbidden.

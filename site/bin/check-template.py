@@ -43,10 +43,14 @@ def load_reader():
 
 
 def build(source, destination):
+    # Run from the build root rather than the repository root: that is where the
+    # Gemfile is since `site/` became the build root, and bundler searches the
+    # working directory rather than the tree. `--source` still points at the
+    # template, so this borrows the gems without borrowing the config.
     result = subprocess.run(
         ["bundle", "exec", "jekyll", "build", "--source", str(source),
          "--destination", str(destination)],
-        cwd=REPO, capture_output=True, text=True,
+        cwd=SITE, capture_output=True, text=True,
     )
     if result.returncode != 0:
         # Liquid errors land in stdout, not stderr, and are the whole reason

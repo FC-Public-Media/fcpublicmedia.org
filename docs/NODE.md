@@ -78,13 +78,14 @@ to do. The node is the container for that second thing.
 ## What is at the root, and what is in `site/`
 
 ```
-README.md            empty, on purpose. See docs/README.md for why.
-CLAUDE.md            standing orders. At the root because that is where they are looked for.
-_config.yml          the site's config. Stays here; `source: site` points down.
-Gemfile              one gem. Jekyll.
+README.md            the repository's front page.
+AGENTS.md            standing orders. At the root because that is where they are looked for.
 advocate.yml         the seat declarations.
-wrangler.jsonc       host config. Read from the root; points at `_site`.
-site/                THE WEBSITE. Jekyll sees this and nothing else.
+site/                THE WEBSITE, and the build root. Jekyll runs from in here.
+  _config.yml        the site's config. No `source:`; the source is this folder.
+  Gemfile            one gem. Jekyll.
+  .ruby-version      the only Ruby pin. Cloudflare reads it from here.
+  wrangler.jsonc     host config. `assets.directory` is `_site`, beside it.
   bin/               build tooling and the syncs. Excluded from the build.
   tests/             browser tests. Excluded from the build.
 docs/                everything written down. Outside `source:`, so unpublishable.
@@ -133,35 +134,42 @@ which is the whole reason it is gone.
 
 ---
 
-## The mechanism is one line
+## The mechanism is one dashboard field
 
-```yaml
-# _config.yml, at the repository root
-source: site
+```
+Cloudflare → Path / root directory → site
 ```
 
-That is the entire change to how this site builds.
+That is the entire change to how this site builds, and it replaces an earlier
+arrangement worth understanding because the reasoning survived the change.
 
-**`_config.yml` deliberately stays at the root rather than moving into `site/`.**
-Jekyll looks for its config in the directory it is run from, *before* it has read
-any `source:` setting — so a config inside the source directory has to be named
-on the command line every time, in CI, at the host, and by hand. One line in a
-file that is already there costs nothing and keeps the build bare.
+**Until 2026-09-18 the config stayed at the repository root with `source: site`
+in it.** Jekyll looks for `_config.yml` in the directory it is run from, before
+it has read any `source:` setting, so a config inside the source directory has
+to be named on the command line — in CI, at the host, and by hand. Keeping it at
+the root meant the move into `site/` cost nothing: same build command, same
+working directory, same output, **and nobody had to open the dashboard.**
 
-What that buys, measured rather than assumed:
+**What changed is that there is now a reason to pay that price.** The repository
+root is being given to the station — the front door, and whatever engine ends up
+providing it — and a root that is also a Jekyll build root cannot be given to
+anything else. So the site stopped borrowing the root:
 
 | | |
 |---|---|
 | Build command | `bundle exec jekyll build`, unchanged |
-| Working directory | the repository root, unchanged |
-| Output | `_site/` at the root, unchanged |
-| `wrangler.jsonc` | unchanged — `assets.directory` still resolves to `_site` |
-| Cloudflare dashboard | **not touched.** Root `/`, build command, output dir all still correct |
-| The published bytes | **identical.** Every file in `_site` byte-for-byte, modulo the `?v=<mtime>` cache-busting token |
+| Working directory | **`site/`**, set by the dashboard field and by `working-directory:` in CI |
+| Config | **`site/_config.yml`**, with no `source:` — the source is where the config lives |
+| Moved with it | `Gemfile`, `.ruby-version`, `wrangler.jsonc`, each read relative to the build root |
+| Output | **`site/_site`**. The dashboard's output field stays `_site` because it is relative to the root directory |
+| The published bytes | **identical.** Every file byte-for-byte, modulo the `?v=<mtime>` cache-busting token |
 
-That last row is how this change was checked: `origin/main` and this branch were
-each built and the two output trees compared file by file. Nothing the public
-fetches is different.
+That last row is how both moves were checked: the tree before and the tree after
+were built and compared file by file. Nothing the public fetches is different.
+
+**`.ruby-version` is the one that would have failed quietly** if it had been left
+behind. Cloudflare's image reads it from the root directory setting, so the host
+would have moved to their default Ruby with nothing in CI noticing.
 
 ---
 

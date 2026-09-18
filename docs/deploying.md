@@ -29,22 +29,43 @@ Cloudflare GitHub app at this repository and set:
 | Build command | `bundle exec jekyll build` |
 | Deploy command | `npx wrangler deploy` |
 | Non-production branch deploy command | `npx wrangler versions upload` |
-| Path / root directory | `/` |
+| Path / root directory | **`site`** |
 | Build output directory | `_site` |
 
-**`/` is the whole repository, and it matters.** That one field is both the
-working directory for those commands and where wrangler starts looking for its
-config, and both want the root: the `Gemfile` is there, `wrangler.jsonc` is
-there, and `assets.directory` inside it resolves relative to the config file.
-Pointing it at `worker/` would deploy the **broker** instead of the site —
-that directory is a second, complete Worker config with a `main` and no
-assets.
+**`site` is the build root, and that one field carries the whole arrangement.**
+It is both the working directory for those commands and where wrangler starts
+looking for its config — and everything either of them needs is in that
+directory: `_config.yml`, `Gemfile`, `.ruby-version`, `wrangler.jsonc`.
+`assets.directory` inside `wrangler.jsonc` resolves relative to the config file,
+so `_site` there means `site/_site`, which is also why the output field is
+`_site` rather than `site/_site`: **that field is relative to the root directory
+too.**
 
-**Moving the site into `site/` did not change any of these five fields**, which
-was the point of leaving `_config.yml` at the root and setting `source:` in it
-rather than moving the config down. The command is still run from `/`, still
-writes `_site`, and wrangler still finds `wrangler.jsonc` beside it. Nobody had
-to open the Cloudflare dashboard.
+Pointing it at `worker/` would deploy the **broker** instead of the site — that
+directory is a second, complete Worker config with a `main` and no assets.
+
+### Why it is `site` and not `/`
+
+It was `/` until 2026-09-18, and the change was not tidiness. The repository
+root is being given to the station — the front door, and whatever engine ends up
+providing it — and **the station is not the website**. A root that is also a
+Jekyll build root cannot be given to anything else, because Jekyll takes the
+directory it is run from as the source unless told otherwise.
+
+So the site stopped borrowing the root. `_config.yml` moved into `site/` and
+dropped its `source:` line, because the source is now simply where the config
+lives; the three files that are read *relative to the build root* went with it.
+
+**`.ruby-version` is the one that would have failed quietly.** Cloudflare's
+image reads it from the root directory setting, so had it stayed at the
+repository root the host would have moved to their default Ruby — currently
+3.4.4 — with nothing in CI noticing.
+
+**Changing the field and merging the move have to happen together**, and the
+field first. The build command does not name the config, so a build run at `/`
+after the config has moved finds none, takes the repository root as its source,
+and publishes something wrong while reporting success. A failed build is safe —
+the last good deployment keeps serving — but a *successful wrong* build is not.
 
 Everything else is in `wrangler.jsonc`, which is committed.
 

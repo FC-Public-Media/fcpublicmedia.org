@@ -7,7 +7,7 @@ We serve Fort Collins, Colorado so that its public media can be filled with what
 We built this to survive us.
 
 Contents:
-* `site/` our public site built from the repo root for the configs there.
+* `site/` our public site, and the build root: the configs live in it and Cloudflare builds from it.
 * `library/` holds the work we process for you for publishing, pick up or download. Read on.
 * `advocate.yml` declares in what ways we use API-driven agents to perform caretaking tasks.
 

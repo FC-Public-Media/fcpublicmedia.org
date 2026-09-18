@@ -69,7 +69,7 @@ module.exports = defineConfig({
         // Bound to all interfaces rather than 127.0.0.1 so it answers on
         // localhost whether that resolves to IPv4 or IPv6 — which differs
         // between a laptop and a CI runner.
-        command: `python3 -m http.server ${LOCAL_PORT} --directory ../../_site`,
+        command: `python3 -m http.server ${LOCAL_PORT} --directory ../_site`,
         url: `http://localhost:${LOCAL_PORT}/`,
         reuseExistingServer: !process.env.CI,
         timeout: 30_000,
