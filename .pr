@@ -1,1 +1,61 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Remove the manual deploy: one site, one way to publish it
+*"Please remove the manual build. We don't wanna get confused about that. The
+documentation about it and everything is just litter."*
+
+`.github/workflows/deploy-cloudflare.yml` is deleted, along with the section of
+`docs/deploying.md` that existed to explain it.
+
+## What was actually removed
+
+Cloudflare's git build was always the live path. The workflow was a
+`workflow_dispatch`-only fallback that built here and pushed `_site` up with
+`wrangler deploy`. Between its 99-line header and a page of `deploying.md`, it
+was a large share of everything written down about deploying this site — for a
+path nobody used.
+
+## I trimmed my own first attempt
+
+The first version of this replaced a 30-line section with a 30-line section
+explaining what had been deleted and why, which is the litter you asked me to
+remove wearing a different hat. The replacement is now eight lines: there is one
+deploy path; here are the three secrets nothing reads any more; the one lesson
+worth keeping lives in `TENANCY.md`, where the factory design is what needs it.
+
+## Credentials worth a look while you are in the dashboard
+
+Nothing in this repository now reads any of these:
+
+- `CLOUDFLARE_PAGES_TOKEN` — organization **secret**
+- `CLOUDFLARE_PAGES_PROJECT` — repository variable
+- `CLOUDFLARE_ACCOUNT_ID` — secret or variable
+
+The org secret can be deleted once you are satisfied no other repository in
+FC-Public-Media wants it, which I cannot check from here. **The broker is
+unaffected** — it uses `CLOUDFLARE_API_TOKEN`, a differently-named secret.
+
+An unused deploy credential with org-wide scope is exactly the `credentials`
+seat's subject, so it is named here rather than left to be rediscovered.
+
+## The one lesson kept, and where
+
+That workflow was manual-only because an earlier version ran on `push` and was
+kept harmless *only by the token being absent* — so adding an organization
+secret, an ordinary unrelated act, would have started publishing the same site
+twice. **Safety that depends on a credential not existing is a landmine with a
+note on it.**
+
+That belongs to the factory rather than to a deleted file, and `TENANCY.md`
+already carries it. Its two references to the workflow are rewritten to say the
+workflow is gone and the hazard returns with the factory.
+
+## Verified
+
+- No reference to `deploy-cloudflare` remains anywhere in `.github/` or `docs/`
+  except the one line naming it as deleted.
+- The `_config.yml`-cannot-move passage counted "four places" and named it as
+  one; now three.
+- `python3 site/bin/test_no_secrets.py` — 12 tests, OK (2 skipped).
+- Nothing under `site/` changed, and the live deploy path is untouched: this
+  removes an alternative, not the thing that publishes.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
