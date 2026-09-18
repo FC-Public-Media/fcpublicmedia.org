@@ -149,6 +149,46 @@ So **"get Cloudflare serving" and "put the new site on the real domain" are
 separate**, and only the second is a cutover: it is the day `www` and the apex
 stop pointing at Wix.
 
+### The registrar is Network Solutions, not Wix
+
+Checked by `whois fcpublicmedia.org` on 2026-09-17, because it decides what is
+possible and nothing in this repository said it:
+
+| | |
+|---|---|
+| Registrar | **Network Solutions, LLC** |
+| Nameservers | `ns4.wixdns.net`, `ns5.wixdns.net` |
+| Registered | 2014-06-19. Expires 2027-06-19 |
+| Status | `clientTransferProhibited` — a **transfer lock** |
+
+**Wix holds the DNS; it does not hold the registration.** That distinction is
+the whole ballgame, because Wix *does not permit changing the nameservers of a
+domain registered with Wix* — and this domain is not one. **Nameservers are
+changed at Network Solutions, and can be changed today**, with no transfer and
+nobody's permission.
+
+Two things follow that are easy to get backwards:
+
+- **Moving nameservers is not transferring the registration.** They are separate
+  acts at separate companies, and only the first is needed to make Cloudflare
+  authoritative for this zone.
+- **`clientTransferProhibited` blocks a registrar transfer, not a nameserver
+  change.** It would have to be lifted at Network Solutions before the domain
+  could move to any other registrar, Cloudflare included.
+
+And on moving the registration to **Cloudflare Registrar** specifically, which
+is a thing somebody will propose: it requires the zone to already be on
+Cloudflare nameservers — *"all domains on Cloudflare Registrar use Cloudflare
+nameservers"* — so the nameserver move is a **prerequisite** for it, not a
+consequence of it. It is also entirely optional; nothing about serving this
+site, or member subdomains, needs the registration to move at all.
+
+Keeping the apex on Wix after a nameserver move is Wix's documented **pointing**
+method: the Cloudflare zone carries Wix's A and `www` records instead of Wix's
+nameservers carrying everything. Wix's own caveat is worth knowing before the
+flip — once a domain is connected by pointing, Wix will not help manage records
+it no longer hosts.
+
 ### Preview URLs
 
 The non-production branch deploy command is `npx wrangler versions upload`,
