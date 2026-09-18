@@ -17,7 +17,7 @@ it*, which is a different statement from the folder being absent.
 
 | | |
 |---|---|
-| `library/trade/` | what FCPM offers other people, and on what terms |
+| `library/trade/` | **member sites.** Each is its own repository, pinned here as a submodule — see `docs/TENANCY.md` on `main` |
 | `library/city/` | what is true about Fort Collins that somebody else would have to re-derive |
 | `library/voices/` | the community's own, kept so it outlives whoever published it |
 
