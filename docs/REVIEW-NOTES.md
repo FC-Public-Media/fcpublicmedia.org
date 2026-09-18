@@ -30,7 +30,7 @@ be closed off.
 > **Ruled on by Autumn, 9 September 2026. Most of this has shipped.** She read
 > the round and answered: *"his wording is ideal"*, the events calendar goes on
 > /meet/ rather than the homepage, and — as a standing order now in
-> [CLAUDE.md](../CLAUDE.md) — his plainer rendering of our copy is to be treated
+> [AGENTS.md](../AGENTS.md) — his plainer rendering of our copy is to be treated
 > as authoritative, because ours is over-written. Entries below carry their
 > outcome. What is still open is collected at the foot of the file.
 
@@ -101,7 +101,7 @@ things it changes that are worth noticing before it is pasted in:
 | What he said | Where it lands |
 |---|---|
 | ~~*"I like having the floorplan on the page. However I don't think it needs to be at the top... The floor plan might be better at the bottom as extra information"*~~ **Shipped.** The video/slideshow half is not — it waits on footage. | `site/reserve.md`. The `.reserve-intro` wrapper went with it: it was a two-column grid that existed only to stand the plan beside the intro, and left to itself it would have reserved 17rem for nothing. |
-| *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* **Accepted — Autumn is taking him up on it**, and pulling what she can from Google Drive besides. Old Wix pictures are a **read**, which is all we ever do to Wix; see CLAUDE.md. | Not built yet, on purpose: an `image:` key with no images behind it is a schema nobody can fill. New `image:` per entry in `site/_data/facilities.yml` plus markup in `rows-spaces`, the day the photographs land. |
+| *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* **Accepted — Autumn is taking him up on it**, and pulling what she can from Google Drive besides. Old Wix pictures are a **read**, which is all we ever do to Wix; see AGENTS.md. | Not built yet, on purpose: an `image:` key with no images behind it is a schema nobody can fill. New `image:` per entry in `site/_data/facilities.yml` plus markup in `rows-spaces`, the day the photographs land. |
 
 **He is offering to shoot the photography, and Autumn has accepted.** She is
 also pulling what she can out of Google Drive, where the material exists but is
@@ -289,7 +289,7 @@ Two of these are now things a named person has asked to see, which is a
 different kind of waiting from the other three.
 
 Old pictures may also be on the Wix site. **Retrieving them is a read**, which
-is the only thing we ever do to Wix — see [CLAUDE.md](../CLAUDE.md).
+is the only thing we ever do to Wix — see [AGENTS.md](../AGENTS.md).
 
 ## Diarised
 

@@ -32,7 +32,7 @@ describe a repository that is being rebuilt underneath it.
 | [`known-issues.md`](known-issues.md) | things that are wrong and known to be wrong |
 
 Standing orders for anyone working here — human or agent — are in
-[`../CLAUDE.md`](../CLAUDE.md), at the root, because that is where they are
+[`../AGENTS.md`](../AGENTS.md), at the root, because that is where they are
 looked for.
 
 ## What people have said, and what is owed

@@ -25,14 +25,26 @@ import unittest
 
 SOURCE = pathlib.Path(__file__).resolve().parent.parent
 REPO = SOURCE.parent
-SITE = REPO / "_site"
+SITE = SOURCE / "_site"   # the build root is `site/`, so the output is inside it
 
 # Directories under `site/` that are excluded from the build.
 INTERNAL = ["bin", "tests"]
 
 # Endings that would betray one of them even if the directory itself were
 # flattened or renamed on the way out.
-NEVER_PUBLISHED = (".py", ".spec.js", "package-lock.json", "playwright.config.js")
+NEVER_PUBLISHED = (
+    ".py",
+    ".spec.js",
+    "package-lock.json",
+    "playwright.config.js",
+    # Apparatus that moved INTO the source when the build root became `site/`.
+    # `wrangler.jsonc` reached the output the first time it was built here,
+    # which is the whole argument for this file existing.
+    "wrangler.jsonc",
+    "Gemfile",
+    "Gemfile.lock",
+    "_config.yml",
+)
 
 
 class NothingInternalIsPublished(unittest.TestCase):
@@ -87,7 +99,14 @@ class NothingInternalIsPublished(unittest.TestCase):
     def test_the_check_would_notice(self):
         # A guard that cannot fail proves nothing. The suffix list has to
         # actually match the things it is guarding.
-        for sample in ("sync-feeds.py", "smoke.spec.js", "playwright.config.js"):
+        for sample in (
+            "sync-feeds.py",
+            "smoke.spec.js",
+            "playwright.config.js",
+            "wrangler.jsonc",
+            "Gemfile",
+            "_config.yml",
+        ):
             self.assertTrue(
                 sample.endswith(NEVER_PUBLISHED),
                 f"{sample} is in the site but would not be caught",

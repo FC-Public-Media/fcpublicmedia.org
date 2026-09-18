@@ -26,16 +26,23 @@ explicit, swappable integrations rather than as a reason to rent a platform.
 ## Running it
 
 ```
+cd site
 bundle install
 bundle exec jekyll serve
 ```
+
+**From `site/`, not the repository root.** That directory is the build root —
+Cloudflare's own "Path / root directory" setting says `site` — and everything
+the build reads lives in it: `_config.yml`, `Gemfile`, `.ruby-version`,
+`wrangler.jsonc`. Run from the root and Jekyll finds no config, takes the root
+as its source, and produces nonsense. See [`deploying.md`](deploying.md).
 
 Then open <http://localhost:4000>. Edits rebuild automatically. There is no npm,
 no bundler, no CSS preprocessor, and no plugins.
 
 ### Ruby
 
-The version is **3.2.2**, and `.ruby-version` is the only file that says so.
+The version is **3.2.2**, and `site/.ruby-version` is the only file that says so.
 
 It used to be written down twice — `.ruby-version` for CI, `.tool-versions` for
 asdf — with a CI step whose whole job was checking the two agreed. That is gone

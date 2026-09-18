@@ -1,1 +1,76 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+The build root is site/, so the repository root can be the station's
+
+> I do want to change the config to go to site for the canonical site. I think
+> it's just the smart plan.
+
+**⚠️ Change the Cloudflare dashboard field first, then merge. Not the other way
+round, and not long apart.**
+
+| Setting | was | now |
+|---|---|---|
+| Path / root directory | `/` | **`site`** |
+
+Nothing else in the dashboard moves. The build command is still
+`bundle exec jekyll build` and the output field is still `_site`, because that
+field is relative to the root directory.
+
+**Why the order matters, and why it is not the usual "a failed build is safe".**
+The build command does not name a config. A build run at `/` after this merges
+finds no `_config.yml`, takes the repository root as its source, and **publishes
+something wrong while reporting success.** Measured earlier tonight: it prints
+`Configuration file: none`, warns about a missing layout, and produces a broken
+tree. A *failed* build is safe here — the last good deployment keeps serving — but
+a successful wrong one is not.
+
+## What moved, and why each one had to
+
+`site/` is now self-contained, because each of these is read relative to the
+directory the build runs in:
+
+| | |
+|---|---|
+| `_config.yml` | Jekyll reads it from the working directory. Its `source: site` line is **gone** — the source is now simply where the config lives |
+| `Gemfile` | bundler searches the working directory |
+| `.ruby-version` | **the one that would have failed quietly.** Cloudflare's image reads it from the root directory setting, so left behind it would have moved the host onto their default Ruby — 3.4.4 — with nothing in CI noticing |
+| `wrangler.jsonc` | wrangler looks from where it runs; `assets.directory: _site` now resolves to `site/_site` |
+
+The repository root is left holding `AGENTS.md`, `README.md`, `advocate.yml`,
+and the directories. That is the point rather than a side effect — **the root is
+for the station, and the station is not the website.**
+
+## Verified
+
+- **The published bytes are identical.** Built before and after and compared file
+  by file: all 67 files match, modulo the `?v=<mtime>` cache-busting token.
+- All check suites pass, and two real breaks were found and fixed:
+  - **`wrangler.jsonc` published on the first build.** It used to sit outside the
+    source; now it is inside it. It is excluded, and — more to the point — **the
+    publish guard did not catch it**, so it now knows about `wrangler.jsonc`,
+    `Gemfile`, `Gemfile.lock` and `_config.yml` as well.
+  - **`check-template.py` ran `bundle` from the repository root** to borrow the
+    installed gems. There is no Gemfile there any more; it runs from the build
+    root now, still pointing `--source` at the template.
+- Workflows get `working-directory: site` on the Ruby setup and the build steps;
+  `ruby-version:` points at `site/.ruby-version`; Azure's `app_location` is
+  `site/_site`. `deploy-cloudflare.yml` needed nothing because #80 deleted it.
+- Local development is now `cd site && bundle exec jekyll serve`, documented.
+
+## Tidied on the way past, all pre-existing on `main`
+
+- **Three doc links pointed at `CLAUDE.md`**, which was renamed to `AGENTS.md`
+  without the links following. Fixed, along with the bare mentions.
+- **One clause in your README** said the site is *"built from the repo root for
+  the configs there"*, which this change makes untrue. Reworded to say `site/` is
+  the build root — one clause, not a rewrite; the voice is yours.
+- `docs/TENANCY.md`'s root inventory was stale twice over.
+
+## Not in here
+
+The journal engine. You said yes to it and that the first move is probably a
+shared `/journal` on `main` while we stay with the `/site` and `/journal`
+prefixes — and that the interesting version is the library treatment, where
+journal content comes from a branch and **two blogs can run on one repository**,
+which is how split-identity machines get their separateness. None of that is
+attempted here. Mounting is still your pull request, and `docs/ADVOCATE.md` §6
+still says the journal is not wanted, which is now the stale claim rather than
+the live one.

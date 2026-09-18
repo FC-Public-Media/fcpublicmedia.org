@@ -32,12 +32,15 @@ jobs:
           # reads that same file, so CI and the live build cannot drift onto
           # different Ruby versions and start disagreeing about whether the
           # site builds.
-          ruby-version: .ruby-version
+          ruby-version: site/.ruby-version
           bundler-cache: true
+          # The build root is `site/`; the Gemfile is there and so is the lock.
+          working-directory: site
 
       # The build runs unconditionally. It is the part worth checking on every
       # pull request, and it does not need any credentials.
       - name: Build
+        working-directory: site
         run: bundle exec jekyll build --trace
         env:
           JEKYLL_ENV: production
@@ -53,7 +56,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: "_site"
+          app_location: "site/_site"
           skip_app_build: true
 
       - name: Note skipped deploy

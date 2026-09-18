@@ -104,7 +104,7 @@ on the site at the next weekly sync.
 - Photography of the space, the gear, and people using both. **In progress:**
   Bryan is shooting new ones and Autumn is pulling what exists out of Google
   Drive. Older pictures may still be on the Wix site, which we **read and never
-  write** — see CLAUDE.md. This is the dependency under a photo behind the
+  write** — see AGENTS.md. This is the dependency under a photo behind the
   homepage mission band, a picture per facility, and whatever goes at the top
   of the reserve page now the floor plan has moved down. Round 2 added two
   more, both with somewhere to go already: **a picture of a class in progress**

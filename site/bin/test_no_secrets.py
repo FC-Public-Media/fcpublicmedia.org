@@ -55,7 +55,7 @@ import unittest
 # site rather than to the repository. SITE is the build root; REPO is the node.
 SOURCE = pathlib.Path(__file__).resolve().parent.parent
 REPO = SOURCE.parent
-SITE = REPO / "_site"
+SITE = SOURCE / "_site"   # the build root is `site/`, so the output is inside it
 
 # The underscore after the prefix matters: it is what separates a real key
 # from prose about one. This very file says "rk_live_…" with an ellipsis

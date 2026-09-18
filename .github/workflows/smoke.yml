@@ -28,14 +28,17 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version: site/.ruby-version
           bundler-cache: true
+          # The build root is `site/`; the Gemfile is there and so is the lock.
+          working-directory: site
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
 
       - name: Build the site
+        working-directory: site
         run: bundle exec jekyll build
         env:
           JEKYLL_ENV: production
