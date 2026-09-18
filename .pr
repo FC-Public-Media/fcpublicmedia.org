@@ -1,1 +1,77 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+deploying.md: what Wix's nameservers actually serve, before the flip
+You are about to move nameservers to Cloudflare and keep the apex on Wix by
+pointing. This is the record inventory to reproduce, read with `dig` straight
+off `ns4.wixdns.net`, plus the three ways that flip goes wrong.
+
+One section in `docs/deploying.md`. No code.
+
+## Why a `dig` sweep and not Cloudflare's import
+
+**Cloudflare's scan cannot enumerate subdomains nothing advertises.** It
+reliably finds the apex, `www`, MX and apex TXT. It does not find
+`lyncdiscover`, `sip`, `enterpriseregistration`, `enterpriseenrollment` or the
+two `_sip*` SRV records, because there is nothing to enumerate them from. Those
+are precisely the rows that vanish silently.
+
+Fifteen records in the table, each with its required proxy status.
+
+## The three things that break, quietest last
+
+**Email is on Microsoft 365, and the SPF is a hard fail.** The MX, the SPF TXT
+and the `ms15993575` verification record have nothing to do with the website,
+which is exactly why a website-focused migration drops them. The SPF ends in
+`-all`, so losing it does not weaken authentication — it makes receivers
+**reject** mail FCPM sends. Inbound stops with the MX; outbound bounces with the
+SPF.
+
+**The five Microsoft service CNAMEs and two SRVs.** Nobody notices for weeks,
+and then a device will not enrol, and nobody connects it to a DNS change made
+last month.
+
+**Proxying the Wix rows.** Every Wix row must be the grey cloud. Wix serves the
+apex on shared infrastructure with its own certificates and host-based routing;
+Cloudflare's proxy in front of that takes the public site down rather than
+degrading it.
+
+## And the sweep turned up something about accounts
+
+`new.fcpublicmedia.org` is a CNAME to **`fcpm.autumn-e2c.workers.dev`** — a
+Worker in a personal account, not FCPM's. So the live site is served today from
+your account and the CNAME is what makes that invisible. That is the account
+migration arriving as a fact instead of a principle.
+
+It has a specific edge: a **Workers Custom Domain requires the zone and the
+Worker in the same account.** Once `fcpublicmedia.org` is active in FCPM's
+account, `new` either stays a plain DNS-only CNAME — works fine, keeps the
+dependency — or becomes a real Custom Domain, which needs the Worker moved
+first. **Worth deciding on purpose rather than letting the flip decide it.**
+
+## What I deliberately did not suggest
+
+There is **no `_dmarc` record**. That is a real gap and this is the wrong week
+for it: changing mail authentication and moving DNS authority in the same
+window is how you get an outage nobody can attribute. Noted in the file as
+absent, not as a to-do.
+
+Also no wildcard, no CAA, and no custom DKIM selectors — so nothing to carry for
+those.
+
+## Verifying afterwards
+
+Flip, wait for Active, then dig every name in the table against Cloudflare and
+diff. Answers that differ are the work; answers that are empty are the bug.
+
+## Verified
+
+- Every row read from `ns4.wixdns.net` on 2026-09-17. The file says to re-read
+  immediately before flipping, because until the nameservers move the zone is
+  somebody else's.
+- `python3 site/bin/test_no_secrets.py` — 12 tests, OK (2 skipped).
+- Nothing under `site/` changed.
+
+## Conflict note
+
+Touches `docs/deploying.md`, as does the still-open #80 — different parts of the
+file, so they should merge in either order.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
