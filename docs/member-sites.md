@@ -1,13 +1,30 @@
-# Member site template — scaffold
+# Member sites
 
-**This is a scaffold, not an example.** Nothing here is a real member's site.
-It exists so that the shape of a member site is decided in one place, reviewed
+<!--
+Was `site-template/README.md` until 2026-09-18. It moved because READMEs are
+now written for the audience that reads them, and this one is for the crew:
+nothing in it is addressed to a member. Her words:
+
+  "that read me would never land in a real site templated thing"
+
+`site-template/` therefore has no README. The one that belongs to a member is
+hers to write, and is deliberately absent rather than stubbed — a placeholder
+that ships to every member site is the thing somebody always forgets to delete.
+
+The framing below is also SUPERSEDED in one place. "Discoverability at a local
+level" is not the problem a member site solves; burnout for want of a tool or
+an answer at the moment it was needed is. See docs/TENANCY.md, "The problem is
+burnout, and it is not discoverability." The rest of this file stands.
+-->
+
+**A member site is a scaffold, not an example.** Nothing in `site-template/` is
+a real member's site. It exists so the shape is decided in one place, reviewed
 like anything else, and copied rather than reinvented the first time somebody
-actually needs one.
+needs one.
 
-It does not build itself into fcpublicmedia.org — the root `_config.yml`
-excludes this directory. It is a Jekyll site of its own, and CI builds it on
-every push so it cannot quietly rot.
+**It is two directories, not one.** `site-template/` is what a member's own
+repository holds; `member-site-core/` is what FCPM supplies at build time. See
+*The split* at the end of this file.
 
 ## The problem it exists to solve
 
@@ -69,17 +86,56 @@ the file ever reaches FCPM.
 A feed entry says *a program exists*. The enclosure says *where the actual file
 is*. Both are needed; neither is sufficient.
 
-## Files
+## The split
+
+Drawn 2026-09-18, because the line between what a member owns and what we
+supply had been a table in prose and a single directory on disk.
 
 ```
-_data/site.yml       Settings. One file, and the only one an editing UI
-                     would ever write to.
-_data/programs.yml   The programs. Add an entry per thing you make.
-feed.xml             Generated. Do not hand-edit.
-index.html           The public page.
-_layouts/            Markup. Owned by the template, not by the member —
-                     see "Ejecting" below.
+site-template/          WHAT A MEMBER'S REPOSITORY HOLDS
+  _data/site.yml        Settings. One file, and the only one an editing UI
+                        would ever write to.
+  _data/programs.yml    The programs. One entry per thing you make.
+  .gitignore            Keeps finished video out of git.
+
+member-site-core/       WHAT FCPM SUPPLIES AT BUILD TIME
+  _config.yml           Managed. A member never edits it.
+  _layouts/default.html Markup.
+  assets/css/site.css   The whole visual design.
+  index.html            The public page, driven entirely by _data.
+  feed.xml              Generated. The contract with FCPM.
+  Gemfile               Jekyll. The member does not need one — see below.
 ```
+
+**A member's repository is two YAML files and a `.gitignore`.** That is the
+whole of it, and it is the answer to *"if we can get things done with just a
+configuration."*
+
+**Nothing in `site-template/` is markup.** A member who wants different markup
+is a member who should eject and own it, which is what the collision rule below
+detects.
+
+### Why the member needs no Gemfile
+
+Measured 2026-09-18: with an explicit `--source`, Jekyll reads
+`<source>/_config.yml` rather than one in the working directory. So one
+toolchain — one Ruby, one Gemfile, one lockfile, all at the host — builds every
+site. `member-site-core/Gemfile` exists for the composed build and for a member
+who ejects, not for a member who is hosted.
+
+The principle is GitHub Pages': **the defaults live in the host, not the
+tenant.**
+
+### Composition, and the collision that means "eject"
+
+`bin/build-sites.py` stages `member-site-core/` and then the member's own files
+on top. **If a member's file would overwrite one of ours, that is not an error
+to resolve — it is the eject signal**, and the builder reports it rather than
+silently discarding their work.
+
+It is the same fact `git merge upstream/main --ff-only` failing used to carry,
+detected at build time instead of at update time, and it fails the same way: in
+favour of the member having taken the site somewhere of their own.
 
 ## Ejecting
 

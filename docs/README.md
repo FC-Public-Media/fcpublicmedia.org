@@ -29,6 +29,7 @@ describe a repository that is being rebuilt underneath it.
 | [`payments.md`](payments.md) | the five transactions, who processes each, and the rules about keys |
 | [`identity.md`](identity.md) | who somebody is, how they prove it, and what happens at the door |
 | [`programming.md`](programming.md) | Cablecast, the schedule, class mode, and what the homepage features |
+| [`member-sites.md`](member-sites.md) | what a member's repository holds, what we supply, publishing states, and ejecting |
 | [`known-issues.md`](known-issues.md) | things that are wrong and known to be wrong |
 
 Standing orders for anyone working here — human or agent — are in

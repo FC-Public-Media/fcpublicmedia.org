@@ -54,10 +54,3 @@ feed:
   description: ""  # falls back to `tagline`
   # Programs older than this drop out of the feed. The site keeps them.
   months: 24
-
-# ---------------------------------------------------------------- affiliation
-#
-# Set false and the FCPM credit disappears. It is here as a courtesy, not a
-# condition — a member who wants no visible connection to us should be able to
-# have that without editing a layout.
-show_fcpm_credit: true

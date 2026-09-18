@@ -3,10 +3,13 @@
 
     python3 site/bin/check-template.py
 
-site-template/ is a Jekyll site of its own, excluded from the main build — so
-nothing else in this repository would notice it breaking. And the thing that
-must not break is not the pages: it is `/feed.xml`, which is the entire
-contract between a member site and FCPM.
+site-template/ is only half a site — two data files and a .gitignore, which is
+all a member's own repository holds. The other half is `member-site-core/`, and
+the two are composed at build time. So this check builds what a member actually
+gets rather than what either directory contains.
+
+The thing that must not break is not the pages: it is `/feed.xml`, which is the
+entire contract between a member site and FCPM.
 
 So this is a round trip rather than a build check. The template is built with
 a fixture of programs, and then *this repository's own reader* parses the
@@ -31,6 +34,21 @@ SITE = pathlib.Path(__file__).resolve().parent.parent
 REPO = SITE.parent
 TEMPLATE = REPO / "site-template"
 FIXTURE = SITE / "tests" / "fixtures" / "template-programs.yml"
+
+
+def load_factory():
+    """The composition rules, borrowed rather than reimplemented.
+
+    Staging core-then-member is the one thing this script and the factory must
+    agree about exactly. Two copies of it would drift, and the drift would show
+    up as a member site that builds in CI and not on the cadence.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "build_sites", REPO / "bin" / "build-sites.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def load_reader():
@@ -63,10 +81,23 @@ def build(source, destination):
 def main():
     feeds = load_reader()
 
+    factory = load_factory()
+    core = REPO / factory.load_core()
+
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp)
         site = work / "site"
-        shutil.copytree(TEMPLATE, site)
+        site.mkdir()
+
+        collisions = factory.compose(core, TEMPLATE, site)
+        if collisions:
+            raise SystemExit(
+                "site-template/ carries files that the core also provides: "
+                + ", ".join(collisions)
+                + "\nOn a member's site that would be the eject signal. On "
+                "ours it means the split in sites.yml is wrong."
+            )
+
         shutil.copy(FIXTURE, site / "_data" / "programs.yml")
 
         build(site, work / "out")
