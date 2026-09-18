@@ -1,0 +1,20 @@
+# What this machine is called, declared — because the name is what `binding`
+# matches on, and matching is how a checkout learns which profile it wears.
+#
+# THIS IS INTENT, NOT A MIRROR. macOS keeps these in the SystemConfiguration
+# store, not in a file anybody may link. The machine is asked with `scutil`;
+# this file is what the answer is supposed to be.
+#
+# UNFILLED ON PURPOSE. Nobody has stood in front of editing bay 2 and asked it
+# what it answers to. Until somebody does, `machines/binding` matches nothing
+# here and reports this checkout as unclaimed — which is correct, and is the
+# clean state rather than a fault.
+#
+# To fill it, on the machine:
+#
+#     scutil --get LocalHostName
+#
+# and put the answer below. Do not guess it from the sticker on the front.
+
+# key             value
+# LocalHostName

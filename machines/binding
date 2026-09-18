@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Say which machine profile this checkout wears, if any.
+
+    machines/binding
+
+Intent lives in `machines/<profile>/names`. Fact is what the machine answers to
+`scutil --get LocalHostName`. This compares them and prints the profile whose
+intent matches the fact.
+
+NO PROFILE IS THE CLEAN STATE. A clone that matches nothing is not broken; it is
+data, which is what these bytes should be by default everywhere they land. That
+case exits 0 and says so, because an exit code is a claim too and "unclaimed" is
+not a failure.
+
+WHY THIS IS DISCOVERED AND NOT DECLARED. A committed file saying "this checkout
+is bay one" travels to bay two the moment somebody clones it, and is then a
+confident lie — anything declared is copied by the act that makes it wrong. So
+the only thing committed is what each host *should* be called, and the machine
+is asked at run time.
+
+System python on purpose: no yaml, no dependencies, nothing to install on a
+machine whose job is editing video.
+"""
+
+import pathlib
+import subprocess
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+
+
+def declared(profile):
+    """The LocalHostName a profile says its machine should answer to, or None."""
+    names = profile / "names"
+    if not names.is_file():
+        return None
+    for line in names.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        key, _, value = line.partition(" ")
+        if key == "LocalHostName" and value.strip():
+            return value.strip()
+    return None
+
+
+def actual():
+    """What this machine says it is called, or None if it cannot be asked."""
+    try:
+        out = subprocess.run(
+            ["scutil", "--get", "LocalHostName"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+def main():
+    profiles = sorted(p for p in HERE.iterdir() if p.is_dir())
+    if not profiles:
+        print("No profiles in machines/. Nothing to match against.")
+        return 0
+
+    fact = actual()
+    if fact is None:
+        print("This host cannot be asked its LocalHostName (not macOS, or scutil is absent).")
+        print("Unclaimed. That is the clean state, not a fault.")
+        return 0
+
+    print(f"this machine answers to: {fact}\n")
+
+    matched = []
+    for p in profiles:
+        want = declared(p)
+        if want is None:
+            state = "unfilled — nobody has asked that machine its name"
+        elif want == fact:
+            state = f"MATCH ({want})"
+            matched.append(p)
+        else:
+            state = f"wants {want}"
+        print(f"  {p.name:<20} {state}")
+
+    print()
+    if len(matched) == 1:
+        print(f"wearing: {matched[0].name}")
+        print(f"read {matched[0].relative_to(HERE.parent)}/PROFILE.md before changing anything here.")
+        return 0
+    if len(matched) > 1:
+        # Two profiles claiming one host is a mistake in the files, not a state
+        # to resolve at run time by picking one.
+        print("More than one profile claims this machine:", ", ".join(p.name for p in matched))
+        print("That is a contradiction in machines/, not something to guess past.")
+        return 1
+
+    print("wearing: nothing.")
+    print("A clone with no profile is not a broken station. It is data.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
