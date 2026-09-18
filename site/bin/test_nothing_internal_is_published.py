@@ -61,6 +61,29 @@ class NothingInternalIsPublished(unittest.TestCase):
             "in the built site:\n" + "\n".join(leaked),
         )
 
+    def test_no_markdown_survived_into_the_output(self):
+        """The whole verbatim-copy class, as one assertion.
+
+        Jekyll renders a page with front matter to `index.html`. A `.md` file in
+        `_site` therefore cannot be a page — it is a source file that was copied
+        verbatim, which is how MANIFEST.md, REDIRECTS.md and RESERVE-DESIGN.md
+        each reached a public URL, and how `site/README.md` did on 2026-09-17.
+
+        This is deliberately not a list of filenames. It does not need updating
+        when somebody adds a document, which is the property the old `exclude:`
+        list did not have.
+        """
+        leaked = sorted(
+            str(path.relative_to(SITE)) for path in SITE.rglob("*.md") if path.is_file()
+        )
+        self.assertEqual(
+            leaked,
+            [],
+            "Markdown was copied verbatim into the built site. A `.md` with no "
+            "front matter is published at its own URL — these are readable by "
+            "anyone who guesses the path:\n" + "\n".join(leaked),
+        )
+
     def test_the_check_would_notice(self):
         # A guard that cannot fail proves nothing. The suffix list has to
         # actually match the things it is guarding.

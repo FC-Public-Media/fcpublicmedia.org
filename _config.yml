@@ -105,6 +105,22 @@ exclude:
   - bin
   - tests
 
+  # site/README.md is for whoever opens this directory on GitHub, which is where
+  # peers read a repository. It is not a page. Left in the build it is copied
+  # VERBATIM to https://www.fcpublicmedia.org/README.md — measured, it was —
+  # because a `.md` with no front matter is copied rather than rendered.
+  #
+  # It has to live here rather than at the root: GitHub renders a README when you
+  # browse into the directory holding it, and `site/` is the directory peers will
+  # browse into. So this is the one document entry on this list, and it is a fixed
+  # filename rather than a growing list.
+  #
+  # Any OTHER stray markdown is caught rather than listed:
+  # `site/bin/test_nothing_internal_is_published.py` fails the build on any `.md`
+  # in `_site` at all. A rendered page is `index.html`; a `.md` in the output can
+  # only be a verbatim copy, so the whole class is one assertion.
+  - README.md
+
 # The history, kept because it is the reason for the rule above.
 #
 # There used to be a much longer list here, and it was a standing hazard. A `.md` file with
