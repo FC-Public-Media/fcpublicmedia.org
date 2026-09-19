@@ -1,1 +1,61 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+deploying.md: the Gemfile error now means the Root directory field
+The document was contradicting itself, and the stale half is the one you would
+read while fighting that error.
+
+## What was wrong
+
+The settings table says **Root directory: `site`**. Twenty lines later the
+troubleshooting entry for `Could not locate Gemfile` said:
+
+> **This is not the Root directory setting.** `/` is correct and is what
+> `lesbistrology` uses successfully. Look at the GitHub App's access to the
+> repository instead.
+
+That was true until 2026-09-18, when the build root moved into `site/` and the
+`Gemfile` went with it. **It is now the first thing to check**, and the old text
+was actively sending you to look at GitHub App permissions for a misconfigured
+field.
+
+## Two causes, one error message
+
+Told apart by a detail already in the log:
+
+| | |
+|---|---|
+| **Root directory is not `site`** | `Detected the following tools from environment:` **names Ruby** — the image found the repo, just not the Gemfile. The likely cause today |
+| **Checkout was empty or partial** | that line is **empty**. Bundler ran, so the image was fine; there was no repository under it. Then it is GitHub App access |
+
+`lesbistrology` is dropped as a comparison: its site is at its repository root
+and this one's is not, so it stopped being evidence about this field.
+
+## Root directory vs build watch paths
+
+Separated, because changing one while meaning the other looks like a setting
+that did not take. Root directory is *where the build runs* — wrong gives the
+Gemfile error. Watch paths is *what triggers a build* — wrong gives no build,
+not a failed one.
+
+**Watching `site` only is correct**, and for a reason worth having written down:
+the factory writes into `site/member-sites/`, so a cadence run that publishes or
+delists a member touches `site/` and triggers a deploy like any content change.
+Delisting takes a site down through that same path.
+
+It will not rebuild for root-level changes alone — `member-site-core/`,
+`sites.yml`, `bin/`, the docs. That is right rather than a gap: a restyle of the
+core changes nothing published until the factory has been re-run, and that run is
+what touches `site/`.
+
+## The failure-then-success pair
+
+Recorded as most likely the setting being changed between the two runs. But
+**two project configurations pointed at one repository look identical from
+here**, and that is worth ruling out in the dashboard — the failing one keeps
+failing on every push, and its red badge is indistinguishable from a real
+regression.
+
+## Verified
+
+- `python3 site/bin/test_no_secrets.py` — 12 tests, OK (2 skipped).
+- Documents only. Nothing under `site/` changed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
