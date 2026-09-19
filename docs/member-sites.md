@@ -129,8 +129,18 @@ tenant.**
 ### Publishing, and what delisting does
 
 `bin/build-sites.py --publish` copies each built tenant into
-`site/member-sites/<name>/` and commits nothing itself — the cadence workflow
-commits, the same bargain the `_data` syncs make.
+`site/member-sites/<name>/` and commits nothing itself. **The cadence commits**:
+`.github/workflows/publish-member-sites.yml`, Thursday morning and on demand,
+the same bargain the `_data` syncs make.
+
+**It does not deploy.** It writes into `site/` and commits; Cloudflare's git
+build sees the commit and publishes, exactly as it does for any other change to
+`site/`. There is still one thing that puts bytes on the internet, which is the
+property the manual deploy workflow was deleted to restore.
+
+The schedule is a placeholder for a signal that does not exist yet. When it
+does, it becomes another entry under `on:` and nothing else in that file
+changes.
 
 **A site is published as its `name`, not its path.** The name is the public
 address: the subdomain label and the folder. The path is where we happen to

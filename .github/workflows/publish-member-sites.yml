@@ -1,0 +1,116 @@
+name: Publish member sites
+
+# THE CADENCE. This is the promised day.
+#
+#   "we promise a cadence that we can meet instead of real time, which is the
+#    crux of it all."
+#
+# Thursday morning, and on demand from the Actions tab. A member who commits on
+# Friday appears the following Thursday, and that is the whole offer: a day we
+# can keep rather than an immediacy we cannot.
+#
+# IT DOES NOT DEPLOY, AND THAT IS THE POINT.
+#
+# It builds member sites, writes them into `site/member-sites/`, and commits.
+# Cloudflare's git build sees the commit and publishes, the same way it does for
+# any other change to `site/`. So there is still exactly ONE thing that puts
+# bytes on the internet, which is the property the manual deploy workflow was
+# deleted to restore — two ways to publish one site is a way to be confused
+# about which one did.
+#
+# A SIGNAL WILL REPLACE THE SCHEDULE LATER. That is wanted and is not designed
+# yet, so nothing here anticipates its shape: when it exists it becomes another
+# entry under `on:` and the rest of this file does not change. Do not add a
+# `repository_dispatch` guess in the meantime.
+#
+# WHAT A FAILING MEMBER DOES. Nothing, to anybody else. `build-sites.py` builds
+# each site independently and exits zero when only tenants failed, because one
+# member's unparseable data file is not a defect in this repository and must not
+# make everybody else miss the day. The failures are in the run summary.
+
+on:
+  schedule:
+    - cron: "0 13 * * 4" # 07:00 America/Denver in summer, 06:00 in winter
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A run already in flight is worth finishing — it may be mid-publish — but a
+# queue of them is pointless, and two runs writing `site/member-sites/` at once
+# is the one race that could publish a half-composed site.
+concurrency:
+  group: publish-member-sites
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # Member sites are submodules, and most of them are not checked out most
+      # of the time. `recursive` fetches the ones that are pinned; a tenant that
+      # still does not appear is reported `absent` and skipped, which is the
+      # normal resting state of a mostly-unhydrated list rather than an error.
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          # `.ruby-version` is a magic literal to this action, not a path — it
+          # resolves it inside `working-directory`. Writing `site/.ruby-version`
+          # gets parsed as an engine name and fails with "Unknown engine".
+          ruby-version: .ruby-version
+          bundler-cache: true
+          # The build root is `site/`; the version file and the Gemfile are
+          # there, and every site is built with that one toolchain.
+          working-directory: site
+
+      - name: Install the YAML reader
+        run: pip install --quiet pyyaml
+
+      # Exits non-zero only when one of OUR sites failed — `site` or the
+      # scaffold. Tenant failures are reported and do not stop the cadence.
+      # `shell: bash` rather than the default, because it is the only way to
+      # get `-o pipefail`. The default is `bash -e {0}`, and with `| tee` the
+      # step's status comes from tee, which always succeeds — so a build that
+      # failed one of OUR sites would be reported green. Verified against the
+      # documented shells rather than assumed.
+      - name: Build and publish
+        id: publish
+        shell: bash
+        run: |
+          python3 bin/build-sites.py --publish | tee /tmp/publish.log
+          {
+            echo "### Member sites"
+            echo
+            echo '```'
+            cat /tmp/publish.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit if anything changed
+        run: |
+          # STAGE FIRST, then compare. A newly published member site is an
+          # UNTRACKED directory, and `git diff` does not look at untracked
+          # paths — so checking before staging reports "nothing to publish" on
+          # precisely the run that published somebody's site for the first
+          # time, commits nothing, and exits 0. Verified: `git diff --quiet`
+          # sees nothing for a new directory; `git diff --cached --quiet`
+          # after `git add` sees it.
+          #
+          # `site/member-sites/.gitkeep` is committed so this pathspec always
+          # matches something, including on a run with no tenants at all.
+          git add -A -- site/member-sites site/_data/member_sites.json
+
+          if git diff --cached --quiet -- site/member-sites site/_data/member_sites.json; then
+            echo "Nothing to publish: no member site changed."
+            exit 0
+          fi
+
+          count=$(python3 -c 'import json; print(len(json.load(open("site/_data/member_sites.json"))["sites"]))')
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Publish member sites: ${count} listed"
+          git push
