@@ -1,1 +1,76 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Give the cadence a trigger: publish member sites on Thursdays
+The factory could publish and nothing called it. Eight workflows, none of them
+the cadence — a finished pipeline that looked like a running one.
+
+`.github/workflows/publish-member-sites.yml`, Thursday 07:00 Denver and on
+demand from the Actions tab.
+
+## It does not deploy, and that is the point
+
+It builds member sites, writes them into `site/member-sites/`, and **commits**.
+Cloudflare's git build sees the commit and publishes, exactly as it does for any
+other change under `site/`.
+
+So there is still **one** thing that puts bytes on the internet. That is the
+property deleting `deploy-cloudflare.yml` restored, and it would have been easy
+to give it away here by having the cadence deploy directly.
+
+## The signal
+
+You said the signal is what you do not have ready. Nothing in this file
+anticipates its shape — no `repository_dispatch` guess, no payload assumptions.
+When it exists it becomes another entry under `on:` and **the rest of the file
+does not change**. The header says so, so the next session does not invent one.
+
+Thursday is a placeholder that keeps a promise in the meantime. A member who
+commits on Friday appears the following Thursday, which is the offer: a day we
+can keep rather than an immediacy we cannot.
+
+## Two bugs, both found by checking rather than reading
+
+**A new member site is untracked, and `git diff` does not see untracked paths.**
+I copied the sync workflows' commit idiom, which works for them because
+`cablecast.json` already exists. Measured:
+
+```
+git diff --quiet on untracked new site: SEES NOTHING
+git add then diff --cached:             DETECTS IT
+```
+
+As written it would have reported *"nothing to publish"* on precisely the run
+that published somebody's site for the first time — committed nothing, exited 0,
+green check. It now stages first and compares `--cached`.
+
+`site/member-sites/.gitkeep` is committed so that pathspec always matches
+something, including on a run with no tenants. Jekyll ignores dotfiles, so it is
+not published.
+
+**`| tee` was swallowing the exit status.** GitHub's default shell is
+`bash -e {0}` without `pipefail`, so the step's status comes from `tee`, which
+always succeeds. A build that failed **our** site would have reported green.
+`shell: bash` is the only way to get `-eo pipefail`; it is set, with the reason
+in a comment.
+
+## What a failing member does
+
+Nothing, to anybody else. `build-sites.py` builds each site independently and
+exits zero when only tenants failed, so one member's unparseable data file
+cannot make everybody else miss the day. The failures land in the run summary.
+
+## Verified
+
+- **Zero-tenant steady state commits nothing** — ran the builder, staged, and
+  confirmed the detection reports no change once `.gitkeep` is committed.
+- Workflow YAML parses; `submodules: recursive` on checkout so pinned tenants
+  hydrate and unpinned ones report `absent` rather than failing.
+- `python3 bin/test_build_sites.py` — 44 tests, OK.
+- `check-template.py` round trip passes.
+- `docs/member-sites.md` updated to name the trigger and say it does not deploy.
+
+## Note
+
+This is the one item from the debrief I listed as *"looks finished, is inert."*
+It is now triggered. The other one — the journal engine mount — is still not
+done and is still an instruction rather than a deferral.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
