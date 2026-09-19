@@ -88,13 +88,55 @@ not existing is a landmine with a note on it.**
 
 Two failures have been seen, and they look nothing alike.
 
-**`Could not locate Gemfile or .bundle/ directory`, with an empty
-`Detected the following tools from environment:` line.** The checkout was
-empty or partial — bundler ran, so the image was fine; there was simply no
-repository under it. **This is not the Root directory setting.** `/` is
-correct and is what `lesbistrology` uses successfully. Look at the GitHub App's
-access to the repository instead; this appeared while several of the account's
-git connections were being reauthorized.
+**`Could not locate Gemfile or .bundle/ directory`.** **Check the Root
+directory field first: it must be `site`.**
+
+This entry used to say the opposite — *"this is not the Root directory setting,
+`/` is correct"* — and that was true until 2026-09-18, when the build root moved
+into `site/` and the `Gemfile` went with it. Left standing, the advice sent a
+reader looking at GitHub App permissions for a misconfigured field, which is why
+the correction is spelled out rather than quietly applied.
+
+So there are now two causes wearing one error message, and they are told apart
+by a detail:
+
+| | |
+|---|---|
+| **Root directory is not `site`** | bundler runs at the repository root, where there is no longer a Gemfile. The likely cause today. `Detected the following tools from environment:` **names Ruby** — the image found the repo, just not the Gemfile |
+| **The checkout was empty or partial** | `Detected the following tools from environment:` is **empty**. Bundler ran, so the image was fine; there was simply no repository under it. Look at the GitHub App's access — this appeared while several of the account's git connections were being reauthorised |
+
+`lesbistrology` still uses `/` successfully and is no longer a comparison worth
+drawing: its site is at its repository root and this one's is not.
+
+#### Root directory and build watch paths are different fields
+
+Worth separating, because changing one while meaning the other looks like a
+setting that did not take:
+
+- **Root directory** (`site`) is *where the build runs*. Getting it wrong
+  produces the Gemfile error above.
+- **Build watch paths** is *which changes trigger a build at all*. Getting it
+  wrong produces no build, not a failed one.
+
+**Watching `site` only is correct**, and the reason is not obvious: the member
+site factory writes its output *into* `site/member-sites/`, so a cadence run
+that publishes or delists a member touches `site/` and triggers a deploy like
+any other content change. Delisting takes a site down through the same path.
+
+The one thing it will not rebuild for is a change to root-level files alone —
+`member-site-core/`, `sites.yml`, `bin/`, the documents. For the documents that
+is what you want. For the others it is correct too, because a restyle of
+`member-site-core/` does not change what is published until the factory has been
+re-run, and that run is what touches `site/`.
+
+#### A failure and a success seconds apart
+
+Seen 2026-09-19. Two builds moments apart, the first failing on the Gemfile and
+the second cloning and succeeding. Most likely the setting was changed between
+them and the second run picked it up — but **two project configurations pointed
+at one repository would look exactly the same**, and that is worth ruling out in
+the dashboard, because the failing one will keep failing on every push and its
+red badge is indistinguishable from a real regression.
 
 **The repository reported as damaged.** Deleting and recreating the project
 cleared it. See below.
