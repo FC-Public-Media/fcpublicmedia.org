@@ -328,6 +328,85 @@ it is the same tree a wildcard-to-path-prefix host would serve.
 
 ---
 
+## Every show gets a site, and most of them are virtual
+
+Recorded 2026-09-19 from a tired briefing, which is the reason it is written
+down rather than acted on.
+
+> what I would kinda want is for a virtualized empty version using our
+> templates from the managed stuff to draw any other show that doesn't have a
+> custom one.
+
+**Two tiers, and the second one is the interesting half.** A show with its own
+repository gets its own site, composed and published as a `tenant`. Every other
+show gets a site anyway — **generated from the show data this repository already
+holds, plus `member-site-core/`** — so the member-sites list is populated
+without anybody having to make a repository first.
+
+That inverts how this has been described up to now. The factory was a thing a
+member opted into; this makes a site **the default state of being a show here**,
+and a custom repository the upgrade.
+
+### What that means we already have
+
+Counted 2026-09-19, because *"I probably would owe you an active member list to
+know for sure"* and the repository can answer part of it:
+
+| | |
+|---|---|
+| `site/_shows/` | **1** — `under-the-marquee.md`, and it is still `proposed: true` |
+| `site/_podcasts/` | **8** |
+
+So a virtualized tier would produce **nine sites today** with no member doing
+anything, against zero. That is the whole argument for building the generated
+tier before the custom one.
+
+Her own first custom idea is **ARTIFICIAL** — styled in caps like ANTIBODY —
+with an immediate second thought worth keeping: *"This one's about me. I guess
+we have some shows already. Maybe we don't need to do this for me."*
+
+### The one structural question it raises
+
+A generated site has **no repository and no gitlink**, so it is not a `tenant`
+in the sense `sites.yml` means. It is not `listed` either, because we do build
+and publish it. Either the manifest grows a role whose source is a collection
+entry rather than a directory, or generation happens before the manifest is
+read and synthesises entries. **Not decided here.**
+
+What is clear is that it must not be confused with `scaffold`: the template must
+never reach the public, and a generated site must always reach it.
+
+### Collapsing shows and podcasts
+
+> I think we're gonna have stronger metadata inside because I think shows can be
+> podcasts too, by just releasing an audio format. So I'm sure that podcast
+> meant something, but I think modern media allows a show to be anything. So I'm
+> interested in collapsing those.
+
+Recorded, not started. Two collections exist today with different permalinks
+(`/watch/:name/` and `/podcasts/:name/`) and different layouts, and eight of the
+nine entries are podcasts — so this is mostly a question about the eight.
+
+Her own caveat is the whole risk: *"I don't know what that's gonna do to some of
+our data."* A collapse touches live URLs, which makes it a `REDIRECTS.md`
+question as much as a data one. **It wants doing when rested**, and it is a
+prerequisite for the generated tier only if the generator has to know which
+collection a show came from — which it should not.
+
+### And the listing has a consumer already
+
+> Once we have stuff that drives this list, it will be interesting to see how we
+> can use it in our existing pages, like meet. Meet has a few components to it,
+> like meeting up with each other, meet the staff, meet the board, meet the
+> other shows that we run.
+
+`site/_data/member_sites.json` exists and is empty. `meet` is the page that
+would read it, as **a curated view rather than the whole list** — her word.
+Nothing to build until the list has entries in it, which is the generated tier
+again.
+
+---
+
 ## The questions the talk had to answer
 
 Kept as asked, because what was open at the time is part of the record. **Four
