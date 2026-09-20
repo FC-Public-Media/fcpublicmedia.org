@@ -86,6 +86,69 @@ the file ever reaches FCPM.
 A feed entry says *a program exists*. The enclosure says *where the actual file
 is*. Both are needed; neither is sufficient.
 
+## Where this stands, 2026-09-19
+
+Written at a reboot, for whoever arrives next. The machinery is finished and has
+no users, and those two facts look the same from outside.
+
+**Built and running.** `sites.yml` is the list. `bin/build-sites.py` composes,
+builds each site independently, publishes tenants into `site/member-sites/` and
+prunes anyone delisted. 44 tests.
+`.github/workflows/publish-member-sites.yml` runs it Thursdays and on demand,
+and commits — Cloudflare's git build publishes from the commit, so there is
+still exactly one thing that puts bytes on the internet.
+
+**Zero tenants.** `sites.yml` holds `site` and `site-template` and nothing else,
+so every green check above is green over an empty set. Nothing is broken; there
+is simply nobody listed.
+
+### The next commit
+
+**The generated tier.** A show with its own repository gets a `tenant` site;
+every other show gets one anyway, built from the show data this repository
+already holds plus `member-site-core/`. See
+[`TENANCY.md`](TENANCY.md), *"Every show gets a site, and most of them are
+virtual"*.
+
+It is the highest-value thing available because of the arithmetic: `site/_shows/`
+holds **1** and `site/_podcasts/` holds **8**, so the first run produces nine
+sites where there are now none — with no member having to do anything.
+
+**Its one undecided point**, and it should be decided before it is built: a
+generated site has no repository and therefore no gitlink, so it is neither
+`tenant` nor `listed`. Either `sites.yml` grows a role whose source is a
+collection entry rather than a directory, or generation synthesises entries
+before the manifest is read.
+
+The rule that holds either way: **a generated site must never be confusable with
+`scaffold`.** The template must never reach the public; a generated site must
+always reach it.
+
+### Decisions being held for the operator
+
+Not gaps. These were reserved deliberately and an agent should not settle them:
+
+| | |
+|---|---|
+| the wildcard rewrite | `run_worker_first` on the site Worker, which costs the public site its *"no main, no runtime, nothing to execute"* property, versus a second Worker on `*.fcpublicmedia.org/*`. Both written up in [`deploying.md`](deploying.md) |
+| a better name for `member-site-core/` | reserved by her; the name in the tree is provisional. `TENANCY.md` argues the journal engine's word for it is *engine* |
+| the audience-facing README for `site-template/` | **deliberately absent, not stubbed.** Her voice |
+| collapsing `_shows` and `_podcasts` | recorded in `TENANCY.md`; it moves live URLs, so it is a `REDIRECTS.md` question as much as a data one |
+| the signal that should replace the Thursday schedule | wanted, not designed. Nothing anticipates its shape on purpose |
+
+### Two things that are true and unreported by any tool
+
+**`.advocate-engine` is pinned 5 commits behind its `origin/main`** (pin
+`4635cfc1`). A clean `git status` will never say so — a superproject is clean
+when the gitlink matches what was committed, which is a statement about the
+commit and not about the world. Advancing it is its own pull request by whoever
+owns it.
+
+**The live site is served from a personal Cloudflare account.**
+`new.fcpublicmedia.org` is a CNAME to `fcpm.autumn-e2c.workers.dev`. It works and
+will keep working; it is recorded in [`deploying.md`](deploying.md) because
+nothing in the repository said so until somebody ran `dig`.
+
 ## The split
 
 Drawn 2026-09-18, because the line between what a member owns and what we
