@@ -11,6 +11,11 @@ describe a repository that is being rebuilt underneath it.
 
 ---
 
+## Start here if you just arrived
+
+[`OPEN.md`](OPEN.md) — what is true right now and will not announce itself. Stale
+pins, a branch nobody is watching, a seat's own finding nobody actioned.
+
 ## What this repository is
 
 | | |
