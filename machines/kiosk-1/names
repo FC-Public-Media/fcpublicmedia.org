@@ -1,0 +1,29 @@
+# What this machine is called, declared — because the name is what `binding`
+# matches on, and matching is how a checkout learns which profile it wears.
+#
+# THIS IS INTENT, NOT A MIRROR. The machine is asked at run time; this file is
+# what the answer is supposed to be, and `../binding` reports when they differ.
+#
+# THREE COLUMNS, AND THE FIRST IS THE PLATFORM. macOS has a `ComputerName` and
+# Windows has a `COMPUTERNAME` and they are not the same field — one is a
+# display string with spaces and an apostrophe in it, the other is a
+# NetBIOS-flavoured label. Sharing a key would let one host match the other's
+# name. This is the file that made that a real risk rather than a theoretical
+# one, because it is the first non-macOS profile here.
+#
+# UNFILLED. Nobody has read this off the box yet. Until somebody does,
+# `machines/binding` matches nothing here and reports the checkout as
+# unclaimed — which is correct, and is the clean state rather than a fault.
+#
+# To fill it, on the machine:
+#
+#     echo %COMPUTERNAME%          :: cmd
+#     $env:COMPUTERNAME            # PowerShell
+#
+# and put the answer below. Case does not matter — `binding` compares
+# case-insensitively, because hostnames are case-insensitive and the
+# alternative is a file that has to be typed in the same shift state as the
+# dialog box it came from.
+
+# platform   key             value
+# windows    ComputerName

@@ -1,0 +1,143 @@
+# gear.yml — what an FCPM machine's crew stands on, by default.
+#
+# Gear is the software a machine has that somebody put there on purpose. The
+# word and the five fields are station-node's (`docs/gear.md` in that
+# repository); what is different here is the platform, and the difference is
+# not cosmetic.
+#
+# THIS IS THE DEFAULT, NOT THE ONLY ONE. A profile may carry its own
+# `gear.yml`, and if it does, it REPLACES this file for that machine rather
+# than merging with it. Merging two rosters quietly produces a third that
+# nobody wrote and nobody can read off a page. See `README.md`, "What a
+# default is".
+#
+# PRESENCE IS NOT DECLARED HERE. Whether a thing is actually on a machine is
+# discovered, never written — the same rule `binding` follows for the machine's
+# own name. An entry that is not installed is WANTED, and on a fresh box every
+# entry starts there. That is this file's main job on day one, which is the day
+# it is being written on.
+#
+# --------------------------------------------------------------------------
+# WHAT WINDOWS CHANGED, AND WHY IT IS THE INTERESTING PART OF THIS FILE
+# --------------------------------------------------------------------------
+# station-node's gear is defined as A LAUNCHABLE — "the thing you reach with
+# `open -a`" — explicitly as against a CLI on PATH, which it carries somewhere
+# else entirely, as a `link` entry in its MANIFEST. That is a real boundary on
+# macOS: an `.app` bundle in /Applications is a different kind of object from an
+# executable in ~/.local/bin, found a different way, identified by a bundle id,
+# and installed by a different act.
+#
+# On Windows that boundary is not there to draw. `winget install Git.Git` and
+# `winget install Microsoft.VisualStudioCode` are the same act, land in the same
+# inventory, and are enumerated by the same `winget list` — one of them puts an
+# icon in the Start menu and the other puts a command on PATH, and the package
+# manager does not care which. VS Code does both.
+#
+# So this file lists WHATEVER WINGET OWNS, launchable or not. Splitting it would
+# mean maintaining a distinction the platform does not make, against a census
+# that does not honour it — and the census is the thing that has to stay cheap,
+# because a census nobody runs is a list that rots.
+#
+# The five fields station-node asks a new entry for all survive the move:
+#
+#   a canonical name           -> `gear:`, unchanged
+#   an identifier that survives a move, where a path does not
+#                              -> `package:`, the winget id. Same job the
+#                                 bundle identifier does on darwin: `Git.Git`
+#                                 is stable across a reinstall, a version bump
+#                                 and a different install root.
+#   who may replace it         -> `provisioner:`, and `winget` is the answer
+#                                 station-node's own list already names without
+#                                 implementing.
+#   what a replacement costs   -> `restart-tier:`
+#   what it must not lose      -> `holds:`. Thinner here than on macOS, and
+#                                 honestly so: there is no TCC, so there is no
+#                                 designated-requirement check to inherit a
+#                                 grant through. What survives an upgrade on
+#                                 Windows is per-user configuration and a PATH
+#                                 entry, which is a smaller claim.
+#
+# THE CENSUS IS ONE COMMAND AND NOBODY HAS RUN IT YET:
+#
+#     winget list
+#
+# That is the Windows equivalent of the `gear aboard` scan, and it is better
+# than the macOS one, because it reports who installed each thing. The first
+# run of it on a real box is the most valuable unwritten fact about any machine
+# in this file.
+
+version: 1
+platform: windows
+
+gear:
+  - gear: git
+    for: >
+      Having the repository at all. First thing on the box, and the reason
+      anything else here can be said to be version-controlled.
+    package: Git.Git
+    provisioner: winget
+    updates: winget
+    restart-tier: none
+    holds: "the PATH entry, and ~/.gitconfig"
+    # Installed on the first FCPM Windows host, 2026-09-23. `machines/kiosk-1`.
+    state: installed
+
+  - gear: vscode
+    for: >
+      The editor, and the thing that makes a Windows box usable as a place to
+      work rather than a place to run something.
+    package: Microsoft.VisualStudioCode
+    provisioner: winget
+    updates: winget
+    restart-tier: app
+    holds: "the `code` PATH entry, the user profile in %APPDATA%\\Code, and extensions"
+    state: installed
+
+  - gear: claude-code
+    for: >
+      The agent. The crew this gear is for — see `crew.yml`, which declares the
+      provider rather than the install.
+    # UNCONFIRMED, AND DELIBERATELY NOT GUESSED. A winget package exists; its
+    # identifier has not been read off a real machine, and an id written from
+    # memory is exactly the kind of plausible-looking wrong value this
+    # repository's tests exist to catch elsewhere. On the box:
+    #
+    #     winget search claude
+    #
+    # and put the Id column here.
+    # package:
+    #
+    # PROVISIONED BY HAND, AND THAT IS A DIVERGENCE RATHER THAN A DECISION.
+    # It went on with the PowerShell installer before anybody checked whether
+    # winget had it. Autumn, 2026-09-23: *"Claude, I was just putting in. Um,
+    # oh, wait, there is a WinGet. I'm a dummy."*
+    #
+    # Recorded as `hand` because that is what happened, not as `winget` because
+    # that is what should have happened. A copy installed outside the package
+    # manager does not appear in `winget list` and does not upgrade with
+    # everything else, which is the whole cost of the divergence and the reason
+    # to write it down rather than fix it silently on the next box.
+    provisioner: hand
+    updates: self
+    restart-tier: app
+    holds: "the PATH entry, and ~/.claude"
+    state: installed
+    reconcile: >
+      Confirm the winget id, then decide whether to reinstall through winget on
+      this box or accept hand-provisioning as this entry's permanent answer.
+      Either is fine; having it be an accident is not.
+
+# WHAT A FOURTH ENTRY HAS TO SUPPLY, written before there is one so that these
+# three do not quietly become the specification:
+#
+#   - a canonical name this repository is willing to be held to
+#   - a winget id, or an explicit `provisioner:` that is not winget and a
+#     sentence saying why
+#   - what a replacement costs: the restart tier
+#   - what a replacement must not lose
+#
+# A macOS entry supplies the same four with `platform: darwin`, a `bundle:`
+# instead of a `package:`, and `provisioner: brew | mas | hand`. The editing
+# bays are macOS and claim no gear yet; when the first one does, it gets its own
+# `gear.yml` in its own profile rather than a `platform:` key in this one.
+# Two platforms in one roster is how a default stops being readable.

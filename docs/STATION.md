@@ -48,6 +48,26 @@ So nothing in this document should be read as waiting on hardware. The
 repository can carry the posture before any machine runs it, and the parts that
 need a machine are named as such.
 
+> **Amended 2026-09-23, and the amendment is to the fact rather than to the
+> reasoning.** There is now a machine being stood up for this:
+> [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md).
+>
+> > I am setting up Git and Claude on one of the kiosk boxes because I want to
+> > use it to prove fcpm.org as a station node of its own.
+>
+> The paragraph above is left as written because it was true when it was
+> written and the position it states is the one that changed — overwriting it
+> would hide the change rather than record it. What it got right survives: the
+> repository did carry the posture before any machine ran it, which is why
+> there was something for that box to be checked out *into*.
+>
+> One thing the 2026-09-17 briefing could not have anticipated: **the machine
+> is Windows.** Everything the prototype does about being on a machine —
+> `open -a`, launchd, `scutil`, Homebrew — assumes it is not. What that costs
+> and what survives it is worked through in
+> [`../machines/README.md`](../machines/README.md), "Windows is the default
+> here".
+
 ---
 
 ## This repository is public, and that is the design constraint
@@ -386,6 +406,57 @@ two-bay arrangement invites the wrong inference:
 
 Two checkouts of one repository. The plural is machines (see `machines/`), never
 holdings.
+
+## What stays with the prototype and what moves to the box
+
+**Added 2026-09-23**, after [`../machines/kiosk-1`](../machines/kiosk-1/PROFILE.md)
+came up and an agent was inside it. The section above settled what FCPM *takes*
+from the prototype as a shape. This one is narrower and more operational: now
+that there is a machine, which things actually run on it.
+
+**The arrangement until today was client and server.** station-node runs the
+services, and the box reaches them across the LAN — which is what the
+render-cooperatively passage at the top of this document describes from the
+other side. That was correct while the box was a thing that might work.
+
+**It has since been seen to work.**
+
+> I have station-node running the services that it was going to access over the
+> network, but it may be free to run it by itself now that I've actually seen
+> it turn on and do things. […] I want it to do its own station-like services.
+> So we are working towards that.
+
+So the direction is: **station-like services move to the box.** Which ones, in
+what order, and whether any of them are better left central is not decided, and
+it is the live question rather than a formality — a service that is genuinely
+one-per-studio and a service that is genuinely one-per-machine look identical
+until somebody names them.
+
+**Publishing does not move, and that is settled rather than pending.**
+
+> I'm still going to handle its publishing, so it's correct that we did put it
+> as a site in this process. On station node.
+
+This repository is mounted in station-node's library as a submodule —
+`library/FCPM/fcpublicmedia.org`, in that node's `.gitmodules` — and it stays
+there. The confirmation matters as much as the decision: putting FCPM in as a
+*site* was the right call and is not something to revisit now that there is a
+machine with opinions.
+
+**Why this is written down rather than left to be worked out.** The two halves
+pull in opposite directions and look like one question. A box that grows
+station-like services looks, from inside it, exactly like a box that should
+publish — it has the repository, it has an agent, it has a reason. It should
+not, and an agent that finds itself designing a publishing path on that machine
+has taken a wrong turn. Note also that the live website is built by Cloudflare
+from the git connection regardless (see [`deploying.md`](deploying.md)); the
+two facts are not in tension, because one is about where the repository lives
+and the other about how the site is built.
+
+**[`TENANCY.md`](TENANCY.md) still limits all of this.** The prototype is being
+copied for its *shape* and not its *role*, and a machine that runs station-like
+services has not thereby become station-node. What travels is what that
+document says travels.
 
 ## The journal: wanted, and most of what was wanted already exists
 
