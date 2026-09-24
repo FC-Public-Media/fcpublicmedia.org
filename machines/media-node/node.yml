@@ -1,0 +1,63 @@
+# node.yml — what the media node shows, and on which screen.
+#
+# Read by door.py on every request, so an edit is live on the next poll.
+# Facts stay where they already live: the guest SSID comes from
+# site/_data/wifi.yml and the check-in URL from kiosk/welcome.yml.
+# This file holds only what is specific to this machine and this layout.
+
+# ---------------------------------------------------------------------------
+# SCREENS. Observed 2026-09-23 as Autumn set them up by hand: Edge,
+# Profile 1, one full-screen window per portrait panel. `door.py screens`
+# checks that this is still true, and `door.py screens --launch` opens
+# whatever is missing. The third panel goes here when its adapter turns up.
+browser: msedge
+screens:
+  - name: centre
+    display: DISPLAY1        # the primary panel
+    rect: [0, 0, 1050, 1680]
+    url: /kiosk/
+  - name: left
+    display: DISPLAY2
+    rect: [-1050, 0, 1050, 1680]
+    url: /kiosk/
+
+# ---------------------------------------------------------------------------
+# NETWORKS shown as Wi-Fi QR codes on the welcome screen.
+#
+# Passwords are NEVER here. Each one is read from Windows Credential Manager
+# on this machine, under the target `fcpm-wifi:<ssid>`, with local-machine
+# persistence so it survives logoff. Set it once at a terminal. The prompt
+# does not echo, and asks twice:
+#
+#     %LOCALAPPDATA%\media-node\venv\Scripts\python.exe machines\media-node\door.py wifi-password "FC Public Media Guest"
+#
+# (Not cmdkey: its parser rejects quoted targets with spaces in them.)
+#
+# The QR is built in memory when a screen asks for it and never written to
+# disk, because a Wi-Fi QR is the password in a font (site/_data/wifi.yml).
+# Until a password is set, the screen draws a marked empty slot.
+networks:
+  - from: wifi               # site/_data/wifi.yml: ssid, security, confirmed
+    label: Guest
+  - ssid: FC Public Media Audio
+    security: wpa
+    label: Audio
+    # The AirPort Express. It joins you to the AirPlay speaker on the spare
+    # mixer input. Its name is Autumn's (2026-09-23).
+
+# ---------------------------------------------------------------------------
+# WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
+# stand-in until then. "No apps. Free public tech." is hers. When the wording
+# settles it belongs in kiosk/content.yml, where the rest of the kiosk's
+# editorial half lives.
+wording:
+  checkin:
+    head: Check in
+    sub: No apps. Free public tech.
+  wifi:
+    head: Wi-Fi
+    sub: Point your camera. It joins by itself.
+  footer:
+    on: On now
+    next: Next
+    none: Ask whoever is at the desk.

@@ -1,0 +1,20 @@
+# rota.yml — who is on at the studio, by default.
+#
+# The standing rotation, as agreed at a board meeting. It is canonical, and it
+# is what the welcome screen's footer falls back to when no other source says
+# who is on. Calendars come later. Microsoft 365 is the likely first one, and
+# which calendar it is has not been settled. They will sit in front of this
+# file, and this file keeps answering whenever they cannot.
+#
+# Times are the studio's local time, 24-hour. `days` takes mon tue wed thu fri
+# sat sun. A shift with several names shows them all.
+#
+#   - days: [tue, thu]
+#     from: "10:00"
+#     to: "14:00"
+#     who: [A Name, Another Name]
+#
+# EMPTY UNTIL AUTUMN GIVES THE NAMES. With no shifts, the footer says to ask
+# at the desk, which is true.
+
+shifts: []
