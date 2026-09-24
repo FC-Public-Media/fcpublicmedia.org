@@ -382,7 +382,7 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; font-weight:500; color:var(--soft); }
 
 /* The map: what can be booked, lit when in use. */
-.stations { position:absolute; left:6vw; right:calc(18% + 7vh + 3vw); top:50%; translate:0 -50%;
+.stations { position:absolute; left:6vw; right:calc(16% + 7vh + 2vw); top:50%; translate:0 -50%;
   display:flex; flex-direction:column; gap:2.6vh; }
 .group { display:grid; grid-template-columns:2.4vh 1fr; column-gap:1.6vw; align-items:center; }
 .group .mark { width:2.4vh; height:2.4vh; }
@@ -391,16 +391,16 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .group.coupled .names { border-left:.25vh solid var(--slate); padding-left:1vw; margin-left:-1.25vw; }
 .times { grid-column:2; display:flex; flex-wrap:wrap; align-items:center; gap:.9vh 1vw; margin-top:1vh; }
 .times:empty { display:none; }
-.pill { font-size:1.7vh; font-weight:650; padding:.45vh 1.3vh; border-radius:99px;
+.pill { font-size:1.5vh; font-weight:650; padding:.35vh 1.05vh; border-radius:99px;
   border:.25vh solid var(--signal); font-variant-numeric:tabular-nums; white-space:nowrap; }
 .pill.solid { background:var(--signal); color:var(--ink); }
 .pill.outline { color:var(--signal); }
-.until { font-size:1.7vh; font-weight:650; color:var(--signal); white-space:nowrap; }
+.names .until { font-size:1.6vh; font-weight:650; color:var(--signal); white-space:nowrap; }
 .note { font-size:1.7vh; color:var(--dim); }
 .group.preparing .names span { color:var(--dim); }
 .group.preparing .mark { opacity:.6; }
 
-.wifi { position:absolute; left:82%; top:50%; translate:-50% -50%;
+.wifi { position:absolute; left:84%; top:50%; translate:-50% -50%;
   display:flex; flex-direction:column; gap:3vh; }
 .qr { display:block; width:14vh; height:14vh; background:#fff; padding:1.2vh; box-sizing:border-box; }
 .qr img { display:block; width:100%; height:100%; }
@@ -439,7 +439,7 @@ NOW_JS = """<script>
       row.appendChild(names);
       var times = el('div', 'times');
       if (g.preparing && g.note) times.appendChild(el('span', 'note', g.note));
-      if (g.until) times.appendChild(el('span', 'until', W.until + ' ' + g.until));
+      if (g.until) names.appendChild(el('span', 'until', W.until + ' ' + g.until));
       g.next.forEach(function (b, i) {
         times.appendChild(el('span', 'pill ' + (i ? 'outline' : 'solid'), b.when + (b.who ? ' \\u00b7 ' + b.who : '')));
       });
