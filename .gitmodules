@@ -10,3 +10,13 @@
 	# out with `submodules: recursive` under a GITHUB_TOKEN scoped to this
 	# repository alone — which cannot read another private repo.
 	update = none
+[submodule ".library-engine"]
+	path = .library-engine
+	url = https://github.com/FCCN-ANTIBODY/library.anecdote.channel.git
+	# Mounted 2026-09-24, as README.md's "Library (`.library-engine`)" already
+	# claimed. Mounting an engine is this node's sign that it can do that
+	# engine's work, or offer to. FCPM's library itself is the `library`
+	# BRANCH, not a folder on main ("a library is a branch": the engine's
+	# SHELVES.md). Answering the engine's residency.yml wants (stacks,
+	# catalogue, intake, seats, petitions) is the next gesture, and it is not
+	# done here. Pinned where station-node pins it.
