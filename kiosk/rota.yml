@@ -21,6 +21,25 @@
 # NO MONDAY, on purpose. The building has work on then. Coming in is
 # possible, but nobody has to be here.
 
+# WHO CAN HELP WITH WHAT. When a station has nothing booked this week, the
+# welcome screen lists who can help with it and when they are next in. A
+# person's tags are matched against the station's activities, which come from
+# site/_data/facilities.yml (video, green-screen, lighting, podcast, audio,
+# editing) or from node.yml for stations the site does not list yet
+# (digitization).
+#
+# A person with no tags counts as a host, who can help with anything, because
+# being on the rota already says that much. So an empty list is a truthful
+# starting point, and it narrows as tags arrive. The tags are not written
+# yet: they are Autumn's to give.
+crew:
+  James: []
+  Morey: []
+  Nate: []
+  Chris: []
+  Autumn: []
+  Josh: []
+
 shifts:
   - days: [tue]
     from: "14:30"

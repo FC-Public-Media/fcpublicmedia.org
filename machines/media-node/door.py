@@ -147,10 +147,42 @@ def on_now(now=None):
     return {"now": current, "next": nxt, "source": "rota"}
 
 
+WEEK = datetime.timedelta(days=7)
+
+
+def helpers(activities, now):
+    """Who can help with these activities this week, and when they are next in.
+
+    From the rota: a person whose `crew:` tags meet the station's activities.
+    A person with no tags counts as a host, who can help with anything; that is
+    what being on the rota already says. Each person appears once, at their
+    next shift, soonest first, and three at most: a line, not a roster."""
+    rota = load(ROOT / "kiosk" / "rota.yml")
+    crew = rota.get("crew") or {}
+    seen, out = set(), []
+    for begins, _, s in occurrences(rota.get("shifts") or [], now):
+        if begins > now + WEEK:
+            break
+        for person in s.get("who") or []:
+            tags = set(crew.get(person) or [])
+            if person in seen or (tags and not tags & set(activities)):
+                continue
+            seen.add(person)
+            out.append("%s %s" % (person, "now" if begins <= now else when(begins, now)))
+            if len(out) == 3:
+                return out
+    return out
+
+
 def stations(now=None):
-    """The studio map: each group of stations, lit while in use, with its next
-    two bookings. Coupled rooms are one group, because booking either one
-    takes both."""
+    """The studio map: each group of stations, lit while in use.
+
+    Bookings are ranked across the WHOLE map, not per station. People come in
+    one at a time, so the single next appointment anywhere is the solid pill,
+    the one after it is the outline pill, and anything else inside the week is
+    soft. Nothing past a week is shown. A station with nothing booked this week
+    says who can help with it and when instead. Coupled rooms are one group,
+    because booking either one takes both."""
     now = now or datetime.datetime.now()
     cfg = node()
     wanted = cfg.get("facilities") or []
@@ -162,18 +194,25 @@ def stations(now=None):
             continue
         if f.get("stations"):
             single = name[:-1] if name.endswith("s") else name
-            groups += [{"names": ["%s %d" % (single, i + 1)]} for i in range(int(f["stations"]))]
+            groups += [{"names": ["%s %d" % (single, i + 1)], "activities": f.get("activities") or []}
+                       for i in range(int(f["stations"]))]
             placed.add(name)
             continue
-        names = [name] + ([f["couples_with"]] if f.get("couples_with") in wanted else [])
+        names = [name]
+        acts = list(f.get("activities") or [])
+        if f.get("couples_with") in wanted:
+            names.append(f["couples_with"])
+            acts += (facilities.get(f["couples_with"]) or {}).get("activities") or []
         placed.update(names)
-        groups.append({"names": names})
+        groups.append({"names": names, "activities": acts})
     for s in cfg.get("stations") or []:
         groups.append({"names": [s["name"]], "note": s.get("note", ""),
+                       "activities": s.get("activities") or [],
                        "preparing": bool(s.get("preparing"))})
 
     sample = cfg.get("bookings") == "sample"
     entries = (load(HERE / "bookings.sample.yml").get("bookings") or []) if sample else []
+    upcoming = []
     for g in groups:
         g["coupled"] = len(g["names"]) > 1
         spans = [] if g.get("preparing") else occurrences(
@@ -181,12 +220,19 @@ def stations(now=None):
         live = [sp for sp in spans if sp[0] <= now]
         g["lit"] = bool(live)
         g["until"] = when(max(sp[1] for sp in live), now) if live else None
-        # A booking may name who it is for. The sample week names nobody real,
-        # so its bookings are for "Sample", which is also how the screen says
-        # that the map is not the real day.
-        g["next"] = [{"when": when(sp[0], now),
-                      "who": sp[2].get("who") or ("Sample" if sample else "")}
-                     for sp in spans if sp[0] > now][:2]
+        g["next"] = []
+        upcoming += [(sp[0], g, sp[2]) for sp in spans if now < sp[0] <= now + WEEK]
+
+    # A booking may name who it is for. The sample week names nobody real, so
+    # its bookings are for "Sample", which is also how the screen says the map
+    # is not the real day.
+    for rank, (begins, g, b) in enumerate(sorted(upcoming, key=lambda u: u[0])):
+        if len(g["next"]) < 2:
+            g["next"].append({"when": when(begins, now), "rank": min(rank, 2),
+                              "who": b.get("who") or ("Sample" if sample else "")})
+    for g in groups:
+        g["helpers"] = [] if (g["next"] or g["lit"] or g.get("preparing")) else helpers(g["activities"], now)
+        del g["activities"]
     return {"groups": groups, "sample": sample}
 
 
@@ -324,7 +370,7 @@ def with_poll(page):
 
 
 BRAND = """:root { --signal:#ffc61a; --slate:#232830; --ink:#121417;
-  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; }
+  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; --rule:#2f363d; }
 html,body { margin:0; background:var(--ink); color:var(--paper);
   font:18px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; }
 a { color:inherit; }
@@ -388,13 +434,13 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .group .mark { width:2.4vh; height:2.4vh; }
 .names { display:flex; flex-direction:column; gap:.4vh; }
 .names span { font-size:2.3vh; font-weight:600; line-height:1.15; }
-.group.coupled .names { border-left:.25vh solid var(--slate); padding-left:1vw; margin-left:-1.25vw; }
 .times { grid-column:2; display:flex; flex-wrap:wrap; align-items:center; gap:.9vh 1vw; margin-top:1vh; }
 .times:empty { display:none; }
 .pill { font-size:1.5vh; font-weight:650; padding:.35vh 1.05vh; border-radius:99px;
   border:.25vh solid var(--signal); font-variant-numeric:tabular-nums; white-space:nowrap; }
 .pill.solid { background:var(--signal); color:var(--ink); }
 .pill.outline { color:var(--signal); }
+.pill.soft { color:var(--dim); border-color:var(--rule); font-weight:500; }
 .names .until { font-size:1.6vh; font-weight:650; color:var(--signal); white-space:nowrap; }
 .note { font-size:1.7vh; color:var(--dim); }
 .group.preparing .names span { color:var(--dim); }
@@ -440,9 +486,10 @@ NOW_JS = """<script>
       var times = el('div', 'times');
       if (g.preparing && g.note) times.appendChild(el('span', 'note', g.note));
       if (g.until) names.appendChild(el('span', 'until', W.until + ' ' + g.until));
-      g.next.forEach(function (b, i) {
-        times.appendChild(el('span', 'pill ' + (i ? 'outline' : 'solid'), b.when + (b.who ? ' \\u00b7 ' + b.who : '')));
+      g.next.forEach(function (b) {
+        times.appendChild(el('span', 'pill ' + ['solid', 'outline', 'soft'][b.rank], b.when + (b.who ? ' \\u00b7 ' + b.who : '')));
       });
+      if (g.helpers.length) times.appendChild(el('span', 'note', g.helpers.join(' \\u00b7 ')));
       row.appendChild(times);
       box.appendChild(row);
     });

@@ -47,9 +47,14 @@ networks:
 
 # ---------------------------------------------------------------------------
 # STATIONS on the studio map: a logical map of what can be booked, not a
-# floor plan. Each one has a square that lights when it is in use, a solid
-# pill for its next booking, and an outline pill for the one after. Two are
-# shown, not three, because two already show the size of the gap.
+# floor plan. Each one has a square that lights when it is in use.
+#
+# Bookings are ranked across the whole map, because people come in one at a
+# time. The single next appointment anywhere is the solid pill, and the one
+# after it, wherever it is, is the outline pill. Anything else in the next
+# seven days is soft grey, and nothing further out is shown. A station shows
+# at most two. A station with nothing booked this week says who can help with
+# it and when (kiosk/rota.yml, `crew:`) in soft text instead.
 #
 # `facilities` pulls from site/_data/facilities.yml. Rooms that
 # `couples_with` each other are drawn as one group sharing one square, since
@@ -62,6 +67,7 @@ facilities: [Video Studio, Podcast Studio, Editing Bays]
 stations:
   - name: Digitization
     note: Opening soon
+    activities: [digitization]
     # Bay 3, back as the digitization station: VCR, Blu-ray, burned discs,
     # made into files. This node orchestrates it. It is being prepared and
     # cannot launch yet, so it takes no bookings and shows its note instead.
