@@ -18,3 +18,4 @@
 2026-09-23    samba     a share's filesystem is readable over SMB -> Samba reports NTFS whatever is underneath; FAT limits can't be ruled out from here
 2026-09-23    bash      a quoted heredoc passes backslashes through -> the tool call ate them; UNC paths arrived broken. Write the file instead
 2026-09-24    python    running the repo's tests leaves the tree clean -> generators rewrite welcome.js and prices.js with CRLF on Windows; the door stops rebasing
+2026-09-24    edge      --new-window --start-fullscreen opens full-screen -> a running Edge takes it, restores its session, ignores the flag
