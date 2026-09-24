@@ -37,8 +37,13 @@ The other half, from the same conversation:
 > are being prototyped by our host here, the station node.
 
 So the arrangement is **guest hosting, and it is temporary by design.**
-Station-node renders the kiosk because FCPM has no machine yet (see `STATION.md`,
-*"There is no FCPM station-node machine yet, and that is deliberate"*). The
+Station-node renders the kiosk because FCPM had no machine of its own when this
+was written — and **that stopped being true the next day**, which is worth
+knowing before reading the rest as current. `machines/kiosk-1/` is a Windows box,
+stood up 2026-09-23, *"the one who grows up thinking of itself as a media node"*;
+the `STATION.md` paragraph this sentence used to cite is now amended rather than
+true. So the handover below is not hypothetical, and the property that makes it
+free is being cashed in sooner than expected. The
 artifact is shaped so that when FCPM does have one, **the artifact does not
 change** — only who reads it. Her framing of the endpoint, same day:
 
@@ -283,7 +288,23 @@ building should write rather than an agent:
   not exist yet. Nothing here feeds it and no artifact for it has been invented.
 - **No media-drop kiosk.** A second kiosk on triple portrait monitors has been
   described. `room:` exists so each screen says where it is rather than
-  assuming, but nothing here serves that one.
+  assuming.
+
+  > **Superseded the day after this was written.** That machine exists and is
+  > described: [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md)
+  > — *"It is the box with the three portrait panels. Confirmed rather than
+  > inferred."* And something does serve it:
+  > [`../brand/idle/index.html`](../brand/README.md), which carries a marked
+  > empty element and says of it *"The slot in the idle screen is a slot on this
+  > box."*
+  >
+  > **That slot is what this artifact is for**, and neither side arrived at it by
+  > agreement — the panel was built with a hole in it and the content was built
+  > with no renderer, independently, and they fit. Whoever wires them should have
+  > `#slot` read `welcome.yml` and poll `revision`.
+  >
+  > Not wired here. Three pieces of work by three hands meet at that seam and
+  > which of them owns the join is a coordination call, not a technical one.
 
 ---
 
