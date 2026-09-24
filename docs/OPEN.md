@@ -68,6 +68,39 @@ before the file was added*. Nothing sensitive was in it.
 Recorded because *we fixed it* and *we know what was exposed, and for how long*
 are different claims, and only the first one is true.
 
+## `/check-in/` on a shared browser shows the last visitor to the next one
+
+Found 2026-09-23, while working out what a studio kiosk may display. **It is not
+a kiosk problem** — it is true of that page today, on any machine more than one
+person uses, and it is filed here rather than in the kiosk work for that reason.
+
+`site/assets/js/checkin.js` keeps the visit in `localStorage`, which is exactly
+right on a personal phone and is what the page promises: *"Your visits stay on
+your own phone."* The keys are at the top of the file — `fcpm.profile` holds
+**name, reason, note and email**, and `fcpm.checkins` holds up to
+`history_limit` past visits, currently 200.
+
+On one shared browser those accumulate into a single profile, and the form
+**prefills the previous visitor's name and email** for whoever sits down next.
+The page's promise is not merely weakened there, it is inverted: the one place
+the data was supposed never to go is another visitor's screen.
+
+The realistic case is not a kiosk. It is **a staffer opening `/check-in/` on the
+desk machine to help somebody who is struggling with it**, which is a helpful
+thing to do and leaves that person's details in the browser.
+
+To check, on any machine where somebody has checked in:
+
+```js
+JSON.parse(localStorage.getItem('fcpm.profile'))
+```
+
+Nothing is decided. Worth knowing that the page already has a clear-down —
+`dropStore` over all five keys, wired to a control on the page — so the cheap
+version may be prompting rather than building anything. Whether shared-machine
+use should be designed for at all is Autumn's call; the kiosk itself sidesteps it
+by showing a QR and never loading the page (see [`KIOSK.md`](KIOSK.md)).
+
 ## The publish guard is the thing to extend, not the exclude list
 
 `site/bin/test_nothing_internal_is_published.py` is what stands between internal

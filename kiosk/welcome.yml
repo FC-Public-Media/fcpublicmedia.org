@@ -1,0 +1,30 @@
+# GENERATED FILE — do not edit.
+#
+#   python3 bin/build-kiosk.py
+#
+# Edit `kiosk/content.yml` for the wording, or `site/_data/` for the facts,
+# then regenerate. `bin/build-kiosk.py --check` fails if this file is stale.
+#
+# This is the whole contract between FCPM and whatever renders a kiosk. It is
+# inert: no template syntax, no includes, nothing to resolve. It names no host,
+# no port and no address, so the machine serving it can change without this
+# file changing. See docs/KIOSK.md.
+
+revision: 9e55079fd1d7
+place: Fort Collins Public Media
+room: the welcome desk
+greeting: Welcome in. Scan the code to check in, and help yourself to the guest Wi-Fi — there is nothing to sign up for.
+panels:
+- panel: Checking in
+  say: www.fcpublicmedia.org/check-in/
+  qr:
+    image: site/assets/img/check-in-qr.svg
+    encodes: https://www.fcpublicmedia.org/check-in/
+    alt: QR code linking to the check-in page
+  note: Scan it with your own phone. Your visits stay on your phone — we don't make you an account.
+- panel: Guest Wi-Fi
+  say: FC Public Media Guest
+  note: Open Wi-Fi settings and pick this network. The password is on the printed card by the desk, or ask and we'll tell you.
+- panel: Need a hand?
+  say: Ask whoever is at the desk.
+  note: If nobody is about, the studio phone and email are on the contact page.

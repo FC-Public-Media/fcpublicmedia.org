@@ -89,6 +89,7 @@ site/                THE WEBSITE, and the build root. Jekyll runs from in here.
   bin/               build tooling and the syncs. Excluded from the build.
   tests/             browser tests. Excluded from the build.
 docs/                everything written down. Outside `source:`, so unpublishable.
+kiosk/               what a studio screen says. Content only, no renderer. See KIOSK.md.
 machines/            one profile per host this can plausibly run on. See its README.
 worker/              the broker. Its own Cloudflare Worker. Deployed separately.
 site-template/       what a member's own repository holds. Data only, no markup.
@@ -199,6 +200,11 @@ something built in safe mode, and then fail without saying so.
 **So the way a node holding reaches the site is that something writes it into
 `site/_data/`** — and this repository has been doing exactly that, five times
 over, since before it was a node:
+
+(`bin/build-kiosk.py` is the first traffic in the opposite direction: a root
+concern *reading* `site/_data/` to produce `kiosk/welcome.yml`. Same rule, other
+end — the root reaches down freely, and nothing in `site/` knows `kiosk/` is
+there. See [`KIOSK.md`](KIOSK.md).)
 
 | what | from | into |
 |---|---|---|
