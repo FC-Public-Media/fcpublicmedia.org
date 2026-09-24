@@ -1,1 +1,14 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Mount the library engine at .library-engine
+`README.md` has claimed `.library-engine` ("We use the civic-node pattern and FCCN-ANTIBODY's library driver") since the site became the node, and nothing was mounted. This mounts it: `FCCN-ANTIBODY/library.anecdote.channel`, pinned at `8ede250`, where station-node pins it.
+
+**The library itself is unchanged.** It is still the `library` branch (`trade/`, `city/`, `voices/`, all empty on purpose), which is the engine's own model: *"A library is a branch"* (`SHELVES.md`). The mount goes on `main`, where the engines run, and the branch stays a place nobody pulls to get something else.
+
+**What the mount means (Autumn, 2026-09-24):** submoduling an engine is this node's sign that it can do that engine's work, or offer to. This is gesture 3 in the engine's `ADOPTING.md`.
+
+**Not done here, on purpose:** answering the engine's `residency.yml` wants (`stacks`, `catalogue`, `intake`, `seats`, `petitions`). That is the next gesture, and binding those labels to places is a decision rather than a default. The `.gitmodules` comment says so.
+
+It is a public repository, so `publish-member-sites.yml`'s `submodules: recursive` can check it out. It is not part of the site build (`site/` cannot see the root).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+https://claude.ai/code/session_01FYWdc6E3DcWLcWvKHbQMeh
