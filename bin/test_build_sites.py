@@ -109,6 +109,64 @@ class ManifestTests(unittest.TestCase):
         self.assertIn("listed twice", str(caught.exception))
 
 
+class DeliveryTests(unittest.TestCase):
+    """The switch: how a host deploys a site. docs/deploying.md, "The switch"."""
+
+    def test_our_own_site_is_delivered_as_source_from_site(self):
+        """The self-sufficiency guarantee. As long as this holds, a plain git
+        build on any Cloudflare account, rooted at site/, publishes exactly
+        what is live, with no station-node and no media node in the loop.
+        Changing it is a decision, and the Cloudflare root directory has to
+        move in the same act."""
+        by_path = {e.path: e for e in bs.load_manifest()}
+        site = by_path["site"]
+        self.assertEqual(site.domain, "www.fcpublicmedia.org")
+        self.assertEqual(site.deliver, "source")
+        self.assertEqual(site.deploy_root, "site")
+
+    def test_the_source_root_is_self_describing(self):
+        """A host pointed at the root finds everything it needs there."""
+        root = bs.REPO / "site"
+        for needed in ("_config.yml", "Gemfile", ".ruby-version", "wrangler.jsonc"):
+            self.assertTrue((root / needed).is_file(), f"site/{needed} is missing")
+
+    def test_every_intermediate_delivery_has_a_servable_root(self):
+        """Switching to `intermediate` is only safe if the folder is there to
+        serve, with its manifest and its own host config. Otherwise the switch
+        points a host at nothing."""
+        for e in bs.load_manifest():
+            if e.deliver != "intermediate":
+                continue
+            root = bs.REPO / e.deploy_root
+            for needed in ("INTERMEDIATE.yml", "wrangler.jsonc", "_site"):
+                self.assertTrue((root / needed).exists(), f"{e.deploy_root}/{needed} is missing")
+
+    def test_intermediate_roots_are_named_for_their_domain(self):
+        e = bs.Entry(path="site", role="site", domain="you.example.org", deliver="intermediate")
+        self.assertEqual(e.deploy_root, "_intermediates/you.example.org")
+
+    def test_an_unknown_delivery_is_refused_with_the_valid_ones_named(self):
+        with self.assertRaises(ValueError) as caught:
+            bs.Entry(path="x", role="site", deliver="rsync")
+        self.assertIn("unknown deliver", str(caught.exception))
+        self.assertIn("intermediate", str(caught.exception))
+
+    def test_an_intermediate_needs_a_domain(self):
+        with self.assertRaises(ValueError):
+            bs.Entry(path="x", role="site", deliver="intermediate")
+
+    def test_deploy_root_prints_the_switch(self):
+        with unittest.mock.patch("sys.stdout") as out:
+            code = bs.main(["--deploy-root", "www.fcpublicmedia.org"])
+        self.assertEqual(code, 0)
+        printed = "".join(c.args[0] for c in out.write.call_args_list)
+        self.assertEqual(printed.strip(), "source\tsite")
+
+    def test_deploy_root_refuses_a_domain_nobody_declared(self):
+        with unittest.mock.patch("sys.stderr"):
+            self.assertEqual(bs.main(["--deploy-root", "nowhere.example"]), 2)
+
+
 class RoleTests(unittest.TestCase):
     def test_listed_is_never_built_and_never_shells_out(self):
         calls = []

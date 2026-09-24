@@ -44,6 +44,46 @@ too.**
 Pointing it at `worker/` would deploy the **broker** instead of the site — that
 directory is a second, complete Worker config with a `main` and no assets.
 
+### The switch, and the fallback that needs nobody
+
+Autumn, 2026-09-24: the relay through station-node is *"wanted but secondary to
+us securing publication of ourselves"*. FCPM has its own Cloudflare account, the
+site currently lives on her business account, and if the machines in the building
+had to go anywhere else, FCPM should be wholly self-sufficient.
+
+**The fallback is the table above, unchanged, on FCPM's own account.** It is an
+entirely ordinary Cloudflare git build. Rooted at `site`, it cannot see anything
+else in this repository: not the kiosk, not the engines, not `_intermediates/`.
+It needs no station-node, no media node and no relay. Nothing about it is
+special, and that is the point.
+
+**Which kind of deploy a site gets is one declared switch**, `deliver:` on its
+entry in [`../sites.yml`](../sites.yml):
+
+| `deliver` | what a host does | root directory | build command |
+|---|---|---|---|
+| `source` | runs its own ordinary build | `site` | `bundle exec jekyll build` |
+| `intermediate` | builds nothing, and serves what we pre-baked ([`INTERMEDIATES.md`](INTERMEDIATES.md)) | `_intermediates/<domain>` | none |
+
+Today `www.fcpublicmedia.org` is `source`. A test
+(`bin/test_build_sites.py`, `DeliveryTests`) holds it there, so changing it is a
+reviewed decision and never a drift.
+
+**A dashboard cannot read `sites.yml`. Its root directory field is where the
+switch actually takes effect.** So each kind of delivery is its own
+self-describing root: the host needs to be told nothing but the directory. Every
+host, whether Cloudflare, a station-node relay or anything else, asks the same
+question and gets the same answer:
+
+    python3 bin/build-sites.py --deploy-root www.fcpublicmedia.org
+    source	site
+
+When the switch moves, the root directory setting moves **in the same act**.
+Otherwise the file and the dashboard disagree and the dashboard wins silently.
+Another test refuses `intermediate` for any site whose folder is missing its
+manifest, its `wrangler.jsonc` or its `_site/`, so the switch can never point a
+host at nothing.
+
 ### Why it is `site` and not `/`
 
 It was `/` until 2026-09-18, and the change was not tidiness. The repository

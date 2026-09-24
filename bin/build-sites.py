@@ -105,23 +105,55 @@ ROLES = set(BUILT) | {"listed"}
 # sites.yml, staged underneath it at build time. `site` is ours and whole.
 COMPOSED = {"scaffold", "tenant"}
 
+# HOW A HOST DEPLOYS A SITE: the one switch every host reads. docs/deploying.md,
+# "The switch".
+#
+#   source        the host runs its own ordinary build in `path` (for `site`,
+#                 Cloudflare's `bundle exec jekyll build` with root `site`).
+#                 The fallback that always works, and it needs nothing from us.
+#   intermediate  the host builds nothing. It serves what we pre-baked in
+#                 _intermediates/<domain>/, a root with its own wrangler.jsonc.
+#                 docs/INTERMEDIATES.md.
+#
+# A host's ROOT DIRECTORY is where this switch actually takes effect, because a
+# Cloudflare dashboard cannot read this file. So each kind of delivery is its
+# own self-describing root, and `--deploy-root DOMAIN` prints which one to set.
+DELIVERIES = {"source", "intermediate"}
+INTERMEDIATES = "_intermediates"
+
 
 class Entry:
-    def __init__(self, path, role, why="", name=None):
+    def __init__(self, path, role, why="", name=None, domain=None, deliver="source"):
         if role not in ROLES:
             raise ValueError(
                 f"{path}: unknown role {role!r}. Expected one of "
                 + ", ".join(sorted(ROLES))
             )
+        if deliver not in DELIVERIES:
+            raise ValueError(
+                f"{path}: unknown deliver {deliver!r}. Expected one of "
+                + ", ".join(sorted(DELIVERIES))
+            )
+        if deliver == "intermediate" and not domain:
+            raise ValueError(f"{path}: deliver: intermediate needs a domain to name its folder")
         self.path = path
         self.role = role
         self.why = why
+        self.domain = domain
+        self.deliver = deliver
         # The name is the PUBLIC ADDRESS — the subdomain label and the folder a
         # site is published into. It defaults to the last path segment, but it
         # is separate from the path on purpose: where a repository is checked
         # out is our business and the address is the member's, and moving one
         # must not silently change the other.
         self.name = name or path.rstrip("/").split("/")[-1]
+
+    @property
+    def deploy_root(self):
+        """The directory a host's root-directory setting should name."""
+        if self.deliver == "intermediate":
+            return f"{INTERMEDIATES}/{self.domain}"
+        return self.path.rstrip("/")
 
     @property
     def publishes(self):
@@ -364,9 +396,20 @@ def main(argv=None):
     ap.add_argument("--publish", action="store_true",
                     help="copy built tenant sites into the published tree, "
                          "remove ones no longer listed, and rewrite the listing")
+    ap.add_argument("--deploy-root", metavar="DOMAIN",
+                    help="print how DOMAIN is delivered and the root directory "
+                         "a host should build or serve, then stop")
     args = ap.parse_args(argv)
 
     entries = load_manifest()
+    if args.deploy_root:
+        match = [e for e in entries if e.domain == args.deploy_root]
+        if not match:
+            print(f"error: no site in sites.yml has domain {args.deploy_root}", file=sys.stderr)
+            return 2
+        e = match[0]
+        print(f"{e.deliver}\t{e.deploy_root}")
+        return 0
     if args.only:
         entries = [e for e in entries if e.path == args.only]
         if not entries:
