@@ -164,10 +164,19 @@ anything else. So the site stopped borrowing the root:
 | Config | **`site/_config.yml`**, with no `source:` — the source is where the config lives |
 | Moved with it | `Gemfile`, `.ruby-version`, `wrangler.jsonc`, each read relative to the build root |
 | Output | **`site/_site`**. The dashboard's output field stays `_site` because it is relative to the root directory |
-| The published bytes | **identical.** Every file byte-for-byte, modulo the `?v=<mtime>` cache-busting token |
+| The published bytes | **identical.** Every file byte-for-byte, modulo the `?v=<build time>` cache-busting token |
 
 That last row is how both moves were checked: the tree before and the tree after
 were built and compared file by file. Nothing the public fetches is different.
+
+**That token is the build clock, not a file time**, and the distinction was
+written down wrongly here until 2026-09-24. Five templates carry
+`?v={{ site.time | date: '%s' }}` — `site.css` and four scripts — so **every
+HTML file in `_site` changes on every build, whether or not anything was
+edited.** An mtime would have been stable across a no-op rebuild; this is not.
+Harmless while a host builds and serves in one step, and not harmless if a build
+output is ever committed: the diff is the whole tree every time. See
+[`OPEN.md`](OPEN.md).
 
 **`.ruby-version` is the one that would have failed quietly** if it had been left
 behind. Cloudflare's image reads it from the root directory setting, so the host
