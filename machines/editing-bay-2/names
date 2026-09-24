@@ -5,6 +5,12 @@
 # store, not in a file anybody may link. The machine is asked with `scutil`;
 # this file is what the answer is supposed to be.
 #
+# THREE COLUMNS, AND THE FIRST IS THE PLATFORM. macOS has a `ComputerName` and
+# Windows has a `COMPUTERNAME` and they are not the same field — one is a
+# display string with spaces and an apostrophe in it, the other is a
+# NetBIOS-flavoured label. Sharing a key would let one host match the other's
+# name. See `../binding`.
+#
 # UNFILLED ON PURPOSE. Nobody has stood in front of editing bay 2 and asked it
 # what it answers to. Until somebody does, `machines/binding` matches nothing
 # here and reports this checkout as unclaimed — which is correct, and is the
@@ -16,5 +22,5 @@
 #
 # and put the answer below. Do not guess it from the sticker on the front.
 
-# key             value
-# LocalHostName
+# platform   key             value
+# darwin     LocalHostName

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Say which machine profile this checkout wears, if any.
 
-    machines/binding
+    machines/binding            (macOS, Linux)
+    python machines\\binding     (Windows, where a shebang is not a thing)
 
-Intent lives in `machines/<profile>/names`. Fact is what the machine answers to
-`scutil --get LocalHostName`. This compares them and prints the profile whose
-intent matches the fact.
+Intent lives in `machines/<profile>/names`. Fact is what the host answers when
+asked its name. This compares them and prints the profile whose intent matches.
 
 NO PROFILE IS THE CLEAN STATE. A clone that matches nothing is not broken; it is
 data, which is what these bytes should be by default everywhere they land. That
@@ -18,74 +18,177 @@ confident lie — anything declared is copied by the act that makes it wrong. So
 the only thing committed is what each host *should* be called, and the machine
 is asked at run time.
 
+THE NAME IS ASKED PER PLATFORM, AND THE PLATFORM IS PART OF THE DECLARATION.
+This is the change that Windows forced, and it is not a portability tidy-up.
+The first version asked `scutil --get LocalHostName` and, on anything that is
+not macOS, printed "unclaimed". That answer was correct for the bays and is
+worthless here: FCPM's default host is Windows (`../machines/README.md`, "What a
+default is"), so the common case would have been a repository that can never
+identify the machine it is standing on.
+
+`ComputerName` is also why each `names` line carries its platform. macOS has a
+`ComputerName` and Windows has a `COMPUTERNAME` and **they are not the same
+field** — the first is a display string with apostrophes and spaces in it, the
+second is a NetBIOS-flavoured label. A one-column file would have let those two
+share a key and matched one host against the other's name.
+
+Comparison is case-insensitive everywhere. Windows reports `FCPM-KIOSK-1` for
+what somebody typed as `fcpm-kiosk-1`, and hostnames are case-insensitive by
+definition (RFC 4343), so the alternative is a file that has to be typed in the
+same shift state as the dialog box it came from.
+
 System python on purpose: no yaml, no dependencies, nothing to install on a
-machine whose job is editing video.
+machine whose job is editing video — or on one that was set up an hour ago and
+has a package manager and nothing else.
 """
 
+import os
 import pathlib
+import platform
+import shutil
 import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 
+# The name each platform is asked for, and how. The KEY is what a `names` line
+# must say; the rest is this file's business.
+#
+# Windows: the environment variable first, because it is free, always set, and
+# is the same value `hostname` prints. `hostname` is the fallback for a shell
+# that arrived without the variable — git-bash, a service account, ssh.
+#
+# Linux is here even though nothing claims it yet. It costs three lines, and it
+# is what CI runs on: a runner that prints "unclaimed" has answered honestly,
+# whereas one that prints "this host cannot be asked its name" reads like a
+# fault in the check rather than a true and expected result.
+PLATFORMS = {
+    "darwin": "LocalHostName",
+    "windows": "ComputerName",
+    "linux": "Hostname",
+}
+
+
+def this_platform():
+    """darwin, windows, linux — or None for something none of these describe."""
+    system = platform.system().lower()
+    return system if system in PLATFORMS else None
+
 
 def declared(profile):
-    """The LocalHostName a profile says its machine should answer to, or None."""
+    """Every (platform, name) a profile says its machine should answer to.
+
+    A profile may declare more than one platform. Nothing here needs that
+    today, and refusing it would be a rule invented for no case — a bay
+    reimaged onto a different OS keeps its identity and gains a line.
+    """
     names = profile / "names"
     if not names.is_file():
-        return None
+        return {}
+    found = {}
     for line in names.read_text(encoding="utf-8").splitlines():
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
-        key, _, value = line.partition(" ")
-        if key == "LocalHostName" and value.strip():
-            return value.strip()
+        parts = line.split()
+        if len(parts) != 3:
+            # Said badly rather than said wrongly. Printing it is better than
+            # skipping it: the failure this catches is a one-column line left
+            # over from the macOS-only format, which would otherwise vanish.
+            print(f"  ! {profile.name}/names: expected 'platform key value', got: {line}",
+                  file=sys.stderr)
+            continue
+        where, key, value = parts
+        where = where.lower()
+        if where not in PLATFORMS:
+            print(f"  ! {profile.name}/names: unknown platform {where!r}", file=sys.stderr)
+            continue
+        if key != PLATFORMS[where]:
+            print(f"  ! {profile.name}/names: {where} is asked for "
+                  f"{PLATFORMS[where]}, not {key}", file=sys.stderr)
+            continue
+        found[where] = value
+    return found
+
+
+def actual(system):
+    """What this machine says it is called, or None if it cannot be asked."""
+    if system == "darwin":
+        return _run(["scutil", "--get", "LocalHostName"])
+    if system == "windows":
+        name = os.environ.get("COMPUTERNAME", "").strip()
+        return name or _run(["hostname"])
+    if system == "linux":
+        return _run(["hostname"])
     return None
 
 
-def actual():
-    """What this machine says it is called, or None if it cannot be asked."""
+def _run(argv):
+    if not shutil.which(argv[0]):
+        return None
     try:
-        out = subprocess.run(
-            ["scutil", "--get", "LocalHostName"],
-            capture_output=True, text=True, timeout=5,
-        )
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=5)
     except (OSError, subprocess.SubprocessError):
         return None
     return out.stdout.strip() or None
 
 
+def profiles():
+    """Every profile in machines/.
+
+    A PROFILE IS A DIRECTORY WITH A `PROFILE.md` IN IT. That is a positive
+    definition rather than a list of things to skip, and it is here because the
+    first version — every directory — listed `__pycache__` as a machine the
+    moment anything imported this file. A blocklist would have fixed that one
+    case and waited for the next.
+
+    It also happens to be the honest rule: a profile's page is the profile. A
+    directory with no page is not an undescribed machine, it is not a machine.
+    """
+    return sorted(p for p in HERE.iterdir() if (p / "PROFILE.md").is_file())
+
+
 def main():
-    profiles = sorted(p for p in HERE.iterdir() if p.is_dir())
-    if not profiles:
+    found = profiles()
+    if not found:
         print("No profiles in machines/. Nothing to match against.")
         return 0
 
-    fact = actual()
-    if fact is None:
-        print("This host cannot be asked its LocalHostName (not macOS, or scutil is absent).")
+    system = this_platform()
+    if system is None:
+        print(f"This host runs {platform.system() or 'something'}, which no profile "
+              "format here describes.")
         print("Unclaimed. That is the clean state, not a fault.")
         return 0
 
-    print(f"this machine answers to: {fact}\n")
+    fact = actual(system)
+    if fact is None:
+        print(f"This {system} host could not be asked its {PLATFORMS[system]}.")
+        print("Unclaimed. That is the clean state, not a fault.")
+        return 0
+
+    print(f"this machine runs {system} and answers to: {fact}\n")
 
     matched = []
-    for p in profiles:
+    for p in found:
         want = declared(p)
-        if want is None:
+        if not want:
             state = "unfilled — nobody has asked that machine its name"
-        elif want == fact:
-            state = f"MATCH ({want})"
+        elif system not in want:
+            # Not a mismatch. It is a profile for a different kind of host,
+            # which is the whole reason this directory is a plural.
+            state = "declares " + ", ".join(sorted(want)) + f" — this host is {system}"
+        elif want[system].casefold() == fact.casefold():
+            state = f"MATCH ({want[system]})"
             matched.append(p)
         else:
-            state = f"wants {want}"
+            state = f"wants {want[system]}"
         print(f"  {p.name:<20} {state}")
 
     print()
     if len(matched) == 1:
         print(f"wearing: {matched[0].name}")
-        print(f"read {matched[0].relative_to(HERE.parent)}/PROFILE.md before changing anything here.")
+        print(f"read {matched[0].name}/PROFILE.md before changing anything here.")
         return 0
     if len(matched) > 1:
         # Two profiles claiming one host is a mistake in the files, not a state

@@ -1,0 +1,100 @@
+# crew.yml — who an FCPM machine can muster, and how.
+#
+# A crew is who is here to do the work: sometimes agents, sometimes system
+# services, sometimes the person at the console. This file is the agent half,
+# and it is the MACHINE's declaration rather than a resident's — the same split
+# station-node draws in its own `machine/crew.yml`.
+#
+# THIS IS THE DEFAULT. A profile may carry its own and replace this one whole.
+#
+# IT IS A ROSTER, NOT A STARTUP SCRIPT. Nothing musters because it is listed.
+#
+# --------------------------------------------------------------------------
+# WHAT THIS FILE DOES NOT OWN
+# --------------------------------------------------------------------------
+# `../advocate.yml` already declares the agents that speak for this repository
+# — the seats, what each one watches, and that every session is local and
+# writes nothing. That is a different question from this one and the two must
+# not become two lists of the same thing:
+#
+#   advocate.yml   WHY an agent runs here, and what it is allowed to conclude
+#   crew.yml       WHAT can be started on this machine, and how it is started
+#
+# An advocate round is a thing the crew below is capable of hosting. It is not
+# a second provider.
+#
+# --------------------------------------------------------------------------
+# WHAT WINDOWS CHANGED
+# --------------------------------------------------------------------------
+# station-node's crew answers three questions per provider: how to muster a
+# long-lived pool at an address, how to stop it, and how to enumerate what is
+# running — and for `claude` all three are `ccgroup`, backed by a launchd agent
+# that brings the pools back after a reboot.
+#
+# None of that exists here, and the honest version of this file says so rather
+# than leaving three keys looking like they are about to be filled in.
+#
+# On the first FCPM Windows host the crew is: a person opens a terminal and
+# runs `claude`. There is no pool, no supervisor, no address resolution, and no
+# way to ask from outside what is running. That is not a gap in the record — it
+# is the record. Under the rule these profiles are built on, a claim to have a
+# thing is made by having it; `supervisor:` is absent below because there is no
+# supervisor, and writing one in would be the lie.
+#
+# WHAT WOULD HAVE TO EXIST BEFORE `muster:` COULD BE FILLED IN, written down
+# now so that the first person to want it does not have to re-derive it:
+#
+#   - something that starts an agent rooted at a directory and survives the
+#     terminal closing. On Windows that is a scheduled task at logon or a
+#     service, not launchd, and the two are not the same shape: a service has
+#     no desktop session, and an interactive agent wants one.
+#   - a way to enumerate sessions from outside the process
+#   - a decision about whether a fall is a death, or whether a session is
+#     reattachable. station-node got to skip this because ccgroup answered it.
+#
+# Read by nothing. There is no `crew` command here — this repository's
+# `machines/` runs one thing, `binding`, and that is deliberate (`README.md`).
+# This is a record for a person and an agent to read, which is what most of the
+# useful files in this directory are.
+
+version: 1
+platform: windows
+
+providers:
+  - provider: claude
+    binding: claude-code
+    for: >
+      Claude Code, run at the console by whoever is sitting there. The gear
+      entry for the install itself is in `gear.yml`; this is the fact that it
+      is how work gets done on this machine at all.
+
+    # Asked, never remembered — the one rule here that does carry over whole. A
+    # pid or a session id written at start time is a record of an intention,
+    # and after a crash it is a lie told confidently.
+    muster: "claude          # at the console, in the directory you mean"
+    stand-down: "exit, or close the window"
+    on-duty: "unanswerable from outside the session. See the note above."
+
+    # No supervisor. Nothing brings this back after a reboot, and nothing is
+    # supposed to yet.
+
+    # Whether the provider names its own sessions. Claude derives a title from
+    # the first message. station-node overrides it afterwards with
+    # `station-thaw title`; there is no equivalent here and no need for one
+    # while sessions are not pooled.
+    names: derived
+
+    # Where a session lands. `cwd` means: wherever the person was standing.
+    # station-node's `wing` — a per-session worktree under the library — needs
+    # the library engine, which this repository does not mount.
+    lands: cwd
+
+# WHAT A SECOND PROVIDER HAS TO SUPPLY, so that the first does not quietly
+# become the specification:
+#
+#   - a way to start something rooted at a directory, and stop it
+#   - a way to enumerate what it is running, from outside it, OR an explicit
+#     admission that there is none — which is what the entry above makes, and
+#     which is a complete answer rather than a placeholder
+#   - a session identity stable enough to reattach to, or an admission that a
+#     fall is a death

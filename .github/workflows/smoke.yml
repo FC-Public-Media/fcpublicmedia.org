@@ -65,6 +65,16 @@ jobs:
       - name: Test the design tokens
         run: python3 site/bin/test_tokens.py
 
+      # `machines/binding` is the only thing in machines/ that runs, and it is
+      # the only one that gets BELIEVED — everything else there is a record a
+      # person reads and can argue with. It also just changed format, from one
+      # macOS column to three with the platform first, because macOS's
+      # `ComputerName` and Windows' `COMPUTERNAME` are different fields and a
+      # shared key would let one host match the other's name. A leftover
+      # two-column line has to be refused out loud rather than skipped.
+      - name: Test the machine binding
+        run: python3 bin/test_binding.py
+
       # Same rule, one layer out. The wallpapers in `brand/` are the part of
       # this brand that leaves the repository: somebody downloads a PNG once
       # and then looks at it every day for a year without opening this again.

@@ -1,0 +1,32 @@
+# What an FCPM machine prefers. One line per language: <language> <tool>.
+# Use these when scaffolding or adding a dependency, unless the project already
+# diverges — then say so in THAT project's README, never by editing this file.
+#
+# A DECISION, NOT AN OBSERVATION. Reality is what is on the box. station-node
+# keeps the same two things in two files for exactly this reason: mixing them
+# means the decision churns every time the disk changes.
+#
+# WHY THIS IS SHORTER THAN IT LOOKS LIKE IT SHOULD BE. Most of this repository's
+# work is not a language's work. Ruby is here because Jekyll is, and Python is
+# here because every script in `bin/` and `site/bin/` is standard-library
+# Python 3 run directly — there is no dependency to install and therefore no
+# tool to prefer, which is why `python` names the interpreter rather than a
+# package manager. Node appears only in `worker/` and `site/tests/`.
+#
+# WHAT WINDOWS CHANGED. On macOS a preference like `python uv` is complete,
+# because how the tool arrives is somebody else's file — brew, asdf, a version
+# manager. On Windows the tool and the way it arrives are the same act:
+# `winget install` is how both a language and its package manager appear, so
+# the preference and the provisioning stop being separable. Autumn, 2026-09-23:
+# *"On Windows, I'm using WinGet in the toolchain, which means that toolchain
+# as a file is no longer like that simple over in the station node."*
+#
+# So the third column is the divergence: HOW IT ARRIVES. It is not in
+# station-node's version of this file and it has to be in ours, because on a
+# fresh Windows box nothing below is present until somebody names the package.
+# Where the column is empty, nobody has established it yet.
+
+# language   tool        arrives by
+ruby         bundler     # unestablished — see `machines/kiosk-1/PROFILE.md`
+python       python3     # unestablished; the winget id is probably Python.Python.3.x
+node         npm         # unestablished; `worker/` and `site/tests/` both use npm ci
