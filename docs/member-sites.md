@@ -134,7 +134,7 @@ Not gaps. These were reserved deliberately and an agent should not settle them:
 | a better name for `member-site-core/` | reserved by her; the name in the tree is provisional. `TENANCY.md` argues the journal engine's word for it is *engine* |
 | the audience-facing README for `site-template/` | **deliberately absent, not stubbed.** Her voice |
 | collapsing `_shows` and `_podcasts` | recorded in `TENANCY.md`; it moves live URLs, so it is a `REDIRECTS.md` question as much as a data one |
-| the signal that should replace the Thursday schedule | wanted, not designed. Nothing anticipates its shape on purpose |
+| ~~the signal that should replace the Thursday schedule~~ | **Settled 2026-09-24**: a signed intermediate, published on change. See *"Intermediates are the deliverable"* below |
 
 ### Two things that are true and unreported by any tool
 
@@ -148,6 +148,111 @@ owns it.
 `new.fcpublicmedia.org` is a CNAME to `fcpm.autumn-e2c.workers.dev`. It works and
 will keep working; it is recorded in [`deploying.md`](deploying.md) because
 nothing in the repository said so until somebody ran `dig`.
+
+## Intermediates are the deliverable
+
+Autumn's call, 2026-09-24, settling the last row of the table above. Recorded
+close to verbatim, because the reasoning is the part that has to survive.
+
+> We're going to use our intermediates system to deliver what the content
+> should be, in order to save an outside builder exactly that trouble. It'll be
+> signed by us.
+
+An **intermediate** is the fourth thing the library engine already claims to
+hold — *"intermediate artifacts we use to build sites and video"* (README,
+*Library*). This decides that member sites are delivered as intermediates
+rather than composed here at build time.
+
+### The symmetry is the argument
+
+> Station Node is hosting us, so they're building us, but we're giving them
+> those pre-bakes. And we're doing the pre-bakes because we're in the same
+> position. We go to build our sites, and some of these modules are
+> multi-tenant, but they might be ejected. We might only get access on a
+> rotating basis. We're gonna cook intermediates so that we have those.
+
+FCPM sits on both sides of the same arrangement at once. Station-node hosts
+FCPM and builds it; FCPM hosts members and builds them. Handing a pre-bake
+upward is the same act as expecting one downward, and neither side has to trust
+the other's toolchain to do it.
+
+**The reason is loss of access, and that is what makes it more than a
+convenience.** A module that is multi-tenant today may be ejected tomorrow;
+access may be granted on rotation. A build that reaches for its inputs at build
+time fails in exactly those moments. **A pre-bake survives the loss of the
+thing that produced it** — which is why this is cooked in advance rather than
+resolved on demand, and why it is worth the storage.
+
+> The media node is going to get a chance to register as many sites as it deems
+> first class, and it can build all of them exactly in the way that Station Node
+> is building for us.
+
+So *first class* becomes a thing a host decides about a site, rather than a
+property the site asserts about itself.
+
+### An intermediate may be a folder
+
+> If the intermediate has a folder to represent complex things, then we're
+> still fine.
+
+Stated because it is the thing that would otherwise be assumed away. An
+intermediate is not constrained to one file. A site that needs a directory —
+assets, several data files, a tree — publishes a directory, and nothing
+downstream has to flatten it to fit a format decision nobody made on purpose.
+
+### What it is source for
+
+Not only Jekyll. FCPM is building toward **a source distribution for a markdown
+browser**, so an intermediate is read by more than one kind of consumer, and
+that is the reason it carries content rather than rendered output. A
+pre-rendered site would serve one consumer and strand the rest.
+
+### Where identity comes from
+
+Membership is `you` — the control point at `FCCN-ANTIBODY/you.anecdote.channel`,
+whose own `residency.yml` declares an `instance` label holding *"which site this
+deployment is: its origin, which is also the RP ID every passkey minted here is
+bound to, permanently."*
+
+That is what lets a member identify with something well enough to modify their
+own project, and it is why members become subdomains under it. **Its subdomain
+root is deployed for member repositories, not for member sites** — the
+repository is the thing a person owns and edits; the site is an output. Nothing
+of this is leveraged on the media node yet, and it is the direction rather than
+the state.
+
+### What this does not change
+
+**`/feed.xml` is still the inbound contract.** A member's feed is what FCPM
+reads, and the property that matters is that *someone else is allowed to read
+it*. An intermediate travels the other way — FCPM to a builder — and is signed
+by us. Two directions, two artifacts; neither should be made to do the other's
+job.
+
+**Signing has a precedent and one prerequisite.** `site/bin/mint-claim.py`
+already signs with a private key and verifies in the browser against the public
+half in `site/_data/identity.yml`. The shape exists. But `identity.yml` carries
+`keys: []` — no signing key has ever been minted — so there is a key ceremony
+first, and where that private key lives is a decision rather than a value.
+
+### What it settles, and what it unblocks
+
+- **The Thursday schedule.** A signed intermediate published when the content
+  changes *is* the signal that was wanted and deliberately not designed. It has
+  the property a cron cannot have: it moves on change and never otherwise, the
+  same reason [`KIOSK.md`](KIOSK.md) uses a digest rather than a timestamp.
+- **The generated tier's one undecided point.** A generated site has no
+  repository and therefore no gitlink, so it could be neither `tenant` nor
+  `listed`. An intermediate does not need a repository in order to exist, so the
+  question stops being asked. `site/_shows/` holds 1 and `site/_podcasts/` holds
+  8 — nine sites, with no member having to do anything.
+- **`submodules: recursive` in `publish-member-sites.yml`.** It is there to pull
+  tenant repositories at build time. If tenants are delivered as intermediates,
+  the recursion is not needed — which also retires the private-submodule problem
+  recorded in `.gitmodules` against `.contact-sheets-engine`, with no token and
+  no scrub.
+
+---
 
 ## The split
 

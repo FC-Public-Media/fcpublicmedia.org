@@ -1,1 +1,65 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Settle the intermediates decision, and correct the drive note
+
+Two documents, one theme: things that cannot be observed have to be declared.
+
+## `member-sites.md` — intermediates are the deliverable
+
+Settles the last open row of *"Decisions being held for the operator"*. Member
+sites are delivered as **signed intermediates** rather than composed here at
+build time, which is the fourth thing the library engine already claims to hold.
+
+Autumn's reasoning is kept close to verbatim, because it is the part that has to
+survive. The symmetry is the argument — station-node hosts FCPM and builds it,
+FCPM hosts members and builds them, and a pre-bake handed upward is the same act
+as one expected downward. But the *reason* is loss of access: a multi-tenant
+module may be ejected, access may come on rotation, and a build that reaches for
+its inputs at build time fails in exactly those moments. **A pre-bake survives
+the loss of the thing that produced it.**
+
+Also recorded: an intermediate may be a folder, so complex sites are not flattened
+to fit a format decision nobody made; the consumer is not only Jekyll, because
+FCPM is building toward a source distribution for a markdown browser; and identity
+comes from `you`, whose `instance` label is the RP ID every passkey binds to —
+with its subdomain root deployed for **member repositories, not member sites**.
+
+What it unblocks, each of which was explicitly stuck:
+
+- **The Thursday schedule.** A signed intermediate published on change is the
+  signal that was wanted and deliberately not designed. Same property as
+  `KIOSK.md`'s digest: it moves on change and never otherwise.
+- **The generated tier.** A generated site has no repository and therefore no
+  gitlink, which made it neither `tenant` nor `listed`. An intermediate needs no
+  repository to exist, so the question stops being asked — nine sites, from 1
+  show and 8 podcasts, with no member doing anything.
+- **`submodules: recursive`.** It exists to pull tenant repositories at build
+  time. Deliver intermediates and the recursion is unnecessary, which also
+  retires the private-submodule problem against `.contact-sheets-engine` with no
+  token and no scrub.
+
+Left alone deliberately: `/feed.xml` stays the **inbound** contract and an
+intermediate travels outbound; neither is made to do the other's job. And signing
+has a prerequisite — `identity.yml` carries `keys: []`, so no signing key has ever
+been minted.
+
+## `DESIGN-NOTES.md` — three corrections to the drive note
+
+**The filesystem type is not discoverable.** Samba reports every partition as
+NTFS regardless of what is underneath, so a scanner cannot derive the 4 GiB
+ceiling, the 2 GiB one, or the root-directory limit. They hold only because
+Autumn says the router will mount nothing but FAT. This falsifies the upstream
+filing's claim that a type and a ceiling are discovered per mount while only
+purpose is declared — and it makes three properties on this one drive
+(completeness, volume identity, the limits) where the answer is *declared, not
+sniffed*. At three it is the governing rule rather than a run of exceptions.
+
+**The index stays off disk for a stronger reason than the note gave.** It said
+only that there is no build to attach `--check` to. The depot keeps its index in
+memory because **it names people's files** — a privacy constraint, which does not
+soften: an index that *could* be committed still should not be.
+
+**The pipeline is committed now.** `FC-Public-Media/contact-sheets`, mounted as
+`.contact-sheets-engine`; the `~/Project/contact-sheets` path is gone from both
+places it appeared, and the section heading no longer says it has never been
+committed.
+
+`site/bin/test_no_secrets.py` passes. `docs/` is outside the Jekyll build root.
