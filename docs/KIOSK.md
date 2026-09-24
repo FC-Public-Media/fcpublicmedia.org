@@ -40,7 +40,33 @@ So the arrangement is **guest hosting, and it is temporary by design.**
 Station-node renders the kiosk because FCPM has no machine yet (see `STATION.md`,
 *"There is no FCPM station-node machine yet, and that is deliberate"*). The
 artifact is shaped so that when FCPM does have one, **the artifact does not
-change** — only who reads it.
+change** — only who reads it. Her framing of the endpoint, same day:
+
+> Later, fcpublicmedia.org would do this for itself, and you have your own site
+> folder, and so you wouldn't need.
+
+### The coupling is sanctioned, and the artifact still earns its place
+
+Worth answering directly, because it is the obvious objection. Station-node
+mounts this repository and can read `site/_data/` itself — Autumn's words: *"they
+are able to look at us and our data because we are tightly coupled."* So why
+generate a file at all, rather than letting the renderer read `wifi.yml`?
+
+Because **reading our data and knowing what to show are different problems, and
+only the first one is solved by access.** `wifi.yml` contains the SSID, the
+security mode, the `confirmed:` flag, a poster title, two pieces of poster
+wording, and four paragraphs of caveats about publishing passwords. A renderer
+given that file has to decide which of those a stranger may see, and that
+decision is exactly the one she said belongs here.
+
+The artifact is the decision already made. It is also the reason the password
+cannot leak by accident: not because the renderer is careful, but because the
+only file it reads has never contained one. **Disposition is settled at
+generation, not at render** — which is the rule station-node already runs its own
+published surfaces on, arrived at from the other side.
+
+That property is what makes the coupling safe to keep rather than something to
+unwind. Tight coupling is fine; an unfiltered read would not be.
 
 ---
 
@@ -253,13 +279,87 @@ building should write rather than an agent:
 
 ## What is not here
 
-- **No second monitor.** A bookings / what-is-in-use display was asked for, and
-  **nothing machine-readable exists to feed it.** `site/_data/calendar.json` is
-  empty with no source configured, and room bookings are Microsoft Bookings —
-  reachable through Graph at `/solutions/bookingBusinesses`, never synced here.
-  See `RESERVE-DESIGN.md`, which also flags that webhook support for those
-  resources is unverified. That is a sync to write, not a panel to add.
+- **No second monitor.** Specified below, and waiting on a data source that does
+  not exist yet. Nothing here feeds it and no artifact for it has been invented.
 - **No media-drop kiosk.** A second kiosk on triple portrait monitors has been
   described. `room:` exists so each screen says where it is rather than
   assuming, but nothing here serves that one.
+
+---
+
+## The second monitor: the day, and not Microsoft Bookings
+
+The welcome desk has a second screen meant to show current bookings and what is
+in use. It is not built. What follows is the shape it has to be, recorded
+2026-09-23 so that nobody designs the wrong thing and nobody re-derives the
+ruling below.
+
+### Microsoft Bookings is ruled out for intake. Hard break.
+
+Autumn, 2026-09-23:
+
+> Microsoft Bookings is not specifically going to do intake. I think I'm going to
+> do it, but we are going to log it into like some database API. So, definitely
+> hard breaks on Microsoft Bookings specifically.
+
+**This reverses the direction [`RESERVE-DESIGN.md`](RESERVE-DESIGN.md) points
+in**, and that document has not been rewritten — only annotated — so read this
+before acting on it. Its reasoning was that Bookings is *"the obvious product and
+genuinely close to right"*, and that we should own the form while treating
+Microsoft as the system of record behind it. The first half survives: **we own
+the form.** The second half is withdrawn. Intake is hers, and it lands in a
+database API.
+
+What that costs, and it is worth naming because it was Bookings' best property:
+an appointment there *was* a real Exchange calendar entry, so a booking became a
+calendar event with nothing having to carry it there. Off that path, **something
+has to carry it**, and that something is the sync this monitor waits on.
+
+What it saves is larger. No Graph app registration, no tenant admin, no
+permission grant, and no dependence on the unverified question of whether Graph
+change notifications cover `bookingBusinesses` at all — which `RESERVE-DESIGN.md`
+flagged as unconfirmed and which nobody has confirmed since.
+
+### What the screen actually needs
+
+Also hers, and it is a much smaller ask than "a bookings system":
+
+> I may be mirroring stuff that we have processed and I really only need to show
+> one day at a time. So I think we have the live slice. And in fact, if someone
+> were booking an appointment speculatively and needed our approval, it would be
+> okay for it to show up here too.
+
+Four things follow, and each one makes this cheaper than it first looked:
+
+1. **One day, not a calendar.** The artifact is today's slice. No week view, no
+   month, no navigation — a screen nobody touches cannot navigate anyway. This is
+   the constraint that makes the whole thing small.
+2. **A mirror of what has already been processed**, not a live query against
+   anything. Same posture as the five existing syncs: something writes a file,
+   the file is the record. So this monitor's dependency is a sync, and the sync's
+   dependency is the database API.
+3. **Pending is a displayable state, not an error.** A speculative booking
+   awaiting approval may appear. So an entry carries a **status** — approved or
+   awaiting-approval at minimum — and the renderer distinguishes them visibly. A
+   screen that shows a pending slot as confirmed is worse than one that omits it,
+   because somebody will plan around it.
+4. **It is a second artifact, not more panels.** `welcome.yml` is content that
+   changes when somebody edits it; a day slice changes on its own schedule and
+   goes stale in hours rather than months. Putting a decaying feed inside the
+   evergreen file would mean the whole thing churns, and `revision` would stop
+   being a useful signal for either.
+
+### What is deliberately not decided here
+
+**The field names.** There is no source yet, and a schema invented against
+imagined data is a schema that will be wrong in the one way that matters. When
+the database API exists, the sync's output shape is settled by what it actually
+returns.
+
+**The freshness mechanism.** `revision` is the right primitive to reuse and the
+polling story is identical, but a day slice has a second problem `welcome.yml`
+does not: **it can be correct and still be stale**, because the day rolls over
+whether or not anything changed. A digest cannot notice midnight. Whatever is
+built needs to say which day it is describing, so a renderer can refuse to show
+yesterday rather than showing it confidently.
 - **No renderer.** On purpose. This repository produces the artifact and stops.

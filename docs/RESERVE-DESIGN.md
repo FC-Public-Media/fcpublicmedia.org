@@ -108,6 +108,26 @@ public-facing anyway, so there is no personal data going anywhere sensitive.
 
 ## Microsoft Bookings: what it is good for, and the thing it cannot do
 
+> **Overtaken by a decision, 2026-09-23. Read this first.** Autumn has ruled
+> Bookings out for intake: *"Microsoft Bookings is not specifically going to do
+> intake. I think I'm going to do it, but we are going to log it into like some
+> database API. So, definitely hard breaks on Microsoft Bookings specifically."*
+>
+> This section is left standing because its analysis is still the reason the
+> decision is safe — and because *"use our own UI and do not embed their
+> iframe"*, below, is unaffected and still holds. What is withdrawn is the other
+> half: **Microsoft is no longer the system of record behind our form.** Intake
+> is hers and it lands in a database API.
+>
+> The property being given up is named in the paragraph below — an appointment in
+> Bookings *was* an Exchange calendar entry, so a booking became a calendar event
+> with nothing having to carry it there. Off that path, something has to carry it.
+> Everything downstream of that sentence — Graph, `bookingBusinesses`, the
+> unverified webhook question — is now moot rather than unresolved.
+>
+> See [`KIOSK.md`](KIOSK.md), *"The second monitor"*, which is the first thing
+> that wanted this data and is waiting on the replacement.
+
 Bookings is the obvious product and it is genuinely close to right. It ships
 with M365 Business Standard and above, it models Services and Staff, staff
 availability can be driven from each person's own Outlook calendar rather than
