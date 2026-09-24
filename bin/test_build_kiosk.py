@@ -24,6 +24,7 @@ no code on it.
 """
 
 import importlib.util
+import json
 import pathlib
 import re
 import subprocess
@@ -198,6 +199,83 @@ class TestRevision(unittest.TestCase):
         # Strip the blank separator line the header leaves behind.
         body = body.lstrip("\n") + "\n"
         self.assertEqual(yaml.safe_load(text)["revision"], bk.revision(body))
+
+
+class TestTheJsTransport(unittest.TestCase):
+    """The second artifact, and why it is transport rather than a second truth.
+
+    The panel opens `brand/idle/index.html` from a clone as a local file.
+    Measured in Chrome 2026-09-24: a `file://` page cannot `fetch` a sibling —
+    opaque origin, `TypeError: Failed to fetch`, and no header can permit it —
+    but a `<script src>` with a cache-buster works and works repeatedly. So the
+    YAML is unreadable by the one consumer this artifact has.
+
+    The risk that comes with a second copy is that the two disagree. These
+    tests are what makes that not happen.
+    """
+
+    def setUp(self):
+        self.artifact = bk.build(sources())
+        self.yaml_text, self.js_text = bk.outputs(self.artifact)
+
+    def payload(self, js_text=None):
+        """Parse the assignment back out, without executing anything."""
+        text = js_text if js_text is not None else self.js_text
+        body = text[text.index("window.%s = " % bk.GLOBAL) :]
+        body = body[body.index("{") : body.rindex("}") + 1]
+        return json.loads(body)
+
+    def test_is_one_assignment_and_nothing_else(self):
+        """No logic, no fetch, no side effects — it is data in a JS wrapper."""
+        code = "\n".join(
+            l for l in self.js_text.splitlines() if not l.strip().startswith("//")
+        ).strip()
+        self.assertTrue(code.startswith("window.%s = {" % bk.GLOBAL))
+        self.assertTrue(code.endswith("};"))
+        for forbidden in ("fetch(", "XMLHttpRequest", "eval(", "function", "=>", "import "):
+            with self.subTest(token=forbidden):
+                self.assertNotIn(forbidden, code)
+
+    def test_revision_is_identical_to_the_yaml(self):
+        """Copied, not recomputed. Two digests could disagree; one cannot."""
+        self.assertEqual(
+            self.payload()["revision"], yaml.safe_load(self.yaml_text)["revision"]
+        )
+
+    def test_content_is_identical_to_the_yaml(self):
+        """Same content, two encodings. Any drift here is the whole risk."""
+        from_yaml = yaml.safe_load(self.yaml_text)
+        from_js = self.payload()
+        self.assertEqual(from_js, from_yaml)
+
+    def test_committed_pair_agrees(self):
+        """The real files on disk, not just freshly rendered ones."""
+        on_disk_yaml = yaml.safe_load(bk.ARTIFACT.read_text())
+        on_disk_js = self.payload(bk.ARTIFACT_JS.read_text())
+        self.assertEqual(on_disk_js, on_disk_yaml)
+
+    def test_carries_no_secret_either(self):
+        """The guard must cover the file a browser actually loads."""
+        bk.check_no_secrets(self.js_text, FAKE_PASSWORD)
+        self.assertNotIn(FAKE_PASSWORD, self.js_text)
+        self.assertNotIn(bk.FORBIDDEN_ASSET, self.js_text)
+
+    def test_json_style_secret_keys_are_refused(self):
+        """A YAML-only key check would miss the JSON encoding entirely."""
+        for key in ("password", "passphrase", "secret", "psk"):
+            with self.subTest(key=key):
+                with self.assertRaises(SystemExit):
+                    bk.check_no_secrets('{\n  "%s": "hunter2"\n}\n' % key)
+
+    def test_check_mode_covers_both_files(self):
+        """A stale JS with a current YAML must still fail."""
+        original = bk.ARTIFACT_JS.read_text()
+        try:
+            bk.ARTIFACT_JS.write_text(original.replace("window.", "window.X", 1))
+            self.assertEqual(bk.main(["--check"]), 1)
+        finally:
+            bk.ARTIFACT_JS.write_text(original)
+        self.assertEqual(bk.main(["--check"]), 0)
 
 
 class TestTheWifiPanel(unittest.TestCase):
