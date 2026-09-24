@@ -256,8 +256,10 @@ decisions — but it is the first concrete sentence pointing at one.
 
 | | | |
 |---|---|---|
-| `.advocate-engine` | **mounted** | The only one today. |
-| `.library-engine` | **wanted, and next** | *"The library engine is going to be present in order to provide for us a place to keep many things that are considered internal to this station."* As branches, per above. |
+| `.advocate-engine` | **mounted** | The first. |
+| `.library-engine` | **mounted 2026-09-24**; its residency wants are unanswered | *"The library engine is going to be present in order to provide for us a place to keep many things that are considered internal to this station."* As branches, per above. |
+| `.contact-sheets-engine` | **mounted**, private | Footage into contact sheets. See `DESIGN-NOTES.md`. |
+| `.enhance-engine` | **mounted 2026-09-24**, private | Recordings out to the enhance suite and back, enhanced or stemmed. The RØDECaster is the first source, via station-node. The depot is this node's, so receipt is ours. |
 | `.ablative-engine` | **partly, and it needs a conversation** | See below. |
 | `.proofing-engine` | **wanted, with new faces** | Needs none of station-node's private-client configuration. See `DESIGN-NOTES.md`. |
 | `.tell-engine` | **later, on purpose** | *"We're going to be bringing the tell engine, but I don't think we need to go there yet. I wanna have a bulletproof implementation before I try that."* |

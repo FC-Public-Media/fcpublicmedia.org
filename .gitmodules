@@ -20,3 +20,11 @@
 	# SHELVES.md). Answering the engine's residency.yml wants (stacks,
 	# catalogue, intake, seats, petitions) is the next gesture, and it is not
 	# done here. Pinned where station-node pins it.
+[submodule ".enhance-engine"]
+	path = .enhance-engine
+	url = https://github.com/FC-Public-Media/enhance.git
+	# Mounted 2026-09-24: recordings out to the enhance suite and back,
+	# enhanced or stemmed. A companion to contact-sheets. This node owns
+	# the depot, so receipt is ours. Private like contact-sheets, and for
+	# the same reason as its entry above: nothing in a build needs it.
+	update = none
