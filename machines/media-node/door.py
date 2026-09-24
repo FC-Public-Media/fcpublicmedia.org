@@ -690,7 +690,8 @@ DEPOT_JS = """<script>
       groups[g].forEach(function (s) {
         var row = el('div', 'share'), head = el('div', 'share-head');
         head.appendChild(el('b', null, s.label));
-        head.appendChild(el('span', null, s.ok ? size(s.free) + ' free' : ''));
+        head.appendChild(el('span', null, !s.ok ? '' :
+          (s.items.length ? '' : 'Empty  \\u00b7  ') + size(s.free) + ' free'));
         row.appendChild(head);
         if (s.ok) {
           var bar = el('div', 'bar'), fill = el('i');
@@ -698,8 +699,7 @@ DEPOT_JS = """<script>
           bar.appendChild(fill); row.appendChild(bar);
         }
         if (s.error) row.appendChild(el('p', 'error', 'Cannot reach it: ' + s.error));
-        else if (!s.items.length) row.appendChild(el('p', 'empty', 'Empty'));
-        else {
+        else if (s.items.length) {
           var ul = el('ul', 'items');
           s.items.slice(0, MAX).forEach(function (it) {
             var li = el('li');
