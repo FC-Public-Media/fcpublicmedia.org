@@ -133,31 +133,46 @@ files agree" while every inbound link from the old site is dead.** The one
 automated check in that pipeline is excluded from the one file whose failure is
 invisible.
 
-So it needs a person, once, after any change of publisher. **And the obvious way
-to run that check is wrong today**, which is worth knowing before somebody runs
-it and draws the wrong conclusion:
+So it needs a person, once, after any change of publisher. **Write the check as
+an absence test**, not as a success test, and it stays correct no matter when or
+where it is run:
 
 ```sh
-# Measured 2026-09-24. Returns 200, and that is CORRECT.
-curl -sI https://www.fcpublicmedia.org/service-page/equipment-checkout
+curl -sSD- -o /dev/null \
+  https://www.fcpublicmedia.org/service-page/equipment-checkout \
+  | grep -iE '^(HTTP/|x-wix-request-id)'
 ```
 
-**`www.fcpublicmedia.org` is still Wix.** The response carries
-`x-wix-request-id` and `x-seen-by`, behind Cloudflare's CDN. So that 200 is Wix
-serving its own live page, not our redirect layer failing — the DNS has not
-flipped, and `REDIRECTS.md` is a record of where those addresses *will* go.
+| `x-wix-request-id` | status | what it means |
+|---|---|---|
+| present | anything | **Wix answered.** Before cutover: expected, and says nothing about us. After cutover: the **DNS has not flipped** — a DNS problem, not a redirect problem |
+| absent | **301** → `/reserve/` | our origin, redirect layer working |
+| absent | **200** | **THE FAILURE.** Our origin answered and `_redirects` is not being applied |
+| absent | 404 | our origin, path not handled at all |
 
-Which means:
+**`REDIRECTS.md` is a record of where those addresses *will* go, not where they
+go now.** Measured 2026-09-24: `www.fcpublicmedia.org` is still Wix, and that URL
+returns **200** — Wix serving its own live page. Read as a success test, that 200
+says the redirects are broken. They are not; the DNS has not moved.
 
-- **Before cutover**, the check has to run against whatever origin serves our
-  build — the Workers deployment URL or a branch preview — not against the
-  domain. Against the domain it can only tell you about Wix.
-- **After cutover**, run it against the domain, and then a 200 or a 404 does mean
-  the redirect layer is not being applied.
+Two reasons to key on `x-wix-request-id` specifically:
 
-Expect a **301** to `/reserve/`. That row is `REDIRECTS.md` line 81 and
-`site/_data/redirects.yml` line 72; any of the 46 rows marked *Redirected* does
-the same job.
+- **`server:` discriminates nothing.** It is `cloudflare` on both origins — Wix
+  sits behind Cloudflare's CDN and the destination is Cloudflare — so it reads
+  identically before and after cutover. It is the header somebody writing this
+  check reaches for first, and it is a trap sitting next to the other one.
+- **It is Wix's own header, so it disappears the moment Wix stops answering.**
+  Present on a 200 and on a 404 alike (both measured), so it identifies the
+  *origin* independently of the status.
+
+The reason to test for absence rather than for a 301 is that **the dangerous case
+is the one that looks healthy.** Our origin returning 200 on a legacy path is a
+perfectly normal-looking response, and it is exactly the state that kills every
+inbound link from the old site.
+
+Any of the 46 rows marked *Redirected* works; this one is `REDIRECTS.md` line 81
+and `site/_data/redirects.yml` line 72. `server-timing: … dc;desc=fastly_cf` is a
+second Wix tell if redundancy is wanted.
 
 **Nobody owns that step yet**, which is the actual open item. It is not in a
 workflow, not in a runbook, and not in anyone's head but two agent transcripts
