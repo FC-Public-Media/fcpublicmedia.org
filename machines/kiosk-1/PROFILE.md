@@ -129,14 +129,28 @@ order, then what the list did not think to ask.
   `uv python install 3.13`. `bin/build-kiosk.py --check` passes here.
 - **Services: one, the door.** `door.py`, on `[::]:8080`, reached by name at
   `http://200-fcpanedit2.local:8080/`. It serves the welcome screen, the
-  depot (the studio drive's contents) and the idle screen, and it starts at
-  logon from a Startup-folder shortcut. Nothing reaches it from other
-  machines yet, because the firewall rule that would allow it needs an
-  administrator.
+  depot (the studio drive's contents) and the idle screen. A per-user
+  scheduled task, `media-node door`, starts it at logon and again every five
+  minutes if it has died. That is the door's own job, as
+  `com.autumn.station-door.plist` is on station-node, and `door.py startup`
+  says whether it is registered and points at this checkout. Nothing reaches
+  it from other machines yet, because the firewall rule that would allow it
+  needs an administrator.
 
 Two portrait panels are connected, 1050×1680, with a third on its way once a
-DVI adapter turns up. Edge 106 (Chromium) shows the pages full-screen, one
-window per panel, set up by hand.
+DVI adapter turns up. Edge 106 (Chromium) shows the pages, one kiosk-mode
+instance per panel with a profile folder of its own under
+`%LOCALAPPDATA%\media-node\screens\`. The door opens any missing panel when
+it starts, and `door.py screens --launch` does the same by hand.
+
+### Asked of IT
+
+- **Sign in automatically.** A reboot waits at the sign-in screen until
+  somebody signs in. Nothing above can run before that, and setting up
+  automatic sign-in needs an administrator. Seen 2026-09-24: the box came back
+  at 14:05 and the door at 14:21, when somebody signed in.
+- **Allow TCP 8080 in** for the venv's `pythonw.exe`, once `/kiosk/wifi/<n>`
+  answers only the box itself.
 
 ## What this folder holds now
 
@@ -145,8 +159,7 @@ are the first claims this profile makes:
 
 | | |
 |---|---|
-| `door.py` | the door: every page, the scanner for the studio drive, the background rebase, and `screens` and `wifi-password` |
-| `door.vbs` | starts the door at logon with no window, from a fixed venv so the firewall asks about one interpreter once |
+| `door.py` | the door: every page, the scanner for the studio drive, the background rebase, and `screens`, `startup` and `wifi-password` |
 | `node.yml` | what the door shows, and where: screens, Wi-Fi networks, stations, the depot's shares, draft wording |
 | `bookings.sample.yml` | a made-up week standing in for the booking calendars. Every booking is for "Sample" |
 | `GOTCHAS.log`, `gotcha` | what this box taught us, one line each. `merge=union`, after station-node's |
