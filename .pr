@@ -1,1 +1,30 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+kiosk-1 serves its own screens: the welcome desk, the studio map, and the drive
+This is the box with the three portrait panels (two connected, a third waiting on a DVI adapter), serving FCPM's screens itself. It runs from `machines/kiosk-1/`, the profile the box now wears, from a worktree on the `media-node` branch. It was built on the machine in one remote-control session with Autumn standing in front of it.
+
+## What it does
+
+**One door, `machines/kiosk-1/door.py`,** on `[::]:8080`, reached by name at `http://200-fcpanedit2.local:8080/`. It follows station-node's `bin/door`: one port that does not move, named surfaces rather than a document root, and a dual-stack listener, because the name resolves IPv6 first.
+
+- **`/kiosk/` is the welcome screen.** Check-in on slate, with its QR drawn as the brand mark (signal yellow, hard edges, leaning -8°; `.mark` is a shared class now). Below that, a **studio map**: stations from `site/_data/facilities.yml`, the Video and Podcast studios as one group from `couples_with`, the bays, and Digitization as opening soon. A square lights while a station is in use. Bookings are ranked across the whole map: one solid pill for the next appointment anywhere, one outline pill for the one after, soft grey for the rest of the week. A station with nothing booked says who can help with it and when. Guest and Audio Wi-Fi codes. A footer with who is on, from `kiosk/rota.yml`, the board-agreed rotation.
+- **`/depot/` is the studio drive**, the router's eight Samba partitions, for the third panel. It follows the design in DESIGN-NOTES.md, "Showing what is on the network drive": each file is `declared`, `arriving` or `unwitnessed`, never a stage number, with `growth_last_observed` frozen when growth stops. Known partitions sit in rows. One the router offers but `node.yml` does not name still shows, in its group.
+- **It keeps itself current.** Every five minutes it fetches and rebases `media-node` onto `origin/main`, aborting cleanly on a conflict. When the commit moves, the door restarts on the new code, and every page polls `/revision` and reloads.
+
+## Secrets are not in this repository
+
+The Wi-Fi passwords and the drive's login live in Windows Credential Manager on the box. `door.py wifi-password "<ssid>"` stores one, and the door reads it with `CredReadW`. The Wi-Fi QR codes are built in memory per request and never written anywhere. The depot's file index lives only in the door's memory, because it names people's files.
+
+## Worth a reviewer's eye
+
+- **`kiosk/rota.yml` puts names on a public page.** Autumn gave them as agreed at a board meeting, and chose names over roles for the footer. KIOSK.md's earlier advice was "by role, not by name". This is her call reversing it, recorded in the file.
+- **All the wording is a draft** (`node.yml`, `wording:`), apart from "No apps. Free public tech.", which is Autumn's. It moves to `kiosk/content.yml` after her wording pass.
+- **Bookings are a sample week** until the calendars (probably Microsoft 365) are connected. Every sample booking is for "Sample", which is how the screen says the map is not real.
+- **The router mounts only FAT**, whatever Samba reports (it says NTFS for everything), so the 4 GiB limit is real. That is recorded in `node.yml`.
+- **`.gitattributes` is new**, with one line: `machines/kiosk-1/GOTCHAS.log merge=union`, after station-node's. The log holds what this box taught us, one line each, and it is worth reading before working on the box.
+
+## Tests
+
+`machines/binding` run on the box says `wearing: kiosk-1`, and `bin/test_binding.py` passes. `bin/build-kiosk.py --check` passes. The full `bin` and `site/bin` suites on the box: 253 passed, 5 failed. **All five fail identically on untouched `main` on this Windows box** (missing tz database, POSIX file modes, symlinks), so none come from this branch. CI runs them on Linux. The door's scheduling and depot state machines were checked against fixed times and a scratch folder. Nothing was written to the studio drive.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+https://claude.ai/code/session_01FYWdc6E3DcWLcWvKHbQMeh
