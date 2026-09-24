@@ -12,3 +12,4 @@
 2026-09-23    msys      Git Bash passes /flag:value through -> it rewrites leading-slash args as paths; set MSYS_NO_PATHCONV=1
 2026-09-23    bash      a long heredoc in one tool call is fine -> it failed to parse; write the script to a file and run that
 2026-09-23    creds     IT policy makes credentials logon-only -> the existing ones are, but CRED_PERSIST_LOCAL_MACHINE persists
+2026-09-23    pythonw   a windowless process can print -> pythonw's sys.stderr is None; log to a file or it crashes
