@@ -1,3 +1,12 @@
 [submodule ".advocate-engine"]
 	path = .advocate-engine
 	url = https://github.com/FCCN-ANTIBODY/advocate.anecdote.channel.git
+[submodule ".contact-sheets-engine"]
+	path = .contact-sheets-engine
+	url = https://github.com/FC-Public-Media/contact-sheets.git
+	# Not part of any build here. The engine is a tool the studio runs, not
+	# an input to the site, so a checkout that skips it is correct rather
+	# than degraded. It is ALSO private, and publish-member-sites.yml checks
+	# out with `submodules: recursive` under a GITHUB_TOKEN scoped to this
+	# repository alone — which cannot read another private repo.
+	update = none

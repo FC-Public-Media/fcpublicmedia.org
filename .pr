@@ -1,1 +1,57 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Mount contact-sheets as an engine
+
+Gives FCPM the contact-sheets pipeline as a submodule at
+`.contact-sheets-engine`, alongside `.advocate-engine`. The mount path is the
+claim — `residency.yml` in that repository says so explicitly and declares
+nothing about its own name.
+
+## What it is
+
+Byte-range frame extraction from Drive, assembled into contact sheets. It is
+the pipeline `DESIGN-NOTES.md` already cites under *"Digitizing somebody's
+tapes"*, and until today it had **no commits, no branches and no remote** —
+most recently sitting as untracked files in a directory that was not itself a
+repository. It is now `FC-Public-Media/contact-sheets`.
+
+## The library wing is the mechanic
+
+The engine holds no source of truth. Footage lives on Drive; everything it
+writes locally is a residual — extracted frames, the thumbnail cache, the
+assembled sheets, the publishable site. Measured before its first commit: a
+3.5 GB working directory against a 0.18 MB repository, 1.7 GB of which was one
+shoot's frames.
+
+So it declares storage rather than carrying it. `residency.yml` names five
+labels — `scratch`, `cache`, `sheets`, `index`, `publish` — each with `holds`,
+`lifecycle` and `disposition`, and a host binds them somewhere with room and
+may delete any of them between runs.
+
+Two of those dispositions are load-bearing rather than decorative. `index`
+holds the range and reconciliation documents, which **name people's files** —
+the same reason the depot keeps its queue index in memory and never writes it
+to disk. And the file closes by warning that no label may be bound to a studio
+drive partition without checking, because those are under 4 GB and report
+themselves as NTFS over Samba regardless of what they are.
+
+## `update = none`, and the thing to decide
+
+`publish-member-sites.yml` is the one workflow that checks out with
+`submodules: recursive`. The engine is private, and a workflow's default
+`GITHUB_TOKEN` is scoped to this repository alone, so it cannot read it.
+
+`update = none` says the true thing — this engine is not an input to any build
+here, so a checkout that skips it is correct rather than degraded — and it
+should also stop the recursive checkout reaching for it. **That last part is
+unverified against `actions/checkout`**; it is documented git behaviour and it
+cannot make matters worse, but the Thursday run is what will actually prove it.
+
+The durable fixes, neither taken here because both are Autumn's call:
+
+1. **Scrub and publish.** `CLAUDE.md` records the Drive shortcut ID of the shoot
+   it was written against; `folder-ids.conf` is already gitignored with an
+   `.example` beside it. Take the first out and the repository can be public,
+   and the submodule then works everywhere with no special casing.
+2. **Give CI a PAT** that can read it, if it should stay private.
+
+Until one of those happens the engine is a local mount, which is all it needs
+to be — nothing in the site build touches it.
