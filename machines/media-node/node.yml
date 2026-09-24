@@ -19,7 +19,7 @@ screens:
   - name: left
     display: DISPLAY2
     rect: [-1050, 0, 1050, 1680]
-    url: /kiosk/
+    url: /depot/           # was the idle screen. The depot is tried here first
 
 # ---------------------------------------------------------------------------
 # NETWORKS shown as Wi-Fi QR codes on the welcome screen.
@@ -80,6 +80,36 @@ stations:
 bookings: sample
 
 # ---------------------------------------------------------------------------
+# DEPOT: the studio drive, shown on /depot/. It is the router's Samba share,
+# reached under the Windows credential saved for 10.209.1.1 (user FCPM),
+# which Autumn set 2026-09-23. No password is here or anywhere in the repo.
+#
+# Eight partitions of about 3.8 GB each, listed by `net view` that day. Their
+# names already sort into two kinds, and the grouping below is that:
+# mailboxes for a station, and queues named for what happens next.
+#
+# Samba reports every partition as NTFS whatever is underneath, so the FAT
+# limits in docs/DESIGN-NOTES.md (4 GiB files, nothing in the root) can be
+# neither confirmed nor ruled out from here. Treat them as real.
+depot:
+  server: 10.209.1.1
+  groups:
+    - name: stations
+      title: Stations
+      shares:
+        - {share: BAY 1, label: Bay 1}
+        - {share: BAY2, label: Bay 2}
+        - {share: DIGISTATION, label: Digitization}
+        - {share: FILMING, label: Filming}
+        - {share: PODCAST, label: Podcast}
+    - name: queues
+      title: Queues
+      shares:
+        - {share: TO DROPBOX, label: To Dropbox}
+        - {share: TO ENHANCE, label: To Enhance}
+        - {share: TO STEM, label: To Stem}
+
+# ---------------------------------------------------------------------------
 # WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
 # stand-in until then. "No apps. Free public tech." is hers. When the wording
 # settles it belongs in kiosk/content.yml, where the rest of the kiosk's
@@ -90,6 +120,9 @@ wording:
     sub: No apps. Free public tech.
   map:
     until: until
+  depot:
+    head: Files
+    sub: On the studio drive
   footer:
     on: On now
     next: Next

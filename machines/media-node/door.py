@@ -23,6 +23,8 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /kiosk/qr/<n>      the check-in QR for panel n, as welcome.yml names it
     GET /kiosk/wifi/<n>    Wi-Fi QR n, built in memory. See node.yml
     GET /kiosk/now         who is on, and the studio map, as JSON. The page polls it
+    GET /depot/            what is on the studio drive, for the third panel
+    GET /depot/now         the drive's index, as JSON. The page polls it
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>
@@ -46,6 +48,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import shutil
 import socket
 import subprocess
 import sys
@@ -352,6 +355,96 @@ def wifi_svg(i):
     return buf.getvalue()
 
 
+# ----------------------------------------------------------------- the depot --
+# What is on the studio drive: the router's Samba share, eight partitions.
+# docs/DESIGN-NOTES.md, "Showing what is on the network drive", is the design
+# and this follows it:
+#
+#   * A browser cannot speak SMB. This process can, because Windows can, under
+#     the credential saved for the router. It walks the shares and the page
+#     renders the index.
+#   * Completeness cannot be observed, so a file's state is one of three:
+#       declared     its writer left `<name>.sha256` beside it. Trustworthy.
+#       arriving     it grew between two scans. Trustworthy in the negative.
+#       unwitnessed  present, not growing, nobody declared it. A guess, and
+#                    the name says so.
+#     The state is a name, never an ordinal. arriving -> unwitnessed is the
+#     moment the only signal was lost, not progress.
+#   * `growth_last_observed` is a frozen instant, written once when growth
+#     stops. Its absence means this file was never seen growing.
+#
+# The index lives only in this process. It names people's files, so it is not
+# written to disk and never goes near the repository. A restart forgets the
+# growth history, which is the honest cost: everything reads `unwitnessed`
+# until it is seen again.
+DEPOT_EVERY = 15
+_depot = {"at": None, "shares": [], "files": {}}
+_depot_lock = threading.Lock()
+
+
+def share_root(server, share):
+    return "\\\\%s\\%s\\" % (server, share)
+
+
+def scan_depot(now=None):
+    cfg = node().get("depot") or {}
+    server = cfg.get("server")
+    now = now or time.time()
+    prev, files, shares = _depot["files"], {}, []
+    for group in cfg.get("groups") or []:
+        for sh in group.get("shares") or []:
+            root = sh.get("path") or share_root(server, sh["share"])     # `path` is for tests
+            entry = {"share": sh["share"], "label": sh.get("label", sh["share"]),
+                     "group": group["name"], "ok": False, "items": []}
+            try:
+                usage = shutil.disk_usage(root)
+                entry.update(ok=True, total=usage.total, free=usage.free)
+                for dirpath, dirnames, filenames in os.walk(root):
+                    # Dot-directories are other machines' bookkeeping
+                    # (.Spotlight-V100 is on every partition), not deliveries.
+                    dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                    for f in filenames:
+                        if f.startswith(".") or f.endswith(".sha256"):
+                            continue
+                        full = os.path.join(dirpath, f)
+                        try:
+                            size = os.stat(full).st_size
+                        except OSError:
+                            continue
+                        old = prev.get(full)
+                        growing = bool(old) and size != old["size"]
+                        stopped = growing is False and bool(old) and old["growing"]
+                        rec = {"size": size, "seen": old["seen"] if old else now, "growing": growing,
+                               "growth_last_observed": now if stopped else (old or {}).get("growth_last_observed")}
+                        files[full] = rec
+                        state = ("declared" if os.path.exists(full + ".sha256")
+                                 else "arriving" if growing else "unwitnessed")
+                        rel = os.path.relpath(full, root).replace("\\", "/")
+                        entry["items"].append({"name": rel, "size": size, "state": state,
+                                               "seen": rec["seen"],
+                                               "growth_last_observed": rec["growth_last_observed"]})
+            except OSError as exc:
+                entry["error"] = exc.strerror or str(exc)
+            entry["items"].sort(key=lambda i: -i["seen"])
+            shares.append(entry)
+    with _depot_lock:
+        _depot.update(at=now, shares=shares, files=files)
+
+
+def watch_depot():
+    while True:
+        try:
+            scan_depot()
+        except Exception as exc:
+            log("depot: %r" % exc)
+        time.sleep(DEPOT_EVERY)
+
+
+def depot_now():
+    with _depot_lock:
+        return {"at": _depot["at"], "now": time.time(), "shares": _depot["shares"]}
+
+
 # --------------------------------------------------------------------- pages --
 POLL = """<script>
 (function () {
@@ -396,6 +489,7 @@ def e(s):
 
 def board_page():
     rows = [("/kiosk/", "Welcome screen", "check-in, Wi-Fi, who is on"),
+            ("/depot/", "Depot", "what is on the studio drive"),
             ("/idle/", "Idle screen", "brand/idle: the lamp pointed at the room"),
             ("/idle/?say=On+air+now", "Idle, with its slot filled", "?say= fills the marked slot")]
     for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png")):
@@ -539,6 +633,106 @@ def kiosk_page():
     return page(w.get("place", "Welcome"), body, KIOSK_CSS)
 
 
+DEPOT_CSS = """
+html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:auto 1fr; }
+header { background:var(--slate); padding:5vh 6vw 4vh; display:flex; align-items:center; gap:4vw; }
+header .mark { width:7vh; height:7vh; flex:none; }
+header h1 { margin:0; font-size:5.2vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
+header p { margin:1vh 0 0; font-size:1.7vh; color:var(--soft); }
+main { padding:3.4vh 6vw; display:flex; flex-direction:column; gap:3.2vh; overflow:hidden; }
+h2 { margin:0 0 1.4vh; font-size:1.5vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:650; }
+.shares { display:flex; flex-direction:column; gap:2.1vh; }
+.share-head { display:flex; align-items:baseline; justify-content:space-between; gap:3vw; }
+.share-head b { font-size:2.4vh; font-weight:600; }
+.share-head span { font-size:1.5vh; color:var(--dim); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.bar { height:.45vh; background:var(--slate); margin-top:.9vh; }
+.bar i { display:block; height:100%; background:var(--signal); }
+.items { list-style:none; margin:1vh 0 0; padding:0; display:flex; flex-direction:column; gap:.7vh; }
+.items li { display:grid; grid-template-columns:1.6vh 1fr auto; column-gap:1.4vw; align-items:center; font-size:1.7vh; }
+.items .mark { width:1.6vh; height:1.6vh; box-sizing:border-box; }
+.items .mark.arriving { background:transparent; border:.25vh solid var(--signal); }
+.items .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.items .state { color:var(--dim); font-size:1.4vh; white-space:nowrap; }
+.empty, .error, .more { font-size:1.5vh; color:var(--dim); margin-top:.9vh; }
+.error { color:var(--signal); }
+"""
+
+DEPOT_JS = """<script>
+(function () {
+  var MAX = 3;
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function size(b) {
+    var u = ['B', 'KB', 'MB', 'GB'], i = 0;
+    while (b >= 1000 && i < u.length - 1) { b /= 1000; i++; }
+    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + ' ' + u[i];
+  }
+  function ago(s) {
+    s = Math.max(0, Math.round(s));
+    return s < 60 ? s + 's' : s < 3600 ? Math.round(s / 60) + ' min' : Math.round(s / 3600) + ' h';
+  }
+  function state(it, now) {
+    if (it.state === 'declared') return 'declared';
+    if (it.state === 'arriving') return 'arriving';
+    // unwitnessed: say what we did see, never that it is done.
+    return it.growth_last_observed ? 'stopped growing ' + ago(now - it.growth_last_observed) + ' ago'
+                                   : 'unwitnessed';
+  }
+  function draw(d) {
+    document.getElementById('scanned').textContent =
+      d.at ? 'Checked ' + ago(d.now - d.at) + ' ago' : 'Not checked yet';
+    var groups = {};
+    d.shares.forEach(function (s) { (groups[s.group] = groups[s.group] || []).push(s); });
+    Object.keys(groups).forEach(function (g) {
+      var box = document.getElementById('group-' + g); if (!box) return;
+      box.textContent = '';
+      groups[g].forEach(function (s) {
+        var row = el('div', 'share'), head = el('div', 'share-head');
+        head.appendChild(el('b', null, s.label));
+        head.appendChild(el('span', null, s.ok ? size(s.free) + ' free' : ''));
+        row.appendChild(head);
+        if (s.ok) {
+          var bar = el('div', 'bar'), fill = el('i');
+          fill.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
+          bar.appendChild(fill); row.appendChild(bar);
+        }
+        if (s.error) row.appendChild(el('p', 'error', 'Cannot reach it: ' + s.error));
+        else if (!s.items.length) row.appendChild(el('p', 'empty', 'Empty'));
+        else {
+          var ul = el('ul', 'items');
+          s.items.slice(0, MAX).forEach(function (it) {
+            var li = el('li');
+            li.appendChild(el('div', 'mark' + (it.state === 'declared' ? '' : it.state === 'arriving' ? ' arriving' : ' unlit')));
+            li.appendChild(el('span', 'name', it.name + '  \\u00b7  ' + size(it.size)));
+            li.appendChild(el('span', 'state', state(it, d.now)));
+            ul.appendChild(li);
+          });
+          row.appendChild(ul);
+          if (s.items.length > MAX) row.appendChild(el('p', 'more', '+ ' + (s.items.length - MAX) + ' more'));
+        }
+        box.appendChild(row);
+      });
+    });
+  }
+  function tick() {
+    fetch('/depot/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {});
+  }
+  tick(); setInterval(tick, 10000);
+})();
+</script>"""
+
+
+def depot_page():
+    cfg = node().get("depot") or {}
+    words = (node().get("wording") or {}).get("depot") or {}
+    sections = "".join('<section><h2>%s</h2><div class=shares id="group-%s"></div></section>' % (
+        e(g.get("title", g["name"])), html.escape(g["name"], quote=True)) for g in cfg.get("groups") or [])
+    body = """<header><div class=mark></div><div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
+<main>%s</main>%s""" % (e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
+    return page("Depot", body, DEPOT_CSS)
+
+
 # -------------------------------------------------------------------- server --
 def inside(base, rel):
     """The file at base/rel, or None if rel steps outside base or is not a file."""
@@ -585,6 +779,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, revision(), TYPES[".txt"])
             if route in ("/kiosk", "/kiosk/"):
                 return self.reply(200, kiosk_page())
+            if route in ("/depot", "/depot/"):
+                return self.reply(200, depot_page())
+            if route == "/depot/now":
+                return self.reply(200, json.dumps(depot_now()), TYPES[".json"])
             if route == "/kiosk/now":
                 return self.reply(200, json.dumps({"on": on_now(), "map": stations()}), TYPES[".json"])
             if route.startswith("/kiosk/wifi/") and tail.isdigit():
@@ -651,6 +849,7 @@ def serve():
         return 1
     server.bounce = False
     threading.Thread(target=watch_commit, args=(server,), daemon=True).start()
+    threading.Thread(target=watch_depot, daemon=True).start()
     log("door up on [::]:%d from %s at %s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD")))
     server.serve_forever()
     server.server_close()
