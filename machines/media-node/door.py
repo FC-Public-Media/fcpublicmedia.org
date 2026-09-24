@@ -332,14 +332,14 @@ body { display:grid; grid-template-rows:1fr 1fr auto; }
 .words { position:absolute; top:50%; transform:translateY(-50%); }
 .checkin .words { left:calc(33.333% + 12.5vh + 5vw); right:5vw; }
 .wifi .words { right:calc(33.333% + 7.5vh + 5vw); left:6vw; text-align:right; }
-h1 { margin:0; font-size:min(6vh, 11vw); line-height:1; font-weight:750; letter-spacing:-.01em; }
+h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750; letter-spacing:-.01em; white-space:nowrap; }
 .sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; font-weight:500; }
 
 footer { background:var(--slate); color:var(--paper); display:flex; align-items:baseline;
   justify-content:space-between; gap:3vw; padding:2.4vh 5vw; }
 .on { display:flex; align-items:baseline; gap:1.6vw; min-width:0; }
 .on b { font-size:1.5vh; letter-spacing:.1em; text-transform:uppercase; color:var(--signal); white-space:nowrap; }
-.on span { font-size:2.6vh; font-weight:600; }
+.on span { font-size:2.2vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .place { font-size:1.4vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
 """
 
