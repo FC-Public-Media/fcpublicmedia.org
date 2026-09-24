@@ -181,7 +181,12 @@ def stations(now=None):
         live = [sp for sp in spans if sp[0] <= now]
         g["lit"] = bool(live)
         g["until"] = when(max(sp[1] for sp in live), now) if live else None
-        g["next"] = [when(sp[0], now) for sp in spans if sp[0] > now][:2]
+        # A booking may name who it is for. The sample week names nobody real,
+        # so its bookings are for "Sample", which is also how the screen says
+        # that the map is not the real day.
+        g["next"] = [{"when": when(sp[0], now),
+                      "who": sp[2].get("who") or ("Sample" if sample else "")}
+                     for sp in spans if sp[0] > now][:2]
     return {"groups": groups, "sample": sample}
 
 
@@ -394,8 +399,6 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .note { font-size:1.7vh; color:var(--dim); }
 .group.preparing .names span { color:var(--dim); }
 .group.preparing .mark { opacity:.6; }
-.sample { position:absolute; left:6vw; bottom:2.2vh; margin:0; font-size:1.25vh; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--dim); border:1px dashed var(--dim); padding:.3vh .8vh; }
 
 .wifi { position:absolute; left:82%; top:50%; translate:-50% -50%;
   display:flex; flex-direction:column; gap:3vh; }
@@ -427,7 +430,6 @@ NOW_JS = """<script>
     else { label.textContent = ''; who.textContent = W.none; }
   }
   function map(m) {
-    document.getElementById('sample').hidden = !m.sample;
     var box = document.getElementById('stations'); box.textContent = '';
     m.groups.forEach(function (g) {
       var row = el('div', 'group' + (g.coupled ? ' coupled' : '') + (g.preparing ? ' preparing' : ''));
@@ -438,7 +440,9 @@ NOW_JS = """<script>
       var times = el('div', 'times');
       if (g.preparing && g.note) times.appendChild(el('span', 'note', g.note));
       if (g.until) times.appendChild(el('span', 'until', W.until + ' ' + g.until));
-      g.next.forEach(function (w, i) { times.appendChild(el('span', 'pill ' + (i ? 'outline' : 'solid'), w)); });
+      g.next.forEach(function (b, i) {
+        times.appendChild(el('span', 'pill ' + (i ? 'outline' : 'solid'), b.when + (b.who ? ' \\u00b7 ' + b.who : '')));
+      });
       row.appendChild(times);
       box.appendChild(row);
     });
@@ -475,12 +479,11 @@ def kiosk_page():
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
 </section>
 <section class="half map">
-  <p class=sample id=sample hidden>%s</p>
   <div class=stations id=stations></div>
   <div class=wifi>%s</div>
 </section>
 <footer><div class=on><b id=on-label></b><span id=on-who></span></div><div class=place>%s</div></footer>
-%s""" % (code, e(ci.get("head")), e(ci.get("sub")), e(mp.get("sample", "Sample")), "".join(nets),
+%s""" % (code, e(ci.get("head")), e(ci.get("sub")), "".join(nets),
          e(w.get("place")),
          NOW_JS % json.dumps({"on": ft.get("on", ""), "next": ft.get("next", ""),
                               "none": ft.get("none", ""), "until": mp.get("until", "until")}))

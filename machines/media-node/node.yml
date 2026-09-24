@@ -68,9 +68,9 @@ stations:
     preparing: true
 
 # Where bookings come from. Only `sample` exists: the made-up week in
-# bookings.sample.yml, drawn with a SAMPLE mark. The booking calendars
-# (Microsoft 365, and possibly several) will replace it. The rota's footer
-# will read from the same calendars.
+# bookings.sample.yml, whose bookings are all for "Sample", so the screen
+# says so in every pill. The booking calendars (Microsoft 365, and possibly
+# several) will replace it. The rota's footer will read from the same ones.
 bookings: sample
 
 # ---------------------------------------------------------------------------
@@ -83,7 +83,6 @@ wording:
     head: Check in
     sub: No apps. Free public tech.
   map:
-    sample: Sample bookings
     until: until
   footer:
     on: On now
