@@ -88,26 +88,39 @@ bookings: sample
 # names already sort into two kinds, and the grouping below is that:
 # mailboxes for a station, and queues named for what happens next.
 #
-# Samba reports every partition as NTFS whatever is underneath, so the FAT
-# limits in docs/DESIGN-NOTES.md (4 GiB files, nothing in the root) can be
-# neither confirmed nor ruled out from here. Treat them as real.
+# Samba reports every partition as NTFS. Do not believe it: Samba says NTFS
+# whatever is underneath, and Autumn could find no format but FAT that the
+# router would mount at all (2026-09-23). So the FAT limits in
+# docs/DESIGN-NOTES.md are real: no file over 4 GiB, nothing in the root.
+#
+# ROWS are the shares we know, laid out side by side. `files: false` shows a
+# share's bar and a count, not its files: the bays are in the next room, so
+# their contents are less in need of watching. The other partitions feel more
+# remote, so their files are listed. A share the router offers that is not
+# named here still appears, beneath its group's rows, in the group whose
+# `match` prefix fits its name, or else in the first group.
 depot:
   server: 10.209.1.1
   groups:
     - name: stations
       title: Stations
-      shares:
-        - {share: BAY 1, label: Bay 1}
-        - {share: BAY2, label: Bay 2}
-        - {share: DIGISTATION, label: Digitization}
-        - {share: FILMING, label: Filming}
-        - {share: PODCAST, label: Podcast}
+      rows:
+        - files: false
+          shares:
+            - {share: BAY 1, label: Bay 1}
+            - {share: BAY2, label: Bay 2}
+        - shares:
+            - {share: DIGISTATION, label: Digitization}
+            - {share: FILMING, label: Filming}
+            - {share: PODCAST, label: Podcast}
     - name: queues
       title: Queues
-      shares:
-        - {share: TO DROPBOX, label: To Dropbox}
-        - {share: TO ENHANCE, label: To Enhance}
-        - {share: TO STEM, label: To Stem}
+      match: "TO "
+      rows:
+        - shares:
+            - {share: TO DROPBOX, label: To Dropbox}
+            - {share: TO ENHANCE, label: To Enhance}
+            - {share: TO STEM, label: To Stem}
 
 # ---------------------------------------------------------------------------
 # WORDING. DRAFT. Autumn is doing the wording pass, and this block is a

@@ -48,6 +48,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import re
 import shutil
 import socket
 import subprocess
@@ -373,6 +374,12 @@ def wifi_svg(i):
 #   * `growth_last_observed` is a frozen instant, written once when growth
 #     stops. Its absence means this file was never seen growing.
 #
+# KNOWN AND UNKNOWN SHARES. node.yml lays out the shares we know by name, in
+# rows. The router is also asked what it shares, every scan, so a partition
+# nobody has told this file about still appears: in the group whose `match`
+# prefix fits its name, listed plainly under that group's rows. Nothing on the
+# drive goes unseen for want of a config line.
+#
 # The index lives only in this process. It names people's files, so it is not
 # written to disk and never goes near the repository. A restart forgets the
 # growth history, which is the honest cost: everything reads `unwitnessed`
@@ -386,47 +393,82 @@ def share_root(server, share):
     return "\\\\%s\\%s\\" % (server, share)
 
 
-def scan_depot(now=None):
+def discover_shares(server):
+    """The disk shares the router offers, by asking it (`net view`). An empty
+    list if it cannot be asked, and then only the configured shares show."""
+    try:
+        out = subprocess.run(["net", "view", "\\\\" + server], capture_output=True, text=True,
+                             timeout=20, creationflags=NO_WINDOW).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    found = []
+    for line in out.splitlines():
+        m = re.match(r"^(\S.*?)\s{2,}Disk\b", line)
+        if m:
+            found.append(m.group(1))
+    return found
+
+
+def depot_layout(cfg, discovered):
+    """Every share to scan: [(group, row, share-config)], row None for unknowns."""
+    out, known = [], set()
+    for group in cfg.get("groups") or []:
+        for r, row in enumerate(group.get("rows") or []):
+            for sh in row.get("shares") or []:
+                known.add(sh["share"])
+                out.append((group, r, dict(sh, files=row.get("files", True))))
+    groups = cfg.get("groups") or []
+    for name in discovered:
+        if name in known or not groups:
+            continue
+        home = next((g for g in groups if g.get("match") and name.upper().startswith(g["match"].upper())),
+                    groups[0])
+        out.append((home, None, {"share": name, "label": name, "files": True}))
+    return out
+
+
+def scan_depot(now=None, discovered=None):
     cfg = node().get("depot") or {}
     server = cfg.get("server")
     now = now or time.time()
+    if discovered is None:
+        discovered = discover_shares(server) if server else []
     prev, files, shares = _depot["files"], {}, []
-    for group in cfg.get("groups") or []:
-        for sh in group.get("shares") or []:
-            root = sh.get("path") or share_root(server, sh["share"])     # `path` is for tests
-            entry = {"share": sh["share"], "label": sh.get("label", sh["share"]),
-                     "group": group["name"], "ok": False, "items": []}
-            try:
-                usage = shutil.disk_usage(root)
-                entry.update(ok=True, total=usage.total, free=usage.free)
-                for dirpath, dirnames, filenames in os.walk(root):
-                    # Dot-directories are other machines' bookkeeping
-                    # (.Spotlight-V100 is on every partition), not deliveries.
-                    dirnames[:] = [d for d in dirnames if not d.startswith(".")]
-                    for f in filenames:
-                        if f.startswith(".") or f.endswith(".sha256"):
-                            continue
-                        full = os.path.join(dirpath, f)
-                        try:
-                            size = os.stat(full).st_size
-                        except OSError:
-                            continue
-                        old = prev.get(full)
-                        growing = bool(old) and size != old["size"]
-                        stopped = growing is False and bool(old) and old["growing"]
-                        rec = {"size": size, "seen": old["seen"] if old else now, "growing": growing,
-                               "growth_last_observed": now if stopped else (old or {}).get("growth_last_observed")}
-                        files[full] = rec
-                        state = ("declared" if os.path.exists(full + ".sha256")
-                                 else "arriving" if growing else "unwitnessed")
-                        rel = os.path.relpath(full, root).replace("\\", "/")
-                        entry["items"].append({"name": rel, "size": size, "state": state,
-                                               "seen": rec["seen"],
-                                               "growth_last_observed": rec["growth_last_observed"]})
-            except OSError as exc:
-                entry["error"] = exc.strerror or str(exc)
-            entry["items"].sort(key=lambda i: -i["seen"])
-            shares.append(entry)
+    for group, row, sh in depot_layout(cfg, discovered):
+        root = sh.get("path") or share_root(server, sh["share"])     # `path` is for tests
+        entry = {"share": sh["share"], "label": sh.get("label", sh["share"]),
+                 "group": group["name"], "row": row, "files": sh["files"], "ok": False, "items": []}
+        try:
+            usage = shutil.disk_usage(root)
+            entry.update(ok=True, total=usage.total, free=usage.free)
+            for dirpath, dirnames, filenames in os.walk(root):
+                # Dot-directories are other machines' bookkeeping
+                # (.Spotlight-V100 is on every partition), not deliveries.
+                dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                for f in filenames:
+                    if f.startswith(".") or f.endswith(".sha256"):
+                        continue
+                    full = os.path.join(dirpath, f)
+                    try:
+                        size = os.stat(full).st_size
+                    except OSError:
+                        continue
+                    old = prev.get(full)
+                    growing = bool(old) and size != old["size"]
+                    stopped = growing is False and bool(old) and old["growing"]
+                    rec = {"size": size, "seen": old["seen"] if old else now, "growing": growing,
+                           "growth_last_observed": now if stopped else (old or {}).get("growth_last_observed")}
+                    files[full] = rec
+                    state = ("declared" if os.path.exists(full + ".sha256")
+                             else "arriving" if growing else "unwitnessed")
+                    rel = os.path.relpath(full, root).replace("\\", "/")
+                    entry["items"].append({"name": rel, "size": size, "state": state,
+                                           "seen": rec["seen"],
+                                           "growth_last_observed": rec["growth_last_observed"]})
+        except OSError as exc:
+            entry["error"] = exc.strerror or str(exc)
+        entry["items"].sort(key=lambda i: -i["seen"])
+        shares.append(entry)
     with _depot_lock:
         _depot.update(at=now, shares=shares, files=files)
 
@@ -640,22 +682,31 @@ header { background:var(--slate); padding:5vh 6vw 4vh; display:flex; align-items
 header .mark { width:7vh; height:7vh; flex:none; }
 header h1 { margin:0; font-size:5.2vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
 header p { margin:1vh 0 0; font-size:1.7vh; color:var(--soft); }
-main { padding:3.4vh 6vw; display:flex; flex-direction:column; gap:3.2vh; overflow:hidden; }
-h2 { margin:0 0 1.4vh; font-size:1.5vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:650; }
-.shares { display:flex; flex-direction:column; gap:2.1vh; }
-.share-head { display:flex; align-items:baseline; justify-content:space-between; gap:3vw; }
-.share-head b { font-size:2.4vh; font-weight:600; }
-.share-head span { font-size:1.5vh; color:var(--dim); white-space:nowrap; font-variant-numeric:tabular-nums; }
+main { padding:3.4vh 6vw; display:flex; flex-direction:column; gap:3.6vh; overflow:hidden; }
+h2 { margin:0 0 1.6vh; font-size:1.5vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:650; }
+.rows { display:flex; flex-direction:column; gap:3vh; }
+
+/* A row of known shares sits side by side, one column each. */
+.row { display:flex; gap:4vw; }
+.row > .share { flex:1 1 0; min-width:0; }
+.share b { display:block; font-size:2.3vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .bar { height:.45vh; background:var(--slate); margin-top:.9vh; }
 .bar i { display:block; height:100%; background:var(--signal); }
-.items { list-style:none; margin:1vh 0 0; padding:0; display:flex; flex-direction:column; gap:.7vh; }
-.items li { display:grid; grid-template-columns:1.6vh 1fr auto; column-gap:1.4vw; align-items:center; font-size:1.7vh; }
-.items .mark { width:1.6vh; height:1.6vh; box-sizing:border-box; }
+.meta { margin:.8vh 0 0; font-size:1.45vh; color:var(--dim); white-space:nowrap; font-variant-numeric:tabular-nums; }
+
+.items { list-style:none; margin:1.4vh 0 0; padding:0; display:flex; flex-direction:column; gap:1.1vh; }
+.items li { display:grid; grid-template-columns:1.5vh 1fr; column-gap:.9vw; align-items:start; }
+.items .mark { width:1.5vh; height:1.5vh; box-sizing:border-box; margin-top:.35vh; }
 .items .mark.arriving { background:transparent; border:.25vh solid var(--signal); }
-.items .name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.items .state { color:var(--dim); font-size:1.4vh; white-space:nowrap; }
-.empty, .error, .more { font-size:1.5vh; color:var(--dim); margin-top:.9vh; }
-.error { color:var(--signal); }
+.items li > div { min-width:0; }
+.items .name { display:block; font-size:1.6vh; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.items .state { display:block; font-size:1.3vh; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.more { font-size:1.35vh; color:var(--dim); margin:1vh 0 0; }
+.error { font-size:1.45vh; color:var(--signal); margin:.8vh 0 0; }
+
+/* A share nobody has described: the plain full-width line, beneath the rows. */
+.unknown { display:flex; flex-direction:column; gap:2vh; }
+.unknown .share b { display:inline; }
 """
 
 DEPOT_JS = """<script>
@@ -666,7 +717,7 @@ DEPOT_JS = """<script>
   function size(b) {
     var u = ['B', 'KB', 'MB', 'GB'], i = 0;
     while (b >= 1000 && i < u.length - 1) { b /= 1000; i++; }
-    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + ' ' + u[i];
+    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + '\\u00a0' + u[i];
   }
   function ago(s) {
     s = Math.max(0, Math.round(s));
@@ -679,40 +730,56 @@ DEPOT_JS = """<script>
     return it.growth_last_observed ? 'stopped growing ' + ago(now - it.growth_last_observed) + ' ago'
                                    : 'unwitnessed';
   }
+  function share(s) {
+    var col = el('div', 'share');
+    col.appendChild(el('b', null, s.label));
+    if (s.error) { col.appendChild(el('p', 'error', 'Cannot reach it')); return col; }
+    var bar = el('div', 'bar'), fill = el('i');
+    fill.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
+    bar.appendChild(fill); col.appendChild(bar);
+    // `<` because free space is an estimate: this much, give or take what is
+    // being written right now.
+    var meta = '<\\u00a0' + size(s.free);
+    if (!s.items.length) meta += '  \\u00b7  Empty';
+    else if (!s.files) meta += '  \\u00b7  ' + s.items.length + (s.items.length === 1 ? ' file' : ' files');
+    col.appendChild(el('p', 'meta', meta));
+    if (s.files && s.items.length) {
+      var ul = el('ul', 'items');
+      s.items.slice(0, MAX).forEach(function (it) {
+        var li = el('li'), text = el('div');
+        li.appendChild(el('div', 'mark' + (it.state === 'declared' ? '' : it.state === 'arriving' ? ' arriving' : ' unlit')));
+        text.appendChild(el('span', 'name', it.name));
+        text.appendChild(el('span', 'state', size(it.size) + '  \\u00b7  ' + state(it, d_now)));
+        li.appendChild(text); ul.appendChild(li);
+      });
+      col.appendChild(ul);
+      if (s.items.length > MAX) col.appendChild(el('p', 'more', '+ ' + (s.items.length - MAX) + ' more'));
+    }
+    return col;
+  }
+  var d_now = 0;
   function draw(d) {
+    d_now = d.now;
     document.getElementById('scanned').textContent =
       d.at ? 'Checked ' + ago(d.now - d.at) + ' ago' : 'Not checked yet';
-    var groups = {};
-    d.shares.forEach(function (s) { (groups[s.group] = groups[s.group] || []).push(s); });
-    Object.keys(groups).forEach(function (g) {
-      var box = document.getElementById('group-' + g); if (!box) return;
-      box.textContent = '';
-      groups[g].forEach(function (s) {
-        var row = el('div', 'share'), head = el('div', 'share-head');
-        head.appendChild(el('b', null, s.label));
-        head.appendChild(el('span', null, !s.ok ? '' :
-          (s.items.length ? '' : 'Empty  \\u00b7  ') + size(s.free) + ' free'));
-        row.appendChild(head);
-        if (s.ok) {
-          var bar = el('div', 'bar'), fill = el('i');
-          fill.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
-          bar.appendChild(fill); row.appendChild(bar);
-        }
-        if (s.error) row.appendChild(el('p', 'error', 'Cannot reach it: ' + s.error));
-        else if (s.items.length) {
-          var ul = el('ul', 'items');
-          s.items.slice(0, MAX).forEach(function (it) {
-            var li = el('li');
-            li.appendChild(el('div', 'mark' + (it.state === 'declared' ? '' : it.state === 'arriving' ? ' arriving' : ' unlit')));
-            li.appendChild(el('span', 'name', it.name + '  \\u00b7  ' + size(it.size)));
-            li.appendChild(el('span', 'state', state(it, d.now)));
-            ul.appendChild(li);
-          });
-          row.appendChild(ul);
-          if (s.items.length > MAX) row.appendChild(el('p', 'more', '+ ' + (s.items.length - MAX) + ' more'));
-        }
-        box.appendChild(row);
-      });
+    var boxes = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-group]'), function (b) {
+      b.textContent = ''; boxes[b.getAttribute('data-group')] = {box: b, rows: {}, unknown: null};
+    });
+    d.shares.forEach(function (s) {
+      var g = boxes[s.group]; if (!g) return;
+      if (s.row === null) {
+        if (!g.unknown) { g.unknown = el('div', 'unknown'); }
+        g.unknown.appendChild(share(s));
+        return;
+      }
+      if (!g.rows[s.row]) { g.rows[s.row] = el('div', 'row'); }
+      g.rows[s.row].appendChild(share(s));
+    });
+    Object.keys(boxes).forEach(function (k) {
+      var g = boxes[k];
+      Object.keys(g.rows).sort(function (a, b) { return a - b; }).forEach(function (r) { g.box.appendChild(g.rows[r]); });
+      if (g.unknown) g.box.appendChild(g.unknown);
     });
   }
   function tick() {
@@ -726,7 +793,7 @@ DEPOT_JS = """<script>
 def depot_page():
     cfg = node().get("depot") or {}
     words = (node().get("wording") or {}).get("depot") or {}
-    sections = "".join('<section><h2>%s</h2><div class=shares id="group-%s"></div></section>' % (
+    sections = "".join('<section><h2>%s</h2><div class=rows data-group="%s"></div></section>' % (
         e(g.get("title", g["name"])), html.escape(g["name"], quote=True)) for g in cfg.get("groups") or [])
     body = """<header><div class=mark></div><div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
 <main>%s</main>%s""" % (e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
