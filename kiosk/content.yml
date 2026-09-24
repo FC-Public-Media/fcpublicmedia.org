@@ -1,0 +1,108 @@
+# What the welcome kiosk says. The editorial half.
+#
+# This file is hand-written. `welcome.yml` beside it is GENERATED from this
+# file plus the site's own data, and is the only thing a kiosk reads:
+#
+#   python3 bin/build-kiosk.py
+#
+# Edit this one. Regenerate. Commit both.
+#
+# WHY THIS IS NOT IN site/_data/
+# ------------------------------
+# The kiosk is not a web page. It is a screen on a desk in the studio, served
+# on the LAN by whatever node is awake — today station-node, eventually an FCPM
+# machine. `site/` is what the public gets; the root is everything else, and
+# this is everything else. See docs/NODE.md.
+#
+# WHAT GOES IN A PANEL, AND WHAT DOES NOT
+# ---------------------------------------
+# A panel is read standing up, from across a room, by somebody who has just
+# walked in and has not sat down. That is the whole brief. It is not a web page
+# and it is not the poster — the poster can afford three paragraphs about why
+# the network might be down, and a kiosk cannot.
+#
+# Two kinds of panel:
+#
+#   from: <source>   the facts come from the site's data files, so they cannot
+#                    drift from what the posters and the website say. The
+#                    wording is still yours — `say` and `note` override.
+#
+#   say: / note:     a literal panel. Written here, sourced nowhere.
+#
+# NEVER PUT THE WI-FI PASSWORD IN THIS FILE, OR IN ANY FILE HERE
+# --------------------------------------------------------------
+# This repository is public and so is the site it builds. The guest password
+# reaches a guest on a printed poster, generated locally and never committed —
+# see the header of site/_data/wifi.yml, which explains at length why that is a
+# real distinction and not a ritual. `bin/build-kiosk.py` refuses to emit an
+# artifact containing it, and `bin/test_build_kiosk.py` checks that the refusal
+# works.
+
+# The room this screen stands in. There will be more than one kiosk — a media
+# drop on triple portrait monitors has already been described — so each one
+# says where it is rather than assuming.
+room: the welcome desk
+
+# Read standing up, from across the room. Two sentences is the ceiling.
+#
+# PLACEHOLDER WORDING. Replace it with however staff would actually greet
+# somebody, and do not leave it guessing at the building. The mission statement
+# in site/_data/org.yml is deliberately NOT reused here: it is the board
+# president's verbatim wording for the homepage, and a greeting is a different
+# job. See CLAUDE.md, "Bryan's wording is authoritative" — borrowing his
+# sentence for a screen he has not seen is a paraphrase with extra steps.
+greeting: >-
+  Welcome in. Scan the code to check in, and help yourself to the guest
+  Wi-Fi — there is nothing to sign up for.
+
+# The panels, in the order they appear.
+panels:
+  # The facts come from site/_data/checkin.yml, including the committed QR.
+  #
+  # THE KIOSK SHOWS THIS CODE. IT DOES NOT CHECK ANYBODY IN.
+  # -------------------------------------------------------
+  # The guest scans it with their own phone. A kiosk browser must never open
+  # /check-in/ itself: that page keeps the visitor's name, reason and email in
+  # localStorage under `fcpm.profile`, plus a 200-entry history under
+  # `fcpm.checkins`. On one shared browser at a desk, that accumulates into a
+  # single profile and prefills the last guest's details for the next one,
+  # which is the exact opposite of what the page promises ("Your visits stay on
+  # your own phone"). The QR is what makes it their phone.
+  - panel: Checking in
+    from: checkin
+    note: >-
+      Scan it with your own phone. Your visits stay on your phone — we don't
+      make you an account.
+
+  # The facts come from site/_data/wifi.yml, which owns the SSID. Nothing here
+  # retypes it: that file carries a `confirmed:` gate and a long note about the
+  # network having vanished once, and a kiosk is the worst place for a stale
+  # copy of a network name — the guest is standing right there.
+  #
+  # No QR, and the note has to be written here rather than inherited.
+  #
+  # The Wi-Fi code encodes the password in plain decodable form and is
+  # gitignored, so it cannot travel in a committed artifact. The printed poster
+  # at /wifi/poster/ is how the password reaches a guest — so this panel's job
+  # is to name the network and point at the paper, and it must NOT tell anybody
+  # to scan anything. `wifi.poster.note` says "point your camera at the code",
+  # which is true on the poster and false here; the generator deliberately does
+  # not fall back to it.
+  #
+  # PLACEHOLDER for where the poster actually hangs. "By the desk" is a guess.
+  - panel: Guest Wi-Fi
+    from: wifi
+    note: >-
+      Open Wi-Fi settings and pick this network. The password is on the
+      printed card by the desk, or ask and we'll tell you.
+
+  # A literal panel: there is no data file that knows this, and inventing one
+  # for a single sentence would be worse than writing the sentence.
+  #
+  # PLACEHOLDER. Whoever a guest should actually ask, by role — "the person at
+  # the desk" is fine, a named individual is not, because they leave and the
+  # screen does not notice.
+  - panel: Need a hand?
+    say: Ask whoever is at the desk.
+    note: >-
+      If nobody is about, the studio phone and email are on the contact page.

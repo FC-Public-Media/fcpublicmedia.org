@@ -122,6 +122,23 @@ jobs:
       - name: Check nothing internal reached the site
         run: python3 site/bin/test_nothing_internal_is_published.py
 
+      # The kiosk artifact is committed so a consumer needs no build step, and
+      # is read by a machine outside this repository — station-node today, an
+      # FCPM node later. Both properties mean nothing here would notice it
+      # going stale: no build fails, no page renders wrong, and the failure
+      # surfaces as a screen at the welcome desk naming a Wi-Fi network to a
+      # guest standing in front of it. `--check` rebuilds it and compares.
+      #
+      # The tests beside it are the ones that matter more: the artifact must
+      # never carry the guest Wi-Fi password, and must name no host or port of
+      # its own, because the second property is what lets FCPM take the kiosk
+      # over later without the file changing.
+      - name: Test the kiosk artifact builder
+        run: python3 bin/test_build_kiosk.py
+
+      - name: Check the kiosk artifact is not stale
+        run: python3 bin/build-kiosk.py --check
+
       # The member site template is a Jekyll site of its own, excluded from
       # the main build — so nothing else would notice it breaking. The check
       # is a round trip rather than just a build: the template generates a
