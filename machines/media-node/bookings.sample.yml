@@ -1,0 +1,50 @@
+# bookings.sample.yml — MADE UP. Nobody booked any of this.
+#
+# Stands in for the booking calendars until they are connected, so the
+# studio map on the welcome screen can be looked at and argued about. While
+# node.yml says `bookings: sample`, the screen marks the map SAMPLE, so
+# nobody standing in the lobby mistakes it for the real day.
+#
+# The shape is the rota's: a weekly pattern in the studio's local time. It
+# repeats every day on purpose, so there is always something to see
+# whenever somebody looks. `station` is a name from node.yml's stations.
+
+bookings:
+  - station: Podcast Studio
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "10:00"
+    to: "12:00"
+  - station: Video Studio
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "13:00"
+    to: "14:30"
+  - station: Podcast Studio
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "16:00"
+    to: "17:30"
+  - station: Video Studio
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "19:00"
+    to: "21:00"
+
+  - station: Editing Bay 1
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "09:00"
+    to: "11:00"
+  - station: Editing Bay 1
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "15:00"
+    to: "18:00"
+  - station: Editing Bay 1
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "21:30"
+    to: "23:30"
+
+  - station: Editing Bay 2
+    days: [tue, thu, sat]
+    from: "14:00"
+    to: "16:00"
+  - station: Editing Bay 2
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    from: "18:00"
+    to: "20:00"

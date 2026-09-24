@@ -38,12 +38,40 @@ screens:
 # Until a password is set, the screen draws a marked empty slot.
 networks:
   - from: wifi               # site/_data/wifi.yml: ssid, security, confirmed
-    label: Guest
+    label: Guest Wi-Fi
   - ssid: FC Public Media Audio
     security: wpa
-    label: Audio
+    label: Audio Wi-Fi
     # The AirPort Express. It joins you to the AirPlay speaker on the spare
     # mixer input. Its name is Autumn's (2026-09-23).
+
+# ---------------------------------------------------------------------------
+# STATIONS on the studio map: a logical map of what can be booked, not a
+# floor plan. Each one has a square that lights when it is in use, a solid
+# pill for its next booking, and an outline pill for the one after. Two are
+# shown, not three, because two already show the size of the gap.
+#
+# `facilities` pulls from site/_data/facilities.yml. Rooms that
+# `couples_with` each other are drawn as one group sharing one square, since
+# booking either takes both. A facility with `stations: N` becomes N
+# stations: "Editing Bays" becomes Editing Bay 1 and Editing Bay 2.
+# Equipment Checkout is not here: it is arranged by email, not booked.
+facilities: [Video Studio, Podcast Studio, Editing Bays]
+
+# Stations the public site does not list yet.
+stations:
+  - name: Digitization
+    note: Opening soon
+    # Bay 3, back as the digitization station: VCR, Blu-ray, burned discs,
+    # made into files. This node orchestrates it. It is being prepared and
+    # cannot launch yet, so it takes no bookings and shows its note instead.
+    preparing: true
+
+# Where bookings come from. Only `sample` exists: the made-up week in
+# bookings.sample.yml, drawn with a SAMPLE mark. The booking calendars
+# (Microsoft 365, and possibly several) will replace it. The rota's footer
+# will read from the same calendars.
+bookings: sample
 
 # ---------------------------------------------------------------------------
 # WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
@@ -54,9 +82,9 @@ wording:
   checkin:
     head: Check in
     sub: No apps. Free public tech.
-  wifi:
-    head: Wi-Fi
-    sub: Point your camera. It joins by itself.
+  map:
+    sample: Sample bookings
+    until: until
   footer:
     on: On now
     next: Next

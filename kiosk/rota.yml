@@ -14,7 +14,44 @@
 #     to: "14:00"
 #     who: [A Name, Another Name]
 #
-# EMPTY UNTIL AUTUMN GIVES THE NAMES. With no shifts, the footer says to ask
-# at the desk, which is true.
+# `role` is optional and shows beside the name.
+#
+# Given by Autumn, 2026-09-23, as agreed at the board meeting.
+#
+# NO MONDAY, on purpose. The building has work on then. Coming in is
+# possible, but nobody has to be here.
 
-shifts: []
+shifts:
+  - days: [tue]
+    from: "14:30"
+    to: "17:30"
+    who: [James]
+
+  - days: [wed]
+    from: "11:00"
+    to: "16:00"
+    who: [Morey]
+
+  - days: [thu]
+    from: "17:00"
+    to: "19:00"
+    who: [Nate]
+
+  - days: [fri]
+    from: "17:00"
+    to: "19:30"
+    who: [Chris]
+
+  - days: [sat]
+    from: "11:00"
+    to: "16:00"
+    who: [Autumn]
+
+  # Sunday is different. Josh hosts a specific group, so he is busy with
+  # them, but he is the one in charge if anyone else comes in. His name
+  # belongs on the screen for that reason, and `role` says so.
+  - days: [sun]
+    from: "13:00"
+    to: "22:00"
+    who: [Josh]
+    role: hosting

@@ -22,7 +22,7 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /kiosk/            the welcome screen
     GET /kiosk/qr/<n>      the check-in QR for panel n, as welcome.yml names it
     GET /kiosk/wifi/<n>    Wi-Fi QR n, built in memory. See node.yml
-    GET /kiosk/on          who is on, as JSON. The footer polls it
+    GET /kiosk/now         who is on, and the studio map, as JSON. The page polls it
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>
@@ -99,43 +99,90 @@ def revision():
     return "%s-%s" % (git("rev-parse", "--short", "HEAD") or "nogit", kiosk)
 
 
-# ------------------------------------------------------------------ the rota --
+# -------------------------------------------------------------- the schedule --
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
-def on_now(now=None):
-    """Who is on now, and who is next, from the sources in order.
-
-    Only the default rota exists today. A calendar goes in front of it when
-    one is chosen, and the rota keeps answering whenever the calendar cannot.
-    """
-    now = now or datetime.datetime.now()
-    shifts = load(ROOT / "kiosk" / "rota.yml").get("shifts") or []
-    current, upcoming = [], []
-    for s in shifts:
+def occurrences(entries, now, days_ahead=8):
+    """Weekly entries (days, from, to) as real spans that have not ended yet,
+    soonest first. Yesterday is included so a span past midnight still counts."""
+    out = []
+    for s in entries:
         days = [d.lower()[:3] for d in s.get("days") or []]
         start = datetime.datetime.strptime(str(s["from"]), "%H:%M").time()
         end = datetime.datetime.strptime(str(s["to"]), "%H:%M").time()
-        who = s.get("who") or []
-        for ahead in range(8):
+        for ahead in range(-1, days_ahead):
             day = now.date() + datetime.timedelta(days=ahead)
             if DAYS[day.weekday()] not in days:
                 continue
             begins = datetime.datetime.combine(day, start)
             ends = datetime.datetime.combine(day, end)
-            if begins <= now < ends:
-                current += who
-            elif begins > now:
-                upcoming.append((begins, who))
-                break
-    nxt = None
-    if upcoming:
-        begins, who = min(upcoming, key=lambda u: u[0])
-        when = begins.strftime("%a %I:%M %p").replace(" 0", " ").replace(":00", "")
-        if begins.date() == now.date():
-            when = begins.strftime("%I:%M %p").lstrip("0").replace(":00", "")
-        nxt = {"who": who, "when": when}
+            if ends <= begins:
+                ends += datetime.timedelta(days=1)
+            if ends > now:
+                out.append((begins, ends, s))
+    return sorted(out, key=lambda o: o[0])
+
+
+def when(t, now):
+    """`3 PM` if it is today, `Thu 10:30 AM` otherwise."""
+    s = t.strftime("%I:%M %p").lstrip("0").replace(":00", "")
+    return s if t.date() == now.date() else t.strftime("%a ") + s
+
+
+def on_now(now=None):
+    """Who is on now, and who is next, from the sources in order.
+
+    Only the default rota exists today. Calendars go in front of it when they
+    are chosen, and the rota keeps answering whenever they cannot."""
+    now = now or datetime.datetime.now()
+    spans = occurrences(load(ROOT / "kiosk" / "rota.yml").get("shifts") or [], now)
+
+    def who(s):
+        names = ", ".join(s.get("who") or [])
+        return names + (" · " + s["role"] if s.get("role") else "")
+    current = [who(s) for b, _, s in spans if b <= now]
+    later = [(b, s) for b, _, s in spans if b > now]
+    nxt = {"who": who(later[0][1]), "when": when(later[0][0], now)} if later else None
     return {"now": current, "next": nxt, "source": "rota"}
+
+
+def stations(now=None):
+    """The studio map: each group of stations, lit while in use, with its next
+    two bookings. Coupled rooms are one group, because booking either one
+    takes both."""
+    now = now or datetime.datetime.now()
+    cfg = node()
+    wanted = cfg.get("facilities") or []
+    facilities = {f["name"]: f for f in load(ROOT / "site" / "_data" / "facilities.yml") or []}
+    groups, placed = [], set()
+    for name in wanted:
+        f = facilities.get(name)
+        if not f or name in placed:
+            continue
+        if f.get("stations"):
+            single = name[:-1] if name.endswith("s") else name
+            groups += [{"names": ["%s %d" % (single, i + 1)]} for i in range(int(f["stations"]))]
+            placed.add(name)
+            continue
+        names = [name] + ([f["couples_with"]] if f.get("couples_with") in wanted else [])
+        placed.update(names)
+        groups.append({"names": names})
+    for s in cfg.get("stations") or []:
+        groups.append({"names": [s["name"]], "note": s.get("note", ""),
+                       "preparing": bool(s.get("preparing"))})
+
+    sample = cfg.get("bookings") == "sample"
+    entries = (load(HERE / "bookings.sample.yml").get("bookings") or []) if sample else []
+    for g in groups:
+        g["coupled"] = len(g["names"]) > 1
+        spans = [] if g.get("preparing") else occurrences(
+            [b for b in entries if b.get("station") in g["names"]], now)
+        live = [sp for sp in spans if sp[0] <= now]
+        g["lit"] = bool(live)
+        g["until"] = when(max(sp[1] for sp in live), now) if live else None
+        g["next"] = [when(sp[0], now) for sp in spans if sp[0] > now][:2]
+    return {"groups": groups, "sample": sample}
 
 
 # ---------------------------------------------------------------- the Wi-Fi --
@@ -271,11 +318,16 @@ def with_poll(page):
     return page[:i] + POLL + page[i:] if i >= 0 else page + POLL
 
 
-BRAND = """:root { --record:#d93a26; --signal:#ffc61a; --slate:#232830; --ink:#121417;
-  --paper:#f4f1ea; --dim:#a1a8b2; --rule:#2f363d; }
+BRAND = """:root { --signal:#ffc61a; --slate:#232830; --ink:#121417;
+  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; }
 html,body { margin:0; background:var(--ink); color:var(--paper);
   font:18px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; }
-a { color:inherit; }"""
+a { color:inherit; }
+/* THE MARK: the brand square, and a shape any page here may reuse. Signal
+   yellow, hard edges, leaning -8deg: counterclockwise, always (brand/README.md,
+   "The tilt"). Unlit it is slate, as in brand/idle. */
+.mark { background:var(--signal); rotate:-8deg; }
+.mark.unlit { background:var(--slate); }"""
 
 
 def page(title, body, style=""):
@@ -311,31 +363,51 @@ KIOSK_CSS = """
 html, body { height:100%; overflow:hidden; }
 body { display:grid; grid-template-rows:1fr 1fr auto; }
 .half { position:relative; overflow:hidden; }
-.checkin { background:var(--record); color:var(--paper); }
-.wifi { background:var(--signal); color:var(--ink); }
+.checkin { background:var(--slate); }
+.map { background:var(--ink); }
 
-/* The code sits ON a third line: the first third up top, the second third
-   below. The words take the wider side of the line. */
-.code { position:absolute; top:50%; transform:translate(-50%,-50%); }
-.checkin .code { left:33.333%; }
-.wifi .code { left:66.667%; display:flex; flex-direction:column; gap:3vh; }
-.qr { display:block; background:#fff; padding:1.4vh; border-radius:1vh; box-sizing:border-box; }
+/* Check-in: the code IS the mark, sitting on the first-third line. */
+.checkin .mark { position:absolute; left:33.333%; top:50%; translate:-50% -50%;
+  width:25vh; height:25vh; padding:1.1vh; box-sizing:border-box; }
+.checkin .mark img { display:block; width:100%; height:100%; }
+.checkin .words { position:absolute; top:50%; translate:0 -50%;
+  left:calc(33.333% + 15vh + 3vw); right:4vw; }
+h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
+  letter-spacing:-.01em; white-space:nowrap; }
+.sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; font-weight:500; color:var(--soft); }
+
+/* The map: what can be booked, lit when in use. */
+.stations { position:absolute; left:6vw; right:calc(18% + 7vh + 3vw); top:50%; translate:0 -50%;
+  display:flex; flex-direction:column; gap:2.6vh; }
+.group { display:grid; grid-template-columns:2.4vh 1fr; column-gap:1.6vw; align-items:center; }
+.group .mark { width:2.4vh; height:2.4vh; }
+.names { display:flex; flex-direction:column; gap:.4vh; }
+.names span { font-size:2.3vh; font-weight:600; line-height:1.15; }
+.group.coupled .names { border-left:.25vh solid var(--slate); padding-left:1vw; margin-left:-1.25vw; }
+.times { grid-column:2; display:flex; flex-wrap:wrap; align-items:center; gap:.9vh 1vw; margin-top:1vh; }
+.times:empty { display:none; }
+.pill { font-size:1.7vh; font-weight:650; padding:.45vh 1.3vh; border-radius:99px;
+  border:.25vh solid var(--signal); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pill.solid { background:var(--signal); color:var(--ink); }
+.pill.outline { color:var(--signal); }
+.until { font-size:1.7vh; font-weight:650; color:var(--signal); white-space:nowrap; }
+.note { font-size:1.7vh; color:var(--dim); }
+.group.preparing .names span { color:var(--dim); }
+.group.preparing .mark { opacity:.6; }
+.sample { position:absolute; left:6vw; bottom:2.2vh; margin:0; font-size:1.25vh; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); border:1px dashed var(--dim); padding:.3vh .8vh; }
+
+.wifi { position:absolute; left:82%; top:50%; translate:-50% -50%;
+  display:flex; flex-direction:column; gap:3vh; }
+.qr { display:block; width:14vh; height:14vh; background:#fff; padding:1.2vh; box-sizing:border-box; }
 .qr img { display:block; width:100%; height:100%; }
-.checkin .qr { width:25vh; height:25vh; }
-.wifi .qr { width:15vh; height:15vh; }
-.net { display:flex; flex-direction:column; align-items:center; gap:.8vh; }
-.net b { font-size:1.6vh; letter-spacing:.08em; text-transform:uppercase; font-weight:650; }
-.slot { width:15vh; height:15vh; border:.3vh dashed currentColor; border-radius:1vh; opacity:.55;
-  display:flex; align-items:center; justify-content:center; text-align:center; font-size:1.3vh;
+.net { display:flex; flex-direction:column; align-items:center; gap:.9vh; }
+.net b { font-size:1.45vh; letter-spacing:.1em; text-transform:uppercase; font-weight:650; white-space:nowrap; }
+.slot { width:14vh; height:14vh; border:.25vh dashed var(--dim); color:var(--dim);
+  display:flex; align-items:center; justify-content:center; text-align:center; font-size:1.2vh;
   padding:1vh; box-sizing:border-box; }
 
-.words { position:absolute; top:50%; transform:translateY(-50%); }
-.checkin .words { left:calc(33.333% + 12.5vh + 5vw); right:5vw; }
-.wifi .words { right:calc(33.333% + 7.5vh + 5vw); left:6vw; text-align:right; }
-h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750; letter-spacing:-.01em; white-space:nowrap; }
-.sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; font-weight:500; }
-
-footer { background:var(--slate); color:var(--paper); display:flex; align-items:baseline;
+footer { background:var(--slate); display:flex; align-items:baseline;
   justify-content:space-between; gap:3vw; padding:2.4vh 5vw; }
 .on { display:flex; align-items:baseline; gap:1.6vw; min-width:0; }
 .on b { font-size:1.5vh; letter-spacing:.1em; text-transform:uppercase; color:var(--signal); white-space:nowrap; }
@@ -343,16 +415,38 @@ footer { background:var(--slate); color:var(--paper); display:flex; align-items:
 .place { font-size:1.4vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
 """
 
-FOOTER_JS = """<script>
+NOW_JS = """<script>
 (function () {
   var W = %s;
-  function draw(d) {
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function footer(d) {
     var label = document.getElementById('on-label'), who = document.getElementById('on-who');
-    if (d.now && d.now.length) { label.textContent = W.on; who.textContent = d.now.join(', '); }
-    else if (d.next) { label.textContent = W.next; who.textContent = d.next.who.join(', ') + ' \\u00b7 ' + d.next.when; }
+    if (d.now.length) { label.textContent = W.on; who.textContent = d.now.join(', '); }
+    else if (d.next) { label.textContent = W.next; who.textContent = d.next.who + ' \\u00b7 ' + d.next.when; }
     else { label.textContent = ''; who.textContent = W.none; }
   }
-  function tick() { fetch('/kiosk/on', {cache:'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
+  function map(m) {
+    document.getElementById('sample').hidden = !m.sample;
+    var box = document.getElementById('stations'); box.textContent = '';
+    m.groups.forEach(function (g) {
+      var row = el('div', 'group' + (g.coupled ? ' coupled' : '') + (g.preparing ? ' preparing' : ''));
+      row.appendChild(el('div', 'mark' + (g.lit ? '' : ' unlit')));
+      var names = el('div', 'names');
+      g.names.forEach(function (n) { names.appendChild(el('span', null, n)); });
+      row.appendChild(names);
+      var times = el('div', 'times');
+      if (g.preparing && g.note) times.appendChild(el('span', 'note', g.note));
+      if (g.until) times.appendChild(el('span', 'until', W.until + ' ' + g.until));
+      g.next.forEach(function (w, i) { times.appendChild(el('span', 'pill ' + (i ? 'outline' : 'solid'), w)); });
+      row.appendChild(times);
+      box.appendChild(row);
+    });
+  }
+  function tick() {
+    fetch('/kiosk/now', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { footer(d.on); map(d.map); }).catch(function () {});
+  }
   tick(); setInterval(tick, 60000);
 })();
 </script>"""
@@ -361,12 +455,12 @@ FOOTER_JS = """<script>
 def kiosk_page():
     w, n = welcome(), node()
     words = n.get("wording") or {}
-    ci, wf, ft = words.get("checkin") or {}, words.get("wifi") or {}, words.get("footer") or {}
+    ci, mp, ft = words.get("checkin") or {}, words.get("map") or {}, words.get("footer") or {}
 
-    checkin = next((p for p in w.get("panels") or [] if isinstance(p.get("qr"), dict)), None)
-    idx = (w.get("panels") or []).index(checkin) if checkin else -1
-    code = ('<div class=qr><img src="/kiosk/qr/%d" alt="%s"></div>' % (
-        idx, html.escape(checkin["qr"].get("alt", ""), quote=True))) if checkin else ""
+    panels = w.get("panels") or []
+    idx = next((i for i, p in enumerate(panels) if isinstance(p.get("qr"), dict)), None)
+    code = ('<div class=mark><img src="/kiosk/qr/%d" alt="%s"></div>' % (
+        idx, html.escape(panels[idx]["qr"].get("alt", ""), quote=True))) if idx is not None else ""
 
     nets = []
     for i, net in enumerate(networks()):
@@ -377,17 +471,19 @@ def kiosk_page():
 
     body = """
 <section class="half checkin">
-  <div class=code>%s</div>
+  %s
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
 </section>
-<section class="half wifi">
-  <div class=words><h1>%s</h1><p class=sub>%s</p></div>
-  <div class=code>%s</div>
+<section class="half map">
+  <p class=sample id=sample hidden>%s</p>
+  <div class=stations id=stations></div>
+  <div class=wifi>%s</div>
 </section>
 <footer><div class=on><b id=on-label></b><span id=on-who></span></div><div class=place>%s</div></footer>
-%s""" % (code, e(ci.get("head")), e(ci.get("sub")), e(wf.get("head")), e(wf.get("sub")),
-         "".join(nets), e(w.get("place")),
-         FOOTER_JS % json.dumps({k: ft.get(k, "") for k in ("on", "next", "none")}))
+%s""" % (code, e(ci.get("head")), e(ci.get("sub")), e(mp.get("sample", "Sample")), "".join(nets),
+         e(w.get("place")),
+         NOW_JS % json.dumps({"on": ft.get("on", ""), "next": ft.get("next", ""),
+                              "none": ft.get("none", ""), "until": mp.get("until", "until")}))
     return page(w.get("place", "Welcome"), body, KIOSK_CSS)
 
 
@@ -437,8 +533,8 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, revision(), TYPES[".txt"])
             if route in ("/kiosk", "/kiosk/"):
                 return self.reply(200, kiosk_page())
-            if route == "/kiosk/on":
-                return self.reply(200, json.dumps(on_now()), TYPES[".json"])
+            if route == "/kiosk/now":
+                return self.reply(200, json.dumps({"on": on_now(), "map": stations()}), TYPES[".json"])
             if route.startswith("/kiosk/wifi/") and tail.isdigit():
                 svg = wifi_svg(int(tail))
                 return self.reply(200, svg, TYPES[".svg"]) if svg else self.file(None)
