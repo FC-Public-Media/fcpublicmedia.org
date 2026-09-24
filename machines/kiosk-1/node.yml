@@ -1,0 +1,142 @@
+# node.yml — what the media node shows, and on which screen.
+#
+# Read by door.py on every request, so an edit is live on the next poll.
+# Facts stay where they already live: the guest SSID comes from
+# site/_data/wifi.yml and the check-in URL from kiosk/welcome.yml.
+# This file holds only what is specific to this machine and this layout.
+
+# ---------------------------------------------------------------------------
+# SCREENS. Observed 2026-09-23 as Autumn set them up by hand: Edge,
+# Profile 1, one full-screen window per portrait panel. `door.py screens`
+# checks that this is still true, and `door.py screens --launch` opens
+# whatever is missing. The third panel goes here when its adapter turns up.
+browser: msedge
+screens:
+  - name: centre
+    display: DISPLAY1        # the primary panel
+    rect: [0, 0, 1050, 1680]
+    url: /kiosk/
+  - name: left
+    display: DISPLAY2
+    rect: [-1050, 0, 1050, 1680]
+    url: /depot/           # was the idle screen. The depot is tried here first
+
+# ---------------------------------------------------------------------------
+# NETWORKS shown as Wi-Fi QR codes on the welcome screen.
+#
+# Passwords are NEVER here. Each one is read from Windows Credential Manager
+# on this machine, under the target `fcpm-wifi:<ssid>`, with local-machine
+# persistence so it survives logoff. Set it once at a terminal. The prompt
+# does not echo, and asks twice:
+#
+#     %LOCALAPPDATA%\media-node\venv\Scripts\python.exe machines\kiosk-1\door.py wifi-password "FC Public Media Guest"
+#
+# (Not cmdkey: its parser rejects quoted targets with spaces in them.)
+#
+# The QR is built in memory when a screen asks for it and never written to
+# disk, because a Wi-Fi QR is the password in a font (site/_data/wifi.yml).
+# Until a password is set, the screen draws a marked empty slot.
+networks:
+  - from: wifi               # site/_data/wifi.yml: ssid, security, confirmed
+    label: Guest Wi-Fi
+  - ssid: FC Public Media Audio
+    security: wpa
+    label: Audio Wi-Fi
+    # The AirPort Express. It joins you to the AirPlay speaker on the spare
+    # mixer input. Its name is Autumn's (2026-09-23).
+
+# ---------------------------------------------------------------------------
+# STATIONS on the studio map: a logical map of what can be booked, not a
+# floor plan. Each one has a square that lights when it is in use.
+#
+# Bookings are ranked across the whole map, because people come in one at a
+# time. The single next appointment anywhere is the solid pill, and the one
+# after it, wherever it is, is the outline pill. Anything else in the next
+# seven days is soft grey, and nothing further out is shown. A station shows
+# at most two. A station with nothing booked this week says who can help with
+# it and when (kiosk/rota.yml, `crew:`) in soft text instead.
+#
+# `facilities` pulls from site/_data/facilities.yml. Rooms that
+# `couples_with` each other are drawn as one group sharing one square, since
+# booking either takes both. A facility with `stations: N` becomes N
+# stations: "Editing Bays" becomes Editing Bay 1 and Editing Bay 2.
+# Equipment Checkout is not here: it is arranged by email, not booked.
+facilities: [Video Studio, Podcast Studio, Editing Bays]
+
+# Stations the public site does not list yet.
+stations:
+  - name: Digitization
+    note: Opening soon
+    activities: [digitization]
+    # Bay 3, back as the digitization station: VCR, Blu-ray, burned discs,
+    # made into files. This node orchestrates it. It is being prepared and
+    # cannot launch yet, so it takes no bookings and shows its note instead.
+    preparing: true
+
+# Where bookings come from. Only `sample` exists: the made-up week in
+# bookings.sample.yml, whose bookings are all for "Sample", so the screen
+# says so in every pill. The booking calendars (Microsoft 365, and possibly
+# several) will replace it. The rota's footer will read from the same ones.
+bookings: sample
+
+# ---------------------------------------------------------------------------
+# DEPOT: the studio drive, shown on /depot/. It is the router's Samba share,
+# reached under the Windows credential saved for 10.209.1.1 (user FCPM),
+# which Autumn set 2026-09-23. No password is here or anywhere in the repo.
+#
+# Eight partitions of about 3.8 GB each, listed by `net view` that day. Their
+# names already sort into two kinds, and the grouping below is that:
+# mailboxes for a station, and queues named for what happens next.
+#
+# Samba reports every partition as NTFS. Do not believe it: Samba says NTFS
+# whatever is underneath, and Autumn could find no format but FAT that the
+# router would mount at all (2026-09-23). So the FAT limits in
+# docs/DESIGN-NOTES.md are real: no file over 4 GiB, nothing in the root.
+#
+# ROWS are the shares we know, laid out side by side. `files: false` shows a
+# share's bar and a count, not its files: the bays are in the next room, so
+# their contents are less in need of watching. The other partitions feel more
+# remote, so their files are listed. A share the router offers that is not
+# named here still appears, beneath its group's rows, in the group whose
+# `match` prefix fits its name, or else in the first group.
+depot:
+  server: 10.209.1.1
+  groups:
+    - name: stations
+      title: Stations
+      rows:
+        - files: false
+          shares:
+            - {share: BAY 1, label: Bay 1}
+            - {share: BAY2, label: Bay 2}
+        - shares:
+            - {share: DIGISTATION, label: Digitization}
+            - {share: FILMING, label: Filming}
+            - {share: PODCAST, label: Podcast}
+    - name: queues
+      title: Queues
+      match: "TO "
+      rows:
+        - shares:
+            - {share: TO DROPBOX, label: To Dropbox}
+            - {share: TO ENHANCE, label: To Enhance}
+            - {share: TO STEM, label: To Stem}
+
+# ---------------------------------------------------------------------------
+# WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
+# stand-in until then. "No apps. Free public tech." is hers. When the wording
+# settles it belongs in kiosk/content.yml, where the rest of the kiosk's
+# editorial half lives.
+wording:
+  checkin:
+    head: Check in
+    sub: No apps. Free public tech.
+  map:
+    until: until
+  depot:
+    head: Files
+    sub: On the studio drive
+  footer:
+    on: On now
+    next: Next
+    none: Ask whoever is at the desk.

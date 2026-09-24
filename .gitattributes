@@ -1,0 +1,9 @@
+# An append-only log has no merge conflicts worth a human.
+#
+# `union` is built into git, so nothing needs configuring on any machine. It
+# takes both sides and does not sort, which is why the tool that appends also
+# re-sorts. Identical lines collapse to one, which is right for findings: the
+# same gotcha seen twice is one gotcha. NOTHING EDITS A LINE IN THIS FILE.
+# Union on a file where somebody edits an existing line is data loss with no
+# conflict to warn about. After station-node's .gitattributes.
+machines/kiosk-1/GOTCHAS.log    merge=union

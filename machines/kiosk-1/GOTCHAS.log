@@ -1,0 +1,19 @@
+# Append with: machines/kiosk-1/gotcha <tag> "<one line>"
+# Append-only. One line each, commit-title length. Nature and what is missing; no context.
+# After station-node's guidance/GOTCHAS.log. This one is the media node's: Windows, no admin.
+# date        tag       what was assumed -> what is true
+2026-09-23    git       git leaves line endings alone -> Git for Windows ships core.autocrlf=true; digests and sh scripts break
+2026-09-23    python    `python` on PATH is an interpreter -> WindowsApps holds a Store stub that only prints an install hint
+2026-09-23    python    write_text() writes what it is given -> on Windows it writes CRLF unless newline="\n" is passed
+2026-09-23    winget    winget installs any manifest -> v1.3 cannot do zip/portable (uv) and has no --disable-interactivity
+2026-09-23    net       a listener on 0.0.0.0 answers by name -> the name resolves IPv6 first; bind [::] dual-stack or it refuses
+2026-09-23    firewall  Cancel on the prompt is a one-off -> each new interpreter path prompts again; uv run --with makes a new path
+2026-09-23    cmdkey    cmdkey takes quoted targets -> it rejects /generic:"a:b c" with spaces; CredWriteW via ctypes works
+2026-09-23    msys      Git Bash passes /flag:value through -> it rewrites leading-slash args as paths; set MSYS_NO_PATHCONV=1
+2026-09-23    bash      a long heredoc in one tool call is fine -> it failed to parse; write the script to a file and run that
+2026-09-23    creds     IT policy makes credentials logon-only -> the existing ones are, but CRED_PERSIST_LOCAL_MACHINE persists
+2026-09-23    pythonw   a windowless process can print -> pythonw's sys.stderr is None; log to a file or it crashes
+2026-09-23    msys      git show ref:path works as typed -> Git Bash rewrites the colon arg as a path list; MSYS_NO_PATHCONV=1
+2026-09-23    sed       sed replacement "\u00a0" survives the shell -> it arrived as "00a0"; edit escapes with a file tool, not sed
+2026-09-23    samba     a share's filesystem is readable over SMB -> Samba reports NTFS whatever is underneath; FAT limits can't be ruled out from here
+2026-09-23    bash      a quoted heredoc passes backslashes through -> the tool call ate them; UNC paths arrived broken. Write the file instead
