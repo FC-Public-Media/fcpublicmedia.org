@@ -44,6 +44,22 @@ report what it skipped, but **the build command lives in a dashboard and never
 reads it.** A place-branch on a host that builds every branch has to be
 buildable, or the host has to be told which branches to skip.
 
+> **This constraint is expected to evaporate, and has not yet.** Reported
+> 2026-09-24, relayed from Autumn via the station-node session rather than said
+> here, so treat it as direction and not as done: *"I don't want Cloudflare
+> building anything. Cloudflare is not going to build a single damn thing. And
+> it's because we are going to, as station node, go ahead and run their build."*
+>
+> If Cloudflare stops being a build environment, there is no branch build, no
+> `wrangler versions upload`, and no red light to teach anybody to ignore — so
+> the paragraph above stops constraining the library-as-branch design at all.
+>
+> **Do not design against its absence yet.** Nothing has been disconnected, the
+> dashboard still holds the branch deploy command, and this entry is the only
+> place the two facts sit next to each other. Whoever performs that disconnect
+> should strike the paragraph above in the same change, because a constraint that
+> has quietly stopped being true is worse than one that was never written down.
+
 ## A seat's own finding, never actioned
 
 `advocate.yml`, the `truthfulness` seat, line 127 — in its own constituency text:
@@ -178,6 +194,12 @@ second Wix tell if redundancy is wanted.
 workflow, not in a runbook, and not in anyone's head but two agent transcripts
 until this paragraph. If the publisher changes, whoever changes it should hit a
 real legacy URL before calling it done.
+
+**And it now has a date.** Reported 2026-09-24, relayed from Autumn rather than
+said here: the DNS switch is being aimed at **the coming weekend**, with the
+cutover deliberately preceded by as much readiness work as possible. So this stops
+being a hazard filed for later. The check above is ready to run and takes one
+command; what it does not have is a name against it.
 
 Related, same area, also invisible: `site/wrangler.jsonc` exists only to stop
 wrangler auto-configuring — without it, wrangler decides this is a Node project
