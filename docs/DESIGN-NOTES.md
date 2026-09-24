@@ -240,12 +240,19 @@ file, a zoomable interval, or kept frames.
 > The proofing engine might get a new set of faces here. But I don't wanna be
 > editing it only for FCPM.
 
-### The pipeline already exists, and it has never been committed
+### The pipeline already exists, and is now committed
 
-Looked for while writing this note, and found: **`~/Project/contact-sheets` is a
-complete, working implementation of most of the above.** It is not a sketch. It
+Looked for while writing this note, and found: **a complete, working
+implementation of most of the above.** It is not a sketch. It
 has a cache contract, a disk floor, a resume story, and a list of its own known
 failures.
+
+**Committed 2026-09-24 as `FC-Public-Media/contact-sheets`**, private, and
+mounted here as `.contact-sheets-engine`. It had been sitting as untracked
+files inside a directory that was not itself a repository. The working copy
+measured 3.5 GB against a 0.18 MB repository — the gap is residuals, and its
+`residency.yml` now declares them as five storage labels a host binds rather
+than as things the repository carries.
 
 | | |
 |---|---|
@@ -443,8 +450,9 @@ FAT is not an incidental detail here; it decides what the drive can be told to
 hold. Each of these changes a design:
 
 - **A file cannot exceed 4 GiB on FAT32, or 2 GiB on FAT16.** Partitions of
-  *"a little less than four gigs each"* may be either. **Masters do not fit on
-  this drive** — it routes proxies, deliverables and sheets. That has to be
+  *"a little less than four gigs each"* may be either, **and nothing on the
+  network can tell you which** — see the correction below. **Masters do not fit
+  on this drive** — it routes proxies, deliverables and sheets. That has to be
   said at submit time, because the alternative is finding out when a copy fails
   at 4 GB after twenty minutes over SMB.
 - **A FAT16 root directory holds about 512 entries**, and a long filename
@@ -468,6 +476,28 @@ These are filed upstream in `tiliv/station-node#160`
 to say what a volume **cannot** take and not only what it is for. That is the
 right place for them; they are repeated here because they constrain this
 artifact directly.
+
+**Correction, 2026-09-24 — none of this is discoverable.** Recorded in the
+media node's `GOTCHAS.log` once the drive was actually walked:
+
+> a share's filesystem is readable over SMB -> Samba reports NTFS whatever is
+> underneath; FAT limits can't be ruled out from here
+
+**The reported filesystem type is wrong.** Every partition announces itself as
+NTFS. So a scanner cannot learn whether it is looking at FAT, and therefore
+cannot derive the 4 GiB ceiling, the 2 GiB one, or the root-directory limit
+either. Those hold only because Autumn says the router will mount nothing but
+FAT — a person's statement, not an observation.
+
+This also falsifies the upstream filing's claim that a filesystem type and a
+size ceiling are *discovered* per mount while only purpose is *declared*. On
+this drive the limits are declared too. **Nothing downstream should attempt to
+detect them**, and a host binding storage to one of these partitions has to be
+told what it is binding to.
+
+That makes three properties on one drive — completeness, volume identity, and
+now the limits themselves — where the honest answer is *declared, not sniffed*.
+At three it is the drive's governing rule rather than a run of exceptions.
 
 ### Completeness cannot be observed. It has to be declared.
 
@@ -587,6 +617,15 @@ The consequence for a renderer that serves referenced images by membership in
 the set the artifact names: **anything to be displayed must be named in the
 index**, and anything unnamed is unreachable rather than merely unlinked.
 
+**And there is a second reason, stronger than the first, found once it was
+built.** The depot holds its index in the door's memory and never writes it to
+disk at all, because **the index names people's files**. That is a privacy
+constraint rather than a freshness one, and it does not soften: an index that
+could be committed still should not be. Anything downstream that catalogues
+this drive inherits it — which is why `contact-sheets` keeps its range and
+reconciliation documents out of its own repository under the `index` label,
+`disposition: private`, for exactly this reason.
+
 ### Contact sheets are downstream of this, and are already written
 
 The jobs that land things on this drive are the subject of *"Digitizing
@@ -605,8 +644,8 @@ about a sheet needs to be durable, reviewed, or version-controlled, which is a
 different disposition from everything else the index names, and `disposition:`
 is where that gets said.
 
-It also means no vocabulary has to be invented for it here. `~/Project/contact-sheets`
-already implements the pipeline, per the section above.
+It also means no vocabulary has to be invented for it here. The engine mounted at
+`.contact-sheets-engine` already implements the pipeline, per the section above.
 
 ### What to find out
 
