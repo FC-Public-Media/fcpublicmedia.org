@@ -146,14 +146,14 @@ def kiosk_page():
     body = """<header><p class=place>%s</p><h1>%s</h1></header>%s""" % (
         html.escape(w.get("place", "")), html.escape(w.get("greeting", "")), "".join(panels))
     return page(w.get("place", "Welcome"), body, """
-body { min-height:100vh; box-sizing:border-box; padding:6vh 7vw; display:flex; flex-direction:column; gap:4vh; }
+body { min-height:100vh; box-sizing:border-box; padding:5vh 7vw; display:flex; flex-direction:column; gap:2.6vh; }
 .place { color:var(--dim); letter-spacing:.08em; text-transform:uppercase; font-size:1.6vh; margin:0; }
-h1 { font-size:3.4vh; line-height:1.25; font-weight:500; margin:.6vh 0 0; }
-section { border-top:1px solid var(--line); padding-top:2.4vh; }
+h1 { font-size:2.9vh; line-height:1.25; font-weight:500; margin:.6vh 0 0; }
+section { border-top:1px solid var(--line); padding-top:2vh; }
 h2 { font-size:1.7vh; color:var(--dim); font-weight:500; letter-spacing:.06em; text-transform:uppercase; margin:0; }
-.say { font-size:3vh; margin:.8vh 0; }
+.say { font-size:2.6vh; margin:.8vh 0; }
 .note { color:var(--dim); font-size:1.8vh; margin:.6vh 0 0; }
-img { width:22vh; height:22vh; background:#fff; padding:1.2vh; border-radius:.6vh; margin-top:1vh; }
+img { width:17vh; height:17vh; background:#fff; padding:1.2vh; border-radius:.6vh; margin-top:1vh; }
 .encodes { font-family:ui-monospace,Consolas,monospace; font-size:1.5vh; color:var(--dim); margin:.4vh 0; }""")
 
 
