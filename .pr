@@ -1,1 +1,11 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Mount the enhance engine at .enhance-engine
+Mounts [FC-Public-Media/enhance](https://github.com/FC-Public-Media/enhance), which started today as a companion to contact-sheets. It takes recordings out to the enhance suite and back, **enhanced** or **stemmed**.
+
+- **What's in it so far:** a README describing the round trip as it stands, AGENTS.md, and a `residency.yml` that asks for `intake`, `out`, `returned` and `scratch`. It declares no services, and the parts still undecided are listed as undecided: the drop points, the enhance suite itself, how a member asks and collects, and the receipt marker.
+- **The first source** is the RØDECaster Pro II. station-node's RØDECaster engine stages its recordings and exports them to the depot. **This node owns the depot**, so confirming receipt and taking files into holding (about 800 GB free on the media node) is ours. `rodecaster-2026-…` files are already arriving in PODCAST, shown as *unwitnessed*.
+- **Private, with `update = none`**, for the same reason as contact-sheets: the build checks out submodules with a token scoped to this repository alone, and nothing in a build needs it.
+- `docs/STATION.md`'s engine table catches up: library is mounted now, and contact-sheets and enhance are added.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+https://claude.ai/code/session_01J5TmsAZ9LHc7DXXTGSH9bR
