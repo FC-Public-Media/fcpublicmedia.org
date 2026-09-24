@@ -1,0 +1,228 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fort Collins Public Media</title>
+
+<!--
+  The idle screen. Open it, press F11 (or ⌃⌘F), leave it.
+
+  It is not a screensaver and deliberately not built as one. A .saver bundle
+  is macOS-only, a .scr is Windows-only, both need signing or a warning
+  dialog, and neither can be changed without walking to the machine. This is
+  one file that any browser on the panel will show full screen, which means
+  the thing on the wall is the thing in the repository.
+
+  It is also the shape the panel by the door eventually needs anyway — the
+  guest network, a check-in prompt, what is on air. Those are somebody's live
+  errand, so this ships as the brand and a marked slot rather than as a guess
+  at their content. See "THE SLOT" below.
+
+  No build step, no dependencies, no network. It has to come up on a machine
+  that has been off for a month and may not have joined the wifi yet.
+-->
+
+<style>
+  /* The brand sheet, the subset this screen uses. Same values as :root in
+     site/assets/css/site.css — copied rather than linked, because this file has to
+     work from a USB stick with no server behind it. */
+  :root {
+    --ink:    #121417;
+    --slate:  #232830;
+    --paper:  #f4f1ea;
+    --signal: #ffc61a;
+    --soft:   #9ba3ad;
+
+    /* One dwell for the whole screen. The mark steps, the clock ticks, and
+       nothing else moves. Four seconds is slow enough to read as a tally
+       light rather than as a loading spinner. */
+    --step: 4s;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: Archivo, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* A panel left on overnight burns whatever does not move. Everything here
+       is either large and low-contrast or it steps. */
+    overflow: hidden;
+    cursor: none;
+  }
+
+  /* Sized in vmin throughout, so the same file is correct on a panel turned
+     portrait and one that has not been turned yet. */
+  /* Three rows: empty, the brand, and a footer that hugs the bottom edge.
+     The brand sits on the optical centre rather than the geometric one, which
+     on a portrait panel means a little above halfway. */
+  .screen {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 0.85fr auto 1fr;
+    justify-items: center;
+    padding: 6vmin;
+  }
+  .brand {
+    display: grid;
+    justify-items: center;
+    gap: 6vmin;
+  }
+  .screen footer {
+    align-self: end;
+    display: grid;
+    justify-items: center;
+    gap: 3vmin;
+  }
+
+  /* --- The mark ---------------------------------------------------------- */
+
+  /* Three squares in a column with a rule behind them, the same set the
+     wallpapers draw. Here the lit one walks, which is the only reason this is
+     a web page and not a PNG. */
+  .tally {
+    display: grid;
+    gap: 4.2vmin;
+    justify-items: center;
+    position: relative;
+  }
+  .tally::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 0.4vmin;
+    translate: -50% 0;
+    background: var(--slate);
+  }
+  .mark {
+    width: 12vmin; height: 12vmin;
+    background: var(--slate);
+    /* NEGATIVE. Counterclockwise, the same -8deg as site/assets/img/icon.svg and
+       as .wordmark-mark in the stylesheet. Leaning the other way reads as
+       rolling forward, which is the O in the Roblox wordmark; there are
+       copies of our mark in the wild that got this backwards. */
+    rotate: -8deg;
+    position: relative;
+    transition: background 420ms steps(2, end);
+  }
+  .mark.lit { background: var(--signal); }
+
+  /* --- The type ---------------------------------------------------------- */
+
+  .lockup { text-align: center; }
+  .lockup b {
+    display: block;
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 4.4vmin; font-weight: 780; letter-spacing: -0.02em;
+  }
+  .lockup span {
+    display: block;
+    font-size: 2.1vmin; text-transform: uppercase;
+    letter-spacing: 0.3em; text-indent: 0.3em;
+    color: var(--soft);
+    margin-top: 0.8vmin;
+  }
+
+  .clock {
+    font-variant-numeric: tabular-nums;
+    font-size: 3.4vmin;
+    letter-spacing: 0.08em;
+    color: var(--soft);
+  }
+
+  /* --- THE SLOT ---------------------------------------------------------- */
+
+  /* Live content lands here: the guest network, a check-in prompt, what is on
+     air. Empty it collapses and the screen is just the brand, which is the
+     correct thing for a panel with nothing to say. Fill it by writing into
+     #slot — from a fetch, from a query string, from a build. Keep it to one
+     idea; this is read from across a room by somebody walking past. */
+  .slot:empty { display: none; }
+  .slot {
+    text-align: center;
+    max-width: 60ch;
+    font-size: 2.6vmin;
+    line-height: 1.5;
+    color: var(--soft);
+  }
+  .slot strong { color: var(--paper); font-weight: 600; }
+
+  /* Motion is a vestibular trigger and this panel is in a room people sit in.
+     Nothing here slides or spins even by default — it steps — but when the
+     machine says no motion, the mark simply stops on the middle square. The
+     stylesheet makes the same promise; see the note above @keyframes in
+     site/assets/css/site.css. */
+  @media (prefers-reduced-motion: reduce) {
+    .mark { transition: none; }
+  }
+</style>
+
+<div class="screen">
+  <div></div>
+
+  <div class="brand">
+    <div class="tally" id="tally">
+      <div class="mark"></div>
+      <div class="mark lit"></div>
+      <div class="mark"></div>
+    </div>
+
+    <p class="lockup">
+      <b>Fort Collins</b>
+      <span>Public Media</span>
+    </p>
+  </div>
+
+  <footer>
+    <p class="slot" id="slot"></p>
+    <p class="clock" id="clock"></p>
+  </footer>
+</div>
+
+<script>
+  var marks = document.querySelectorAll('#tally .mark');
+  var clock = document.getElementById('clock');
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // The walk. Down the column and back up rather than wrapping around, so the
+  // motion is a level meter and not a progress bar — nothing here is loading
+  // and a screen that looks like it is loading is a screen somebody waits at.
+  var at = 1, dir = 1;
+  function step() {
+    if (still.matches) return;
+    at += dir;
+    if (at === marks.length - 1 || at === 0) dir = -dir;
+    marks.forEach(function (mark, i) { mark.classList.toggle('lit', i === at); });
+  }
+
+  function tick() {
+    // No seconds. A wall clock with a seconds hand invites people to watch it,
+    // and a panel nobody watches is the entire goal.
+    clock.textContent = new Date().toLocaleTimeString([], {
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  // The slot, filled the cheapest way there is: ?say=... on the URL. That is
+  // enough for "Back at 2pm" or a network name taped to the panel by whoever
+  // is standing there, with no server and nothing to deploy. Anything
+  // recurring should write into #slot properly instead.
+  //
+  // textContent, not innerHTML. The string comes off a URL, and a kiosk is
+  // exactly the machine where somebody eventually types one in.
+  var say = new URLSearchParams(location.search).get('say');
+  if (say) document.getElementById('slot').textContent = say;
+
+  tick();
+  setInterval(tick, 15000);
+
+  var dwell = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--step')) * 1000 || 4000;
+  setInterval(step, dwell);
+
+  // A panel that has been on for a week drifts: setInterval falls behind while
+  // a laptop lid is shut, and the clock comes back wrong. Re-read it on wake.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) tick();
+  });
+</script>

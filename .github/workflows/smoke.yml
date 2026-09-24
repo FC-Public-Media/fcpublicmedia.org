@@ -65,6 +65,14 @@ jobs:
       - name: Test the design tokens
         run: python3 site/bin/test_tokens.py
 
+      # Same rule, one layer out. The wallpapers in `brand/` are the part of
+      # this brand that leaves the repository: somebody downloads a PNG once
+      # and then looks at it every day for a year without opening this again.
+      # Both things they could get wrong are silent — a mark leaning the
+      # Roblox way, or yellow used as a colour instead of a surface.
+      - name: Test the wallpaper generator
+        run: python3 bin/test_make_wallpaper.py
+
       # Cablecast titles are episode titles, so what counts as a "show" is a
       # judgement no rule makes correctly — the proposer's whole job is to get
       # close enough that a person can correct it in one edit. A regression
