@@ -71,6 +71,17 @@ publish_to: site/member-sites
 sites:
   - path: site
     role: site
+    domain: www.fcpublicmedia.org
+    # THE SWITCH. `source`: any host builds `site/` with its own ordinary
+    # Jekyll build, which is how the Cloudflare git connection is set up
+    # today, and it needs nothing from station-node or the media node. It is
+    # the fallback, so that if every machine in the building went away, a
+    # plain git build on FCPM's own Cloudflare account still publishes the
+    # site. `intermediate`: the host builds nothing and serves
+    # _intermediates/www.fcpublicmedia.org/. Every host reads this line, and
+    # `bin/build-sites.py --deploy-root www.fcpublicmedia.org` prints the root
+    # directory it implies. docs/deploying.md, "The switch".
+    deliver: source
     why: fcpublicmedia.org itself. Cloudflare builds this one from the git connection.
 
   - path: site-template
