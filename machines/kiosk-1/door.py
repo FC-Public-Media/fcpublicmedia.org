@@ -3,6 +3,9 @@
     door.py serve              become the door, on [::]:8080
     door.py supervise          run `serve`, restart it when it exits, pull in the background
     door.py screens [--launch] are the screens in node.yml up and full-screen
+    door.py startup            what starts the door at logon, and does it point here
+    door.py startup --xml      the logon task this checkout implies, to stdout
+    door.py startup --install  register that task, and retire the Startup shortcut
     door.py                    is the door up
 
 Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
@@ -40,6 +43,19 @@ it is aborted and logged, and the screens keep showing what they had.
 Runs from a fixed virtualenv (%LOCALAPPDATA%\\media-node\\venv, with pyyaml
 and qrcode). A stable interpreter path means Windows Firewall asks about it
 once. `uv run --with` built a fresh path each time, so it asked every time.
+
+AT LOGON, after station-node's `com.autumn.station-door.plist`: the door is
+the one job this node runs for itself, so it has a job of its own. Here that
+is a per-user scheduled task, "media-node door", which needs no administrator.
+It starts `supervise` at logon and again every five minutes, and a start
+while one is already running is ignored. That is launchd's KeepAlive, with
+five minutes of slack. `supervise` also holds a named mutex, so a second copy
+started some other way leaves at once instead of fighting over 8080. Once the
+door answers, `supervise` brings up any screen in node.yml that is missing.
+
+What it cannot do is log on. After a power cut the box waits at the sign-in
+screen until someone signs in, and signing in automatically needs an
+administrator (PROFILE.md, "Asked of IT").
 """
 import ctypes
 import datetime
@@ -947,6 +963,24 @@ def pull_once():
 
 
 def supervise():
+    # Held for this process's life, released by Windows when it goes. The
+    # logon task starts supervise every five minutes; this is what makes a
+    # start that finds one already running a no-op.
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateMutexW(None, False, "Local\\media-node-supervise")
+    if ctypes.get_last_error() == 183:                  # ERROR_ALREADY_EXISTS
+        log("supervise: already running; this one leaves")
+        return 0
+
+    def raise_screens():
+        # Once, when supervise starts: at logon, or after it was restarted.
+        # Not on a timer: a panel somebody closed on purpose stays closed.
+        for _ in range(60):
+            if door_answers():
+                return screens(launch=True, say=log)
+            time.sleep(2)
+        log("screens: the door did not answer in two minutes; not launching")
+
     def puller():
         while True:
             try:
@@ -955,6 +989,7 @@ def supervise():
                 log("pull: %r" % exc)
             time.sleep(PULL_EVERY)
     threading.Thread(target=puller, daemon=True).start()
+    threading.Thread(target=raise_screens, daemon=True).start()
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
         time.sleep(1 if code == BOUNCE else 10)
@@ -1006,7 +1041,27 @@ def browser_windows(exe):
     return found
 
 
-def screens(launch=False):
+BROWSERS = {"msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            "chrome": r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"}
+
+
+def launch_screen(exe, s, url):
+    """One browser instance per screen, in kiosk mode, with a profile folder of
+    its own. The separate profile is what makes it work: a plain --new-window
+    is handed to whatever browser is already open, which restores its last
+    session and ignores --start-fullscreen (2026-09-24, after a reboot left four
+    half-sized windows). Kiosk mode is InPrivate, so a public screen keeps
+    nothing between starts."""
+    x, y, w, h = s["rect"]
+    args = [BROWSERS[exe], "--user-data-dir=%s" % (STATE / "screens" / s["name"]),
+            "--no-first-run", "--kiosk", url,
+            "--window-position=%d,%d" % (x, y), "--window-size=%d,%d" % (w, h)]
+    if exe == "msedge":
+        args.append("--edge-kiosk-type=fullscreen")
+    subprocess.Popen(args)
+
+
+def screens(launch=False, say=print):
     cfg = node()
     exe = cfg.get("browser", "msedge")
     wins = browser_windows(exe)
@@ -1017,37 +1072,167 @@ def screens(launch=False):
                     and abs(win["rect"][0] - x) <= 8 and abs(win["rect"][1] - y) <= 8
                     and abs(win["rect"][2] - w) <= 16 and abs(win["rect"][3] - h) <= 16), None)
         if hit:
-            print("ok       %-8s %-9s full-screen  %s" % (s["name"], s["display"], hit["title"]))
+            say("ok       %-8s %-9s full-screen  %s" % (s["name"], s["display"], hit["title"]))
             continue
         bad += 1
-        print("missing  %-8s %-9s nothing full-screen at %s" % (s["name"], s["display"], s["rect"]))
+        say("missing  %-8s %-9s nothing full-screen at %s" % (s["name"], s["display"], s["rect"]))
         if launch:
             url = "http://%s.local:%d%s" % (socket.gethostname().lower(), PORT, s["url"])
-            path = {"msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-                    "chrome": r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"}[exe]
-            subprocess.Popen([path, "--new-window", "--start-fullscreen",
-                              "--window-position=%d,%d" % (x, y), "--window-size=%d,%d" % (w, h), url])
-            print("         launched %s there" % url)
+            launch_screen(exe, s, url)
+            say("         launched %s there" % url)
     return 1 if bad and not launch else 0
 
 
-def status():
+def door_url():
+    return "http://%s.local:%d/" % (socket.gethostname().lower(), PORT)
+
+
+def door_answers():
+    """The revision, if the door answers by name, else None."""
     import urllib.request
-    url = "http://%s.local:%d/" % (socket.gethostname().lower(), PORT)
     try:
-        with urllib.request.urlopen(url + "revision", timeout=5) as r:
-            print("up    %s   revision %s" % (url, r.read().decode()))
-            return 0
-    except Exception as exc:
-        print("down  %s   (%s)" % (url, exc))
-        print("log   %s" % (STATE / "door.log"))
-        return 1
+        with urllib.request.urlopen(door_url() + "revision", timeout=5) as r:
+            return r.read().decode()
+    except Exception:
+        return None
+
+
+def status():
+    rev = door_answers()
+    if rev:
+        print("up    %s   revision %s" % (door_url(), rev))
+        return 0
+    print("down  %s" % door_url())
+    print("log   %s" % (STATE / "door.log"))
+    return 1
+
+
+# ------------------------------------------------------------------- startup --
+TASK = "media-node door"
+VENV_PYTHONW = STATE / "venv" / "Scripts" / "pythonw.exe"
+SHORTCUT = (pathlib.Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" /
+            "Start Menu" / "Programs" / "Startup" / "media-node door.lnk")
+
+
+def whoami():
+    return "%s\\%s" % (os.environ.get("USERDOMAIN", ""), os.environ.get("USERNAME", ""))
+
+
+def task_xml(here=HERE):
+    """The logon task, with this checkout's paths resolved now.
+
+    Generated rather than written, like station-node's `bin/door plist`, so a
+    moved worktree is one command and not an edit. The fixed venv's pythonw:
+    one interpreter path, so the firewall asks once, and no console window.
+    `-X utf8` stands in for PYTHONUTF8, which a task action cannot set."""
+    esc = html.escape
+    user = esc(whoami())
+    return """<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>The media node's door and screens. Generated by machines\\kiosk-1\\door.py startup --xml; regenerate rather than edit.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <UserId>%(user)s</UserId>
+    </LogonTrigger>
+    <!-- The keep-alive. Not a repetition on the logon trigger: that one only
+         arms at a logon, so a task registered mid-session would have none
+         until the next one. A time trigger in the past repeats from now. -->
+    <TimeTrigger>
+      <Enabled>true</Enabled>
+      <StartBoundary>2026-01-01T00:00:00</StartBoundary>
+      <Repetition>
+        <Interval>PT5M</Interval>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>%(user)s</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>%(py)s</Command>
+      <Arguments>-X utf8 "%(door)s" supervise</Arguments>
+      <WorkingDirectory>%(root)s</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+""" % {"user": user, "py": esc(str(VENV_PYTHONW)),
+       "door": esc(str(here / "door.py")), "root": esc(str(here.parents[1]))}
+
+
+def installed_task():
+    """The registered task's XML, or None. Asked of Task Scheduler every time,
+    never remembered."""
+    out = subprocess.run(["schtasks", "/Query", "/TN", TASK, "/XML"],
+                         capture_output=True, text=True, creationflags=NO_WINDOW)
+    return out.stdout if out.returncode == 0 else None
+
+
+def startup(argv):
+    if "--xml" in argv:
+        print(task_xml(), end="")
+        return 0
+    if "--install" in argv:
+        path = STATE / "door-task.xml"
+        STATE.mkdir(parents=True, exist_ok=True)
+        path.write_text(task_xml(), encoding="utf-16")
+        out = subprocess.run(["schtasks", "/Create", "/TN", TASK, "/XML", str(path), "/F"],
+                             capture_output=True, text=True, creationflags=NO_WINDOW)
+        path.unlink()
+        if out.returncode != 0:
+            print("could not register the task: %s" % (out.stderr or out.stdout).strip())
+            return 1
+        print("registered  task %r -> %s" % (TASK, HERE / "door.py"))
+        if SHORTCUT.exists():
+            # Two things starting supervise at logon is two pullers; the
+            # task alone is the startup now.
+            SHORTCUT.unlink()
+            print("removed     the Startup shortcut, which the task replaces")
+        print("\nA door already running from before keeps running. The task will not")
+        print("start another while it lives. To hand over now: stop it, then")
+        print('  schtasks /Run /TN "%s"' % TASK)
+        return 0
+
+    bad = 0
+    xml = installed_task()
+    want = str(HERE / "door.py")
+    if xml is None:
+        bad += 1
+        print("task      %r is not registered.  door.py startup --install" % TASK)
+    elif want.lower() in xml.lower():
+        print("task      %r starts %s at logon" % (TASK, want))
+    else:
+        bad += 1
+        print("task      %r points elsewhere; regenerate from the checkout the door runs from" % TASK)
+    if SHORTCUT.exists():
+        print("shortcut  %s still exists%s" % (SHORTCUT.name, "; --install removes it" if xml else ""))
+    rev = door_answers()
+    print("door      %s" % ("up, revision " + rev if rev else "not answering"))
+    print("logon     manual. Signing in automatically needs an administrator (PROFILE.md)")
+    return 1 if bad else 0
 
 
 if __name__ == "__main__":
     verb = sys.argv[1] if len(sys.argv) > 1 else "status"
     if verb == "screens":
         sys.exit(screens(launch="--launch" in sys.argv))
+    if verb == "startup":
+        sys.exit(startup(sys.argv[2:]))
     if verb == "wifi-password" and len(sys.argv) > 2:
         sys.exit(wifi_password(sys.argv[2]))
     sys.exit({"serve": serve, "supervise": supervise, "status": status}.get(verb, status)())
