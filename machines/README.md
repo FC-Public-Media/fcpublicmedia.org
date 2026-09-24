@@ -112,6 +112,29 @@ here rather than invented: `platform: windows`, `provisioner: winget`. Nothing
 below is a new vocabulary; it is the prototype's vocabulary reaching a machine
 it was written for and never met.
 
+### Windows is a convention here, not a boundary
+
+Worth saying plainly, because "the default is Windows" is one short step from
+"this directory is for Windows machines", and that is the wrong reading:
+
+> It is simply by convention that we have Windows stuff. We would add Mac or
+> Linux bindings later. **It's meant to be copied.**
+>
+> — Autumn, 2026-09-23
+
+That last clause is the design constraint. The point of a profile is that
+somebody else can pick it up — another bay, another organisation, a machine
+nobody here has met — and the thing that makes it copyable is that the platform
+is *data* rather than an assumption baked into the reader. It is why `names`
+has a platform column instead of one key that happens to be the right one
+today, why `gear.yml` carries a `provisioner:` rather than assuming winget, and
+why `binding` knows about Linux that nothing has claimed.
+
+A Mac binding is therefore not a port. It is two editing bays filling in their
+`names`, and it is already supported. What is *not* supported is the thing
+neither platform needs yet, and the rule for that is the same as everywhere
+else here: add it when the thing it names is real.
+
 ## What a default is
 
 Three files sit at the top of `machines/`, beside the profiles rather than

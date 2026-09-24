@@ -1,7 +1,13 @@
 # kiosk 1
 
-**Status: being stood up, 2026-09-23.** The first FCPM host that is Windows, and
-the first one with anything on it that this repository put there.
+**Status: stood up and working, 2026-09-23.** The first FCPM host that is
+Windows, the first one with anything on it that this repository put there, and
+the first one an agent has been inside.
+
+> It has a view of fcpublicmedia.org, and it will be the one who grows up
+> thinking of itself as a media node.
+>
+> — Autumn, 2026-09-23, from a remote-control session open on the box
 
 **The name is a placeholder**, the same way `editing-bay-1` and
 `editing-bay-2` are. Renaming a directory is free while nothing points at it
@@ -32,9 +38,22 @@ prototype's platform assumptions.
 Everything below was reported in the same briefing and none of it has been read
 off the machine by anything in this repository.
 
-- **It is Windows.** That makes it the default rather than the exception here:
-  see [`../README.md`](../README.md), "What a default is". Both editing bays are
-  macOS and neither has been described.
+- **It is Windows, by convention rather than by exclusion.** That makes it the
+  default here — see [`../README.md`](../README.md), "What a default is" — but
+  the default is a convention and not a boundary. *"It is simply by convention
+  that we have Windows stuff. We would add Mac or Linux bindings later. It's
+  meant to be copied."* Which is why `names` carries a platform column and
+  `gear.yml` carries a `provisioner:` at all, rather than this directory simply
+  hardcoding what the only described host happens to run.
+- **It is the box with the three portrait panels.** Confirmed rather than
+  inferred. The 1050×1680 monitors that [`../../brand/`](../../brand/README.md)
+  was made for are this machine's, which means the wallpapers and
+  `brand/idle/index.html` are gear questions *about this profile* and not
+  general ones. The slot in the idle screen is a slot on this box.
+- **An agent has been inside it.** A remote-control session, with a working
+  view of the repository. That is the first time anything in `machines/`
+  describes a host somebody has actually reached rather than one somebody has
+  stood in front of.
 - **Gear comes from winget.** `git` and `vscode` went on that way.
   [`../gear.yml`](../gear.yml) is this machine's roster, and it is the shared
   default rather than a copy — **this profile carries no `gear.yml` of its own,
@@ -72,12 +91,37 @@ sitting right there.
   nobody has tried. If it cannot, that is not a fault in the box — CI builds
   the site and always has — but it decides whether `../toolkits` can ever fill
   in its `ruby` row.
-- **Is this the box with the three portrait panels?** The briefing that
-  produced [`../../brand/`](../../brand/README.md) described three 1050×1680
-  monitors on a machine that had Edge on it, which is the same afternoon and
-  the same platform. If it is the same box, then the wallpapers and
-  `brand/idle/index.html` are *this machine's* gear question and not a general
-  one. Nobody has said so and it is not assumed here.
+- **Which services move here, and which stay on station-node?** This is the
+  live question and it is the only one on this page that needs a decision
+  rather than an observation. See
+  [`../../docs/STATION.md`](../../docs/STATION.md), "What stays with the
+  prototype and what moves to the box".
+
+## Where it is going
+
+Not a question — a direction, recorded so that the next session does not read
+the list above as the whole of it.
+
+**It is meant to run its own station-like services.** station-node is currently
+running the things this box was going to reach across the network, and that was
+the arrangement when the box was a client. It has since been seen to turn on
+and do things.
+
+> I have station-node running the services that it was going to access over the
+> network, but it may be free to run it by itself now that I've actually seen it
+> turn on and do things. […] I want it to do its own station-like services. So
+> we are working towards that.
+
+**Publishing is not one of them, and that is settled rather than pending.**
+This repository is mounted in station-node's library as a submodule —
+`library/FCPM/fcpublicmedia.org` in that node's `.gitmodules` — and it stays
+there. *"I'm still going to handle its publishing, so it's correct that we did
+put it as a site in this process."* Nothing about this box changes who
+publishes, and an agent that finds itself designing a publishing path here has
+taken a wrong turn. (The live website is built by Cloudflare from the git
+connection either way; see [`../../docs/deploying.md`](../../docs/deploying.md).
+The two facts are not in tension — one is about the repository's home, the
+other about the website's build.)
 
 **Claims nothing structural yet.** This directory holds no folders, which under
 the rule in [`../README.md`](../README.md) is a complete statement rather than
