@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Build the kiosk artifact from what this repository already knows.
 
-    python3 bin/build-kiosk.py            write kiosk/welcome.yml
-    python3 bin/build-kiosk.py --check    fail if the committed file is stale
-    python3 bin/build-kiosk.py --print    write nothing, show the result
+    python3 bin/build-kiosk.py            write kiosk/welcome.yml and welcome.js
+    python3 bin/build-kiosk.py --check    fail if either committed file is stale
+    python3 bin/build-kiosk.py --print    write nothing, show both
 
 `kiosk/content.yml` is the editorial half — the greeting, the room, the panel
 wording. The facts come from `site/_data/`. This script joins them and writes
-`kiosk/welcome.yml`, which is committed and is the only file a kiosk reads.
+`kiosk/welcome.yml`, which is committed and canonical, plus `kiosk/welcome.js`
+which carries the same content for a panel that cannot read the YAML — see
+`JS_HEADER` below for the measurement that forced it.
 
 WHY GENERATED AND NOT HAND-WRITTEN
 ----------------------------------
@@ -60,6 +62,7 @@ not have. See `revision()`.
 
 import argparse
 import hashlib
+import json
 import os
 import pathlib
 import subprocess
@@ -78,6 +81,11 @@ except ImportError:  # pragma: no cover - environment problem, not logic
 REPO = pathlib.Path(__file__).resolve().parent.parent
 CONTENT = REPO / "kiosk" / "content.yml"
 ARTIFACT = REPO / "kiosk" / "welcome.yml"
+ARTIFACT_JS = REPO / "kiosk" / "welcome.js"
+
+# The global the JS transport assigns. Named rather than anonymous so a panel
+# can check whether it loaded at all.
+GLOBAL = "FCPM_KIOSK"
 DATA = REPO / "site" / "_data"
 
 # The committed check-in QR. A plain https URL and nothing else, which is why
@@ -99,6 +107,34 @@ HEADER = """\
 # inert: no template syntax, no includes, nothing to resolve. It names no host,
 # no port and no address, so the machine serving it can change without this
 # file changing. See docs/KIOSK.md.
+"""
+
+JS_HEADER = """\
+// GENERATED FILE — do not edit. The YAML beside it is canonical.
+//
+//   python3 bin/build-kiosk.py
+//
+// WHY THIS FILE EXISTS, AND IT IS NOT A PREFERENCE
+// -----------------------------------------------
+// The panel opens `brand/idle/index.html` as a local file, from a clone, with
+// no server behind it. Measured in Chrome 2026-09-24:
+//
+//   file:// + fetch('welcome.yml')        -> TypeError: Failed to fetch
+//   file:// + <script src="welcome.js">   -> works, repeatedly, with a
+//                                           cache-buster on the src
+//
+// A `file://` page has an opaque origin, so fetch and XHR are both refused
+// and no header can permit it. That makes the YAML unreadable by the one
+// consumer this artifact has — which is why the same content is emitted a
+// second time as an assignment a script tag can carry.
+//
+// This is TRANSPORT, not a second source of truth. It is generated from the
+// same `kiosk/content.yml` in the same run and carries the SAME `revision`,
+// copied rather than recomputed, so the two cannot disagree about what they
+// describe. Read `welcome.yml` if you have a choice; read this if you are a
+// browser looking at a file path.
+//
+// One assignment and nothing else. No logic, no fetch, no side effects.
 """
 
 
@@ -283,6 +319,32 @@ def render(artifact):
     return HEADER + "\n" + "revision: %s\n" % revision(body) + body
 
 
+def render_js(artifact, rev):
+    """The same content as an assignment a `file://` script tag can carry.
+
+    `rev` is PASSED IN rather than recomputed, so the two artifacts cannot
+    disagree about which revision they are. The YAML body is the thing the
+    digest is taken over; this file quotes the answer.
+    """
+    data = {"revision": rev}
+    data.update(artifact)
+    body = json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False)
+    return JS_HEADER + "window.%s = %s;\n" % (GLOBAL, body)
+
+
+def outputs(artifact):
+    """Both artifacts, from one build, sharing one revision."""
+    body = yaml.safe_dump(
+        artifact,
+        sort_keys=False,
+        default_flow_style=False,
+        allow_unicode=True,
+        width=4096,
+    )
+    rev = revision(body)
+    return HEADER + "\n" + "revision: %s\n" % rev + body, render_js(artifact, rev)
+
+
 def check_no_secrets(text, password=None):
     """Refuse to emit anything that leaks the guest password.
 
@@ -305,7 +367,10 @@ def check_no_secrets(text, password=None):
             "       FCPM_WIFI_PASSWORD here."
         )
     for line in text.splitlines():
-        key = line.strip().lower()
+        # Strip a leading quote so a JSON key ("password": …) is caught too, not
+        # just a YAML one. The JS transport carries the same content and needs
+        # the same guard.
+        key = line.strip().lower().lstrip('"\'').replace('"', "").replace("'", "")
         if key.startswith(("password:", "passphrase:", "secret:", "psk:")):
             raise SystemExit("error: the artifact carries a secret-looking key: %r" % line.strip())
 
@@ -336,37 +401,52 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
 
-    text = render(build(read_sources()))
-    check_no_secrets(text, os.environ.get("FCPM_WIFI_PASSWORD"))
+    artifact = build(read_sources())
+    text, js = outputs(artifact)
+
+    # Both get the guard. The JS carries the same content, so a leak would
+    # leak twice, and the guard that only covers the canonical file is the
+    # guard that misses the one a browser actually loads.
+    password = os.environ.get("FCPM_WIFI_PASSWORD")
+    check_no_secrets(text, password)
+    check_no_secrets(js, password)
+
+    wanted = ((ARTIFACT, text), (ARTIFACT_JS, js))
 
     if args.show:
-        sys.stdout.write(text)
+        for path, body in wanted:
+            sys.stdout.write("==> %s\n" % path.relative_to(REPO))
+            sys.stdout.write(body)
+            sys.stdout.write("\n")
         return 0
 
     if args.check:
-        if not ARTIFACT.exists():
+        stale = []
+        for path, body in wanted:
+            if not path.exists():
+                stale.append("%s does not exist" % path.relative_to(REPO))
+            elif path.read_text() != body:
+                stale.append("%s is stale" % path.relative_to(REPO))
+        if stale:
             print(
-                "error: %s does not exist. Run: python3 bin/build-kiosk.py"
-                % ARTIFACT.relative_to(REPO),
+                "error: %s.\n"
+                "       Its sources have changed since it was generated.\n"
+                "       Run: python3 bin/build-kiosk.py" % "; ".join(stale),
                 file=sys.stderr,
             )
             return 1
-        if ARTIFACT.read_text() != text:
-            print(
-                "error: %s is stale — its sources have changed since it was\n"
-                "       generated. Run: python3 bin/build-kiosk.py"
-                % ARTIFACT.relative_to(REPO),
-                file=sys.stderr,
-            )
-            return 1
-        print("%s is current" % ARTIFACT.relative_to(REPO))
+        print(
+            "%s and %s are current"
+            % (ARTIFACT.relative_to(REPO), ARTIFACT_JS.relative_to(REPO))
+        )
         return 0
 
     ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
-    ARTIFACT.write_text(text)
-    print("Wrote %s" % ARTIFACT.relative_to(REPO))
-    if not committed(ARTIFACT):
-        print("  NOT YET COMMITTED. A kiosk reads it off disk, so commit it.")
+    for path, body in wanted:
+        path.write_text(body)
+        print("Wrote %s" % path.relative_to(REPO))
+        if not committed(path):
+            print("  NOT YET COMMITTED. A kiosk reads it off disk, so commit it.")
     return 0
 
 

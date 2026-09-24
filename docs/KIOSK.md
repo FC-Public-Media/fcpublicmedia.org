@@ -43,9 +43,8 @@ knowing before reading the rest as current. `machines/kiosk-1/` is a Windows box
 stood up 2026-09-23, *"the one who grows up thinking of itself as a media node"*;
 the `STATION.md` paragraph this sentence used to cite is now amended rather than
 true. So the handover below is not hypothetical, and the property that makes it
-free is being cashed in sooner than expected. The
-artifact is shaped so that when FCPM does have one, **the artifact does not
-change** — only who reads it. Her framing of the endpoint, same day:
+free is being cashed in sooner than expected: **the artifact does not change when
+the renderer does** — only who reads it. Her framing of the endpoint, same day:
 
 > Later, fcpublicmedia.org would do this for itself, and you have your own site
 > folder, and so you wouldn't need.
@@ -75,21 +74,22 @@ unwind. Tight coupling is fine; an unfiltered read would not be.
 
 ---
 
-## The three files
+## The four files
 
 | | |
 |---|---|
 | `kiosk/content.yml` | **hand-written.** The editorial half: the greeting, the room, the panel wording |
-| `kiosk/welcome.yml` | **generated, and committed.** The only file a kiosk reads |
-| `bin/build-kiosk.py` | joins the first to `site/_data/` and writes the second |
+| `kiosk/welcome.yml` | **generated, committed, canonical.** What a kiosk reads if it can |
+| `kiosk/welcome.js` | **generated, committed.** The same content, for a panel that cannot read the YAML. See *Transport* |
+| `bin/build-kiosk.py` | joins the editorial half to `site/_data/` and writes both |
 
 ```sh
-python3 bin/build-kiosk.py           # write it
-python3 bin/build-kiosk.py --check   # fail if it is stale
-python3 bin/build-kiosk.py --print   # write nothing, show it
+python3 bin/build-kiosk.py           # write both
+python3 bin/build-kiosk.py --check   # fail if either is stale
+python3 bin/build-kiosk.py --print   # write nothing, show both
 ```
 
-Edit `content.yml`, regenerate, commit both. CI runs `--check`, so a forgotten
+Edit `content.yml`, regenerate, commit all three. CI runs `--check`, so a forgotten
 regeneration fails a pull request rather than reaching a wall.
 
 ### Why it is at the root and not in `site/`
@@ -197,6 +197,70 @@ Two honest limits, neither of them ours to fix:
   however often somebody pulls.
 - **A digest cannot say what changed**, only that something did. That is the
   right trade for a screen, which redraws the whole thing anyway.
+
+---
+
+## Transport: why there is a `.js` as well, and it is not a preference
+
+Measured in Chrome on 2026-09-24, after station-node found it and this
+repository reproduced it independently:
+
+| from `file://` | result |
+|---|---|
+| `fetch('welcome.yml')` | **`TypeError: Failed to fetch`** |
+| `XMLHttpRequest` for the same | refused the same way |
+| `<script src="welcome.js?t=N">`, read a global, remove the tag | **works, and works repeatedly** |
+
+A `file://` page has an **opaque origin**, so `fetch` and `XHR` are both refused
+and there is no header anyone can set to permit it. It is not a
+misconfiguration and it cannot be worked around from the page.
+
+**That matters because of what the panel is.** `brand/idle/index.html` opens as a
+local file from a clone, and its own header states the requirement: *"No build
+step, no dependencies, no network. It has to come up on a machine that has been
+off for a month and may not have joined the wifi yet."* So the consumer this
+artifact actually has **could not read `welcome.yml` at all**, and the liveness
+Autumn asked for — *"at minimum that an update can bounce it"* — was unreachable
+by the only transport on offer.
+
+The three routes the slot comment itself names are not equivalent, and only one
+keeps both promises:
+
+| how `#slot` gets filled | works from `file://` | live | needs a listener |
+|---|---|---|---|
+| `fetch` the YAML | **no** | yes | **yes**, localhost at minimum |
+| query string, or inlined at build | yes | **no** | no |
+| **`<script src>` injection** | **yes** | **yes** | **no** |
+
+So the same content is emitted a second time as `kiosk/welcome.js`, assigning
+`window.FCPM_KIOSK`. A panel injects it with a cache-buster, reads the global,
+and drops the tag — no server, no network, and `revision` still says when to
+redraw.
+
+**The freshness design did not change.** `revision` survives all three rows
+untouched; what differs is the transport, not the mechanism.
+
+### It is transport, not a second source of truth
+
+That distinction is the whole risk of a second copy, so it is enforced rather
+than asserted:
+
+- **One generator, one run.** Both files come out of `bin/build-kiosk.py`
+  together. There is no way to produce one without the other.
+- **The revision is copied, not recomputed.** The digest is taken over the YAML
+  body and quoted into the JS. Two independently computed digests could
+  disagree; one cannot.
+- **`--check` covers both.** A stale `.js` beside a current `.yml` fails CI, and
+  there is a test that deliberately staled one to prove the check notices.
+- **The secret guard runs on both.** It was extended to catch JSON-style
+  `"password":` keys as well as YAML `password:` ones — a guard that only covered
+  the canonical file would have missed the file a browser actually loads.
+- **The `.js` is one assignment and nothing else.** No logic, no `fetch`, no
+  side effects; tested for the absence of each. It is data in a JS wrapper, which
+  keeps the *inert* property the artifact is supposed to have.
+
+**`welcome.yml` stays canonical.** Read it if you have a choice. Read the `.js`
+if you are a browser looking at a file path.
 
 ---
 
