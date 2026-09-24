@@ -379,6 +379,247 @@ the box you are sitting at. It is proofing's capture idea aimed at stock
 footage instead of at generated images, and it is the only part of the AI-gen
 posture that transfers.
 
+## Showing what is on the network drive
+
+Written 2026-09-23, from a briefing about the kiosk boxes and the drive they
+share. Nothing here is built. It is written up now because the design converged
+across two sessions and the reasoning is worth more than the conclusions.
+
+The errand:
+
+> I want it to be possible to use this thing as both an inbox and an outbox.
+> I'd like to have a client page here at the kiosk that is able to show what's
+> in the queue, so that people don't need to be sitting at a computer to know
+> if it made it.
+
+The drive itself is described in [`TENANCY.md`](TENANCY.md), *"The hook is the
+product"* — eight partitions of a little under four gigabytes, *"little
+mailboxes for files"*, shared over Samba from the router. What follows is only
+about **saying what is in them.**
+
+### A browser cannot speak SMB, so the shape is forced
+
+A page gets `fetch` and WebSocket. SMB needs a socket on 445. There is no
+client-side trick that reaches it, and a JavaScript SMB implementation would
+have to run somewhere with sockets, which is not a kiosk browser.
+
+So: **something that can see the drive walks it periodically and publishes an
+index; the page renders the index.** That is not a workaround, it is the split
+[`KIOSK.md`](KIOSK.md) already describes — this repository owns what a screen
+says, something else owns showing it — arrived at a second time from a
+different direction.
+
+### The drive refuses to introduce itself
+
+Checked 2026-09-23, so the next session does not repeat it. The router is at
+**10.209.1.1**, a Linksys serving `lighttpd`; SMB is open on both 445 and 139.
+
+**Anonymous and guest sessions are both rejected.** Null, `guest`, `nobody` and
+`admin` all return *"server rejected the authentication"*. So share enumeration
+is credential-gated at the router. Nothing is misconfigured; that is the
+default.
+
+Enumeration itself is one command once a credential exists, so **nobody has to
+type out a list of partitions** — but until then the scanner cannot discover
+what it is scanning. Two ways out, and the choice is a network decision rather
+than a code one:
+
+1. **Connect once in Finder** with *remember this password in my keychain*.
+   After that the enumeration runs under a saved credential and no secret has
+   to be written down anywhere. Only the username is needed by anyone else, and
+   a username is not a secret.
+2. **Turn anonymous access on** in the router's external-storage settings. Then
+   the scanner carries no credential at all — one less thing to rotate, leak,
+   or explain to whoever runs this next — at the cost that anyone on that
+   network can read and write the drive.
+
+(2) is defensible precisely because of what the drive is for. It is a transit
+box for media in motion, not a store. But it is Autumn's call and it should be
+made rather than defaulted into.
+
+### The limits are part of naming the volume
+
+FAT is not an incidental detail here; it decides what the drive can be told to
+hold. Each of these changes a design:
+
+- **A file cannot exceed 4 GiB on FAT32, or 2 GiB on FAT16.** Partitions of
+  *"a little less than four gigs each"* may be either. **Masters do not fit on
+  this drive** — it routes proxies, deliverables and sheets. That has to be
+  said at submit time, because the alternative is finding out when a copy fails
+  at 4 GB after twenty minutes over SMB.
+- **A FAT16 root directory holds about 512 entries**, and a long filename
+  consumes several of them. A root full of `Council Meeting 2026-09-14 Full
+  Session.mp4` reports the disk as full with gigabytes free. **Nothing should
+  ever be written to the root of a partition.** This failure is invisible and
+  it will be misread as a broken drive.
+- **There are no permissions and no ownership.** Inbox and outbox cannot be
+  enforced by the filesystem. They are a directory convention, and the index is
+  what makes the convention legible to a person.
+- **`mtime` is local time at two-second resolution, with no zone** — stamped by
+  whatever machine wrote the file, according to whatever it thought the hour
+  was. Do not order a queue by it.
+- **`: * ? " < > |` are illegal, as are trailing dots and spaces.** Google
+  Drive titles are full of colons. Sanitize on write and keep the original
+  title in the index, or the screen shows a mangled name to the person who
+  chose it.
+
+These are filed upstream in `tiliv/station-node#160`
+(`give-this-node-a-word-for-media.md`), whose argument is that a media entry has
+to say what a volume **cannot** take and not only what it is for. That is the
+right place for them; they are repeated here because they constrain this
+artifact directly.
+
+### Completeness cannot be observed. It has to be declared.
+
+This is the load-bearing correction and it arrived from station-node's side.
+
+The obvious design is: if a file's size is unchanged across two scans, it has
+landed. **That is a guess, and it fails exactly when it matters.** A stalled
+writer looks identical to a finished small file — a partial file is
+indistinguishable from a complete one by inspection. A 3 GB copy that died
+halfway is the worst case on this drive, and a size-stable heuristic reports it
+as the best case.
+
+The node's standing rule is that *config declares intent and the system
+discovers fact*. **Completeness inverts it**, because the reader genuinely
+cannot observe the property. It has to come from whoever wrote the bytes.
+
+That is free for writers we control — a job writes under a temporary name and
+renames on completion, and **the rename is the declaration**. It is impossible
+for a person dragging a file into the share from Finder, which is the majority
+path. So the index carries three states and the third one admits what it is:
+
+| state | means |
+|---|---|
+| `declared` | the writer said so, with a digest. Trustworthy. |
+| `arriving` | observed growing between scans. Trustworthy in the negative. |
+| `unwitnessed` | present, nobody declared anything, not currently growing. **A guess, and the name says so.** |
+
+`unwitnessed` names the *absence of a declaration* rather than asserting a
+condition, which is the job `landed: true` failed to do. Station-node's own
+`mounts()` uses `quiet` for the same semantic; it was considered and declined,
+because `quiet` reads to a person as idle and idle reads as done.
+
+Two consequences that are easy to get wrong:
+
+- **`arriving` → `unwitnessed` is not progress.** It is the moment we *lost*
+  the only signal we had. Across a room it reads as advancement. So **the
+  artifact emits a state name and its evidence, never an ordinal** — no stage
+  numbers, nothing asserting sequence — which leaves a renderer free to put
+  `unwitnessed` off the track rather than at the end of it.
+- **A file that finishes between two scans never passes through `arriving`.**
+  It appears already static. Nothing may assume `arriving` is a stage every
+  upload visits.
+
+The supporting field is **`growth_last_observed`: a frozen instant**, written
+once when growth stops and never moved again. Not a duration — a duration is
+recomputed every scan and churns the artifact when nothing has happened. A
+renderer reading per request subtracts it from now and gets a live duration for
+free, at whatever precision the screen wants. *Was growing, hasn't for six
+minutes* is a different screen from *hasn't for four seconds*, and the
+difference is whether a person waits or fetches somebody.
+
+**Its absence is a third reading**, not a zero and not "long ago": we never
+witnessed this file growing at all.
+
+### Identity is declared too, for the same reason
+
+A FAT volume label is a name, not an identity. It is short, anyone who plugs
+the drive in can rename it, and **nothing stops all eight partitions being
+called `MEDIA`.**
+
+A volume serial number exists underneath and survives a relabel — but this is
+seen through Samba, which serves a filesystem rather than a block device.
+SMB2 carries a serial in `FileFsVolumeInformation`, and whether the mount or
+the scanner surfaces it is a coin toss not worth building on.
+
+So identity is **minted and declared**: each partition carries a marker file at
+a known subpath holding an id, written once. Readable over plain SMB with no
+special calls, survives relabelling and survives the drive moving to another
+box. It does not survive a reformat, which is correct — a reformatted partition
+genuinely is a new place, and an identity that outlived it would assert a
+continuity that does not exist.
+
+**The trade, which belongs in the marker file's own header:** a marker file is
+copyable and a sniffed serial is not. Back the drive up by copying files, or
+clone a partition, and two volumes now assert one identity — both telling the
+truth as they were written. **A duplicate id means a copy was made, not that a
+volume moved.** The failure is silent, and the first person to meet it will
+assume the index is broken.
+
+A missing marker makes a volume `unidentified` rather than guessed at — the
+same discipline as `unwitnessed`, and it should render the same way: not an
+error, not a blank, and not something that reads as fine.
+
+The label is still emitted, as a display name that is **explicitly allowed to
+collide**. It is not what identifies a partition on screen either: `wants:`
+carries `holds:`, what a label is *for*, and *"proxies for editing"* tells
+somebody which partition their file went to where `MEDIA` tells them nothing.
+Purpose is the heading; the label is a subtitle for whoever has the drive in
+their hand and wants to match what Finder shows.
+
+Note that `wants:` — `label` / `holds` / `lifecycle` / `disposition` — is a
+binding **no host implements yet**. Adopting it here is being an early
+implementer rather than a consumer, and that sentence belongs in the artifact
+itself rather than only in a commit message.
+
+### The one kiosk rule this artifact cannot keep
+
+[`KIOSK.md`](KIOSK.md) already settles the shape: inert, no hostname or port or
+address of its own, no timestamp, and a `revision:` digest as the first field so
+a poller need not parse the rest. All of that applies here unchanged, and a
+queue index should be recognisably the same kind of file.
+
+**Except that it cannot be committed.** The kiosk artifact is generated at build
+time and `--check` in CI turns "regenerate when content changes" into a promise
+a pull request can fail. A queue index describes a drive that changes every few
+seconds. There is no build to attach it to and no commit that could be current.
+
+That is worth naming rather than glossing, because `--check` is what makes the
+kiosk's freshness *guaranteed* rather than *likely*, and this artifact has no
+equivalent available to it. The honest substitute is that every observation in
+it is stamped with a frozen instant of its own, so a renderer can show staleness
+directly instead of the repository promising freshness it cannot deliver. **A
+screen should say when it last heard anything, and say it even when — especially
+when — the answer is a while ago.**
+
+The consequence for a renderer that serves referenced images by membership in
+the set the artifact names: **anything to be displayed must be named in the
+index**, and anything unnamed is unreachable rather than merely unlinked.
+
+### Contact sheets are downstream of this, and are already written
+
+The jobs that land things on this drive are the subject of *"Digitizing
+somebody's tapes"* above, and Autumn has since narrowed which part she wants
+first:
+
+> Don't use the proofing project — that's a word for functionality we're not
+> going to worry about yet. It's that contact sheet stuff from the Google Drive
+> that I'm really interested in, because that's the thing that just makes the
+> thumbnails. It doesn't need human operators. Its task is automatic.
+
+So the first job is: take a Drive link, produce thumbnails, write them back.
+**No human in the loop, which removes an approval state**, and it makes a sheet
+a *derived* artifact — if one is wrong it is deleted and regenerates. Nothing
+about a sheet needs to be durable, reviewed, or version-controlled, which is a
+different disposition from everything else the index names, and `disposition:`
+is where that gets said.
+
+It also means no vocabulary has to be invented for it here. `~/Project/contact-sheets`
+already implements the pipeline, per the section above.
+
+### What to find out
+
+- **A credential for 10.209.1.1, or anonymous access turned on.** Everything
+  else is designed; this is what the first real listing waits on.
+- **Whether the router exposes one share or eight.** It changes the scan root
+  and nothing else, but it is worth knowing before writing the walk.
+- **Whether a volume serial survives to the scanner** on this particular mount.
+  If it does, it is a cheap second opinion alongside the marker file — enough
+  to notice a cloned drive, which the marker alone cannot.
+
+---
+
 ## Signing in to a workstation with the passkeys we already have
 
 Same briefing. This one is closer to buildable than it looks, because most of

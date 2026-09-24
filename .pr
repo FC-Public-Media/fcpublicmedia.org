@@ -1,1 +1,66 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Work out what it takes to show the network drive's queue
+
+A design note, not an implementation. `docs/DESIGN-NOTES.md` gains a section on
+showing what is in the eight-partition Samba drive described in `TENANCY.md`,
+*"The hook is the product"* — the kiosk page that tells somebody whether their
+file made it.
+
+It is written up now because the design converged across two sessions with
+station-node, and the reasoning is worth more than the conclusions. Nothing is
+built and nothing here is a commitment.
+
+## What it settles
+
+**A browser cannot speak SMB**, so the shape is forced: something that can see
+the drive walks it and publishes an index; the page renders the index. That is
+the split `KIOSK.md` already describes, arrived at a second time from a
+different direction.
+
+**Completeness cannot be observed — it has to be declared.** The obvious design
+is "same size across two scans means it landed," and it fails exactly when it
+matters: a stalled writer is indistinguishable from a finished small file, so a
+3 GB copy that died halfway gets reported as the best case. The index carries
+three states, and the third is named `unwitnessed` because it names the absence
+of a declaration rather than asserting a condition. Two traps that follow are
+recorded with it — `arriving` → `unwitnessed` is signal loss that reads as
+progress, and a file that finishes between two scans never passes through
+`arriving` at all.
+
+**Identity is declared too**, for the same reason. A FAT label is a name, not an
+identity — nothing stops all eight partitions being called `MEDIA` — and Samba
+serves a filesystem rather than a block device, so the volume serial underneath
+is a coin toss. A minted marker file is the answer, with its trade written into
+its own header: a marker is copyable where a serial is not, so **a duplicate id
+means a copy was made, not that a volume moved.**
+
+**The limits are part of naming the volume.** The 4 GiB / 2 GiB file ceilings,
+and the FAT16 root directory that reports a full disk with gigabytes free
+because long filenames eat several entries each. Masters do not fit on this
+drive; it routes proxies, deliverables and sheets. These are filed upstream in
+`tiliv/station-node#160` and repeated here because they constrain this artifact
+directly.
+
+**The one kiosk rule this artifact cannot keep** is `--check`. A queue index
+describes a drive that changes every few seconds, so there is no build to attach
+it to and no commit that could be current. Named rather than glossed, because
+`--check` is what makes the kiosk's freshness a promise instead of a habit, and
+the honest substitute is per-observation frozen instants so a renderer can show
+staleness directly.
+
+## Findings recorded so nobody repeats them
+
+The router is at 10.209.1.1, a Linksys with SMB open on 445 and 139, and it
+**rejects anonymous and guest sessions** — null, `guest`, `nobody` and `admin`
+all refused. Enumeration is one command once a credential exists, so nobody has
+to type out a list of partitions, but the first real listing waits on either a
+saved keychain credential or anonymous access being turned on. That choice is a
+network decision and it is left open.
+
+## Scope
+
+Also records Autumn's narrowing on sheets: the first job is the automatic
+thumbnail pass off a Drive link, `proofing` stays out of it, and no human in the
+loop means no approval state and a sheet that is derived rather than durable.
+
+`docs/` is outside the Jekyll build root, so nothing here can reach a public
+URL. `site/bin/test_no_secrets.py` passes.
