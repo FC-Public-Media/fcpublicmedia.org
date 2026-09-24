@@ -1,8 +1,9 @@
 # kiosk 1
 
-**Status: stood up and working, 2026-09-23.** The first FCPM host that is
-Windows, the first one with anything on it that this repository put there, and
-the first one an agent has been inside.
+**Status: stood up, working, and wearing this profile, 2026-09-23.** The first
+FCPM host that is Windows, the first one with anything on it that this
+repository put there, and the first one an agent has been inside.
+`machines/binding` run on it says `wearing: kiosk-1`.
 
 > It has a view of fcpublicmedia.org, and it will be the one who grows up
 > thinking of itself as a media node.
@@ -97,6 +98,62 @@ sitting right there.
   [`../../docs/STATION.md`](../../docs/STATION.md), "What stays with the
   prototype and what moves to the box".
 
+## What the box said, 2026-09-23
+
+Read off the machine by an agent working on it. Answers to the list above, in
+order, then what the list did not think to ask.
+
+- **It answers to `200-FCPANEDIT2`**, now in `names`. It is **the old editing
+  bay 2**, retired from media work because it can no longer keep up, and given
+  a second life here. Autumn: *"This is actually an old predecessor of that
+  bay."* So the name is not a mistake and not bay 2's current machine.
+- **`winget list`**, the census, says it is **an IT-managed box**: CyberArk
+  Endpoint Privilege Manager, McAfee Endpoint Security, a SysAid agent,
+  DameWare remote control, a password-policy client, Cisco AnyConnect. Also
+  Adobe Premiere and Media Encoder 2020 to 2022, from its editing life. That is
+  the environment every other answer here works inside.
+- **Claude Code's winget id** was not looked up. Still blank in `../gear.yml`.
+- **Windows 10 Pro 1909**, on a Dell Precision T3600 with 12 GB and a Quadro
+  4000. winget is present but **v1.3**, too old to install zip or portable
+  packages. The account is a **user account, not an administrator**, and the
+  admin password is not currently usable. Everything below was done without it.
+- **The checkout** is a worktree at
+  `C:\Users\FCPM-user\code\work\fcpublicmedia.org@media-node`, on branch
+  **`media-node`**. That branch is what the box stays checked out on and what
+  its services run from. It is rebased onto `origin/main` every five minutes
+  by the door, and moving it is the bounce signal: the door restarts on the
+  new code and every screen reloads.
+- **It cannot build the site, and does not need to.** No Ruby. Python came by
+  the bay route: uv 0.12.18 from the vendor's release, hash-checked against
+  the published value, Authenticode-signed "OpenAI OpCo, LLC", then
+  `uv python install 3.13`. `bin/build-kiosk.py --check` passes here.
+- **Services: one, the door.** `door.py`, on `[::]:8080`, reached by name at
+  `http://200-fcpanedit2.local:8080/`. It serves the welcome screen, the
+  depot (the studio drive's contents) and the idle screen, and it starts at
+  logon from a Startup-folder shortcut. Nothing reaches it from other
+  machines yet, because the firewall rule that would allow it needs an
+  administrator.
+
+Two portrait panels are connected, 1050×1680, with a third on its way once a
+DVI adapter turns up. Edge 106 (Chromium) shows the pages full-screen, one
+window per panel, set up by hand.
+
+## What this folder holds now
+
+A folder here is a claim to have the thing it names (`../README.md`). These
+are the first claims this profile makes:
+
+| | |
+|---|---|
+| `door.py` | the door: every page, the scanner for the studio drive, the background rebase, and `screens` and `wifi-password` |
+| `door.vbs` | starts the door at logon with no window, from a fixed venv so the firewall asks about one interpreter once |
+| `node.yml` | what the door shows, and where: screens, Wi-Fi networks, stations, the depot's shares, draft wording |
+| `bookings.sample.yml` | a made-up week standing in for the booking calendars. Every booking is for "Sample" |
+| `GOTCHAS.log`, `gotcha` | what this box taught us, one line each. `merge=union`, after station-node's |
+
+Secrets are not here. The Wi-Fi passwords and the drive's login are in
+Windows Credential Manager on the box, readable only by its user.
+
 ## Where it is going
 
 Not a question — a direction, recorded so that the next session does not read
@@ -123,8 +180,7 @@ connection either way; see [`../../docs/deploying.md`](../../docs/deploying.md).
 The two facts are not in tension — one is about the repository's home, the
 other about the website's build.)
 
-**Claims nothing structural yet.** This directory holds no folders, which under
-the rule in [`../README.md`](../README.md) is a complete statement rather than
-an omission: nothing on this machine has yet been established as ours to
-configure. What it holds instead is `names` and this page, which is what a
-profile is for before it is a claim.
+**It claims one service now: the door.** See *What this folder holds now*
+above. The first draft of this page ended by claiming nothing, and it was right
+when it was written. Later the same day the box started serving its own
+screens.

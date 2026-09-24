@@ -6,4 +6,4 @@
 # same gotcha seen twice is one gotcha. NOTHING EDITS A LINE IN THIS FILE.
 # Union on a file where somebody edits an existing line is data loss with no
 # conflict to warn about. After station-node's .gitattributes.
-machines/media-node/GOTCHAS.log    merge=union
+machines/kiosk-1/GOTCHAS.log    merge=union

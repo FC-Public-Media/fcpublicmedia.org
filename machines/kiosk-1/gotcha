@@ -1,7 +1,7 @@
 #!/bin/sh
 # gotcha — append one environment stumbling block to the media node's log.
 #
-#   machines/media-node/gotcha net "assumed X -> actually Y"
+#   machines/kiosk-1/gotcha net "assumed X -> actually Y"
 #
 # After station-node's bin/gotcha. Commit-title length. The NATURE of the issue
 # and what was missing, never the context or the fix. The value is in the count

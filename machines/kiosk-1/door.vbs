@@ -9,4 +9,4 @@ Set sh = CreateObject("WScript.Shell")
 here = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName)
 sh.CurrentDirectory = here & "\..\.."
 sh.Environment("Process")("PYTHONUTF8") = "1"
-sh.Run """" & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\media-node\venv\Scripts\pythonw.exe"" machines\media-node\door.py supervise", 0, False
+sh.Run """" & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\media-node\venv\Scripts\pythonw.exe"" machines\kiosk-1\door.py supervise", 0, False

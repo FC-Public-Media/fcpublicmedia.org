@@ -29,7 +29,7 @@ screens:
 # persistence so it survives logoff. Set it once at a terminal. The prompt
 # does not echo, and asks twice:
 #
-#     %LOCALAPPDATA%\media-node\venv\Scripts\python.exe machines\media-node\door.py wifi-password "FC Public Media Guest"
+#     %LOCALAPPDATA%\media-node\venv\Scripts\python.exe machines\kiosk-1\door.py wifi-password "FC Public Media Guest"
 #
 # (Not cmdkey: its parser rejects quoted targets with spaces in them.)
 #

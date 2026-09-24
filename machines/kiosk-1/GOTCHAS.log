@@ -1,4 +1,4 @@
-# Append with: machines/media-node/gotcha <tag> "<one line>"
+# Append with: machines/kiosk-1/gotcha <tag> "<one line>"
 # Append-only. One line each, commit-title length. Nature and what is missing; no context.
 # After station-node's guidance/GOTCHAS.log. This one is the media node's: Windows, no admin.
 # date        tag       what was assumed -> what is true
