@@ -254,6 +254,136 @@ first, and where that private key lives is a decision rather than a value.
 
 ---
 
+## How an update reaches us, and who owns it on the way
+
+Autumn, 2026-09-24, in the same conversation as the section above. This is the
+transport half of that decision and the custody model underneath it.
+
+### Two channels, and the difference is deliberate
+
+**FCPM talks to station-node over the LAN.** **FCPM's members talk over QR
+channels.** That is a design split, not a stage of rollout — the two sides of
+this organisation have different reach and are not being made to pretend
+otherwise.
+
+A QR channel means the update has to survive being **serialized to bytes** and
+carried across a gap with no network on it.
+
+### The serialization is a tar of a file structure
+
+> We've decided at this point we're just going to tar a file structure, which
+> then contains bytes of things.
+
+Chosen because it is the boring answer that already works: a directory survives
+the trip intact, nothing has to be flattened, and *"if the intermediate has a
+folder to represent complex things, then we're still fine"* holds on this side
+too.
+
+### The checks are publishable, and that is the point
+
+> It just works like a form that they can commit to, using controlled hooks as
+> checks for us to import — or at least observe, to know the rules. You don't
+> even have to install them if you understand what's going to be rejected or
+> not. And it's a state machine. It is like a living little state machine.
+
+**The rules are legible whether or not you run them.** A member who installs
+the hooks gets told early; a member who merely reads them knows what will be
+rejected and can comply by hand. That is the same property `REDIRECTS.md` has —
+a check rather than a claim — applied to somebody else's working copy.
+
+Calling it a state machine is the load-bearing part: a submission is *in* a
+state, the hooks say which transitions are legal, and both sides can compute
+the answer independently.
+
+### Members submit with git, signed by the passkey we already know
+
+> They're committing on a little branch and we're going to pull it in and say,
+> okay, great, and merge that into our thing. It looks signed by their passkey.
+> We know what their passkey is.
+
+So the submission is a branch, the merge is the approval, and provenance comes
+from the passkey enrolled at `/authorize/` rather than from a second identity
+system. The broker in `worker/` already issues and verifies assertions; this is
+another consumer of it, not a new mechanism.
+
+### Custody: we hold it, they own it
+
+This is the part that is a commitment rather than an implementation detail.
+
+> We're going to carve out dedicated space for them to manage that over time,
+> and it will be a repository, and they will have full custody over it, even
+> though we're holding it. They are free to back it up any number of ways from
+> that point, because we gave them a git client in their phone. They could take
+> control of their thing at any time, and that is the hallmark of what I'm doing
+> here.
+
+**Holding is not owning.** A member can walk with the whole history at any
+moment, and nothing has to be negotiated for that to work — it is a clone. This
+is what `member-sites.md` already means by *ejecting should cost them nothing
+but a decision*, made concrete.
+
+> And if they only ever wanted to publish their intermediates for us as an
+> artifact, so that they could keep a private repository — completely safe.
+
+**A member may keep their repository private and send only the intermediate.**
+The artifact is the contract, so the source never has to be visible to us at
+all. That is the strongest version of the intermediates decision, and it is
+available to anybody who wants it.
+
+### GitHub is a relay, not the system
+
+> FCPM's member updates are going to come back to it through GitHub, because
+> that is one of our relays. When someone edits the bytes, they need to submit
+> it back, and right now the only way for that to go anywhere meaningful is to
+> go to an address that the cloud is offering — unless someone has the changes
+> in their phone and they can generate the diff and show it to the computer.
+
+Named as **one relay among possible others**, which is the reason to write it
+down: today GitHub is the address the cloud offers, and the design does not
+depend on it staying that way. The phone-to-camera path is sketched, not
+designed, and is recorded only so nobody assumes the cloud is load-bearing.
+
+### FCPM is not the publisher of its own site, and should know it
+
+> All of that is what's travelling the LAN to the station node for now. Later,
+> FCPM can probably take over its deploy so that it doesn't need to be on the
+> same LAN. This is an important process for it to know that — hey, I'm not the
+> publisher of my own stuff. I rely on someone else.
+
+Worth stating plainly because it is easy to drift out of. The arrangement with
+station-node is guest hosting and [`KIOSK.md`](KIOSK.md) already calls it
+*"temporary by design"*. Knowing we are not our own publisher is what keeps the
+artifacts portable enough for that to stay true.
+
+### What station-node's trade service is for
+
+> What I hope it really means is that Station Node is running a trade service
+> that publishes the intermediates. That's its goal: publish the intermediates.
+
+And the acceptance range is wide on purpose:
+
+> If your intermediate happens to be raw source, or it happens to be fully
+> cooked HTML, it falls inside parameters.
+
+**Both ends of that range are valid input.** A consumer does not get to require
+one shape.
+
+### Degrading gracefully is a promise, not a fallback
+
+> And when it doesn't, we want to promise that it degrades gracefully. So we're
+> fine showing the raw Liquid. We can probably mark it up a little, but we want
+> it to be clearly not interpreted.
+
+The rule for anything outside parameters: **render it as itself, visibly
+uninterpreted.** Showing raw Liquid is an acceptable outcome; showing something
+that *looks* rendered but is not is the failure. Light markup is fine as long as
+it makes the uninterpreted state more obvious rather than less.
+
+This is the same discipline as `unwitnessed` on the depot — a surface must not
+present a thing it could not confirm as though it had been confirmed.
+
+---
+
 ## The split
 
 Drawn 2026-09-18, because the line between what a member owns and what we
