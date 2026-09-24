@@ -123,6 +123,26 @@ depot:
             - {share: TO STEM, label: To Stem}
 
 # ---------------------------------------------------------------------------
+# THE WALL: pages for screens elsewhere on the network, written to a share
+# because nothing out there can reach this box's port (door.py, "THE WALL").
+# The first is the studio's rolling TV, a ~50" set on its side. Point its
+# browser, in kiosk mode, at:
+#
+#     file://10.209.1.1/DIGISTATION/.wall/index.html
+#
+# Modules show in the rail in this order; the first is where a fresh screen
+# starts. `page` is one of the door's pages (kiosk, depot); `name` becomes the
+# file name. Drop-off files are welcome here, guests' included (Autumn,
+# 2026-09-24). The Wi-Fi codes are not: the whole network can read a share.
+wall:
+  share: DIGISTATION         # the partition is the depot's; .wall is this node's
+  folder: .wall
+  every: 60                  # seconds: how often it is rewritten, and pages reload
+  modules:
+    - {name: studio, label: Studio, page: kiosk}
+    - {name: files, label: Files, page: depot}
+
+# ---------------------------------------------------------------------------
 # WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
 # stand-in until then. "No apps. Free public tech." is hers. When the wording
 # settles it belongs in kiosk/content.yml, where the rest of the kiosk's
