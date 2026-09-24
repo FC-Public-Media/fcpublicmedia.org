@@ -168,7 +168,9 @@ def helpers(activities, now):
             if person in seen or (tags and not tags & set(activities)):
                 continue
             seen.add(person)
-            out.append("%s %s" % (person, "now" if begins <= now else when(begins, now)))
+            # Non-breaking inside an entry: the line may wrap between people,
+            # never between a name and its time.
+            out.append(("%s %s" % (person, "now" if begins <= now else when(begins, now))).replace(" ", " "))
             if len(out) == 3:
                 return out
     return out
