@@ -54,12 +54,12 @@ shifts:
   - days: [thu]
     from: "17:00"
     to: "19:00"
-    who: [Nate]
+    who: [Chris]
 
   - days: [fri]
     from: "17:00"
     to: "19:30"
-    who: [Chris]
+    who: [Nate]
 
   - days: [sat]
     from: "11:00"
