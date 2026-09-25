@@ -533,47 +533,26 @@ a { color:inherit; }
    "The tilt"). Unlit it is slate, as in brand/idle. */
 .mark { background:var(--signal); rotate:-8deg; }
 .mark.unlit { background:var(--slate); }
-/* The clock mark: the same square with a live analog clock in it, tilt and
-   all. Anything placed in it (the check-in QR) sits on top on a signal
-   backing, so the hands never show through a code's light modules. */
-.mark.clock { position:relative; }
-.mark.clock .face { position:absolute; inset:0; width:100%; height:100%; }
-.mark.clock .face * { stroke:var(--ink); stroke-linecap:square; }
-.mark.clock > :not(.face) { position:relative; background:var(--signal); }"""
+/* The clock mark: the same square with clock hands drawn on top of whatever
+   it holds (site/_includes/clock-hands.html). */
+.mark.clock { position:relative; }"""
 
-CLOCK_JS = """<script>
-(function () {
-  function tick() {
-    var d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = d.getHours() % 12 + m / 60;
-    document.querySelectorAll('.mark.clock .hh').forEach(function (n) { n.setAttribute('transform', 'rotate(' + h * 30 + ' 50 50)'); });
-    document.querySelectorAll('.mark.clock .mm').forEach(function (n) { n.setAttribute('transform', 'rotate(' + m * 6 + ' 50 50)'); });
-  }
-  tick(); setInterval(tick, 1000);
-})();
-</script>"""
+
+def clock_hands():
+    """The clock-hands fragment, the same file the site includes."""
+    return (ROOT / "site" / "_includes" / "clock-hands.html").read_text(encoding="utf-8")
 
 
 def clock_mark(inner="", cls=""):
-    """The mark with a clock in it. The hands start at this machine's time, so
-    a wall page written to a share is right before its script runs."""
-    t = time.localtime()
-    m = t.tm_min + t.tm_sec / 60
-    h = t.tm_hour % 12 + m / 60
-    ticks = "".join('<line x1="50" y1="%s" x2="50" y2="15" stroke-width="%s" transform="rotate(%d 50 50)"/>' % (
-        9 if i % 3 == 0 else 11, 3 if i % 3 == 0 else 1.6, i * 30) for i in range(12))
-    face = ('<svg class=face viewBox="0 0 100 100" aria-hidden="true">%s'
-            '<line class=hh x1="50" y1="54" x2="50" y2="29" stroke-width="5.5" transform="rotate(%.2f 50 50)"/>'
-            '<line class=mm x1="50" y1="55" x2="50" y2="17" stroke-width="3.5" transform="rotate(%.2f 50 50)"/>'
-            '</svg>') % (ticks, h * 30, m * 6)
-    return '<div class="mark clock%s">%s%s</div>' % (" " + cls if cls else "", face, inner)
+    """The mark with a live clock in it, drawn over `inner` (the check-in QR)."""
+    return '<div class="mark clock%s">%s%s</div>' % (" " + cls if cls else "", inner, clock_hands())
 
 
 def page(title, body, style=""):
     return with_poll("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>%s</title><style>%s
-%s</style></head><body>%s</body></html>""" % (html.escape(title), BRAND, style,
-                                               body + (CLOCK_JS if "mark clock" in body else "")))
+%s</style></head><body>%s</body></html>""" % (html.escape(title), BRAND, style, body))
 
 
 def e(s):
@@ -610,6 +589,7 @@ body { display:grid; grid-template-rows:1fr 1fr auto; }
 .checkin .mark { position:absolute; left:33.333%; top:50%; translate:-50% -50%;
   width:25vh; height:25vh; padding:1.1vh; box-sizing:border-box; }
 .checkin .mark img { display:block; width:100%; height:100%; }
+.checkin .mark .ticks { display:none; }
 .checkin .words { position:absolute; top:50%; translate:0 -50%;
   left:calc(33.333% + 15vh + 3vw); right:4vw; }
 h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
