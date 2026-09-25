@@ -1,0 +1,43 @@
+# show.yml — what the rolling TV shows. This is the page, treated as config.
+# See ../README.md.
+#
+# DRAFT. Nothing reads it yet. Today the TV's page is the wall, which the
+# media node's door builds from the `wall:` block in
+# machines/kiosk-1/node.yml. This is what that block would read from once it
+# is moved here. The fields below say what is wanted, and name the gap where
+# the wall does not do it yet.
+
+version: 1
+
+# ONE ROUTE. The screen opens one address and never navigates away from it.
+# The shell changes what it shows by itself.
+route: wall
+
+# MODULES are the door's pages (door.py WALL_PAGES). They are named here, not
+# copied: any screen that shows `studio` shows the same one.
+modules:
+  - {name: studio, label: Studio, page: kiosk}
+  - {name: files, label: Files, page: depot}
+
+# HOW THEY ARE SHOWN. Nobody is standing at this screen to press a button, so
+# the main area moves through the modules on its own. The rest stay up as
+# small thumbnails, so what is not in the main area is still visible.
+# NOT BUILT: the wall shows one module at a time and changes only on a click.
+layout:
+  main: rotate
+  every: 45                  # seconds on each module. A guess, to be watched
+  others: thumbnails
+
+# SCALE. The wall's rail is sized for a finger (door.py WALL_CSS: 3.2vh type,
+# 2.4vh padding). This screen gets a pointer at most, so the controls come
+# down and the room goes to the content.
+# NOT BUILT: the wall has one size.
+controls: small
+
+# Motion is allowed. This is a screen in a window, read from across a room:
+# some movement is what tells somebody it is live and not a frozen page.
+# Nothing may flash.
+animated: true
+
+# The data is refreshed on the wall's own beat (`every:` in node.yml's wall
+# block, 60 s), not here.

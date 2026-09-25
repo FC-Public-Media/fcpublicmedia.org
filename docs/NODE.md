@@ -90,6 +90,7 @@ site/                THE WEBSITE, and the build root. Jekyll runs from in here.
   tests/             browser tests. Excluded from the build.
 docs/                everything written down. Outside `source:`, so unpublishable.
 kiosk/               what a studio screen says. Content only, no renderer. See KIOSK.md.
+instruments/         each studio screen and what it shows. Draft. See its README.
 machines/            one profile per host this can plausibly run on. See its README.
 worker/              the broker. Its own Cloudflare Worker. Deployed separately.
 site-template/       what a member's own repository holds. Data only, no markup.
