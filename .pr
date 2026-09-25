@@ -1,1 +1,15 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Holding a bubble: the You identity first, the receipt last
+
+## What changes
+
+`docs/HOLDING-A-BUBBLE.md` follows the order Autumn set on 2026-09-25, quoted in the doc:
+
+1. **A You identity first.** Every form knows whose it is from its first field.
+2. **Our note on the transaction.** Beside `client_reference_id` (the application digest), the session carries the member's You identity as metadata, next to the `sku`/`priced` metadata `checkout.js` already writes.
+3. **The session ID folds back as the last item** the application needs.
+
+- **Curing a form**: a returning member is recognised by their You passkey, and the node finds their open application by that identity, never by anything they type.
+- The closed-the-tab and lost-phone rows now go through the You identity.
+- A rail: the You identity in Stripe's metadata is a handle, never credential material.
+
+It changes nothing in `MEMBER-SHOWS.md`. The same points were relayed to the session working on that plan, which may fold them into it in its own terms.
