@@ -57,6 +57,7 @@ What it cannot do is log on. After a power cut the box waits at the sign-in
 screen until someone signs in, and signing in automatically needs an
 administrator (PROFILE.md, "Asked of IT").
 """
+import base64
 import ctypes
 import datetime
 import html
@@ -657,18 +658,34 @@ NOW_JS = """<script>
 </script>"""
 
 
-def kiosk_page():
+def qr_image(n):
+    """The file behind the check-in QR for panel n, or None."""
+    panels = welcome().get("panels") or []
+    if n < len(panels) and isinstance(panels[n].get("qr"), dict):
+        rel = pathlib.PurePosixPath(panels[n]["qr"]["image"]).relative_to("site/assets")
+        return inside(ROOT / "site" / "assets", rel)
+    return None
+
+
+def kiosk_page(wall=False):
+    """The welcome screen. For the wall it carries its QR inside itself and no
+    Wi-Fi codes: a page on a share is readable by the whole network."""
     w, n = welcome(), node()
     words = n.get("wording") or {}
     ci, mp, ft = words.get("checkin") or {}, words.get("map") or {}, words.get("footer") or {}
 
     panels = w.get("panels") or []
     idx = next((i for i, p in enumerate(panels) if isinstance(p.get("qr"), dict)), None)
-    code = ('<div class=mark><img src="/kiosk/qr/%d" alt="%s"></div>' % (
-        idx, html.escape(panels[idx]["qr"].get("alt", ""), quote=True))) if idx is not None else ""
+    src = "/kiosk/qr/%d" % idx if idx is not None else ""
+    if wall and idx is not None:
+        img = qr_image(idx)
+        src = "data:%s;base64,%s" % (TYPES.get(img.suffix.lower(), "application/octet-stream"),
+                                     base64.b64encode(img.read_bytes()).decode()) if img else ""
+    code = ('<div class=mark><img src="%s" alt="%s"></div>' % (
+        src, html.escape(panels[idx]["qr"].get("alt", ""), quote=True))) if src else ""
 
     nets = []
-    for i, net in enumerate(networks()):
+    for i, net in enumerate([] if wall else networks()):
         img = ('<div class=qr><img src="/kiosk/wifi/%d" alt="Wi-Fi code for %s"></div>' % (i, e(net["ssid"]))
                if net["ready"] else
                '<div class=slot>%s<br>needs its password set on this machine</div>' % e(net["ssid"]))
@@ -816,6 +833,133 @@ def depot_page():
     return page("Depot", body, DEPOT_CSS)
 
 
+# ---------------------------------------------------------------------- wall --
+# THE WALL: pages for screens elsewhere on the network, the studio's rolling
+# TV first. Nothing on the network can reach this box's port (Windows calls the
+# network Public, and blocks this interpreter inbound; both need an
+# administrator). So the door does not wait to be asked. It builds the pages
+# here, where the credentials and the drive are, and writes them to a share
+# every screen can already open. Privileged in construction, ungated in
+# rendering: what lands there is plain HTML that fetches nothing.
+#
+# One shell holds a rail of buttons and a frame. A button changes what the
+# frame shows and remembers it after the #, replacing the address rather than
+# adding to history, so there is nothing to go Back to and a reload stays put.
+# Each module is the door's own page with a snapshot of its data inside it,
+# answering its own fetch, and reloading itself on the wall's beat.
+WALL_PAGES = {
+    "kiosk": (lambda: kiosk_page(wall=True), "/kiosk/now",
+              lambda: {"on": on_now(), "map": stations()}),
+    "depot": (depot_page, "/depot/now", depot_now),
+}
+
+WALL_SHIM = """<script>
+(function () {
+  var snap = %s, real = window.fetch;
+  window.fetch = function (url) {
+    if (Object.prototype.hasOwnProperty.call(snap, url))
+      return Promise.resolve(new Response(JSON.stringify(snap[url]),
+        {headers: {'Content-Type': 'application/json'}}));
+    return real ? real.apply(this, arguments) : Promise.reject(new Error('offline'));
+  };
+})();
+</script>"""
+
+WALL_CSS = """html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:1fr auto; user-select:none; }
+iframe { display:block; width:100%; height:100%; border:0; background:var(--ink); }
+nav { display:flex; gap:1.2vh; padding:1.2vh; background:var(--slate); }
+nav button { flex:1; padding:2.4vh 1vh; border:0; border-radius:0; cursor:pointer;
+  font:inherit; font-size:3.2vh; font-weight:750; background:var(--ink); color:var(--paper); }
+nav button[aria-current=true] { background:var(--signal); color:var(--ink); }"""
+
+WALL_JS = """<script>
+(function () {
+  var names = %s, frame = document.querySelector('iframe'),
+      buttons = document.querySelectorAll('nav button');
+  function show(name) {
+    if (names.indexOf(name) < 0) name = names[0];
+    if (frame.getAttribute('src') !== name + '.html') frame.setAttribute('src', name + '.html');
+    buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === name); });
+    try { history.replaceState(null, '', '#' + name); } catch (e) { location.replace('#' + name); }
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.m); }); });
+  document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+  show(location.hash.slice(1));
+})();
+</script>"""
+
+
+def wall_cfg():
+    return node().get("wall") or {}
+
+
+def wall_modules():
+    return [m for m in wall_cfg().get("modules") or []
+            if m.get("page") in WALL_PAGES and re.fullmatch(r"[a-z0-9-]+", str(m.get("name", "")))]
+
+
+def wall_files():
+    """Every file of the wall, by name: the shell, then one per module."""
+    every = int(wall_cfg().get("every", 60))
+    refresh = '<meta http-equiv="refresh" content="%d">' % every
+    mods = wall_modules()
+    files = {}
+    for m in mods:
+        build, url, data = WALL_PAGES[m["page"]]
+        snap = json.dumps({url: data()}).replace("</", "<\\/")
+        files[m["name"] + ".html"] = build().replace(POLL, "").replace(
+            "</head>", refresh + WALL_SHIM % snap + "</head>", 1)
+    rail = "".join('<button data-m="%s">%s</button>' % (html.escape(m["name"], quote=True),
+                                                         e(m.get("label", m["name"]))) for m in mods)
+    body = "<iframe title=Module></iframe><nav>%s</nav>%s" % (
+        rail, WALL_JS % json.dumps([m["name"] for m in mods]))
+    # The shell reloads rarely: only to pick up a change in the modules.
+    files["index.html"] = page("Studio wall", body, WALL_CSS).replace(POLL, "").replace(
+        "</head>", '<meta http-equiv="refresh" content="%d">' % (every * 10) + "</head>", 1)
+    return files
+
+
+def wall_target():
+    cfg, server = wall_cfg(), (node().get("depot") or {}).get("server")
+    if not (cfg.get("share") and server):
+        return None
+    return pathlib.Path(share_root(server, cfg["share"])) / cfg.get("folder", ".wall")
+
+
+def write_wall():
+    """Write the wall to its share, each file whole or not at all. Returns
+    what went wrong, or None. Files the wall no longer has are removed: the
+    folder is this node's to keep tidy."""
+    target = wall_target()
+    if target is None:
+        return "no wall share in node.yml"
+    files = wall_files()
+    target.mkdir(exist_ok=True)
+    ctypes.windll.kernel32.SetFileAttributesW(str(target), 0x2)   # hidden, for Explorer
+    for name, body in files.items():
+        part = target / (name + ".part")
+        part.write_bytes(body.encode("utf-8"))
+        os.replace(part, target / name)
+    for old in target.iterdir():
+        if old.is_file() and old.name not in files:
+            old.unlink()
+    return None
+
+
+def watch_wall():
+    said = ...                                       # so the first outcome is logged too
+    while True:
+        try:
+            err = write_wall()
+        except Exception as exc:
+            err = repr(exc)
+        if err != said:                              # log changes, not every beat
+            log("wall: " + (err or "writing to %s" % wall_target()))
+            said = err
+        time.sleep(int(wall_cfg().get("every", 60)))
+
+
 # -------------------------------------------------------------------- server --
 def inside(base, rel):
     """The file at base/rel, or None if rel steps outside base or is not a file."""
@@ -872,12 +1016,11 @@ class Door(BaseHTTPRequestHandler):
                 svg = wifi_svg(int(tail))
                 return self.reply(200, svg, TYPES[".svg"]) if svg else self.file(None)
             if route.startswith("/kiosk/qr/") and tail.isdigit():
-                panels = welcome().get("panels") or []
-                n = int(tail)
-                if n < len(panels) and isinstance(panels[n].get("qr"), dict):
-                    rel = pathlib.PurePosixPath(panels[n]["qr"]["image"]).relative_to("site/assets")
-                    return self.file(inside(ROOT / "site" / "assets", rel))
-                return self.file(None)
+                return self.file(qr_image(int(tail)))
+            if route == "/wall" or route.startswith("/wall/"):
+                files = wall_files()           # the same bytes the share gets
+                name = tail or "index.html"
+                return self.reply(200, files[name]) if name in files else self.file(None)
             if route in ("/idle", "/idle/"):
                 return self.file(ROOT / "brand" / "idle" / "index.html")
             head, _, rest = route.strip("/").partition("/")
@@ -933,6 +1076,7 @@ def serve():
     server.bounce = False
     threading.Thread(target=watch_commit, args=(server,), daemon=True).start()
     threading.Thread(target=watch_depot, daemon=True).start()
+    threading.Thread(target=watch_wall, daemon=True).start()
     log("door up on [::]:%d from %s at %s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD")))
     server.serve_forever()
     server.server_close()
