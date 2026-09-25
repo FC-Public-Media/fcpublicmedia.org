@@ -116,23 +116,31 @@ schedule, beside the door (see *Who runs the tests*).
   - **The order:** passkey, then the application, then Stripe. The
     application's digest goes to Stripe as `client_reference_id`, so
     Stripe's record points at the application.
-  - **The member writes their confirmation number on their application.**
-    After Checkout, a wizard step invites them to write in Stripe's
-    confirmation number. The number is printed on their receipt, and it's
-    the invoice number, so one-time payments need `invoice_creation`. We get
-    Stripe's record anyway, so Stripe's record stays authoritative, and this
-    field is the member's own. The hooks check its format; the node
-    reconciles it against Stripe later. Skipping the step breaks nothing:
-    the wizard invites and never compels.
+  - **The confirmation is filled in, and it proves live holding.** Autumn,
+    2026-09-25: *"Definitely just filled, it's a proof of live holding
+    too."* Checkout returns to the application with the Checkout Session ID
+    in the return address (Stripe's `{CHECKOUT_SESSION_ID}` in the
+    `success_url`), and the wizard writes it onto the application with no
+    typing. Only the browser that paid comes back with it; it isn't on the
+    receipt email. So an application carrying it shows the member was
+    holding that live application when the payment finished. The two point
+    at each other: the session's `client_reference_id` is the application's
+    digest, and the application holds the session. Stripe's record stays
+    authoritative. The hooks check the ID's format, and the node reconciles
+    the pair against Stripe, which needs a key that can read Checkout
+    Sessions. Committing it is still the member's gesture: the wizard
+    invites and never compels.
   - **The application goes back to where it came from**, and nowhere else.
     It carries a person's details, so that place is never the public site
     repo.
   - **Accepting the membership accepts the passkey** for member wizards.
 - **Test:** a fake sign-up (stripe-mock or a Stripe test key) produces a
-  bottle. The hooks accept a well-formed one, one with a well-formed
-  confirmation number, and one without; they refuse one with an extra field
-  or a malformed number. The node matches a written number to the test
-  payment and flags one that doesn't match. The probe iframe refuses a
+  bottle, and the return from Checkout fills the session ID in. The hooks
+  accept a well-formed application, with the ID or without it; they refuse
+  one with an extra field or a malformed ID. The node matches the ID to the
+  test payment both ways, and flags a session whose `client_reference_id`
+  is a different application's digest (an ID copied from someone else's
+  payment). The probe iframe refuses a
   parent not listed in its `frame-ancestors`.
 
 ### 3. Starting a show is a member wizard
