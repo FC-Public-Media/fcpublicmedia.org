@@ -39,11 +39,8 @@ screens:
 networks:
   - from: wifi               # site/_data/wifi.yml: ssid, security, confirmed
     label: Guest Wi-Fi
-  - ssid: FC Public Media Audio
-    security: wpa
-    label: AirPlay Wi-Fi
-    # The AirPort Express. It joins you to the AirPlay speaker on the spare
-    # mixer input. Its name is Autumn's (2026-09-23).
+  # AirPlay needs no network of its own: the Apple TV joins the guest
+  # network, so guests find it in their AirPlay list (2026-09-25).
 
 # ---------------------------------------------------------------------------
 # STATIONS on the studio map: a logical map of what can be booked, not a
