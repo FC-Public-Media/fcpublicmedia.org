@@ -4,7 +4,9 @@ Written 2026-09-24 from Autumn's description, laid over what the repositories
 already define. **This is a plan, and nothing in it is built as described.**
 Every stage says what already exists, what it needs, and **the test that
 proves it**, because Autumn's condition is that this is working and tested
-before anything is left to run in the background.
+before anything is left to run in the background. In her words
+(2026-09-25): *"what automation testing means to me is that we know these
+flows work."* A stage's test walks the flow a person would walk.
 
 Read [`member-sites.md`](member-sites.md), [`INTERMEDIATES.md`](INTERMEDIATES.md),
 [`identity.md`](identity.md) and [`RESERVE-DESIGN.md`](RESERVE-DESIGN.md) first.
@@ -13,8 +15,10 @@ This plan joins them; it doesn't replace them.
 ## The shape in one paragraph
 
 A member gets a passkey on `you.fcpublicmedia.org`, which is the member area.
-Each **show** gets a sub-subdomain, `<show>.you.fcpublicmedia.org`, and a
-**control branch** we provision at sign-up. The member's phone carries the
+Membership asks nothing about shows. Once they're a member, that accepted
+passkey opens the **member wizards**, and **starting a show is one of them**.
+Each show gets a sub-subdomain, `<show>.you.fcpublicmedia.org`, and a
+**control branch** that wizard provisions. The member's phone carries the
 show as a scratch space and clones the control branch with git-enough. The
 kiosk hands the phone a **bottle** to bring it in. Every step a member takes
 toward us is a commit to a **wizard**, and every change arrives as a **pull
@@ -38,6 +42,9 @@ their phone.
 | **show space** | `<show>.you.fcpublicmedia.org`, one per show, not per member; published as a folder named for it on `you.` | Autumn, 2026-09-24. Matches the `<label>.<storage>.<apex>` topology, anecdote.channel D4 |
 | **control branch** | the branch a work order starts from, carrying the node's own signed commits, force-pushed clean | station-node `docs/the-work-order.md` l.15, 103, 170 |
 | **wizard** | a declaration inside a residency; it "invites a commit and never compels one" | station-node `bin/wizards`, `docs/the-work-order.md` |
+| **bubble** | the checkout on the member's phone: a small work-order repository we hand them and they hand back. It isn't really disentangled from us, and doesn't need to be. What comes out of it is a payload: **the whole thing is a fancy envelope** | Autumn, 2026-09-25; station-node `docs/the-work-order.md` ("a bubble node is a node") |
+| **member wizard** | a wizard that only opens for a passkey we accepted with a membership. It isn't there to keep anything secret: nothing that fails it would merge anyway | Autumn, 2026-09-25 |
+| **liquid form** | a wizard's form, written as Markdown with Liquid and rendered to HTML by jekyll-enough; what the member fills in becomes the PR | Autumn, 2026-09-25; `forms/` in `the-work-order.md` |
 | **bottle** | bytes for transit (bag, bottled or canonical), rendered as a QR sequence; a repo plus its hooks in a bottle states the base to commit against | bottles.anecdote.channel `README.md`, `ONBOARDING.md` |
 | **pristine** | a bottle rendering with no healing: the tiny minified QR GIF with zero time in it, for a reader expected to read it perfectly. Only that | Autumn, 2026-09-24; bottles.anecdote.channel's "stored" rendering (1 module = 1 pixel) |
 | **git-enough** | the browser and phone git: commit, clone, send-pack | anecdote.channel `docs/git-enough.md`, `git-enough/` |
@@ -60,8 +67,9 @@ their phone.
    branch**, the way station-node keeps `library/trade/<label>/`. It
    follows station-node's rule of statics only, no workers.
 4. **Who provisions a control branch.** `the-work-order.md` builds it
-   "locally in `.you-engine/bin/control`; nothing pushes it yet". The
-   provisioning step of sign-up needs an owner.
+   "locally in `.you-engine/bin/control`; nothing pushes it yet". Since
+   2026-09-25 this is the *start a show* member wizard's job, not sign-up's,
+   and that wizard still needs an owner on our side.
 5. **"Pristine" means only the perfect-read rendering.** Autumn, 2026-09-24:
    a pristine bottle is the tiny, minified QR GIF with zero time in it. It
    carries no healing, because the reader is expected to read it perfectly;
@@ -71,7 +79,7 @@ their phone.
    station-node petition
    `the-share-wing-and-what-the-library-stops-carrying.md` l.27-47 ("the
    canonical compacted bytes") should be reconciled toward this one. What a
-   new member gets is **the pristine bottle of the empty starter
+   new show gets is **the pristine bottle of the empty starter
    workspace**: that workspace's bytes, rendered as the pristine GIF. The
    workspace's identity is its digest, whatever rendering carries it.
 
@@ -103,21 +111,44 @@ schedule, beside the door (see *Who runs the tests*).
   controls are an iframe to `you.…/membership`, a **probe**: no UI, just
   messages over the port. The form fill becomes the same kind of bottle a
   phone would send, and goes through the same hooks.
-- **Test:** a fake sign-up (a Stripe test key) produces a bottle. The hooks
-  accept a well-formed one and refuse one with an extra field. The probe
-  iframe refuses a parent not listed in its `frame-ancestors`.
+  - **The application asks nothing about a show** (Autumn, 2026-09-25). Show
+    details belong to the *start a show* member wizard (stage 3).
+  - **The order:** passkey, then the application, then Stripe. The
+    application's digest goes to Stripe as `client_reference_id`, so
+    Stripe's record points at the application.
+  - **The member writes their confirmation number on their application.**
+    After Checkout, a wizard step invites them to write in Stripe's
+    confirmation number. The number is printed on their receipt, and it's
+    the invoice number, so one-time payments need `invoice_creation`. We get
+    Stripe's record anyway, so Stripe's record stays authoritative, and this
+    field is the member's own. The hooks check its format; the node
+    reconciles it against Stripe later. Skipping the step breaks nothing:
+    the wizard invites and never compels.
+  - **The application goes back to where it came from**, and nowhere else.
+    It carries a person's details, so that place is never the public site
+    repo.
+  - **Accepting the membership accepts the passkey** for member wizards.
+- **Test:** a fake sign-up (stripe-mock or a Stripe test key) produces a
+  bottle. The hooks accept a well-formed one, one with a well-formed
+  confirmation number, and one without; they refuse one with an extra field
+  or a malformed number. The node matches a written number to the test
+  payment and flags one that doesn't match. The probe iframe refuses a
+  parent not listed in its `frame-ancestors`.
 
-### 3. Provision the show
+### 3. Starting a show is a member wizard
 
 - **Exists:** `site-template/` (two YAML files), `member-site-core/`, and
   `sites.yml` roles (`tenant` failures are reported, not fatal).
-- **Needs:** at sign-up, provision a control branch holding the **empty
+- **Needs:** a *start a show* member wizard. It opens only for a passkey
+  accepted with a membership (stage 2), and what it returns must
+  fast-forward our ref. It provisions a control branch holding the **empty
   starter workspace**: a scratch space that "builds" by default, where
   building can mean pushing it raw, without Jekyll. The member receives it
   as its pristine bottle, the tiny perfect-read GIF. The show needs no name
   until the member publishes. A placeholder label stands in, and it's
   renamed at the publish wizard.
-- **Test:** provisioning twice yields byte-identical control branches, and
+- **Test:** a member's passkey opens the wizard, and a passkey with no
+  accepted membership doesn't. Provisioning twice yields byte-identical control branches, and
   the starter workspace's digest is stable. Its pristine GIF decodes, read
   perfectly with no healing, to exactly those bytes. The empty show's raw
   push is accepted by trade.
@@ -147,15 +178,21 @@ schedule, beside the door (see *Who runs the tests*).
   prefers a Worker holding a GitHub App key over a per-member credential
   ("whoever can unwrap it can dispatch"). That retires the older idea of a
   PIN-unwrapped key.
-- **Needs:** each wizard path on `<show>.you…` is a canonical request. The
+- **Needs:** each wizard is a **liquid form**, Markdown and Liquid rendered
+  to HTML, and the PR is generated from what the member filled in. Its shape
+  is whatever the wizard declares; nothing else gets committed anywhere, and
+  it goes back only to where the member got it. Member wizards need the
+  member's passkey, and every submission must **fast-forward** our ref.
+  This is how a member opens their business on us. Each wizard path on `<show>.you…` is a canonical request. The
   published site is a static rendering of the control branch. A PR's author
   is known through the passkey identity. Commits outside the wizard's shape
   are refused, and members can't change the checks. The change has to come
   from our ref.
 - **Test:** a scripted member clones, commits one wizard step and opens a
   PR. The hooks accept it. Variants that must be refused: an edit to a hook,
-  a path outside the form, a commit not based on our ref, and an unsigned
-  commit.
+  a path outside the form, a commit that doesn't fast-forward our ref, an
+  unsigned commit, and a member wizard's PR signed by a passkey with no
+  membership.
 
 ### 6. Publishing to trade: the phone builds
 
