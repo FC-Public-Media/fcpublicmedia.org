@@ -181,7 +181,7 @@ switch ($Step) {
     $census = Get-ChildItem $Staged -Recurse -Include *.exe, *.dll | ForEach-Object {
         $s = Get-AuthenticodeSignature $_.FullName
         '{0}, {1}' -f $s.Status, ($s.SignerCertificate.Subject -replace '^CN="?([^,"]+).*', '$1')
-    } | Group-Object | ForEach-Object { '{0} x{1}' -f $_.Name, $_.Count }
+    } | Group-Object | ForEach-Object { '{0}: {1} files' -f $_.Name, $_.Count }
     Log 'staged' @{ path = $Staged; obs64 = (VersionOf $Staged); core = "valid, $Signer"; census = ($census -join '; ') }
     Say "staged    $Staged (obs64 $(VersionOf $Staged))"
     Say "core      $($Core.Count) files valid, signed $Signer"
