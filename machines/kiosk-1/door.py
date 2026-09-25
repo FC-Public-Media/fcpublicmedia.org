@@ -532,14 +532,48 @@ a { color:inherit; }
    yellow, hard edges, leaning -8deg: counterclockwise, always (brand/README.md,
    "The tilt"). Unlit it is slate, as in brand/idle. */
 .mark { background:var(--signal); rotate:-8deg; }
-.mark.unlit { background:var(--slate); }"""
+.mark.unlit { background:var(--slate); }
+/* The clock mark: the same square with a live analog clock in it, tilt and
+   all. Anything placed in it (the check-in QR) sits on top on a signal
+   backing, so the hands never show through a code's light modules. */
+.mark.clock { position:relative; }
+.mark.clock .face { position:absolute; inset:0; width:100%; height:100%; }
+.mark.clock .face * { stroke:var(--ink); stroke-linecap:square; }
+.mark.clock > :not(.face) { position:relative; background:var(--signal); }"""
+
+CLOCK_JS = """<script>
+(function () {
+  function tick() {
+    var d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = d.getHours() % 12 + m / 60;
+    document.querySelectorAll('.mark.clock .hh').forEach(function (n) { n.setAttribute('transform', 'rotate(' + h * 30 + ' 50 50)'); });
+    document.querySelectorAll('.mark.clock .mm').forEach(function (n) { n.setAttribute('transform', 'rotate(' + m * 6 + ' 50 50)'); });
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>"""
+
+
+def clock_mark(inner="", cls=""):
+    """The mark with a clock in it. The hands start at this machine's time, so
+    a wall page written to a share is right before its script runs."""
+    t = time.localtime()
+    m = t.tm_min + t.tm_sec / 60
+    h = t.tm_hour % 12 + m / 60
+    ticks = "".join('<line x1="50" y1="%s" x2="50" y2="15" stroke-width="%s" transform="rotate(%d 50 50)"/>' % (
+        9 if i % 3 == 0 else 11, 3 if i % 3 == 0 else 1.6, i * 30) for i in range(12))
+    face = ('<svg class=face viewBox="0 0 100 100" aria-hidden="true">%s'
+            '<line class=hh x1="50" y1="54" x2="50" y2="29" stroke-width="5.5" transform="rotate(%.2f 50 50)"/>'
+            '<line class=mm x1="50" y1="55" x2="50" y2="17" stroke-width="3.5" transform="rotate(%.2f 50 50)"/>'
+            '</svg>') % (ticks, h * 30, m * 6)
+    return '<div class="mark clock%s">%s%s</div>' % (" " + cls if cls else "", face, inner)
 
 
 def page(title, body, style=""):
     return with_poll("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>%s</title><style>%s
-%s</style></head><body>%s</body></html>""" % (html.escape(title), BRAND, style, body))
+%s</style></head><body>%s</body></html>""" % (html.escape(title), BRAND, style,
+                                               body + (CLOCK_JS if "mark clock" in body else "")))
 
 
 def e(s):
@@ -580,10 +614,10 @@ body { display:grid; grid-template-rows:1fr 1fr auto; }
   left:calc(33.333% + 15vh + 3vw); right:4vw; }
 h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
   letter-spacing:-.01em; white-space:nowrap; }
-.sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; font-weight:500; color:var(--soft); }
+.sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; white-space:pre-line; font-weight:500; color:var(--soft); }
 
 /* The map: what can be booked, lit when in use. */
-.stations { position:absolute; left:6vw; right:calc(16% + 7vh + 2vw); top:50%; translate:0 -50%;
+.stations { position:absolute; left:6vw; right:6vw; top:50%; translate:0 -50%;
   display:flex; flex-direction:column; gap:2.6vh; }
 .group { display:grid; grid-template-columns:2.4vh 1fr; column-gap:1.6vw; align-items:center; }
 .group .mark { width:2.4vh; height:2.4vh; }
@@ -601,13 +635,12 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .group.preparing .names span { color:var(--dim); }
 .group.preparing .mark { opacity:.6; }
 
-.wifi { position:absolute; left:84%; top:50%; translate:-50% -50%;
-  display:flex; flex-direction:column; gap:3vh; }
-.qr { display:block; width:14vh; height:14vh; background:#fff; padding:1.2vh; box-sizing:border-box; }
+.wifi { position:absolute; right:4vw; bottom:3vh; display:flex; gap:2.4vw; }
+.qr { display:block; width:10vh; height:10vh; background:#fff; padding:.9vh; box-sizing:border-box; }
 .qr img { display:block; width:100%; height:100%; }
 .net { display:flex; flex-direction:column; align-items:center; gap:.9vh; }
-.net b { font-size:1.45vh; letter-spacing:.1em; text-transform:uppercase; font-weight:650; white-space:nowrap; }
-.slot { width:14vh; height:14vh; border:.25vh dashed var(--dim); color:var(--dim);
+.net b { font-size:1.25vh; letter-spacing:.1em; text-transform:uppercase; font-weight:650; white-space:nowrap; }
+.slot { width:10vh; height:10vh; border:.25vh dashed var(--dim); color:var(--dim);
   display:flex; align-items:center; justify-content:center; text-align:center; font-size:1.2vh;
   padding:1vh; box-sizing:border-box; }
 
@@ -681,7 +714,7 @@ def kiosk_page(wall=False):
         img = qr_image(idx)
         src = "data:%s;base64,%s" % (TYPES.get(img.suffix.lower(), "application/octet-stream"),
                                      base64.b64encode(img.read_bytes()).decode()) if img else ""
-    code = ('<div class=mark><img src="%s" alt="%s"></div>' % (
+    code = clock_mark('<img src="%s" alt="%s">' % (
         src, html.escape(panels[idx]["qr"].get("alt", ""), quote=True))) if src else ""
 
     nets = []
@@ -695,10 +728,10 @@ def kiosk_page(wall=False):
 <section class="half checkin">
   %s
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
+  <div class=wifi>%s</div>
 </section>
 <section class="half map">
   <div class=stations id=stations></div>
-  <div class=wifi>%s</div>
 </section>
 <footer><div class=on><b id=on-label></b><span id=on-who></span></div><div class=place>%s</div></footer>
 %s""" % (code, e(ci.get("head")), e(ci.get("sub")), "".join(nets),
@@ -828,8 +861,8 @@ def depot_page():
     words = (node().get("wording") or {}).get("depot") or {}
     sections = "".join('<section><h2>%s</h2><div class=rows data-group="%s"></div></section>' % (
         e(g.get("title", g["name"])), html.escape(g["name"], quote=True)) for g in cfg.get("groups") or [])
-    body = """<header><div class=mark></div><div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
-<main>%s</main>%s""" % (e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
+    body = """<header>%s<div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
+<main>%s</main>%s""" % (clock_mark(), e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
     return page("Depot", body, DEPOT_CSS)
 
 
