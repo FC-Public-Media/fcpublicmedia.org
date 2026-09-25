@@ -170,6 +170,20 @@ instance per panel with a profile folder of its own under
 `%LOCALAPPDATA%\media-node\screens\`. The door opens any missing panel when
 it starts, and `door.py screens --launch` does the same by hand.
 
+The Claude sessions come back the same way (2026-09-25, after a power flicker
+took three). Every pass, `supervise` writes down what `claude agents --json`
+lists as running, into `%LOCALAPPDATA%\media-node\sessions.json`, so no
+session ids go in the repo. At its first start after a boot, it resumes each
+one that isn't running with `claude --bg --resume`: same id, same history, and
+Remote Control on, so they're reachable from a phone as before. They come back
+in the background: `claude attach <id>` opens one in a terminal. A supervise
+restart in the middle of a day revives nothing, so a session closed on purpose
+stays closed. `door.py sessions` shows the list. `door.py sessions pin in|out
+<id>` always or never brings one back, and `door.py sessions --revive` does it
+now. Station-node turned its own revival off, because a revived session could
+take a grant meant for a new one. This node has no grants, so that doesn't
+apply here yet.
+
 ### Asked of IT
 
 - **Sign in automatically.** A reboot waits at the sign-in screen until
@@ -186,7 +200,7 @@ are the first claims this profile makes:
 
 | | |
 |---|---|
-| `door.py` | the door: every page, the scanner for the studio drive, the background rebase, and `screens`, `startup` and `wifi-password` |
+| `door.py` | the door: every page, the scanner for the studio drive, the background rebase, and `screens`, `startup`, `sessions` and `wifi-password` |
 | `node.yml` | what the door shows, and where: screens, Wi-Fi networks, stations, the depot's shares, draft wording |
 | `bookings.sample.yml` | a made-up week standing in for the booking calendars. Every booking is for "Sample" |
 | `GOTCHAS.log`, `gotcha` | what this box taught us, one line each. `merge=union`, after station-node's |

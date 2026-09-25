@@ -6,6 +6,7 @@
     door.py startup            what starts the door at logon, and does it point here
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
+    door.py sessions [pin|--revive]  the Claude sessions that come back after a boot
     door.py                    is the door up
 
 Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
@@ -51,7 +52,9 @@ It starts `supervise` at logon and again every five minutes, and a start
 while one is already running is ignored. That is launchd's KeepAlive, with
 five minutes of slack. `supervise` also holds a named mutex, so a second copy
 started some other way leaves at once instead of fighting over 8080. Once the
-door answers, `supervise` brings up any screen in node.yml that is missing.
+door answers, `supervise` brings up any screen in node.yml that is missing,
+and, if the machine booted since it last looked, resumes in the background
+the Claude sessions that were running before (see "sessions" below).
 
 What it cannot do is log on. After a power cut the box waits at the sign-in
 screen until someone signs in, and signing in automatically needs an
@@ -1147,6 +1150,7 @@ def supervise():
             time.sleep(PULL_EVERY)
     threading.Thread(target=puller, daemon=True).start()
     threading.Thread(target=raise_screens, daemon=True).start()
+    threading.Thread(target=keep_sessions, daemon=True).start()
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
         time.sleep(1 if code == BOUNCE else 10)
@@ -1238,6 +1242,169 @@ def screens(launch=False, say=print):
             launch_screen(exe, s, url)
             say("         launched %s there" % url)
     return 1 if bad and not launch else 0
+
+
+# ------------------------------------------------------------------ sessions --
+# The Claude sessions working on this node, brought back after a power cut the
+# way the screens are. `supervise` writes down what is running every pass; at
+# its first pass after a boot, it resumes whatever was running before, in the
+# background, where Remote Control reaches it. Session ids stay here, in
+# LOCALAPPDATA, never in the repo.
+SESSIONS = STATE / "sessions.json"
+CLAUDE = shutil.which("claude") or str(pathlib.Path.home() / ".local" / "bin" / "claude.exe")
+
+
+def claude(*args, cwd=None):
+    try:
+        out = subprocess.run([CLAUDE, *args], capture_output=True, text=True, timeout=120,
+                             cwd=cwd, creationflags=NO_WINDOW, encoding="utf-8", errors="replace")
+        return out.returncode, (out.stdout + out.stderr).strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, repr(exc)
+
+
+def running_sessions():
+    """What `claude agents --json` lists as live, interactive and background.
+    None if it could not be asked, which is not the same as nothing running."""
+    code, out = claude("agents", "--json")
+    if code != 0:
+        return None
+    try:
+        rows = json.loads(out[out.index("["):])
+    except ValueError:
+        return None
+    return [{"id": r["sessionId"], "name": r.get("name") or r["sessionId"][:8],
+             "cwd": r.get("cwd"), "kind": r.get("kind")} for r in rows if r.get("sessionId")]
+
+
+def booted_at():
+    ms = ctypes.windll.kernel32.GetTickCount64
+    ms.restype = ctypes.c_ulonglong
+    return time.time() - ms() / 1000
+
+
+def read_sessions():
+    try:
+        return json.loads(SESSIONS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"taken": 0, "sessions": [], "pins": {}}
+
+
+def write_sessions(book):
+    STATE.mkdir(parents=True, exist_ok=True)
+    tmp = SESSIONS.with_suffix(".tmp")
+    tmp.write_text(json.dumps(book, indent=1), encoding="utf-8")
+    os.replace(tmp, SESSIONS)
+
+
+def snapshot_sessions():
+    live = running_sessions()
+    if live is None:
+        return log("sessions: could not list them; keeping the last snapshot")
+    book = read_sessions()
+    book.update(taken=time.time(), sessions=live)
+    write_sessions(book)
+
+
+def revive(s, say=log):
+    """Background, same id. A session born interactive is woken with Remote
+    Control and its name. One already in the background kept its options
+    (Remote Control included) and is woken without flags: flags would start a
+    copy under a new id (2026-09-25, tried on throwaways)."""
+    if s.get("kind") == "background":
+        args = ["--bg", "--resume", s["id"]]
+    else:
+        args = ["--bg", "--resume", s["id"], "--name", s["name"], "--remote-control"]
+    cwd = s.get("cwd") if s.get("cwd") and os.path.isdir(s["cwd"]) else None
+    code, out = claude(*args, cwd=cwd)
+    last = out.splitlines()[-1] if out else ""
+    say("sessions: %s %s (%s)%s" % ("revived" if code == 0 else "could not revive",
+                                    s["name"], s["id"][:8], "" if code == 0 else ": " + last))
+    return code == 0
+
+
+def revive_sessions(force=False, say=log):
+    """Resume what was running before this boot. Only after a boot: supervise
+    also restarts mid-session, and a session somebody closed on purpose since
+    must stay closed. Pins override: `in` always comes back, `out` never."""
+    book = read_sessions()
+    if not force and book.get("taken", 0) > booted_at():
+        return 0
+    live = running_sessions()
+    if live is None:
+        say("sessions: could not list them; not reviving")
+        return 1
+    live_ids = {s["id"] for s in live}
+    pins = book.get("pins") or {}
+    want = {s["id"]: s for s in book.get("sessions") or []}
+    want.update({i: p for i, p in pins.items() if p.get("pin") == "in"})
+    bad = 0
+    for sid, s in want.items():
+        s = dict(s, id=sid)
+        if sid in live_ids or (pins.get(sid) or {}).get("pin") == "out":
+            continue
+        bad += not revive(s, say=say)
+    return 1 if bad else 0
+
+
+def keep_sessions():
+    # Revive before the first snapshot, which would otherwise record the
+    # empty machine a boot leaves and forget what was running.
+    try:
+        revive_sessions()
+    except Exception as exc:
+        log("sessions: revive %r" % exc)
+    while True:
+        try:
+            snapshot_sessions()
+        except Exception as exc:
+            log("sessions: %r" % exc)
+        time.sleep(PULL_EVERY)
+
+
+def sessions(argv):
+    """door.py sessions                   what ran at the last snapshot, and what runs now
+    door.py sessions pin in|out <id>   always bring it back, or never
+    door.py sessions pin clear <id>    back to following the snapshot
+    door.py sessions --revive          bring back what is missing now, boot or not"""
+    book = read_sessions()
+    if argv[:1] == ["--revive"]:
+        return revive_sessions(force=True, say=print)
+    if argv[:1] == ["pin"] and len(argv) == 3 and argv[1] in ("in", "out", "clear"):
+        how, key = argv[1], argv[2]
+        known = {s["id"]: s for s in (running_sessions() or []) + (book.get("sessions") or [])}
+        known.update({i: dict(p, id=i) for i, p in (book.get("pins") or {}).items()})
+        hits = [s for i, s in known.items() if i.startswith(key) or s.get("name") == key]
+        if len(hits) != 1:
+            print("%s session matches %r" % ("no" if not hits else "more than one", key))
+            return 1
+        s = hits[0]
+        pins = book.setdefault("pins", {})
+        if how == "clear":
+            pins.pop(s["id"], None)
+        else:
+            pins[s["id"]] = {"pin": how, "name": s.get("name"), "cwd": s.get("cwd"), "kind": s.get("kind")}
+        write_sessions(book)
+        print("pinned %s  %s (%s)" % (how, s.get("name"), s["id"][:8]))
+        return 0
+    if argv:
+        print(sessions.__doc__)
+        return 2
+    live = running_sessions()
+    live_ids = {s["id"] for s in live or []}
+    taken = book.get("taken") or 0
+    print("snapshot  %s%s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(taken)) if taken else "never",
+                             "  (before this boot: the next supervise start revives)" if taken and taken < booted_at() else ""))
+    pins = book.get("pins") or {}
+    rows = {s["id"]: s for s in book.get("sessions") or []}
+    rows.update({s["id"]: s for s in live or []})
+    rows.update({i: dict(p, id=i) for i, p in pins.items() if i not in rows})
+    for sid, s in rows.items():
+        state = "running" if sid in live_ids else ("unknown" if live is None else "stopped")
+        pin = (pins.get(sid) or {}).get("pin")
+        print("%-8s %-11s %s  %-24s %s" % (state, s.get("kind") or "", sid[:8], s.get("name") or "",
+                                           "pinned " + pin if pin else ""))
+    return 0
 
 
 def door_url():
@@ -1390,6 +1557,8 @@ if __name__ == "__main__":
         sys.exit(screens(launch="--launch" in sys.argv))
     if verb == "startup":
         sys.exit(startup(sys.argv[2:]))
+    if verb == "sessions":
+        sys.exit(sessions(sys.argv[2:]))
     if verb == "wifi-password" and len(sys.argv) > 2:
         sys.exit(wifi_password(sys.argv[2]))
     sys.exit({"serve": serve, "supervise": supervise, "status": status}.get(verb, status)())
