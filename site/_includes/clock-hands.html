@@ -1,0 +1,46 @@
+<!-- Clock hands: drop this inside any mark (the tilted signal square) and it
+     tells the time, leaning with the mark. It draws on top of whatever else
+     the mark holds, the check-in QR included: the code is error-correction H
+     and the hands cover about 3% of it, well clear of the finder corners.
+     The mark has to be positioned (relative or absolute). Plain HTML, no
+     Liquid (keep it that way, or door.py breaks), so the site includes it
+     and door.py reads the same file through clock_hands(). Hide .ticks
+     where they'd crowd a code. -->
+<svg class="clock" viewBox="0 0 100 100" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible">
+  <g class="ticks" stroke="var(--ink, #121417)" stroke-linecap="square">
+    <line x1="50" y1="9" x2="50" y2="15" stroke-width="3"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(30 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(60 50 50)"/>
+    <line x1="50" y1="9" x2="50" y2="15" stroke-width="3" transform="rotate(90 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(120 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(150 50 50)"/>
+    <line x1="50" y1="9" x2="50" y2="15" stroke-width="3" transform="rotate(180 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(210 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(240 50 50)"/>
+    <line x1="50" y1="9" x2="50" y2="15" stroke-width="3" transform="rotate(270 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(300 50 50)"/>
+    <line x1="50" y1="11" x2="50" y2="15" stroke-width="1.6" transform="rotate(330 50 50)"/>
+  </g>
+  <!-- Each hand is drawn twice: a signal halo, then ink, so it reads as a
+       hand even where it crosses the code's dark modules. -->
+  <g class="hh" stroke-linecap="square">
+    <line x1="50" y1="54" x2="50" y2="29" stroke="var(--signal, #ffc61a)" stroke-width="9"/>
+    <line x1="50" y1="54" x2="50" y2="29" stroke="var(--ink, #121417)" stroke-width="5.5"/>
+  </g>
+  <g class="mm" stroke-linecap="square">
+    <line x1="50" y1="55" x2="50" y2="17" stroke="var(--signal, #ffc61a)" stroke-width="7"/>
+    <line x1="50" y1="55" x2="50" y2="17" stroke="var(--ink, #121417)" stroke-width="3.5"/>
+  </g>
+</svg>
+<script>
+(function () {
+  if (window.clockHands) return window.clockHands();
+  function tick() {
+    var d = new Date(), m = d.getMinutes() + d.getSeconds() / 60, h = d.getHours() % 12 + m / 60;
+    document.querySelectorAll('svg.clock .hh').forEach(function (n) { n.setAttribute('transform', 'rotate(' + h * 30 + ' 50 50)'); });
+    document.querySelectorAll('svg.clock .mm').forEach(function (n) { n.setAttribute('transform', 'rotate(' + m * 6 + ' 50 50)'); });
+  }
+  window.clockHands = tick;
+  tick(); setInterval(tick, 1000);
+})();
+</script>

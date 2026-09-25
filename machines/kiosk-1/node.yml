@@ -41,7 +41,7 @@ networks:
     label: Guest Wi-Fi
   - ssid: FC Public Media Audio
     security: wpa
-    label: Audio Wi-Fi
+    label: AirPlay Wi-Fi
     # The AirPort Express. It joins you to the AirPlay speaker on the spare
     # mixer input. Its name is Autumn's (2026-09-23).
 
@@ -161,7 +161,9 @@ wall:
 wording:
   checkin:
     head: Check in
-    sub: No apps. Free public tech.
+    sub: |-                  # one sentence per line, as written
+      No apps.
+      Free public tech.
   map:
     until: until
   depot:
