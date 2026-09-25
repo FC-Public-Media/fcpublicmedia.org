@@ -164,6 +164,7 @@ wording:
   map:
     until: until
   depot:
+    gateway: Gateway         # the strip on top: the router's address, and its partition count
     head: Files
     sub: On the studio drive
   footer:

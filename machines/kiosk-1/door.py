@@ -726,8 +726,16 @@ def kiosk_page(wall=False):
 
 DEPOT_CSS = """
 html, body { height:100%; overflow:hidden; }
-body { display:grid; grid-template-rows:auto 1fr; }
-header { background:var(--slate); padding:5vh 6vw 4vh; display:flex; align-items:center; gap:4vw; }
+body { display:grid; grid-template-rows:auto auto 1fr; }
+/* The gateway strip: the check-in footer turned over. Where the files are,
+   and how many partitions it offers. */
+.gateway { background:var(--slate); border-bottom:.15vh solid var(--rule); display:flex;
+  align-items:baseline; justify-content:space-between; gap:3vw; padding:2.2vh 6vw; }
+.gateway .on { display:flex; align-items:baseline; gap:1.6vw; }
+.gateway .on b { font-size:1.5vh; letter-spacing:.1em; text-transform:uppercase; color:var(--signal); }
+.gateway .on span { font-size:2.2vh; font-weight:600; }
+.gateway .ip { font-size:1.6vh; letter-spacing:.06em; color:var(--soft); font-variant-numeric:tabular-nums; }
+header { background:var(--slate); padding:3.6vh 6vw 3.4vh; display:flex; align-items:center; gap:4vw; }
 header .mark { width:7vh; height:7vh; flex:none; }
 header h1 { margin:0; font-size:5.2vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
 header p { margin:1vh 0 0; font-size:1.7vh; color:var(--soft); }
@@ -738,10 +746,16 @@ h2 { margin:0 0 1.6vh; font-size:1.5vh; letter-spacing:.14em; text-transform:upp
 /* A row of known shares sits side by side, one column each. */
 .row { display:flex; gap:4vw; }
 .row > .share { flex:1 1 0; min-width:0; }
-.share b { display:block; font-size:2.3vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* The name line: name, a soft note (a file count), and the free-space badge. */
+.head { display:flex; align-items:center; gap:.6vw; }
+.share b { flex:0 1 auto; min-width:0; font-size:2.15vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.note { flex:none; font-size:1.45vh; color:var(--dim); white-space:nowrap; }
+.free { flex:none; margin-left:auto; background:var(--slate); border-radius:.9vh; padding:.45vh .65vh;
+  display:flex; flex-direction:column; align-items:center; line-height:1; font-variant-numeric:tabular-nums; }
+.free span { font-size:1.55vh; font-weight:650; }
+.free small { font-size:1vh; letter-spacing:.1em; color:var(--dim); margin-top:.3vh; }
 .bar { height:.45vh; background:var(--slate); margin-top:.9vh; }
 .bar i { display:block; height:100%; background:var(--signal); }
-.meta { margin:.8vh 0 0; font-size:1.45vh; color:var(--dim); white-space:nowrap; font-variant-numeric:tabular-nums; }
 
 .items { list-style:none; margin:1.4vh 0 0; padding:0; display:flex; flex-direction:column; gap:1.1vh; }
 .items li { display:grid; grid-template-columns:1.5vh 1fr; column-gap:.9vw; align-items:start; }
@@ -780,18 +794,19 @@ DEPOT_JS = """<script>
                                    : 'unwitnessed';
   }
   function share(s) {
-    var col = el('div', 'share');
-    col.appendChild(el('b', null, s.label));
+    var col = el('div', 'share'), head = el('div', 'head');
+    head.appendChild(el('b', null, s.label)); col.appendChild(head);
     if (s.error) { col.appendChild(el('p', 'error', 'Cannot reach it')); return col; }
+    if (!s.files && s.items.length)
+      head.appendChild(el('span', 'note', s.items.length + (s.items.length === 1 ? ' file' : ' files')));
+    // The badge: free space, number over unit. An estimate: this much, give
+    // or take what is being written right now.
+    var free = el('div', 'free'), f = size(s.free).split('\\u00a0');
+    free.appendChild(el('span', null, f[0])); free.appendChild(el('small', null, f[1]));
+    head.appendChild(free);
     var bar = el('div', 'bar'), fill = el('i');
     fill.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
     bar.appendChild(fill); col.appendChild(bar);
-    // `<` because free space is an estimate: this much, give or take what is
-    // being written right now.
-    var meta = '<\\u00a0' + size(s.free);
-    if (!s.items.length) meta += '  \\u00b7  Empty';
-    else if (!s.files) meta += '  \\u00b7  ' + s.items.length + (s.items.length === 1 ? ' file' : ' files');
-    col.appendChild(el('p', 'meta', meta));
     if (s.files && s.items.length) {
       var ul = el('ul', 'items');
       s.items.slice(0, MAX).forEach(function (it) {
@@ -809,6 +824,8 @@ DEPOT_JS = """<script>
   var d_now = 0;
   function draw(d) {
     d_now = d.now;
+    document.getElementById('partitions').textContent =
+      d.shares.length + (d.shares.length === 1 ? ' partition' : ' partitions');
     document.getElementById('scanned').textContent =
       d.at ? 'Checked ' + ago(d.now - d.at) + ' ago' : 'Not checked yet';
     var boxes = {};
@@ -844,8 +861,10 @@ def depot_page():
     words = (node().get("wording") or {}).get("depot") or {}
     sections = "".join('<section><h2>%s</h2><div class=rows data-group="%s"></div></section>' % (
         e(g.get("title", g["name"])), html.escape(g["name"], quote=True)) for g in cfg.get("groups") or [])
-    body = """<header>%s<div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
-<main>%s</main>%s""" % (clock_mark(), e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
+    body = """<div class=gateway><div class=on><b>%s</b><span id=partitions></span></div><div class=ip>%s</div></div>
+<header>%s<div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
+<main>%s</main>%s""" % (e(words.get("gateway", "Gateway")), e(cfg.get("server", "")), clock_mark(),
+                        e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
     return page("Depot", body, DEPOT_CSS)
 
 
