@@ -39,6 +39,7 @@ their phone.
 | **control branch** | the branch a work order starts from, carrying the node's own signed commits, force-pushed clean | station-node `docs/the-work-order.md` l.15, 103, 170 |
 | **wizard** | a declaration inside a residency; it "invites a commit and never compels one" | station-node `bin/wizards`, `docs/the-work-order.md` |
 | **bottle** | bytes for transit (bag, bottled or canonical), rendered as a QR sequence; a repo plus its hooks in a bottle states the base to commit against | bottles.anecdote.channel `README.md`, `ONBOARDING.md` |
+| **pristine** | a bottle rendering with no healing: the tiny minified QR GIF with zero time in it, for a reader expected to read it perfectly. Only that | Autumn, 2026-09-24; bottles.anecdote.channel's "stored" rendering (1 module = 1 pixel) |
 | **git-enough** | the browser and phone git: commit, clone, send-pack | anecdote.channel `docs/git-enough.md`, `git-enough/` |
 | **probe** | a private `MessageChannel` port handed to a powerless iframe; holding the port is the capability, and closing it revokes it | anecdote.channel `docs/probe-line.md` |
 | **trade** | the record of a site we deploy for somebody; a PR carrying a static site "*is* the consent" | station-node `library/trade/README.md`; `TENANCY.md` "Which categories things land in" |
@@ -61,12 +62,18 @@ their phone.
 4. **Who provisions a control branch.** `the-work-order.md` builds it
    "locally in `.you-engine/bin/control`; nothing pushes it yet". The
    provisioning step of sign-up needs an owner.
-5. **What "pristine bottle" means.** Two meanings are diverging: a transport
-   mode with no self-healing budget, and "the canonical compacted bytes" whose
-   digest is their identity (station-node petition
-   `the-share-wing-and-what-the-library-stops-carrying.md` l.27-47). This
-   plan needs the second: the empty show template, compacted, identified by
-   its digest.
+5. **"Pristine" means only the perfect-read rendering.** Autumn, 2026-09-24:
+   a pristine bottle is the tiny, minified QR GIF with zero time in it. It
+   carries no healing, because the reader is expected to read it perfectly;
+   you have the artifact and can study it as often as you like. So it can be
+   as small as you like (small, not obfuscated). It is **not** "an empty
+   canonical bottle". That was a conflation, and the second meaning in the
+   station-node petition
+   `the-share-wing-and-what-the-library-stops-carrying.md` l.27-47 ("the
+   canonical compacted bytes") should be reconciled toward this one. What a
+   new member gets is **the pristine bottle of the empty starter
+   workspace**: that workspace's bytes, rendered as the pristine GIF. The
+   workspace's identity is its digest, whatever rendering carries it.
 
 ## Stages
 
@@ -104,14 +111,16 @@ schedule, beside the door (see *Who runs the tests*).
 
 - **Exists:** `site-template/` (two YAML files), `member-site-core/`, and
   `sites.yml` roles (`tenant` failures are reported, not fatal).
-- **Needs:** at sign-up, provision a control branch holding the pristine
-  bottle of the **empty show template**: a scratch space that "builds" by
-  default, where building can mean pushing it raw, without Jekyll. The show
-  needs no name until the member publishes. A placeholder label stands in,
-  and it's renamed at the publish wizard.
+- **Needs:** at sign-up, provision a control branch holding the **empty
+  starter workspace**: a scratch space that "builds" by default, where
+  building can mean pushing it raw, without Jekyll. The member receives it
+  as its pristine bottle, the tiny perfect-read GIF. The show needs no name
+  until the member publishes. A placeholder label stands in, and it's
+  renamed at the publish wizard.
 - **Test:** provisioning twice yields byte-identical control branches, and
-  the pristine bottle's digest is stable. The empty show's raw push is
-  accepted by trade.
+  the starter workspace's digest is stable. Its pristine GIF decodes, read
+  perfectly with no healing, to exactly those bytes. The empty show's raw
+  push is accepted by trade.
 
 ### 4. The kiosk hands over a bottle
 
@@ -174,7 +183,8 @@ set of things".
   byte-compare of what the edge serves.
 - **Needs:**
   - jekyll-enough and `member-site-core` delivered to the phone, as part of
-    the show's pristine bottle or served as static files from `you.`. The
+    the starter workspace (and so in its pristine bottle) or served as
+    static files from `you.`. The
     factory's `compose()` (template plus core) must happen the same way on
     the phone.
   - The phone builds at PR time, and the PR carries source plus build, with
@@ -220,6 +230,13 @@ set of things".
   depot hand-off (in at `TO ENHANCE`, out at `PODCAST`), holding on the media
   node with receipt checked against `SHA256SUMS`, and the `enhance` engine
   (`.enhance-engine`, `docs/CAPTURE.md`, `bin/activity.py`).
+  **Pre-signed links, proven 2026-09-24:** the media node, signed in as the
+  app, minted an upload session URL, and a file was PUT to it with no
+  sign-in (201). It then minted a `downloadUrl`, and the file was fetched
+  with no sign-in (200). This was done in the app's own folder
+  (`Files.ReadWrite.AppFolder`), which the app can address by path but not
+  list. An upload session lasts about 15 minutes, resumable in chunks, up
+  to 250 GB per file.
 - **Needs:** capture armed by the booking window, not by sound. Enhance or
   stem, per the member's stated preference. The result goes to SharePoint.
   The member's show space issues a **self-expiring download link** (Graph's
