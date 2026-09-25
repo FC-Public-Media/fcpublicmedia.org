@@ -173,12 +173,13 @@ it starts, and `door.py screens --launch` does the same by hand.
 The Claude sessions come back the same way (2026-09-25, after a power flicker
 took three). Every pass, `supervise` writes down what `claude agents --json`
 lists as running, into `%LOCALAPPDATA%\media-node\sessions.json`, so no
-session ids go in the repo. At its first start after a boot, it resumes each
+session ids go in the repo. At its first start after a sign-in, it resumes each
 one that isn't running with `claude --bg --resume`: same id, same history, and
 Remote Control on, so they're reachable from a phone as before. They come back
 in the background: `claude attach <id>` opens one in a terminal. A supervise
 restart in the middle of a day revives nothing, so a session closed on purpose
-stays closed. `door.py sessions` shows the list. `door.py sessions pin in|out
+stays closed. It times from the sign-in, not the boot: Fast Startup is on
+here, so after Shut down the uptime carries on while every session is gone. `door.py sessions` shows the list. `door.py sessions pin in|out
 <id>` always or never brings one back, and `door.py sessions --revive` does it
 now. Station-node turned its own revival off, because a revived session could
 take a grant meant for a new one. This node has no grants, so that doesn't
