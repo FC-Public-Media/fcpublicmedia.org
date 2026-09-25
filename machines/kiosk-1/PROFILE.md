@@ -144,6 +144,16 @@ order, then what the list did not think to ask.
   - **gh 2.101.0**, the official zip, checked against the release's
     checksums and signed "GitHub, Inc.", in `~/.local/bin`. Its login is in
     the keyring.
+  - **The broker runs here.** `node --test worker/test/*.test.mjs` passes
+    all 119 tests. `npx wrangler@4 dev --ip 127.0.0.1` serves the real Worker
+    on loopback, with `--var RP_ID:fcpm.localhost` and local KV. It needed one
+    fix: `workerd` crashed with an access violation against the system's
+    Visual C++ runtime (14.32, from 2022), and a newer one needs an
+    administrator to install. Copying `msvcp140.dll`, `vcruntime140.dll` and
+    `vcruntime140_1.dll` (14.50, signed by Microsoft) from Edge's own
+    application folder next to `workerd.exe` fixes it. Windows loads a
+    program's own copy first. The npx cache is temporary, so redo this after
+    wrangler updates.
 - **Services: one, the door.** `door.py`, on `[::]:8080`, reached by name at
   `http://200-fcpanedit2.local:8080/`. It serves the welcome screen, the
   depot (the studio drive's contents) and the idle screen. A per-user
