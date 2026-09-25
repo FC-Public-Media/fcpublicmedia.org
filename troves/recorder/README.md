@@ -33,8 +33,9 @@ that the two answers can be read side by side; it does not carry Audio Hijack.
 The bays are production machines. Editing bay 1 already has an OBS that people
 use, installed by winget into `Program Files`, with somebody's show in
 `%APPDATA%\obs-studio`: profiles, scene collections, and a websocket on 4455
-with a password. **None of that is ours, and this trove never reads or writes
-it.**
+with a password. **None of that is ours, and this trove never writes to it.** The
+procedure's `confirm` lists that folder, names and sizes and times but never
+contents, before and after it runs, to show it was left alone.
 
 So the recorder is a second, separate OBS:
 
