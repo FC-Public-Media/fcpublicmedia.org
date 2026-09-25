@@ -52,32 +52,52 @@ this simply, or we don't run it.
 
 ## The membership application, from the phone
 
-Stage 2 of the plan, walked by the person holding it.
+Stage 2 of the plan, walked by the person holding it, in the order Autumn set on 2026-09-25:
 
-1. **The application.** The member fills in `forms/`: their details and a tier. A tier is a name
+> *"Ideally I'll be able to 1) form a You identity, 2) put our own note on their transaction
+> metadata, 3) fold that session id back to us. By construction here, our forms should know the
+> You half always, and the remote transaction receipt should feel like the last item required.
+> Anyone needing to cure a form should be recognizable to us when they're using their You
+> passkey again."*
+
+1. **A You identity first.** The member makes a passkey on `you.`. Every form after this knows
+   whose it is from its first field. The member never types who they are to prove it.
+2. **The application.** The member fills in `forms/`: their details and a tier. A tier is a name
    (`creator`), never an amount. The browser cannot name a price (`payments.md`).
-2. **Paying.** The member goes to Stripe's checkout. Their card never touches the bubble, the
-   site, or us.
-3. **Coming back.** Stripe returns them to the application with the session ID in the address,
-   and the wizard fills it in. No typing. It is the proof that they were holding this live
-   application when the payment finished.
-4. **Signing.** The member commits, with their passkey. The application is now closed: what was
+3. **Paying, with our note on it.** The member goes to Stripe's checkout. Their card never touches
+   the bubble, the site, or us. The session carries our note: the application's digest as
+   `client_reference_id`, as the plan says. **Its ID is recorded on the application the moment the
+   session is created**: Stripe returns it in the creation response, so we never have to ask for it
+   later. (Stripe cannot be asked later: its Search API does not cover Checkout Sessions, and the
+   session list cannot filter by metadata or `client_reference_id`.)
+4. **Coming back, and the last item.** Stripe returns them to the application with the session ID
+   in the address, and the wizard fills it in. No typing. It confirms the ID we already recorded,
+   and it proves they were holding this live application when the payment finished. **The receipt
+   is the last item the application needs.**
+5. **Signing.** The member commits, with their passkey. The application is now closed: what was
    paid for is what was applied for.
-5. **The answer.** The next bubble carries the receipt and the welcome. **The receipt is built
+6. **The answer.** The next bubble carries the receipt and the welcome. **The receipt is built
    from Stripe's record, not from the member's commit.** The member's copy of the session ID is a
    claim, and Stripe is the authority the plan says it is.
+
+**Curing a form.** A member who comes back to fix a refused step, or to finish one they left, is
+recognised by their You passkey. The node finds their open application by that identity, in its own
+storage, never by anything they type, and hands them the bubble for the step they are on. Nobody
+has to explain who they are twice. Stripe is not consulted. This is the machinery
+`RESERVE-DESIGN.md` already describes for `/settings/` (sign in with a passkey, edit your own
+record, the Worker opens a pull request) with a different record type.
 
 ### Where it goes wrong, from where they stand
 
 | what happened | what the member sees | what has to be true on our side |
 |---|---|---|
-| **They closed the tab after paying**, so no session ID came back | an application with no ID. The bubble says their payment is safe and there is nothing to do | the plan already accepts an application without the ID. The node has to find the session from Stripe's side, where its `client_reference_id` is the application's digest. **Check first** whether Stripe can be asked for a session by that field, or whether the node must list recent sessions and match |
+| **They closed the tab after paying**, so no session ID came back | an application missing its last item. When they come back with their passkey, it is finished for them | nothing has to be looked up. The session ID was recorded when the session was created; only the confirmation is missing. The node asks Stripe about that one session by its ID |
 | **They paid twice** (back button, second tab) | two charges on their statement | the node finds two sessions pointing at one application and flags it. A person refunds: the broker's key cannot, by design |
 | **They tried to change the application after paying** | the form is closed. A change is a new order | a changed application has a different digest, so it no longer matches Stripe's `client_reference_id`, and is refused as a different application |
 | **The ID came from someone else's payment** | a refusal saying the payment belongs to a different application | the plan's stage 2 test already flags this |
 | **The card was declined** | Stripe says so. Nothing was committed, and the bubble is unchanged | nothing: no session completed, so nothing reconciles |
 | **They picked an organization for the half rate** | that the rate applies once staff have checked the organization | `payments.md`: staff have an EIN to verify before any money moves at that rate |
-| **They lost their phone mid-order** | a new bubble after they enroll a new passkey | the order lives with us, not on their phone. Their partial work was theirs, offline |
+| **They lost their phone mid-order** | a new bubble once a new passkey is added to their You identity | the order lives with us, keyed to their You identity, not to the phone. How a lost passkey is replaced is `identity.md`'s, not this page's. Their partial work was theirs, offline |
 | **A hook refused their commit** | **what to change, in words**, never an exit code | a refusal message is part of the form. A member who can't tell why they were refused has been refused by a machine, not by us |
 
 **The test:** stage 2's test gains these as scripted members: one who closes the tab after
@@ -89,6 +109,9 @@ the row above.
 Each of these is already a rule, here or in station-node's `docs/the-work-order.md`, which the
 plan's table cites. They are gathered here because a member's bubble is where all of them meet.
 
+- **What we put in Stripe is opaque.** Our note is the application's digest. It means something only
+  to us, and the node holds the mapping. Whether a stable identifier for the person should also go
+  into Stripe is an open question below, not a default.
 - **Keys are named by who causes them to be used** (`payments.md`). The key that reads Checkout
   Sessions to reconcile is caused by the node, never by the public, so it is never `PUBLIC_`-named
   and never held by the worker that runs `/checkout`. That worker's key stays write-only, and
@@ -103,6 +126,18 @@ plan's table cites. They are gathered here because a member's bubble is where al
   history shows, for as long as we keep it.
 
 ## Open
+
+- **Does the member's You identity go into Stripe?** Autumn asked for "our own note on their
+  transaction metadata". The note can be opaque (the application's digest, as above), and nothing
+  in this flow needs more: curing uses our storage, and the session ID is recorded at creation. A
+  stable person-identifier in Stripe would permanently join that person to their payment history in
+  a third party's database, and that cannot be undone later. If audit needs a pointer on Stripe's
+  side, an opaque per-subscription reference does it, on the subscription or the customer, which
+  Stripe's Search API does cover. This is Autumn's to decide.
+- **One store for per-identity state.** `RESERVE-DESIGN.md` says making claims one-to-one needs the
+  Worker to remember spent claims, in KV or D1, checked in the same request that binds. Curing
+  needs to find a person's open application by You identity, in the same place. Decide the store
+  once, for both.
 
 - **Where reconciliation runs, and where its key lives.** The plan says the node needs a key that
   can read Checkout Sessions. This page adds only that the key belongs to the node, not the worker.
