@@ -18,9 +18,11 @@ Each **show** gets a sub-subdomain, `<show>.you.fcpublicmedia.org`, and a
 show as a scratch space and clones the control branch with git-enough. The
 kiosk hands the phone a **bottle** to bring it in. Every step a member takes
 toward us is a commit to a **wizard**, and every change arrives as a **pull
-request** that our own hooks replay and accept or refuse. What they publish
-lands in the **trade** area of FCPM's library, and station-node builds and
-deploys it. Recordings made at the studio travel the enhance round trip and
+request** that our own hooks replay and accept or refuse. When they
+publish, **their phone builds the site with jekyll-enough** as it opens the
+PR. The build lands in the **trade** area of FCPM's library, and
+station-node deploys it. (Building on a schedule for them, the existing
+factory, is the separate *managed* mode.) Recordings made at the studio travel the enhance round trip and
 come back as a link that only their passkey opens, with a notification to
 their phone.
 
@@ -146,22 +148,55 @@ schedule, beside the door (see *Who runs the tests*).
   a path outside the form, a commit not based on our ref, and an unsigned
   commit.
 
-### 6. Publishing to trade
+### 6. Publishing to trade: the phone builds
 
-- **Exists:** `deliver: source|intermediate` (`sites.yml`); trade's
-  `source: given`, where the PR is the consent and the intake record;
-  station-node's `bin/trade ready|build|deploy` with a byte-compare of what
-  the edge serves.
-- **Needs:** a show publishes into `trade/<show>/` by PR, as raw source, an
-  intermediate, or a fully built site. It stays **tolerant**: a member who
-  takes their repository elsewhere can still publish to us by PR, and we
-  keep them up as long as they stay controllable. We ask them to publish
-  with us by courtesy and convention; they're free to publish anywhere.
-  **The media node commits; station-node builds and deploys.**
-- **Test:** three PRs (raw, intermediate, built) each land in trade and
-  serve at `<show>.you…`, checked by the byte-compare. A delisted show is
-  taken down. The graceful-degradation promise holds: raw Liquid is shown
-  as raw, never as though it were rendered.
+**There are two modes, and the difference is who builds.**
+
+| | Managed | Tended |
+|---|---|---|
+| Who builds | us, on a schedule | **the member's phone, as it opens the PR** |
+| With | the factory: `bin/build-sites.py`, real Jekyll via `bundle exec`, run weekly by `publish-member-sites.yml` | **jekyll-enough**, in the browser, with no Ruby |
+| What arrives | nothing; we fetch the source and build it | a PR carrying the source **and** its build |
+| Where it lands | `site/member-sites/<name>/`, committed by the workflow | `trade/<show>/` on the `library` branch, by PR |
+
+The factory stays, for sites we look after entirely. Autumn's first thought
+was to point it straight at trade, but building for someone automatically is
+the managed mode. A **tended** show is one the member works on, so the build
+is theirs to do, and opening the pull request is when it happens.
+jekyll-enough (FCCN-ANTIBODY/jekyll-enough; its PR #1 builds all of
+`site/` with no gaps) is "more than enough to let them build a pretty decent
+set of things".
+
+- **Exists:** jekyll-enough in the browser; `deliver: source|intermediate`
+  (`sites.yml`); per-file degrees (`INTERMEDIATES.md`: rendered, baked,
+  source); trade's `source: given`, where the PR is the consent and the
+  intake record; station-node's `bin/trade ready|build|deploy` with a
+  byte-compare of what the edge serves.
+- **Needs:**
+  - jekyll-enough and `member-site-core` delivered to the phone, as part of
+    the show's pristine bottle or served as static files from `you.`. The
+    factory's `compose()` (template plus core) must happen the same way on
+    the phone.
+  - The phone builds at PR time, and the PR carries source plus build, with
+    each file's degree recorded. A page jekyll-enough can't render is
+    carried as **source**, which is the allowed fall-through, and shown raw.
+  - It stays **tolerant**: a member who takes their repository elsewhere
+    can still publish to us by PR, sending raw source, an intermediate or a
+    fully built site, and we keep them up as long as they stay controllable.
+    Publishing with us is courtesy and convention; they're free to publish
+    anywhere.
+  - **The media node commits; station-node builds and deploys.** For a
+    tended show, "builds" on station-node means only placing what the phone
+    built.
+- **Test:**
+  - **Reproducibility is the check.** The node rebuilds the PR's source
+    with the same jekyll-enough pin, and the result must match the phone's
+    build byte for byte. A mismatch is refused.
+  - Three PRs (raw only, intermediate, fully built) each land in trade and
+    serve at `<show>.you…`, checked by trade's byte-compare.
+  - A delisted show is taken down.
+  - The graceful-degradation promise holds: raw Liquid is shown as raw,
+    never as though it were rendered.
 
 ### 7. Booking carries the member's nonce
 
