@@ -36,6 +36,7 @@ pins, a branch nobody is watching, a seat's own finding nobody actioned.
 | [`programming.md`](programming.md) | Cablecast, the schedule, class mode, and what the homepage features |
 | [`member-sites.md`](member-sites.md) | what a member's repository holds, what we supply, publishing states, and ejecting |
 | [`MEMBER-SHOWS.md`](MEMBER-SHOWS.md) | the plan: a passkey on `you.`, a sub-subdomain per show, wizard steps as pull requests, publishing to trade, bookings and recordings coming home, and a test per stage |
+| [`HOLDING-A-BUBBLE.md`](HOLDING-A-BUBBLE.md) | the same plan from the member's phone: what the README owes them before they sign, where membership sign-up goes wrong from their side, and the rails that meet there |
 | [`known-issues.md`](known-issues.md) | things that are wrong and known to be wrong |
 
 Standing orders for anyone working here — human or agent — are in
