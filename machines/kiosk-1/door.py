@@ -948,7 +948,7 @@ def write_wall():
 
 
 def watch_wall():
-    said = None
+    said = ...                                       # so the first outcome is logged too
     while True:
         try:
             err = write_wall()
