@@ -137,6 +137,8 @@ wording:
     head: Files
     sub: On the studio drive
   footer:
-    on: On now
+    # "on" is QUOTED on purpose: bare, YAML reads it as the boolean true, and
+    # the label went missing while the name still showed.
+    "on": "Hosting:"
     next: Next
     none: Ask whoever is at the desk.
