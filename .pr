@@ -1,1 +1,28 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Holding a bubble: the member's side of a work order
+
+## What this is
+
+`docs/HOLDING-A-BUBBLE.md`, a companion to `MEMBER-SHOWS.md` that **changes nothing in the plan**.
+The plan is written from the node looking out. This walks the same flows from a member's phone
+looking in, in the plan's own terms:
+
+- **What a member is holding**: a folder readable with nothing installed, laid out like the node
+  that sent it. The state machine is never in the bubble; the next step is the next bubble.
+- **What the README owes the holder before they sign**, six things: what this is and who sent it,
+  what their commit contains field by field, **where it goes and who can see it**, what it costs
+  and who charges, what they can no longer change, and how to walk away. Tested per wizard.
+- **Membership sign-up (stage 2) from the phone**, and a table of where it goes wrong from the
+  member's side: closed the tab after paying, paid twice, edited after paying, someone else's
+  session ID, a declined card, the half rate, a lost phone, a refused hook. Each row says what
+  the member sees and what has to be true on our side. Four of them become scripted members in
+  stage 2's test.
+- **Rails**, gathered where they meet: the reconciliation key is caused by the node, so it is never
+  `PUBLIC_`-named and never in the `/checkout` worker; no personal details on a public remote,
+  **including branch names and commit messages**; nothing in a bubble runs; baked steps are
+  blameable.
+
+One thing to check before building: whether Stripe can be asked for a Checkout Session by its
+`client_reference_id`, or whether the node has to list recent sessions and match. That's the
+closed-the-tab case.
+
+`docs/README.md` lists it beside `MEMBER-SHOWS.md`.
