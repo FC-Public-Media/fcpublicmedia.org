@@ -20,3 +20,4 @@
 2026-09-24    python    running the repo's tests leaves the tree clean -> generators rewrite welcome.js and prices.js with CRLF on Windows; the door stops rebasing
 2026-09-24    edge      --new-window --start-fullscreen opens full-screen -> a running Edge takes it, restores its session, ignores the flag
 2026-09-24    schtasks  a logon trigger's repetition keeps a task alive -> it arms only at a logon; mid-session it never repeats
+2026-09-24    yaml      a key named on: is the string on -> PyYAML reads bare on/off/yes/no as booleans; the footer label went blank
