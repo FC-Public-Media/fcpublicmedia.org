@@ -6,7 +6,7 @@
     door.py startup            what starts the door at logon, and does it point here
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
-    door.py sessions [pin|--revive]  the Claude sessions that come back after a boot
+    door.py sessions [pin|--revive]  the Claude sessions that come back after a sign-in
     door.py                    is the door up
 
 Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
@@ -53,7 +53,7 @@ while one is already running is ignored. That is launchd's KeepAlive, with
 five minutes of slack. `supervise` also holds a named mutex, so a second copy
 started some other way leaves at once instead of fighting over 8080. Once the
 door answers, `supervise` brings up any screen in node.yml that is missing,
-and, if the machine booted since it last looked, resumes in the background
+and, if this user signed in since it last looked, resumes in the background
 the Claude sessions that were running before (see "sessions" below).
 
 What it cannot do is log on. After a power cut the box waits at the sign-in
@@ -1146,10 +1146,13 @@ def supervise():
     # logon task starts supervise every five minutes; this is what makes a
     # start that finds one already running a no-op.
     k = ctypes.WinDLL("kernel32", use_last_error=True)
-    k.CreateMutexW(None, False, "Local\\media-node-supervise")
+    k.CreateMutexW.restype = ctypes.c_void_p
+    k.CloseHandle.argtypes = [ctypes.c_void_p]
+    mutex = k.CreateMutexW(None, False, "Local\\media-node-supervise")
     if ctypes.get_last_error() == 183:                  # ERROR_ALREADY_EXISTS
         log("supervise: already running; this one leaves")
         return 0
+    me = pathlib.Path(__file__).read_bytes()
 
     def raise_screens():
         # Once, when supervise starts: at logon, or after it was restarted.
@@ -1172,6 +1175,17 @@ def supervise():
     threading.Thread(target=keep_sessions, daemon=True).start()
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
+        if code == BOUNCE and pathlib.Path(__file__).read_bytes() != me:
+            # supervise's own code moved too. Restarting only `serve` would
+            # leave this process on the old code for the rest of the sign-in
+            # (2026-09-25: session revival merged mid-day, and the supervise
+            # started at 00:41 never took a snapshot). Hand over: let go of
+            # the mutex, start a fresh supervise, and leave.
+            log("supervise: my code changed; starting a fresh one")
+            k.CloseHandle(mutex)
+            subprocess.Popen([sys.executable, "-X", "utf8", __file__, "supervise"], close_fds=True,
+                             creationflags=NO_WINDOW | getattr(subprocess, "DETACHED_PROCESS", 0))
+            return 0
         time.sleep(1 if code == BOUNCE else 10)
 
 
@@ -1266,7 +1280,7 @@ def screens(launch=False, say=print):
 # ------------------------------------------------------------------ sessions --
 # The Claude sessions working on this node, brought back after a power cut the
 # way the screens are. `supervise` writes down what is running every pass; at
-# its first pass after a boot, it resumes whatever was running before, in the
+# its first pass after a sign-in, it resumes whatever was running before, in the
 # background, where Remote Control reaches it. Session ids stay here, in
 # LOCALAPPDATA, never in the repo.
 SESSIONS = STATE / "sessions.json"
@@ -1300,6 +1314,51 @@ def booted_at():
     ms = ctypes.windll.kernel32.GetTickCount64
     ms.restype = ctypes.c_ulonglong
     return time.time() - ms() / 1000
+
+
+def signed_in_at():
+    """When this user's sign-in began, from LSA. Sessions die with the sign-in,
+    not the boot, and the boot can't be trusted: with Fast Startup on (the
+    default; it is on here) Shut down hibernates the kernel, so the uptime
+    runs on across a power-off while every session is gone. Falls back to
+    the boot if LSA won't say."""
+    from ctypes import wintypes as W
+
+    class LUID(ctypes.Structure):
+        _fields_ = [("Low", W.DWORD), ("High", W.LONG)]
+
+    class STATS(ctypes.Structure):          # TOKEN_STATISTICS
+        _fields_ = [("TokenId", LUID), ("AuthenticationId", LUID), ("ExpirationTime", ctypes.c_longlong),
+                    ("TokenType", ctypes.c_int), ("ImpersonationLevel", ctypes.c_int),
+                    ("DynamicCharged", W.DWORD), ("DynamicAvailable", W.DWORD),
+                    ("GroupCount", W.DWORD), ("PrivilegeCount", W.DWORD), ("ModifiedId", LUID)]
+
+    class USTR(ctypes.Structure):           # LSA_UNICODE_STRING
+        _fields_ = [("Length", W.USHORT), ("MaximumLength", W.USHORT), ("Buffer", W.LPWSTR)]
+
+    class LOGON(ctypes.Structure):          # SECURITY_LOGON_SESSION_DATA, as far as LogonTime
+        _fields_ = [("Size", W.ULONG), ("LogonId", LUID), ("UserName", USTR), ("LogonDomain", USTR),
+                    ("AuthenticationPackage", USTR), ("LogonType", W.ULONG), ("Session", W.ULONG),
+                    ("Sid", ctypes.c_void_p), ("LogonTime", ctypes.c_longlong)]
+
+    adv, k32, sec = ctypes.windll.advapi32, ctypes.windll.kernel32, ctypes.windll.secur32
+    k32.GetCurrentProcess.restype = W.HANDLE
+    adv.OpenProcessToken.argtypes = [W.HANDLE, W.DWORD, ctypes.POINTER(W.HANDLE)]
+    k32.CloseHandle.argtypes = [W.HANDLE]
+    tok, st, n, data = W.HANDLE(), STATS(), W.DWORD(), ctypes.POINTER(LOGON)()
+    if not adv.OpenProcessToken(k32.GetCurrentProcess(), 0x0008, ctypes.byref(tok)):     # TOKEN_QUERY
+        return booted_at()
+    try:
+        if not adv.GetTokenInformation(tok, 10, ctypes.byref(st), ctypes.sizeof(st), ctypes.byref(n)):
+            return booted_at()
+    finally:
+        k32.CloseHandle(tok)
+    if sec.LsaGetLogonSessionData(ctypes.byref(st.AuthenticationId), ctypes.byref(data)) != 0 or not data:
+        return booted_at()
+    try:
+        return data.contents.LogonTime / 1e7 - 11644473600        # FILETIME, 1601 UTC -> Unix
+    finally:
+        sec.LsaFreeReturnBuffer(data)
 
 
 def read_sessions():
@@ -1343,11 +1402,11 @@ def revive(s, say=log):
 
 
 def revive_sessions(force=False, say=log):
-    """Resume what was running before this boot. Only after a boot: supervise
+    """Resume what was running before this sign-in. Only after one: supervise
     also restarts mid-session, and a session somebody closed on purpose since
     must stay closed. Pins override: `in` always comes back, `out` never."""
     book = read_sessions()
-    if not force and book.get("taken", 0) > booted_at():
+    if not force and book.get("taken", 0) > signed_in_at():
         return 0
     live = running_sessions()
     if live is None:
@@ -1413,7 +1472,7 @@ def sessions(argv):
     live_ids = {s["id"] for s in live or []}
     taken = book.get("taken") or 0
     print("snapshot  %s%s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(taken)) if taken else "never",
-                             "  (before this boot: the next supervise start revives)" if taken and taken < booted_at() else ""))
+                             "  (before this sign-in: the next supervise start revives)" if taken and taken < signed_in_at() else ""))
     pins = book.get("pins") or {}
     rows = {s["id"]: s for s in book.get("sessions") or []}
     rows.update({s["id"]: s for s in live or []})
