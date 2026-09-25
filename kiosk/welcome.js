@@ -24,17 +24,17 @@
 //
 // One assignment and nothing else. No logic, no fetch, no side effects.
 window.FCPM_KIOSK = {
-  "revision": "9e55079fd1d7",
+  "revision": "803f8df90221",
   "place": "Fort Collins Public Media",
   "room": "the welcome desk",
   "greeting": "Welcome in. Scan the code to check in, and help yourself to the guest Wi-Fi — there is nothing to sign up for.",
   "panels": [
     {
       "panel": "Checking in",
-      "say": "www.fcpublicmedia.org/check-in/",
+      "say": "new.fcpublicmedia.org/check-in/",
       "qr": {
         "image": "site/assets/img/check-in-qr.svg",
-        "encodes": "https://www.fcpublicmedia.org/check-in/",
+        "encodes": "https://new.fcpublicmedia.org/check-in/",
         "alt": "QR code linking to the check-in page"
       },
       "note": "Scan it with your own phone. Your visits stay on your phone — we don't make you an account."
