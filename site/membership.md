@@ -17,11 +17,26 @@ not the amounts. See _data/membership.yml.
 
 ## Tiers
 
+{%- comment -%}
+  THE WHOLE TILE IS THE CONTROL. Each card carries a native radio button
+  stretched invisibly over all of it, so a click anywhere on the tile
+  chooses it, the arrow keys move between tiers, a screen reader hears the
+  tier's name and price, and it works with scripts off. The chosen tile leans
+  -8deg, the brand's tilt (brand/README.md, "The tilt"). The value is the
+  checkout SKU the broker prices (worker/src/prices.js, generated from
+  _data/membership.yml), so the next step can send it as-is.
+{%- endcomment -%}
+<fieldset class="tiers">
+<legend class="visually-hidden">Choose a tier</legend>
 <ul class="grid grid-4">
 {% for tier in m.tiers %}
-  <li class="card">
-    <h3>{{ tier.name }}</h3>
-    <p class="price">${{ tier.price }}</p>
+  {%- assign slug = tier.name | downcase -%}
+  <li class="card tier">
+    <input type="radio" name="tier" id="tier-{{ slug }}" value="membership:{{ slug }}"
+           data-name="{{ tier.name }}" data-price="{{ tier.price }}"
+           aria-labelledby="tier-{{ slug }}-name tier-{{ slug }}-price">
+    <h3 id="tier-{{ slug }}-name">{{ tier.name }}</h3>
+    <p class="price" id="tier-{{ slug }}-price">${{ tier.price }}</p>
     {%- comment -%}
       The nonprofit price is shown next to the full one rather than explained
       somewhere further down. Half of the confusion this page is fixing was
@@ -40,6 +55,17 @@ not the amounts. See _data/membership.yml.
   </li>
 {% endfor %}
 </ul>
+</fieldset>
+
+{%- comment -%}
+  Shown once a tier is chosen. It leads to the Join step below for now. When
+  the broker is live, this is where the member makes their passkey, and our
+  reaction to that passkey is the Stripe checkout for the chosen SKU.
+  Declining the charge breaks nothing; they can come back.
+{%- endcomment -%}
+<p class="tier-next" id="tier-next" aria-live="polite" hidden>
+  <a class="btn btn-primary" id="tier-continue" href="#join">Continue with <span id="tier-chosen"></span></a>
+</p>
 
 ## How it works
 
@@ -118,3 +144,4 @@ Email [{{ site.data.org.email }}](mailto:{{ site.data.org.email }}) or call
 }
 </script>
 <script type="module" src="{{ '/assets/js/nonprofit.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/tiers.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
