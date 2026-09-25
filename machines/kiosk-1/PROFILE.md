@@ -127,6 +127,23 @@ order, then what the list did not think to ask.
   the bay route: uv 0.12.18 from the vendor's release, hash-checked against
   the published value, Authenticode-signed "OpenAI OpCo, LLC", then
   `uv python install 3.13`. `bin/build-kiosk.py --check` passes here.
+- **It is becoming a builder, on purpose (2026-09-24).** Autumn: *"We are
+  going to become a builder, so I just wanted to provision it with
+  intent."* Not with Ruby: the site's build viability here is jekyll-enough,
+  in the browser. What it adds is the means to run and test the rest of the
+  stack locally: the broker (a Cloudflare Worker, run with `wrangler dev`),
+  and integration tests on invented `*.localhost` hosts (`you.fcpm.localhost`,
+  `<show>.you.fcpm.localhost`), which Edge sends to loopback with no hosts
+  file. Passkeys come from a virtual authenticator attached over the
+  DevTools protocol, because this box has no passkey hardware. Tooling came
+  by the same bay route as uv:
+  - **Node 24.21.0 LTS** (npm 11.19.0), the official win-x64 zip, checked
+    against nodejs.org's `SHASUMS256.txt`. `node.exe` is signed "OpenJS
+    Foundation". It lives in `%LOCALAPPDATA%\media-node\node`, on the user's
+    PATH.
+  - **gh 2.101.0**, the official zip, checked against the release's
+    checksums and signed "GitHub, Inc.", in `~/.local/bin`. Its login is in
+    the keyring.
 - **Services: one, the door.** `door.py`, on `[::]:8080`, reached by name at
   `http://200-fcpanedit2.local:8080/`. It serves the welcome screen, the
   depot (the studio drive's contents) and the idle screen. A per-user
