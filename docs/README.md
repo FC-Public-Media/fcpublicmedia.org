@@ -35,6 +35,7 @@ pins, a branch nobody is watching, a seat's own finding nobody actioned.
 | [`identity.md`](identity.md) | who somebody is, how they prove it, and what happens at the door |
 | [`programming.md`](programming.md) | Cablecast, the schedule, class mode, and what the homepage features |
 | [`member-sites.md`](member-sites.md) | what a member's repository holds, what we supply, publishing states, and ejecting |
+| [`MEMBER-SHOWS.md`](MEMBER-SHOWS.md) | the plan: a passkey on `you.`, a sub-subdomain per show, wizard steps as pull requests, publishing to trade, bookings and recordings coming home, and a test per stage |
 | [`known-issues.md`](known-issues.md) | things that are wrong and known to be wrong |
 
 Standing orders for anyone working here — human or agent — are in
