@@ -72,6 +72,26 @@ administrator, so it is placed at the desk as part of install, the way
 station-node's `LAUNCH.md` says grants are placed: before the job runs, never
 during.
 
+## Schematics are the trove's; a crew wears a reference
+
+Autumn, 2026-09-25, relayed by station-node's digitization session: the
+recorder is *"configured in our crew with obs session schematics of our
+making"*, and the schematics live here.
+
+- **A schematic is trove content.** An OBS profile and scene collection, or an
+  Audio Hijack session where that is the recorder, written for one kind of
+  capture. They go in `schematics/<name>/` when the first one is written.
+- **A crew wears its slice, not the template.** What a crew carries is the
+  configuration it would deploy: which schematic, for which instrument, on this
+  host.
+- **A crew names what it wants, not where it is:** by name, class or category.
+  For example `recorder, class multiplex-capture, schematic quad-1080`. A path
+  would tie the crew to this repository's layout; a name survives the trove
+  moving to its own repository.
+- **A crew plans around a trove only where a repository offers it.** Where the
+  trove is absent, the crew goes without that service rather than failing, the
+  same way it goes without an instrument that is not plugged in.
+
 ## Files
 
 | | |
@@ -90,5 +110,5 @@ machine on one day. Editing bay 1's live in `machines/editing-bay-1/bay/`.
 - **Silence**, as above. The design digitization described is *armed, then
   catch what arrives while the signal is not flat*, and OBS does not split on
   silence by itself.
-- **The profile and scene collection templates** are not written. They depend on
+- **The first schematic** is not written. It depends on
   what is plugged in.
