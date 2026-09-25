@@ -29,4 +29,6 @@
 # language   tool        arrives by
 ruby         bundler     # unestablished — see `machines/kiosk-1/PROFILE.md`
 python       python3     # unestablished; the winget id is probably Python.Python.3.x
-node         npm         # unestablished; `worker/` and `site/tests/` both use npm ci
+node         npm         # kiosk-1: the nodejs.org LTS zip, sha256-checked against SHASUMS256.txt, in
+                         # %LOCALAPPDATA%\media-node\node (2026-09-24; winget v1.3 can't install zips).
+                         # `worker/` and `site/tests/` both use npm ci
