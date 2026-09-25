@@ -79,6 +79,17 @@ stations:
 # several) will replace it. The rota's footer will read from the same ones.
 bookings: sample
 
+# MICROSOFT 365: the app registration this box signs in as ("FC Public Media
+# Booking"). Identifiers, not secrets. The secret is a certificate in this
+# account's store (Cert:\CurrentUser\My), made on the box with a
+# non-exportable key; Microsoft holds only its public half. m365-token.ps1
+# turns these into an access token. The GitHub pipeline signs in to the same
+# app with a federated credential, not with this certificate.
+m365:
+  tenant: c2df68bb-b157-4f21-9a16-f574eb44ed6d
+  client: 6a3863ca-5544-4ffc-9d1f-71311cfb1bfe
+  certificate: 2280B1B905911D8C93C643EF292D86BD2F882C31   # expires 2028-09-24
+
 # ---------------------------------------------------------------------------
 # DEPOT: the studio drive, shown on /depot/. It is the router's Samba share,
 # reached under the Windows credential saved for 10.209.1.1 (user FCPM),
