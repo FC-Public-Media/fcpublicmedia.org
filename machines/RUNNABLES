@@ -86,6 +86,7 @@ troves/recorder/obs.ps1         | powershell | start        | outside | launch t
 troves/recorder/obs.ps1         | powershell | record start | outside | StartRecord into the trove's recordings folder, and check that it took
 troves/recorder/obs.ps1         | powershell | record stop  | outside | StopRecord; prints the finished file's path
 troves/recorder/obs.ps1         | powershell | stop         | outside | stop recording if it is, then close the pid start wrote, never by name
+troves/recorder/obs.ps1         | powershell | grant        | desk    | place the inbound block for this obs64.exe; asks Windows for an administrator itself
 
 # NOT CLAIMED YET, on purpose. site/bin holds the syncs, the pricing and the
 # claim minting: they reach the network, money and tokens, and a claim for one

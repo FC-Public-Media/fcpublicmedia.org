@@ -113,8 +113,7 @@ switch ($Step) {
     $r = Get-NetFirewallRule -DisplayName $Rule -ErrorAction SilentlyContinue
     Say ("grant     " + $(if ($r) { "inbound block present ($($r.Enabled))" } else { 'absent' }))
     if (-not $r) {
-        Say "          place it at the desk, in an administrator window, once:"
-        Say "          New-NetFirewallRule -DisplayName '$Rule' -Direction Inbound -Action Block -Program '$(Join-Path $Gear $Exe)'"
+        Say "          place it at the desk, once: fcpm recorder grant"
     }
     Say ("theirs    $Theirs " + $(if (Test-Path $Theirs) { '(present; never written here, only listed by confirm)' } else { '(absent)' }))
     if (Test-Path $Cellar) { Say ("cellar    " + ((Get-ChildItem $Cellar -Directory | Select-Object -ExpandProperty Name) -join ', ')) }
@@ -208,8 +207,7 @@ switch ($Step) {
     Log 'installed' @{ path = $Gear; replaced = $old; restart_tier = 'app' }
     Say ("installed $Gear (obs64 $(VersionOf $Gear))" + $(if ($old) { ", previous $old kept in the cellar" } else { '' }))
     if (-not (Get-NetFirewallRule -DisplayName $Rule -ErrorAction SilentlyContinue)) {
-        Say "grant     absent. Before the websocket is ever enabled, at the desk, as administrator:"
-        Say "          New-NetFirewallRule -DisplayName '$Rule' -Direction Inbound -Action Block -Program '$(Join-Path $Gear $Exe)'"
+        Say "grant     absent. Before the websocket is ever enabled, at the desk: fcpm recorder grant"
     }
 }
 
