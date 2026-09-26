@@ -1759,7 +1759,7 @@ html.is-pass,
 .pass-chip {
   display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.5rem;
   font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-  background: var(--signal-ink); color: var(--signal);
+  background: var(--masthead); color: var(--masthead-ink);
 }
 .pass-card .pass-device {
   font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
