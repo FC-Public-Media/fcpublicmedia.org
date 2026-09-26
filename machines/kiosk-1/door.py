@@ -1298,6 +1298,16 @@ footer { background:var(--slate); padding:0 6vw 0 5vw; display:flex; align-items
 .keys #light:active, .keys #light[aria-pressed=true] { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #aeb4bb; }
 .keys #dark[aria-pressed=true] { color:var(--paper); }
 .keys button:disabled { opacity:.35; cursor:default; }
+/* In light mode the footer and the arrow keys take the two lights, so the
+   Dark key (always dark) and the Light key (always white) each stand out
+   against it: a key wears the mode it gives. */
+body.light footer { background:#e9ecef; }
+body.light .keys b { color:var(--ink); }
+body.light .keys button { background:#f6f7f8; color:#6b737c; box-shadow:inset 0 0 0 1px #d5d9de, 0 .45vh 0 #bcc2c9; }
+body.light .keys button:active { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #bcc2c9; }
+body.light .keys #dark { background:var(--slate); color:var(--soft); box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); }
+body.light .keys #dark:active { box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
+body.light .keys #light { background:#fff; color:var(--ink); }
 .keys svg { width:55%; height:55%; }
 .tabs { display:flex; align-items:stretch; }
 .tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
