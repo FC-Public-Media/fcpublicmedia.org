@@ -1,9 +1,11 @@
 # Class mode on the rolling TV: a brief for its own pass
 
-Status: **not designed and not built.** This is Autumn's brief from
-2026-09-26, recorded so the next pass starts from her words and not from a
-guess. She asked for it to be its own pass, because "the footer and the top,
-they're all going to want to be a little different."
+Status: **a demo.** `class.html`, written beside the wall from
+`class-sample/` (`class:` in the `wall:` block of `machines/kiosk-1/node.yml`)
+and never in the wall's turn. `?light` shows the light version. This is
+Autumn's brief from 2026-09-26, and then the shape she gave the demo the
+same day. It is its own pass because "the footer and the top, they're all
+going to want to be a little different."
 
 ## What it is for
 
@@ -71,3 +73,27 @@ deferred.
 - **Checking it:** `attendant/wall.md`, the attendant recipe. Class mode will
   need its own steps, and its buttons must be findable by role and name like
   the wall's.
+
+## The shape of the demo (Autumn, 2026-09-26)
+
+- **Header, a quarter of the screen**, in the darker slate (`--ink`), with the
+  wall's slanted bottom edge. The check-in code on the yellow clock square
+  ("our QR is hiding a clock inside of it"), then the class's name and its
+  hours in place of "Check in" and the motto. No timer. The digital time is
+  printed on the slant, where the wall's timer runs.
+- **Content, the dark slate (`--slate`) or white.** Dark by default, light with
+  `?light`. Only the content gets these two, so they stay reserved for the
+  material.
+- **Footer: the presenter's name, then the noun** for the kind of material
+  (HANDOUTS), in place of FCPM and the module. Material is organised by nouns,
+  meaning kinds of material, not slides. It can still be used like slides:
+  numbered files keep working.
+- **Sections as slanted tabs**, stacked along the -8 degree line, with no pill
+  padding. The one that's up is signal yellow. The last one used is signal at
+  30%, so the way back is easy to see. The rest are the dark slate. A section
+  is a button named by its title. There's no rotation: a tab stays up until
+  someone moves it.
+
+**Still open:** which class and presenter the page shows (today, from
+`class.yml`; later, from the calendar and the class's own folder), and more
+than one kind of material in a class (the demo shows the first).
