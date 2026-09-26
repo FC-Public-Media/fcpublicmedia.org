@@ -153,6 +153,21 @@ function Ours {
     if (-not $p -or -not $p.Path -or -not $p.Path.StartsWith($Gear, 'OrdinalIgnoreCase')) { return $null }
     $p
 }
+# The copy the bay installed and confirmed, and no other: obs64.exe must hash to
+# what this host's payload record says was installed. The record is the source,
+# so a new version brought aboard by the bay moves the value with it.
+function Recorded {
+    $ver = (Get-Item $Exe).VersionInfo.ProductVersion
+    $rec = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\machines\$Node\bay\obs-portable-$ver.yml"))
+    if (-not (Test-Path $rec)) { return @{ ver = $ver; rec = $rec; want = $null } }
+    $m = Select-String -Path $rec -Pattern '^\s*obs64-sha256:\s*([0-9a-f]{64})\s*$' | Select-Object -First 1
+    @{ ver = $ver; rec = $rec; want = $(if ($m) { $m.Matches[0].Groups[1].Value } else { $null }) }
+}
+function Proven {
+    $r = Recorded
+    $got = (Get-FileHash -Algorithm SHA256 $Exe).Hash.ToLower()
+    @{ ok = ($r.want -and $got -eq $r.want); got = $got; want = $r.want; rec = $r.rec }
+}
 function Listening($port) { [bool](Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) }
 function Grant { Get-NetFirewallRule -DisplayName $Rule -ErrorAction SilentlyContinue | Where-Object { $_.Enabled -eq 'True' -and $_.Action -eq 'Block' } }
 
@@ -188,6 +203,8 @@ switch ($Verb) {
 'status' {
     if (-not (Test-Path $Exe)) { Say "installed no: run bay/obs-portable.ps1"; break }
     Say ("installed $Gear (obs64 $((Get-Item $Exe).VersionInfo.ProductVersion))")
+    $h = Proven
+    Say ("the copy  " + $(if ($h.ok) { "obs64.exe matches the bay's record ($($h.got.Substring(0,12)))" } elseif ($h.want) { "obs64.exe is NOT what the bay installed: $($h.got.Substring(0,12)), record says $($h.want.Substring(0,12))" } else { "no obs64-sha256 in $($h.rec): start will refuse" }))
     Say ("prepared  " + $(if (Prepared) { "yes: $Name, websocket $Port" } else { 'no: run prepare' }))
     Say ("grant     " + $(if (Grant) { 'inbound block in place' } else { 'absent: start will refuse' }))
     Say ("password  " + $(if ([Fcpm.Cred]::Read($Target)) { "in Credential Manager ($Target)" } else { 'absent' }))
@@ -261,6 +278,9 @@ switch ($Verb) {
     if (-not (Test-Path $Exe)) { Fail 'not installed: run bay/obs-portable.ps1' }
     if (-not (Prepared)) { Fail 'not prepared: run prepare' }
     if ($p = Ours) { Say "already running, pid $($p.Id)"; break }
+    $h = Proven
+    if (-not $h.want) { Fail "no obs64-sha256 recorded in $($h.rec); the bay has not recorded this install" }
+    if (-not $h.ok) { Fail "obs64.exe hashes to $($h.got), not the $($h.want) the bay installed; not starting it" }
     if (-not (Grant)) { Fail "the inbound block rule '$Rule' is not in place; bay/obs-portable.ps1 check prints the command for the desk" }
     if (Listening $Port) { Fail "port $Port is already in use by something else; not starting beside it" }
     $launch = @('--multi', '--portable', "--profile `"$Name`"", "--collection `"$Name`"", '--minimize-to-tray', '--disable-shutdown-check')
