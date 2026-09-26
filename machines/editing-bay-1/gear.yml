@@ -5,9 +5,11 @@
 # and is found by where it was put. `check.ps1` reads `package:` and `at:` and
 # reports each entry present or WANTED. Presence is never written here.
 #
-# THE BAY BRINGS WHAT IT CAN WITHOUT AN ADMINISTRATOR. winget's packages for gh,
-# uv and Node are machine-wide installers that raise an elevation prompt; the
-# vendors' portable archives are not. So those arrive through the bay (receive,
+# NOTHING HERE NEEDS AN ADMINISTRATOR. Where winget can install for this user
+# alone (`--scope user`), winget is the provisioner: uv is. Where its package
+# is a machine-wide installer that raises an elevation prompt, the vendor's
+# portable archive comes through the bay instead: gh is, and Node is not yet
+# known. What the bay brings arrives the bay's way (receive,
 # verify against the vendor's digest and Authenticode, stage, install, confirm:
 # ../bay/README.md), into ~/.local/bin or this profile's folder in
 # %LOCALAPPDATA%, and each arrival leaves a record in ./bay/.
@@ -43,11 +45,18 @@ gear:
   - gear: uv
     for: Python, when this bay first needs it. `python` on PATH is the Store stub,
       so `../binding` cannot run here until this arrives
-    at: "%USERPROFILE%\\.local\\bin\\uv.exe"
+    package: astral-sh.uv
     vendor: Astral (github.com/astral-sh/uv), MIT or Apache-2.0
-    provisioner: bay          # the portable zip, as media node's was
-    updates: bay
+    # Signed as "OpenAI OpCo, LLC", not Astral: measured 2026-09-26, Authenticode
+    # Valid. Written down so the next arrival signed otherwise is a question.
+    signer: OpenAI OpCo, LLC
+    provisioner: winget       # --scope user, no administrator. 0.12.19, 2026-09-26
+    updates: winget
     restart-tier: none
+    # winget puts `uv`, `uvx` and `uvw` on PATH for shells started after it.
+    # An older shell needs the full path:
+    #   %LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe
+    # Python comes from it: `uv run --no-project --python 3.12 --with pyyaml ...`
 
   - gear: node
     for: the broker's tests and wrangler, as on the media node
