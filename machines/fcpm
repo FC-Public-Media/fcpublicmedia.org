@@ -9,7 +9,15 @@
 #   fcpm refs [pull|status|work R B|done R B]   the mirrors, and worktrees
 #   fcpm pool [status|pass|pin in|out X]        the session pool
 #   fcpm runnables [...]      the census, compile, prove (bin/runnables)
+#   fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
+#                             the staff OBS (troves/recorder/obs.ps1)
 #   fcpm help                 this
+#
+# FOR PEOPLE; A TASK NAMES THE HOLDER. A verb here is how a person reaches a
+# tool. What a session may run without asking is granted to the tool itself,
+# by the command a crew's GRANTS names (docs/RUNNABLES.md), because that is
+# what a proof pins: an edit to obs.ps1 revokes its grant, and would not revoke
+# one given to `fcpm recorder`, whose own bytes did not change.
 #
 # AFTER STATION-NODE, WHICH NO LONGER TYPES A RAW COMMAND. Its `bin/station` is
 # the node as one switch; this is that, for a crew that may be any of several
@@ -53,6 +61,7 @@ case "$cmd" in
     [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
     ps1 "$CODE/bin/pool.ps1" "$@" ;;
   runnables) exec "$REPO/bin/runnables" "$@" ;;
-  help|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+  recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
+  help|-h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) echo "fcpm: no verb '$cmd'. fcpm help" >&2; exit 2 ;;
 esac
