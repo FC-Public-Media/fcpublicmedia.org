@@ -742,7 +742,24 @@ def kiosk_page(wall=False, map_only=False):
     return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS)
 
 
-MAP_ONLY_CSS = "body { grid-template-rows:1fr auto; }"
+# On the wall the map is a module in a frame about half the desk's height,
+# read from across a room: set at the top, and roughly twice the desk's size.
+MAP_ONLY_CSS = """
+body { grid-template-rows:1fr auto; }
+.stations { top:6vh; translate:none; left:7vw; right:7vw; gap:5vh; }
+.group { grid-template-columns:4.4vh 1fr; column-gap:3vw; }
+.group .mark { width:4.4vh; height:4.4vh; }
+.names { gap:.8vh; }
+.names span { font-size:4.4vh; }
+.names .until { font-size:3vh; }
+.times { margin-top:1.8vh; gap:1.6vh 2vw; }
+.pill { font-size:2.9vh; padding:.6vh 2vh; border-width:.45vh; }
+.note { font-size:3.1vh; }
+footer { padding:3.4vh 7vw; }
+.on b { font-size:2.6vh; }
+.on span { font-size:4vh; }
+.place { font-size:2.3vh; }
+"""
 
 # The desk's card is the check-in words' size: the code stays beside it, and
 # the Wi-Fi codes below it.
@@ -1026,19 +1043,15 @@ def class_js():
 
 CLASSES_CSS = """
 html, body { height:100%; overflow:hidden; }
-main { padding:5vh 6vw; }
-h1 { margin:0 0 3.4vh; font-size:1.7vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:700; }
-ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3.2vh; }
-li { display:grid; grid-template-columns:auto 1fr; column-gap:4vw; align-items:start; }
-.day { background:var(--slate); border-radius:1.2vh; padding:1vh 1.4vh; min-width:7vh; text-align:center;
-  display:flex; flex-direction:column; gap:.3vh; line-height:1; }
-.day small { font-size:1.2vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
-.day b { font-size:3vh; font-weight:750; }
-.what b { display:block; font-size:2.6vh; font-weight:700; line-height:1.15; }
-.what span { display:block; margin-top:.6vh; font-size:1.8vh; color:var(--soft); font-variant-numeric:tabular-nums; }
-.what p { margin:.8vh 0 0; font-size:1.6vh; color:var(--dim); line-height:1.3; }
-.empty { font-size:2.4vh; color:var(--soft); }
-.flag { margin:3.4vh 0 0; font-size:1.4vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+main { padding:6vh 7vw; }
+h1 { margin:0 0 5vh; font-size:3vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:700; }
+ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5.5vh; }
+.when { display:block; font-size:2.7vh; font-weight:650; color:var(--signal); font-variant-numeric:tabular-nums; }
+.what { display:block; margin-top:.8vh; font-size:4.6vh; font-weight:750; line-height:1.1; }
+.room { display:block; margin-top:.8vh; font-size:2.9vh; font-weight:600; }
+li p { margin:.8vh 0 0; font-size:2.5vh; color:var(--soft); line-height:1.3; }
+.empty { font-size:3.6vh; color:var(--soft); }
+.flag { margin:5vh 0 0; font-size:2.2vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
 """
 
 CLASSES_LIST_JS = """<script>
@@ -1049,14 +1062,14 @@ CLASSES_LIST_JS = """<script>
     if (!list.length) { box.appendChild(K.el('p', 'empty', K.words.none)); return; }
     var ol = K.el('ol');
     list.forEach(function (s) {
-      var li = K.el('li'), d = K.el('div', 'day'), w = K.el('div', 'what'), when = new Date(s.starts);
-      d.appendChild(K.el('small', null, when.toLocaleDateString([], {weekday: 'short'})));
-      d.appendChild(K.el('b', null, String(when.getDate())));
-      d.appendChild(K.el('small', null, when.toLocaleDateString([], {month: 'short'})));
-      w.appendChild(K.el('b', null, s.title));
-      w.appendChild(K.el('span', null, K.time(s.starts) + '\\u2013' + K.time(s.ends) + (s.room ? '  \\u00b7  ' + s.room : '')));
-      if (s.summary) w.appendChild(K.el('p', null, s.summary));
-      li.appendChild(d); li.appendChild(w); ol.appendChild(li);
+      // A line of text per class, never a calendar leaf (Autumn: "calendar-
+      // powered but not displaying like a calendar").
+      var li = K.el('li');
+      li.appendChild(K.el('span', 'when', K.day(s.starts) + '  \\u00b7  ' + K.time(s.starts) + '\\u2013' + K.time(s.ends)));
+      li.appendChild(K.el('span', 'what', s.title));
+      if (s.room) li.appendChild(K.el('span', 'room', s.room));
+      if (s.summary) li.appendChild(K.el('p', null, s.summary));
+      ol.appendChild(li);
     });
     box.appendChild(ol);
   }
@@ -1153,11 +1166,11 @@ nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99
   color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
 nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
 nav #hold[aria-pressed=true] { border-color:var(--signal); color:var(--signal); }
-nav.taken button[data-m] { display:none; }"""
+nav.taken button[data-m], nav.taken #hold { display:none; }"""
 
 WALL_JS = """<script>
 (function () {
-  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 180,
+  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 180, W = @WORDS@,
       K = window.FCPMClass, qs = location.search, born = Date.now(),
       stage = document.getElementById('stage'), card = document.getElementById('class'),
       nav = document.querySelector('nav'), showing = document.getElementById('showing'),
@@ -1185,8 +1198,13 @@ WALL_JS = """<script>
     clearTimeout(timer);
     if (!held && !taken) timer = setTimeout(function () { show(cur + 1); }, EVERY * 1000);
   }
+  function label() {
+    if (!held) { hold.textContent = W.hold; return; }
+    var left = Math.max(0, HOLD_FOR - Math.floor((Date.now() - held) / 1000));
+    hold.textContent = W.held + '  ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
+  }
   function setHold(on) {
-    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); arm();
+    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label(); arm();
   }
   function classes() {
     var s = K.pick(), was = taken;
@@ -1202,6 +1220,7 @@ WALL_JS = """<script>
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
   hold.addEventListener('click', function () { setHold(!held); });
   document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+  setInterval(function () { if (held) label(); }, 1000);
   setInterval(function () {
     if (held && Date.now() - held > HOLD_FOR * 1000) setHold(false);
     // The shell reloads now and then, for a change in its modules or classes;
@@ -1247,7 +1266,8 @@ def wall_files():
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
-           .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10)))
+           .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
+           .replace("@WORDS@", json.dumps({"hold": cfg.get("hold", "Hold"), "held": cfg.get("held", "Held")})))
     files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
     return files
 
