@@ -68,12 +68,16 @@ host  deny  Bash(killall *)
 #   exercise <holder> | <shape> ; ...   the cycle `prove --exercise` runs
 #   untouched <path>                    listed the same after (names, sizes, times)
 #   quiet <image>                       none running before it, none after
+#   expect <file> <text>                the cycle must append <text> to <file>
 #   admit allow <holder> | <shape>      an outside verb, allowed once exercised
 wears      troves/recorder/obs.ps1
 exercise   troves/recorder/obs.ps1 | start ; status ; record start ; status ; record stop ; stop
 untouched  {APPDATA}/obs-studio
 untouched  {USERPROFILE}/Videos
 quiet      obs64
+# The stop has to CLOSE it. A kill can leave a recording unfinished, and a
+# cycle that ends in one is not the behaviour being granted.
+expect     {LOCALAPPDATA}/editing-bay-1/troves/recorder/obs.ndjson "how":"closed"
 admit allow  troves/recorder/obs.ps1 | start
 admit allow  troves/recorder/obs.ps1 | record start
 admit allow  troves/recorder/obs.ps1 | record stop

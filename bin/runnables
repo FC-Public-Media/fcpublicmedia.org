@@ -266,6 +266,11 @@ case "$cmd" in
         -e "s|{LOCALAPPDATA}|$lad|g" -e "s|{USERPROFILE}|$(printf '%s' "${USERPROFILE:-}" | tr '\\' '/')|g"; }
       untouched=$(sed -e 's/#.*$//' "$G" | awk '$1 == "untouched" { $1 = ""; sub(/^ /, ""); print }')
       quiet=$(sed -e 's/#.*$//' "$G" | awk '$1 == "quiet" { print $2 }')
+      # expect <file> <text>: something the cycle appends to <file> must
+      # contain <text>, such as a stop that closed rather than killed.
+      expects=$(awk '$1 == "expect" { $1 = ""; sub(/^ /, ""); print }' "$G")
+      exp_sizes=$(printf '%s\n' "$expects" | while read -r f _; do [ -n "$f" ] || continue
+        f=$(expand "$f"); if [ -f "$f" ]; then wc -c < "$f"; else echo 0; fi; done)
       watch() {
         git -C "$ROOT" status --porcelain
         [ -d "$LOCALAPPDATA/$p/bay" ] && find "$LOCALAPPDATA/$p/bay" -printf '%p %s %T@\n' | sort
@@ -291,6 +296,14 @@ CYCLE
       for q in $quiet; do
         [ "$(running "$q")" = 0 ] || { echo "prove: $q is still running after the exercise; not proven" >&2; exit 1; }
       done
+      i=0
+      while read -r f text; do [ -n "$f" ] || continue
+        i=$((i + 1)); from=$(printf '%s\n' "$exp_sizes" | sed -n "${i}p"); f=$(expand "$f")
+        [ -f "$f" ] && tail -c +"$((from + 1))" "$f" | grep -qF -- "$text" ||
+          { echo "prove: the exercise did not write '$text' to $f; not proven" >&2; exit 1; }
+      done <<EXPECT
+$expects
+EXPECT
       w1=$(watch)
       [ "$w0" = "$w1" ] || { echo "prove: the exercise changed something it must not have; not proven:" >&2
         diff <(printf '%s\n' "$w0") <(printf '%s\n' "$w1") | head -20 >&2; exit 1; }
