@@ -7,3 +7,6 @@
 # Union on a file where somebody edits an existing line is data loss with no
 # conflict to warn about. After station-node's .gitattributes.
 machines/kiosk-1/GOTCHAS.log    merge=union
+
+# Windows batch files need CRLF to run; stored LF, checked out CRLF everywhere.
+*.cmd text eol=crlf

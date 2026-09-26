@@ -27,6 +27,7 @@ wears  bin/runnables
 wears  bin/build-kiosk.py
 wears  bin/build-sites.py
 wears  machines/binding
+wears  machines/fcpm
 
 # Windows PowerShell 5.1, as the pool's task runs its own script. The Bash form
 # is canonical; the PowerShell tool's form gets the denies too.

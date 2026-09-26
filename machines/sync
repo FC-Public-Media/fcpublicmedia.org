@@ -2,7 +2,7 @@
 # sync — put on the profile this machine wears, or say how far off it is.
 #
 #   machines/sync              status: which profile, what differs. Changes nothing
-#   machines/sync install      put the profile's carried files in place, clone
+#   machines/sync install      put the profile on: carried files, compiled settings, PATH, clone
 #                              missing mirrors. A person runs this, not a session
 #   machines/sync mirror       bring the machine's copies back into this checkout,
 #                              for a pull request. Refused in refs/
@@ -80,6 +80,35 @@ while read -r mode src dst <&3; do
         else mkdir -p "$to" && git clone --quiet "$url" "$to/$name" && echo "cloned    ~/$dst/$name"; fi
       done ;;
     clone:mirror) ;;
+    # settings <profile> <home path>: the profile's GRANTS, compiled
+    # (bin/runnables compile), in place for the harness to read. Never a
+    # copy in the repository: it is generated from what is, so it cannot
+    # drift from the answer that was merged.
+    settings:status|settings:install)
+      want=$("$REPO/bin/runnables" compile "$src" 2>/dev/null)
+      if [ -f "$to" ] && [ "$(cat "$to")" = "$want" ]; then [ "$cmd" = status ] && echo "same      ~/$dst (compiled from $src's GRANTS)"; continue; fi
+      if [ "$cmd" = status ]; then
+        if [ -f "$to" ]; then echo "differs   ~/$dst (not what $src's GRANTS compiles to)"; else echo "missing   ~/$dst"; fi; rc=1
+      else
+        mkdir -p "$(dirname "$to")"
+        [ -e "$to" ] && mv "$to" "$to.pre-sync" && echo "aside     ~/$dst -> $(basename "$to").pre-sync"
+        printf '%s\n' "$want" > "$to" && echo "placed    ~/$dst (compiled from $src's GRANTS)"
+      fi ;;
+    settings:mirror) ;;
+    # path <home dir>: on this user's PATH, so what is carried there is found
+    # by name in any shell. Windows keeps a user PATH of its own; a new window
+    # sees the change.
+    path:status|path:install)
+      win=$(cygpath -w "$HOME/$dst" 2>/dev/null || echo "$HOME/$dst")
+      cur=$(powershell -NoProfile -Command "[Environment]::GetEnvironmentVariable('Path','User')" 2>/dev/null | tr -d '\r')
+      if printf '%s' ";$cur;" | tr '[:upper:]' '[:lower:]' | grep -qF ";$(printf '%s' "$win" | tr '[:upper:]' '[:lower:]');"; then
+        [ "$cmd" = status ] && echo "same      PATH has ~/$dst"; continue; fi
+      if [ "$cmd" = status ]; then echo "missing   ~/$dst on PATH"; rc=1
+      else
+        powershell -NoProfile -Command "[Environment]::SetEnvironmentVariable('Path', ('$cur'.TrimEnd(';') + ';$win'), 'User')" &&
+          echo "placed    ~/$dst on PATH (new windows see it)"
+      fi ;;
+    path:mirror) ;;
     *) echo "sync: unknown mode '$mode', or verb '$cmd'" >&2; exit 2 ;;
   esac
 done 3< "$P/MANIFEST"
@@ -89,7 +118,7 @@ if [ "$cmd" = status ]; then
       sed -e 's/#.*$//' "$P/$l" | grep -c . ; done | awk '{ s += $1 } END { print s + 0 }')
   echo "mirrors  $n listed"
   if [ -f "$P/check.ps1" ] && command -v powershell >/dev/null 2>&1; then
-    echo; powershell -NoProfile -File "$(cygpath -w "$P/check.ps1" 2>/dev/null || echo "$P/check.ps1")" || rc=1
+    echo; powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$P/check.ps1" 2>/dev/null || echo "$P/check.ps1")" || rc=1
   elif [ -f "$P/check.sh" ]; then
     echo; sh "$P/check.sh" || rc=1
   fi

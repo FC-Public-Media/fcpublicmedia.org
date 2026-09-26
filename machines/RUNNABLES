@@ -90,3 +90,11 @@ troves/recorder/obs.ps1         | powershell | stop         | outside | stop rec
 # NOT CLAIMED YET, on purpose. site/bin holds the syncs, the pricing and the
 # claim minting: they reach the network, money and tokens, and a claim for one
 # is its author's to write, not a census's to guess. They show as undeclared.
+
+# The crew's one switch. Its other verbs reach tools claimed above or below
+# (bin/refs, the pool, bin/runnables) and are answered there, not here.
+machines/fcpm                   | sh         | -                    | read    | which profile, and what differs from what it carries
+machines/fcpm                   | sh         | status               | read    | the same
+machines/fcpm                   | sh         | check                | read    | what files cannot say: gear, settings, the pool
+machines/fcpm                   | sh         | help                 | read    | its verbs
+machines/fcpm                   | sh         | install              | desk    | put the profile on, settings and PATH included. A person's

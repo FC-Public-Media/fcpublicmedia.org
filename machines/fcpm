@@ -1,0 +1,58 @@
+#!/bin/sh
+# fcpm — the crew's one switch on an FCPM machine. Every verb a person or a
+# session runs here, by name, the same in any window.
+#
+#   fcpm                      which profile, and what differs from what it carries
+#   fcpm install              put the profile on: carried files, settings, PATH,
+#                             mirrors. A person runs this, never a session
+#   fcpm check                what files cannot say: gear, settings, the pool
+#   fcpm refs [pull|status|work R B|done R B]   the mirrors, and worktrees
+#   fcpm pool [status|pass|pin in|out X]        the session pool
+#   fcpm runnables [...]      the census, compile, prove (bin/runnables)
+#   fcpm help                 this
+#
+# AFTER STATION-NODE, WHICH NO LONGER TYPES A RAW COMMAND. Its `bin/station` is
+# the node as one switch; this is that, for a crew that may be any of several
+# profiles on Windows or a Mac. Each verb is the tool that already does the
+# job, reached by name: nothing here re-implements one.
+#
+# ON WINDOWS IT IS `fcpm.cmd` IN ~/.local/bin, which calls this with Git's
+# bash, so cmd and PowerShell run it identically and nobody has to know which
+# window they are in. `fcpm install` puts that shim and ~/.local/bin on PATH;
+# the first install is started by hand once (the profile's PROFILE.md, Day 0).
+#
+# It asks the machine which profile it wears (`machines/sync`), and finds this
+# repository from where it lives, so the same file serves every profile.
+
+set -u
+HERE=$(cd "$(dirname "$0")" && pwd)
+REPO=$(cd "$HERE/.." && pwd)
+CODE="$HOME/code"
+
+profile() { "$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2; exit }'; }
+
+ps1() {
+  # The one way a .ps1 is run here: as the pool's logon task runs its own,
+  # and as the crew's GRANTS names it.
+  f=$1; shift
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$f" 2>/dev/null || echo "$f")" "$@"
+}
+
+cmd=${1:-status}; [ $# -gt 0 ] && shift
+case "$cmd" in
+  status)    exec "$HERE/sync" ;;
+  install)   exec "$HERE/sync" install ;;
+  check)
+    p=$(profile)
+    [ -n "$p" ] || { echo "fcpm: this machine wears no profile"; exit 0; }
+    if [ -f "$HERE/$p/check.ps1" ]; then ps1 "$HERE/$p/check.ps1"
+    elif [ -f "$HERE/$p/check.sh" ]; then sh "$HERE/$p/check.sh"
+    else echo "fcpm: $p carries no check"; fi ;;
+  refs)      exec "$CODE/bin/refs" "$@" ;;
+  pool)
+    [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
+    ps1 "$CODE/bin/pool.ps1" "$@" ;;
+  runnables) exec "$REPO/bin/runnables" "$@" ;;
+  help|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) echo "fcpm: no verb '$cmd'. fcpm help" >&2; exit 2 ;;
+esac
