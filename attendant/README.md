@@ -69,7 +69,7 @@ for what it tests and is not this.
 
 | recipe | page | last followed |
 |---|---|---|
-| [`wall.md`](wall.md) | the wall (rolling TV) | not yet |
+| [`wall.md`](wall.md) | the wall (rolling TV) | 2026-09-26, on roller-tv from a local render |
 
 ## When a step fails, it is a bug, not a gotcha
 
@@ -95,9 +95,10 @@ stale) is fixed in the recipe, not logged.
   nothing promises that one is. That is the loudspeaker, and it is not
   designed here.
 - **A local copy of each page.** The wall is written to the depot's share and
-  editing bay 1 cannot reach it (`../instruments/README.md`, *Open*). A recipe
-  that can only be followed where the page happens to be mounted is not an
-  integration test yet.
+  editing bay 1 cannot reach it (`../instruments/README.md`, *Open*). It can
+  render one itself (see *How it was followed* in [`wall.md`](wall.md)), with
+  the real shell and thin data. Nothing does that as a step yet, so a recipe
+  is followed by hand rather than run as a test.
 - **Pages people hold rather than screens we drive.** `/check-in/` is a
   person's own phone. An attendant has no place there. Whether a recipe for it
   still belongs here, as the "do it for me" script read aloud, is undecided.
