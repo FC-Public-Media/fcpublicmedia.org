@@ -77,6 +77,16 @@ troves/recorder/bay/obs-portable.ps1 | powershell | stage    | outside | unpack,
 troves/recorder/bay/obs-portable.ps1 | powershell | install  | desk    | swap into the trove's prefix, cellar the previous copy, updates off
 troves/recorder/bay/obs-portable.ps1 | powershell | confirm  | desk    | start it, see it kept to itself, stop it
 
+# The recorder's runtime verbs (troves/recorder/obs.ps1, README "Playing it").
+# Only its own websocket on 4456, never the members' OBS. prepare is desk, not
+# secret: a person runs it once, and it stores a credential without printing it.
+troves/recorder/obs.ps1         | powershell | status       | read    | is ours installed, the bay's copy, prepared, granted, running, recording, and to where
+troves/recorder/obs.ps1         | powershell | prepare      | desk    | name it FCPM Recorder, recordings to the trove's folder, websocket 4456 with its own password
+troves/recorder/obs.ps1         | powershell | start        | outside | launch the bay's copy once granted and 4456 is free; writes its pid
+troves/recorder/obs.ps1         | powershell | record start | outside | StartRecord into the trove's recordings folder, and check that it took
+troves/recorder/obs.ps1         | powershell | record stop  | outside | StopRecord; prints the finished file's path
+troves/recorder/obs.ps1         | powershell | stop         | outside | stop recording if it is, then close the pid start wrote, never by name
+
 # NOT CLAIMED YET, on purpose. site/bin holds the syncs, the pricing and the
 # claim minting: they reach the network, money and tokens, and a claim for one
 # is its author's to write, not a census's to guess. They show as undeclared.

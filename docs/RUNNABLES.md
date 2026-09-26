@@ -116,12 +116,33 @@ it for five years. This layer is written so that it stays "just git" when that
 arrives: the claim, the proof and the answer are commits, and a signature over
 a commit is what the gesture adds.
 
+## Proving, and wearing
+
+`bin/runnables prove <profile> <holder> --by <who>` (2026-09-26). The holder
+must be one the profile wears, committed, and unchanged from its commit. Each
+`read` verb is run exactly as the profile's canonical runner starts it, and
+nothing may change: not the checkout, and not the profile's `bay` or `troves`
+folders in `%LOCALAPPDATA%`. Then one line goes into
+`machines/<profile>/bay/runnables.proven`: holder, blob, date, the verbs that
+ran, and who read the rest of the code. It proves the read verbs by running
+them; an `inside` verb rides on the same line, which is what `--by` is for.
+
+**`wears <holder>`** in a profile's GRANTS limits it to those holders. The bays
+do not run the door, so the door's rules are not theirs to carry. A profile with
+no `wears` line answers for every claim.
+
+**Proven for tasks, not in general.** A proof is of these bytes on this
+machine, run the way this crew runs them. The recorder's OBS is the first case
+it was built for: the staff copy is allowed to be driven by an issued task
+because the bay installed it, confirmed it kept to itself, and proved the
+script that drives it, and because a merge admitted the answer. None of that
+carries to another machine, or to the OBS people use here.
+
 ## Not built
 
-- **`prove`.** The bay step that runs a holder's `read` verbs, checks that the
-  checkout is unchanged, and writes the proven blob. Until it exists, a proof is
-  written by hand after reading the code, and says so.
-- **`machines/sync`.** Nothing installs the compiled settings yet.
+- **`machines/sync` installing the settings.** `sync` puts a profile's carried
+  files in place; the compiled settings are not one of them yet, and installing
+  them is a person's step.
 - **One canonical form, taught.** The media node's sessions have typed door.py
   several ways (`$LOCALAPPDATA` or an absolute path, either slash, Bash or
   PowerShell, from the checkout or from `~/code`). GRANTS picks the venv's

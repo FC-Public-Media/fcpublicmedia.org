@@ -1168,7 +1168,8 @@ def drive_page():
 # the header block"). Each turn loads a fresh frame, named for its module, and
 # drops the old one, so a frame never gathers history for Back to walk into.
 # Hold stops the turning for a reader (WCAG 2.2.1), and lets go by itself
-# after three minutes, since nobody stands at this screen to let go of it.
+# after a minute and a half, since nobody stands at this screen to let go
+# of it. Pressed again, it holds until somebody presses play.
 # A class soon or on takes the stage over (docs/KIOSK.md, "The class on
 # now").
 #
@@ -1219,12 +1220,12 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
   color:rgba(18,20,23,.7); }
 
 /* The turn: a track under the edge at the right, parallel to it, a fifth of
-   the width projected (20.2vw along the tilt). Black, so it only just shows
-   on the dark. The red fills it from the right; the knob is the record
+   the width projected (20.2vw along the tilt). The brighter slate, so its whole
+   length reads before the red fills it from the right; the knob is the record
    button, a red dot in a half-clear ring of the same red. Thin while it runs;
    held, it thickens and turns signal, so the two never look alike. */
 .timer { position:absolute; right:0; bottom:calc(14.05vw - 3vh); width:20.2vw; height:.4vh;
-  background:#000; border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg;
+  background:var(--rule); border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg;
   transition:height .3s; }
 .timer i { position:absolute; top:0; bottom:0; right:0; left:100%; background:var(--record);
   border-radius:.45vh 0 0 .45vh; transition:background-color .3s; }
@@ -1247,21 +1248,35 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 .bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; }
 nav { display:flex; align-items:center; gap:1.2vw; }
 .showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
-.showing b { color:var(--paper); font-size:1.8vh; font-weight:750; letter-spacing:.14em; }
-.showing span { color:var(--signal); font-variant-numeric:tabular-nums; }
+/* The brand, then what is up: FCPM STUDIO, FCPM FILES, FCPM CLASSES. */
+.showing b, .showing span { font-size:1.8vh; font-weight:750; letter-spacing:.14em; }
+.showing b { color:var(--paper); }
+.showing span { margin-left:.5em; color:var(--signal); }
 nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
   color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
 nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
-nav #hold[aria-pressed=true] { border-color:var(--signal); color:var(--signal); }
+/* Hold is a narrow pause button. Pressed, it is a countdown, a ring draining
+   around the seconds left; pressed again, it keeps the wall paused, the ring
+   full, and shows play: the only thing left to do. See press() below. */
+nav #hold { flex:none; width:3.8vh; height:3.8vh; padding:0; border:0; border-radius:50%; }
+nav #hold svg { display:block; width:100%; height:100%; }
+#hold .track { fill:none; stroke:var(--rule); stroke-width:2.4; }
+#hold .left { fill:none; stroke:var(--signal); stroke-width:2.4; stroke-dasharray:100.53; stroke-dashoffset:100.53; }
+#hold .pause { fill:var(--soft); }
+#hold .secs { fill:var(--signal); font:700 12px system-ui, sans-serif; }
+#hold .play { fill:var(--signal); }
+#hold:not([data-state=run]) .pause, #hold:not([data-state=count]) .secs,
+#hold:not([data-state=pinned]) .play { display:none; }
 nav.taken button[data-m], nav.taken #hold { display:none; }"""
 
 WALL_JS = """<script>
 (function () {
-  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 180, W = @WORDS@,
+  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 90, W = @WORDS@, pinned = false,
       K = window.FCPMClass, qs = location.search, born = Date.now(),
       stage = document.getElementById('stage'), card = document.getElementById('class'),
       nav = document.querySelector('nav'),
-      hold = document.getElementById('hold'), heldFor = document.getElementById('heldfor'),
+      hold = document.getElementById('hold'), ring = hold.querySelector('.left'), secs = hold.querySelector('.secs'),
+      showing = document.getElementById('showing'),
       timer = document.getElementById('timer'), fill = timer.querySelector('i'), knob = timer.querySelector('b'),
       buttons = document.querySelectorAll('nav button[data-m]'),
       still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -1280,6 +1295,7 @@ WALL_JS = """<script>
     });
     stage.insertBefore(f, card);
     buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === m.name); });
+    showing.textContent = m.label;
     try { history.replaceState(null, '', qs + '#' + m.name); } catch (e) {}
     t0 = performance.now(); stopped = 0;
   }
@@ -1306,17 +1322,31 @@ WALL_JS = """<script>
     }
     requestAnimationFrame(frame);
   }
-  // The countdown goes beside the button, never in it: the button keeps one
-  // name, "Hold", so voice control and a screen reader's list can find it
-  // (aria-pressed carries the state). Not a live region: no tick is read out.
+  // One button, three steps, each drawn as what the next press does (Autumn,
+  // 2026-09-26): running, a pause glyph; pressed, a countdown, the ring
+  // draining around the seconds left; pressed again, held for good, and only
+  // now a play glyph, which can mean nothing but "run again". A double-click
+  // is just the first two steps. Each state is named for what it shows
+  // ("Pause", "Keep paused", "Play"), so voice control says what it sees;
+  // the name changes with the state, never with the ticking seconds.
   function label() {
-    if (!held) { heldFor.textContent = ''; return; }
-    var left = Math.max(0, HOLD_FOR - Math.floor((Date.now() - held) / 1000));
-    heldFor.textContent = '  \\u00b7  ' + W.held + ' ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
+    var state = !held ? 'run' : pinned ? 'pinned' : 'count',
+        used = state === 'run' ? 1 : pinned ? 0 : Math.min(1, (Date.now() - held) / (HOLD_FOR * 1000));
+    ring.style.strokeDashoffset = (100.53 * used).toFixed(2);
+    secs.textContent = state === 'count' ? String(Math.max(0, Math.ceil(HOLD_FOR * (1 - used)))) : '';
+    if (hold.dataset.state !== state) {
+      hold.dataset.state = state;
+      hold.setAttribute('aria-label', state === 'run' ? W.pause : state === 'count' ? W.keep : W.play);
+    }
   }
   function setHold(on) {
-    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label();
+    held = on ? Date.now() : 0; pinned = false; label();
     timer.classList.toggle('held', !!on);
+  }
+  function press() {
+    if (!held) return setHold(true);
+    if (!pinned) { pinned = true; return label(); }
+    setHold(false);
   }
   function classes() {
     var s = K.pick(), was = taken;
@@ -1324,14 +1354,17 @@ WALL_JS = """<script>
     if (s) K.card(card, s, K.words.hint_wall);
     card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
     timer.classList.toggle('off', taken);
-    if (!taken && was) show(cur);
+    if (taken) showing.textContent = K.words.head;
+    else if (was) show(cur);
   }
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
-  hold.addEventListener('click', function () { setHold(!held); });
+  hold.addEventListener('click', press);
   document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
-  setInterval(function () { if (held) label(); }, 1000);
   setInterval(function () {
-    if (held && Date.now() - held > HOLD_FOR * 1000) setHold(false);
+    if (held && !pinned && Date.now() - held >= HOLD_FOR * 1000) setHold(false);
+    else if (held) label();
+  }, 250);
+  setInterval(function () {
     // The shell reloads now and then, for a change in its modules or classes;
     // never while held.
     if (!held && Date.now() - born > RELOAD * 1000) location.reload();
@@ -1370,15 +1403,16 @@ def wall_files():
 <div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
-  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=heldfor></span></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
+  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" data-state=run title="Pause for a minute and a half; press again to keep it paused"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text><path class=play d="M14.5 11 L25.5 18 L14.5 25 Z" /></svg></button></nav>
 </footer>
 %s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))),
-           e(ww.get("brand", "FCPM")), rail, e(cfg.get("hold", "Hold")),
+           e(ww.get("brand", "FCPM")), rail, e(cfg.get("pause", "Pause")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
            .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
-           .replace("@WORDS@", json.dumps({"hold": cfg.get("hold", "Hold"), "held": cfg.get("held", "held")})))
+           .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
+                                    "play": cfg.get("play", "Play")})))
     files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
     return files
 
