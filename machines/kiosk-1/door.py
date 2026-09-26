@@ -1168,7 +1168,8 @@ def drive_page():
 # the header block"). Each turn loads a fresh frame, named for its module, and
 # drops the old one, so a frame never gathers history for Back to walk into.
 # Hold stops the turning for a reader (WCAG 2.2.1), and lets go by itself
-# after three minutes, since nobody stands at this screen to let go of it.
+# after a minute and a half, since nobody stands at this screen to let go
+# of it. A double-click holds until the next click, anywhere on the wall.
 # A class soon or on takes the stage over (docs/KIOSK.md, "The class on
 # now").
 #
@@ -1247,21 +1248,35 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 .bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; }
 nav { display:flex; align-items:center; gap:1.2vw; }
 .showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
-.showing b { color:var(--paper); font-size:1.8vh; font-weight:750; letter-spacing:.14em; }
-.showing span { color:var(--signal); font-variant-numeric:tabular-nums; }
+/* The brand, then what is up: FCPM STUDIO, FCPM FILES, FCPM CLASSES. */
+.showing b, .showing span { font-size:1.8vh; font-weight:750; letter-spacing:.14em; }
+.showing b { color:var(--paper); }
+.showing span { margin-left:.5em; color:var(--signal); }
 nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
   color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
 nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
-nav #hold[aria-pressed=true] { border-color:var(--signal); color:var(--signal); }
+/* Hold is a narrow pause button. Held, it is not a play button (a toggle's
+   icon can always be read as either state) but a countdown: a ring draining
+   around the seconds left. Held until the next click, the ring is full and
+   the count is an infinity. */
+nav #hold { flex:none; width:3.8vh; height:3.8vh; padding:0; border:0; border-radius:50%; }
+nav #hold svg { display:block; width:100%; height:100%; }
+#hold .track { fill:none; stroke:var(--rule); stroke-width:2.4; }
+#hold .left { fill:none; stroke:var(--signal); stroke-width:2.4; stroke-dasharray:100.53; stroke-dashoffset:100.53; }
+#hold .pause { fill:var(--soft); }
+#hold .secs { fill:var(--signal); font:700 12px system-ui, sans-serif; display:none; }
+#hold[aria-pressed=true] .pause { display:none; }
+#hold[aria-pressed=true] .secs { display:inline; }
 nav.taken button[data-m], nav.taken #hold { display:none; }"""
 
 WALL_JS = """<script>
 (function () {
-  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 180, W = @WORDS@,
+  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 90, W = @WORDS@, pinned = false,
       K = window.FCPMClass, qs = location.search, born = Date.now(),
       stage = document.getElementById('stage'), card = document.getElementById('class'),
       nav = document.querySelector('nav'),
-      hold = document.getElementById('hold'), heldFor = document.getElementById('heldfor'),
+      hold = document.getElementById('hold'), ring = hold.querySelector('.left'), secs = hold.querySelector('.secs'),
+      showing = document.getElementById('showing'),
       timer = document.getElementById('timer'), fill = timer.querySelector('i'), knob = timer.querySelector('b'),
       buttons = document.querySelectorAll('nav button[data-m]'),
       still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -1280,6 +1295,7 @@ WALL_JS = """<script>
     });
     stage.insertBefore(f, card);
     buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === m.name); });
+    showing.textContent = m.label;
     try { history.replaceState(null, '', qs + '#' + m.name); } catch (e) {}
     t0 = performance.now(); stopped = 0;
   }
@@ -1306,17 +1322,24 @@ WALL_JS = """<script>
     }
     requestAnimationFrame(frame);
   }
-  // The countdown goes beside the button, never in it: the button keeps one
-  // name, "Hold", so voice control and a screen reader's list can find it
-  // (aria-pressed carries the state). Not a live region: no tick is read out.
+  // The time left is the ring draining around the button. The button keeps
+  // one name, "Hold" (aria-label), so voice control and a screen reader's
+  // list can find it; aria-pressed carries the state. Nothing is announced.
   function label() {
-    if (!held) { heldFor.textContent = ''; return; }
-    var left = Math.max(0, HOLD_FOR - Math.floor((Date.now() - held) / 1000));
-    heldFor.textContent = '  \\u00b7  ' + W.held + ' ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
+    var used = !held ? 1 : pinned ? 0 : Math.min(1, (Date.now() - held) / (HOLD_FOR * 1000));
+    ring.style.strokeDashoffset = (100.53 * used).toFixed(2);
+    secs.textContent = pinned ? '\u221e' : String(Math.max(0, Math.ceil(HOLD_FOR * (1 - used))));
   }
   function setHold(on) {
-    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label();
+    held = on ? Date.now() : 0; pinned = false; hold.setAttribute('aria-pressed', !!on); label();
     timer.classList.toggle('held', !!on);
+  }
+  // One click holds for HOLD_FOR; a click while held lets go. The second click
+  // of a double-click instead pins it: held until the next click, anywhere.
+  function press() {
+    if (!held) return setHold(true);
+    if (!pinned && Date.now() - held < 400) { pinned = true; return label(); }
+    setHold(false);
   }
   function classes() {
     var s = K.pick(), was = taken;
@@ -1324,14 +1347,18 @@ WALL_JS = """<script>
     if (s) K.card(card, s, K.words.hint_wall);
     card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
     timer.classList.toggle('off', taken);
-    if (!taken && was) show(cur);
+    if (taken) showing.textContent = K.words.head;
+    else if (was) show(cur);
   }
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
-  hold.addEventListener('click', function () { setHold(!held); });
+  hold.addEventListener('click', function (ev) { ev.stopPropagation(); press(); });
+  document.addEventListener('click', function () { if (pinned) setHold(false); });
   document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
-  setInterval(function () { if (held) label(); }, 1000);
   setInterval(function () {
-    if (held && Date.now() - held > HOLD_FOR * 1000) setHold(false);
+    if (held && !pinned && Date.now() - held >= HOLD_FOR * 1000) setHold(false);
+    else if (held) label();
+  }, 250);
+  setInterval(function () {
     // The shell reloads now and then, for a change in its modules or classes;
     // never while held.
     if (!held && Date.now() - born > RELOAD * 1000) location.reload();
@@ -1370,7 +1397,7 @@ def wall_files():
 <div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
-  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=heldfor></span></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
+  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" aria-pressed=false title="Hold still for a minute and a half; double-click to hold until the next click"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text></svg></button></nav>
 </footer>
 %s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))),
            e(ww.get("brand", "FCPM")), rail, e(cfg.get("hold", "Hold")),
