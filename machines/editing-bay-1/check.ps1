@@ -36,8 +36,11 @@ foreach ($e in $entries) {
 $dev = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense
 Say ($dev -eq 1) "Developer Mode (symlinks without elevation)" "Settings > System > For developers"
 Say ((git config --global core.autocrlf) -eq "false") "git core.autocrlf false for this user (checkouts arrive LF)" "git config --global core.autocrlf false"
-$pub = @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object NetworkCategory -eq 'Public')
-Say ($pub.Count -eq 0) "no network marked Public" ("Private: " + (($pub | ForEach-Object InterfaceAlias) -join ', '))
+# Reported, not judged. Public is the intended posture (Autumn, 2026-09-26):
+# the network is managed and isolated, what matters is what we do inside, and
+# Windows making a new Public profile for each new gateway is it healing, not
+# drifting.
+Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { "note    network $($_.InterfaceAlias) is $($_.NetworkCategory)" }
 
 # The pool, and what a background session needs before it can start.
 $t = Get-ScheduledTask -TaskName "editing-bay-1 pool" -ErrorAction SilentlyContinue
@@ -55,6 +58,6 @@ Say $trusted "~/code trusted for Claude Code (a background session needs it)" "o
 
 # Where this bay reaches, and what it cannot yet.
 $depot = Test-NetConnection 10.209.1.1 -Port 445 -InformationLevel Quiet -WarningAction SilentlyContinue
-Say $depot "the depot (\\10.209.1.1)" "not on either network here; how this bay joins is Autumn's call"
+Say $depot "the depot (\\10.209.1.1)" "reachable only by opt-in Wi-Fi; Autumn is working on the subnet"
 
 if ($bad) { exit 1 } else { exit 0 }

@@ -1,3 +1,5 @@
+> Block quotations are especially in the authority of the FC Public Media board.
+
 # FCPM editing bay: the project
 
 This directory is the project: an editing bay in Fort Collins Public Media's
@@ -7,6 +9,41 @@ start here. Windows 11 Home, user `fcpub`. It is the strongest machine in the
 studio (i7-13700KF, 24 threads, 32 GB, RTX 4080, 2 TB on `D:`), so it takes
 heavy work when media-node or station-node grants it. No grants have been
 placed yet.
+
+> From the board:
+> 
+> You're on the FCPM Secretary (Autumn's) credentials as we move into
+> looking at what board-provisioned credentials can/should/must do.
+> 
+> She (I) sits on the boards of nonprofits: NCCV, FCPM, and potentially FCR
+> with another FCPM board member. Her open-source work is FCCN-ANTIBODY.
+> She operates a static host via Cloudflare SaaS built geographically.
+>
+> station-node is discoverywritten.com's version of your media-node.
+> You are fcpublicmedia.org's LAN services. We have a mission to leave
+> behind the durable malleable A11Y tools that reach workflow itself
+> for a non-technical board into the future, by their superceding authority.
+>
+> station-node runs an origin/ at their root, which we intend to do too.
+> The conceipt of the origin is that we will be managing physical-space
+> pull request branches from QR comms, and GitHub will be a satellite
+> we merge to us and we fast-forward them.
+> 
+> Bylaws allow 2 terms of 2 years per. Her first began September 2025.
+>
+> station-node vacate date: TBD
+
+
+## Working in git
+
+> 0. Use worktrees via refs/
+> 0. Eagerly consume ALL submodule updates, but keep bare things bare
+> 0. Test tracked PRs when new turns start.
+> 1. Feature branch
+> 2. Make .pr (ignored machine-globally) contain the plan progression
+> 3. Commit as we go
+> 4. Revise .pr steps ahead as we go; the progressive goal is visible and malleable
+> 5. Push 
 
 ## What we own
 
@@ -91,8 +128,8 @@ until it runs something that has to be rebased under it.
 - Peers over Remote Control: `kiosk` (media-node) and `digitization`
   (station-node). They appear in the session list only while this session has
   Remote Control on.
-- **The depot is not reachable from here yet.** Ethernet is the building's network and the
-  Wi-Fi is the guest network; the depot is `10.209.1.1`, on
+- **The depot is not reachable from here yet.** Ethernet is `10.1.10.x` and the
+  Wi-Fi is the guest network (`192.168.3.x`); the depot is `10.209.1.1`, on
   neither. Media-node reaches it wired as `10.209.1.x`. How this bay joins is
   Autumn's call.
 - Surprises are media-node's to log (`machines/kiosk-1/gotcha`), or this

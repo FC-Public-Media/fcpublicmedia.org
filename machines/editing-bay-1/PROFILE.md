@@ -16,7 +16,7 @@ Windows 11 Home, and the questions that draft asked are answered below.
 | system | Windows 11 Home. i7-13700KF (24 threads), 32 GB, RTX 4080, 2 TB on `D:` |
 | user | one local account. No administrator is assumed for anything below |
 | shells | Git Bash (with Git) and Windows PowerShell 5.1. `python` on PATH is the Store stub |
-| network | Ethernet on the building's network, marked Private; the guest Wi-Fi. Neither reaches the depot at `10.209.1.1` |
+| network | Ethernet on the building's managed network, and the guest Wi-Fi. Public is the intended category: the network is isolated, and what matters is what we do inside. The depot at `10.209.1.1` is reachable only by opt-in Wi-Fi while its subnet is worked on |
 | the repository | read in `~/code/refs/`, changed in `~/code/work/REPO@BRANCH` (`code/AGENTS.md`) |
 | screens | two HP E273s at the desk, and the rolling TV (`../../instruments/roller-tv/`) |
 | not ours | the OBS in Program Files, the browsers' profiles, display settings. People sit down to this machine every week |
@@ -30,6 +30,7 @@ A folder here is a claim to have the thing it names (`../README.md`).
 | `names` | what the machine answers to |
 | `MANIFEST` | what `../sync` carries of this machine's home: the `~/code` root |
 | `code/` | that root, carried: `AGENTS.md`, `CLAUDE.md`, `bin/refs`, `bin/pool.ps1`, `refs.wanted` |
+| `home/git/ignore` | the user's global git ignore: `.pr`, the branch's plan, stays out of every repository. This repository tracks its own `.pr`, which an ignore cannot reach |
 | `gear.yml` | what the crew stands on here. Replaces `../gear.yml` whole |
 | `check.ps1` | what files cannot say: gear present, Developer Mode, line endings, the pool's task, folder trust, the depot. Changes nothing |
 | `bay/` | one record per payload the bay took in |
@@ -78,6 +79,7 @@ administrator except where it says so.
   a session.
 - **`bin/refs` is the media node's**, one line apart (`REF` is `refs/` here).
   Two copies drift. It belongs somewhere both machines read it from.
-- **The depot.** How this bay joins the network it is on.
+- **The depot.** Reachable only by the opt-in Wi-Fi for now; the subnet is
+  being worked on.
 - **Which profile is worn is committed here for the first time.** Merging this
   is the decision that `EDIT2` is editing bay 1.

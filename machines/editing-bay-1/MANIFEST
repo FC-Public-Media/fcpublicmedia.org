@@ -33,3 +33,6 @@ mirror  code/bin/pool.ps1      code/bin/pool.ps1
 mirror  code/refs.wanted       code/refs.wanted
 
 clone   code/refs.wanted       code/refs
+
+# Machine-global git ignores: `.pr` stays out of every repository here.
+mirror  home/git/ignore        .config/git/ignore
