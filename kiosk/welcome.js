@@ -24,11 +24,36 @@
 //
 // One assignment and nothing else. No logic, no fetch, no side effects.
 window.FCPM_KIOSK = {
-  "revision": "803f8df90221",
+  "revision": "aea0eb7325bd",
   "place": "Fort Collins Public Media",
   "room": "the welcome desk",
   "greeting": "Welcome in. Scan the code to check in, and help yourself to the guest Wi-Fi — there is nothing to sign up for.",
   "panels": [
+    {
+      "panel": "On now",
+      "takeover": true,
+      "classes": {
+        "source": "file",
+        "leadMinutes": 90,
+        "lateMinutes": 45,
+        "sessions": [
+          {
+            "title": "Podcasting 101",
+            "starts": "2026-08-11T18:00:00-06:00",
+            "ends": "2026-08-11T20:00:00-06:00",
+            "room": "Podcast Studio",
+            "summary": "Plan, record, and publish an episode. Bring an idea; leave with something people can listen to."
+          },
+          {
+            "title": "Social Media Marketing 101",
+            "starts": "2026-08-26T18:00:00-06:00",
+            "ends": "2026-08-26T20:00:00-06:00",
+            "room": "Video Studio",
+            "summary": "How to get the thing you made in front of people who want to see it."
+          }
+        ]
+      }
+    },
     {
       "panel": "Checking in",
       "say": "new.fcpublicmedia.org/check-in/",

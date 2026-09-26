@@ -61,10 +61,12 @@ not have. See `revision()`.
 """
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -139,7 +141,7 @@ JS_HEADER = """\
 
 
 def load(path):
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     return yaml.safe_load(text) or {}
 
 
@@ -152,6 +154,10 @@ def read_sources():
         "org": load(DATA / "org.yml"),
         "wifi": load(DATA / "wifi.yml"),
         "checkin": load(DATA / "checkin.yml"),
+        "classes": load(DATA / "classes.yml"),
+        "calendar": json.loads((DATA / "calendar.json").read_text(encoding="utf-8"))
+        if (DATA / "calendar.json").exists()
+        else {},
     }
 
 
@@ -226,7 +232,98 @@ def panel_from_checkin(src, panel):
     return out
 
 
-SOURCES = {"wifi": panel_from_wifi, "checkin": panel_from_checkin}
+def iso_with_offset(value, what):
+    """An ISO 8601 time that says which zone it is in, or a refusal.
+
+    YAML reads `2026-08-11T18:00:00-06:00` as a datetime and JSON leaves it a
+    string; both come out the same. A time with no offset is read by a browser
+    as the viewer's own zone, which on a studio screen is merely wrong, and
+    silently (site/_data/classes.yml says the same about the website).
+    """
+    if hasattr(value, "isoformat"):
+        if getattr(value, "tzinfo", None) is None:
+            raise SystemExit("error: %s has no UTC offset: %s" % (what, value))
+        return value.isoformat()
+    text = str(value or "")
+    if not re.search(r"(Z|[+-]\d\d:\d\d)$", text):
+        raise SystemExit("error: %s has no UTC offset: %r" % (what, text))
+    return text
+
+
+def panel_from_classes(src, panel):
+    """The class on now, or next. The schedule, never the verdict.
+
+    WHICH CLASS IS ON IS DECIDED BY THE SCREEN'S CLOCK, NOT HERE
+    ------------------------------------------------------------
+    This carries the schedule and the two windows; the renderer asks
+    `pickSession` in site/assets/js/classes.js, which is what the homepage and
+    the check-in page ask, so a screen and the website can never disagree about
+    whether a class is on. `classes` below is exactly the config that function
+    takes. Deciding "now" here would stamp the artifact with the time it was
+    built, and it would churn every minute (see `revision()`).
+
+    The schedule comes from where the site takes it, in the same order
+    (site/_includes/class-config.html): calendar.json when it has sessions,
+    which the media node is to keep current (docs/KIOSK.md), and
+    classes.yml when it does not. A change there changes `revision`, and a
+    screen reloads.
+
+    ONLY WHAT A STRANGER MAY READ. Title, room, times and summary: the fields
+    the public website already shows. Nothing else in a session is copied,
+    whatever the calendar grows, because this repository is public.
+    """
+    calendar = src.get("calendar") or {}
+    classes = src.get("classes") or {}
+    if calendar.get("sessions"):
+        origin, sessions = "calendar", calendar["sessions"]
+    else:
+        origin, sessions = "file", classes.get("sessions") or []
+
+    out_sessions = []
+    for s in sessions:
+        if s.get("cancelled"):
+            continue
+        title = " ".join(str(s.get("title") or "").split())
+        if not title:
+            raise SystemExit("error: a class session in %s has no title" % origin)
+        out_sessions.append(
+            {
+                "title": title,
+                "starts": iso_with_offset(s.get("starts"), "%r starts" % title),
+                "ends": iso_with_offset(s.get("ends"), "%r ends" % title),
+                "room": " ".join(str(s.get("room") or "").split()),
+                "summary": " ".join(str(s.get("summary") or "").split()),
+            }
+        )
+    # By the instant, not the string: calendar.json is in UTC and classes.yml
+    # in local time, whose offset moves at daylight saving.
+    out_sessions.sort(
+        key=lambda s: datetime.datetime.fromisoformat(s["starts"].replace("Z", "+00:00"))
+    )
+
+    out = {
+        "panel": panel["panel"],
+        # While a class is soon or on, this panel is the screen: the main area
+        # on the rolling TV, the top of the welcome desk. Otherwise it is one
+        # line, the next class. Autumn, 2026-09-26.
+        "takeover": bool(panel.get("takeover", True)),
+        "classes": {
+            "source": origin,
+            "leadMinutes": int(classes.get("lead_minutes", 90)),
+            "lateMinutes": int(classes.get("late_minutes", 45)),
+            "sessions": out_sessions,
+        },
+    }
+    if panel.get("note"):
+        out["note"] = " ".join(panel["note"].split())
+    return out
+
+
+SOURCES = {
+    "wifi": panel_from_wifi,
+    "checkin": panel_from_checkin,
+    "classes": panel_from_classes,
+}
 
 
 def build_panel(src, panel):
@@ -425,7 +522,7 @@ def main(argv=None):
         for path, body in wanted:
             if not path.exists():
                 stale.append("%s does not exist" % path.relative_to(REPO))
-            elif path.read_text() != body:
+            elif path.read_text(encoding="utf-8") != body:
                 stale.append("%s is stale" % path.relative_to(REPO))
         if stale:
             print(
@@ -443,7 +540,9 @@ def main(argv=None):
 
     ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
     for path, body in wanted:
-        path.write_text(body)
+        # UTF-8 and LF on every platform. Left to the default, Windows writes
+        # its code page and CRLF, and the em dashes arrive as mojibake.
+        path.write_text(body, encoding="utf-8", newline="\n")
         print("Wrote %s" % path.relative_to(REPO))
         if not committed(path):
             print("  NOT YET COMMITTED. A kiosk reads it off disk, so commit it.")
