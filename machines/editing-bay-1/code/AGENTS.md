@@ -91,8 +91,8 @@ until it runs something that has to be rebased under it.
 - Peers over Remote Control: `kiosk` (media-node) and `digitization`
   (station-node). They appear in the session list only while this session has
   Remote Control on.
-- **The depot is not reachable from here yet.** Ethernet is `10.1.10.x` and the
-  Wi-Fi is the guest network (`192.168.3.x`); the depot is `10.209.1.1`, on
+- **The depot is not reachable from here yet.** Ethernet is the building's network and the
+  Wi-Fi is the guest network; the depot is `10.209.1.1`, on
   neither. Media-node reaches it wired as `10.209.1.x`. How this bay joins is
   Autumn's call.
 - Surprises are media-node's to log (`machines/kiosk-1/gotcha`), or this
