@@ -89,11 +89,16 @@ stale) is fixed in the recipe, not logged.
 ## Open
 
 - **Waking an attendant.** The pool (`bin/pool.ps1` on editing bay 1, `door.py
-  sessions` on the media node) can hold one idle, but nothing can call it yet. The
-  likely shape is a signal on an `attendant` channel that it tails while it
-  runs. The channel is written to whether anyone is listening or not, and
-  nothing promises that one is. That is the loudspeaker, and it is not
-  designed here.
+  sessions` on the media node) can hold one idle, but nothing can call it yet.
+  The shape is a signal on an `attendant` channel: the loudspeaker, designed in
+  station-node's `docs/the-antenna.md` (its PR #174). A signal has no
+  recipient, so it is written whether anyone is listening or not, and a
+  daemon can commit it even though only a seated agent can send a message.
+  **What is missing is the watcher.** A commit wakes nobody. Something has to
+  watch the channel's ref and start a session when it moves, and that is a
+  job the node declares for its own pool (a `kind:` in station-node's
+  `bin/services`), not a property of the channel. A node that only tails a
+  channel reads the same format and starts nothing.
 - **A local copy of each page.** The wall is written to the depot's share and
   editing bay 1 cannot reach it (`../instruments/README.md`, *Open*). It can
   render one itself (see *How it was followed* in [`wall.md`](wall.md)), with
