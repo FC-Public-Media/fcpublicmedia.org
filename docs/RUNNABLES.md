@@ -72,7 +72,7 @@ by:
   `inside` verb writes only inside the checkout.
 
 The proof record is the host's, beside its payload records
-(`machines/bay/README.md`), because an arrival is a fact about one machine.
+(`machines/BAY.md`), because an arrival is a fact about one machine.
 
 ## Worn by the crew, on purpose
 

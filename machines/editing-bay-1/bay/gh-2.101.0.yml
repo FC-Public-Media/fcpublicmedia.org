@@ -1,5 +1,5 @@
 # A payload the bay has taken in. One file per arrival; the file is the record.
-# See ../../bay/README.md. No procedure script yet: this one was run by hand,
+# See ../../BAY.md. No procedure script yet: this one was run by hand,
 # step by step, and each step is in the run log.
 
 payload: gh

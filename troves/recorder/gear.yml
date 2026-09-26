@@ -1,0 +1,46 @@
+# gear.yml — the recorder trove's gear. See README.md.
+#
+# The same fields as ../../machines/gear.yml, which are station-node's. What is
+# different is the provisioner: this gear is not winget's, it is the bay's.
+#
+# PRESENCE IS NOT DECLARED HERE. Whether it is installed on a host is
+# discovered by the procedure's `check`, never written.
+
+version: 1
+
+gear:
+  - gear: obs-portable
+    for: >
+      The recorder on Windows: what plays a capture deck, a multiviewer or a
+      RØDECaster into files a node catches. A second OBS, beside and never in
+      place of the one people sit down to.
+    platform: windows
+    vendor: OBS Project (github.com/obsproject/obs-studio), GPL-2.0
+
+    # NOT `winget`, and on purpose. winget's OBSProject.OBSStudio is the
+    # installed OBS in Program Files, which is somebody's: its settings live in
+    # %APPDATA%\obs-studio. The portable zip is the only OBS that keeps its
+    # settings to itself, and nothing installs a zip into a folder of ours
+    # except the bay.
+    package: OBS-Studio-<version>-Windows-x64.zip
+    source: https://github.com/obsproject/obs-studio/releases
+    provisioner: bay
+    updates: bay
+    self-update: "off: EnableAutoUpdates=false in config\\obs-studio\\global.ini, asserted by the bay after every install"
+
+    # %LOCALAPPDATA%\<profile>\troves\recorder\obs\ — the prefix says whose code
+    # this is (../README.md, Rules).
+    at: troves\recorder\obs
+    portable: obs_portable_mode.txt
+    launch: --multi --portable --profile fcpm-recorder --collection fcpm-recorder --minimize-to-tray
+
+    restart-tier: app        # only this OBS bounces; the system one is not touched
+    holds: >
+      its own config\ folder: the fcpm-recorder profile and scene collection,
+      and the websocket's settings. The password is in Credential Manager under
+      fcpm-recorder:obs-websocket.
+    websocket: 4456          # the system OBS has 4455
+    grants: >
+      one, placed at the desk at install: a Windows Firewall rule BLOCKING
+      inbound for this obs64.exe. Loopback is not filtered, so the node on this
+      machine still reaches the websocket and nothing else can.

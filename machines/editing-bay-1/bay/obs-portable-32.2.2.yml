@@ -1,0 +1,49 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../BAY.md. The procedure is ../../../troves/recorder/bay/obs-portable.ps1.
+#
+# This folder is the first claim editing bay 1's profile makes: that it takes
+# payloads in through the bay. Under ../../README.md, a folder is a claim to
+# have the thing it names.
+
+payload: obs-portable
+version: 32.2.2
+replaces: nothing        # the first recorder on this host
+vendor: OBS Project (github.com/obsproject/obs-studio), GPL-2.0
+role: the recorder trove's OBS, beside and never in place of the OBS people operate
+trove: recorder
+
+received: 2026-09-25
+source: https://github.com/obsproject/obs-studio/releases/download/32.2.2/OBS-Studio-32.2.2-Windows-x64.zip
+size: 187851583
+
+verified:
+  sha256: 4d6e40e3ab155f56b30de517380566a206d74b63cdf5ad49aa596924768f97e1  # matches GitHub's published asset digest
+  core: >
+    obs64.exe, obs.dll, obs-frontend-api.dll, obs-websocket.dll and
+    obs-ffmpeg.dll: Authenticode valid, signed OBS Project
+  census: "all 86 executables and libraries in the zip: valid, OBS Project"
+  # For comparison, the system OBS in Program Files (32.1.1, winget) carries 21
+  # unsigned files and three signed by plugin authors. None of them came in
+  # this zip. The gate is on the core; the rest is reported, not refused,
+  # because a gate that rejects what Windows runs would refuse OBS itself.
+
+staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\obs-portable-32.2.2"
+portable: obs_portable_mode.txt, written at stage, beside bin\
+install-to: "%LOCALAPPDATA%\\editing-bay-1\\troves\\recorder\\obs"
+restart-tier: app
+cover: none
+grants: >
+  one, not yet placed: a Windows Firewall rule blocking inbound for the
+  installed obs64.exe. obs-websocket cannot be told to listen on loopback only,
+  and the firewall does not filter loopback, so a block leaves it reachable from
+  this host alone. Placed at the desk, by an administrator, before the websocket
+  is enabled. `obs-portable.ps1 check` prints the command.
+
+settings-carried: EnableAutoUpdates=false in the portable copy's global.ini,
+  asserted at install, so the bay is the only way a new version arrives.
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage)"
+
+# staged -> installed | rolled-back | installed-outside, as it becomes known.
+# Stopped here on purpose: install and confirm wait for Autumn to read this.
+status: staged
