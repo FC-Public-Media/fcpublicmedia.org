@@ -18,7 +18,8 @@ who runs a node** (station-node's `docs/the-antenna.md`: *each operator mounts
 their own antenna*; `SEATS.md` in library.anecdote.channel: *the constituency
 is the operator's*). An "operator seat" would read as hers. *Attendant* is the
 recognised word for somebody on the floor who helps a person use what is
-already there. Not settled: if the word changes, it changes here first.
+already there. **Settled** (Autumn, 2026-09-26): "attendant is fine to
+confirm. It was on my mind as well."
 
 ## Where it sits among the seats
 
