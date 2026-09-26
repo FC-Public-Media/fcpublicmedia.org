@@ -392,6 +392,9 @@ switch ($Verb) {
     if (-not $p.WaitForExit(20000)) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(5000) | Out-Null; $how = 'killed after 20 s' }
     if (-not $p.HasExited) { Fail "pid $($p.Id) is still running" }
     Remove-Item $PidFile
+    # A CONTRACT: machines/editing-bay-1/GRANTS expects the exact text
+    # "how":"closed" in obs.ndjson for the exercise proof, so a stop that had to
+    # kill is not proven. Keep the key, the value and ConvertTo-Json -Compress.
     LogLine 'stopped' @{ pid = $p.Id; how = $how; windows = $n }
     Say "stopped   pid $($p.Id) ($how)"
 }
