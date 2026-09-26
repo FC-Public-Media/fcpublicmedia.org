@@ -380,6 +380,11 @@ website reads the same file (`site/_includes/class-config.html`), and wins over
 
 - **Every time carries its offset.** The generator refuses one without.
 - **`cancelled: true`** keeps a session in the file and off every screen.
+  `sync-calendar.py` does not look at an event's `STATUS` yet, so today a
+  cancelled calendar event would still be shown. Dropping it at the sync, or
+  marking it, is the API's to decide; the generator honours the mark.
+- Times may be in any offset. `sync-calendar.py` writes UTC; `classes.yml` is
+  local. Sessions are ordered by the instant, not the text.
 - **Nothing about people.** No attendees, no organizer. The generator copies
   title, room, times and summary and nothing else, whatever the file grows,
   and a test holds it to that; but the file itself is public too, so it

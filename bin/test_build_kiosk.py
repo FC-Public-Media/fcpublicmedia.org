@@ -434,6 +434,15 @@ class TestTheClassesPanel(unittest.TestCase):
         titles = [s["title"] for s in self.build(calendar=cal)["classes"]["sessions"]]
         self.assertEqual(titles, ["Sooner", "Later"])
 
+    def test_sorted_by_the_instant_not_the_string(self):
+        """calendar.json is UTC; 18:30 in Denver is after 00:00 UTC next day."""
+        cal = {"sessions": [
+            session("Second", "2026-10-07T01:00:00+00:00", ends="2026-10-07T02:00:00+00:00"),
+            session("First", "2026-10-06T18:30:00-06:00", ends="2026-10-06T19:00:00-06:00"),
+        ]}
+        titles = [s["title"] for s in self.build(calendar=cal)["classes"]["sessions"]]
+        self.assertEqual(titles, ["First", "Second"])
+
 
 class TestMalformedContent(unittest.TestCase):
     def test_unknown_source_is_named_rather_than_ignored(self):

@@ -61,6 +61,7 @@ not have. See `revision()`.
 """
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -294,7 +295,11 @@ def panel_from_classes(src, panel):
                 "summary": " ".join(str(s.get("summary") or "").split()),
             }
         )
-    out_sessions.sort(key=lambda s: s["starts"])
+    # By the instant, not the string: calendar.json is in UTC and classes.yml
+    # in local time, whose offset moves at daylight saving.
+    out_sessions.sort(
+        key=lambda s: datetime.datetime.fromisoformat(s["starts"].replace("Z", "+00:00"))
+    )
 
     out = {
         "panel": panel["panel"],
