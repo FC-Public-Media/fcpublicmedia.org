@@ -1318,6 +1318,13 @@ WALL_JS = """<script>
       fill.style.left = Math.min(100, x) + '%%';
     } else {
       knob.style.opacity = 0; fill.style.left = '100%%';
+      // The shell reloads now and then, for a change in its modules or
+      // classes, but only here, as a turn ends, and straight into the next
+      // module: mid-turn, it restarted the timer on the module already up.
+      if (!held && Date.now() - born > RELOAD * 1000) {
+        try { history.replaceState(null, '', qs + '#' + M[(cur + 1) %% M.length].name); } catch (e) {}
+        return location.reload();
+      }
       show(cur + 1); t0 += GAP;                       // a breath before it creeps again
     }
     requestAnimationFrame(frame);
@@ -1364,11 +1371,6 @@ WALL_JS = """<script>
     if (held && !pinned && Date.now() - held >= HOLD_FOR * 1000) setHold(false);
     else if (held) label();
   }, 250);
-  setInterval(function () {
-    // The shell reloads now and then, for a change in its modules or classes;
-    // never while held.
-    if (!held && Date.now() - born > RELOAD * 1000) location.reload();
-  }, 10000);
   show(find(location.hash.slice(1)));
   classes(); setInterval(classes, 15000);
   requestAnimationFrame(frame);
