@@ -4,3 +4,4 @@
 # holder  blob  date  ran  by
 troves/recorder/bay/obs-portable.ps1 6cce422fca2a 2026-09-26 ran:check by:code-e3
 troves/recorder/bay/obs-portable.ps1 33e3fa6c7be6 2026-09-26 ran:check by:code-e3
+troves/recorder/obs.ps1 772d4cf32e53 2026-09-26 ran:status exercised:start;status;record+start;status;record+stop;stop by:code-e3
