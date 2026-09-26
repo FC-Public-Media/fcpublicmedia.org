@@ -91,7 +91,8 @@ deferred.
   full height of the footer, flush against each other with no gaps. Each is
   a tab turned -90 degrees, so its name reads bottom to top. Then it's skewed
   so its bottom pulls left: its top and bottom stay level with the screen,
-  and only its sides lean. The name itself stays upright. Names only, no
+  and only its sides lean. The name follows the lean, turned rather than
+  sheared. Names only, no
   numbers. Fifteen fit across. The one that's up is signal yellow. The last
   one used is signal at 30%, so the way back is easy to see. The rest are the
   dark slate, told apart by a hairline. There's no yellow text in the footer.

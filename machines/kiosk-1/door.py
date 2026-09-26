@@ -1255,15 +1255,15 @@ main li { margin:.6vh 0; }
    against each other, no gaps. Each strip is a tab turned -90 degrees (its
    name reads bottom to top), then skewed so its bottom pulls left: its top
    and bottom stay level with the screen, only its sides lean. The skew is
-   the strip's alone (a pseudo-element behind the name), so the name stays
-   upright. Up is signal; the one before it is signal at 30%%; the rest are
+   the strip's alone (a pseudo-element behind the name); the name is turned
+   the same 8 degrees, so it runs along the strip without being sheared. Up is signal; the one before it is signal at 30%%; the rest are
    the dark slate, told apart by a hairline (Autumn, 2026-09-26). */
 footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; }
 .tabs { display:flex; align-items:stretch; }
 .tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
   padding:2.2vh .6vh; border:0; background:transparent; cursor:pointer; font:inherit; font-size:1.6vh;
   font-weight:650; line-height:1.2; white-space:nowrap; color:var(--soft); }
-.tabs button span { display:block; max-height:18vh; overflow:hidden; text-overflow:ellipsis; }
+.tabs button span { display:block; max-height:18vh; overflow:hidden; text-overflow:ellipsis; rotate:8deg; }
 .tabs button::before { content:""; position:absolute; z-index:-1; inset:-1px 0; background:var(--ink);
   box-shadow:inset 1px 0 0 var(--rule); transform:skewX(-8deg); }
 .tabs button.recent { color:var(--paper); }
