@@ -42,8 +42,32 @@ grants: >
 settings-carried: EnableAutoUpdates=false in the portable copy's global.ini,
   asserted at install, so the bay is the only way a new version arrives.
 
-run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage)"
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage on 2026-09-25; verify, install, confirm on 2026-09-26)"
 
 # staged -> installed | rolled-back | installed-outside, as it becomes known.
-# Stopped here on purpose: install and confirm wait for Autumn to read this.
-status: staged
+status: installed
+
+# Installed 2026-09-26, after Autumn read this record (#144 merged), by the
+# procedure: `verify` again first (the zip still matched), then `install` and
+# `confirm`, each logged.
+installed:
+  at: "%LOCALAPPDATA%\\editing-bay-1\\troves\\recorder\\obs"
+  obs64: 32.2.2
+  portable: "true, in OBS's own log: Portable mode: true"
+  updates: EnableAutoUpdates=false in its config\obs-studio\global.ini
+  rollback-copy: none, because there was no previous copy. The next arrival cellars this one.
+
+confirmed:
+  ran: yes, and wrote its settings only under its own config\ folder
+  theirs-untouched: "yes: %APPDATA%\\obs-studio listed the same before and after (names, sizes, times)"
+  crashes: none
+  nvenc: "13.0 on the RTX 4080: H.264, HEVC and AV1 encoders loaded"
+  # NOT A PROGRAM UPDATE, written down so it is not mistaken for one. On
+  # start, OBS fetched two data files: rtmp-services' services.json (the list
+  # of streaming services) and whatsnew.json. EnableAutoUpdates governs its
+  # binaries, not these. Neither changes what runs.
+  network-at-start: services.json (rtmp-services v293) and whatsnew.json
+
+# Still one, still not placed: the inbound block rule. It is not needed until
+# the websocket is enabled; `obs-portable.ps1 check` prints the command.
+grant-pending: inbound block for the installed obs64.exe
