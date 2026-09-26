@@ -62,12 +62,37 @@ Open with bubbles: the frame format (anecdote.channel's carrier, fountain-coded,
 or the you engine's stored GIF), whether a payload is encrypted to recipients or
 meant for whoever is in the room, and where the private source lives.
 
+## `learn.`: the you side, for transient members
+
+Autumn, 2026-09-26: *"a learn subdomain, which can be treated like a you
+branch that has new scope applied to transient members."* A class's attendees
+are members for the length of a class: they need a teacher's materials and to
+send things back, and not the member wizards. `learn.` is where that scope
+lives, and it is the natural audience for a teacher's materials: encrypted to
+a class's roster, not published.
+
+**One decide-once question comes with it.** `MEMBER-SHOWS.md` fixes the passkey
+origin (the WebAuthn RP ID) at `you.fcpublicmedia.org`. A browser accepts a
+passkey only on its RP ID or a subdomain of it, so a passkey made on `you.`
+does not work on `learn.fcpublicmedia.org` by itself. The ways through, to be
+chosen before anybody enrolls:
+
+- **`learn.` names itself as a related origin of `you.`.** WebAuthn's related
+  origin requests: `you.` serves `/.well-known/webauthn` listing `learn.`. One
+  passkey for both. Browser support is recent and must be measured on the
+  phones people actually carry.
+- **`learn.` is a label under `you.`** (`learn.you.fcpublicmedia.org`), as a
+  show is (`<show>.you.`). Works everywhere, and says outright that `learn.` is
+  a scope of the member area.
+- **`learn.` keeps its own passkeys.** A transient member enrolls there, and
+  becoming a full member is a second enrollment on `you.`.
+
 ## The wizards we already know we want
 
 | wizard | tier | returns | notes |
 |---|---|---|---|
 | check-in | anyone | a visit | becomes a wizard, **on the you side**. Today it is `site/check-in.md` + `checkin.js`: local-only, geofenced, makes no network request |
-| class registration | anyone / member | a registration, a passkey signature, a Stripe payment | membership status is known from when the passkey was accepted; recovery is out of band |
+| class registration | anyone / member, onto `learn.` | a registration, a passkey signature, a Stripe payment | membership status is known from when the passkey was accepted; recovery is out of band |
 | start a show | member | a control branch, a starter workspace | `docs/MEMBER-SHOWS.md` stage 3; "still needs an owner on our side" |
 | a guest's own form | anyone | whatever shape the form declares | somebody brings a document or a sign-up list; we show it as a wizard and not everyone has to fill it in |
 | `you + greet` | anyone | a bound key | built, in you.anecdote.channel |
