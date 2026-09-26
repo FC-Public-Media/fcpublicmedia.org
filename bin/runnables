@@ -1,0 +1,95 @@
+#!/bin/sh
+# runnables — the census: every runnable this checkout carries, and what each claims.
+#
+#   bin/runnables              every runnable file, its verbs, and what they default to
+#   bin/runnables undeclared   runnable files with no claim at all
+#   bin/runnables check        claims for files that are not here. Exit 1 if any
+#
+# THIS IS THE OSTENSIBLY AVAILABLE LIST, AND BEING ON IT GRANTS NOTHING. It
+# shows what the repository carries (machines/RUNNABLES says what each verb
+# claims to do) so a crew's answer can be read against it. Nothing here writes a
+# setting. docs/RUNNABLES.md.
+#
+# The identity it prints is the file's git blob at HEAD: the same bytes on every
+# host that has this commit. A file changed since HEAD is marked, because what
+# a claim was proven against is the committed file, never the working copy.
+#
+# Read-only. Git Bash on Windows; no Python, because a bay may not have one yet.
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CLAIMS="$ROOT/machines/RUNNABLES"
+cd "$ROOT" || exit 1
+
+# Where runnables live. A trove's bay procedures are the recorder's and the
+# screens' own; the rest are the repository's.
+discover() {
+  git ls-files -- bin site/bin machines 'troves/*/bay' worker/bin 2>/dev/null |
+  while IFS= read -r f; do
+    case "$f" in
+      *.py|*.ps1|*.sh) echo "$f" ;;
+      *.md|*.yml|*.yaml|*.json|*.log|*.txt|*/names|*/RUNNABLES|*/GRANTS|*/MANIFEST) ;;
+      *) [ "$(head -c2 "$f" 2>/dev/null)" = '#!' ] && echo "$f" ;;
+    esac
+  done | sort -u
+}
+
+# Claims, one per line: holder|run|shape|class|says, trimmed.
+claims() {
+  sed -e 's/#.*$//' "$CLAIMS" | awk -F'|' 'NF >= 5 {
+    for (i = 1; i <= NF; i++) { gsub(/^[ \t]+|[ \t\r]+$/, "", $i) }
+    print $1 "|" $2 "|" $3 "|" $4 "|" $5 }'
+}
+
+default_for() {
+  case "$1" in
+    read|inside) echo allow ;;
+    outside|desk) echo ask ;;
+    secret|service) echo deny ;;
+    *) echo "?" ;;
+  esac
+}
+
+identity() {
+  blob=$(git rev-parse --short=12 "HEAD:$1" 2>/dev/null || echo "not-committed")
+  if ! git diff --quiet HEAD -- "$1" 2>/dev/null; then blob="$blob+modified"; fi
+  echo "$blob"
+}
+
+cmd=${1:-list}
+case "$cmd" in
+  list)
+    all=$(discover); c=$(claims)
+    n=0; u=0
+    for f in $all; do
+      n=$((n + 1))
+      mine=$(printf '%s\n' "$c" | awk -F'|' -v f="$f" '$1 == f')
+      if [ -z "$mine" ]; then u=$((u + 1)); continue; fi
+      printf '%s  %s\n' "$f" "$(identity "$f")"
+      printf '%s\n' "$mine" | while IFS='|' read -r h run shape class says; do
+        printf '    %-6s %-8s %-22s %s\n' "$(default_for "$class")" "$class" "$shape" "$says"
+      done
+    done
+    echo
+    echo "$n runnable files; $((n - u)) claimed, $u undeclared (bin/runnables undeclared)."
+    ;;
+  undeclared)
+    c=$(claims | cut -d'|' -f1 | sort -u)
+    discover | while IFS= read -r f; do
+      printf '%s\n' "$c" | grep -qxF "$f" || printf '%s  %s\n' "$f" "$(identity "$f")"
+    done
+    ;;
+  check)
+    bad=0
+    for h in $(claims | cut -d'|' -f1 | sort -u); do
+      if [ ! -f "$h" ]; then echo "claimed, not here: $h"; bad=1; fi
+    done
+    claims | while IFS='|' read -r h run shape class says; do
+      [ "$(default_for "$class")" = "?" ] && echo "unknown class '$class': $h $shape"
+    done
+    [ $bad = 0 ] && echo "every claim names a file that is here."
+    exit $bad
+    ;;
+  *)
+    sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
