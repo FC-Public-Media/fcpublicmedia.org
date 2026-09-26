@@ -1,5 +1,6 @@
 ---
 title: Check In
+layout: pass
 lede: One tap when you get here. Your visits stay on your own phone.
 ---
 
@@ -34,6 +35,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
     ]
   },
   "historyLimit": {{ ci.history_limit | default: 200 }},
+  "reasons": {{ ci.reasons | jsonify }},
   "location": {
     "required": {{ loc.required | default: false }},
     "latitude": {{ loc.latitude }},
@@ -54,249 +56,159 @@ lede: One tap when you get here. Your visits stay on your own phone.
   </p>
 </noscript>
 
-{% comment %} ------------------------------------------------ class banner {% endcomment %}
 
 {%- comment -%}
-  Unhidden by checkin.js when a class window is open. Same data, same
-  function, same answer as the homepage.
-{%- endcomment -%}
-<div class="class-banner" id="class-banner-root" data-class-banner hidden>
-  <p class="eyebrow" data-class-eyebrow></p>
-  <h2 data-class-title></h2>
-  <p class="lede">
-    <span data-class-when></span>
-    <span class="muted" data-class-room></span>
-  </p>
-  <p data-class-late hidden>Running late? Come anyway &mdash; you can still join.</p>
+  THE PASS. Autumn, 2026-09-26: this is the page a member sees most, on their
+  own phone. It is their pass, it has their name on it, and it does not scroll.
+  So it is three views of one screen each, switched by the address's #:
 
-  {%- comment -%}
-    Before the class starts, "I'm coming" is an expression of intent. It is
-    recorded on this device only — there is nowhere to send it yet. The
-    wording says so rather than implying we received it.
-  {%- endcomment -%}
-  <div data-rsvp-offer hidden>
-    <p>
-      <button class="btn" id="rsvp-button" type="button">I'm planning to come</button>
-    </p>
-    <p class="muted">
-      Noted on this phone. We don't receive it &mdash; check in when you arrive.
-    </p>
-  </div>
+    (none)    the pass: who you are, and checking in
+    #visits   your visits, as a list
+    #device   this phone: its identifier, and keeping or forgetting the list
 
-  <p class="rsvp-noted" data-rsvp-noted hidden>
-    You said you're coming to this. Check in when you get here.
-  </p>
-</div>
-
-{% comment %} ---------------------------------------------------- states {% endcomment %}
-
-<div class="state" data-state="blocked" hidden>
-  <p class="transaction transaction-todo">
-    <b>Your browser is not allowing this page to save anything.</b>
-    <span class="muted">That usually means private browsing. Check-ins are
-    stored on your device, so there is nowhere to put them. Please use the
-    paper log.</span>
-  </p>
-</div>
-
-<div class="state" data-state="idle" hidden>
-  <p>
-    <button class="btn btn-primary btn-big" data-action="check-in" type="button">Check in</button>
-  </p>
-  {% if loc.required %}
-    <p class="muted">
-      We'll check that you're at {{ loc.name }}. If you're not there yet, we'll
-      hold your check-in and finish it when you arrive.
-    </p>
-  {% endif %}
-  {% if ci.identity.mode == "none" %}
-    <p class="muted">{{ ci.identity.anonymous_note | strip_newlines | strip }}</p>
-  {% endif %}
-</div>
-
-<div class="state" data-state="locating" hidden>
-  <p class="lede">Checking where you are&hellip;</p>
-</div>
-
-<div class="state" data-state="far" hidden>
-  <p class="eyebrow">Not yet</p>
-  <h2>You're not at the studio yet</h2>
-  <p class="lede" id="far-distance"></p>
-
-  <p>
-    Your check-in is held and will finish by itself when you get here.
-    <b>Leave this page open</b> &mdash; look down when you walk in and it will
-    be done.
-  </p>
-
-  <p class="hero-actions">
-    <a class="btn btn-primary" id="venue-directions" href="#" target="_blank" rel="noopener">Directions</a>
-    <button class="btn" data-action="check-in" type="button">Check again now</button>
-  </p>
-
-  <p class="muted">
-    {{ loc.name }}<br>{{ loc.address }}
-  </p>
-
-  <p>
-    <button class="btn" id="cancel-pending" type="button">Cancel</button>
-  </p>
-</div>
-
-<div class="state" data-state="denied" hidden>
-  <p class="eyebrow">Location needed</p>
-  <h2>We couldn't check where you are</h2>
-  <p>
-    Checking in needs your location, because it is what tells us you actually
-    arrived. Your position is never sent anywhere &mdash; the page compares it
-    to the studio's address on your own phone, and keeps only the distance.
-  </p>
-  <p class="muted">
-    Turn location back on for this site in your browser settings, then try
-    again. Or use the paper log by the door.
-  </p>
-  <p>
-    <button class="btn" data-action="check-in" type="button">Try again</button>
-  </p>
-</div>
-
-<div class="state" data-state="error" hidden>
-  <h2>That didn't work</h2>
-  <p class="muted" id="error-detail"></p>
-  <p>
-    <button class="btn" data-action="check-in" type="button">Try again</button>
-  </p>
-</div>
-
-<div class="state" data-state="done" hidden>
-  <p class="eyebrow">Checked in</p>
-  <h2>Welcome.</h2>
-  <p class="lede" id="done-detail"></p>
-  <p class="muted">
-    Anything you add below is saved for next time, and stays on this phone.
-  </p>
-  <p>
-    <button class="btn" id="again-button" type="button">Check in again</button>
-  </p>
-</div>
-
-{% comment %} ------------------------------------------------ your details {% endcomment %}
-
-<h2>Your details</h2>
-
-<p class="muted">
-  Optional, kept on this device, and remembered next time. Nothing here is
-  sent to us.
-</p>
-
-<div class="field">
-  <label for="profile-name">Name</label>
-  <input type="text" id="profile-name" autocomplete="name" placeholder="Optional">
-</div>
-
-<div class="field">
-  <label for="profile-reason">What brings you in?</label>
-  <select id="profile-reason">
-    <option value="">Not saying</option>
-    {% for reason in ci.reasons %}
-      <option value="{{ reason }}">{{ reason }}</option>
-    {% endfor %}
-  </select>
-</div>
-
-<div class="field">
-  <label for="profile-note">Anything else</label>
-  <input type="text" id="profile-note" placeholder="Optional">
-</div>
-
-{% comment %} ------------------------------------------------------- email {% endcomment %}
-
-{%- comment -%}
-  Two states, and neither is an error. Most people will type an address and
-  never have a confirmed one; that is a normal, useful outcome. Arriving with a
-  claim link is the upgrade, not the expectation.
+  No explanatory text. The reason for a visit is not asked for: it comes from
+  the code that was scanned (/check-in/?reason=Class) or from a class being
+  on, and the pass shows it.
 {%- endcomment -%}
 
-<h2>Your email</h2>
+{% comment %} ------------------------------------------------------ the pass {% endcomment %}
 
-<p class="muted" id="claim-status" role="status" aria-live="polite" hidden></p>
+<section class="pass-view pass" data-view="pass" aria-label="Your pass">
 
-<div data-claim="verified" hidden>
-  <ul class="rows">
-    <li><b>Confirmed</b> <span><code id="claim-email"></code></span></li>
-    <li><b>Good until</b> <span id="claim-expires"></span></li>
-  </ul>
-  <p class="muted">
-    {{ id.issuer }} sent this address a link and this device opened it. The
-    confirmation is stored here and can be checked by anyone we hand it to
-    &mdash; it isn't just a note this page wrote to itself.
-  </p>
-  <p>
-    <button class="btn" id="claim-forget" type="button">Remove it</button>
-  </p>
-</div>
+  <div class="pass-card">
+    <span class="pass-mark" aria-hidden="true"></span>
+    <label class="visually-hidden" for="profile-name">Name</label>
+    <input class="pass-name" type="text" id="profile-name" autocomplete="name"
+           placeholder="Your name" spellcheck="false">
 
-<div data-claim="none" hidden>
-  <div class="field">
-    <label for="profile-email">Email</label>
-    <input type="email" id="profile-email" autocomplete="email" placeholder="Optional"
-           inputmode="email" autocapitalize="none" spellcheck="false">
+    <div class="pass-email" data-claim="none" hidden>
+      <label class="visually-hidden" for="profile-email">Email</label>
+      <input type="email" id="profile-email" autocomplete="email" placeholder="Email"
+             inputmode="email" autocapitalize="none" spellcheck="false">
+    </div>
+    <p class="pass-email" data-claim="verified" hidden>
+      <span id="claim-email"></span> <span class="pass-chip">Confirmed</span>
+    </p>
+
+    <label class="visually-hidden" for="device-label">This phone's name</label>
+    <input class="pass-device" type="text" id="device-label" placeholder="This phone"
+           autocomplete="off" spellcheck="false">
   </div>
-  <p class="muted">{{ id.unverified_note | strip_newlines | strip }}</p>
-  <p class="muted">
-    Want it confirmed? <a href="/contact/">Ask us</a> and we'll email you a
-    link. Opening it here confirms the address on this device, and opening the
-    same email on another device confirms it there too.
-  </p>
-</div>
 
-{% comment %} ----------------------------------------------------- history {% endcomment %}
+  <div class="pass-now">
+    <p class="pass-status" id="claim-status" role="status" aria-live="polite" hidden></p>
 
-<h2>Your visits</h2>
-<p class="muted" id="checkin-count"></p>
-<p class="muted" id="checkin-empty" hidden>No visits recorded on this device yet.</p>
-<ul class="rows rows-checkin" id="checkin-history"></ul>
+    <div class="class-banner" id="class-banner-root" data-class-banner hidden>
+      <p class="eyebrow" data-class-eyebrow></p>
+      <h2 data-class-title></h2>
+      <p><span data-class-when></span> <span class="muted" data-class-room></span></p>
+      <p data-class-late hidden>Running late? Come anyway.</p>
+      <p data-rsvp-offer hidden>
+        <button class="btn" id="rsvp-button" type="button">I'm planning to come</button>
+      </p>
+      <p class="rsvp-noted" data-rsvp-noted hidden>You're coming. Check in when you get here.</p>
+    </div>
 
-<h2>This device</h2>
+    <div class="state" data-state="blocked" hidden>
+      <h2>This browser won't save anything</h2>
+      <p class="muted">Private browsing? Use the paper log by the door.</p>
+    </div>
 
-<p>
-  This page keeps a list for you, on this device. There is no account and
-  nothing is sent to us. The identifier below is a random number generated the
-  first time you opened this page &mdash; it is not derived from your phone or
-  from you, and deleting it deletes the list with it.
-</p>
+    <div class="state" data-state="idle" hidden>
+      <p class="pass-reason" id="visit-reason" hidden></p>
+      <button class="btn btn-primary btn-big" data-action="check-in" type="button">Check in</button>
+    </div>
 
-<p class="muted">
-  Your list lives on this device only. Open the site on a different phone and
-  it starts a fresh list; the two do not know about each other.
-</p>
+    <div class="state" data-state="locating" hidden>
+      <p class="lede">Checking where you are&hellip;</p>
+    </div>
 
-<ul class="rows">
-  <li><b>Name</b> <span><input type="text" id="device-label" placeholder="My phone" autocomplete="off"></span></li>
-  <li><b>Identifier</b> <span><code id="device-id"></code></span></li>
-  <li><b>First used</b> <span id="device-since"></span></li>
-</ul>
+    <div class="state" data-state="far" hidden>
+      <h2>Not at the studio yet</h2>
+      <p class="muted" id="far-distance"></p>
+      <p class="muted">Held. Leave this open and it finishes when you arrive.</p>
+      <p class="pass-actions">
+        <a class="btn btn-primary" id="venue-directions" href="#" target="_blank" rel="noopener">Directions</a>
+        <button class="btn" data-action="check-in" type="button">Check again</button>
+        <button class="btn" id="cancel-pending" type="button">Cancel</button>
+      </p>
+    </div>
 
-<h2>Keeping your history</h2>
+    <div class="state" data-state="denied" hidden>
+      <h2>Location is off</h2>
+      <p class="muted">Turn it on for this site, or use the paper log.</p>
+      <button class="btn" data-action="check-in" type="button">Try again</button>
+    </div>
 
-<p class="muted" id="persist-state"></p>
+    <div class="state" data-state="error" hidden>
+      <h2>That didn't work</h2>
+      <p class="muted" id="error-detail"></p>
+      <button class="btn" data-action="check-in" type="button">Try again</button>
+    </div>
 
-<p>
-  Browsers clear stored data. Safari does it after a stretch without a visit
-  unless this page is on your Home Screen, and clearing your browsing data
-  clears this too. If your visit history matters to you, save a copy.
-</p>
+    <div class="state" data-state="done" hidden>
+      <h2>Welcome.</h2>
+      <p class="muted" id="done-detail"></p>
+      <button class="btn" id="again-button" type="button">Check in again</button>
+    </div>
+  </div>
 
-<p class="hero-actions">
-  <button class="btn" id="export-button" type="button">Save a copy</button>
-  <label class="btn" for="import-input">Restore from a file</label>
-  <input type="file" id="import-input" accept="application/json,.json" hidden>
-</p>
+  <nav class="pass-nav" aria-label="More">
+    <a href="#visits">Visits <span id="checkin-count"></span></a>
+    <a href="#device">This phone</a>
+  </nav>
+</section>
 
-<p class="muted" id="storage-status" role="status" aria-live="polite"></p>
+{% comment %} -------------------------------------------------------- visits {% endcomment %}
 
-<p>
-  <button class="btn" id="forget-button" type="button">Forget this device</button>
-</p>
+<section class="pass-view" data-view="visits" aria-labelledby="visits-title" hidden>
+  <header class="pass-top">
+    <a class="pass-back" href="#" data-back>Pass</a>
+    <h2 id="visits-title">Visits</h2>
+  </header>
+  <div class="pass-scroll">
+    <p class="muted" id="checkin-empty" hidden>No visits yet.</p>
+    <ul class="rows rows-checkin" id="checkin-history"></ul>
+  </div>
+</section>
+
+{% comment %} -------------------------------------------------------- device {% endcomment %}
+
+<section class="pass-view" data-view="device" aria-labelledby="device-title" hidden>
+  <header class="pass-top">
+    <a class="pass-back" href="#" data-back>Pass</a>
+    <h2 id="device-title">This phone</h2>
+  </header>
+  <div class="pass-scroll">
+    <ul class="rows">
+      <li><b>Identifier</b> <span><code id="device-id"></code></span></li>
+      <li><b>First used</b> <span id="device-since"></span></li>
+      <li><b>Kept</b> <span id="persist-state"></span></li>
+    </ul>
+
+    <p class="pass-actions">
+      <button class="btn" id="export-button" type="button">Save a copy</button>
+      <label class="btn" for="import-input">Restore from a file</label>
+      <input type="file" id="import-input" accept="application/json,.json" hidden>
+    </p>
+    <p class="muted" id="storage-status" role="status" aria-live="polite"></p>
+
+    <div data-claim="verified" hidden>
+      <ul class="rows">
+        <li><b>Email confirmed until</b> <span id="claim-expires"></span></li>
+      </ul>
+      <p class="pass-actions">
+        <button class="btn" id="claim-forget" type="button">Remove confirmed email</button>
+      </p>
+    </div>
+    <p class="muted" data-claim="none" hidden>
+      <a href="/contact/">Ask us</a> to confirm your email.
+    </p>
+
+    <p class="pass-actions">
+      <button class="btn" id="forget-button" type="button">Forget this phone</button>
+    </p>
+  </div>
+</section>
 
 <script type="module" src="{{ '/assets/js/checkin.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>

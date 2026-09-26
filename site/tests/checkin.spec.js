@@ -148,56 +148,83 @@ test.describe('check-in', () => {
     expect(ids[0]).not.toEqual(ids[1]);
   });
 
-  test('details are remembered and restored', async ({ page, context }) => {
+  test('the pass is remembered: name, email and the phone', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
 
-    await page.locator('#profile-name').fill('Sam Rivera');
-    await page.locator('#profile-reason').selectOption('Class');
-    await page.locator('#profile-note').fill('Podcasting 101');
+    await page.getByLabel('Name', { exact: true }).fill('Sam Rivera');
+    await page.getByLabel('Email').fill('sam@example.com');
+    await page.getByLabel("This phone's name").fill("Sam's phone");
+    await page.getByLabel("This phone's name").blur();
 
     await page.reload();
 
     await expect(page.locator('#profile-name')).toHaveValue('Sam Rivera');
-    await expect(page.locator('#profile-reason')).toHaveValue('Class');
-    await expect(page.locator('#profile-note')).toHaveValue('Podcasting 101');
+    await expect(page.locator('#profile-email')).toHaveValue('sam@example.com');
+    await expect(page.locator('#device-label')).toHaveValue("Sam's phone");
   });
 
-  test('details are attached to the check-in', async ({ page, context }) => {
+  test('the pass does not scroll', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    for (const hash of ['', '#visits', '#device']) {
+      await page.goto(`${PATH}${hash}`);
+      const { inner, scroll } = await page.evaluate(() => ({
+        inner: window.innerHeight,
+        scroll: document.documentElement.scrollHeight,
+      }));
+      expect(scroll, `scroll height at ${hash || 'the pass'}`).toBeLessThanOrEqual(inner);
+    }
+  });
+
+  test('nobody is asked why they came', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await expect(page.locator('select')).toHaveCount(0);
+    await expect(page.locator('#visit-reason')).toBeHidden();
+  });
+
+  test('the name is attached to the check-in', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
 
     await page.locator('#profile-name').fill('Sam Rivera');
-    await page.locator('#profile-reason').selectOption('Class');
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
 
     await expect(panel(page, 'done')).toBeVisible();
     const [entry] = await readHistory(page);
     expect(entry.name).toEqual('Sam Rivera');
-    expect(entry.reason).toEqual('Class');
+    expect(entry.reason).toBeNull();
   });
 
-  test('a reason can be primed from the URL', async ({ page, context }) => {
+  test('the code that was scanned gives the reason', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
     await page.goto(`${PATH}?reason=Class`);
 
-    await expect(page.locator('#profile-reason')).toHaveValue('Class');
+    await expect(page.locator('#visit-reason')).toHaveText('Class');
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await expect(panel(page, 'done')).toBeVisible();
+    const [entry] = await readHistory(page);
+    expect(entry.reason).toEqual('Class');
   });
 
   test('a nonsense reason in the URL is ignored', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
     await page.goto(`${PATH}?reason=%3Cscript%3E`);
 
-    // Falls back to the stored value rather than injecting an option.
-    await expect(page.locator('#profile-reason')).toHaveValue('');
+    await expect(page.locator('#visit-reason')).toBeHidden();
   });
 
-  test('history shows the reason', async ({ page, context }) => {
+  test('visits are their own view, and show the reason', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
-    await page.locator('#profile-reason').selectOption('Volunteering or crew');
+    await page.goto(`${PATH}?reason=${encodeURIComponent('Volunteering or crew')}`);
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await expect(page.locator('#checkin-count')).toHaveText('1');
 
+    await page.getByRole('link', { name: /Visits/ }).click();
     await expect(page.locator('#checkin-history li')).toHaveCount(1);
     await expect(page.locator('#checkin-history li')).toContainText('Volunteering or crew');
-    await expect(page.locator('#checkin-count')).toContainText('1 visit');
+
+    // Back to the pass the way it came, not a new trip.
+    await page.getByRole('link', { name: 'Pass' }).click();
+    await expect(page).not.toHaveURL(/#visits/);
+    await expect(page.locator('[data-view="pass"]')).toBeVisible();
   });
 
   test('history survives a reload', async ({ page, context }) => {
@@ -217,8 +244,10 @@ test.describe('check-in', () => {
 
     const before = (await readDevice(page)).id;
 
+    await page.getByRole('link', { name: 'This phone' }).click();
     page.once('dialog', (dialog) => dialog.accept());
-    await page.locator('#forget-button').click();
+    await page.getByRole('button', { name: 'Forget this phone' }).click();
+    await page.getByRole('link', { name: 'Pass' }).click();
 
     expect(await readHistory(page)).toEqual([]);
     expect((await readDevice(page)).id).not.toEqual(before);
@@ -233,7 +262,8 @@ test.describe('check-in', () => {
 
     const download = await Promise.all([
       page.waitForEvent('download'),
-      page.locator('#export-button').click(),
+      page.getByRole('link', { name: 'This phone' }).click()
+        .then(() => page.getByRole('button', { name: 'Save a copy' }).click()),
     ]).then(([event]) => event);
 
     const stream = await download.createReadStream();
@@ -375,18 +405,17 @@ test.describe('check-in during a class', () => {
   test('preloads the reason so a class arrival is one tap', async ({ page, context }) => {
     await visitDuringClass(page, context, 20);
 
-    await expect(page.locator('#profile-reason')).toHaveValue('Class');
+    await expect(page.locator('#visit-reason')).toHaveText('Class');
     await expect(
       page.locator('[data-state="idle"] [data-action="check-in"]')
     ).toHaveText("I'm here for the class");
   });
 
-  test('does not overwrite a reason the visitor chose', async ({ page, context }) => {
+  test('a reason from the scanned code outranks the class', async ({ page, context }) => {
     // Two hours out — outside the 90 minute lead, so no class banner yet.
     await visitDuringClass(page, context, -120);
+    await page.goto(`${PATH}?reason=${encodeURIComponent('Equipment pickup or return')}`);
     await expect(page.locator('#class-banner-root')).toBeHidden();
-
-    await page.locator('#profile-reason').selectOption('Equipment pickup or return');
 
     // The class window opens while they are still on the page. fastForward
     // rather than setFixedTime: the latter moves the clock but never fires
@@ -395,7 +424,7 @@ test.describe('check-in during a class', () => {
     await page.clock.fastForward('02:20:00');
 
     await expect(page.locator('#class-banner-root')).toBeVisible();
-    await expect(page.locator('#profile-reason')).toHaveValue('Equipment pickup or return');
+    await expect(page.locator('#visit-reason')).toHaveText('Equipment pickup or return');
   });
 
   test('a class check-in records the class as the reason', async ({ page, context }) => {
