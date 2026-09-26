@@ -1286,12 +1286,17 @@ footer { background:var(--slate); padding:0 6vw 0 5vw; display:flex; align-items
 .keys { flex:none; align-self:center; display:flex; flex-direction:column; align-items:center; gap:1.4vh; padding:2vh 0; }
 .keys b { font-size:1.8vh; font-weight:750; letter-spacing:.14em; text-transform:uppercase; color:var(--paper); }
 .keys div { display:grid; grid-template-columns:repeat(2, 4.6vh); gap:1.1vh; }
+/* A key's face is the slate, its underside the ink: raised, not a hole. The
+   Light key always wears light mode's colours, so it shows what it gives
+   before it is pressed. Pressed, a key sits down on its underside. */
 .keys button { width:4.6vh; height:4.6vh; padding:0; border:0; border-radius:50%; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; background:var(--ink); color:var(--soft);
-  box-shadow:inset 0 .3vh 0 rgba(255,255,255,.08), 0 .35vh 0 #0b0c0e; transition:transform .08s, box-shadow .08s; }
-.keys button:active, .keys button[aria-pressed=true] { transform:translateY(.3vh);
-  box-shadow:inset 0 .35vh .5vh rgba(0,0,0,.6), 0 0 0 #0b0c0e; }
-.keys button[aria-pressed=true] { color:var(--paper); }
+  display:flex; align-items:center; justify-content:center; background:var(--slate); color:var(--soft);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); transition:transform .08s, box-shadow .08s; }
+.keys #light { background:#fff; color:var(--ink); box-shadow:inset 0 0 0 1px #d5d9de, 0 .45vh 0 #aeb4bb; }
+.keys button:active, .keys button[aria-pressed=true] { transform:translateY(.35vh);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
+.keys #light:active, .keys #light[aria-pressed=true] { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #aeb4bb; }
+.keys #dark[aria-pressed=true] { color:var(--paper); }
 .keys button:disabled { opacity:.35; cursor:default; }
 .keys svg { width:55%; height:55%; }
 .tabs { display:flex; align-items:stretch; }
