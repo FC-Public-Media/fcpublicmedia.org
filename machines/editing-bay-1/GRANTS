@@ -52,6 +52,33 @@ host  deny  Bash(taskkill -im *)
 host  deny  Bash(pkill *)
 host  deny  Bash(killall *)
 
+# THE STAFF OBS, DRIVEN BY ISSUED TASKS.
+#
+# An attendant's task may start the recorder's OBS, record, and stop it,
+# without asking, because of everything below and nothing less:
+#   - the bay installed this copy and confirmed it kept to itself
+#     (bay/obs-portable-32.2.2.yml), and obs.ps1 `start` refuses any obs64.exe
+#     whose hash is not the one that record names;
+#   - the cycle a task runs was exercised on this machine, at this blob of
+#     obs.ps1, and left the members' OBS exactly as it found it;
+#   - and this file, with these lines, was merged.
+# `prepare` is a person's, at the desk. Changing obs.ps1 revokes all of it
+# until it is exercised again.
+#
+#   exercise <holder> | <shape> ; ...   the cycle `prove --exercise` runs
+#   untouched <path>                    listed the same after (names, sizes, times)
+#   quiet <image>                       none running before it, none after
+#   admit allow <holder> | <shape>      an outside verb, allowed once exercised
+wears      troves/recorder/obs.ps1
+exercise   troves/recorder/obs.ps1 | start ; status ; record start ; status ; record stop ; stop
+untouched  {APPDATA}/obs-studio
+untouched  {USERPROFILE}/Videos
+quiet      obs64
+admit allow  troves/recorder/obs.ps1 | start
+admit allow  troves/recorder/obs.ps1 | record start
+admit allow  troves/recorder/obs.ps1 | record stop
+admit allow  troves/recorder/obs.ps1 | stop
+
 # Theirs, by path. Reading a name to show it is untouched is the bay's job, and
 # `confirm` does it; nothing a session runs writes here.
 host  deny  PowerShell(Remove-Item *obs-studio*)

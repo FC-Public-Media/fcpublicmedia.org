@@ -5,10 +5,12 @@
 #   bin/runnables undeclared   runnable files with no claim at all
 #   bin/runnables check        claims for files that are not here. Exit 1 if any
 #   bin/runnables compile P    profile P's GRANTS, as harness settings, to stdout
-#   bin/runnables prove P H --by WHO
+#   bin/runnables prove P H --by WHO [--exercise]
 #                              the bay's proof that holder H, at this blob, does
 #                              what its read verbs claim on profile P's machine.
-#                              Runs them, checks nothing changed, records it
+#                              Runs them, checks nothing changed, records it.
+#                              --exercise also runs the cycle P's GRANTS
+#                              declares for H, which is what `admit` allows
 #
 # THIS IS THE OSTENSIBLY AVAILABLE LIST, AND BEING ON IT GRANTS NOTHING. It
 # shows what the repository carries (machines/RUNNABLES says what each verb
@@ -130,12 +132,27 @@ case "$cmd" in
             r = l; sub(/^[ \t]*host[ \t]+[a-z]+[ \t]+/, "", r); r = trim(r)
             if (w[2] != "ask" && w[2] != "deny") { print "compile: refused, host may only ask or deny: " r > "/dev/stderr"; continue }
             if (!seen[w[2], r]++) list[w[2]] = list[w[2]] (list[w[2]] == "" ? "" : ",\n") "      \"" esc(r) "\""
+          } else if (w[1] == "admit") {
+            # The one widening. An `outside` verb becomes an allow, and only
+            # once the bay has exercised it; the line itself is admitted by the
+            # merge that brings it. desk, secret and service are never admitted.
+            rest = l; sub(/^[ \t]*admit[ \t]+[a-z]+[ \t]+/, "", rest)
+            split(rest, hs, "|")
+            if (w[2] != "allow") { print "compile: refused, admit only allows: " rest > "/dev/stderr"; continue }
+            admit[trim(hs[1]) "|" trim(hs[2])] = 1
           } else if (w[1] == "narrow") {
             rest = l; sub(/^[ \t]*narrow[ \t]+[a-z]+[ \t]+/, "", rest)
             split(rest, hs, "|"); narrow[trim(hs[1]) "|" trim(hs[2])] = w[2]
           }
         }
-        while ((getline l < proven) > 0) { split(l, w, /[ \t]+/); if (w[1] !~ /^#/) ok[w[1] " " w[2]] = 1 }
+        while ((getline l < proven) > 0) {
+          n = split(l, w, /[ \t]+/); if (w[1] ~ /^#/ || n < 2) continue
+          ok[w[1] " " w[2]] = 1
+          for (i = 3; i <= n; i++) if (w[i] ~ /^exercised:/) {
+            m = split(substr(w[i], 11), ex, ";")
+            for (j = 1; j <= m; j++) { gsub(/\+/, " ", ex[j]); exercised[w[1] " " w[2] "|" ex[j]] = 1 }
+          }
+        }
         nb = split(blobs, bl, "\n"); for (i = 1; i <= nb; i++) { split(bl[i], w, " "); blob[w[1]] = w[2] }
       }
       {
@@ -148,6 +165,15 @@ case "$cmd" in
         if (k in narrow) {
           if (rank(narrow[k]) < rank(a)) { print "compile: refused, narrow loosens " k > "/dev/stderr" }
           else a = narrow[k]
+        }
+        if ((k in admit) && !(k in narrow)) {
+          if (class != "outside") {
+            print "compile: refused, admit is for outside verbs, not " class ": " k > "/dev/stderr"
+          } else if ((h " " blob[h] "|" shape) in exercised) {
+            a = "allow"
+          } else {
+            print "compile: admitted, not exercised at @" blob[h] ", still asks: " k > "/dev/stderr"
+          }
         }
         # Unproven is left OFF the list, not turned into `ask`: an ask rule
         # forces a prompt even where the harness would have let it through, and
@@ -187,8 +213,11 @@ case "$cmd" in
     # verb is allowed on the strength of the same line, so `--by` names who
     # read the rest of the holder's code and vouches for it. A proof is a
     # commit, and admission is still the merge.
-    p=${2:-}; h=${3:-}; by=""
-    [ "${4:-}" = "--by" ] && by=${5:-}
+    p=${2:-}; h=${3:-}; by=""; exercise=""
+    shift 3 2>/dev/null || true
+    while [ $# -gt 0 ]; do
+      case "$1" in --by) by=${2:-}; shift 2 ;; --exercise) exercise=1; shift ;; *) shift ;; esac
+    done
     G="$ROOT/machines/$p/GRANTS"
     [ -f "$G" ] && [ -n "$h" ] && [ -n "$by" ] || { echo "usage: bin/runnables prove <profile> <holder> --by <who>" >&2; exit 2; }
     case "$ROOT" in */refs/*) echo "prove: $ROOT is a read-only mirror; prove from a work/ worktree" >&2; exit 2 ;; esac
@@ -221,13 +250,60 @@ case "$cmd" in
     after=$(state)
     [ "$before" = "$after" ] || { echo "prove: a read verb changed something; not proven:" >&2
       diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -20 >&2; exit 1; }
+
+    # --exercise: THE CYCLE A TASK WILL RUN, run once, watched. What an
+    # `admit` may allow is what this proved. GRANTS declares it as data:
+    #   exercise <holder> | <shape> ; <shape> ; ...   the cycle, in order
+    #   untouched <path>      must list the same (names, sizes, times) after
+    #   quiet <image>         none may run before it starts, none after it ends
+    # Files may change under the profile's troves folder and nowhere else the
+    # bay watches: not this checkout, not its bay folder or run log.
+    exercised=""
+    if [ -n "$exercise" ]; then
+      cycle=$(sed -e 's/#.*$//' "$G" | awk -v h="$h" '$1 == "exercise" { r = $0; sub(/^[ \t]*exercise[ \t]+/, "", r); split(r, a, "|"); gsub(/^[ \t]+|[ \t]+$/, "", a[1]); if (a[1] == h) print a[2] }')
+      [ -n "$cycle" ] || { echo "prove: GRANTS declares no exercise for $h" >&2; exit 2; }
+      expand() { printf '%s' "$1" | sed -e "s|{APPDATA}|$(printf '%s' "${APPDATA:-}" | tr '\\' '/')|g" \
+        -e "s|{LOCALAPPDATA}|$lad|g" -e "s|{USERPROFILE}|$(printf '%s' "${USERPROFILE:-}" | tr '\\' '/')|g"; }
+      untouched=$(sed -e 's/#.*$//' "$G" | awk '$1 == "untouched" { $1 = ""; sub(/^ /, ""); print }')
+      quiet=$(sed -e 's/#.*$//' "$G" | awk '$1 == "quiet" { print $2 }')
+      watch() {
+        git -C "$ROOT" status --porcelain
+        [ -d "$LOCALAPPDATA/$p/bay" ] && find "$LOCALAPPDATA/$p/bay" -printf '%p %s %T@\n' | sort
+        [ -f "$LOCALAPPDATA/$p/bay.ndjson" ] && wc -c < "$LOCALAPPDATA/$p/bay.ndjson"
+        printf '%s\n' "$untouched" | while IFS= read -r u; do [ -n "$u" ] || continue
+          d=$(expand "$u"); if [ -e "$d" ]; then find "$d" -printf '%p %s %T@\n' | sort; else echo "absent $d"; fi; done
+      }
+      running() { powershell -NoProfile -Command "(@(Get-Process '$1' -ErrorAction SilentlyContinue)).Count" | tr -d '\r'; }
+      for q in $quiet; do
+        [ "$(running "$q")" = 0 ] || { echo "prove: $q is running. The exercise starts only on a quiet machine, so it cannot mistake theirs for ours" >&2; exit 1; }
+      done
+      w0=$(watch)
+      while IFS= read -r step; do
+        step=$(printf '%s' "$step" | sed 's/^ *//; s/ *$//'); [ -n "$step" ] || continue
+        echo "exercise  $prefix$h $step"
+        # shellcheck disable=SC2086
+        $prefix "$h" $step </dev/null; rc=$?
+        [ $rc = 0 ] || { echo "prove: exercise '$step' exited $rc; not proven" >&2; exit 1; }
+        exercised="$exercised${exercised:+;}$(printf '%s' "$step" | tr ' ' '+')"
+      done <<CYCLE
+$(printf '%s' "$cycle" | tr ';' '\n')
+CYCLE
+      for q in $quiet; do
+        [ "$(running "$q")" = 0 ] || { echo "prove: $q is still running after the exercise; not proven" >&2; exit 1; }
+      done
+      w1=$(watch)
+      [ "$w0" = "$w1" ] || { echo "prove: the exercise changed something it must not have; not proven:" >&2
+        diff <(printf '%s\n' "$w0") <(printf '%s\n' "$w1") | head -20 >&2; exit 1; }
+    fi
+
     out="$ROOT/machines/$p/bay/runnables.proven"
     mkdir -p "$(dirname "$out")"
     [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
       "# Written by \`bin/runnables prove\`. docs/RUNNABLES.md, machines/BAY.md." \
       "#" "# holder  blob  date  ran  by" > "$out"
-    printf '%s %s %s ran:%s by:%s\n' "$h" "$blob" "$(date +%F)" "${ran:-none}" "$by" >> "$out"
-    echo "proven    $h @$blob on $p (ran: ${ran:-none}); recorded in machines/$p/bay/runnables.proven"
+    printf '%s %s %s ran:%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
+      "${exercised:+ exercised:$exercised}" "$by" >> "$out"
+    echo "proven    $h @$blob on $p (ran: ${ran:-none}${exercised:+; exercised: $exercised}); recorded in machines/$p/bay/runnables.proven"
     ;;
   *)
     sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
