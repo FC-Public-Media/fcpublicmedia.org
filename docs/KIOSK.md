@@ -308,8 +308,9 @@ document.
 In `content.yml` a panel is one of two things:
 
 - **`from: <source>`** — the facts come from `site/_data/`, so they cannot drift
-  from what the website and the posters say. Sources today are `wifi` and
-  `checkin`. The wording is still yours: `say` and `note` override.
+  from what the website and the posters say. Sources today are `wifi`,
+  `checkin` and `classes`. The wording is still yours: `say` and `note`
+  override.
 - **`say:` / `note:`** — a literal panel, written there, sourced nowhere. For
   things no data file knows, like who to ask for help.
 
@@ -329,6 +330,84 @@ kiosk rather than a missing feature, and the guest has no way to tell.
 
 So the Wi-Fi panel takes its note from `content.yml` only, and there is a
 regression test asserting the fallback stays gone.
+
+---
+
+## The class on now
+
+Added 2026-09-26. A class in the studio is the one thing a screen should drop
+everything else for: somebody walking in at 6:05 wants to know whether they are
+in the right place, and nothing else on the screen answers that.
+
+### Three parties, and what each one owes
+
+| | owes | never |
+|---|---|---|
+| **the media node** | `site/_data/calendar.json` kept current from the Microsoft 365 calendar, committed periodically | a live pipe to the screens |
+| **`bin/build-kiosk.py`** | the `classes` panel: the schedule, and the two windows | a verdict on what is on now |
+| **a renderer** | the verdict, from its own clock, with `pickSession` | a second rule for "now" |
+
+**Periodic, not real-time** (Autumn, 2026-09-26). The schedule is committed to
+`site/_data/` like everything else the site knows, and it reaches the screens
+the way every other change does: the door's rebase picks it up, `revision`
+changes, and the screen reloads. That is minutes, not seconds, and it is
+enough, because a class is scheduled days ahead. The rest of the day's
+precision comes from the clock, which every screen already has. It also
+means the screens see exactly what the public can, and nothing a pipe would
+have to be trusted not to carry.
+
+### What the media node commits
+
+`calendar.json`'s existing shape, written by `site/bin/sync-calendar.py`. The
+website reads the same file (`site/_includes/class-config.html`), and wins over
+`classes.yml` when it has sessions.
+
+```json
+{
+  "sessions": [
+    {
+      "title": "Podcasting 101",
+      "starts": "2026-10-06T18:00:00-06:00",
+      "ends": "2026-10-06T20:00:00-06:00",
+      "room": "Podcast Studio",
+      "summary": "Plan, record, and publish an episode.",
+      "signup": "/classes/",
+      "cancelled": false
+    }
+  ]
+}
+```
+
+- **Every time carries its offset.** The generator refuses one without.
+- **`cancelled: true`** keeps a session in the file and off every screen.
+- **Nothing about people.** No attendees, no organizer. The generator copies
+  title, room, times and summary and nothing else, whatever the file grows,
+  and a test holds it to that; but the file itself is public too, so it
+  should never carry them in the first place.
+
+### What a renderer does with it
+
+The panel is exactly the config `pickSession` in `site/assets/js/classes.js`
+takes. Import it, or copy it byte for byte; do not write another.
+
+```js
+const session = pickSession(panel.classes);   // null, or phase soon | late | now
+```
+
+| phase | the screen |
+|---|---|
+| `soon` | **takes over.** *Starting soon*, the title, the room, the start time |
+| `late` | **takes over.** *Happening now*, title, room, *until* the end, and *join until* start + `lateMinutes`, with the check-in code beside it |
+| `now` | **takes over.** *Happening now*, title, room, *until* the end |
+| none | one line at the bottom: the next session that starts after now, if any |
+
+"Takes over" means: the main area on the rolling TV
+(`../instruments/roller-tv/show.yml`), and the top of the welcome desk, with the
+other panels still visible, smaller. `takeover: false` in `content.yml` makes it
+an ordinary panel that appears only while a class is soon or on.
+
+**Not built:** the renderer's half. The door draws the screens
+(`machines/kiosk-1/door.py`), and the takeover is its to draw.
 
 ---
 
