@@ -12,7 +12,8 @@ attendant does it by name. While a class is soon or on, the wall shows that
 class instead, and the job is to find what it says.
 
 Status: **followed 2026-09-26 on roller-tv**, by an agent on editing bay 1,
-against #138 (`wall-rotates`). All steps pass. See *How it was followed*.
+against #138 (`wall-rotates`) at `e8d44d1`. Step 5 fails; see
+[`BUGS.md`](BUGS.md) and *How it was followed*.
 
 ## Before
 
@@ -38,21 +39,26 @@ each module, and **Hold**.
    the bar says "Showing Files", and the address ends in `#files`.
 
 3. **Press button "Hold".**
-   *You see:* Hold gets a yellow outline and `aria-pressed="true"`.
+   *You see:* the button gets a yellow outline and `aria-pressed="true"`, and
+   reads "Held 2:59", counting down each second.
 
 4. **Stay for a minute.**
    *You see:* Files stays. Nothing turns and nothing reloads.
 
-5. **Leave it held.** Hold lets go by itself after three minutes.
-   *You see:* Hold loses its outline and `aria-pressed` is `"false"`. Within
-   45 seconds the next module comes up, and the frame's name and "Showing"
-   change with it.
+5. **Let go early: press button "Hold" again.**
+   *You see:* it reads "Hold" again, with `aria-pressed="false"`.
 
-6. **Go Back** (a mouse's Back button, or Alt+Left).
+6. **Press "Hold" once more and leave it held.** It lets go by itself after
+   three minutes.
+   *You see:* it reads "Hold" with `aria-pressed="false"`. Within 45 seconds
+   the next module comes up, and the frame's name and "Showing" change with
+   it.
+
+7. **Go Back** (a mouse's Back button, or Alt+Left).
    *You see:* the lit button, "Showing" and the frame still agree.
 
-7. **When a class is soon or on**, the stage shows the class instead of a
-   module, and the module buttons are gone. Hold stays.
+8. **When a class is soon or on**, the stage shows the class instead of a
+   module, and the bar's buttons are gone, Hold included.
    *You see:* a heading with the class's name, and above it "Starting soon"
    or "Happening now". Below it are the room and "Starts …" or "Until …". In
    the class's first 45 minutes there is also a pill, "Join until …", and
@@ -65,7 +71,8 @@ which one it is, and when they walk away the wall carries on by itself.
 
 ## How it was followed
 
-2026-09-26, `door.py` at `a7e2283` (#138). Editing bay 1 cannot reach the
+2026-09-26, `door.py` at `a7e2283` (#138), and again at `e8d44d1` after
+the kiosk session's fixes. Editing bay 1 cannot reach the
 depot share, so it rendered the wall itself: `wall_files()` under a
 uv-managed Python 3.12 with `pyyaml`, with `classes: sample` forced on for the
 render only, written to `%LOCALAPPDATA%\editing-bay-1\wall\`, and opened on
@@ -75,7 +82,7 @@ localhost. Each step found its control with `Accessibility.queryAXTree` by
 role and name, and checked the result against the accessibility tree, the
 frame tree and the DOM. Files is empty because the render has no depot.
 
-Step 7 used the page's own `?at=`: `index.html?at=2026-09-27T17:00:00-06:00`
+Step 8 used the page's own `?at=`: `index.html?at=2026-09-27T17:00:00-06:00`
 (soon), `T18:10` (late: the join pill) and `T19:00` (on). The sample classes
 are dated from the day of the render, so pick an `at` from the Classes
 module's first entry.
@@ -84,11 +91,12 @@ module's first entry.
 |---|---|
 | 1 | passes: nav "Wall", four buttons, frame "Studio" |
 | 2 | passes |
-| 3 | passes |
+| 3 | passes: "Held 2:57", then "Held 2:54" |
 | 4 | passes: no turn in 65 s |
-| 5 | passes: still held at 175 s, released by 190 s, then turned to Files |
-| 6 | passes: pressing modules and turning add no history; Back reloaded the wall, and bar and frame agreed |
-| 7 | passes at soon, late and on |
+| 5 | **fails**: while held, no button is named "Hold". Its name is the countdown |
+| 6 | passes (at `a7e2283`): still held at 175 s, released by 190 s, then turned |
+| 7 | passes: pressing modules and turning add no history; Back reloaded the wall, and bar and frame agreed |
+| 8 | passes at soon, late and on; at `e8d44d1` no buttons are left in the bar |
 
 The three bugs the previous wall had (the frame always called "Module", an
 unannounced reload every minute, and Back desyncing the rail from the frame)
