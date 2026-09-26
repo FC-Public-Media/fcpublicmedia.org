@@ -1,5 +1,5 @@
 # A payload the bay has taken in. One file per arrival; the file is the record.
-# See ../../bay/README.md. No procedure script yet: run by hand by code-d5,
+# See ../../BAY.md. No procedure script yet: run by hand by code-d5,
 # step by step, each step in the run log. Re-measured by code-e3 the same day.
 
 payload: node
