@@ -97,6 +97,25 @@ public static void Write(string target, string user, string secret) {
 }
 '@
 
+# Closing by window, not by name. OBS started to the tray has no visible main
+# window, so Process.CloseMainWindow() finds nothing; WM_CLOSE posted to that
+# process's own top-level windows asks it to quit the way the close box does.
+Add-Type -Namespace Fcpm -Name Win -MemberDefinition @'
+public delegate bool EnumProc(IntPtr h, IntPtr l);
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint m, IntPtr w, IntPtr l);
+public static int CloseAll(uint target) {
+    int n = 0;
+    EnumWindows(delegate (IntPtr h, IntPtr l) {
+        uint pid; GetWindowThreadProcessId(h, out pid);
+        if (pid == target) { PostMessageW(h, 0x0010, IntPtr.Zero, IntPtr.Zero); n++; }
+        return true;
+    }, IntPtr.Zero);
+    return n;
+}
+'@
+
 # ---------------------------------------------------------------------------
 # obs-websocket v5: Hello, Identify, one Request, its response, close.
 function Receive-Json($ws) {
@@ -168,6 +187,27 @@ function Proven {
     $r = Recorded
     $got = (Get-FileHash -Algorithm SHA256 $Exe).Hash.ToLower()
     @{ ok = ($r.want -and $got -eq $r.want); got = $got; want = $r.want; rec = $r.rec }
+}
+# StopRecord, then wait until the output is inactive and the file has stopped
+# growing: a caller told "recorded" can read the file.
+function Finish-Recording {
+    $r = Invoke-Obs 'StopRecord' $null
+    $file = $r.outputPath
+    $deadline = (Get-Date).AddSeconds(30)
+    while ((Invoke-Obs 'GetRecordStatus' $null).outputActive) {
+        if ((Get-Date) -gt $deadline) { Fail 'StopRecord was accepted but the output is still active after 30 s' }
+        Start-Sleep -Milliseconds 500
+    }
+    $last = -1
+    while ($true) {
+        $len = if (Test-Path $file) { (Get-Item $file).Length } else { -1 }
+        if ($len -ge 0 -and $len -eq $last) { break }
+        if ((Get-Date) -gt $deadline) { Fail "the recording $file did not settle within 30 s" }
+        $last = $len; Start-Sleep -Milliseconds 700
+    }
+    if (-not (Inside $file)) { Fail "OBS reports the recording at '$file', outside $Root" }
+    LogLine 'recorded' @{ file = $file; bytes = $last }
+    $file
 }
 function Listening($port) { [bool](Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) }
 function Grant { Get-NetFirewallRule -DisplayName $Rule -ErrorAction SilentlyContinue | Where-Object { $_.Enabled -eq 'True' -and $_.Action -eq 'Block' } }
@@ -334,9 +374,8 @@ switch ($Verb) {
         LogLine 'recording' @{}
         Say "recording started"
     } elseif ($Arg -eq 'stop') {
-        $r = Invoke-Obs 'StopRecord' $null
-        LogLine 'recorded' @{ file = $r.outputPath }
-        Say "recorded  $($r.outputPath)"
+        $file = Finish-Recording
+        Say "recorded  $file"
     } else { Fail 'record start | record stop' }
 }
 
@@ -345,13 +384,15 @@ switch ($Verb) {
     if (-not $p) { Say 'not running'; if (Test-Path $PidFile) { Remove-Item $PidFile }; break }
     try {
         $r = Invoke-Obs 'GetRecordStatus' $null
-        if ($r.outputActive) { $s = Invoke-Obs 'StopRecord' $null; LogLine 'recorded' @{ file = $s.outputPath }; Say "recorded  $($s.outputPath)" }
+        if ($r.outputActive) { $file = Finish-Recording; Say "recorded  $file" }
     } catch { Say "websocket did not answer ($_); closing anyway" }
     # By the id start wrote down, never by name: obs64 is also the members'.
-    $p.CloseMainWindow() | Out-Null
-    if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force }
+    $how = 'closed'
+    $n = [Fcpm.Win]::CloseAll([uint32]$p.Id)
+    if (-not $p.WaitForExit(20000)) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(5000) | Out-Null; $how = 'killed after 20 s' }
+    if (-not $p.HasExited) { Fail "pid $($p.Id) is still running" }
     Remove-Item $PidFile
-    LogLine 'stopped' @{ pid = $p.Id }
-    Say "stopped   pid $($p.Id)"
+    LogLine 'stopped' @{ pid = $p.Id; how = $how; windows = $n }
+    Say "stopped   pid $($p.Id) ($how)"
 }
 }
