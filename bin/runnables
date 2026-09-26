@@ -112,6 +112,7 @@ case "$cmd" in
           sub(/#.*$/, "", l); if (l ~ /^[ \t]*$/) continue
           n = split(l, w, /[ \t]+/)
           if (w[1] == "checkout") checkout = w[2]
+          else if (w[1] == "wears") { wears[w[2]] = 1; nwears++ }
           else if (w[1] == "runner") {
             pre = ""; for (i = 4; i <= n; i++) pre = pre w[i] " "
             if (pre ~ /\{LOCALAPPDATA\}/) {
@@ -135,6 +136,9 @@ case "$cmd" in
       }
       {
         h = $1; run = $2; shape = $3; class = $4
+        # A profile that names what it wears answers for nothing else: the
+        # bays do not run the door, and its rules are not theirs to carry.
+        if (nwears && !(h in wears)) next
         a = (class == "read" || class == "inside") ? "allow" : (class == "outside" || class == "desk") ? "ask" : "deny"
         k = h "|" shape
         if (k in narrow) {
