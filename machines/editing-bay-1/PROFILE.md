@@ -70,13 +70,30 @@ administrator except where it says so.
    `gh auth login` is the desk's.
 8. **Check.** `machines/sync` again. What is still `WANTED` is what is left.
 
+## Baseline, 2026-09-26
+
+Run directly, as research: `powershell -NoProfile -ExecutionPolicy Bypass -File
+machines\editing-bay-1\check.ps1`. Windows Home's default execution policy
+stops `sync` from running it itself, and nothing about that policy is being
+changed while the machine may move to Pro (Autumn: network and policy powers go
+through the network tooling teams).
+
+| | |
+|---|---|
+| ok | git, Claude Code, gh; Developer Mode; `core.autocrlf` false; the pool's task; `~/code` trusted |
+| wanted | uv, Node (through the bay); the depot (opt-in Wi-Fi only) |
+| noted | Ethernet and Wi-Fi both Private at the time |
+
+**Machine settings may revert after a gap, and that is expected.** Windows'
+settings screens often show the old value for a while after something has
+switched it back. `check.ps1` reports what it reads at the time; a later run
+disagreeing with this table is data, not a fault.
+
 ## Open
 
-- **Running `check.ps1`.** Windows Home's default execution policy stops
-  scripts, so `sync` cannot run the check yet. The pool's task passes
-  `-ExecutionPolicy Bypass` for its own script; whether `sync` should, or the
-  policy for this user should change, is Autumn's call, and was not decided by
-  a session.
+- **Running `check.ps1` from `sync`.** Directly with `-ExecutionPolicy Bypass`
+  works, as the pool's task does for its own script. Whether `sync` passes it
+  waits on the Home or Pro question.
 - **`bin/refs` is the media node's**, one line apart (`REF` is `refs/` here).
   Two copies drift. It belongs somewhere both machines read it from.
 - **The depot.** Reachable only by the opt-in Wi-Fi for now; the subnet is
