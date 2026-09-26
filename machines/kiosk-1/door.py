@@ -1220,12 +1220,12 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
   color:rgba(18,20,23,.7); }
 
 /* The turn: a track under the edge at the right, parallel to it, a fifth of
-   the width projected (20.2vw along the tilt). Black, so it only just shows
-   on the dark. The red fills it from the right; the knob is the record
+   the width projected (20.2vw along the tilt). The brighter slate, so its whole
+   length reads before the red fills it from the right; the knob is the record
    button, a red dot in a half-clear ring of the same red. Thin while it runs;
    held, it thickens and turns signal, so the two never look alike. */
 .timer { position:absolute; right:0; bottom:calc(14.05vw - 3vh); width:20.2vw; height:.4vh;
-  background:#000; border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg;
+  background:var(--rule); border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg;
   transition:height .3s; }
 .timer i { position:absolute; top:0; bottom:0; right:0; left:100%; background:var(--record);
   border-radius:.45vh 0 0 .45vh; transition:background-color .3s; }
@@ -1323,7 +1323,7 @@ WALL_JS = """<script>
     requestAnimationFrame(frame);
   }
   // The time left is the ring draining around the button. The button keeps
-  // one name, "Hold" (aria-label), so voice control and a screen reader's
+  // one name, "Pause" (aria-label, for the glyph people see), so voice control and a screen reader's
   // list can find it; aria-pressed carries the state. Nothing is announced.
   function label() {
     var used = !held ? 1 : pinned ? 0 : Math.min(1, (Date.now() - held) / (HOLD_FOR * 1000));
@@ -1400,7 +1400,7 @@ def wall_files():
   <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" aria-pressed=false title="Hold still for a minute and a half; double-click to hold until the next click"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text></svg></button></nav>
 </footer>
 %s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))),
-           e(ww.get("brand", "FCPM")), rail, e(cfg.get("hold", "Hold")),
+           e(ww.get("brand", "FCPM")), rail, e(cfg.get("hold", "Pause")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
