@@ -97,9 +97,13 @@ case "$cmd" in
     p=${2:-}; G="$ROOT/machines/$p/GRANTS"; PROVEN="$ROOT/machines/$p/bay/runnables.proven"
     [ -n "$p" ] && [ -f "$G" ] || { echo "compile: no machines/$p/GRANTS" >&2; exit 2; }
     [ -f "$PROVEN" ] || PROVEN=/dev/null
+    # {LOCALAPPDATA} in a runner is this host's, with forward slashes: a rule
+    # matches the text a session types, so the committed file names the place
+    # and the compiled one names the path.
+    lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/')
     blobs=$(claims | cut -d'|' -f1 | sort -u | while read -r h; do
       printf '%s %s\n' "$h" "$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null)"; done)
-    claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" '
+    claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" -v lad="$lad" '
       function rank(a) { return a == "allow" ? 0 : a == "ask" ? 1 : 2 }
       function esc(s) { gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s); return s }
       function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
@@ -110,7 +114,17 @@ case "$cmd" in
           if (w[1] == "checkout") checkout = w[2]
           else if (w[1] == "runner") {
             pre = ""; for (i = 4; i <= n; i++) pre = pre w[i] " "
+            if (pre ~ /\{LOCALAPPDATA\}/) {
+              if (lad == "") { print "compile: LOCALAPPDATA unset, runner skipped: " l > "/dev/stderr"; continue }
+              gsub(/\{LOCALAPPDATA\}/, lad, pre)
+            }
             forms[w[2]] = forms[w[2]] SUBSEP w[3] "\t" pre
+          } else if (w[1] == "host") {
+            # A command that is not ours: it can be held back, never let through.
+            # Only a proven holder of ours is ever allowed.
+            r = l; sub(/^[ \t]*host[ \t]+[a-z]+[ \t]+/, "", r); r = trim(r)
+            if (w[2] != "ask" && w[2] != "deny") { print "compile: refused, host may only ask or deny: " r > "/dev/stderr"; continue }
+            if (!seen[w[2], r]++) list[w[2]] = list[w[2]] (list[w[2]] == "" ? "" : ",\n") "      \"" esc(r) "\""
           } else if (w[1] == "narrow") {
             rest = l; sub(/^[ \t]*narrow[ \t]+[a-z]+[ \t]+/, "", rest)
             split(rest, hs, "|"); narrow[trim(hs[1]) "|" trim(hs[2])] = w[2]

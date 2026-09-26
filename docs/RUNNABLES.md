@@ -86,6 +86,24 @@ several: one per profile, each for the platform that profile names.
 compiled settings into `~/code/.claude/`, or says how they differ. It is the
 same entry point on every platform, and the profile says where things go.
 
+**A person runs `sync install`, never a session.** A session writing its own
+allow rules is the move the gate exists to stop, and the classifier says so: the
+media node's sessions were refused four times as `[Permission Grant]`. `sync
+status` is a session's to run; installing is Autumn's, and later the signed
+request's.
+
+**What the media node wore before this: nothing.** Asked on 2026-09-26, it had no
+permission rules in any settings file, and every session ran in auto mode with
+the classifier as the only gate. kiosk-1's GRANTS is the first set it would wear.
+
+**A deny names a text, not an act.** Rules match what a session types, so a deny
+catches the forms GRANTS lists as runners and not a path spelled another way.
+Denies are a floor under the classifier, not a wall around a secret. The wall is
+where a secret lives: the certificate store's non-exportable key, and a token
+that is printed and never written. A command that is not ours, such as
+restarting the door's task, can be listed with `host` to ask or deny, never to
+allow.
+
 ## Where this goes
 
 Autumn, 2026-09-26: admission is a merge to `main` **for now**. Later, a request
@@ -104,8 +122,14 @@ a commit is what the gesture adds.
   checkout is unchanged, and writes the proven blob. Until it exists, a proof is
   written by hand after reading the code, and says so.
 - **`machines/sync`.** Nothing installs the compiled settings yet.
-- **kiosk-1's runner.** How the media node starts its Python is a placeholder
-  until it says.
+- **One canonical form, taught.** The media node's sessions have typed door.py
+  several ways (`$LOCALAPPDATA` or an absolute path, either slash, Bash or
+  PowerShell, from the checkout or from `~/code`). GRANTS picks the venv's
+  `python.exe` from `~/code`. The machine's AGENTS.md has to say so, or the allow
+  never fires.
+- **A door verb for restarting the door.** Today it is `Stop-Process` and
+  `Start-ScheduledTask` by hand, which GRANTS holds at `ask`. A claimed verb
+  would let that be one line with one answer.
 - **Editing bay 1's own tools.** `bin/refs` and `bin/pool.ps1` live in `~/code`,
   in no repository, so no blob can be proven. They move into
   `machines/editing-bay-1/` before that profile can answer for them.
