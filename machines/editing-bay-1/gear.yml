@@ -8,8 +8,8 @@
 # NOTHING HERE NEEDS AN ADMINISTRATOR. Where winget can install for this user
 # alone (`--scope user`), winget is the provisioner: uv is. Where its package
 # is a machine-wide installer that raises an elevation prompt, the vendor's
-# portable archive comes through the bay instead: gh is, and Node is not yet
-# known. What the bay brings arrives the bay's way (receive,
+# portable archive comes through the bay instead: gh and Node are.
+# What the bay brings arrives the bay's way (receive,
 # verify against the vendor's digest and Authenticode, stage, install, confirm:
 # ../bay/README.md), into ~/.local/bin or this profile's folder in
 # %LOCALAPPDATA%, and each arrival leaves a record in ./bay/.
@@ -59,10 +59,11 @@ gear:
     # Python comes from it: `uv run --no-project --python 3.12 --with pyyaml ...`
 
   - gear: node
-    for: the broker's tests and wrangler, as on the media node
+    for: the broker's tests and wrangler, as on the media node, and previewing
+      the site (jekyll-enough, Playwright). Not on PATH: call it by `at:`
     at: "%LOCALAPPDATA%\\editing-bay-1\\node\\node.exe"
     vendor: OpenJS Foundation (nodejs.org), LTS
-    provisioner: bay          # the zip, published with SHASUMS256.txt
+    provisioner: bay          # the zip, published with SHASUMS256.txt; bay/node-24.21.0.yml
     updates: bay
     restart-tier: none
 
