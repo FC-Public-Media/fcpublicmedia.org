@@ -76,16 +76,34 @@ The player never fetches a payload from a public URL for a private reference.
 - **Envelope.** Always signed. Sealed to recipients (`composer/age-seal.mjs`)
   or for whoever is in the room is Autumn's call; the player is the same
   either way.
+- **Public but protected** (Autumn, 2026-09-26: *"a basic encryption wrapper
+  for their passkey to know how to read if they were in attendance. That
+  unlocks public but protected."*). A class's materials are sealed once, to a
+  **class key**. The sealed bottle is ciphertext, so it may be committed,
+  published and played on any screen (`payload_public: true`, plus
+  `payload_sealed: class`). **Attendance is the key**: checking in with your
+  passkey hands you the class key, wrapped to the age identity the you engine
+  derives from that passkey (`prf`), a few hundred bytes. A walk-in needs no
+  re-seal, only a wrap. The cost: a sealed bottle in a public repository is
+  there for good, so a class key that leaks opens that class's materials to
+  anyone, forever. Right for teaching materials; wrong for anything that
+  must stay private for years.
 - **The door's endpoint** is bubbles' to build on the media node: refuses a
   non-loopback caller and a reference with no grant.
 - **A wizard's delivery, as flat keys** on its residency entry, checked by the
   door: `deliver_optical_only` or `deliver_on_web`, `payload_kept_off_repo`,
   `payload_held_in_library`, `requires_member_passkey`, and `payload_public`
-  for the `public:` case.
-- **Open:** how the kiosk page gets `broadcast.mjs`, `carrier.mjs` and
-  `qr-encode.mjs` byte-identical to the catcher's. Proposed: one anecdote.channel
-  commit pinned here, served by the door from its mirror at that commit, and the
-  catcher on the same pin.
+  for the `public:` case. `payload_public` is exclusive with the two
+  keep-off keys: an entry with both is refused, by the listing and by the
+  door, so no entry is ambiguous about whether its bytes may sit in a tree.
+- **The code, pinned.** One anecdote.channel commit, full 40 hex, in a pin
+  file here (public: it is code, not payload). The door serves
+  `/modules/<path>` as the bytes of `git show <pin>:<path>` from the media
+  node's mirror, for `press/` and `composer/` only, the whole import closure.
+  It never serves the working tree, and if the mirror lacks the pinned commit
+  it says so and serves nothing. The catcher loads the same pin the same way,
+  so screen and camera are byte-identical by construction. Its test: each
+  served module's sha256 equals `git show <pin>:<path>`'s.
 
 ## `learn.`: the you side, for transient members
 
