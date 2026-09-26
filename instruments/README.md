@@ -30,6 +30,32 @@ exactly:
 - **It is played through gear.** A browser, in kiosk mode, with a profile of its
   own.
 
+## How a screen is matched
+
+Agreed 2026-09-26. Autumn's aim: **rearranging panels must never create a
+maintenance task.**
+
+1. **A page follows its panel, not the spot on the wall.** A screen is matched
+   on the EDID maker and product code (`DEL` + `DEL404D`). Moving a panel,
+   swapping its cable or changing ports keeps each page on the same physical
+   panel. No serials: the model is enough, and the rolling TV's serial is a
+   filler value anyway.
+2. **When two connected panels are the same model, position decides**, in the
+   Windows desktop's order.
+3. **An unknown panel takes whichever page has no screen yet**, with no config
+   edit. That covers a third panel arriving or a replacement.
+4. **Swapping two pages is one action**, a command or a button on the door's
+   page, and never a config edit. Autumn has her own plan for fixing panels
+   that end up in the wrong spot. This leaves room for it and does not design it.
+
+**The connector is not part of a match.** A `link:` field was drafted on
+2026-09-25. Rule 1 rules it out, because changing ports must not move a page.
+
+**Rule 3 needs a boundary on a shared host.** On a bay, an unknown panel may
+be a person's desk monitor. Editing bay 1 has two HP E273s that people work
+at. Rule 3 applies only to panels a host has set aside for its screens. Which
+panels those are is still open, and this page doesn't settle it.
+
 The part that does not fit is **produces files**. A RØDECaster is an input;
 a screen is an output. That is a deliberate widening of the word, and
 station-node's page should be amended to say so rather than stretched quietly.
@@ -88,17 +114,18 @@ is InPrivate and keeps nothing between starts.
 | instrument | a folder yet | where | show |
 |---|---|---|---|
 | `roller-tv` | yes | the control-room opening, on a rolling stand; driven by editing bay 1 | the wall, for a pointer, not a finger |
-| kiosk-1 centre | no | media node, portrait 1050×1680. DEL / DELF043 / DELL P2213 | `/kiosk/` |
-| kiosk-1 left | no | media node, portrait 1050×1680. DEL / DEL404D / DELL P2210 | `/depot/` |
+| kiosk-1 Dell P2213 | no | media node, portrait 1050×1680. DEL / DELF043 | Check-in, `/kiosk/` |
+| kiosk-1 Dell P2210 | no | media node, portrait 1050×1680. DEL / DEL404D. The one with the speaker bar and USB hub | Files, `/depot/` |
 | kiosk-1 third | no | media node, waiting on a DVI adapter | none yet |
 | editing bay 2's third monitor | no | faces out like a kiosk display | not named, nothing decided |
 
-kiosk-1's two panels were read by the media node on 2026-09-25, pairing each
-`\\.\DISPLAYn` to its monitor through the product code. They are different
-models, so the model alone tells them apart on that box. The names *centre* and
-*left* are `node.yml`'s and follow how the desktop is arranged, which has not
-been checked against how the panels hang. If the third panel turns out to be
-another P2210 or P2213, position will be needed as well.
+kiosk-1's two panels were read by the media node on 2026-09-25 and confirmed
+physically on 2026-09-26. They are different models, so the model alone tells
+them apart. Today Windows has the P2213 as `DISPLAY1`, primary, and the P2210
+as `DISPLAY2`, to its left. Under rule 1 that is incidental. Their labels
+say Rev A00 and Rev A04. That is a hardware revision, EDID does not report
+it, and it can't be matched on. If the third panel is another P2210 or
+P2213, rule 2 applies.
 
 kiosk-1's screens are described today by the `screens:` block in
 `machines/kiosk-1/node.yml`, and the rolling TV by its `wall:` block. **Those
@@ -115,11 +142,8 @@ what is on each screen.
   through it get nothing (2026-09-25). Either the bay joins, or it renders the show
   from its own checkout. The `.js` transport in `docs/KIOSK.md` already works
   from `file://` with no share.
-- **Serials.** This repository is public, so matching is on manufacturer,
-  product code and model, plus where the screen sits and, optionally, the
-  connector it is on (`link:`). Two identical panels on one host are told apart
-  by those. Serials are not a fallback anyone can count on: the rolling TV
-  reports a filler value.
+- **Which panels a shared host sets aside** for its screens, so that rule 3
+  never takes a desk monitor (see *How a screen is matched*).
 - **Watching a screen nobody can see.** The TV often faces away from the control
   room. A view of what it is showing, perhaps through OBS, on a screen that
   *can* be seen, is wanted. OBS on the bays is other people's configuration and

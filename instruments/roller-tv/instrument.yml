@@ -22,19 +22,14 @@ for: >
   facing away.
 
 # What the display reports about itself, over EDID. Read on editing bay 1
-# 2026-09-25 with WmiMonitorID, which needed no administrator.
-# THE SERIAL IDENTIFIES NOTHING. This set reports 16843009 (0x01010101), a
-# filler value, so even a host-local serial match would not find it. Model,
-# plus the connector and position where two screens are alike, is what there is.
+# 2026-09-25 with WmiMonitorID, which needed no administrator. Matched on
+# maker + product code (../README.md, "How a screen is matched"); `model` is
+# the readable name. The serial is a filler value, 16843009 (0x01010101), and
+# the port is not matched, so a cable moved to another port keeps the show.
 match:
   manufacturer: VIZ
   product: VIZ1006
   model: M551d-A2R
-  # WmiMonitorConnectionParams.VideoOutputTechnology: 10 is DisplayPort.
-  # A property of the cable on this host, not of the TV, so it helps tell
-  # identical panels apart on one host but does not follow the set when
-  # it moves. Optional.
-  link: displayport
   # EDID gives 2013 and 160x90 cm. The year is plausible. The size is not a
   # 55" panel, which is why size is not used to match.
 
