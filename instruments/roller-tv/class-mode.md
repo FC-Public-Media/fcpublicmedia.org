@@ -78,15 +78,32 @@ deferred.
 
 - **Header, a quarter of the screen**, in the lighter slate (`--slate`), with
   the wall's slanted bottom edge. The check-in code on the yellow clock square
-  ("our QR is hiding a clock inside of it"), then the class's name and its
-  hours in place of "Check in" and the motto. No timer.
-- **On the slant:** the presenter's name above the edge at the left, and the
-  time of day under it at the right, where the wall's timer runs. The time is
-  a convenience, so it's in regular weight and soft. The name is a name
-  ("Doug"): short. A long one is the exception, and should be the person's
-  real name.
+  ("our QR is hiding a clock inside of it"), then the class's name. No timer.
+- **On the slant, above the edge:** the presenter's name at the left, in a
+  serif so it reads apart from everything else. The class's hours at the
+  right, written short: "6–8 PM", with minutes only when they aren't :00
+  ("6:30–8 PM"). The name is a name ("Doug"): short. A long one is the
+  exception, and should be the person's real name.
+- **Under the edge at the right, tucked toward the corner: a pill for each
+  hour** of the class, like beads on the slant, acting as an overline for
+  the time. The hour you're in is lit, and the ones before it stay lit but
+  dimmer. Outside the class's hours nothing is bright: the floor is visibly
+  given back. The pills are a fixed size, anchored at the right, so a five-hour
+  seminar reaches further toward the middle, not off the screen. The point is
+  progress without rushing.
+- **The time of day** sits under the pills: small, regular weight, dim, for
+  the edge of the eye.
+- **Colours for the pills and the time:** on white, ink for the current hour,
+  slate for past hours. On the dark
+  content, two whites stand in for ink and slate: the bright paper for now,
+  and a dim white for past hours, which is also the time's colour. Hours
+  not yet reached aren't drawn at all, though their places are kept, so
+  nothing shifts. No yellow: it's too much accent here.
 - **Content, the dark slate (`--ink`) or white.** Dark by default, light with
-  `?light`.
+  `?light`. If it has to scroll, it runs under the header: the slanted edge
+  covers it, hiding its top-left corner, and the scrollbar starts at the
+  slant. The header, the pills and the time stay put. There's no plan for
+  scrolling on the TV, but someone with a mouse at the bay might try it.
 - **Footer, the lighter slate, holding only the sections**, as strips the
   full height of the footer, flush against each other with no gaps. Each is
   a tab turned -90 degrees, so its name reads bottom to top. Then it's skewed
@@ -97,10 +114,21 @@ deferred.
   one used is signal at 30%, so the way back is easy to see. The rest are the
   dark slate, told apart by a hairline. There's no yellow text in the footer.
   A section is a button named by its title. There's no rotation.
+- **The footer's corner: CLASS**, as the wall's bar says FCPM, over a 2×2 of
+  round keys that look pressable: Dark and Light, then previous and next.
+  **Nothing flickers on repeated presses:** Dark and Light are two keys, not
+  a toggle, so pressing one again does nothing. The arrows stop at the first
+  and last section, never wrapping around, and take at most one step per
+  quarter second however fast they're pressed. The arrow shapes are
+  placeholders.
 - **Material is organised by nouns** (the folders, such as `Handouts`),
   meaning kinds of material, not slides. It can still be used like slides:
   numbered files keep working. The noun isn't shown yet.
 
-**Still open:** which class and presenter the page shows (today, from
+**Proofs:** `?at=HH:MM` on the page pretends it's that time today, to see the
+pills mid-class.
+
+**Still open:** grading the lit hour as a blend from unlit to lit through the
+hour (Autumn is open to it, and it isn't built). Also still open: which class and presenter the page shows (today, from
 `class.yml`; later, from the calendar and the class's own folder), and more
 than one kind of material in a class (the demo shows the first).
