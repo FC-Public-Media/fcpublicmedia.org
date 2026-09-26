@@ -48,6 +48,17 @@ claims() {
     print $1 "|" $2 "|" $3 "|" $4 "|" $5 }'
 }
 
+# A GRANTS file's `depends <holder> | <path>` lines, as holder|path, for one
+# holder or (with "") all of them.
+depends_of() {
+  sed -e 's/#.*$//' "$1" | awk -v want="$2" '
+    $1 == "depends" {
+      r = $0; sub(/^[ \t]*depends[ \t]+/, "", r); split(r, a, "|")
+      gsub(/^[ \t]+|[ \t]+$/, "", a[1]); gsub(/^[ \t]+|[ \t]+$/, "", a[2])
+      if (want == "" || a[1] == want) print a[1] "|" a[2]
+    }'
+}
+
 default_for() {
   case "$1" in
     read|inside) echo allow ;;
@@ -109,7 +120,12 @@ case "$cmd" in
     lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/')
     blobs=$(claims | cut -d'|' -f1 | sort -u | while read -r h; do
       printf '%s %s\n' "$h" "$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null)"; done)
-    claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" -v lad="$lad" '
+    # depends <holder> | <path>: a file the holder reads at run time. Its blob
+    # is part of the proof, so a change to it revokes the grant exactly as an
+    # edit to the holder would.
+    depblobs=$(depends_of "$G" "" | while IFS='|' read -r dh dp; do
+      printf '%s %s %s\n' "$dh" "$dp" "$(git rev-parse --short=12 "HEAD:$dp" 2>/dev/null || echo missing)"; done)
+    claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" -v lad="$lad" -v depblobs="$depblobs" '
       function rank(a) { return a == "allow" ? 0 : a == "ask" ? 1 : 2 }
       function esc(s) { gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s); return s }
       function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
@@ -151,9 +167,23 @@ case "$cmd" in
           for (i = 3; i <= n; i++) if (w[i] ~ /^exercised:/) {
             m = split(substr(w[i], 11), ex, ";")
             for (j = 1; j <= m; j++) { gsub(/\+/, " ", ex[j]); exercised[w[1] " " w[2] "|" ex[j]] = 1 }
+          } else if (w[i] ~ /^deps:/) {
+            m = split(substr(w[i], 6), dd, ";")
+            for (j = 1; j <= m; j++) { split(dd[j], pb, "@"); pdep[w[1] " " w[2] "|" pb[1]] = pb[2] }
           }
         }
         nb = split(blobs, bl, "\n"); for (i = 1; i <= nb; i++) { split(bl[i], w, " "); blob[w[1]] = w[2] }
+        # A proof counts only if every file its holder depends on is recorded
+        # in it at the blob that file has now.
+        nd = split(depblobs, dl, "\n")
+        for (i = 1; i <= nd; i++) {
+          if (split(dl[i], w, " ") < 3) continue
+          key = w[1] " " blob[w[1]]
+          if ((key in ok) && pdep[key "|" w[2]] != w[3]) {
+            delete ok[key]
+            print "compile: " w[1] " depends on " w[2] " @" w[3] ", which its proof does not record; unproven" > "/dev/stderr"
+          }
+        }
       }
       {
         h = $1; run = $2; shape = $3; class = $4
@@ -169,10 +199,10 @@ case "$cmd" in
         if ((k in admit) && !(k in narrow)) {
           if (class != "outside") {
             print "compile: refused, admit is for outside verbs, not " class ": " k > "/dev/stderr"
-          } else if ((h " " blob[h] "|" shape) in exercised) {
+          } else if (((h " " blob[h]) in ok) && ((h " " blob[h] "|" shape) in exercised)) {
             a = "allow"
           } else {
-            print "compile: admitted, not exercised at @" blob[h] ", still asks: " k > "/dev/stderr"
+            print "compile: admitted, not proven and exercised at @" blob[h] ", still asks: " k > "/dev/stderr"
           }
         }
         # Unproven is left OFF the list, not turned into `ask`: an ask rule
@@ -225,6 +255,12 @@ case "$cmd" in
       echo "prove: $p does not wear $h" >&2; exit 2; fi
     blob=$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null) || { echo "prove: $h is not committed" >&2; exit 2; }
     git diff --quiet HEAD -- "$h" || { echo "prove: $h differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+    deps=""
+    for d in $(depends_of "$G" "$h" | cut -d'|' -f2); do
+      db=$(git rev-parse --short=12 "HEAD:$d" 2>/dev/null) || { echo "prove: $h depends on $d, which is not committed" >&2; exit 2; }
+      git diff --quiet HEAD -- "$d" || { echo "prove: $d differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+      deps="$deps${deps:+;}$d@$db"
+    done
     run=$(claims | awk -F'|' -v h="$h" '$1 == h { print $2; exit }')
     [ -n "$run" ] || { echo "prove: $h claims nothing (machines/RUNNABLES)" >&2; exit 2; }
     prefix=$(sed -e 's/#.*$//' "$G" | awk -v r="$run" '$1 == "runner" && $2 == r && $3 == "Bash" { for (i = 4; i <= NF; i++) printf "%s ", $i; exit }')
@@ -314,8 +350,8 @@ EXPECT
     [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
       "# Written by \`bin/runnables prove\`. docs/RUNNABLES.md, machines/BAY.md." \
       "#" "# holder  blob  date  ran  by" > "$out"
-    printf '%s %s %s ran:%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
-      "${exercised:+ exercised:$exercised}" "$by" >> "$out"
+    printf '%s %s %s ran:%s%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
+      "${exercised:+ exercised:$exercised}" "${deps:+ deps:$deps}" "$by" >> "$out"
     echo "proven    $h @$blob on $p (ran: ${ran:-none}${exercised:+; exercised: $exercised}); recorded in machines/$p/bay/runnables.proven"
     ;;
   *)
