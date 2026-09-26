@@ -64,6 +64,19 @@ bin/build-kiosk.py              | python     | -                    | inside  | 
 bin/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
 bin/runnables                   | sh         | *                    | read    | this census
 
+# The recorder trove's bay procedure (troves/recorder/README.md, machines/BAY.md).
+# Bare verbs: the defaults (-Version 32.2.2, -Node editing-bay-1) are the use.
+# Every step but check appends to %LOCALAPPDATA%\<profile>\bay.ndjson, so
+# none of them is `read`. None needs an administrator; install and confirm are
+# desk because install is where the firewall grant is placed, and confirm opens
+# an OBS window on the screen of a machine people use.
+troves/recorder/bay/obs-portable.ps1 | powershell | check    | read    | what is received, staged, installed; the grant; changes nothing
+troves/recorder/bay/obs-portable.ps1 | powershell | receive  | outside | fetch the OBS zip and GitHub's published sha256 into the profile's bay
+troves/recorder/bay/obs-portable.ps1 | powershell | verify   | outside | hash the zip against that digest; logs the result
+troves/recorder/bay/obs-portable.ps1 | powershell | stage    | outside | unpack, portable-mark, gate on OBS Project signing the core
+troves/recorder/bay/obs-portable.ps1 | powershell | install  | desk    | swap into the trove's prefix, cellar the previous copy, updates off
+troves/recorder/bay/obs-portable.ps1 | powershell | confirm  | desk    | start it, see it kept to itself, stop it
+
 # NOT CLAIMED YET, on purpose. site/bin holds the syncs, the pricing and the
 # claim minting: they reach the network, money and tokens, and a claim for one
 # is its author's to write, not a census's to guess. They show as undeclared.
