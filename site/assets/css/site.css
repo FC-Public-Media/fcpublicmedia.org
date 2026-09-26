@@ -1712,17 +1712,42 @@ body > div:has(.booqable-component) { display: none !important; }
    scroll is a view of its own (#visits, #device), and only a view's own list
    scrolls, inside it.
 
-   The card is the wall's header on a phone: the signal field, its one crooked
-   edge at the bottom at the mark's -8deg (rising to the right: tan 8deg of the
-   width is 14.05 of every 100), and the mark inverted onto it, the square
-   going black. On a wider screen it stays pass-shaped: a phone's width, in
-   the middle, and the edge is measured against that (cqw), not the window. */
+   The card reads like a member's business card: the mark, and their name
+   beside it as the header. It is the wall's header on a phone: the signal
+   field, its one crooked edge at the bottom at the mark's -8deg (rising to the
+   right: tan 8deg of the width is 14.05 of every 100), and the mark inverted
+   onto it, the square going black.
 
+   The page is black, and the black is what draws the edges. Check in is a
+   band at the same -8deg, straight under the card and cut off at both sides,
+   so the only thing between them is a line of the black. Everything anyone
+   types into, and the one thing they press, sits above the halfway fold,
+   where a keyboard coming up covers none of it. Below the band are the
+   states and the class, and in the bottom right the same angle again, in
+   slate, holds the way to Visits and This phone.
+
+   On a wider screen it stays pass-shaped: a phone's width, in the middle, and
+   the angles are measured against that (cqw), not the window. */
+
+html.is-pass { background: var(--masthead); }
 html.is-pass,
 .pass-body { height: 100%; overflow: hidden; }
-.pass-body { margin: 0; background: var(--paper); color: var(--ink); }
+
+/* The dark ground whatever the scheme: the page's own tokens, pointed at the
+   masthead pair, which never flips. Everything below (buttons, rows, the
+   views) then reads light on black without a rule of its own. */
+.pass-body {
+  --ink: var(--masthead-ink);
+  --ink-soft: var(--masthead-soft);
+  --paper: var(--masthead);
+  --paper-alt: #232830;
+  --rule: #2f363d;
+  --accent: var(--masthead-ink);
+  margin: 0; background: var(--paper); color: var(--ink);
+}
 
 .pass-view {
+  --slope: 14.05cqw;
   max-width: 28rem; margin-inline: auto; container-type: inline-size;
   height: 100vh; height: 100dvh;
   display: grid; grid-template-rows: auto 1fr auto;
@@ -1730,16 +1755,18 @@ html.is-pass,
   box-sizing: border-box;
 }
 .pass-view[hidden] { display: none; }
-.pass-view:not(.pass) { grid-template-rows: auto 1fr; }
+.pass-view.pass { grid-template-rows: auto auto 1fr auto; }
+.pass-card { grid-row: 1; } .pass-go { grid-row: 2; } .pass-now { grid-row: 3; } .pass-nav { grid-row: 4; }
 
 .pass-card {
   background: var(--signal); color: var(--signal-ink);
-  padding: calc(1.25rem + env(safe-area-inset-top)) 1.5rem calc(1.75rem + 14.05cqw);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14.05cqw), 0 100%);
-  display: flex; flex-direction: column; gap: 0.35rem;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.5rem calc(1rem + var(--slope));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--slope)), 0 100%);
+  display: flex; flex-direction: column; gap: 0.3rem;
 }
+.pass-head { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.4rem; }
 .pass-mark {
-  display: block; width: 2.1rem; height: 2.1rem; margin-bottom: 1.1rem;
+  flex: none; display: block; width: 2.6rem; height: 2.6rem;
   background: var(--signal-ink); rotate: -8deg;
 }
 .pass-card input {
@@ -1751,8 +1778,8 @@ html.is-pass,
 .pass-card input:focus { outline: none; border-bottom-color: var(--signal-ink); }
 .pass-card input:placeholder-shown { border-bottom-color: color-mix(in srgb, var(--signal-ink) 25%, transparent); }
 .pass-card .pass-name {
-  font-family: var(--font-display); font-size: var(--step-3);
-  font-weight: 700; line-height: 1.1;
+  font-family: var(--font-display); font-size: clamp(2rem, 10cqw, 3rem);
+  font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;
 }
 .pass-email, .pass-email input { font-size: var(--step-0); margin: 0; }
 .pass-email[hidden] { display: none; }
@@ -1763,38 +1790,66 @@ html.is-pass,
 }
 .pass-card .pass-device {
   font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  margin-top: 0.6rem;
+  margin-top: 0.4rem;
 }
+.pass-contact {
+  align-self: flex-start; margin: -0.2rem 0 0.2rem; padding: 0;
+  font: inherit; font-size: var(--step--1); font-weight: 650;
+  background: none; border: 0; color: var(--signal-ink); text-decoration: underline;
+}
+.pass-contact[hidden] { display: none; }
 
-/* What is happening now: a class, then the check-in and its states. Sits low,
-   where a thumb is. */
+/* Check in: a band at the card's angle, a thin line of the black below its
+   edge. The band's box is the slope plus its thickness; the clip leaves the
+   parallelogram, which is also all that can be pressed. */
+.pass-go { --thick: 4.5rem; --gap: 0.55rem; margin-top: calc(var(--gap) - var(--slope)); }
+.pass-go[hidden] { display: none; }
+.pass-band {
+  position: relative; display: block; width: 100%;
+  height: calc(var(--slope) + var(--thick));
+  margin: 0; padding: 0; border: 0; cursor: pointer;
+  background: var(--signal); color: var(--signal-ink); font: inherit;
+  clip-path: polygon(0 var(--slope), 100% 0, 100% var(--thick), 0 calc(var(--slope) + var(--thick)));
+}
+.pass-band:focus-visible { outline: none; background: var(--masthead-ink); }
+.pass-band-in {
+  position: absolute; left: 50%; top: calc((var(--slope) + var(--thick)) / 2);
+  translate: -50% -50%; rotate: -8deg;
+  display: flex; flex-direction: column; align-items: center; white-space: nowrap;
+}
+.pass-band-label { font-size: var(--step-2); font-weight: 750; line-height: 1.1; }
+.pass-reason {
+  font-size: 0.7rem; font-weight: 750; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.pass-reason[hidden] { display: none; }
+
+/* What is happening now: the states and a class, on the black. */
 .pass-now {
   min-height: 0; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: flex-end; gap: 1rem;
-  padding: 0 1.5rem 1rem;
+  display: flex; flex-direction: column; gap: 1rem;
+  padding: 1.25rem 1.5rem 0;
 }
 .pass-now h2 { font-size: var(--step-1); margin: 0 0 0.25rem; }
 .pass-now p { margin: 0 0 0.5rem; }
 .pass-now .state { margin: 0; }
-.pass .btn-big { display: block; width: 100%; }
+.pass-now [data-state]:not([hidden]) p { color: var(--ink-soft); }
 .pass-status { font-weight: 600; }
 .pass-status[hidden] { display: none; }
-.pass-reason {
-  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.pass-reason[hidden] { display: none; }
 .pass .class-banner { margin: 0; padding: 0 0 0 0.9rem; border-left: 4px solid var(--signal); background: none; }
 .pass-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1rem; }
 
+/* The bottom right: the angle once more, in slate, the long edge along the
+   bottom. What lives here is what nobody reaches for with a keyboard up. */
 .pass-nav {
-  display: flex; justify-content: space-between;
-  border-top: 1px solid var(--rule); padding: 0.9rem 1.5rem;
+  display: flex; justify-content: flex-end; align-items: flex-end; gap: 1.25rem;
+  height: var(--slope); padding: 0 1.5rem 0.6rem; box-sizing: border-box;
+  background: var(--paper-alt);
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
 }
-.pass-nav a { color: var(--ink-soft); font-weight: 650; text-decoration: none; }
+.pass-nav a { color: var(--ink); font-size: 0.95rem; font-weight: 650; text-decoration: none; }
 #checkin-count:not(:empty) {
   display: inline-block; min-width: 1.4em; margin-left: 0.3rem; padding: 0 0.35em;
-  font-size: 0.8em; text-align: center; background: var(--paper-alt); color: var(--ink);
+  font-size: 0.8em; text-align: center; background: var(--signal); color: var(--signal-ink);
 }
 
 /* A view of its own: a way back to the pass, a name, and a list that scrolls
