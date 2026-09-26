@@ -25,7 +25,7 @@ cd "$ROOT" || exit 1
 # Where runnables live. A trove's bay procedures are the recorder's and the
 # screens' own; the rest are the repository's.
 discover() {
-  git ls-files -- bin site/bin machines 'troves/*/bay' worker/bin 2>/dev/null |
+  git ls-files -- bin site/bin machines 'troves/*/bay/*' worker/bin 2>/dev/null |
   while IFS= read -r f; do
     case "$f" in
       *.py|*.ps1|*.sh) echo "$f" ;;
