@@ -1169,7 +1169,7 @@ def drive_page():
 # drops the old one, so a frame never gathers history for Back to walk into.
 # Hold stops the turning for a reader (WCAG 2.2.1), and lets go by itself
 # after a minute and a half, since nobody stands at this screen to let go
-# of it. A double-click holds until the next click, anywhere on the wall.
+# of it. Pressed again, it holds until somebody presses play.
 # A class soon or on takes the stage over (docs/KIOSK.md, "The class on
 # now").
 #
@@ -1255,18 +1255,18 @@ nav { display:flex; align-items:center; gap:1.2vw; }
 nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
   color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
 nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
-/* Hold is a narrow pause button. Held, it is not a play button (a toggle's
-   icon can always be read as either state) but a countdown: a ring draining
-   around the seconds left. Held until the next click, the ring is full and
-   the count is an infinity. */
+/* Hold is a narrow pause button. Pressed, it is a countdown, a ring draining
+   around the seconds left; pressed again, it keeps the wall paused, the ring
+   full, and shows play: the only thing left to do. See press() below. */
 nav #hold { flex:none; width:3.8vh; height:3.8vh; padding:0; border:0; border-radius:50%; }
 nav #hold svg { display:block; width:100%; height:100%; }
 #hold .track { fill:none; stroke:var(--rule); stroke-width:2.4; }
 #hold .left { fill:none; stroke:var(--signal); stroke-width:2.4; stroke-dasharray:100.53; stroke-dashoffset:100.53; }
 #hold .pause { fill:var(--soft); }
-#hold .secs { fill:var(--signal); font:700 12px system-ui, sans-serif; display:none; }
-#hold[aria-pressed=true] .pause { display:none; }
-#hold[aria-pressed=true] .secs { display:inline; }
+#hold .secs { fill:var(--signal); font:700 12px system-ui, sans-serif; }
+#hold .play { fill:var(--signal); }
+#hold:not([data-state=run]) .pause, #hold:not([data-state=count]) .secs,
+#hold:not([data-state=pinned]) .play { display:none; }
 nav.taken button[data-m], nav.taken #hold { display:none; }"""
 
 WALL_JS = """<script>
@@ -1322,23 +1322,30 @@ WALL_JS = """<script>
     }
     requestAnimationFrame(frame);
   }
-  // The time left is the ring draining around the button. The button keeps
-  // one name, "Pause" (aria-label, for the glyph people see), so voice control and a screen reader's
-  // list can find it; aria-pressed carries the state. Nothing is announced.
+  // One button, three steps, each drawn as what the next press does (Autumn,
+  // 2026-09-26): running, a pause glyph; pressed, a countdown, the ring
+  // draining around the seconds left; pressed again, held for good, and only
+  // now a play glyph, which can mean nothing but "run again". A double-click
+  // is just the first two steps. Each state is named for what it shows
+  // ("Pause", "Keep paused", "Play"), so voice control says what it sees;
+  // the name changes with the state, never with the ticking seconds.
   function label() {
-    var used = !held ? 1 : pinned ? 0 : Math.min(1, (Date.now() - held) / (HOLD_FOR * 1000));
+    var state = !held ? 'run' : pinned ? 'pinned' : 'count',
+        used = state === 'run' ? 1 : pinned ? 0 : Math.min(1, (Date.now() - held) / (HOLD_FOR * 1000));
     ring.style.strokeDashoffset = (100.53 * used).toFixed(2);
-    secs.textContent = pinned ? '\u221e' : String(Math.max(0, Math.ceil(HOLD_FOR * (1 - used))));
+    secs.textContent = state === 'count' ? String(Math.max(0, Math.ceil(HOLD_FOR * (1 - used)))) : '';
+    if (hold.dataset.state !== state) {
+      hold.dataset.state = state;
+      hold.setAttribute('aria-label', state === 'run' ? W.pause : state === 'count' ? W.keep : W.play);
+    }
   }
   function setHold(on) {
-    held = on ? Date.now() : 0; pinned = false; hold.setAttribute('aria-pressed', !!on); label();
+    held = on ? Date.now() : 0; pinned = false; label();
     timer.classList.toggle('held', !!on);
   }
-  // One click holds for HOLD_FOR; a click while held lets go. The second click
-  // of a double-click instead pins it: held until the next click, anywhere.
   function press() {
     if (!held) return setHold(true);
-    if (!pinned && Date.now() - held < 400) { pinned = true; return label(); }
+    if (!pinned) { pinned = true; return label(); }
     setHold(false);
   }
   function classes() {
@@ -1351,8 +1358,7 @@ WALL_JS = """<script>
     else if (was) show(cur);
   }
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
-  hold.addEventListener('click', function (ev) { ev.stopPropagation(); press(); });
-  document.addEventListener('click', function () { if (pinned) setHold(false); });
+  hold.addEventListener('click', press);
   document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
   setInterval(function () {
     if (held && !pinned && Date.now() - held >= HOLD_FOR * 1000) setHold(false);
@@ -1397,15 +1403,16 @@ def wall_files():
 <div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
-  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" aria-pressed=false title="Hold still for a minute and a half; double-click to hold until the next click"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text></svg></button></nav>
+  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" data-state=run title="Pause for a minute and a half; press again to keep it paused"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text><path class=play d="M14.5 11 L25.5 18 L14.5 25 Z" /></svg></button></nav>
 </footer>
 %s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))),
-           e(ww.get("brand", "FCPM")), rail, e(cfg.get("hold", "Pause")),
+           e(ww.get("brand", "FCPM")), rail, e(cfg.get("pause", "Pause")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
            .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
-           .replace("@WORDS@", json.dumps({"hold": cfg.get("hold", "Hold"), "held": cfg.get("held", "held")})))
+           .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
+                                    "play": cfg.get("play", "Play")})))
     files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
     return files
 
