@@ -527,7 +527,8 @@ def with_poll(page):
 
 
 BRAND = """:root { --signal:#ffc61a; --slate:#232830; --ink:#121417;
-  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; --rule:#2f363d; }
+  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; --rule:#2f363d;
+  --record:#d93a26; }                 /* on-air red, site.css: for what is live */
 html,body { margin:0; background:var(--ink); color:var(--paper);
   font:18px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; }
 a { color:inherit; }
@@ -1087,6 +1088,71 @@ def classes_page():
     return page(w["head"], body, CLASSES_CSS)
 
 
+# The wall's Files: not the desk's panel (no clock header, no gateway strip)
+# but a module like Classes: a yellow heading, a line of text, and the
+# partitions down the page, each with its free space and a bar.
+DRIVE_CSS = """
+html, body { height:100%; overflow:hidden; }
+main { padding:6vh 7vw; }
+h1 { margin:0; font-size:3vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:700; }
+.lede { margin:1.4vh 0 4vh; font-size:2.6vh; color:var(--soft); }
+h2 { margin:3.4vh 0 1.6vh; font-size:2.1vh; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:650; }
+ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2.6vh; }
+.row { display:flex; align-items:baseline; gap:2vw; }
+.row b { font-size:3.6vh; font-weight:700; }
+.row span { font-size:2.3vh; color:var(--dim); }
+.row em { margin-left:auto; font-style:normal; font-size:2.6vh; font-weight:650; font-variant-numeric:tabular-nums; }
+.bar { height:.7vh; background:var(--slate); margin-top:1vh; }
+.bar i { display:block; height:100%; background:var(--signal); }
+.gone { font-size:2.3vh; color:var(--signal); }
+"""
+
+DRIVE_JS = """<script>
+(function () {
+  var T = @TITLES@, W = @WORDS@, box = document.getElementById('drive'), lede = document.getElementById('lede');
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function size(b) {
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
+    while (b >= 1000 && i < u.length - 1) { b /= 1000; i++; }
+    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + '\\u00a0' + u[i];
+  }
+  function draw(d) {
+    lede.textContent = W.sub + '  \\u00b7  ' + d.shares.length + ' ' + W.partitions;
+    box.textContent = ''; var group = null, ul = null;
+    d.shares.forEach(function (s) {
+      if (s.group !== group) {
+        group = s.group; box.appendChild(el('h2', null, T[group] || group));
+        ul = el('ul'); box.appendChild(ul);
+      }
+      var li = el('li'), row = el('div', 'row');
+      row.appendChild(el('b', null, s.label));
+      if (s.error) { row.appendChild(el('span', 'gone', W.gone)); li.appendChild(row); ul.appendChild(li); return; }
+      if (s.items.length) row.appendChild(el('span', null, s.items.length + (s.items.length === 1 ? W.file : W.files)));
+      row.appendChild(el('em', null, size(s.free) + ' ' + W.free));
+      var bar = el('div', 'bar'), i = el('i');
+      i.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
+      bar.appendChild(i); li.appendChild(row); li.appendChild(bar); ul.appendChild(li);
+    });
+  }
+  fetch('/depot/now').then(function (r) { return r.json(); }).then(draw).catch(function () {});
+})();
+</script>"""
+
+
+def drive_page():
+    cfg = node().get("depot") or {}
+    words = (node().get("wording") or {}).get("depot") or {}
+    titles = {g["name"]: g.get("title", g["name"]) for g in cfg.get("groups") or []}
+    w = {"sub": words.get("sub", ""), "partitions": words.get("partitions", "partitions"),
+         "free": words.get("free", "free"), "file": words.get("file", " file"),
+         "files": words.get("files", " files"), "gone": words.get("gone", "Cannot reach it")}
+    body = "<main><h1>%s</h1><p class=lede id=lede></p><div id=drive></div></main>%s" % (
+        e(words.get("head", "Files")),
+        DRIVE_JS.replace("@TITLES@", json.dumps(titles)).replace("@WORDS@", json.dumps(w)))
+    return page(words.get("head", "Files"), body, DRIVE_CSS)
+
+
 # ---------------------------------------------------------------------- wall --
 # THE WALL: pages for screens elsewhere on the network, the studio's rolling
 # TV first. Nothing on the network can reach this box's port (Windows calls the
@@ -1104,11 +1170,19 @@ def classes_page():
 # Hold stops the turning for a reader (WCAG 2.2.1), and lets go by itself
 # after three minutes, since nobody stands at this screen to let go of it.
 # A class soon or on takes the stage over (docs/KIOSK.md, "The class on
-# now"); otherwise the bar names the next one.
+# now").
+#
+# THE TURN is only implied (Autumn, 2026-09-26): a red bar under the header's
+# edge, parallel to it, a fifth of the width, that fills from the right on an
+# easing that is quick and then slow. Full, it gets the record button's knob
+# and takes off, back along its own streak and off the edge, and the next
+# module comes in as it goes. Then the bar creeps up again, knobless. Red,
+# because the brand's on-air red is for what is live. The only motion here.
 WALL_PAGES = {
     "kiosk": (lambda: kiosk_page(wall=True, map_only=True), "/kiosk/now",
               lambda: {"on": on_now(), "map": stations()}),
     "depot": (depot_page, "/depot/now", depot_now),
+    "drive": (lambda: drive_page(), "/depot/now", depot_now),
     "classes": (classes_page, None, None),
 }
 
@@ -1131,20 +1205,30 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
    the brand's tilt, cropped off left, right and top, so its one edge is the
    divider at the bottom, rising to the right: -8deg, counterclockwise
    (brand/README.md, "The tilt"). 14.05vw is the rise, tan 8deg of the width. */
+.top { position:relative; }
 .super { background:var(--signal); color:var(--ink); display:flex; align-items:center; gap:6vw;
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%);
   padding:4.5vh 7vw calc(3vh + 14.05vw); }
-/* The square goes black, as in icon-inverted.svg, and the code sits on a
-   light inset inside it: a phone reads dark on light, not the other way. */
-.super .mark { flex:none; width:21vh; height:21vh; padding:1.1vh; box-sizing:border-box; background:#000; }
-.super .mark img { display:block; width:100%; height:100%; box-sizing:border-box; padding:1.8vh; background:#fff; }
+/* One shape: the code is the black tilted square, straight on the field. The
+   field is the light a phone needs around it. */
+.super .mark { flex:none; width:21vh; height:21vh; padding:0; background:transparent; }
+.super .mark img { display:block; width:100%; height:100%; }
 .super .mark .ticks { display:none; }
-/* The hands fit the code, not the frame: over the whole mark they reached the
-   code's corner squares. !important, over the fragment's inline style. */
-.super .mark svg.clock { inset:2.9vh !important; width:calc(100% - 5.8vh) !important; height:calc(100% - 5.8vh) !important; }
 .super h1 { margin:0; font-size:6vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
 .super .sub { margin:1.4vh 0 0; font-size:2.6vh; line-height:1.25; white-space:pre-line; font-weight:600;
   color:rgba(18,20,23,.7); }
+
+/* The turn: a track under the edge at the right, parallel to it, a fifth of
+   the width projected (20.2vw along the tilt). Black, so it only just shows
+   on the dark. The red fills it from the right; the knob is the record
+   button, a red dot in a half-clear ring of the same red. */
+.timer { position:absolute; right:0; bottom:calc(14.05vw - 3vh); width:20.2vw; height:.9vh;
+  background:#000; border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg; }
+.timer i { position:absolute; top:0; bottom:0; right:0; left:100%; background:var(--record);
+  border-radius:.45vh 0 0 .45vh; }
+.timer b { position:absolute; top:50%; left:0; width:2.4vh; height:2.4vh; border-radius:50%;
+  background:var(--record); box-shadow:0 0 0 .9vh rgba(217,58,38,.5); opacity:0; translate:-50% -50%; }
+.timer.off { display:none; }
 
 .stage { position:relative; overflow:hidden; }
 .stage iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--ink);
@@ -1156,9 +1240,7 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 .takeover .room, .takeover .when { font-size:3vh; }
 
 /* The bar: small, because this screen gets a pointer at most. */
-.bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; display:flex; flex-direction:column; gap:.9vh; }
-.nextclass { margin:0; font-size:1.8vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.nextclass b { margin-right:1.4vw; font-size:1.3vh; letter-spacing:.12em; text-transform:uppercase; color:var(--signal); }
+.bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; }
 nav { display:flex; align-items:center; gap:1.2vw; }
 .showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
 .showing b { color:var(--paper); letter-spacing:.06em; }
@@ -1175,10 +1257,12 @@ WALL_JS = """<script>
       K = window.FCPMClass, qs = location.search, born = Date.now(),
       stage = document.getElementById('stage'), card = document.getElementById('class'),
       nav = document.querySelector('nav'), showing = document.getElementById('showing'),
-      hold = document.getElementById('hold'), next = document.getElementById('nextclass'),
-      heldFor = document.getElementById('heldfor'),
+      hold = document.getElementById('hold'), heldFor = document.getElementById('heldfor'),
+      timer = document.getElementById('timer'), fill = timer.querySelector('i'), knob = timer.querySelector('b'),
       buttons = document.querySelectorAll('nav button[data-m]'),
-      cur = 0, timer = null, held = 0, taken = false;
+      still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches,
+      EXIT = still ? 0 : 1100, FILL = Math.max(1000, EVERY * 1000 - EXIT),
+      cur = 0, held = 0, taken = false, t0 = 0, stopped = 0;
   function find(name) { for (var i = 0; i < M.length; i++) if (M[i].name === name) return i; return 0; }
   function show(i) {
     cur = (i + M.length) %% M.length;
@@ -1194,11 +1278,28 @@ WALL_JS = """<script>
     buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === m.name); });
     showing.textContent = m.label;
     try { history.replaceState(null, '', qs + '#' + m.name); } catch (e) {}
-    arm();
+    t0 = performance.now(); stopped = 0;
   }
-  function arm() {
-    clearTimeout(timer);
-    if (!held && !taken) timer = setTimeout(function () { show(cur + 1); }, EVERY * 1000);
+  // The turn, drawn every frame. Stopped (held, or a class on), time stops
+  // with it and picks up where it was.
+  function frame(now) {
+    if (held || taken) { if (!stopped) stopped = now; return requestAnimationFrame(frame); }
+    if (stopped) { t0 += now - stopped; stopped = 0; }
+    var t = now - t0;
+    if (t < FILL) {                                   // quick, then slow: ease-out
+      var p = t / FILL, e = 1 - Math.pow(1 - p, 3);
+      fill.style.left = (100 - 100 * e) + '%%'; knob.style.opacity = 0;
+    } else if (t < FILL + EXIT) {                     // the knob, then the take-off
+      var q = (t - FILL) / EXIT, pop = Math.min(1, q / .2),
+          go = q < .2 ? 0 : Math.pow((q - .2) / .8, 2.4), x = 118 * go;
+      knob.style.opacity = 1; knob.style.left = x + '%%';
+      knob.style.transform = 'scale(' + (.3 + .7 * pop) + ')';
+      fill.style.left = Math.min(100, x) + '%%';
+    } else {
+      knob.style.opacity = 0; fill.style.left = '100%%';
+      show(cur + 1);
+    }
+    requestAnimationFrame(frame);
   }
   // The countdown goes beside the button, never in it: the button keeps one
   // name, "Hold", so voice control and a screen reader's list can find it
@@ -1206,21 +1307,19 @@ WALL_JS = """<script>
   function label() {
     if (!held) { heldFor.textContent = ''; return; }
     var left = Math.max(0, HOLD_FOR - Math.floor((Date.now() - held) / 1000));
-    heldFor.textContent = '  ·  ' + W.held + ' ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
+    heldFor.textContent = '  \\u00b7  ' + W.held + ' ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
   }
   function setHold(on) {
-    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label(); arm();
+    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label();
   }
   function classes() {
     var s = K.pick(), was = taken;
     taken = !!s;
     if (s) K.card(card, s, K.words.hint_wall);
     card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
-    if (taken) { clearTimeout(timer); showing.textContent = K.words.head; }
+    timer.classList.toggle('off', taken);
+    if (taken) showing.textContent = K.words.head;
     else if (was) show(cur);
-    var u = taken ? null : K.upcoming(1)[0];
-    next.hidden = !u;
-    if (u) next.lastChild.textContent = u.title + '  \\u00b7  ' + K.day(u.starts) + ', ' + K.time(u.starts);
   }
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
   hold.addEventListener('click', function () { setHold(!held); });
@@ -1234,6 +1333,7 @@ WALL_JS = """<script>
   }, 10000);
   show(find(location.hash.slice(1)));
   classes(); setInterval(classes, 15000);
+  requestAnimationFrame(frame);
 })();
 </script>"""
 
@@ -1260,14 +1360,14 @@ def wall_files():
     ci = (node().get("wording") or {}).get("checkin") or {}
     rail = "".join('<button type=button data-m="%s">%s</button>' % (
         html.escape(m["name"], quote=True), e(m.get("label", m["name"]))) for m in mods)
-    body = """<header class=super>%s<div><h1>%s</h1><p class=sub>%s</p></div></header>
+    body = """<div class=top><header class=super>%s<div><h1>%s</h1><p class=sub>%s</p></div></header>
+<div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
-  <p class=nextclass id=nextclass hidden><b>%s</b><span></span></p>
   <nav aria-label="Wall"><p class=showing>%s <b id=showing></b><span id=heldfor></span></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
 </footer>
 %s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ci.get("sub")),
-           e(class_words()["next"]), e(cfg.get("showing", "Showing")), rail, e(cfg.get("hold", "Hold")),
+           e(cfg.get("showing", "Showing")), rail, e(cfg.get("hold", "Hold")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
