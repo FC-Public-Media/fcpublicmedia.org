@@ -1,0 +1,61 @@
+# gear.yml — what editing bay 1's crew stands on. REPLACES ../gear.yml here.
+#
+# Same fields as the default (`../gear.yml`, after station-node's docs/gear.md);
+# `at:` is added, because most of this bay's gear is not in winget's inventory
+# and is found by where it was put. `check.ps1` reads `package:` and `at:` and
+# reports each entry present or WANTED. Presence is never written here.
+#
+# THE BAY BRINGS WHAT IT CAN WITHOUT AN ADMINISTRATOR. winget's packages for gh,
+# uv and Node are machine-wide installers that raise an elevation prompt; the
+# vendors' portable archives are not. So those arrive through the bay (receive,
+# verify against the vendor's digest and Authenticode, stage, install, confirm:
+# ../bay/README.md), into ~/.local/bin or this profile's folder in
+# %LOCALAPPDATA%, and each arrival leaves a record in ./bay/.
+#
+# NOT OURS, AND LISTED SO NOBODY TAKES IT FOR OURS: the OBS in Program Files
+# (winget, 32.1.1) is the one people operate here every week. The recorder
+# trove brings its own portable copy beside it (troves/recorder/).
+
+version: 1
+platform: windows
+
+gear:
+  - gear: git
+    for: everything; Git Bash is also the shell `../sync` and bin/refs run in
+    package: Git.Git
+    provisioner: winget
+    updates: winget
+
+  - gear: claude-code
+    for: the crew. The pool (code/bin/pool.ps1) calls it by this path
+    at: "%USERPROFILE%\\.local\\bin\\claude.exe"
+    provisioner: hand         # the vendor's native installer, which updates itself
+    updates: self
+
+  - gear: gh
+    for: opening pull requests from this bay, which is how work leaves it
+    at: "%USERPROFILE%\\.local\\bin\\gh.exe"
+    vendor: GitHub, Inc. (github.com/cli/cli), MIT
+    provisioner: bay          # the portable zip; see bay/gh-2.101.0.yml
+    updates: bay
+    restart-tier: none
+
+  - gear: uv
+    for: Python, when this bay first needs it. `python` on PATH is the Store stub,
+      so `../binding` cannot run here until this arrives
+    at: "%USERPROFILE%\\.local\\bin\\uv.exe"
+    vendor: Astral (github.com/astral-sh/uv), MIT or Apache-2.0
+    provisioner: bay          # the portable zip, as media node's was
+    updates: bay
+    restart-tier: none
+
+  - gear: node
+    for: the broker's tests and wrangler, as on the media node
+    at: "%LOCALAPPDATA%\\editing-bay-1\\node\\node.exe"
+    vendor: OpenJS Foundation (nodejs.org), LTS
+    provisioner: bay          # the zip, published with SHASUMS256.txt
+    updates: bay
+    restart-tier: none
+
+# PROPOSED, NOT WANTED YET: ffmpeg, for transcoding digitization masters. It
+# waits on the capture decision (Autumn, HDCP testing, and a home for masters).

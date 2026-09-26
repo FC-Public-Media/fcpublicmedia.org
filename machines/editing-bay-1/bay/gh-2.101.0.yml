@@ -1,0 +1,37 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../bay/README.md. No procedure script yet: this one was run by hand,
+# step by step, and each step is in the run log.
+
+payload: gh
+version: 2.101.0
+replaces: nothing        # the first gh on this host
+vendor: GitHub, Inc. (github.com/cli/cli), MIT
+role: opening pull requests from this bay
+asked: Autumn, 2026-09-26 ("tools like gh are helpful")
+
+received: 2026-09-26
+source: https://github.com/cli/cli/releases/download/v2.101.0/gh_2.101.0_windows_amd64.zip
+size: 15473232
+why-not-winget: >
+  winget's GitHub.cli is an MSI that installs machine-wide and raises an
+  elevation prompt. The portable zip needs no administrator.
+
+verified:
+  sha256: bc6c814367b193cd8e713611d61e36013c0ef843b8f516458fe3eda039192794
+  # matches gh_2.101.0_checksums.txt from the same release, and the digest
+  # GitHub's release API reports for the asset
+  authenticode: "gh.exe: Valid, CN=GitHub, Inc. The zip holds no other executable"
+
+staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\gh-2.101.0"
+install-to: "%USERPROFILE%\\.local\\bin\\gh.exe"
+installed-sha256: df05089117a23889b3f6ea08d7644849afe7b6025647a09f33b45c71f1418f75
+restart-tier: none
+cover: none
+grants: none. Its sign-in (`gh auth login`) is a person's, at the desk, and
+  lives in Windows' credential store, never in a file
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage, install, confirm)"
+
+# No rollback copy: there was no previous gh. The next arrival keeps this one
+# in the cellar before it swaps.
+status: installed
