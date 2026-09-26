@@ -127,6 +127,15 @@ folders in `%LOCALAPPDATA%`. Then one line goes into
 ran, and who read the rest of the code. It proves the read verbs by running
 them; an `inside` verb rides on the same line, which is what `--by` is for.
 
+**`depends <holder> | <path>`** names a repository file the holder reads at run
+time. `prove` records its blob in the proof line, and `compile` counts the proof
+only while every declared dependency is at that blob, so an edit to the file
+revokes the grant exactly as an edit to the holder would. The recorder's
+`obs.ps1` depends on the bay's record, because that is where it reads the hash
+of the only `obs64.exe` it will start. Files outside the repository (the staff
+copy's own config, a password in Credential Manager) cannot be pinned by blob;
+the holder guards those itself, and says how in its header.
+
 **`wears <holder>`** in a profile's GRANTS limits it to those holders. The bays
 do not run the door, so the door's rules are not theirs to carry. A profile with
 no `wears` line answers for every claim.

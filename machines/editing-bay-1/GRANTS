@@ -71,7 +71,15 @@ host  deny  Bash(killall *)
 #   quiet <image>                       none running before it, none after
 #   expect <file> <text>                the cycle must append <text> to <file>
 #   admit allow <holder> | <shape>      an outside verb, allowed once exercised
+#   depends <holder> | <path>           a repo file the holder reads at run time;
+#                                       its blob is part of the proof
 wears      troves/recorder/obs.ps1
+# obs.ps1 takes the installed obs64.exe's hash from the bay's record at run
+# time and refuses any other copy (code-81, 2026-09-26). So the record is part
+# of what is proven: edit it, and the task verbs ask again. The file is named
+# by the installed version, so a new OBS through the bay means a new line here
+# and a new exercise.
+depends    troves/recorder/obs.ps1 | machines/editing-bay-1/bay/obs-portable-32.2.2.yml
 exercise   troves/recorder/obs.ps1 | start ; status ; record start ; status ; record stop ; stop
 untouched  {APPDATA}/obs-studio
 untouched  {USERPROFILE}/Videos
