@@ -1,0 +1,69 @@
+# RUNNABLES: what this repository's own tools say they do, one verb per line.
+#
+# This is the SUPPLIER's half: a claim, written by whoever wrote the tool. It
+# grants nothing. What a machine actually allows is its crew's answer, in
+# `<profile>/GRANTS`, compiled into the settings its sessions read. The whole
+# design is docs/RUNNABLES.md, after station-node's `the-runnable-manifest.md`.
+#
+# THE CLAIM IS A MENU, NOT A PERMISSION. A verb listed here and answered nowhere
+# is never allowed, and nothing complains. A runnable file with no line here at
+# all is UNDECLARED: `bin/runnables` shows it, and it matches no rule.
+#
+# ONE LINE PER VERB, AT ITS NARROWEST REUSABLE SHAPE. A rule cut to one exact
+# invocation fires once and is a receipt; a rule for the whole tool is the hole
+# the gate exists to close. The shape is what follows the holder on the command
+# line, and a trailing ` *` means "and any further arguments". `-` is the tool
+# with no arguments at all.
+#
+# Fields, separated by `|`:
+#
+#   holder   the file, relative to the repository root
+#   run      how it is started: sh (Git Bash on Windows), python, powershell
+#   shape    the verb, as above
+#   class    what it touches. The class decides the DEFAULT answer, and a
+#            profile may narrow it; only a merge to main widens one.
+#
+#              read      reads, prints, changes nothing           allow
+#              inside    writes inside this checkout only         allow
+#              outside   writes outside it: the host, the depot   ask
+#              desk      needs a person there, or an admin grant  ask
+#              secret    prints or handles a credential           deny
+#              service   a job's own verb, never a session's      deny
+#
+#   says     one line: what it does, in the tool's own words where it has them
+#
+# Git Bash only to read, no yaml: this is parsed by `bin/runnables`, which has
+# to run on a bay that has no Python yet.
+
+# holder                        | run        | shape                | class   | says
+
+# The door (kiosk-1). door.py's usage header is the source for every shape.
+machines/kiosk-1/door.py        | python     | -                    | read    | is the door up
+machines/kiosk-1/door.py        | python     | status               | read    | is the door up
+machines/kiosk-1/door.py        | python     | screens              | read    | are the screens in node.yml up and full-screen
+machines/kiosk-1/door.py        | python     | screens --launch     | outside | bring the screens up: opens windows on the panels
+machines/kiosk-1/door.py        | python     | startup              | read    | what starts the door at logon, and does it point here
+machines/kiosk-1/door.py        | python     | startup --xml        | read    | the logon task this checkout implies, to stdout
+machines/kiosk-1/door.py        | python     | startup --install    | desk    | register that task, and retire the Startup shortcut
+machines/kiosk-1/door.py        | python     | sessions             | read    | the Claude sessions that come back after a sign-in
+machines/kiosk-1/door.py        | python     | sessions pin *       | outside | always or never bring a session back
+machines/kiosk-1/door.py        | python     | sessions --revive    | outside | start the snapshot's sessions now
+machines/kiosk-1/door.py        | python     | serve                | service | become the door, on [::]:8080. The logon task's
+machines/kiosk-1/door.py        | python     | supervise            | service | run serve, restart it, pull. The logon task's
+machines/kiosk-1/door.py        | python     | wifi-password *      | secret  | prints a saved network's key
+machines/kiosk-1/m365-token.ps1 | powershell | *                    | secret  | prints a Microsoft 365 access token. The door calls it
+machines/kiosk-1/gotcha         | sh         | *                    | inside  | append one line to GOTCHAS.log; commits on media-node only
+
+# Which profile this checkout wears.
+machines/binding                | python     | -                    | read    | which machine profile this checkout wears, if any
+
+# Build tooling at the root. Each writes files that are committed, and nothing else.
+bin/build-kiosk.py              | python     | --check              | read    | fail if kiosk/welcome.* is stale
+bin/build-kiosk.py              | python     | --print              | read    | write nothing, show both
+bin/build-kiosk.py              | python     | -                    | inside  | write kiosk/welcome.yml and welcome.js
+bin/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
+bin/runnables                   | sh         | *                    | read    | this census
+
+# NOT CLAIMED YET, on purpose. site/bin holds the syncs, the pricing and the
+# claim minting: they reach the network, money and tokens, and a claim for one
+# is its author's to write, not a census's to guess. They show as undeclared.

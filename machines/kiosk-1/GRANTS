@@ -1,0 +1,70 @@
+# GRANTS: kiosk-1's answer to ../RUNNABLES. What this crew wears, on purpose.
+#
+# DRAFT, 2026-09-26. These would be the first permission rules this machine
+# has ever worn: until now its sessions ran in auto mode with the classifier as
+# the only gate, and no settings file named a rule (kiosk, 2026-09-26).
+#
+# This is the crew's half. RUNNABLES says what each verb claims to do; this says
+# what a session on this machine may run without asking, and it is written to be
+# read by whoever inspects the machine, not only by the harness. `bin/runnables
+# compile kiosk-1` turns it into the settings the sessions read; nobody edits
+# that output by hand, and no session writes it.
+#
+# ADMISSION IS A MERGE TO MAIN (Autumn, 2026-09-26, "for now"). An agent may
+# propose a line here, or narrow one. A widening lands only by a merged PR. The
+# signed control branch and its passkey gesture replace the merge later.
+#
+# PROOF COMES FIRST. An `allow` reaches the settings only for a holder whose
+# blob at this checkout's HEAD is listed in bay/runnables.proven. An unproven
+# allow is left off, so the harness treats it as it would with no list at all,
+# and the compiler says which. That is how the bay says a
+# tool of our own deserves the list: the same question it asks of a payload
+# from outside, answered for our own bytes.
+#
+# Lines:
+#
+#   checkout <path>                   where the admitted code runs, relative to
+#                                     the directory sessions start in (~/code)
+#   runner <run> <tool> [prefix...]   how a claim of that `run` is started, as
+#                                     the harness sees it. The FIRST line per run
+#                                     is the canonical form, the only one an
+#                                     allow is written for; every form gets the
+#                                     denies, so a secret has no side door
+#   narrow <answer> <holder> | <shape>
+#                                     answer this verb more tightly than its
+#                                     class does. Only ever tighter: a `narrow`
+#                                     that loosens is refused by the compiler
+
+checkout  work/fcpublicmedia.org@media-node
+
+# The media node's venv (kiosk, 2026-09-26). Bare `python` on this box is the
+# Store stub. The canonical form is the one below, typed from ~/code; sessions
+# had been using several, and a rule matches one text. The other forms are
+# listed so the denies reach them too.
+runner  python      Bash        {LOCALAPPDATA}/media-node/venv/Scripts/python.exe
+runner  python      PowerShell  & {LOCALAPPDATA}/media-node/venv/Scripts/python.exe
+runner  sh          Bash
+runner  powershell  Bash        powershell -NoProfile -File
+runner  powershell  PowerShell  &
+
+#   host <ask|deny> <rule>            a command that is not one of ours. It can
+#                                     be held back and never let through: only
+#                                     a proven holder of ours is ever allowed
+
+# Denying `supervise` would only move a restart onto these (kiosk,
+# 2026-09-26: the door was last restarted by stopping its pythonw processes and
+# starting the logon task by hand). Restarting the door is somebody's decision.
+host  ask   PowerShell(Stop-Process *)
+host  ask   PowerShell(Start-ScheduledTask *)
+host  ask   Bash(taskkill *)
+host  ask   Bash(schtasks *)
+
+# The checkout is the live one: a file written into it leaves it dirty, and the
+# door's rebase skips a dirty worktree, so the screens stop updating (the same
+# reason `gotcha` commits). Building belongs in a work/ branch here, so on this
+# machine it asks.
+narrow  ask   bin/build-kiosk.py | -
+
+# Launching the screens and reviving sessions already ask, by class. They are
+# the operator's and the attendant's to do once those roles exist; a dev session
+# should not need them at all.
