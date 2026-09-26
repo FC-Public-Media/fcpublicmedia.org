@@ -87,7 +87,28 @@ The player never fetches a payload from a public URL for a private reference.
   re-seal, only a wrap. The cost: a sealed bottle in a public repository is
   there for good, so a class key that leaks opens that class's materials to
   anyone, forever. Right for teaching materials; wrong for anything that
-  must stay private for years.
+  must stay private for years. **A class key is per class session and never
+  reused,** so a leak opens one session.
+
+  From bubbles, what exists and what does not:
+  - **Exists:** the wrap is plain age. The class key is an identity from
+    `composer/age-mint.mjs`; wrapping it for an attendee is `age-seal.mjs`
+    `encrypt(attendee recipient, class identity)`, opening it is `decrypt`.
+    Tested both ways against the real `age` binary.
+  - **Not built, bubbles' to build:** an age identity *derived from the
+    passkey*. The WebAuthn PRF output, salted `age:<class or mask>`, through
+    HKDF to the X25519 scalar and the `AGE-SECRET-KEY` form. Named in
+    anecdote.channel (`gesture.mjs`, D12), never built; `age-mint` makes a
+    random identity today. Tested with a fixed PRF output under Node; the real
+    ceremony proven separately on a phone.
+  - **PRF needs a recent browser.** iOS 18 Safari and current Android Chrome
+    have it. The kiosk's Edge 106 does not, and does not need it: a screen only
+    projects. An attendee whose authenticator lacks PRF cannot derive the key:
+    either a minted identity kept on their phone (weaker), or no class
+    materials. **Autumn's call.**
+  - **Check-in stops being silent.** Handing out a wrap means check-in sends
+    the attendee's recipient and returns the wrap, so gap 8's "no network
+    request" goes, unless the wrap also travels optically.
 - **The door's endpoint** is bubbles' to build on the media node: refuses a
   non-loopback caller and a reference with no grant.
 - **A wizard's delivery, as flat keys** on its residency entry, checked by the
