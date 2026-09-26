@@ -1225,8 +1225,8 @@ body { display:grid; grid-template-rows:25vh 1fr auto; grid-template-columns:min
 body.light { background:#fff; }
 /* Two whites for the dark, as the ink and slate are for the light: the bright
    one says "now", the dim one "before" and "the time". */
-body { --now:var(--paper); --then:#7d848d; --yet:var(--slate); }
-body.light { --now:var(--ink); --then:var(--slate); --yet:#dfe2e6; }
+body { --now:var(--paper); --then:#7d848d; --yet:transparent; }
+body.light { --now:var(--ink); --then:var(--slate); --yet:transparent; }
 .top { position:relative; z-index:2; pointer-events:none; }
 .top a, .top button { pointer-events:auto; }
 .head { height:100%; box-sizing:border-box; background:var(--slate); display:flex; align-items:flex-start; gap:6vw;
@@ -1244,7 +1244,8 @@ body.light { --now:var(--ink); --then:var(--slate); --yet:#dfe2e6; }
   font-variant-numeric:tabular-nums; }
 /* Under the edge at the right, tucked toward the corner: a pill for each hour
    of the class, an overline for the time. The hour we are in is lit; the ones
-   before it stay lit, dimmer; outside the class's hours nothing is bright, so
+   before it stay lit, dimmer; hours not yet reached are not drawn at all
+   (their places are kept); outside the class's hours nothing is bright, so
    the floor is visibly given back. Fixed pills, anchored at the right: a
    longer class reaches further toward the middle, not off the screen. The
    time under it is a convenience: small, dim, for the edge of the eye. */

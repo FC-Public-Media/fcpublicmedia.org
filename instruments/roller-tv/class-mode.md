@@ -94,10 +94,11 @@ deferred.
 - **The time of day** sits under the pills: small, regular weight, dim, for
   the edge of the eye.
 - **Colours for the pills and the time:** on white, ink for the current hour,
-  slate for past hours, and a pale grey for hours to come. On the dark
+  slate for past hours. On the dark
   content, two whites stand in for ink and slate: the bright paper for now,
-  and a dim white for past hours, which is also the time's colour. Hours to
-  come are slate. No yellow: it's too much accent here.
+  and a dim white for past hours, which is also the time's colour. Hours
+  not yet reached aren't drawn at all, though their places are kept, so
+  nothing shifts. No yellow: it's too much accent here.
 - **Content, the dark slate (`--ink`) or white.** Dark by default, light with
   `?light`. If it has to scroll, it runs under the header: the slanted edge
   covers it, hiding its top-left corner, and the scrollbar starts at the
