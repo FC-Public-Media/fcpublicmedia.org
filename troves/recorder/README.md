@@ -72,6 +72,42 @@ administrator, so it is placed at the desk as part of install, the way
 station-node's `LAUNCH.md` says grants are placed: before the job runs, never
 during.
 
+## Never
+
+What the members already call OBS on editing bay 1, and what the staff copy
+therefore never touches. Measured 2026-09-26 by code-e3, read-only and by name
+only; nothing of theirs was opened.
+
+| theirs | so the staff copy |
+|---|---|
+| **OBS Virtual Camera**, registered system-wide | never starts the virtual camera. `obs.ps1` has no verb for it. From the staff copy it would drive the members' device |
+| **"OBS Studio.lnk"** in the Start menu and on the Public desktop | never gets a shortcut named OBS. A person looking for OBS finds theirs |
+| **the websocket on 4455**, which a member's Streamer.bot also talks to | never uses 4455. Ours is 4456, and `start` refuses if anything already listens there |
+| **`HKLM\SOFTWARE\OBS Studio`** | never read or written. The portable copy made no registry key of its own |
+| **`obs64`**, the process name | is also theirs, so ours is never stopped by name. `stop` closes only the process id `start` wrote down, and only if it runs from this trove's prefix |
+
+And one thing that is ours to set, so the two can be told apart at a glance:
+the staff copy's profile and scene collection are both named **FCPM Recorder**,
+and OBS puts that in its title bar. `obs.ps1 prepare` names them.
+
+## Playing it
+
+`obs.ps1` is what an issued task calls. It reaches the staff copy only through
+its own websocket, obs-websocket v5 on `127.0.0.1:4456`, and nothing else:
+
+| verb | does |
+|---|---|
+| `status` | whether ours is installed, prepared, granted, running and recording, and where to. Changes nothing |
+| `prepare` | names the profile and scene collection, and turns the websocket on at 4456 with a generated password, kept in Credential Manager under `fcpm-recorder:obs-websocket` |
+| `start` | launches it with `--multi --portable` and its named profile, once the inbound-block rule is in place and 4456 is free, and writes down its process id |
+| `record start` | `StartRecord`, then reads `GetRecordStatus` to see that it took |
+| `record stop` | `StopRecord`, and prints the finished file's path: the *file finished* row above |
+| `stop` | stops recording if it is, then closes that process id |
+
+OBS keeps the websocket password in its own `config.json` too, in plain text,
+inside the staff copy's folder. That is how obs-websocket stores it; the copy in
+Credential Manager is the one this trove reads.
+
 ## Schematics are the trove's; a crew wears a reference
 
 Autumn, 2026-09-25, relayed by station-node's digitization session: the
@@ -98,6 +134,7 @@ making"*, and the schematics live here.
 |---|---|
 | `gear.yml` | the recorder as gear: what it is, where it comes from, who may replace it |
 | `bay/obs-portable.ps1` | the procedure that brings it aboard. `check` changes nothing |
+| `obs.ps1` | the runtime verbs an issued task calls. `status` changes nothing |
 
 A payload record is the host's, not the trove's: it says what arrived on one
 machine on one day. Editing bay 1's live in `machines/editing-bay-1/bay/`.

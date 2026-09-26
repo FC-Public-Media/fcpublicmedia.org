@@ -28,10 +28,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLAIMS="$ROOT/machines/RUNNABLES"
 cd "$ROOT" || exit 1
 
-# Where runnables live. A trove's bay procedures are the recorder's and the
-# screens' own; the rest are the repository's.
+# Where runnables live. A trove's bay procedures and runtime verbs are the
+# recorder's and the screens' own; the rest are the repository's.
 discover() {
-  git ls-files -- bin site/bin machines 'troves/*/bay/*' worker/bin 2>/dev/null |
+  git ls-files -- bin site/bin machines troves worker/bin 2>/dev/null |
   while IFS= read -r f; do
     case "$f" in
       *.py|*.ps1|*.sh) echo "$f" ;;
