@@ -89,6 +89,10 @@ until it runs something that has to be rebased under it.
   - `refs/` is never worked in. Every change gets `work/REPO@BRANCH`, and
     only one session works in a given worktree. Several sessions can share
     this `~/code` at once, so a branch name should say what it is for.
+  - **A stack gets one worktree, not one per branch** (`gh stack`, pinned
+    v0.1.1, 2026-09-26). Its metadata is per working tree, so make
+    `work/REPO@<stack>` with `bin/refs work` and move between its layers
+    inside it. A layer checked out in another worktree is invisible to it.
   - Each repo commits under its own `user.name`/`user.email`.
   - When the PR merges, `bin/refs done REPO BRANCH` and `bin/refs pull`.
     A worktree whose PR has merged is not reused: a commit made after the
