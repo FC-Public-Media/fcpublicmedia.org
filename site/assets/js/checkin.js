@@ -238,9 +238,49 @@ function renderHistory() {
   }
 }
 
+// What to call this phone before anyone has said. Not a device fingerprint:
+// only the kind of thing it is, in words a person would use, so the default
+// is already useful ("iPhone", "Samsung", "Windows PC") and changing it is a
+// refinement rather than a chore. Chrome can say the model (Pixel 8, or a
+// Samsung's SM- number) when asked; nothing else is asked for.
+function deviceKind(ua = navigator.userAgent, model = '') {
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+  if (/Macintosh/.test(ua)) return 'Mac';
+  if (/Android/.test(ua)) {
+    if (/Pixel/i.test(model) || /Pixel/.test(ua)) return model && /Pixel/i.test(model) ? model : 'Pixel';
+    if (/SamsungBrowser|SM-[A-Z]/.test(ua) || /^SM-/.test(model)) return 'Samsung';
+    return 'Android phone';
+  }
+  if (/CrOS/.test(ua)) return 'Chromebook';
+  if (/Windows/.test(ua)) return 'Windows PC';
+  if (/Linux/.test(ua)) return 'Linux';
+  return '';
+}
+
+async function guessDeviceLabel() {
+  let model = '';
+  try {
+    if (navigator.userAgentData?.getHighEntropyValues) {
+      ({ model = '' } = await navigator.userAgentData.getHighEntropyValues(['model']));
+    }
+  } catch (error) {
+    model = '';
+  }
+  return deviceKind(navigator.userAgent, model);
+}
+
 function renderDevice() {
   const device = getDevice();
   el('device-label').value = device.label || '';
+  // Named once, the first time, and kept: after that it is theirs to change.
+  if (!device.label) {
+    guessDeviceLabel().then((label) => {
+      if (!label || getDevice().label) return;
+      writeStore(DEVICE_KEY, { ...getDevice(), label });
+      if (!el('device-label').value) el('device-label').value = label;
+    });
+  }
   // A fragment is enough to tell two devices apart. There is no reason to put
   // a full identifier on screen.
   el('device-id').textContent = device.id.slice(0, 8);
@@ -553,8 +593,8 @@ function renderClass() {
   renderReason();
 
   // The button says what it is for.
-  for (const button of document.querySelectorAll('[data-state="idle"] [data-action="check-in"]')) {
-    button.textContent = session.running ? "I'm here for the class" : 'Check in';
+  for (const label of document.querySelectorAll('[data-check-in-label]')) {
+    label.textContent = session.running ? "I'm here for the class" : 'Check in';
   }
 }
 
@@ -701,6 +741,29 @@ async function init() {
   }
 
   el('claim-forget').addEventListener('click', dropClaim);
+
+  // A contact card, where the browser can offer one (Android Chrome's Contact
+  // Picker). The person picks the card; nothing else in their contacts is
+  // read. Elsewhere autocomplete="name" and "email" already let the keyboard
+  // offer their own card, which is the same feeling without a button.
+  const contact = el('use-contact');
+  if (contact && navigator.contacts?.select) {
+    const offer = () => { contact.hidden = Boolean(el('profile-name').value.trim()); };
+    offer();
+    el('profile-name').addEventListener('input', offer);
+    contact.addEventListener('click', async () => {
+      try {
+        const [card] = await navigator.contacts.select(['name', 'email'], { multiple: false });
+        if (!card) return;
+        if (card.name?.[0]) el('profile-name').value = card.name[0];
+        if (card.email?.[0] && !el('profile-email').value) el('profile-email').value = card.email[0];
+        saveProfile();
+        offer();
+      } catch (error) {
+        // Declined or unavailable: the fields are still there to type in.
+      }
+    });
+  }
 
   el('device-label').addEventListener('change', () => {
     writeStore(DEVICE_KEY, { ...getDevice(), label: el('device-label').value.trim() });

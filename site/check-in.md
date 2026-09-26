@@ -1,6 +1,7 @@
 ---
 title: Check In
 layout: pass
+theme_color: "#121417"
 lede: One tap when you get here. Your visits stay on your own phone.
 ---
 
@@ -73,18 +74,31 @@ lede: One tap when you get here. Your visits stay on your own phone.
 
 {% comment %} ------------------------------------------------------ the pass {% endcomment %}
 
+{%- comment -%}
+  THE CARD, AND THE FOLD. Autumn, 2026-09-26: it should read like their
+  business card, a member's, with their name as its header beside the mark.
+  And everything they might type into stays above the halfway fold, so a
+  keyboard coming up covers nothing they need: the card, then Check in as a
+  band at the card's own -8deg, cut off at both sides, with only the black
+  between them. What sits lower (the states, a class, the way to Visits and
+  This phone) is what nobody reaches for with a keyboard up.
+{%- endcomment -%}
+
 <section class="pass-view pass" data-view="pass" aria-label="Your pass">
 
   <div class="pass-card">
-    <span class="pass-mark" aria-hidden="true"></span>
-    <label class="visually-hidden" for="profile-name">Name</label>
-    <input class="pass-name" type="text" id="profile-name" autocomplete="name"
-           placeholder="Your name" spellcheck="false">
+    <div class="pass-head">
+      <span class="pass-mark" aria-hidden="true"></span>
+      <label class="visually-hidden" for="profile-name">Name</label>
+      <input class="pass-name" type="text" id="profile-name" autocomplete="name"
+             placeholder="Name" spellcheck="false" enterkeyhint="next">
+    </div>
+    <button class="pass-contact" id="use-contact" type="button" hidden>Use a contact card</button>
 
     <div class="pass-email" data-claim="none" hidden>
       <label class="visually-hidden" for="profile-email">Email</label>
       <input type="email" id="profile-email" autocomplete="email" placeholder="Email"
-             inputmode="email" autocapitalize="none" spellcheck="false">
+             inputmode="email" autocapitalize="none" spellcheck="false" enterkeyhint="done">
     </div>
     <p class="pass-email" data-claim="verified" hidden>
       <span id="claim-email"></span> <span class="pass-chip">Confirmed</span>
@@ -92,7 +106,14 @@ lede: One tap when you get here. Your visits stay on your own phone.
 
     <label class="visually-hidden" for="device-label">This phone's name</label>
     <input class="pass-device" type="text" id="device-label" placeholder="This phone"
-           autocomplete="off" spellcheck="false">
+           autocomplete="off" spellcheck="false" enterkeyhint="done">
+  </div>
+
+  <div class="state pass-go" data-state="idle" hidden>
+    <button class="pass-band" data-action="check-in" type="button" aria-describedby="visit-reason">
+      <span class="pass-band-in"><span class="pass-reason" id="visit-reason" aria-hidden="true" hidden></span>
+      <span class="pass-band-label" data-check-in-label>Check in</span></span>
+    </button>
   </div>
 
   <div class="pass-now">
@@ -101,7 +122,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
     <div class="class-banner" id="class-banner-root" data-class-banner hidden>
       <p class="eyebrow" data-class-eyebrow></p>
       <h2 data-class-title></h2>
-      <p><span data-class-when></span> <span class="muted" data-class-room></span></p>
+      <p><span data-class-when></span> <span data-class-room></span></p>
       <p data-class-late hidden>Running late? Come anyway.</p>
       <p data-rsvp-offer hidden>
         <button class="btn" id="rsvp-button" type="button">I'm planning to come</button>
@@ -111,22 +132,17 @@ lede: One tap when you get here. Your visits stay on your own phone.
 
     <div class="state" data-state="blocked" hidden>
       <h2>This browser won't save anything</h2>
-      <p class="muted">Private browsing? Use the paper log by the door.</p>
-    </div>
-
-    <div class="state" data-state="idle" hidden>
-      <p class="pass-reason" id="visit-reason" hidden></p>
-      <button class="btn btn-primary btn-big" data-action="check-in" type="button">Check in</button>
+      <p>Private browsing? Use the paper log by the door.</p>
     </div>
 
     <div class="state" data-state="locating" hidden>
-      <p class="lede">Checking where you are&hellip;</p>
+      <h2>Checking where you are&hellip;</h2>
     </div>
 
     <div class="state" data-state="far" hidden>
       <h2>Not at the studio yet</h2>
-      <p class="muted" id="far-distance"></p>
-      <p class="muted">Held. Leave this open and it finishes when you arrive.</p>
+      <p id="far-distance"></p>
+      <p>Held. Leave this open and it finishes when you arrive.</p>
       <p class="pass-actions">
         <a class="btn btn-primary" id="venue-directions" href="#" target="_blank" rel="noopener">Directions</a>
         <button class="btn" data-action="check-in" type="button">Check again</button>
@@ -136,19 +152,19 @@ lede: One tap when you get here. Your visits stay on your own phone.
 
     <div class="state" data-state="denied" hidden>
       <h2>Location is off</h2>
-      <p class="muted">Turn it on for this site, or use the paper log.</p>
+      <p>Turn it on for this site, or use the paper log.</p>
       <button class="btn" data-action="check-in" type="button">Try again</button>
     </div>
 
     <div class="state" data-state="error" hidden>
       <h2>That didn't work</h2>
-      <p class="muted" id="error-detail"></p>
+      <p id="error-detail"></p>
       <button class="btn" data-action="check-in" type="button">Try again</button>
     </div>
 
     <div class="state" data-state="done" hidden>
       <h2>Welcome.</h2>
-      <p class="muted" id="done-detail"></p>
+      <p id="done-detail"></p>
       <button class="btn" id="again-button" type="button">Check in again</button>
     </div>
   </div>

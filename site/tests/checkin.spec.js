@@ -163,6 +163,31 @@ test.describe('check-in', () => {
     await expect(page.locator('#device-label')).toHaveValue("Sam's phone");
   });
 
+  test('the phone is named without anyone typing', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    // Whatever kind of device the test runs as, it gets a word for it, and
+    // that word is kept as the phone's name.
+    await expect(page.locator('#device-label')).not.toHaveValue('');
+    const named = await page.locator('#device-label').inputValue();
+    await page.reload();
+    await expect(page.locator('#device-label')).toHaveValue(named);
+  });
+
+  test('the check-in button keeps its name when the code gives a reason', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await page.goto(`${PATH}?reason=Class`);
+    await expect(page.getByRole('button', { name: 'Check in', exact: true })).toBeVisible();
+  });
+
+  test('everything to type into, and Check in, sits above the fold', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    const fold = (await page.evaluate(() => window.innerHeight)) / 2;
+    for (const target of ['#profile-name', '#profile-email', '#device-label', '.pass-band']) {
+      const box = await page.locator(target).boundingBox();
+      expect(box.y + box.height, `${target} ends above the fold`).toBeLessThanOrEqual(fold);
+    }
+  });
+
   test('the pass does not scroll', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
     for (const hash of ['', '#visits', '#device']) {
@@ -407,7 +432,7 @@ test.describe('check-in during a class', () => {
 
     await expect(page.locator('#visit-reason')).toHaveText('Class');
     await expect(
-      page.locator('[data-state="idle"] [data-action="check-in"]')
+      page.locator('[data-state="idle"] [data-check-in-label]')
     ).toHaveText("I'm here for the class");
   });
 
