@@ -114,6 +114,13 @@ deferred.
   one used is signal at 30%, so the way back is easy to see. The rest are the
   dark slate, told apart by a hairline. There's no yellow text in the footer.
   A section is a button named by its title. There's no rotation.
+- **The footer's corner: CLASS**, as the wall's bar says FCPM, over a 2×2 of
+  round keys that look pressable: Dark and Light, then previous and next.
+  **Nothing flickers on repeated presses:** Dark and Light are two keys, not
+  a toggle, so pressing one again does nothing. The arrows stop at the first
+  and last section, never wrapping around, and take at most one step per
+  quarter second however fast they're pressed. The arrow shapes are
+  placeholders.
 - **Material is organised by nouns** (the folders, such as `Handouts`),
   meaning kinds of material, not slides. It can still be used like slides:
   numbered files keep working. The noun isn't shown yet.

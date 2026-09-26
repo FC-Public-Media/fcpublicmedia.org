@@ -1278,7 +1278,22 @@ main li { margin:.6vh 0; }
    the strip's alone (a pseudo-element behind the name); the name is turned
    the same 8 degrees, so it runs along the strip without being sheared. Up is signal; the one before it is signal at 30%%; the rest are
    the dark slate, told apart by a hairline (Autumn, 2026-09-26). */
-footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; }
+footer { background:var(--slate); padding:0 6vw 0 5vw; display:flex; align-items:stretch; gap:5vw; overflow:hidden; }
+/* The footer's own corner: CLASS, as the wall's bar says FCPM, over four
+   round keys. Dark and Light are two keys, not a toggle, and the arrows stop
+   at the ends: pressing anything again, or fast, cannot make the screen
+   flicker (Autumn, 2026-09-26). */
+.keys { flex:none; align-self:center; display:flex; flex-direction:column; align-items:center; gap:1.4vh; padding:2vh 0; }
+.keys b { font-size:1.8vh; font-weight:750; letter-spacing:.14em; text-transform:uppercase; color:var(--paper); }
+.keys div { display:grid; grid-template-columns:repeat(2, 4.6vh); gap:1.1vh; }
+.keys button { width:4.6vh; height:4.6vh; padding:0; border:0; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; background:var(--ink); color:var(--soft);
+  box-shadow:inset 0 .3vh 0 rgba(255,255,255,.08), 0 .35vh 0 #0b0c0e; transition:transform .08s, box-shadow .08s; }
+.keys button:active, .keys button[aria-pressed=true] { transform:translateY(.3vh);
+  box-shadow:inset 0 .35vh .5vh rgba(0,0,0,.6), 0 0 0 #0b0c0e; }
+.keys button[aria-pressed=true] { color:var(--paper); }
+.keys button:disabled { opacity:.35; cursor:default; }
+.keys svg { width:55%; height:55%; }
 .tabs { display:flex; align-items:stretch; }
 .tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
   padding:2.2vh .6vh; border:0; background:transparent; cursor:pointer; font:inherit; font-size:1.6vh;
@@ -1299,7 +1314,16 @@ CLASSMODE_JS = """<script>
       H = @HOURS@, at = /[?&]at=(\\d\\d?):(\\d\\d)/.exec(location.search), skew = 0;
   if (at) { var t = new Date(); t.setHours(+at[1], +at[2], 0, 0); skew = t - Date.now(); }
   function clock() { return new Date(Date.now() + skew); }
-  if (/[?&]light\\b/.test(location.search)) document.body.classList.add('light');
+  var dark = document.getElementById('dark'), light = document.getElementById('light'),
+      prev = document.getElementById('prev'), next = document.getElementById('next'), stepped = 0;
+  // Two keys, each only ever sets its own mode: a second press is nothing.
+  function mode(lit) {
+    document.body.classList.toggle('light', lit);
+    dark.setAttribute('aria-pressed', !lit); light.setAttribute('aria-pressed', lit);
+  }
+  mode(/[?&]light\\b/.test(location.search));
+  dark.addEventListener('click', function () { mode(false); });
+  light.addEventListener('click', function () { mode(true); });
   function show(i) {
     if (i === cur) return;
     if (cur >= 0) recent = cur;
@@ -1308,9 +1332,18 @@ CLASSMODE_JS = """<script>
       t.setAttribute('aria-current', k === cur); t.classList.toggle('recent', k === recent);
     });
     arts.forEach(function (a, k) { a.hidden = k !== cur; });
+    prev.disabled = cur <= 0; next.disabled = cur >= tabs.length - 1;
     try { history.replaceState(null, '', location.search + '#' + (cur + 1)); } catch (e) {}
   }
   tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
+  // The arrows step one section, stop at the ends (no wrapping round), and
+  // take at most one step per quarter second, however fast they are pressed.
+  function step(d) {
+    var t = Date.now(); if (t - stepped < 250) return; stepped = t;
+    show(Math.max(0, Math.min(tabs.length - 1, cur + d)));
+  }
+  prev.addEventListener('click', function () { step(-1); });
+  next.addEventListener('click', function () { step(1); });
   // One pill per hour of the class, from its start: lit while it is on, the
   // earlier ones dimmer; nothing bright before the start or after the end.
   function hours(d) {
@@ -1362,10 +1395,15 @@ def class_mode_page(path):
 <p class=who>%s</p><p class=hours>%s</p><div class=hourbar id=hourbar aria-hidden=true>%s</div>
 <div class=now id=now aria-hidden=true></div></div>
 <main>%s</main>
-<footer><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
+<footer><div class=keys><b>%s</b><div>
+<button type=button id=dark aria-label="Dark" aria-pressed=true><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx=12 cy=12 r=8 fill=none stroke=currentColor stroke-width=2 /><path d="M12 4 A8 8 0 0 0 12 20 Z" fill=currentColor /></svg></button>
+<button type=button id=light aria-label="Light" aria-pressed=false><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx=12 cy=12 r=4.5 fill=currentColor /><g stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></g></svg></button>
+<button type=button id=prev aria-label="Previous section"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 L8 12 L15 19" fill=none stroke=currentColor stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg></button>
+<button type=button id=next aria-label="Next section"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 L16 12 L9 19" fill=none stroke=currentColor stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg></button>
+</div></div><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
         checkin_mark(inline=True), e(card.get("title")), e(card.get("presenter")),
         e(hours_label(span) if span else card.get("hours")), pills, arts,
-        html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@HOURS@", json.dumps(list(span) if span else None)))
+        e(card.get("label", "Class")), html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@HOURS@", json.dumps(list(span) if span else None)))
     return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
 
 
