@@ -73,9 +73,10 @@ until it runs something that has to be rebased under it.
 ## How work moves
 
 - **One branch per change**, made from `origin/main` with `bin/refs work`.
-  Commit, push, then `gh pr create`. `gh` is **not installed here yet**
-  (2026-09-25): until it is, push the branch and open the PR from GitHub's
-  compare page. Autumn merges. Within 5 minutes the door rebases
+  Commit, push, then `gh pr create`. `gh` 2.101.0 is at
+  `~/.local/bin/gh.exe` (the bay's record: `machines/editing-bay-1/bay/`),
+  signed in. A shell that doesn't find it on PATH can use the full path.
+  Autumn merges. Within 5 minutes the door rebases
   `media-node` onto main and restarts on the new code.
 - **Commit as we go** (Autumn, 2026-09-25). On a work branch, commit each
   step as it lands rather than holding a pile of changes. Committing is
@@ -138,10 +139,15 @@ until it runs something that has to be rebased under it.
 
 ## Building and testing here
 
-Not provisioned yet. It has git 2.55, winget 1.29, and Claude Code at
-`~/.local/bin`. The `python` on PATH is a Store stub. winget here is new enough
-to install uv, Node LTS, gh and ffmpeg directly; check their signatures either
-way. `core.autocrlf` is `true` system-wide (Git for Windows' default) and
+Mostly not provisioned. It has git 2.55, winget 1.29, and Claude Code at
+`~/.local/bin`. The `python` on PATH is a Store stub. **uv 0.12.19** is
+installed per-user by winget (2026-09-26; hash verified, Authenticode valid,
+signed by *OpenAI OpCo, LLC*). Python comes from it: `uv run --no-project
+--python 3.12 --with pyyaml ...` runs `door.py` here, and it rendered the wall
+for the roller. Shells started before that need the full path,
+`%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe`.
+winget here can also install Node LTS, gh and ffmpeg directly; check their
+signatures either way. `core.autocrlf` is `true` system-wide (Git for Windows' default) and
 `false` for `fcpub` (2026-09-25), so checkouts arrive LF.
 
 ## Rules that bite
