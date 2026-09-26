@@ -169,6 +169,11 @@ wording:
     sub: |-                  # one sentence per line, as written
       No apps.
       Free public tech.
+  wall:                      # the roller: the check-in head stays, the words are its own
+    sub: |-                  # one line each, title case, as Autumn wrote it (2026-09-26)
+      Don’t Just View It.
+      Do It.
+    brand: FCPM              # the bar's label; the lit button says which module is up
   map:
     until: until
   classes:                   # the upcoming list, and the takeover while a class is soon or on

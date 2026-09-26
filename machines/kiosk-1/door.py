@@ -1221,11 +1221,15 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 /* The turn: a track under the edge at the right, parallel to it, a fifth of
    the width projected (20.2vw along the tilt). Black, so it only just shows
    on the dark. The red fills it from the right; the knob is the record
-   button, a red dot in a half-clear ring of the same red. */
-.timer { position:absolute; right:0; bottom:calc(14.05vw - 3vh); width:20.2vw; height:.9vh;
-  background:#000; border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg; }
+   button, a red dot in a half-clear ring of the same red. Thin while it runs;
+   held, it thickens and turns signal, so the two never look alike. */
+.timer { position:absolute; right:0; bottom:calc(14.05vw - 3vh); width:20.2vw; height:.4vh;
+  background:#000; border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg;
+  transition:height .3s; }
 .timer i { position:absolute; top:0; bottom:0; right:0; left:100%; background:var(--record);
-  border-radius:.45vh 0 0 .45vh; }
+  border-radius:.45vh 0 0 .45vh; transition:background-color .3s; }
+.timer.held { height:.9vh; }
+.timer.held i { background:var(--signal); }
 .timer b { position:absolute; top:50%; left:0; width:2.4vh; height:2.4vh; border-radius:50%;
   background:var(--record); box-shadow:0 0 0 .9vh rgba(217,58,38,.5); opacity:0; translate:-50% -50%; }
 .timer.off { display:none; }
@@ -1243,7 +1247,7 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 .bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; }
 nav { display:flex; align-items:center; gap:1.2vw; }
 .showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
-.showing b { color:var(--paper); letter-spacing:.06em; }
+.showing b { color:var(--paper); font-size:1.8vh; font-weight:750; letter-spacing:.14em; }
 .showing span { color:var(--signal); font-variant-numeric:tabular-nums; }
 nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
   color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
@@ -1256,12 +1260,12 @@ WALL_JS = """<script>
   var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 180, W = @WORDS@,
       K = window.FCPMClass, qs = location.search, born = Date.now(),
       stage = document.getElementById('stage'), card = document.getElementById('class'),
-      nav = document.querySelector('nav'), showing = document.getElementById('showing'),
+      nav = document.querySelector('nav'),
       hold = document.getElementById('hold'), heldFor = document.getElementById('heldfor'),
       timer = document.getElementById('timer'), fill = timer.querySelector('i'), knob = timer.querySelector('b'),
       buttons = document.querySelectorAll('nav button[data-m]'),
       still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches,
-      EXIT = still ? 0 : 1100, FILL = Math.max(1000, EVERY * 1000 - EXIT),
+      EXIT = still ? 0 : 1100, GAP = 500, FILL = Math.max(1000, EVERY * 1000 - EXIT - GAP),
       cur = 0, held = 0, taken = false, t0 = 0, stopped = 0;
   function find(name) { for (var i = 0; i < M.length; i++) if (M[i].name === name) return i; return 0; }
   function show(i) {
@@ -1276,7 +1280,6 @@ WALL_JS = """<script>
     });
     stage.insertBefore(f, card);
     buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === m.name); });
-    showing.textContent = m.label;
     try { history.replaceState(null, '', qs + '#' + m.name); } catch (e) {}
     t0 = performance.now(); stopped = 0;
   }
@@ -1286,7 +1289,9 @@ WALL_JS = """<script>
     if (held || taken) { if (!stopped) stopped = now; return requestAnimationFrame(frame); }
     if (stopped) { t0 += now - stopped; stopped = 0; }
     var t = now - t0;
-    if (t < FILL) {                                   // quick, then slow: ease-out
+    if (t < 0) {                                      // the gap after the take-off: empty
+      fill.style.left = '100%%'; knob.style.opacity = 0;
+    } else if (t < FILL) {                            // quick, then slow: ease-out
       var p = t / FILL, e = 1 - Math.pow(1 - p, 3);
       fill.style.left = (100 - 100 * e) + '%%'; knob.style.opacity = 0;
     } else if (t < FILL + EXIT) {                     // the knob, then the take-off
@@ -1297,7 +1302,7 @@ WALL_JS = """<script>
       fill.style.left = Math.min(100, x) + '%%';
     } else {
       knob.style.opacity = 0; fill.style.left = '100%%';
-      show(cur + 1);
+      show(cur + 1); t0 += GAP;                       // a breath before it creeps again
     }
     requestAnimationFrame(frame);
   }
@@ -1311,6 +1316,7 @@ WALL_JS = """<script>
   }
   function setHold(on) {
     held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label();
+    timer.classList.toggle('held', !!on);
   }
   function classes() {
     var s = K.pick(), was = taken;
@@ -1318,8 +1324,7 @@ WALL_JS = """<script>
     if (s) K.card(card, s, K.words.hint_wall);
     card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
     timer.classList.toggle('off', taken);
-    if (taken) showing.textContent = K.words.head;
-    else if (was) show(cur);
+    if (!taken && was) show(cur);
   }
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
   hold.addEventListener('click', function () { setHold(!held); });
@@ -1358,16 +1363,17 @@ def wall_files():
         shim = WALL_SHIM % json.dumps({url: data()}).replace("</", "<\\/") if url else ""
         files[m["name"] + ".html"] = build().replace(POLL, "").replace("</head>", shim + "</head>", 1)
     ci = (node().get("wording") or {}).get("checkin") or {}
+    ww = (node().get("wording") or {}).get("wall") or {}
     rail = "".join('<button type=button data-m="%s">%s</button>' % (
         html.escape(m["name"], quote=True), e(m.get("label", m["name"]))) for m in mods)
     body = """<div class=top><header class=super>%s<div><h1>%s</h1><p class=sub>%s</p></div></header>
 <div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
-  <nav aria-label="Wall"><p class=showing>%s <b id=showing></b><span id=heldfor></span></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
+  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=heldfor></span></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
 </footer>
-%s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ci.get("sub")),
-           e(cfg.get("showing", "Showing")), rail, e(cfg.get("hold", "Hold")),
+%s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))),
+           e(ww.get("brand", "FCPM")), rail, e(cfg.get("hold", "Hold")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
