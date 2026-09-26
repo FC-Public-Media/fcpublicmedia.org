@@ -61,6 +61,7 @@ In this repository:
 |---|---|
 | a **procedure** | carried by whatever needs the payload: a trove (`../../troves/*/bay/`) or this folder. Every procedure has a `check` that changes nothing |
 | a **payload record** | `../<profile>/bay/<payload>-<version>.yml`, one per arrival on one host. Its `status:` moves `staged → installed`, or `rolled-back`, or `installed-outside` when the thing arrived and the bay did not do it |
+| **proofs of our own runnables** | `../<profile>/bay/runnables.proven`, beside the payload records: this holder, at this git blob, does what its claims in `../RUNNABLES` say. Foreign software gets a payload record; our own scripts get a proof. See `../../docs/RUNNABLES.md` |
 
 The record is the host's because an arrival is a fact about one machine on one
 day. The procedure is the trove's because it is the same on every machine that
