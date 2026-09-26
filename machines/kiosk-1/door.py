@@ -1223,25 +1223,44 @@ CLASSMODE_CSS = """html, body { height:100%; overflow:hidden; }
 body { display:grid; grid-template-rows:25vh 1fr auto; grid-template-columns:minmax(0, 1fr); user-select:none;
   background:var(--ink); }
 body.light { background:#fff; }
-.top { position:relative; }
+/* Two whites for the dark, as the ink and slate are for the light: the bright
+   one says "now", the dim one "before" and "the time". */
+body { --now:var(--paper); --then:#7d848d; --yet:var(--slate); }
+body.light { --now:var(--ink); --then:var(--slate); --yet:#dfe2e6; }
+.top { position:relative; z-index:2; pointer-events:none; }
+.top a, .top button { pointer-events:auto; }
 .head { height:100%; box-sizing:border-box; background:var(--slate); display:flex; align-items:flex-start; gap:6vw;
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%); padding:3.4vh 7vw 0; }
 .head .mark { flex:none; width:14vh; height:14vh; padding:.9vh; box-sizing:border-box; }
 .head .mark img { display:block; width:100%; height:100%; }
 .head .mark .ticks { display:none; }
 .head h1 { margin:.6vh 0 0; font-size:4.2vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
-.head .hours { margin:1vh 0 0; font-size:2.4vh; color:var(--soft); font-variant-numeric:tabular-nums; }
-/* The time of day, under the edge on the slant, where the wall's timer runs.
-   A convenience, not a headline: regular weight, soft. */
-.now { position:absolute; right:7vw; top:calc(100% - 13.07vw + 1.2vh); transform-origin:100% 0; rotate:-8deg;
-  font-size:2.4vh; font-weight:400; color:var(--soft); font-variant-numeric:tabular-nums; white-space:nowrap; }
-body.light .now { color:#6b737c; }
-/* Who is presenting: the time's mirror, over the edge at the left, on the
-   slant. Kept off the footer, which is the tabs' (Autumn, 2026-09-26). */
-.who { position:absolute; left:7vw; bottom:1.4vh; transform-origin:0 100%; rotate:-8deg; margin:0;
-  font-size:2.2vh; font-weight:650; color:var(--paper); white-space:nowrap; }
+/* On the slant, above the edge: who is presenting at the left, in a serif so
+   the name reads apart from everything else; the class's hours at the right. */
+.who, .hours { position:absolute; bottom:1.4vh; rotate:-8deg; margin:0; white-space:nowrap; }
+.who { left:7vw; transform-origin:0 100%; font:600 2.5vh/1 Georgia, "Times New Roman", serif;
+  color:var(--paper); }
+.hours { right:5vw; bottom:calc(13.35vw + 1.2vh); transform-origin:100% 100%; font-size:2vh; color:var(--soft);
+  font-variant-numeric:tabular-nums; }
+/* Under the edge at the right, tucked toward the corner: a pill for each hour
+   of the class, an overline for the time. The hour we are in is lit; the ones
+   before it stay lit, dimmer; outside the class's hours nothing is bright, so
+   the floor is visibly given back. Fixed pills, anchored at the right: a
+   longer class reaches further toward the middle, not off the screen. The
+   time under it is a convenience: small, dim, for the edge of the eye. */
+.hourbar { position:absolute; right:5vw; top:calc(100% - 13.35vw + .9vh); transform-origin:100% 0; rotate:-8deg;
+  display:flex; gap:.5vw; }
+.hourbar i { width:3.6vw; height:.7vh; border-radius:99px; background:var(--yet); }
+.hourbar i.then { background:var(--then); }
+.hourbar i.on { background:var(--now); }
+.now { position:absolute; right:5vw; top:calc(100% - 13.35vw + 2.4vh); transform-origin:100% 0; rotate:-8deg;
+  font-size:1.8vh; font-weight:400; color:var(--then); font-variant-numeric:tabular-nums; white-space:nowrap; }
 
-main { overflow:hidden; padding:4vh 7vw; color:var(--paper); }
+/* The content runs under the overhang if it has to scroll: its top reaches up
+   behind the header's slant, which hides its top-left corner, and its
+   scrollbar starts at the slant. */
+main { position:relative; z-index:1; margin-top:-14.05vw; padding:calc(14.05vw + 4vh) 7vw 4vh; overflow-y:auto;
+  color:var(--paper); }
 body.light main { color:var(--ink); }
 main article[hidden] { display:none; }
 main h1 { margin:0 0 2.4vh; font-size:4.6vh; line-height:1.1; }
@@ -1275,7 +1294,10 @@ footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; 
 CLASSMODE_JS = """<script>
 (function () {
   var tabs = document.querySelectorAll('.tabs button'), arts = document.querySelectorAll('main article'),
-      now = document.getElementById('now'), cur = -1, recent = -1;
+      now = document.getElementById('now'), bar = document.getElementById('hourbar'), cur = -1, recent = -1,
+      H = @HOURS@, at = /[?&]at=(\\d\\d?):(\\d\\d)/.exec(location.search), skew = 0;
+  if (at) { var t = new Date(); t.setHours(+at[1], +at[2], 0, 0); skew = t - Date.now(); }
+  function clock() { return new Date(Date.now() + skew); }
   if (/[?&]light\\b/.test(location.search)) document.body.classList.add('light');
   function show(i) {
     if (i === cur) return;
@@ -1288,7 +1310,19 @@ CLASSMODE_JS = """<script>
     try { history.replaceState(null, '', location.search + '#' + (cur + 1)); } catch (e) {}
   }
   tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
-  function tick() { now.textContent = new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); }
+  // One pill per hour of the class, from its start: lit while it is on, the
+  // earlier ones dimmer; nothing bright before the start or after the end.
+  function hours(d) {
+    if (!H) return;
+    var m = d.getHours() * 60 + d.getMinutes();
+    Array.prototype.forEach.call(bar.children, function (p, k) {
+      var from = H[0] + 60 * k, to = Math.min(H[1], from + 60);
+      p.className = m >= to ? 'then' : m >= from && m < H[1] ? 'on' : '';
+    });
+  }
+  function tick() {
+    var d = clock(); now.textContent = d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); hours(d);
+  }
   tick(); setInterval(tick, 5000);
   var h = parseInt(location.hash.slice(1), 10);
   show(h >= 1 && h <= tabs.length ? h - 1 : 0);
@@ -1297,17 +1331,40 @@ CLASSMODE_JS = """<script>
 </script>"""
 
 
+def class_hours(card):
+    """(start, end) in minutes after midnight, from class.yml's starts/ends."""
+    def mins(v):
+        m = re.fullmatch(r"(\d{1,2}):(\d{2})", str(v or ""))
+        return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+    a, b = mins(card.get("starts")), mins(card.get("ends"))
+    return (a, b) if a is not None and b is not None and b > a else None
+
+
+def hours_label(span):
+    """6–8 PM: the minutes only when they are not :00, the half once."""
+    def part(v, half):
+        h, m = divmod(v, 60)
+        return "%d%s%s" % ((h - 1) % 12 + 1, ":%02d" % m if m else "", " " + half if half else "")
+    a, b = span
+    ha, hb = ("AM" if a < 720 else "PM"), ("AM" if b < 720 else "PM")
+    return "%s\u2013%s" % (part(a, ha if ha != hb else ""), part(b, hb))
+
+
 def class_mode_page(path):
     card, kinds = class_folder(path)
+    span = class_hours(card)
     kind = kinds[0] if kinds else {"kind": "", "sections": []}
     tabs = "".join('<button type=button><span>%s</span></button>' % e(x["title"]) for x in kind["sections"])
     arts = "".join("<article hidden>%s</article>" % x["html"] for x in kind["sections"])
-    body = """<div class=top><header class=head>%s<div><h1>%s</h1><p class=hours>%s</p></div></header>
-<p class=who>%s</p><div class=now id=now aria-hidden=true></div></div>
+    pills = "<i></i>" * (-(-(span[1] - span[0]) // 60)) if span else ""
+    body = """<div class=top><header class=head>%s<div><h1>%s</h1></div></header>
+<p class=who>%s</p><p class=hours>%s</p><div class=hourbar id=hourbar aria-hidden=true>%s</div>
+<div class=now id=now aria-hidden=true></div></div>
 <main>%s</main>
 <footer><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
-        checkin_mark(inline=True), e(card.get("title")), e(card.get("hours")), e(card.get("presenter")), arts,
-        html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS)
+        checkin_mark(inline=True), e(card.get("title")), e(card.get("presenter")),
+        e(hours_label(span) if span else card.get("hours")), pills, arts,
+        html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@HOURS@", json.dumps(list(span) if span else None)))
     return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
 
 

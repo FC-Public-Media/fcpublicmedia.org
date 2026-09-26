@@ -8,4 +8,5 @@
 title: Podcasting 101 (sample)
 presenter: Doug              # a name, and short: Autumn's example. A long one is
                              # the exception, and should be the person's real name
-hours: 6:00–8:00 PM          # later, from the class's calendar entry
+starts: "18:00"               # 24-hour, local; later, from the class's calendar entry
+ends: "20:00"                 # shown as 6–8 PM, with a pill for each hour
