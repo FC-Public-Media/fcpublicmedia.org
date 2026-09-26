@@ -601,7 +601,7 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; white-space:pre-line; font-weight:500; color:var(--soft); }
 
 /* The map: what can be booked, lit when in use. */
-.stations { position:absolute; left:6vw; right:6vw; top:50%; translate:0 -50%;
+.stations { position:absolute; left:6vw; right:calc(16% + 5vh + 2vw); top:50%; translate:0 -50%;
   display:flex; flex-direction:column; gap:2.6vh; }
 .group { display:grid; grid-template-columns:2.4vh 1fr; column-gap:1.6vw; align-items:center; }
 .group .mark { width:2.4vh; height:2.4vh; }
@@ -619,7 +619,9 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .group.preparing .names span { color:var(--dim); }
 .group.preparing .mark { opacity:.6; }
 
-.wifi { position:absolute; right:4vw; bottom:3vh; display:flex; gap:2.4vw; }
+/* The guest Wi-Fi code: one now, back in the map half, at its smaller size
+   (Autumn, 2026-09-26: small and alone, it reads as less of a demand). */
+.wifi { position:absolute; left:84%; top:50%; translate:-50% -50%; display:flex; flex-direction:column; gap:3vh; }
 .qr { display:block; width:10vh; height:10vh; background:#fff; padding:.9vh; box-sizing:border-box; }
 .qr img { display:block; width:100%; height:100%; }
 .net { display:flex; flex-direction:column; align-items:center; gap:.9vh; }
@@ -725,10 +727,10 @@ def kiosk_page(wall=False, map_only=False):
   %s
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
   <div class="words class" id=class hidden></div>
-  <div class=wifi>%s</div>
 </section>
 <section class="half map">
   <div class=stations id=stations></div>
+  <div class=wifi>%s</div>
 </section>
 <footer><div class=on><b id=on-label></b><span id=on-who></span></div><div class=place>%s</div></footer>
 %s""" % (code, e(ci.get("head")), e(ci.get("sub")), "".join(nets),
@@ -762,10 +764,8 @@ footer { padding:3.4vh 7vw; }
 .place { font-size:2.3vh; }
 """
 
-# The desk's card is the check-in words' size: the code stays beside it, and
-# the Wi-Fi codes below it.
+# The desk's card is the check-in words' size, with the code beside it.
 DESK_CLASS_CSS = """
-.checkin .class { top:40%; }
 .checkin .class .kicker { font-size:1.5vh; }
 .checkin .class .title { margin-top:.8vh; font-size:3.4vh; }
 .checkin .class .room { margin-top:1vh; font-size:2vh; }
