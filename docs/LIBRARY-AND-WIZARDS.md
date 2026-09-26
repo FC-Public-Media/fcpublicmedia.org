@@ -48,19 +48,44 @@ decoding the bubble. FCPM takes the **screen side**: the first purely optical
 transmission, a studio screen playing a bubble with nothing but light between
 it and the phone.
 
-**A payload is never public here.** This repository and the site are public;
-a teacher's materials carried as a wizard are not. So:
+**Private is never committed; public may be** (Autumn, 2026-09-26: *"we may
+never commit things that are private, but anything that is made public might be
+good there. We need options mostly."*). This repository and the site are
+public, and a teacher's materials usually are not. So a screen names a bottle
+**by reference only**, and the reference says where it comes from:
 
-- the kiosk artifact and a screen's show config name a bottle **by reference
-  only** (a wizard label, a digest), never by content;
-- the door serves the frames at play time from a private source (a private
-  repository held on the bubbles side, or the depot), and nothing it plays is
-  written into this tree or built into the site;
-- the player never fetches a payload from a public URL.
+| reference | from | for |
+|---|---|---|
+| `sha256:<hex>` | the door, by digest: the media node's library wing or cloud wing, never a git tree | anything private. Loopback only: the door answers the kiosk's own screens |
+| `wizard:<engine>+<label>` | the door, resolving the label through its grant to a digest | the usual case |
+| `public:<repo path>` | a committed bottle, read from the checkout (or `file://` on a screen that cannot reach the door) | a wizard that is public on purpose; the door refuses unless its entry says `payload_public: true` |
 
-Open with bubbles: the frame format (anecdote.channel's carrier, fountain-coded,
-or the you engine's stored GIF), whether a payload is encrypted to recipients or
-meant for whoever is in the room, and where the private source lives.
+The player never fetches a payload from a public URL for a private reference.
+
+**Settled with bubbles, 2026-09-26:**
+
+- **Frames.** anecdote.channel's carrier, cut by `press/broadcast.mjs`
+  `planBroadcast`: `stream` on single screens, `collage` with nine tiles on the
+  big TV, the `droplets` cut (an LT fountain, so a loop heals), ecLevel M,
+  8 fps, 256-byte blocks, the signed layout tile kept in rotation. Drawn with
+  anecdote.channel's `qr-encode` and nothing else, so screen and camera cannot
+  disagree. Not the you engine's stored GIF: *pristine* is the perfect-read
+  form, not for a camera. The contract is the frame strings; the player only
+  draws them. It loops forever, and no signal comes back: light is one way, and
+  the return is the member's signed PR.
+- **Envelope.** Always signed. Sealed to recipients (`composer/age-seal.mjs`)
+  or for whoever is in the room is Autumn's call; the player is the same
+  either way.
+- **The door's endpoint** is bubbles' to build on the media node: refuses a
+  non-loopback caller and a reference with no grant.
+- **A wizard's delivery, as flat keys** on its residency entry, checked by the
+  door: `deliver_optical_only` or `deliver_on_web`, `payload_kept_off_repo`,
+  `payload_held_in_library`, `requires_member_passkey`, and `payload_public`
+  for the `public:` case.
+- **Open:** how the kiosk page gets `broadcast.mjs`, `carrier.mjs` and
+  `qr-encode.mjs` byte-identical to the catcher's. Proposed: one anecdote.channel
+  commit pinned here, served by the door from its mirror at that commit, and the
+  catcher on the same pin.
 
 ## `learn.`: the you side, for transient members
 
@@ -86,6 +111,22 @@ chosen before anybody enrolls:
   a scope of the member area.
 - **`learn.` keeps its own passkeys.** A transient member enrolls there, and
   becoming a full member is a second enrollment on `you.`.
+
+**Recommended by bubbles: the label, `learn.you.fcpublicmedia.org`.** The RP ID
+`you.` already covers every `*.you.` host, so a class attendee makes the
+ordinary you passkey and "transient member" is a scope on it (on a roster, no
+membership), not a second credential. Related origins need Chromium 128 or
+Safari 18, and the kiosk's own Edge is 106. Separate passkeys cost friction
+every class, for people who by definition come once. The cost: `learn` becomes
+a reserved label that no show may claim. Two consequences:
+
+- sealing to a roster needs each attendee's recipient at minting, so a walk-in
+  who enrolls at the door means a re-seal, or a class key the roster check
+  hands out; either way the door re-plans, and the player is unchanged;
+- any `*.you.` page can ask for assertions against that RP ID, including a
+  member-built show site. The trade acceptance check refuses or strips WebAuthn
+  in those builds, or show sites get a no-script CSP, or they live under a
+  sibling the RP ID does not cover.
 
 ## The wizards we already know we want
 
