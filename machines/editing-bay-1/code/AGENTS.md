@@ -44,6 +44,7 @@ placed yet.
 > 3. Commit as we go
 > 4. Revise .pr steps ahead as we go; the progressive goal is visible and malleable
 > 5. Push 
+> 6. Destroy .pr when you've sent the equivalent to your origin PR
 
 ## What we own
 
