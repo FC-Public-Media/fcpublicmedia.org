@@ -1,0 +1,97 @@
+#!/bin/sh
+# sync — put on the profile this machine wears, or say how far off it is.
+#
+#   machines/sync              status: which profile, what differs. Changes nothing
+#   machines/sync install      put the profile's carried files in place, clone
+#                              missing mirrors. A person runs this, not a session
+#   machines/sync mirror       bring the machine's copies back into this checkout,
+#                              for a pull request. Refused in refs/
+#   machines/sync -p NAME ...  name the profile instead of asking the machine
+#
+# After station-node's `machine/sync`, for the plural: which profile is worn is
+# ASKED, the way `binding` asks it, and the profile's own MANIFEST says what it
+# carries and where it goes. Same entry point on every platform; the profile
+# says the rest. A profile may carry `check.ps1` (Windows) or `check.sh`, which
+# status runs to report what files cannot: tools, settings, tasks. Those checks
+# change nothing either.
+#
+# `install` never destroys: a home file that differs is moved aside to
+# <name>.pre-sync first, and a mirror already cloned is left alone.
+#
+# Git Bash on Windows, sh elsewhere. No Python: this is what a bare machine
+# runs before it has one, and `binding` needs one.
+
+set -u
+HERE=$(cd "$(dirname "$0")" && pwd)
+REPO=$(cd "$HERE/.." && pwd)
+profile=""
+if [ "${1:-}" = "-p" ]; then profile=${2:-}; shift 2; fi
+cmd=${1:-status}
+
+# The name this machine answers to, per platform, the way `binding` asks.
+asked() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) echo "windows ComputerName ${COMPUTERNAME:-}" ;;
+    Darwin) echo "darwin LocalHostName $(scutil --get LocalHostName 2>/dev/null)" ;;
+    *) echo "linux hostname $(hostname 2>/dev/null)" ;;
+  esac
+}
+
+if [ -z "$profile" ]; then
+  fact=$(asked | tr '[:upper:]' '[:lower:]')
+  for n in "$HERE"/*/names; do
+    if sed -e 's/#.*$//' "$n" | awk 'NF == 3 { print tolower($1 " " $2 " " $3) }' | grep -qxF "$fact"; then
+      profile=$(basename "$(dirname "$n")"); break
+    fi
+  done
+fi
+if [ -z "$profile" ]; then
+  echo "sync: this machine ($(asked)) wears no profile here. That is the clean state."
+  exit 0
+fi
+P="$HERE/$profile"
+[ -f "$P/MANIFEST" ] || { echo "sync: $profile carries no MANIFEST"; exit 0; }
+echo "profile  $profile"
+
+rc=0
+while read -r mode src dst <&3; do
+  case "$mode" in ''|'#'*) continue ;; esac
+  from="$P/$src"; to="$HOME/$dst"
+  case "$mode:$cmd" in
+    mirror:status)
+      if [ ! -e "$to" ]; then echo "missing   ~/$dst"; rc=1
+      elif cmp -s "$from" "$to"; then echo "same      ~/$dst"
+      else echo "differs   ~/$dst   ($(git -C "$REPO" diff --no-index --shortstat "$from" "$to" | sed 's/^ *//'))"; rc=1
+      fi ;;
+    mirror:install)
+      if [ -e "$to" ] && cmp -s "$from" "$to"; then continue; fi
+      mkdir -p "$(dirname "$to")"
+      [ -e "$to" ] && mv "$to" "$to.pre-sync" && echo "aside     ~/$dst -> $(basename "$to").pre-sync"
+      cp -p "$from" "$to" && echo "placed    ~/$dst" ;;
+    mirror:mirror)
+      case "$REPO" in */refs/*) echo "sync: $REPO is a read-only mirror; mirror into a work/ worktree" >&2; exit 2 ;; esac
+      if [ -e "$to" ] && ! cmp -s "$from" "$to"; then cp -p "$to" "$from" && echo "brought   ~/$dst"; fi ;;
+    clone:status|clone:install)
+      sed -e 's/#.*$//' "$from" | while read -r url; do
+        [ -n "$url" ] || continue
+        name=$(basename "$url" .git)
+        [ -e "$to/$name/.git" ] && continue
+        if [ "$cmd" = status ]; then echo "missing   ~/$dst/$name"
+        else mkdir -p "$to" && git clone --quiet "$url" "$to/$name" && echo "cloned    ~/$dst/$name"; fi
+      done ;;
+    clone:mirror) ;;
+    *) echo "sync: unknown mode '$mode', or verb '$cmd'" >&2; exit 2 ;;
+  esac
+done 3< "$P/MANIFEST"
+
+if [ "$cmd" = status ]; then
+  n=$(sed -e 's/#.*$//' "$P/MANIFEST" | awk '$1 == "clone" { print $2 }' | while read -r l; do
+      sed -e 's/#.*$//' "$P/$l" | grep -c . ; done | awk '{ s += $1 } END { print s + 0 }')
+  echo "mirrors  $n listed"
+  if [ -f "$P/check.ps1" ] && command -v powershell >/dev/null 2>&1; then
+    echo; powershell -NoProfile -File "$(cygpath -w "$P/check.ps1" 2>/dev/null || echo "$P/check.ps1")" || rc=1
+  elif [ -f "$P/check.sh" ]; then
+    echo; sh "$P/check.sh" || rc=1
+  fi
+fi
+exit $rc
