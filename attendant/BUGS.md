@@ -12,22 +12,5 @@ Fixed bugs are deleted; the history keeps them.
 
 ---
 
-## Hold is renamed every second while it holds
-
-- **Recipe:** [`wall.md`](wall.md), step 5
-- **Status:** seen, 2026-09-26, on roller-tv, at `e8d44d1` (#138).
-- **What the page does:** a pressed Hold writes its countdown into the
-  button's own text, so the button's accessible name becomes "Held 2:57",
-  then "Held 2:56", and so on. `aria-pressed` is right throughout.
-- **Why it matters:** anything that finds the button by its name, whether a
-  voice command ("click Hold"), an attendant, or a screen reader user's list
-  of buttons, cannot find Hold to let go early, and finds a new name each
-  second if it looks again. A screen reader resting on the button may read
-  each change.
-- **Where:** `machines/kiosk-1/door.py`, the wall shell's `label()`.
-  Probably fixed by keeping the button's text "Hold" and putting the
-  countdown beside it (in the "Showing" line, say), not in a live region.
-  Not tried.
-
-The three earlier wall bugs were fixed by #138 and are in this file's
-history.
+None open. The last four, all on the wall, were fixed by #138 and #140 and are in
+this file's history.

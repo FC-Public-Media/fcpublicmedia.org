@@ -12,8 +12,8 @@ attendant does it by name. While a class is soon or on, the wall shows that
 class instead, and the job is to find what it says.
 
 Status: **followed 2026-09-26 on roller-tv**, by an agent on editing bay 1,
-against #138 (`wall-rotates`) at `e8d44d1`. Step 5 fails; see
-[`BUGS.md`](BUGS.md) and *How it was followed*.
+against #138 and #140, at `cf4249f`. All steps pass. See *How it was
+followed*.
 
 ## Before
 
@@ -39,18 +39,20 @@ each module, and **Hold**.
    the bar says "Showing Files", and the address ends in `#files`.
 
 3. **Press button "Hold".**
-   *You see:* the button gets a yellow outline and `aria-pressed="true"`, and
-   reads "Held 2:59", counting down each second.
+   *You see:* the button gets a yellow outline and `aria-pressed="true"`,
+   and keeps its name, "Hold". Beside "Showing" a countdown appears:
+   "Showing Files · held 2:59".
 
 4. **Stay for a minute.**
    *You see:* Files stays. Nothing turns and nothing reloads.
 
 5. **Let go early: press button "Hold" again.**
-   *You see:* it reads "Hold" again, with `aria-pressed="false"`.
+   *You see:* `aria-pressed="false"`, the outline goes, and the countdown
+   beside "Showing" is gone.
 
 6. **Press "Hold" once more and leave it held.** It lets go by itself after
    three minutes.
-   *You see:* it reads "Hold" with `aria-pressed="false"`. Within 45 seconds
+   *You see:* `aria-pressed="false"` and no countdown. Within 45 seconds
    the next module comes up, and the frame's name and "Showing" change with
    it.
 
@@ -71,9 +73,10 @@ which one it is, and when they walk away the wall carries on by itself.
 
 ## How it was followed
 
-2026-09-26, `door.py` at `a7e2283` (#138), and again at `e8d44d1` after
-the kiosk session's fixes. Editing bay 1 cannot reach the
-depot share, so it rendered the wall itself: `wall_files()` under a
+2026-09-26, `door.py` at `a7e2283` (#138), and again at `e8d44d1` and
+`cf4249f` (#140) after the kiosk session's fixes. (#140's `door.py` is
+the one followed, as `3e1fc2e`, before it was re-landed.) Editing bay 1
+cannot reach the depot share, so it rendered the wall itself: `wall_files()` under a
 uv-managed Python 3.12 with `pyyaml`, with `classes: sample` forced on for the
 render only, written to `%LOCALAPPDATA%\editing-bay-1\wall\`, and opened on
 the roller from `file://` the way `launch_screen` opens a screen (Edge,
@@ -91,10 +94,10 @@ module's first entry.
 |---|---|
 | 1 | passes: nav "Wall", four buttons, frame "Studio" |
 | 2 | passes |
-| 3 | passes: "Held 2:57", then "Held 2:54" |
+| 3 | passes: still named "Hold"; "Showing Classes · held 2:58" |
 | 4 | passes: no turn in 65 s |
-| 5 | **fails**: while held, no button is named "Hold". Its name is the countdown |
-| 6 | passes (at `a7e2283`): still held at 175 s, released by 190 s, then turned |
+| 5 | passes at `cf4249f` (#140). At `e8d44d1` it failed: the countdown was the button's name |
+| 6 | passes at `a7e2283` and `cf4249f` (#140): still held at 175 s, released by 191 s, countdown gone, then turned |
 | 7 | passes: pressing modules and turning add no history; Back reloaded the wall, and bar and frame agreed |
 | 8 | passes at soon, late and on; at `e8d44d1` no buttons are left in the bar |
 
