@@ -619,9 +619,9 @@ h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
 .group.preparing .names span { color:var(--dim); }
 .group.preparing .mark { opacity:.6; }
 
-/* The guest Wi-Fi code: one now, back in the map half, at its smaller size
+/* The guest Wi-Fi code: one now, top right of the map half, at its smaller size
    (Autumn, 2026-09-26: small and alone, it reads as less of a demand). */
-.wifi { position:absolute; left:84%; top:50%; translate:-50% -50%; display:flex; flex-direction:column; gap:3vh; }
+.wifi { position:absolute; right:6vw; top:5vh; display:flex; flex-direction:column; gap:3vh; }
 .qr { display:block; width:10vh; height:10vh; background:#fff; padding:.9vh; box-sizing:border-box; }
 .qr img { display:block; width:100%; height:100%; }
 .net { display:flex; flex-direction:column; align-items:center; gap:.9vh; }
