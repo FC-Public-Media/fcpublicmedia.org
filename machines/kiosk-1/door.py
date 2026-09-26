@@ -1308,6 +1308,11 @@ body.light .keys button:active { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #b
 body.light .keys #dark { background:var(--slate); color:var(--soft); box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); }
 body.light .keys #dark:active { box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
 body.light .keys #light { background:#fff; color:var(--ink); }
+/* The section strips in light mode: at rest they are the content's white,
+   as at night they are the content's dark; every name is ink, whatever its
+   strip's colour (Autumn, 2026-09-26). */
+body.light .tabs button, body.light .tabs button.recent { color:var(--ink); }
+body.light .tabs button:not([aria-current=true]):not(.recent)::before { background:#fff; box-shadow:inset 1px 0 0 #d5d9de; }
 .keys svg { width:55%; height:55%; }
 .tabs { display:flex; align-items:stretch; }
 .tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
