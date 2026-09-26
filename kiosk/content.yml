@@ -57,6 +57,20 @@ greeting: >-
 
 # The panels, in the order they appear.
 panels:
+  # The class on now. The facts are the site's class schedule: calendar.json,
+  # which the media node keeps current from the Microsoft 365 calendar, or
+  # classes.yml when that is empty. The screen's clock decides whether one is
+  # on, with the website's own rule (site/assets/js/classes.js), so the two
+  # never disagree.
+  #
+  # TAKES OVER WHILE ON (Autumn, 2026-09-26). From `lead_minutes` before a
+  # class until it ends, this is the screen: the main area on the rolling TV,
+  # the top of the welcome desk, with the check-in code beside it. The rest of
+  # the time it is one line at the bottom, the next class.
+  - panel: On now
+    from: classes
+    takeover: true
+
   # The facts come from site/_data/checkin.yml, including the committed QR.
   #
   # THE KIOSK SHOWS THIS CODE. IT DOES NOT CHECK ANYBODY IN.

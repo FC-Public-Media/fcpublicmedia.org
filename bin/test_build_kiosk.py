@@ -102,14 +102,14 @@ class TestSecrets(unittest.TestCase):
 
     def test_the_real_artifact_passes_its_own_guard(self):
         """Belt and braces: the committed file, checked as a string."""
-        text = bk.ARTIFACT.read_text()
+        text = bk.ARTIFACT.read_text(encoding="utf-8")
         bk.check_no_secrets(text, FAKE_PASSWORD)
         self.assertNotIn(bk.FORBIDDEN_ASSET, text)
 
 
 class TestInertAndPortable(unittest.TestCase):
     def setUp(self):
-        self.text = bk.ARTIFACT.read_text()
+        self.text = bk.ARTIFACT.read_text(encoding="utf-8")
 
     def test_no_template_syntax(self):
         """A consumer resolves nothing. Liquid, Jinja and ERB all stay out."""
@@ -144,10 +144,19 @@ class TestInertAndPortable(unittest.TestCase):
         self.assertIn("encodes:", urls[0])
 
     def test_no_timestamp(self):
-        """A self-stamping file churns every run and stops meaning anything."""
+        """A self-stamping file churns every run and stops meaning anything.
+
+        A class's `starts:` and `ends:` are dates and are content: the schedule
+        a screen reads its clock against. They are the only dates allowed.
+        """
+        body = "\n".join(
+            line
+            for line in self.text.splitlines()
+            if not re.match(r"\s*(starts|ends): ", line)
+        )
         for pattern in (r"\d{4}-\d{2}-\d{2}", r"generated_at", r"\btimestamp\b"):
             with self.subTest(pattern=pattern):
-                self.assertIsNone(re.search(pattern, self.text))
+                self.assertIsNone(re.search(pattern, body))
 
     def test_deterministic(self):
         """Same sources, same bytes — otherwise --check is noise."""
@@ -167,7 +176,7 @@ class TestRevision(unittest.TestCase):
     """
 
     def test_present_and_looks_like_a_digest(self):
-        artifact = yaml.safe_load(bk.ARTIFACT.read_text())
+        artifact = yaml.safe_load(bk.ARTIFACT.read_text(encoding="utf-8"))
         self.assertRegex(artifact["revision"], r"\A[0-9a-f]{12}\Z")
 
     def test_stable_across_rebuilds(self):
@@ -250,8 +259,8 @@ class TestTheJsTransport(unittest.TestCase):
 
     def test_committed_pair_agrees(self):
         """The real files on disk, not just freshly rendered ones."""
-        on_disk_yaml = yaml.safe_load(bk.ARTIFACT.read_text())
-        on_disk_js = self.payload(bk.ARTIFACT_JS.read_text())
+        on_disk_yaml = yaml.safe_load(bk.ARTIFACT.read_text(encoding="utf-8"))
+        on_disk_js = self.payload(bk.ARTIFACT_JS.read_text(encoding="utf-8"))
         self.assertEqual(on_disk_js, on_disk_yaml)
 
     def test_carries_no_secret_either(self):
@@ -269,12 +278,14 @@ class TestTheJsTransport(unittest.TestCase):
 
     def test_check_mode_covers_both_files(self):
         """A stale JS with a current YAML must still fail."""
-        original = bk.ARTIFACT_JS.read_text()
+        original = bk.ARTIFACT_JS.read_text(encoding="utf-8")
         try:
-            bk.ARTIFACT_JS.write_text(original.replace("window.", "window.X", 1))
+            bk.ARTIFACT_JS.write_text(
+                original.replace("window.", "window.X", 1), encoding="utf-8", newline="\n"
+            )
             self.assertEqual(bk.main(["--check"]), 1)
         finally:
-            bk.ARTIFACT_JS.write_text(original)
+            bk.ARTIFACT_JS.write_text(original, encoding="utf-8", newline="\n")
         self.assertEqual(bk.main(["--check"]), 0)
 
 
@@ -349,6 +360,79 @@ class TestTheCheckinPanel(unittest.TestCase):
             with self.assertRaises(SystemExit) as caught:
                 bk.build(src)
         self.assertIn("make-qr.py", str(caught.exception))
+
+
+def session(title, starts, ends="2026-10-06T20:00:00-06:00", **extra):
+    s = {"title": title, "starts": starts, "ends": ends, "room": "Podcast Studio"}
+    s.update(extra)
+    return s
+
+
+class TestTheClassesPanel(unittest.TestCase):
+    """The schedule for a screen's clock, with the website's own windows."""
+
+    PANEL = {"panel": "On now", "from": "classes", "takeover": True}
+
+    def build(self, **overrides):
+        return bk.panel_from_classes(sources(**overrides), self.PANEL)
+
+    def test_it_is_the_config_classes_js_reads(self):
+        """pickSession(config) takes exactly this, so screen and site agree."""
+        out = self.build(
+            classes={"lead_minutes": 60, "late_minutes": 30,
+                     "sessions": [session("A", "2026-10-06T18:00:00-06:00")]}
+        )
+        self.assertTrue(out["takeover"])
+        self.assertEqual(
+            set(out["classes"]), {"source", "leadMinutes", "lateMinutes", "sessions"}
+        )
+        self.assertEqual((out["classes"]["leadMinutes"], out["classes"]["lateMinutes"]), (60, 30))
+
+    def test_calendar_wins_when_it_has_sessions(self):
+        """Same order as site/_includes/class-config.html."""
+        cal = {"sessions": [session("From M365", "2026-10-06T18:00:00-06:00")]}
+        cls = {"sessions": [session("By hand", "2026-10-07T18:00:00-06:00")]}
+        out = self.build(calendar=cal, classes=cls)
+        self.assertEqual(out["classes"]["source"], "calendar")
+        self.assertEqual([s["title"] for s in out["classes"]["sessions"]], ["From M365"])
+
+        out = self.build(calendar={"sessions": []}, classes=cls)
+        self.assertEqual(out["classes"]["source"], "file")
+
+    def test_only_what_the_website_already_shows(self):
+        """Whatever the calendar grows, a stranger reads four fields."""
+        leaky = session(
+            "A", "2026-10-06T18:00:00-06:00",
+            attendees=["Somebody Private"], organizer="someone@example.org", notes="x",
+        )
+        out = self.build(calendar={"sessions": [leaky]})
+        (s,) = out["classes"]["sessions"]
+        self.assertEqual(set(s), {"title", "starts", "ends", "room", "summary"})
+        self.assertNotIn("Somebody Private", json.dumps(out))
+
+    def test_a_time_without_an_offset_is_refused(self):
+        for bad in ("2026-10-06T18:00:00", "2026-10-06 18:00"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(SystemExit):
+                    self.build(classes={"sessions": [session("A", bad)]})
+
+    def test_yaml_datetimes_keep_their_offset(self):
+        """classes.yml's bare timestamps arrive as datetimes, not strings."""
+        cls = yaml.safe_load(
+            "sessions:\n  - title: A\n    starts: 2026-10-06T18:00:00-06:00\n"
+            "    ends: 2026-10-06T20:00:00-06:00\n"
+        )
+        (s,) = self.build(classes=cls)["classes"]["sessions"]
+        self.assertEqual(s["starts"], "2026-10-06T18:00:00-06:00")
+
+    def test_cancelled_sessions_are_left_off_and_the_rest_sorted(self):
+        cal = {"sessions": [
+            session("Later", "2026-10-08T18:00:00-06:00", ends="2026-10-08T20:00:00-06:00"),
+            session("Off", "2026-10-07T18:00:00-06:00", cancelled=True),
+            session("Sooner", "2026-10-06T18:00:00-06:00"),
+        ]}
+        titles = [s["title"] for s in self.build(calendar=cal)["classes"]["sessions"]]
+        self.assertEqual(titles, ["Sooner", "Later"])
 
 
 class TestMalformedContent(unittest.TestCase):
