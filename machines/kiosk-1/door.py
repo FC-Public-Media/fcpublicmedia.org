@@ -1162,6 +1162,7 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 nav { display:flex; align-items:center; gap:1.2vw; }
 .showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
 .showing b { color:var(--paper); letter-spacing:.06em; }
+.showing span { color:var(--signal); font-variant-numeric:tabular-nums; }
 nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
   color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
 nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
@@ -1175,6 +1176,7 @@ WALL_JS = """<script>
       stage = document.getElementById('stage'), card = document.getElementById('class'),
       nav = document.querySelector('nav'), showing = document.getElementById('showing'),
       hold = document.getElementById('hold'), next = document.getElementById('nextclass'),
+      heldFor = document.getElementById('heldfor'),
       buttons = document.querySelectorAll('nav button[data-m]'),
       cur = 0, timer = null, held = 0, taken = false;
   function find(name) { for (var i = 0; i < M.length; i++) if (M[i].name === name) return i; return 0; }
@@ -1198,10 +1200,13 @@ WALL_JS = """<script>
     clearTimeout(timer);
     if (!held && !taken) timer = setTimeout(function () { show(cur + 1); }, EVERY * 1000);
   }
+  // The countdown goes beside the button, never in it: the button keeps one
+  // name, "Hold", so voice control and a screen reader's list can find it
+  // (aria-pressed carries the state). Not a live region: no tick is read out.
   function label() {
-    if (!held) { hold.textContent = W.hold; return; }
+    if (!held) { heldFor.textContent = ''; return; }
     var left = Math.max(0, HOLD_FOR - Math.floor((Date.now() - held) / 1000));
-    hold.textContent = W.held + '  ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
+    heldFor.textContent = '  ·  ' + W.held + ' ' + Math.floor(left / 60) + ':' + ('0' + left %% 60).slice(-2);
   }
   function setHold(on) {
     held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); label(); arm();
@@ -1259,7 +1264,7 @@ def wall_files():
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
   <p class=nextclass id=nextclass hidden><b>%s</b><span></span></p>
-  <nav aria-label="Wall"><p class=showing>%s <b id=showing></b></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
+  <nav aria-label="Wall"><p class=showing>%s <b id=showing></b><span id=heldfor></span></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
 </footer>
 %s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ci.get("sub")),
            e(class_words()["next"]), e(cfg.get("showing", "Showing")), rail, e(cfg.get("hold", "Hold")),
@@ -1267,7 +1272,7 @@ def wall_files():
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
            .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
-           .replace("@WORDS@", json.dumps({"hold": cfg.get("hold", "Hold"), "held": cfg.get("held", "Held")})))
+           .replace("@WORDS@", json.dumps({"hold": cfg.get("hold", "Hold"), "held": cfg.get("held", "held")})))
     files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
     return files
 
