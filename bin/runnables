@@ -5,6 +5,10 @@
 #   bin/runnables undeclared   runnable files with no claim at all
 #   bin/runnables check        claims for files that are not here. Exit 1 if any
 #   bin/runnables compile P    profile P's GRANTS, as harness settings, to stdout
+#   bin/runnables prove P H --by WHO
+#                              the bay's proof that holder H, at this blob, does
+#                              what its read verbs claim on profile P's machine.
+#                              Runs them, checks nothing changed, records it
 #
 # THIS IS THE OSTENSIBLY AVAILABLE LIST, AND BEING ON IT GRANTS NOTHING. It
 # shows what the repository carries (machines/RUNNABLES says what each verb
@@ -171,6 +175,60 @@ case "$cmd" in
         printf "    \"deny\": [\n%s\n    ]\n  }\n}\n", list["deny"]
       }'
     ;;
+  prove)
+    # THE BAY'S QUESTION, ASKED OF OUR OWN BYTES. A payload from outside is
+    # proven by the vendor's digest and signature; a tool of ours by its blob,
+    # and by doing what it claims on the machine that will run it. This runs
+    # every `read` verb of the holder, exactly as the profile's canonical
+    # runner starts it, and requires that nothing changed: not this checkout,
+    # and not the profile's bay or troves folders. Then it writes one line.
+    #
+    # It proves the read verbs by running them, and nothing else. An `inside`
+    # verb is allowed on the strength of the same line, so `--by` names who
+    # read the rest of the holder's code and vouches for it. A proof is a
+    # commit, and admission is still the merge.
+    p=${2:-}; h=${3:-}; by=""
+    [ "${4:-}" = "--by" ] && by=${5:-}
+    G="$ROOT/machines/$p/GRANTS"
+    [ -f "$G" ] && [ -n "$h" ] && [ -n "$by" ] || { echo "usage: bin/runnables prove <profile> <holder> --by <who>" >&2; exit 2; }
+    case "$ROOT" in */refs/*) echo "prove: $ROOT is a read-only mirror; prove from a work/ worktree" >&2; exit 2 ;; esac
+    if grep -q '^[[:space:]]*wears[[:space:]]' "$G" && ! grep -qE "^[[:space:]]*wears[[:space:]]+$h([[:space:]]|$)" "$G"; then
+      echo "prove: $p does not wear $h" >&2; exit 2; fi
+    blob=$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null) || { echo "prove: $h is not committed" >&2; exit 2; }
+    git diff --quiet HEAD -- "$h" || { echo "prove: $h differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+    run=$(claims | awk -F'|' -v h="$h" '$1 == h { print $2; exit }')
+    [ -n "$run" ] || { echo "prove: $h claims nothing (machines/RUNNABLES)" >&2; exit 2; }
+    prefix=$(sed -e 's/#.*$//' "$G" | awk -v r="$run" '$1 == "runner" && $2 == r && $3 == "Bash" { for (i = 4; i <= NF; i++) printf "%s ", $i; exit }')
+    lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/'); prefix=$(printf '%s' "$prefix" | sed "s|{LOCALAPPDATA}|$lad|g")
+    state() {
+      git -C "$ROOT" status --porcelain
+      for d in bay troves; do
+        [ -d "$LOCALAPPDATA/$p/$d" ] && find "$LOCALAPPDATA/$p/$d" -printf '%p %s %T@\n' 2>/dev/null | sort
+      done
+      [ -f "$LOCALAPPDATA/$p/bay.ndjson" ] && wc -c < "$LOCALAPPDATA/$p/bay.ndjson"
+    }
+    before=$(state); ran=""
+    for shape in $(claims | awk -F'|' -v h="$h" '$1 == h && $4 == "read" { gsub(/ /, "\001", $3); print $3 }'); do
+      shape=$(printf '%s' "$shape" | tr '\001' ' ')
+      case "$shape" in *'*'*) echo "skip      $shape (takes arguments; proven by reading)"; continue ;; esac
+      args=""; [ "$shape" = "-" ] || args=$shape
+      echo "run       $prefix$h $args"
+      # shellcheck disable=SC2086
+      $prefix "$h" $args >/dev/null 2>&1; rc=$?
+      [ $rc -le 1 ] || { echo "prove: '$shape' exited $rc; not proven" >&2; exit 1; }
+      ran="$ran${ran:+,}$shape"
+    done
+    after=$(state)
+    [ "$before" = "$after" ] || { echo "prove: a read verb changed something; not proven:" >&2
+      diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -20 >&2; exit 1; }
+    out="$ROOT/machines/$p/bay/runnables.proven"
+    mkdir -p "$(dirname "$out")"
+    [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
+      "# Written by \`bin/runnables prove\`. docs/RUNNABLES.md, machines/BAY.md." \
+      "#" "# holder  blob  date  ran  by" > "$out"
+    printf '%s %s %s ran:%s by:%s\n' "$h" "$blob" "$(date +%F)" "${ran:-none}" "$by" >> "$out"
+    echo "proven    $h @$blob on $p (ran: ${ran:-none}); recorded in machines/$p/bay/runnables.proven"
+    ;;
   *)
-    sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
