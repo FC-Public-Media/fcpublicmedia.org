@@ -114,6 +114,13 @@ until it runs something that has to be rebased under it.
 
 ## Tending it
 
+- **`fcpm` is the one switch** (`machines/fcpm` in the site repo, 2026-09-26),
+  the same in cmd and PowerShell once `fcpm install` has put it on PATH:
+  `fcpm` (what differs), `fcpm check`, `fcpm refs ...`, `fcpm pool ...`,
+  `fcpm runnables ...`, `fcpm help`. When handing Autumn a step, hand her an
+  `fcpm` verb, never a path, an interpreter or a choice of window. A step that
+  needs one is a gap in `fcpm` to fill. `fcpm install` is hers, never a
+  session's.
 - `bin/refs pull` and `bin/refs status` keep the mirrors current.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1

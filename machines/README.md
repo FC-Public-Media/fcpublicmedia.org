@@ -258,6 +258,21 @@ It is in shell, not Python, because it is what a bare machine runs before it has
 Python. `editing-bay-1` is the first profile to carry a `MANIFEST`: its
 `PROFILE.md` says how that machine is brought up from nothing.
 
+A MANIFEST line is one of four modes: `mirror` (a carried file), `clone` (a list
+of repositories), `settings` (the profile's GRANTS, compiled for the harness,
+never stored), and `path` (a home folder on the user's PATH).
+
+## The crew's one switch: `fcpm`
+
+After station-node's `bin/station`: every verb a person or a session runs on an
+FCPM machine is `fcpm <verb>`, found by name, the same in any window. `fcpm`
+is `sync` status, `fcpm install` puts the profile on, and `fcpm check`, `fcpm
+refs`, `fcpm pool` and `fcpm runnables` reach the tools that already do those
+jobs. On Windows a profile carries an `fcpm.cmd` shim that runs it with Git's
+bash, so cmd and PowerShell behave alike, and nobody needs to know which one a
+window is. **A step that needs a path, an interpreter or a choice of shell is a
+gap in `fcpm`, not something to type.**
+
 ## What is not decided
 
 - **Some names are placeholders.** `editing-bay-2` is what Autumn calls it out

@@ -36,3 +36,13 @@ clone   code/refs.wanted       code/refs
 
 # Machine-global git ignores: `.pr` stays out of every repository here.
 mirror  home/git/ignore        .config/git/ignore
+
+# The crew's one switch (../fcpm), by name in any window: the shim, and its
+# folder on this user's PATH. After the first `fcpm install`, a person or a
+# session types `fcpm`, never a path or an interpreter.
+mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
+path      -                      .local/bin
+
+# What sessions here may run without asking: this profile's GRANTS, compiled.
+# Placed by `fcpm install`, which a person runs; never by a session.
+settings  editing-bay-1          code/.claude/settings.json

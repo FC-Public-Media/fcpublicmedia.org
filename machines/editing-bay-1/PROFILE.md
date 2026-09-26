@@ -54,21 +54,31 @@ administrator except where it says so.
        git config --global core.autocrlf false
 
    Then clone station-node's mirror beside it by hand, if this bay is to read it.
-3. **Put the profile on.** `refs/fcpublicmedia.org/machines/sync` should find
-   `editing-bay-1` by name, and list everything as missing. Then
-   `machines/sync install` puts the `~/code` root in place and clones every
-   mirror in `refs.wanted`. A person runs `install`.
+3. **Put the profile on, once by hand.** Paste this into any window, cmd or
+   PowerShell; it reads the same in both:
+
+       powershell -NoProfile -Command "& 'C:\Program Files\Git\bin\bash.exe' -c '~/code/refs/fcpublicmedia.org/machines/fcpm install'"
+
+   It finds `editing-bay-1` by name and puts on everything the MANIFEST
+   carries: the `~/code` root, every mirror in `refs.wanted`, the compiled
+   settings, and `fcpm` itself on PATH. **From then on, in a new window, it is
+   `fcpm`**: `fcpm` says what differs, `fcpm install` puts it right. A person
+   runs `install`, never a session.
 4. **Developer Mode, at the desk.** Settings > System > For developers. It lets
    symlinks be made without elevation.
 5. **Claude Code, at the desk.** The vendor's installer, into `~/.local/bin`.
    Open it once in `~/code` and accept the folder, which a background session
    needs before it can start there.
-6. **The pool.** `bin\pool.ps1 install` registers the per-user logon task. From
+6. **The pool.** `fcpm pool install` registers the per-user logon task. From
    then on a session is waiting in `~/code` after every sign-in.
 7. **Gear, through the bay.** `gh`, then `uv`, then Node, each from the
    vendor's portable archive, verified and recorded (`gear.yml`, `bay/`).
    `gh auth login` is the desk's.
-8. **Check.** `machines/sync` again. What is still `WANTED` is what is left.
+8. **Check.** `fcpm`, and `fcpm check`. What is still `WANTED` is what is left.
+
+**No raw commands after step 3.** Every verb here is `fcpm <verb>`, the same in
+cmd and PowerShell (`fcpm help`). A step that needs a path, an interpreter or a
+choice of window is a gap in `fcpm`, not a thing to type.
 
 ## Baseline, 2026-09-26
 
@@ -91,9 +101,9 @@ disagreeing with this table is data, not a fault.
 
 ## Open
 
-- **Running `check.ps1` from `sync`.** Directly with `-ExecutionPolicy Bypass`
-  works, as the pool's task does for its own script. Whether `sync` passes it
-  waits on the Home or Pro question.
+- **The execution policy.** `sync` and `fcpm` run `.ps1` files with
+  `-ExecutionPolicy Bypass`, as the pool's task does for its own script, rather
+  than change the machine's policy while Home or Pro is undecided.
 - **`bin/refs` is the media node's**, one line apart (`REF` is `refs/` here).
   Two copies drift. It belongs somewhere both machines read it from.
 - **The depot.** Reachable only by the opt-in Wi-Fi for now; the subnet is
