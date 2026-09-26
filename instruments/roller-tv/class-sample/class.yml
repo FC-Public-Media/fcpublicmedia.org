@@ -6,5 +6,6 @@
 # Links...). Inside, one file per section, shown in name order, so numbering
 # them keeps them in order. Markdown or plain text, shown as given.
 title: Podcasting 101 (sample)
-presenter: Sample Presenter
+presenter: Doug              # a name, and short: Autumn's example. A long one is
+                             # the exception, and should be the person's real name
 hours: 6:00–8:00 PM          # later, from the class's calendar entry

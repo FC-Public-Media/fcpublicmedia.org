@@ -76,23 +76,28 @@ deferred.
 
 ## The shape of the demo (Autumn, 2026-09-26)
 
-- **Header, a quarter of the screen**, in the darker slate (`--ink`), with the
-  wall's slanted bottom edge. The check-in code on the yellow clock square
+- **Header, a quarter of the screen**, in the lighter slate (`--slate`), with
+  the wall's slanted bottom edge. The check-in code on the yellow clock square
   ("our QR is hiding a clock inside of it"), then the class's name and its
-  hours in place of "Check in" and the motto. No timer. The digital time is
-  printed on the slant, where the wall's timer runs.
-- **Content, the dark slate (`--slate`) or white.** Dark by default, light with
-  `?light`. Only the content gets these two, so they stay reserved for the
-  material.
-- **Footer: the presenter's name, then the noun** for the kind of material
-  (HANDOUTS), in place of FCPM and the module. Material is organised by nouns,
+  hours in place of "Check in" and the motto. No timer.
+- **On the slant:** the presenter's name above the edge at the left, and the
+  time of day under it at the right, where the wall's timer runs. The time is
+  a convenience, so it's in regular weight and soft. The name is a name
+  ("Doug"): short. A long one is the exception, and should be the person's
+  real name.
+- **Content, the dark slate (`--ink`) or white.** Dark by default, light with
+  `?light`.
+- **Footer, the lighter slate, holding only the sections.** Each section is a
+  tab stood on its end, its title reading bottom to top, all as tall as the
+  longest, so fifteen fit across. The one that's up is signal yellow. The last
+  one used is signal at 30%, so the way back is easy to see. The rest are the
+  dark slate. There's no yellow text in the footer. A section is a button
+  named by its title. There's no rotation.
+- **The slant on the tabs is paused.** Leaning them into parallelograms was
+  tried and set aside for now.
+- **Material is organised by nouns** (the folders, such as `Handouts`),
   meaning kinds of material, not slides. It can still be used like slides:
-  numbered files keep working.
-- **Sections as slanted tabs**, stacked along the -8 degree line, with no pill
-  padding. The one that's up is signal yellow. The last one used is signal at
-  30%, so the way back is easy to see. The rest are the dark slate. A section
-  is a button named by its title. There's no rotation: a tab stays up until
-  someone moves it.
+  numbered files keep working. The noun isn't shown yet.
 
 **Still open:** which class and presenter the page shows (today, from
 `class.yml`; later, from the calendar and the class's own folder), and more

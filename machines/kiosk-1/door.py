@@ -1217,23 +1217,29 @@ def class_folder(path):
 
 
 CLASSMODE_CSS = """html, body { height:100%; overflow:hidden; }
-/* The darker slate frames it (header, footer); the content is the dark slate,
-   or white (?light). Yellow is not a background here: it is the mark, and the
-   tab that is up. */
+/* The frame (header, footer) is the lighter slate. The content is the dark
+   slate, or white (?light), and the tabs at rest are the dark slate too.
+   Yellow is only the mark and the tab that is up. */
 body { display:grid; grid-template-rows:25vh 1fr auto; grid-template-columns:minmax(0, 1fr); user-select:none;
-  background:var(--slate); }
+  background:var(--ink); }
 body.light { background:#fff; }
-.head { position:relative; background:var(--ink); display:flex; align-items:flex-start; gap:6vw;
+.top { position:relative; }
+.head { height:100%; box-sizing:border-box; background:var(--slate); display:flex; align-items:flex-start; gap:6vw;
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%); padding:3.4vh 7vw 0; }
 .head .mark { flex:none; width:14vh; height:14vh; padding:.9vh; box-sizing:border-box; }
 .head .mark img { display:block; width:100%; height:100%; }
 .head .mark .ticks { display:none; }
 .head h1 { margin:.6vh 0 0; font-size:4.2vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
 .head .hours { margin:1vh 0 0; font-size:2.4vh; color:var(--soft); font-variant-numeric:tabular-nums; }
-/* The time of day, on the slant, where the wall's timer runs. */
-.now { position:absolute; right:7vw; bottom:calc(13.1vw + 1.2vh); transform-origin:100% 100%; rotate:-8deg;
-  font-size:3vh; font-weight:650; color:var(--paper); font-variant-numeric:tabular-nums; letter-spacing:.02em;
-  white-space:nowrap; }
+/* The time of day, under the edge on the slant, where the wall's timer runs.
+   A convenience, not a headline: regular weight, soft. */
+.now { position:absolute; right:7vw; top:calc(100% - 13.07vw + 1.2vh); transform-origin:100% 0; rotate:-8deg;
+  font-size:2.4vh; font-weight:400; color:var(--soft); font-variant-numeric:tabular-nums; white-space:nowrap; }
+body.light .now { color:#6b737c; }
+/* Who is presenting: the time's mirror, over the edge at the left, on the
+   slant. Kept off the footer, which is the tabs' (Autumn, 2026-09-26). */
+.who { position:absolute; left:7vw; bottom:1.4vh; transform-origin:0 100%; rotate:-8deg; margin:0;
+  font-size:2.2vh; font-weight:650; color:var(--paper); white-space:nowrap; }
 
 main { overflow:hidden; padding:4vh 7vw; color:var(--paper); }
 body.light main { color:var(--ink); }
@@ -1245,21 +1251,19 @@ main p { margin:0 0 1.8vh; }
 main ul, main ol { margin:0 0 1.8vh; padding-left:1.4em; }
 main li { margin:.6vh 0; }
 
-/* The footer: who is presenting, and what kind of material; then the sections
-   as tabs, slanted like the edge and stacked along it, no pill padding. Up is
-   signal; the one before it is signal at 30%%, so the last place is easy to
-   find; the rest are the dark slate. */
-footer { background:var(--ink); padding:2.2vh 5vw 2.4vh; display:flex; flex-direction:column; gap:1.6vh; overflow:hidden; }
-.who { margin:0; font-size:1.8vh; font-weight:750; letter-spacing:.14em; text-transform:uppercase; color:var(--paper); }
-.who span { margin-left:.5em; color:var(--signal); }
-.tabs { display:flex; align-items:flex-end; min-height:4.6vh; padding-top:9vw; transform-origin:0 100%; rotate:-8deg;
-  width:max-content; max-width:96%; }
-.tabs button { position:relative; margin:0 -1.1vh 0 0; padding:.8vh 2.2vh .8vh 1.8vh; border:0; cursor:pointer;
-  font:inherit; font-size:1.7vh; font-weight:700; white-space:nowrap; background:var(--slate); color:var(--soft);
-  clip-path:polygon(1.2vh 0, 100% 0, calc(100% - 1.2vh) 100%, 0 100%); }
-.tabs button b { margin-right:.6vh; font-weight:750; opacity:.7; }
+/* The footer is the sections. Each section is a tab stood on its end, its
+   title reading bottom to top, all as tall as the longest: narrow enough for
+   fifteen across. Up is signal; the one before it is signal at 30%%; the rest
+   are the dark slate. The slant is paused (Autumn, 2026-09-26). */
+footer { background:var(--slate); padding:2.4vh 7vw 3vh; display:flex; align-items:flex-end; gap:5vw;
+  overflow:hidden; }
+.tabs { display:flex; align-items:stretch; gap:.3vh; }
+.tabs button { writing-mode:vertical-rl; rotate:180deg; max-height:20vh; overflow:hidden; text-overflow:ellipsis;
+  margin:0; padding:1.4vh .45vh; border:0; cursor:pointer; font:inherit; font-size:1.6vh; font-weight:650;
+  line-height:1.2; white-space:nowrap; background:var(--ink); color:var(--soft); }
+.tabs button b { margin-bottom:.6vh; font-weight:750; opacity:.7; }
 .tabs button.recent { background:rgba(255,198,26,.3); color:var(--paper); }
-.tabs button[aria-current=true] { background:var(--signal); color:var(--ink); z-index:1; }
+.tabs button[aria-current=true] { background:var(--signal); color:var(--ink); }
 """
 
 CLASSMODE_JS = """<script>
@@ -1293,11 +1297,12 @@ def class_mode_page(path):
     tabs = "".join('<button type=button aria-label="%s"><b>%s</b>%s</button>' % (
         html.escape(x["title"], quote=True), e(x["num"]), e(x["title"])) for x in kind["sections"])
     arts = "".join("<article hidden>%s</article>" % x["html"] for x in kind["sections"])
-    body = """<header class=head>%s<div><h1>%s</h1><p class=hours>%s</p></div><div class=now id=now aria-hidden=true></div></header>
+    body = """<div class=top><header class=head>%s<div><h1>%s</h1><p class=hours>%s</p></div></header>
+<p class=who>%s</p><div class=now id=now aria-hidden=true></div></div>
 <main>%s</main>
-<footer><p class=who>%s<span>%s</span></p><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
-        checkin_mark(inline=True), e(card.get("title")), e(card.get("hours")), arts,
-        e(card.get("presenter")), e(kind["kind"]), html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS)
+<footer><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
+        checkin_mark(inline=True), e(card.get("title")), e(card.get("hours")), e(card.get("presenter")), arts,
+        html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS)
     return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
 
 
