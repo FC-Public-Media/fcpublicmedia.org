@@ -155,7 +155,7 @@ wall:
   rotate: 45                 # seconds on each module before the next (show.yml's guess)
   modules:
     - {name: studio, label: Studio, page: kiosk}
-    - {name: files, label: Files, page: depot}
+    - {name: files, label: Files, page: drive}      # the wall's own Files: a list, like Classes
     - {name: classes, label: Classes, page: classes}
 
 # ---------------------------------------------------------------------------
