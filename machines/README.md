@@ -242,11 +242,27 @@ So an empty profile directory is a profile that claims nothing yet. Both of
 these claim nothing yet. **Do not add a folder to make a profile look complete.**
 Add one when the thing it names is real, and the folder becomes the claim.
 
+## Putting a profile on: `sync`
+
+`binding` says which profile a checkout wears. `sync` puts it on. It is the same
+entry point on every platform, after station-node's `machine/sync`:
+it asks the machine its name the way `binding` does, finds the profile, and
+reads that profile's `MANIFEST` for what it carries of the machine's home.
+`sync` alone changes nothing and says what differs; `sync install` is a
+person's, and never destroys (a differing file is moved aside first); `sync
+mirror` brings the machine's copies back into a work branch for a pull request.
+A profile may also carry a `check.ps1` or `check.sh`, which `sync` runs to report
+what files cannot say, such as tools, settings and tasks.
+
+It is in shell, not Python, because it is what a bare machine runs before it has
+Python. `editing-bay-1` is the first profile to carry a `MANIFEST`: its
+`PROFILE.md` says how that machine is brought up from nothing.
+
 ## What is not decided
 
-- **The names are placeholders.** `editing-bay-1` and `editing-bay-2` are what
-  Autumn calls them out loud. Nothing on either machine has been asked what it
-  answers to, so `names` in both is unfilled. Renaming the directories is free
+- **Some names are placeholders.** `editing-bay-2` is what Autumn calls it out
+  loud, and nothing on it has been asked what it answers to, so its `names` is
+  unfilled. `editing-bay-1` was asked on 2026-09-26: `EDIT2`. Renaming the directories is free
   while they are empty and expensive afterwards.
 - **There is now a candidate FCPM station node, and it is `kiosk-1`.** This
   reverses the position recorded above it and in

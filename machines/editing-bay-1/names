@@ -1,26 +1,13 @@
 # What this machine is called, declared — because the name is what `binding`
 # matches on, and matching is how a checkout learns which profile it wears.
 #
-# THIS IS INTENT, NOT A MIRROR. macOS keeps these in the SystemConfiguration
-# store, not in a file anybody may link. The machine is asked with `scutil`;
-# this file is what the answer is supposed to be.
+# THIS IS INTENT, NOT A MIRROR. The machine is asked; this file is what the
+# answer is supposed to be. See `../binding`.
 #
-# THREE COLUMNS, AND THE FIRST IS THE PLATFORM. macOS has a `ComputerName` and
-# Windows has a `COMPUTERNAME` and they are not the same field — one is a
-# display string with spaces and an apostrophe in it, the other is a
-# NetBIOS-flavoured label. Sharing a key would let one host match the other's
-# name. See `../binding`.
-#
-# UNFILLED ON PURPOSE. Nobody has stood in front of editing bay 1 and asked it
-# what it answers to. Until somebody does, `machines/binding` matches nothing
-# here and reports this checkout as unclaimed — which is correct, and is the
-# clean state rather than a fault.
-#
-# To fill it, on the machine:
-#
-#     scutil --get LocalHostName
-#
-# and put the answer below. Do not guess it from the sticker on the front.
+# Asked on the machine, 2026-09-26 (`$env:COMPUTERNAME`): EDIT2. The studio
+# calls it bay 1. It was first written down here as a macOS bay; it is
+# Windows 11 Home, and the earlier darwin line is gone rather than kept beside
+# this one, because a profile answers for one machine.
 
 # platform   key             value
-# darwin     LocalHostName
+windows      ComputerName    EDIT2
