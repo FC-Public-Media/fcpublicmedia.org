@@ -92,6 +92,7 @@ docs/                everything written down. Outside `source:`, so unpublishabl
 kiosk/               what a studio screen says. Content only, no renderer. See KIOSK.md.
 instruments/         each studio screen and what it shows. Draft. See its README.
 machines/            one profile per host this can plausibly run on. See its README.
+troves/              a discipline's gear, packed: if you have one of these, here is its config. Draft.
 worker/              the broker. Its own Cloudflare Worker. Deployed separately.
 site-template/       what a member's own repository holds. Data only, no markup.
 member-site-core/    what FCPM supplies to a member site at build time.

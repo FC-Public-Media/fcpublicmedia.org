@@ -1,0 +1,39 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../BAY.md. No procedure script yet: run by hand by code-d5,
+# step by step, each step in the run log. Re-measured by code-e3 the same day.
+
+payload: node
+version: 24.21.0         # LTS "Krypton", released 2026-09-07
+replaces: nothing        # the first Node on this host
+vendor: OpenJS Foundation (nodejs.org), MIT
+role: previewing and testing the site, and the broker's tests
+asked: Autumn wanted the check-in page reworked, which needs jekyll-enough and Playwright
+
+received: 2026-09-26
+source: https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip
+size: 37618919
+why-not-winget: >
+  the vendor's zip, as the media node's Node is. Whether winget's Node LTS
+  installs for one user without an administrator was not tried; uv's did.
+
+verified:
+  sha256: 158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541
+  # matches that release's SHASUMS256.txt. The file's own signature
+  # (SHASUMS256.txt.sig) was NOT checked against the release keys: there is
+  # no GPG here. The hash is only as good as the TLS that fetched it.
+  authenticode: "node.exe: Valid, CN=OpenJS Foundation"
+
+staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\node-v24.21.0"
+install-to: "%LOCALAPPDATA%\\editing-bay-1\\node"
+installed-sha256: ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32  # node.exe
+carries: npm 11.19.0
+path: not on PATH. Call node.exe by its full path
+restart-tier: none
+cover: none
+grants: none
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (five lines: receive, verify, stage, install, confirm)"
+
+# No rollback copy: there was no previous Node. The next arrival keeps this one
+# in the cellar before it swaps.
+status: installed

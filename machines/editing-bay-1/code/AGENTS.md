@@ -43,8 +43,8 @@ placed yet.
 > 2. Make .pr (ignored machine-globally) contain the plan progression
 > 3. Commit as we go
 > 4. Revise .pr steps ahead as we go; the progressive goal is visible and malleable
-> 5. Push 
-> 6. Destroy .pr when you've sent the equivalent to your origin PR
+> 5. Push when PR goals seem met or can be drafted
+> 6. Reset .pr to main's version or none (with no ci)
 
 ## What we own
 
