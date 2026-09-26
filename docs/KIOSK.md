@@ -425,8 +425,14 @@ const session = pickSession(panel.classes);   // null, or phase soon | late | no
 other panels still visible, smaller. `takeover: false` in `content.yml` makes it
 an ordinary panel that appears only while a class is soon or on.
 
-**Not built:** the renderer's half. The door draws the screens
-(`machines/kiosk-1/door.py`), and the takeover is its to draw.
+**The renderer's half is the door's** (`machines/kiosk-1/door.py`, "classes").
+It copies `pickSession` out of `classes.js` each time it draws a page, so there
+is no second copy to drift. On the wall the card takes the stage under the
+check-in header, with the code above it; on the desk it takes the check-in
+words, with the code beside it. With no class on, the wall's bar names the
+next one, and the Classes module lists the next five. `?at=<ISO time>` on either
+page pretends it is that moment, to look at a takeover before it happens.
+`classes: sample` in `node.yml` invents three, marked as samples.
 
 ---
 

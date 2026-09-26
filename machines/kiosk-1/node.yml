@@ -76,6 +76,12 @@ stations:
 # several) will replace it. The rota's footer will read from the same ones.
 bookings: sample
 
+# Where classes come from. Unset, the classes panel in kiosk/welcome.yml
+# (docs/KIOSK.md, "The class on now"). `sample` invents three, a day and more
+# ahead, each titled "(sample)", so the upcoming list has something to show
+# while the calendar is empty. Off: an empty list says so, honestly.
+# classes: sample
+
 # MICROSOFT 365: the app registration this box signs in as ("FC Public Media
 # Booking"). Identifiers, not secrets. The secret is a certificate in this
 # account's store (Cert:\CurrentUser\My), made on the box with a
@@ -145,10 +151,12 @@ depot:
 wall:
   share: DIGISTATION         # the partition is the depot's; .wall is this node's
   folder: .wall
-  every: 60                  # seconds: how often it is rewritten, and pages reload
+  every: 60                  # seconds: how often it is rewritten; the shell reloads every tenth
+  rotate: 45                 # seconds on each module before the next (show.yml's guess)
   modules:
     - {name: studio, label: Studio, page: kiosk}
     - {name: files, label: Files, page: depot}
+    - {name: classes, label: Classes, page: classes}
 
 # ---------------------------------------------------------------------------
 # WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
@@ -163,6 +171,17 @@ wording:
       Free public tech.
   map:
     until: until
+  classes:                   # the upcoming list, and the takeover while a class is soon or on
+    head: Classes
+    soon: Starting soon
+    now: Happening now
+    starts: Starts
+    until: Until
+    join: Join until
+    next: Next class
+    none: No classes on the calendar yet.
+    sample: Sample classes
+    hint_wall: Check in with the code above.   # while joining late, on the wall
   depot:
     gateway: Gateway         # the strip on top: the router's address, and its partition count
     head: Files

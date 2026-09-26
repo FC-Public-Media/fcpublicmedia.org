@@ -683,22 +683,34 @@ def qr_image(n):
     return None
 
 
-def kiosk_page(wall=False):
+def checkin_mark(inline=False):
+    """The check-in code on the mark, with the clock over it. Inline, the code
+    travels inside the page as data, for pages written to a share."""
+    panels = welcome().get("panels") or []
+    idx = next((i for i, p in enumerate(panels) if isinstance(p.get("qr"), dict)), None)
+    if idx is None:
+        return ""
+    src = "/kiosk/qr/%d" % idx
+    if inline:
+        img = qr_image(idx)
+        if not img:
+            return ""
+        src = "data:%s;base64,%s" % (TYPES.get(img.suffix.lower(), "application/octet-stream"),
+                                     base64.b64encode(img.read_bytes()).decode())
+    return clock_mark('<img src="%s" alt="%s">' % (src, html.escape(panels[idx]["qr"].get("alt", ""), quote=True)))
+
+
+def kiosk_page(wall=False, map_only=False):
     """The welcome screen. For the wall it carries its QR inside itself and no
-    Wi-Fi codes: a page on a share is readable by the whole network."""
+    Wi-Fi codes: a page on a share is readable by the whole network. The wall
+    draws check-in in its own header, so its studio module is the map alone
+    (map_only). On the desk, a class soon or on takes over the check-in words
+    (docs/KIOSK.md, "The class on now"); the code stays, for joining late."""
     w, n = welcome(), node()
     words = n.get("wording") or {}
     ci, mp, ft = words.get("checkin") or {}, words.get("map") or {}, words.get("footer") or {}
 
-    panels = w.get("panels") or []
-    idx = next((i for i, p in enumerate(panels) if isinstance(p.get("qr"), dict)), None)
-    src = "/kiosk/qr/%d" % idx if idx is not None else ""
-    if wall and idx is not None:
-        img = qr_image(idx)
-        src = "data:%s;base64,%s" % (TYPES.get(img.suffix.lower(), "application/octet-stream"),
-                                     base64.b64encode(img.read_bytes()).decode()) if img else ""
-    code = clock_mark('<img src="%s" alt="%s">' % (
-        src, html.escape(panels[idx]["qr"].get("alt", ""), quote=True))) if src else ""
+    code = checkin_mark(inline=wall)
 
     nets = []
     for i, net in enumerate([] if wall else networks()):
@@ -711,6 +723,7 @@ def kiosk_page(wall=False):
 <section class="half checkin">
   %s
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
+  <div class="words class" id=class hidden></div>
   <div class=wifi>%s</div>
 </section>
 <section class="half map">
@@ -721,7 +734,39 @@ def kiosk_page(wall=False):
          e(w.get("place")),
          NOW_JS % json.dumps({"on": ft.get("on", ""), "next": ft.get("next", ""),
                               "none": ft.get("none", ""), "until": mp.get("until", "until")}))
-    return page(w.get("place", "Welcome"), body, KIOSK_CSS)
+    if map_only:
+        body = body[body.index('<section class="half map">'):]
+        return page(w.get("place", "Welcome"), body, KIOSK_CSS + MAP_ONLY_CSS)
+    if not wall:
+        body += class_js() + DESK_CLASS_JS
+    return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS)
+
+
+MAP_ONLY_CSS = "body { grid-template-rows:1fr auto; }"
+
+# The desk's card is the check-in words' size: the code stays beside it, and
+# the Wi-Fi codes below it.
+DESK_CLASS_CSS = """
+.checkin .class { top:40%; }
+.checkin .class .kicker { font-size:1.5vh; }
+.checkin .class .title { margin-top:.8vh; font-size:3.4vh; }
+.checkin .class .room { margin-top:1vh; font-size:2vh; }
+.checkin .class .when { margin-top:.3vh; font-size:2vh; }
+.checkin .class .join { margin-top:1.4vh; }
+"""
+
+DESK_CLASS_JS = """<script>
+(function () {
+  var K = window.FCPMClass, box = document.getElementById('class'),
+      words = document.querySelector('.checkin .words:not(.class)');
+  function draw() {
+    var s = K.pick();
+    if (s) K.card(box, s);
+    box.hidden = !s; words.hidden = !!s;
+  }
+  draw(); setInterval(draw, 15000);
+})();
+</script>"""
 
 
 DEPOT_CSS = """
@@ -868,6 +913,167 @@ def depot_page():
     return page("Depot", body, DEPOT_CSS)
 
 
+# ------------------------------------------------------------------- classes --
+# THE CLASS ON NOW, and the ones coming up. The contract is docs/KIOSK.md, "The
+# class on now": build-kiosk.py puts the schedule in welcome.yml's classes
+# panel, and every renderer decides "now" from its own clock with pickSession
+# from site/assets/js/classes.js. The door copies that function out of the file
+# each time it draws a page, so the screens and the website cannot disagree.
+CLASSES_JS = ROOT / "site" / "assets" / "js" / "classes.js"
+
+
+def pick_session_js():
+    """pickSession, byte for byte from classes.js, minus its `export`."""
+    src = CLASSES_JS.read_text(encoding="utf-8")
+    m = re.search(r"^export (function pickSession\(.*?^\})$", src, re.S | re.M)
+    if not m:
+        raise ValueError("pickSession not found in %s" % CLASSES_JS)
+    return m.group(1)
+
+
+def class_config(now=None):
+    """The classes panel's config, as pickSession takes it. Only what the
+    public calendar says: title, room, times, summary. `classes: sample` in
+    node.yml invents three, a day and more ahead, all marked as samples."""
+    if node().get("classes") == "sample":
+        base = (now or datetime.datetime.now()).astimezone()
+
+        def at(days, hour):
+            d = (base + datetime.timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
+            return d.isoformat()
+        rows = [(1, 18, "Podcasting 101 (sample)", "Podcast Studio"),
+                (3, 18, "Social Media Marketing 101 (sample)", "Video Studio"),
+                (8, 10, "Digitizing Home Movies (sample)", "Digitization")]
+        return {"leadMinutes": 90, "lateMinutes": 45, "sample": True,
+                "sessions": [{"title": t, "room": r, "starts": at(d, h), "ends": at(d, h + 2),
+                              "summary": "A made-up class, so the screen has something to show."}
+                             for d, h, t, r in rows]}
+    panel = next((q for q in welcome().get("panels") or [] if isinstance(q.get("classes"), dict)), {})
+    c = panel.get("classes") or {}
+    keep = ("title", "room", "starts", "ends", "summary")
+    return {"leadMinutes": c.get("leadMinutes", 90), "lateMinutes": c.get("lateMinutes", 45),
+            "sessions": [{k: x[k] for k in keep if k in x}
+                         for x in c.get("sessions") or [] if isinstance(x, dict) and not x.get("cancelled")]}
+
+
+def class_words():
+    w = (node().get("wording") or {}).get("classes") or {}
+    return {"soon": w.get("soon", "Starting soon"), "now": w.get("now", "Happening now"),
+            "starts": w.get("starts", "Starts"), "until": w.get("until", "Until"),
+            "join": w.get("join", "Join until"), "next": w.get("next", "Next class"),
+            "head": w.get("head", "Classes"), "none": w.get("none", "No classes on the calendar yet."),
+            "sample": w.get("sample", "Sample classes"),
+            "hint_wall": w.get("hint_wall", "Check in with the code above.")}
+
+
+# The clock and the formatting every class view shares. `?at=<ISO time>` on a
+# page pretends it is that moment, so a takeover can be looked at before it
+# happens (and so an attendant can check one).
+CLASS_JS = """<script>
+(function () {
+  var C = @CONFIG@, W = @WORDS@;
+  @PICK@
+  var at = Date.parse(new URLSearchParams(location.search).get('at') || ''), skew = isNaN(at) ? 0 : at - Date.now();
+  function now() { return Date.now() + skew; }
+  function time(ms) { return new Date(ms).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); }
+  function day(ms) { return new Date(ms).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function upcoming(n) {
+    var t = now();
+    return (C.sessions || []).map(function (s) {
+      return {title: s.title, room: s.room, summary: s.summary, starts: Date.parse(s.starts), ends: Date.parse(s.ends)};
+    }).filter(function (s) { return s.starts > t; })
+      .sort(function (a, b) { return a.starts - b.starts; }).slice(0, n);
+  }
+  // The takeover card: what is on, where, and until when. Late also says how
+  // long there is to walk in.
+  function card(box, s, hint) {
+    box.textContent = '';
+    box.appendChild(el('p', 'kicker', s.phase === 'soon' ? W.soon : W.now));
+    box.appendChild(el('h2', 'title', s.title));
+    if (s.room) box.appendChild(el('p', 'room', s.room));
+    box.appendChild(el('p', 'when', s.phase === 'soon' ? W.starts + ' ' + time(s.starts) : W.until + ' ' + time(s.ends)));
+    if (s.phase === 'late') {
+      var j = el('p', 'join'); j.appendChild(el('span', 'pill solid', W.join + ' ' + time(s.starts + (C.lateMinutes == null ? 45 : C.lateMinutes) * 60000)));
+      box.appendChild(j);
+      if (hint) box.appendChild(el('p', 'hint', hint));
+    }
+  }
+  window.FCPMClass = {config: C, words: W, now: now, time: time, day: day, el: el, card: card, upcoming: upcoming,
+                      pick: function () { return pickSession(C, now()); }};
+})();
+</script>"""
+
+CLASS_CSS = """
+.class .kicker { margin:0; font-size:1.7vh; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--signal); }
+.class .title { margin:1vh 0 0; font-size:5vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
+.class .room { margin:1.2vh 0 0; font-size:2.4vh; font-weight:600; }
+.class .when { margin:.6vh 0 0; font-size:2.4vh; color:var(--soft); font-variant-numeric:tabular-nums; }
+.class .join { margin:1.8vh 0 0; }
+.class .hint { margin:1.2vh 0 0; font-size:1.8vh; color:var(--dim); }
+.class .pill { font-size:1.6vh; font-weight:650; padding:.4vh 1.2vh; border-radius:99px;
+  border:.25vh solid var(--signal); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.class .pill.solid { background:var(--signal); color:var(--ink); }
+"""
+
+
+def class_js():
+    return (CLASS_JS.replace("@CONFIG@", json.dumps(class_config()).replace("</", "<\\/"))
+            .replace("@WORDS@", json.dumps(class_words()))
+            .replace("@PICK@", pick_session_js()))
+
+
+CLASSES_CSS = """
+html, body { height:100%; overflow:hidden; }
+main { padding:5vh 6vw; }
+h1 { margin:0 0 3.4vh; font-size:1.7vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:700; }
+ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3.2vh; }
+li { display:grid; grid-template-columns:auto 1fr; column-gap:4vw; align-items:start; }
+.day { background:var(--slate); border-radius:1.2vh; padding:1vh 1.4vh; min-width:7vh; text-align:center;
+  display:flex; flex-direction:column; gap:.3vh; line-height:1; }
+.day small { font-size:1.2vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+.day b { font-size:3vh; font-weight:750; }
+.what b { display:block; font-size:2.6vh; font-weight:700; line-height:1.15; }
+.what span { display:block; margin-top:.6vh; font-size:1.8vh; color:var(--soft); font-variant-numeric:tabular-nums; }
+.what p { margin:.8vh 0 0; font-size:1.6vh; color:var(--dim); line-height:1.3; }
+.empty { font-size:2.4vh; color:var(--soft); }
+.flag { margin:3.4vh 0 0; font-size:1.4vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+"""
+
+CLASSES_LIST_JS = """<script>
+(function () {
+  var K = window.FCPMClass, box = document.getElementById('upcoming');
+  function draw() {
+    var list = K.upcoming(5); box.textContent = '';
+    if (!list.length) { box.appendChild(K.el('p', 'empty', K.words.none)); return; }
+    var ol = K.el('ol');
+    list.forEach(function (s) {
+      var li = K.el('li'), d = K.el('div', 'day'), w = K.el('div', 'what'), when = new Date(s.starts);
+      d.appendChild(K.el('small', null, when.toLocaleDateString([], {weekday: 'short'})));
+      d.appendChild(K.el('b', null, String(when.getDate())));
+      d.appendChild(K.el('small', null, when.toLocaleDateString([], {month: 'short'})));
+      w.appendChild(K.el('b', null, s.title));
+      w.appendChild(K.el('span', null, K.time(s.starts) + '\\u2013' + K.time(s.ends) + (s.room ? '  \\u00b7  ' + s.room : '')));
+      if (s.summary) w.appendChild(K.el('p', null, s.summary));
+      li.appendChild(d); li.appendChild(w); ol.appendChild(li);
+    });
+    box.appendChild(ol);
+  }
+  draw(); setInterval(draw, 60000);
+})();
+</script>"""
+
+
+def classes_page():
+    """Upcoming classes, as a list and never as a calendar grid."""
+    w, cfg = class_words(), class_config()
+    body = '<main><h1>%s</h1><div id=upcoming></div>%s</main>%s%s' % (
+        e(w["head"]), '<p class=flag>%s</p>' % e(w["sample"]) if cfg.get("sample") else "",
+        class_js(), CLASSES_LIST_JS)
+    return page(w["head"], body, CLASSES_CSS)
+
+
 # ---------------------------------------------------------------------- wall --
 # THE WALL: pages for screens elsewhere on the network, the studio's rolling
 # TV first. Nothing on the network can reach this box's port (Windows calls the
@@ -877,15 +1083,20 @@ def depot_page():
 # every screen can already open. Privileged in construction, ungated in
 # rendering: what lands there is plain HTML that fetches nothing.
 #
-# One shell holds a rail of buttons and a frame. A button changes what the
-# frame shows and remembers it after the #, replacing the address rather than
-# adding to history, so there is nothing to go Back to and a reload stays put.
-# Each module is the door's own page with a snapshot of its data inside it,
-# answering its own fetch, and reloading itself on the wall's beat.
+# The shell is the check-in page's header, turned over into the colour plan
+# of icon-inverted.svg, over a stage that moves through the modules by itself
+# (Autumn, 2026-09-26: "rotate on its own while keeping the checkin version of
+# the header block"). Each turn loads a fresh frame, named for its module, and
+# drops the old one, so a frame never gathers history for Back to walk into.
+# Hold stops the turning for a reader (WCAG 2.2.1), and lets go by itself
+# after three minutes, since nobody stands at this screen to let go of it.
+# A class soon or on takes the stage over (docs/KIOSK.md, "The class on
+# now"); otherwise the bar names the next one.
 WALL_PAGES = {
-    "kiosk": (lambda: kiosk_page(wall=True), "/kiosk/now",
+    "kiosk": (lambda: kiosk_page(wall=True, map_only=True), "/kiosk/now",
               lambda: {"on": on_now(), "map": stations()}),
     "depot": (depot_page, "/depot/now", depot_now),
+    "classes": (classes_page, None, None),
 }
 
 WALL_SHIM = """<script>
@@ -901,26 +1112,104 @@ WALL_SHIM = """<script>
 </script>"""
 
 WALL_CSS = """html, body { height:100%; overflow:hidden; }
-body { display:grid; grid-template-rows:1fr auto; user-select:none; }
-iframe { display:block; width:100%; height:100%; border:0; background:var(--ink); }
-nav { display:flex; gap:1.2vh; padding:1.2vh; background:var(--slate); }
-nav button { flex:1; padding:2.4vh 1vh; border:0; border-radius:0; cursor:pointer;
-  font:inherit; font-size:3.2vh; font-weight:750; background:var(--ink); color:var(--paper); }
-nav button[aria-current=true] { background:var(--signal); color:var(--ink); }"""
+body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
+
+/* The superheader: check-in with the colours inverted. A plane of signal at
+   the brand's tilt, cropped off left, right and top, so its one edge is the
+   divider at the bottom, rising to the right: -8deg, counterclockwise
+   (brand/README.md, "The tilt"). 14.05vw is the rise, tan 8deg of the width. */
+.super { background:var(--signal); color:var(--ink); display:flex; align-items:center; gap:6vw;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%);
+  padding:4.5vh 7vw calc(3vh + 14.05vw); }
+/* The square goes black, as in icon-inverted.svg, and the code sits on a
+   light inset inside it: a phone reads dark on light, not the other way. */
+.super .mark { flex:none; width:21vh; height:21vh; padding:1.1vh; box-sizing:border-box; background:#000; }
+.super .mark img { display:block; width:100%; height:100%; box-sizing:border-box; padding:1.8vh; background:#fff; }
+.super .mark .ticks { display:none; }
+/* The hands fit the code, not the frame: over the whole mark they reached the
+   code's corner squares. !important, over the fragment's inline style. */
+.super .mark svg.clock { inset:2.9vh !important; width:calc(100% - 5.8vh) !important; height:calc(100% - 5.8vh) !important; }
+.super h1 { margin:0; font-size:6vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
+.super .sub { margin:1.4vh 0 0; font-size:2.6vh; line-height:1.25; white-space:pre-line; font-weight:600;
+  color:rgba(18,20,23,.7); }
+
+.stage { position:relative; overflow:hidden; }
+.stage iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--ink);
+  opacity:0; transition:opacity .6s; }
+.stage iframe.shown { opacity:1; }
+.stage.taken iframe { visibility:hidden; }
+.takeover { position:absolute; inset:0; padding:5vh 7vw 4vh; background:var(--ink); }
+.takeover .title { font-size:6.5vh; }
+.takeover .room, .takeover .when { font-size:3vh; }
+
+/* The bar: small, because this screen gets a pointer at most. */
+.bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; display:flex; flex-direction:column; gap:.9vh; }
+.nextclass { margin:0; font-size:1.8vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nextclass b { margin-right:1.4vw; font-size:1.3vh; letter-spacing:.12em; text-transform:uppercase; color:var(--signal); }
+nav { display:flex; align-items:center; gap:1.2vw; }
+.showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+.showing b { color:var(--paper); letter-spacing:.06em; }
+nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
+  color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
+nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
+nav #hold[aria-pressed=true] { border-color:var(--signal); color:var(--signal); }
+nav.taken button[data-m] { display:none; }"""
 
 WALL_JS = """<script>
 (function () {
-  var names = %s, frame = document.querySelector('iframe'),
-      buttons = document.querySelectorAll('nav button');
-  function show(name) {
-    if (names.indexOf(name) < 0) name = names[0];
-    if (frame.getAttribute('src') !== name + '.html') frame.setAttribute('src', name + '.html');
-    buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === name); });
-    try { history.replaceState(null, '', '#' + name); } catch (e) { location.replace('#' + name); }
+  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 180,
+      K = window.FCPMClass, qs = location.search, born = Date.now(),
+      stage = document.getElementById('stage'), card = document.getElementById('class'),
+      nav = document.querySelector('nav'), showing = document.getElementById('showing'),
+      hold = document.getElementById('hold'), next = document.getElementById('nextclass'),
+      buttons = document.querySelectorAll('nav button[data-m]'),
+      cur = 0, timer = null, held = 0, taken = false;
+  function find(name) { for (var i = 0; i < M.length; i++) if (M[i].name === name) return i; return 0; }
+  function show(i) {
+    cur = (i + M.length) %% M.length;
+    var m = M[cur], f = document.createElement('iframe');
+    f.title = m.label; f.src = m.name + '.html' + qs;
+    f.addEventListener('load', function () {
+      f.classList.add('shown');
+      Array.prototype.forEach.call(stage.querySelectorAll('iframe'), function (o) {
+        if (o !== f) setTimeout(function () { o.remove(); }, 700);
+      });
+    });
+    stage.insertBefore(f, card);
+    buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === m.name); });
+    showing.textContent = m.label;
+    try { history.replaceState(null, '', qs + '#' + m.name); } catch (e) {}
+    arm();
   }
-  buttons.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.m); }); });
+  function arm() {
+    clearTimeout(timer);
+    if (!held && !taken) timer = setTimeout(function () { show(cur + 1); }, EVERY * 1000);
+  }
+  function setHold(on) {
+    held = on ? Date.now() : 0; hold.setAttribute('aria-pressed', !!on); arm();
+  }
+  function classes() {
+    var s = K.pick(), was = taken;
+    taken = !!s;
+    if (s) K.card(card, s, K.words.hint_wall);
+    card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
+    if (taken) { clearTimeout(timer); showing.textContent = K.words.head; }
+    else if (was) show(cur);
+    var u = taken ? null : K.upcoming(1)[0];
+    next.hidden = !u;
+    if (u) next.lastChild.textContent = u.title + '  \\u00b7  ' + K.day(u.starts) + ', ' + K.time(u.starts);
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
+  hold.addEventListener('click', function () { setHold(!held); });
   document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
-  show(location.hash.slice(1));
+  setInterval(function () {
+    if (held && Date.now() - held > HOLD_FOR * 1000) setHold(false);
+    // The shell reloads now and then, for a change in its modules or classes;
+    // never while held.
+    if (!held && Date.now() - born > RELOAD * 1000) location.reload();
+  }, 10000);
+  show(find(location.hash.slice(1)));
+  classes(); setInterval(classes, 15000);
 })();
 </script>"""
 
@@ -936,22 +1225,30 @@ def wall_modules():
 
 def wall_files():
     """Every file of the wall, by name: the shell, then one per module."""
-    every = int(wall_cfg().get("every", 60))
-    refresh = '<meta http-equiv="refresh" content="%d">' % every
+    cfg = wall_cfg()
+    every, rotate = int(cfg.get("every", 60)), int(cfg.get("rotate", 45))
     mods = wall_modules()
     files = {}
     for m in mods:
         build, url, data = WALL_PAGES[m["page"]]
-        snap = json.dumps({url: data()}).replace("</", "<\\/")
-        files[m["name"] + ".html"] = build().replace(POLL, "").replace(
-            "</head>", refresh + WALL_SHIM % snap + "</head>", 1)
-    rail = "".join('<button data-m="%s">%s</button>' % (html.escape(m["name"], quote=True),
-                                                         e(m.get("label", m["name"]))) for m in mods)
-    body = "<iframe title=Module></iframe><nav>%s</nav>%s" % (
-        rail, WALL_JS % json.dumps([m["name"] for m in mods]))
-    # The shell reloads rarely: only to pick up a change in the modules.
-    files["index.html"] = page("Studio wall", body, WALL_CSS).replace(POLL, "").replace(
-        "</head>", '<meta http-equiv="refresh" content="%d">' % (every * 10) + "</head>", 1)
+        shim = WALL_SHIM % json.dumps({url: data()}).replace("</", "<\\/") if url else ""
+        files[m["name"] + ".html"] = build().replace(POLL, "").replace("</head>", shim + "</head>", 1)
+    ci = (node().get("wording") or {}).get("checkin") or {}
+    rail = "".join('<button type=button data-m="%s">%s</button>' % (
+        html.escape(m["name"], quote=True), e(m.get("label", m["name"]))) for m in mods)
+    body = """<header class=super>%s<div><h1>%s</h1><p class=sub>%s</p></div></header>
+<main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
+<footer class=bar>
+  <p class=nextclass id=nextclass hidden><b>%s</b><span></span></p>
+  <nav aria-label="Wall"><p class=showing>%s <b id=showing></b></p>%s<button type=button id=hold aria-pressed=false title="Hold this screen still for three minutes">%s</button></nav>
+</footer>
+%s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ci.get("sub")),
+           e(class_words()["next"]), e(cfg.get("showing", "Showing")), rail, e(cfg.get("hold", "Hold")),
+           class_js(),
+           WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
+               [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
+           .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10)))
+    files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
     return files
 
 
