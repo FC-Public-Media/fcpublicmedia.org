@@ -1153,6 +1153,164 @@ def drive_page():
     return page(words.get("head", "Files"), body, DRIVE_CSS)
 
 
+# ---------------------------------------------------------------- class mode --
+# CLASS MODE on the roller: a teacher's supporting materials while their class
+# is on (instruments/roller-tv/class-mode.md). A demo for now, written beside
+# the wall as class.html and never in its rotation. A class is a folder:
+# class.yml (title, presenter, hours) and one folder per kind of material,
+# named by its noun, holding one file per section in name order. Markdown or
+# plain text, shown as given: the converter below knows headings, lists,
+# paragraphs and bold, and nothing else.
+def md_html(text):
+    out, para, lst = [], [], None
+
+    def inline(t):
+        t = html.escape(t)
+        return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
+
+    def flush():
+        nonlocal para, lst
+        if para:
+            out.append("<p>%s</p>" % inline(" ".join(para)))
+            para = []
+        if lst:
+            out.append("<%s>%s</%s>" % (lst[0], "".join("<li>%s</li>" % inline(i) for i in lst[1]), lst[0]))
+            lst = None
+    for line in text.splitlines():
+        m = re.match(r"(#{1,3})\s+(.*)", line)
+        item = re.match(r"\s*(?:([-*])|\d+[.)])\s+(.*)", line)
+        if m:
+            flush()
+            out.append("<h%d>%s</h%d>" % (len(m.group(1)), inline(m.group(2)), len(m.group(1))))
+        elif item:
+            kind = "ul" if item.group(1) else "ol"
+            if para or (lst and lst[0] != kind):
+                flush()
+            lst = lst or (kind, [])
+            lst[1].append(item.group(2))
+        elif not line.strip():
+            flush()
+        else:
+            if lst:
+                flush()
+            para.append(line.strip())
+    flush()
+    return "\n".join(out)
+
+
+def class_folder(path):
+    """A class folder, read: its card and its sections, by kind."""
+    root = ROOT / path
+    card = load(root / "class.yml")
+    kinds = []
+    for d in sorted(q for q in root.iterdir() if q.is_dir()):
+        secs = []
+        for f in sorted(q for q in d.iterdir() if q.suffix.lower() in (".md", ".txt")):
+            m = re.match(r"(\d+)\s*[-.]?\s*(.*)", f.stem)
+            text = f.read_text(encoding="utf-8")
+            secs.append({"num": str(int(m.group(1))) if m else "", "title": (m.group(2) if m else f.stem) or f.stem,
+                         "html": md_html(text) if f.suffix.lower() == ".md" else
+                         "".join("<p>%s</p>" % html.escape(b.strip()) for b in text.split("\n\n") if b.strip())})
+        if secs:
+            kinds.append({"kind": d.name, "sections": secs})
+    return card, kinds
+
+
+CLASSMODE_CSS = """html, body { height:100%; overflow:hidden; }
+/* The frame (header, footer) is the lighter slate. The content is the dark
+   slate, or white (?light), and the tabs at rest are the dark slate too.
+   Yellow is only the mark and the tab that is up. */
+body { display:grid; grid-template-rows:25vh 1fr auto; grid-template-columns:minmax(0, 1fr); user-select:none;
+  background:var(--ink); }
+body.light { background:#fff; }
+.top { position:relative; }
+.head { height:100%; box-sizing:border-box; background:var(--slate); display:flex; align-items:flex-start; gap:6vw;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%); padding:3.4vh 7vw 0; }
+.head .mark { flex:none; width:14vh; height:14vh; padding:.9vh; box-sizing:border-box; }
+.head .mark img { display:block; width:100%; height:100%; }
+.head .mark .ticks { display:none; }
+.head h1 { margin:.6vh 0 0; font-size:4.2vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
+.head .hours { margin:1vh 0 0; font-size:2.4vh; color:var(--soft); font-variant-numeric:tabular-nums; }
+/* The time of day, under the edge on the slant, where the wall's timer runs.
+   A convenience, not a headline: regular weight, soft. */
+.now { position:absolute; right:7vw; top:calc(100% - 13.07vw + 1.2vh); transform-origin:100% 0; rotate:-8deg;
+  font-size:2.4vh; font-weight:400; color:var(--soft); font-variant-numeric:tabular-nums; white-space:nowrap; }
+body.light .now { color:#6b737c; }
+/* Who is presenting: the time's mirror, over the edge at the left, on the
+   slant. Kept off the footer, which is the tabs' (Autumn, 2026-09-26). */
+.who { position:absolute; left:7vw; bottom:1.4vh; transform-origin:0 100%; rotate:-8deg; margin:0;
+  font-size:2.2vh; font-weight:650; color:var(--paper); white-space:nowrap; }
+
+main { overflow:hidden; padding:4vh 7vw; color:var(--paper); }
+body.light main { color:var(--ink); }
+main article[hidden] { display:none; }
+main h1 { margin:0 0 2.4vh; font-size:4.6vh; line-height:1.1; }
+main h2 { margin:3vh 0 1.4vh; font-size:3.4vh; }
+main p, main li { font-size:2.8vh; line-height:1.4; }
+main p { margin:0 0 1.8vh; }
+main ul, main ol { margin:0 0 1.8vh; padding-left:1.4em; }
+main li { margin:.6vh 0; }
+
+/* The footer is the sections, as strips the full height of the footer, flush
+   against each other, no gaps. Each strip is a tab turned -90 degrees (its
+   name reads bottom to top), then skewed so its bottom pulls left: its top
+   and bottom stay level with the screen, only its sides lean. The skew is
+   the strip's alone (a pseudo-element behind the name); the name is turned
+   the same 8 degrees, so it runs along the strip without being sheared. Up is signal; the one before it is signal at 30%%; the rest are
+   the dark slate, told apart by a hairline (Autumn, 2026-09-26). */
+footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; }
+.tabs { display:flex; align-items:stretch; }
+.tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
+  padding:2.2vh .6vh; border:0; background:transparent; cursor:pointer; font:inherit; font-size:1.6vh;
+  font-weight:650; line-height:1.2; white-space:nowrap; color:var(--soft); }
+.tabs button span { display:block; max-height:18vh; overflow:hidden; text-overflow:ellipsis; rotate:8deg; }
+.tabs button::before { content:""; position:absolute; z-index:-1; inset:-1px 0; background:var(--ink);
+  box-shadow:inset 1px 0 0 var(--rule); transform:skewX(-8deg); }
+.tabs button.recent { color:var(--paper); }
+.tabs button.recent::before { background:rgba(255,198,26,.3); }
+.tabs button[aria-current=true] { color:var(--ink); }
+.tabs button[aria-current=true]::before { background:var(--signal); box-shadow:none; }
+"""
+
+CLASSMODE_JS = """<script>
+(function () {
+  var tabs = document.querySelectorAll('.tabs button'), arts = document.querySelectorAll('main article'),
+      now = document.getElementById('now'), cur = -1, recent = -1;
+  if (/[?&]light\\b/.test(location.search)) document.body.classList.add('light');
+  function show(i) {
+    if (i === cur) return;
+    if (cur >= 0) recent = cur;
+    cur = i;
+    tabs.forEach(function (t, k) {
+      t.setAttribute('aria-current', k === cur); t.classList.toggle('recent', k === recent);
+    });
+    arts.forEach(function (a, k) { a.hidden = k !== cur; });
+    try { history.replaceState(null, '', location.search + '#' + (cur + 1)); } catch (e) {}
+  }
+  tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
+  function tick() { now.textContent = new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); }
+  tick(); setInterval(tick, 5000);
+  var h = parseInt(location.hash.slice(1), 10);
+  show(h >= 1 && h <= tabs.length ? h - 1 : 0);
+  document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+})();
+</script>"""
+
+
+def class_mode_page(path):
+    card, kinds = class_folder(path)
+    kind = kinds[0] if kinds else {"kind": "", "sections": []}
+    tabs = "".join('<button type=button><span>%s</span></button>' % e(x["title"]) for x in kind["sections"])
+    arts = "".join("<article hidden>%s</article>" % x["html"] for x in kind["sections"])
+    body = """<div class=top><header class=head>%s<div><h1>%s</h1><p class=hours>%s</p></div></header>
+<p class=who>%s</p><div class=now id=now aria-hidden=true></div></div>
+<main>%s</main>
+<footer><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
+        checkin_mark(inline=True), e(card.get("title")), e(card.get("hours")), e(card.get("presenter")), arts,
+        html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS)
+    return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
+
+
 # ---------------------------------------------------------------------- wall --
 # THE WALL: pages for screens elsewhere on the network, the studio's rolling
 # TV first. Nothing on the network can reach this box's port (Windows calls the
@@ -1416,6 +1574,8 @@ def wall_files():
            .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
                                     "play": cfg.get("play", "Play")})))
     files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
+    if cfg.get("class"):                       # class mode's demo: beside the wall, never in its turn
+        files["class.html"] = class_mode_page(cfg["class"])
     return files
 
 

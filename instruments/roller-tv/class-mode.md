@@ -1,9 +1,11 @@
 # Class mode on the rolling TV: a brief for its own pass
 
-Status: **not designed and not built.** This is Autumn's brief from
-2026-09-26, recorded so the next pass starts from her words and not from a
-guess. She asked for it to be its own pass, because "the footer and the top,
-they're all going to want to be a little different."
+Status: **a demo.** `class.html`, written beside the wall from
+`class-sample/` (`class:` in the `wall:` block of `machines/kiosk-1/node.yml`)
+and never in the wall's turn. `?light` shows the light version. This is
+Autumn's brief from 2026-09-26, and then the shape she gave the demo the
+same day. It is its own pass because "the footer and the top, they're all
+going to want to be a little different."
 
 ## What it is for
 
@@ -71,3 +73,34 @@ deferred.
 - **Checking it:** `attendant/wall.md`, the attendant recipe. Class mode will
   need its own steps, and its buttons must be findable by role and name like
   the wall's.
+
+## The shape of the demo (Autumn, 2026-09-26)
+
+- **Header, a quarter of the screen**, in the lighter slate (`--slate`), with
+  the wall's slanted bottom edge. The check-in code on the yellow clock square
+  ("our QR is hiding a clock inside of it"), then the class's name and its
+  hours in place of "Check in" and the motto. No timer.
+- **On the slant:** the presenter's name above the edge at the left, and the
+  time of day under it at the right, where the wall's timer runs. The time is
+  a convenience, so it's in regular weight and soft. The name is a name
+  ("Doug"): short. A long one is the exception, and should be the person's
+  real name.
+- **Content, the dark slate (`--ink`) or white.** Dark by default, light with
+  `?light`.
+- **Footer, the lighter slate, holding only the sections**, as strips the
+  full height of the footer, flush against each other with no gaps. Each is
+  a tab turned -90 degrees, so its name reads bottom to top. Then it's skewed
+  so its bottom pulls left: its top and bottom stay level with the screen,
+  and only its sides lean. The name follows the lean, turned rather than
+  sheared. Names only, no
+  numbers. Fifteen fit across. The one that's up is signal yellow. The last
+  one used is signal at 30%, so the way back is easy to see. The rest are the
+  dark slate, told apart by a hairline. There's no yellow text in the footer.
+  A section is a button named by its title. There's no rotation.
+- **Material is organised by nouns** (the folders, such as `Handouts`),
+  meaning kinds of material, not slides. It can still be used like slides:
+  numbered files keep working. The noun isn't shown yet.
+
+**Still open:** which class and presenter the page shows (today, from
+`class.yml`; later, from the calendar and the class's own folder), and more
+than one kind of material in a class (the demo shows the first).

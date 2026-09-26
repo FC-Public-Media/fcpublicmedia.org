@@ -153,6 +153,7 @@ wall:
   folder: .wall
   every: 60                  # seconds: how often it is rewritten; the shell reloads every tenth
   rotate: 45                 # seconds on each module before the next (show.yml's guess)
+  class: instruments/roller-tv/class-sample   # class mode's demo, written as class.html; not in the turn
   modules:
     - {name: studio, label: Studio, page: kiosk}
     - {name: files, label: Files, page: drive}      # the wall's own Files: a list, like Classes
