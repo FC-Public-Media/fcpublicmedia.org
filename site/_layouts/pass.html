@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" class="is-pass">
+{% include head.html %}
+{%- comment -%}
+  A page someone carries rather than visits: their pass. No site header, no
+  footer, no menu. It fills the screen and does not scroll; anything that
+  would make it scroll is a view of its own (see site/check-in.md). Autumn,
+  2026-09-26: "It should not feel like a web page as it were if it's on
+  their phone."
+{%- endcomment -%}
+<body class="pass-body">
+  <main id="main">
+    {{ content }}
+  </main>
+  <script src="{{ '/assets/js/theme.js' | relative_url }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
+</body>
+</html>

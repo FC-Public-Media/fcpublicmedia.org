@@ -179,9 +179,9 @@ test.describe('redeeming a claim on the page', () => {
 
     await page.goto(`/check-in/#claim=${token}`);
 
-    await expect(page.locator('[data-claim="verified"]')).toBeVisible();
+    await expect(page.locator('.pass [data-claim="verified"]')).toBeVisible();
     await expect(page.locator('#claim-email')).toHaveText('member@example.com');
-    await expect(page.locator('[data-claim="none"]')).toBeHidden();
+    await expect(page.locator('.pass [data-claim="none"]')).toBeHidden();
   });
 
   test('the token is taken out of the address bar', async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe('redeeming a claim on the page', () => {
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'member@example.com']));
 
     await page.goto(`/check-in/#claim=${token}`);
-    await expect(page.locator('[data-claim="verified"]')).toBeVisible();
+    await expect(page.locator('.pass [data-claim="verified"]')).toBeVisible();
 
     expect(page.url()).not.toContain('claim=');
   });
@@ -227,7 +227,7 @@ test.describe('redeeming a claim on the page', () => {
     await page.goto(`/check-in/#claim=${token}`);
 
     await expect(page.locator('#claim-status')).toContainText('expired');
-    await expect(page.locator('[data-claim="none"]')).toBeVisible();
+    await expect(page.locator('.pass [data-claim="none"]')).toBeVisible();
   });
 
   test('removing it returns the page to the typed-address state', async ({ page }) => {
@@ -235,13 +235,15 @@ test.describe('redeeming a claim on the page', () => {
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'member@example.com']));
 
     await page.goto(`/check-in/#claim=${token}`);
-    await expect(page.locator('[data-claim="verified"]')).toBeVisible();
+    await expect(page.locator('.pass [data-claim="verified"]')).toBeVisible();
 
     page.on('dialog', (dialog) => dialog.accept());
-    await page.locator('#claim-forget').click();
+    await page.getByRole('link', { name: 'This phone' }).click();
+    await page.getByRole('button', { name: 'Remove confirmed email' }).click();
+    await page.getByRole('link', { name: 'Pass' }).click();
 
-    await expect(page.locator('[data-claim="none"]')).toBeVisible();
-    await expect(page.locator('[data-claim="verified"]')).toBeHidden();
+    await expect(page.locator('.pass [data-claim="none"]')).toBeVisible();
+    await expect(page.locator('.pass [data-claim="verified"]')).toBeHidden();
   });
 });
 
@@ -251,8 +253,8 @@ test.describe('email without a claim', () => {
     // everyone is actually in. It must not read as an error.
     await page.goto('/check-in/');
 
-    await expect(page.locator('[data-claim="none"]')).toBeVisible();
-    await expect(page.locator('[data-claim="verified"]')).toBeHidden();
+    await expect(page.locator('.pass [data-claim="none"]')).toBeVisible();
+    await expect(page.locator('.pass [data-claim="verified"]')).toBeHidden();
     await expect(page.locator('#claim-status')).toBeHidden();
   });
 
@@ -277,7 +279,7 @@ test.describe('email without a claim', () => {
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
 
     await expect(page.locator('[data-state="done"]')).toBeVisible();
-    await expect(page.locator('#done-detail')).toContainText("haven't confirmed");
+    await expect(page.locator('#done-detail')).toContainText('email unconfirmed');
     await expect(page.locator('#checkin-history li')).toContainText('unconfirmed');
   });
 });

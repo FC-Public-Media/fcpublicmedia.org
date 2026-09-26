@@ -213,9 +213,8 @@ function renderHistory() {
 
   list.innerHTML = '';
   el('checkin-empty').hidden = history.length > 0;
-  count.textContent = history.length
-    ? `${history.length} visit${history.length === 1 ? '' : 's'} on this device`
-    : '';
+  // A number beside "Visits" on the pass, nothing when there are none.
+  count.textContent = history.length ? String(history.length) : '';
 
   for (const entry of history) {
     const item = document.createElement('li');
@@ -251,28 +250,38 @@ function renderDevice() {
 function renderProfile() {
   const profile = getProfile();
   el('profile-name').value = profile.name || '';
-  el('profile-note').value = profile.note || '';
   el('profile-email').value = profile.email || '';
-
-  const reason = el('profile-reason');
-  // A reason primed from the URL wins over the stored one, so a QR aimed at
-  // /check-in/?reason=Class does what it looks like it does.
-  const primed = new URLSearchParams(window.location.search).get('reason');
-  reason.value = primed && [...reason.options].some((o) => o.value === primed)
-    ? primed
-    : profile.reason || '';
 }
 
 function saveProfile() {
   writeStore(PROFILE_KEY, {
+    ...getProfile(),
     name: el('profile-name').value.trim(),
-    reason: el('profile-reason').value,
-    note: el('profile-note').value.trim(),
     // Only meaningful while there is no claim; a confirmed address supersedes
     // it rather than overwriting it, so removing the claim leaves whatever the
     // visitor had typed before.
     email: el('profile-email').value.trim().toLowerCase(),
   });
+}
+
+/* ----------------------------------------------------------------- reason */
+
+// Nobody is asked why they came. The code they scanned says so — a QR aimed
+// at /check-in/?reason=Class does what it looks like it does — or a class
+// being on does. Only the reasons _data/checkin.yml lists are accepted, so a
+// made-up one in the URL is ignored rather than recorded.
+function visitReason() {
+  const primed = new URLSearchParams(window.location.search).get('reason');
+  if (primed && (config.reasons || []).includes(primed)) return primed;
+  if (session) return 'Class';
+  return null;
+}
+
+function renderReason() {
+  const reason = visitReason();
+  const label = el('visit-reason');
+  label.textContent = reason || '';
+  label.hidden = !reason;
 }
 
 /* --------------------------------------------------------------- identity */
@@ -400,8 +409,8 @@ function complete(reading) {
       // perfectly good row.
       email_verified: Boolean(email) && verified,
       name: profile.name || null,
-      reason: profile.reason || null,
-      note: profile.note || null,
+      // A held check-in keeps the reason it was started with.
+      reason: getPending()?.reason || visitReason(),
       // Distance only — the coordinates themselves are not kept, even locally.
       // Knowing the check-in was verified is the useful part.
       verified: Boolean(reading),
@@ -418,11 +427,12 @@ function complete(reading) {
       return;
     }
 
-    el('done-detail').textContent = email
-      ? verified
-        ? `Checked in as ${email}.`
-        : `Checked in as ${email} — an address you entered, which we haven't confirmed.`
-      : 'Checked in.';
+    // The pass already says who. This says when, and whether the address on
+    // the visit is one we checked.
+    el('done-detail').textContent = [
+      clockTime(Date.parse(entry.at)),
+      email && !verified ? 'email unconfirmed' : null,
+    ].filter(Boolean).join(' · ');
     show('done');
     renderHistory();
     stopTimer();
@@ -432,7 +442,7 @@ function complete(reading) {
 function goPending(reading) {
   writeStore(PENDING_KEY, {
     since: new Date().toISOString(),
-    reason: getProfile().reason || null,
+    reason: visitReason(),
   });
 
   if (reading) {
@@ -517,6 +527,7 @@ function renderClass() {
 
   if (!session) {
     banner.hidden = true;
+    renderReason();
     return;
   }
 
@@ -537,13 +548,9 @@ function renderClass() {
   q('[data-rsvp-offer]').hidden = session.running || noted;
   q('[data-rsvp-noted]').hidden = !noted || session.running;
 
-  // A class arrival is a check-in with the reason already known. Only fill it
-  // in if the visitor has not chosen something else themselves.
-  const reason = el('profile-reason');
-  if (!reason.value) {
-    reason.value = 'Class';
-    saveProfile();
-  }
+  // A class arrival is a check-in with the reason already known, unless the
+  // code that was scanned said otherwise.
+  renderReason();
 
   // The button says what it is for.
   for (const button of document.querySelectorAll('[data-state="idle"] [data-action="check-in"]')) {
@@ -629,6 +636,37 @@ function forgetDevice() {
   el('storage-status').textContent = 'Deleted. A new device identifier has been generated.';
 }
 
+/* ------------------------------------------------------------------ views */
+
+// The pass is one screen; the visits and this phone are screens of their own,
+// named by the address's # so Back and a bookmark both work. Anything else in
+// the # (a claim link, say) is the pass.
+const VIEWS = ['visits', 'device'];
+let view = 'pass';
+let cameFromPass = false;
+
+function route() {
+  const wanted = location.hash.slice(1);
+  const next = VIEWS.includes(wanted) ? wanted : 'pass';
+  cameFromPass = view === 'pass' && next !== 'pass';
+  view = next;
+  for (const section of document.querySelectorAll('[data-view]')) {
+    section.hidden = section.dataset.view !== view;
+  }
+}
+
+// "Pass" goes back if that is where you came from, so the history does not
+// fill up with trips between screens. Opened straight at #visits, it replaces.
+function backToPass(event) {
+  event.preventDefault();
+  if (cameFromPass) {
+    history.back();
+  } else {
+    history.replaceState(null, '', location.pathname + location.search);
+    route();
+  }
+}
+
 /* -------------------------------------------------------------------- init */
 
 async function init() {
@@ -639,6 +677,7 @@ async function init() {
 
   renderDevice();
   renderProfile();
+  renderReason();
 
   // Before anything is rendered that depends on it: a claim arriving in the
   // URL is the reason this page was opened, and the history rows below should
@@ -656,7 +695,7 @@ async function init() {
 
   // Form state is written on every change, so closing the page mid-answer and
   // coming back later loses nothing.
-  for (const id of ['profile-name', 'profile-reason', 'profile-note', 'profile-email']) {
+  for (const id of ['profile-name', 'profile-email']) {
     el(id).addEventListener('input', saveProfile);
     el(id).addEventListener('change', saveProfile);
   }
@@ -687,6 +726,10 @@ async function init() {
 
   document.addEventListener('visibilitychange', onVisibilityChange);
 
+  window.addEventListener('hashchange', route);
+  document.querySelectorAll('[data-back]').forEach((link) => link.addEventListener('click', backToPass));
+  route();
+
   const rsvp = el('rsvp-button');
   if (rsvp) rsvp.addEventListener('click', noteRsvp);
 
@@ -697,8 +740,8 @@ async function init() {
   const persisted = await requestPersistence();
   el('persist-state').textContent =
     persisted === true
-      ? 'This browser has agreed to keep your history until you delete it.'
-      : 'This browser has not promised to keep your history. Saving a copy, or adding this page to your Home Screen, makes it stick.';
+      ? 'Until you delete it'
+      : 'Only while the browser allows. Save a copy, or add this to your Home Screen';
 
   // A pending check-in survives a reload — pick it back up rather than making
   // someone start again.
