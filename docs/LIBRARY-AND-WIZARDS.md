@@ -40,6 +40,28 @@ a conversation that may not survive. Nothing below is built unless it says so.
 7. **Reading a moving QR is a common workflow here,** so the tool that does it
    is part of the kit, not a demo.
 
+## Who does which side, and what never becomes public
+
+Autumn, 2026-09-26: the session **bubbles** (private-repository powers, the
+stronger design backing) takes the **camera side**: catching a moving QR and
+decoding the bubble. FCPM takes the **screen side**: the first purely optical
+transmission, a studio screen playing a bubble with nothing but light between
+it and the phone.
+
+**A payload is never public here.** This repository and the site are public;
+a teacher's materials carried as a wizard are not. So:
+
+- the kiosk artifact and a screen's show config name a bottle **by reference
+  only** (a wizard label, a digest), never by content;
+- the door serves the frames at play time from a private source (a private
+  repository held on the bubbles side, or the depot), and nothing it plays is
+  written into this tree or built into the site;
+- the player never fetches a payload from a public URL.
+
+Open with bubbles: the frame format (anecdote.channel's carrier, fountain-coded,
+or the you engine's stored GIF), whether a payload is encrypted to recipients or
+meant for whoever is in the room, and where the private source lives.
+
 ## The wizards we already know we want
 
 | wizard | tier | returns | notes |
@@ -102,11 +124,11 @@ is carried by the optical path itself.
    Autumn's-engine code rather than FCPM's.
 4. **A listing,** as station-node's `bin/wizards` does: every wizard every mount
    declares, written to `library/share/wizards/`, checkable, served.
-5. **A screen that plays a bottle.** A kiosk module the door renders: given a
+5. **A screen that plays a bottle** (FCPM's side). A kiosk module the door renders: given a
    wizard, it plays its bottle (projected frames; the nine-tile collage on a
    big screen). This answers bottles' own open question "who owns the player?"
    for FCPM: the renderer plays, and the bottles engine owns the format.
-6. **A catcher people can open.** The carrier-catch reader, lifted out of the
+6. **A catcher people can open** (bubbles' side). The carrier-catch reader, lifted out of the
    demo into a page on `you.` (or the site) that any phone opens from the still
    control QR, catches the moving one, and opens the wizard it decoded.
 7. **The signed return.** A one-commit return, signed by the passkey, arriving
