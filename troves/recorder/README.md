@@ -85,6 +85,7 @@ only; nothing of theirs was opened.
 | **the websocket on 4455**, which a member's Streamer.bot also talks to | never uses 4455. Ours is 4456, and `start` refuses if anything already listens there |
 | **`HKLM\SOFTWARE\OBS Studio`** | never read or written. The portable copy made no registry key of its own |
 | **`obs64`**, the process name | is also theirs, so ours is never stopped by name. `stop` closes only the process id `start` wrote down, and only if it runs from this trove's prefix |
+| **`%USERPROFILE%\Videos`**, where the members' OBS records by default | never records there. `prepare` points both output modes at the trove's own `recordings` folder; `start` and `record start` refuse if the path is anywhere else |
 
 And one thing that is ours to set, so the two can be told apart at a glance:
 the staff copy's profile and scene collection are both named **FCPM Recorder**,
@@ -98,7 +99,7 @@ its own websocket, obs-websocket v5 on `127.0.0.1:4456`, and nothing else:
 | verb | does |
 |---|---|
 | `status` | whether ours is installed, prepared, granted, running and recording, and where to. Changes nothing |
-| `prepare` | names the profile and scene collection, and turns the websocket on at 4456 with a generated password, kept in Credential Manager under `fcpm-recorder:obs-websocket` |
+| `prepare` | names the profile and scene collection, points recordings at the trove's own `recordings` folder, and turns the websocket on at 4456 with a generated password, kept in Credential Manager under `fcpm-recorder:obs-websocket` |
 | `start` | launches it with `--multi --portable` and its named profile, once the inbound-block rule is in place and 4456 is free, and writes down its process id |
 | `record start` | `StartRecord`, then reads `GetRecordStatus` to see that it took |
 | `record stop` | `StopRecord`, and prints the finished file's path: the *file finished* row above |

@@ -39,6 +39,7 @@ $Root    = Join-Path $env:LOCALAPPDATA "$Node\troves\recorder"
 $Gear    = Join-Path $Root 'obs'
 $Exe     = Join-Path $Gear 'bin\64bit\obs64.exe'
 $Cfg     = Join-Path $Gear 'config\obs-studio'
+$Records = Join-Path $Root 'recordings'   # never %USERPROFILE%\Videos: the members' OBS records there
 $PidFile = Join-Path $Root 'obs.pid'
 $Log     = Join-Path $Root 'obs.ndjson'
 $Port    = 4456
@@ -191,9 +192,23 @@ function Get-Ini($path, $key) {
     $m = Select-String -Path $path -Pattern "^$([regex]::Escape($key))=(.*)$" | Select-Object -First 1
     if ($m) { $m.Matches[0].Groups[1].Value } else { $null }
 }
+# Where the profile says recordings go. OBS keeps one path per output mode;
+# the one that counts is the mode's. Absent means OBS's default, which is the
+# user's Videos folder, shared with the members' OBS.
+function RecordPath {
+    $ini = Join-Path $Cfg "basic\profiles\$Slug\basic.ini"
+    $mode = Get-Ini $ini 'Mode'
+    if ($mode -eq 'Advanced') { Get-Ini $ini 'RecFilePath' } else { Get-Ini $ini 'FilePath' }
+}
+function Inside($path) {
+    if (-not $path) { return $false }
+    $full = [IO.Path]::GetFullPath($path).TrimEnd('\') + '\'
+    $full.StartsWith(([IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'), 'OrdinalIgnoreCase')
+}
 function Prepared {
     ((Get-Ini (Join-Path $Cfg 'user.ini') 'Profile') -eq $Name) -and
     ((Get-Ini (Join-Path $Cfg 'user.ini') 'SceneCollection') -eq $Name) -and
+    (Inside (RecordPath)) -and
     (Test-Path (Join-Path $Cfg 'plugin_config\obs-websocket\config.json')) -and
     ((Get-Content (Join-Path $Cfg 'plugin_config\obs-websocket\config.json') -Raw | ConvertFrom-Json).server_port -eq $Port)
 }
@@ -206,6 +221,8 @@ switch ($Verb) {
     $h = Proven
     Say ("the copy  " + $(if ($h.ok) { "obs64.exe matches the bay's record ($($h.got.Substring(0,12)))" } elseif ($h.want) { "obs64.exe is NOT what the bay installed: $($h.got.Substring(0,12)), record says $($h.want.Substring(0,12))" } else { "no obs64-sha256 in $($h.rec): start will refuse" }))
     Say ("prepared  " + $(if (Prepared) { "yes: $Name, websocket $Port" } else { 'no: run prepare' }))
+    $rp = RecordPath
+    Say ("records   " + $(if (Inside $rp) { "$rp (the trove's own)" } elseif ($rp) { "${rp}: OUTSIDE the trove, start will refuse" } else { "OBS's default, the user's Videos folder, shared with the members: start will refuse" }))
     Say ("grant     " + $(if (Grant) { 'inbound block in place' } else { 'absent: start will refuse' }))
     Say ("password  " + $(if ([Fcpm.Cred]::Read($Target)) { "in Credential Manager ($Target)" } else { 'absent' }))
     $p = Ours
@@ -238,6 +255,14 @@ switch ($Verb) {
         else { New-Item -ItemType Directory $pdir | Out-Null }
     }
     Set-Ini (Join-Path $pdir 'basic.ini') 'General' 'Name' $Name
+
+    # Recordings go to the trove's own folder, in both output modes, so a staff
+    # recording can never land among a member's files in Videos.
+    New-Item -ItemType Directory -Force $Records | Out-Null
+    $pini = Join-Path $pdir 'basic.ini'
+    if (-not (Get-Ini $pini 'Mode')) { Set-Ini $pini 'Output' 'Mode' 'Simple' }
+    Set-Ini $pini 'SimpleOutput' 'FilePath' $Records
+    Set-Ini $pini 'AdvOut' 'RecFilePath' $Records
 
     # The scene collection, likewise.
     $sfile = Join-Path $scenes "$Slug.json"
@@ -276,6 +301,7 @@ switch ($Verb) {
 
 'start' {
     if (-not (Test-Path $Exe)) { Fail 'not installed: run bay/obs-portable.ps1' }
+    if (-not (Inside (RecordPath))) { Fail "recordings would go to '$(RecordPath)', outside $Root; run prepare" }
     if (-not (Prepared)) { Fail 'not prepared: run prepare' }
     if ($p = Ours) { Say "already running, pid $($p.Id)"; break }
     $h = Proven
@@ -298,6 +324,9 @@ switch ($Verb) {
 'record' {
     if (-not (Ours)) { Fail 'ours is not running: run start' }
     if ($Arg -eq 'start') {
+        # Asked of the running OBS, not the file: what it will actually write to.
+        $d = (Invoke-Obs 'GetRecordDirectory' $null).recordDirectory
+        if (-not (Inside $d)) { Fail "the running OBS would record to '$d', outside $Root; not recording" }
         Invoke-Obs 'StartRecord' $null | Out-Null
         Start-Sleep -Milliseconds 800
         $r = Invoke-Obs 'GetRecordStatus' $null
