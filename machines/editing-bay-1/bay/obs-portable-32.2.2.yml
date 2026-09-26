@@ -53,6 +53,11 @@ status: installed
 installed:
   at: "%LOCALAPPDATA%\\editing-bay-1\\troves\\recorder\\obs"
   obs64: 32.2.2
+  # What obs.ps1 `start` compares before it runs anything: a copy the bay did
+  # not install is not the staff copy, whatever it is called. Measured
+  # 2026-09-26, identical to the staged copy the bay verified.
+  obs64-sha256: e79066670cd8e8b95662f4cd417c4fa6f5b0c77e856a7b41c7de0e00059ba6f2
+  obs64-signer: "Valid, OBS Project, LLC"
   portable: "true, in OBS's own log: Portable mode: true"
   updates: EnableAutoUpdates=false in its config\obs-studio\global.ini
   rollback-copy: none, because there was no previous copy. The next arrival cellars this one.
