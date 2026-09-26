@@ -58,7 +58,7 @@ greeting: >-
 # The panels, in the order they appear.
 panels:
   # The class on now. The facts are the site's class schedule: calendar.json,
-  # which the media node keeps current from the Microsoft 365 calendar, or
+  # which the media node is to keep current (docs/KIOSK.md), or
   # classes.yml when that is empty. The screen's clock decides whether one is
   # on, with the website's own rule (site/assets/js/classes.js), so the two
   # never disagree.

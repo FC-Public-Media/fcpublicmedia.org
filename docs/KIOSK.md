@@ -343,7 +343,7 @@ in the right place, and nothing else on the screen answers that.
 
 | | owes | never |
 |---|---|---|
-| **the media node** | `site/_data/calendar.json` kept current from the Microsoft 365 calendar, committed periodically | a live pipe to the screens |
+| **the media node** | `site/_data/calendar.json` kept current by `site/bin/sync-calendar.py`, committed periodically. **A new job, not running yet** | a live pipe to the screens |
 | **`bin/build-kiosk.py`** | the `classes` panel: the schedule, and the two windows | a verdict on what is on now |
 | **a renderer** | the verdict, from its own clock, with `pickSession` | a second rule for "now" |
 
@@ -355,6 +355,20 @@ enough, because a class is scheduled days ahead. The rest of the day's
 precision comes from the clock, which every screen already has. It also
 means the screens see exactly what the public can, and nothing a pipe would
 have to be trusted not to carry.
+
+**Where it stands, 2026-09-26** (from the media node). Nothing runs the sync
+yet, and `calendar.json` on main is empty, so the panel feeds on `classes.yml`,
+whose sessions are in August: every screen shows nothing for now, correctly.
+Running it is a new job for the media node, and it waits on a source only
+Autumn can pick:
+
+- **a published ICS link**, which is what `sync-calendar.py` implements today:
+  a calendar holding only what is meant to be public, such as a dedicated
+  "Public Programming" calendar, published from Outlook on the web;
+- **or Microsoft Graph**, described in the script's header and not built. The
+  media node's Microsoft 365 certificate signs into the app folder only;
+  whether it may read calendars, and which, is an Entra consent question with
+  an access policy scoped to one calendar, and it is not settled.
 
 ### What the media node commits
 

@@ -264,7 +264,7 @@ def panel_from_classes(src, panel):
 
     The schedule comes from where the site takes it, in the same order
     (site/_includes/class-config.html): calendar.json when it has sessions,
-    which the media node keeps current from the Microsoft 365 calendar, and
+    which the media node is to keep current (docs/KIOSK.md), and
     classes.yml when it does not. A change there changes `revision`, and a
     screen reloads.
 
