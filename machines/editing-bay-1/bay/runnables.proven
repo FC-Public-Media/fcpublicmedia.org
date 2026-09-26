@@ -1,0 +1,5 @@
+# runnables.proven: holders the bay has proven on this machine, by blob.
+# Written by `bin/runnables prove`. docs/RUNNABLES.md, machines/BAY.md.
+#
+# holder  blob  date  ran  by
+troves/recorder/bay/obs-portable.ps1 6cce422fca2a 2026-09-26 ran:check by:code-e3

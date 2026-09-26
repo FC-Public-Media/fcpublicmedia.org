@@ -32,7 +32,7 @@ gear:
     # this is (../README.md, Rules).
     at: troves\recorder\obs
     portable: obs_portable_mode.txt
-    launch: --multi --portable --profile fcpm-recorder --collection fcpm-recorder --minimize-to-tray
+    launch: --multi --portable --profile "FCPM Recorder" --collection "FCPM Recorder" --minimize-to-tray (obs.ps1 start)
 
     restart-tier: app        # only this OBS bounces; the system one is not touched
     holds: >
