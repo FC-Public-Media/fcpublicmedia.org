@@ -87,14 +87,15 @@ deferred.
   real name.
 - **Content, the dark slate (`--ink`) or white.** Dark by default, light with
   `?light`.
-- **Footer, the lighter slate, holding only the sections.** Each section is a
-  tab stood on its end, its title reading bottom to top, all as tall as the
-  longest, so fifteen fit across. The one that's up is signal yellow. The last
+- **Footer, the lighter slate, holding only the sections**, as strips the
+  full height of the footer, flush against each other with no gaps. Each is
+  a tab turned -90 degrees, so its name reads bottom to top. Then it's skewed
+  so its bottom pulls left: its top and bottom stay level with the screen,
+  and only its sides lean. The name itself stays upright. Names only, no
+  numbers. Fifteen fit across. The one that's up is signal yellow. The last
   one used is signal at 30%, so the way back is easy to see. The rest are the
-  dark slate. There's no yellow text in the footer. A section is a button
-  named by its title. There's no rotation.
-- **The slant on the tabs is paused.** Leaning them into parallelograms was
-  tried and set aside for now.
+  dark slate, told apart by a hairline. There's no yellow text in the footer.
+  A section is a button named by its title. There's no rotation.
 - **Material is organised by nouns** (the folders, such as `Handouts`),
   meaning kinds of material, not slides. It can still be used like slides:
   numbered files keep working. The noun isn't shown yet.

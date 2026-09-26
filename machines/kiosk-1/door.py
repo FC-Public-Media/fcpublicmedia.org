@@ -1251,19 +1251,25 @@ main p { margin:0 0 1.8vh; }
 main ul, main ol { margin:0 0 1.8vh; padding-left:1.4em; }
 main li { margin:.6vh 0; }
 
-/* The footer is the sections. Each section is a tab stood on its end, its
-   title reading bottom to top, all as tall as the longest: narrow enough for
-   fifteen across. Up is signal; the one before it is signal at 30%%; the rest
-   are the dark slate. The slant is paused (Autumn, 2026-09-26). */
-footer { background:var(--slate); padding:2.4vh 7vw 3vh; display:flex; align-items:flex-end; gap:5vw;
-  overflow:hidden; }
-.tabs { display:flex; align-items:stretch; gap:.3vh; }
-.tabs button { writing-mode:vertical-rl; rotate:180deg; max-height:20vh; overflow:hidden; text-overflow:ellipsis;
-  margin:0; padding:1.4vh .45vh; border:0; cursor:pointer; font:inherit; font-size:1.6vh; font-weight:650;
-  line-height:1.2; white-space:nowrap; background:var(--ink); color:var(--soft); }
-.tabs button b { margin-bottom:.6vh; font-weight:750; opacity:.7; }
-.tabs button.recent { background:rgba(255,198,26,.3); color:var(--paper); }
-.tabs button[aria-current=true] { background:var(--signal); color:var(--ink); }
+/* The footer is the sections, as strips the full height of the footer, flush
+   against each other, no gaps. Each strip is a tab turned -90 degrees (its
+   name reads bottom to top), then skewed so its bottom pulls left: its top
+   and bottom stay level with the screen, only its sides lean. The skew is
+   the strip's alone (a pseudo-element behind the name), so the name stays
+   upright. Up is signal; the one before it is signal at 30%%; the rest are
+   the dark slate, told apart by a hairline (Autumn, 2026-09-26). */
+footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; }
+.tabs { display:flex; align-items:stretch; }
+.tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
+  padding:2.2vh .6vh; border:0; background:transparent; cursor:pointer; font:inherit; font-size:1.6vh;
+  font-weight:650; line-height:1.2; white-space:nowrap; color:var(--soft); }
+.tabs button span { display:block; max-height:18vh; overflow:hidden; text-overflow:ellipsis; }
+.tabs button::before { content:""; position:absolute; z-index:-1; inset:-1px 0; background:var(--ink);
+  box-shadow:inset 1px 0 0 var(--rule); transform:skewX(-8deg); }
+.tabs button.recent { color:var(--paper); }
+.tabs button.recent::before { background:rgba(255,198,26,.3); }
+.tabs button[aria-current=true] { color:var(--ink); }
+.tabs button[aria-current=true]::before { background:var(--signal); box-shadow:none; }
 """
 
 CLASSMODE_JS = """<script>
@@ -1294,8 +1300,7 @@ CLASSMODE_JS = """<script>
 def class_mode_page(path):
     card, kinds = class_folder(path)
     kind = kinds[0] if kinds else {"kind": "", "sections": []}
-    tabs = "".join('<button type=button aria-label="%s"><b>%s</b>%s</button>' % (
-        html.escape(x["title"], quote=True), e(x["num"]), e(x["title"])) for x in kind["sections"])
+    tabs = "".join('<button type=button><span>%s</span></button>' % e(x["title"]) for x in kind["sections"])
     arts = "".join("<article hidden>%s</article>" % x["html"] for x in kind["sections"])
     body = """<div class=top><header class=head>%s<div><h1>%s</h1><p class=hours>%s</p></div></header>
 <p class=who>%s</p><div class=now id=now aria-hidden=true></div></div>
