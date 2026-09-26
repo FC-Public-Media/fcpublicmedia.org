@@ -104,6 +104,7 @@ its own websocket, obs-websocket v5 on `127.0.0.1:4456`, and nothing else:
 | `record start` | `StartRecord`, then reads `GetRecordStatus` to see that it took |
 | `record stop` | `StopRecord`, and prints the finished file's path: the *file finished* row above |
 | `stop` | stops recording if it is, then closes that process id |
+| `grant` | places the one grant, the inbound block below. A person runs it at the desk as `fcpm recorder grant`; it asks Windows for an administrator itself, so nobody pastes a command or picks a window |
 
 OBS keeps the websocket password in its own `config.json` too, in plain text,
 inside the staff copy's folder. That is how obs-websocket stores it; the copy in

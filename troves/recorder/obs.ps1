@@ -7,6 +7,8 @@ obs.ps1 — play the recorder trove's OBS: the staff copy, never the members'.
     obs.ps1 record start    StartRecord, then confirm it is recording
     obs.ps1 record stop     StopRecord; prints the finished file's path
     obs.ps1 stop            stop recording if it is, then close the process start launched
+    obs.ps1 grant           place the one grant: block inbound for this obs64.exe. A person
+                            runs it at the desk; it asks Windows for an administrator itself
 
 The copy is the one the bay installed (bay/obs-portable.ps1, ../../machines/BAY.md)
 under %LOCALAPPDATA%\<profile>\troves\recorder\obs. What it must never touch
@@ -26,7 +28,7 @@ plain text, inside this copy's folder, which is how obs-websocket works.
 Windows PowerShell 5.1, no modules.
 #>
 param(
-    [Parameter(Position = 0)] [ValidateSet('status', 'prepare', 'start', 'record', 'stop')]
+    [Parameter(Position = 0)] [ValidateSet('status', 'prepare', 'start', 'record', 'stop', 'grant')]
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [ValidateSet('start', 'stop')]
     [string] $Arg = '',
@@ -235,14 +237,28 @@ function Get-Ini($path, $key) {
 # Where the profile says recordings go. OBS keeps one path per output mode;
 # the one that counts is the mode's. Absent means OBS's default, which is the
 # user's Videos folder, shared with the members' OBS.
+#
+# OBS's ini values are ESCAPED STRINGS. It saves a backslash as `\\` and reads
+# `\r`, `\n` and `\t` as control characters, so a Windows path written with
+# backslashes comes back mangled: `...\troves\recorder` was read as
+# `...troves<CR>ecorder` (measured 2026-09-26, the first real start). OBS
+# writes Windows paths with forward slashes itself, and so does `prepare`.
+# Reading, the escapes are undone first, so what is checked is what OBS uses.
+function ObsString($v) {
+    if ($null -eq $v) { return $null }
+    $one = [string][char]1
+    $v.Replace('\\', $one).Replace('\r', "`r").Replace('\n', "`n").Replace('\t', "`t").Replace($one, '\')
+}
 function RecordPath {
     $ini = Join-Path $Cfg "basic\profiles\$Slug\basic.ini"
     $mode = Get-Ini $ini 'Mode'
-    if ($mode -eq 'Advanced') { Get-Ini $ini 'RecFilePath' } else { Get-Ini $ini 'FilePath' }
+    ObsString $(if ($mode -eq 'Advanced') { Get-Ini $ini 'RecFilePath' } else { Get-Ini $ini 'FilePath' })
 }
 function Inside($path) {
-    if (-not $path) { return $false }
-    $full = [IO.Path]::GetFullPath($path).TrimEnd('\') + '\'
+    # A path that cannot be a path, control characters included, is not inside:
+    # refused, never a crash.
+    if (-not $path -or $path -match '[\x00-\x1f]') { return $false }
+    try { $full = [IO.Path]::GetFullPath($path).TrimEnd('\') + '\' } catch { return $false }
     $full.StartsWith(([IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'), 'OrdinalIgnoreCase')
 }
 function Prepared {
@@ -263,7 +279,7 @@ switch ($Verb) {
     Say ("prepared  " + $(if (Prepared) { "yes: $Name, websocket $Port" } else { 'no: run prepare' }))
     $rp = RecordPath
     Say ("records   " + $(if (Inside $rp) { "$rp (the trove's own)" } elseif ($rp) { "${rp}: OUTSIDE the trove, start will refuse" } else { "OBS's default, the user's Videos folder, shared with the members: start will refuse" }))
-    Say ("grant     " + $(if (Grant) { 'inbound block in place' } else { 'absent: start will refuse' }))
+    Say ("grant     " + $(if (Grant) { 'inbound block in place' } else { 'absent: start will refuse. Place it: fcpm recorder grant' }))
     Say ("password  " + $(if ([Fcpm.Cred]::Read($Target)) { "in Credential Manager ($Target)" } else { 'absent' }))
     $p = Ours
     $theirs = @(Get-Process obs64 -ErrorAction SilentlyContinue | Where-Object { -not ($_.Path -and $_.Path.StartsWith($Gear, 'OrdinalIgnoreCase')) })
@@ -301,8 +317,9 @@ switch ($Verb) {
     New-Item -ItemType Directory -Force $Records | Out-Null
     $pini = Join-Path $pdir 'basic.ini'
     if (-not (Get-Ini $pini 'Mode')) { Set-Ini $pini 'Output' 'Mode' 'Simple' }
-    Set-Ini $pini 'SimpleOutput' 'FilePath' $Records
-    Set-Ini $pini 'AdvOut' 'RecFilePath' $Records
+    $obsPath = $Records.Replace('\', '/')   # OBS's own form; see ObsString
+    Set-Ini $pini 'SimpleOutput' 'FilePath' $obsPath
+    Set-Ini $pini 'AdvOut' 'RecFilePath' $obsPath
 
     # The scene collection, likewise.
     $sfile = Join-Path $scenes "$Slug.json"
@@ -347,7 +364,7 @@ switch ($Verb) {
     $h = Proven
     if (-not $h.want) { Fail "no obs64-sha256 recorded in $($h.rec); the bay has not recorded this install" }
     if (-not $h.ok) { Fail "obs64.exe hashes to $($h.got), not the $($h.want) the bay installed; not starting it" }
-    if (-not (Grant)) { Fail "the inbound block rule '$Rule' is not in place; bay/obs-portable.ps1 check prints the command for the desk" }
+    if (-not (Grant)) { Fail "the inbound block rule '$Rule' is not in place; at the desk: fcpm recorder grant" }
     if (Listening $Port) { Fail "port $Port is already in use by something else; not starting beside it" }
     $launch = @('--multi', '--portable', "--profile `"$Name`"", "--collection `"$Name`"", '--minimize-to-tray', '--disable-shutdown-check')
     $proc = Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe) -ArgumentList $launch -PassThru
@@ -377,6 +394,27 @@ switch ($Verb) {
         $file = Finish-Recording
         Say "recorded  $file"
     } else { Fail 'record start | record stop' }
+}
+
+'grant' {
+    # The one grant (README, "The one grant: inbound, refused"). Handed to a
+    # person as a verb, not a pasted command: this asks Windows for the
+    # administrator itself, and the person answers the UAC prompt.
+    if (-not (Test-Path $Exe)) { Fail 'not installed: run bay/obs-portable.ps1' }
+    if (Grant) { Say "grant     already in place: '$Rule'"; break }
+    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $admin) {
+        Say 'grant     asking Windows for an administrator, for one firewall rule. Answer the prompt.'
+        Start-Process powershell -Verb RunAs -Wait -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', "`"$PSCommandPath`"", 'grant', '-Node', $Node) | Out-Null
+        if (-not (Grant)) { Fail 'the rule is not in place: the prompt was declined, or the elevated run failed' }
+        Say "grant     in place: '$Rule' blocks inbound for $Exe"
+        break
+    }
+    New-NetFirewallRule -DisplayName $Rule -Direction Inbound -Action Block -Profile Any -Program $Exe | Out-Null
+    LogLine 'granted' @{ rule = $Rule; program = $Exe }
+    Say "grant     placed: '$Rule' blocks inbound for $Exe"
 }
 
 'stop' {
