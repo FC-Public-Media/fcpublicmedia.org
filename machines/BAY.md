@@ -29,6 +29,16 @@ Windows has no TCC. What it has is a signature per file: the signer's name and
 whether the chain is trusted. A payload whose executables are not all signed by
 the vendor it came from is refused.
 
+**Or a build attestation from the vendor's own repository** (Autumn,
+2026-09-26, for `gh stack`). Some vendors ship Windows binaries with no
+Authenticode signature and sign the build instead: a Sigstore attestation, made
+by the vendor's release workflow on a GitHub-hosted runner, that names the file's
+digest. `gh attestation verify <file> --repo <vendor>/<repo>` checks it. That
+counts as the vendor's signature when there is no Authenticode, and the record
+says which workflow, tag and commit signed it. It does not stand in for a
+signature a vendor does make: a payload that is Authenticode-signed is held to
+that.
+
 ## Restart tiers
 
 Ablative's table, with Windows' own words for the heavier two:

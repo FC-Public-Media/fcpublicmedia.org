@@ -1,0 +1,52 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../BAY.md. Run by hand, each step in the run log.
+
+payload: gh-stack
+version: 0.1.1
+replaces: nothing        # the first gh extension on this host
+vendor: GitHub (github.com/github/gh-stack), MIT
+role: stacked pull requests from the local command, `gh stack`
+asked: Autumn, 2026-09-26. The local command, not the agent skill the README
+  also offers (`gh skill install`), which was not installed
+
+received: 2026-09-26
+source: https://github.com/github/gh-stack/releases/download/v0.1.1/windows-amd64.exe
+size: 25410048
+
+verified:
+  sha256: 578a6e983dd3bf371baa52fbdb7e52cebe16c0107506408316a15a9e75d4da51
+  # matches the digest GitHub's release API reports for the asset
+  authenticode: NotSigned
+  # The first payload to come in on a build attestation instead (../../BAY.md,
+  # accepted by Autumn 2026-09-26). `gh attestation verify --repo github/gh-stack`:
+  attestation:
+    signer: https://github.com/github/gh-stack/.github/workflows/release.yml@refs/tags/v0.1.1
+    source: github/gh-stack @ refs/tags/v0.1.1, commit 2bd699a544a09cb5c45a013d03416e0894b0454e
+    issuer: https://token.actions.githubusercontent.com
+    runner: github-hosted
+
+install: gh extension install github/gh-stack --pin v0.1.1
+install-to: "%LOCALAPPDATA%\\GitHub CLI\\extensions\\gh-stack\\gh-stack.exe"
+installed-sha256: 578a6e983dd3bf371baa52fbdb7e52cebe16c0107506408316a15a9e75d4da51  # the verified file
+pinned: true             # `gh extension upgrade` leaves it; a new version comes through the bay
+restart-tier: none
+cover: none
+grants: none. It pushes with --force-with-lease and asks GitHub to link PRs into
+  a stack, as the signed-in gh account
+
+confirmed:
+  version: gh stack version 0.1.1
+  # Measured in a throwaway repository and origin, never in refs/:
+  worktrees: >
+    Its metadata is per working tree (the worktree's own git dir, e.g.
+    .git/worktrees/<name>/gh-stack), not the repository's shared .git. A branch
+    in a separate worktree is "not part of a stack". So the unit is ONE
+    WORKTREE PER STACK, whose layers are switched inside it; in that layout
+    init, add, amending the bottom and a cascade rebase all worked.
+  rerere: "not enabled anywhere: repository and global config unchanged"
+  not-measured: submit and sync against GitHub, which need a real stack on the
+    repository; the first real stack is that measurement
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, install, confirm)"
+
+status: installed
