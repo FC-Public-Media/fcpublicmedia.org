@@ -11,7 +11,7 @@
 # portable archive comes through the bay instead: gh is, and Node is not yet
 # known. What the bay brings arrives the bay's way (receive,
 # verify against the vendor's digest and Authenticode, stage, install, confirm:
-# ../bay/README.md), into ~/.local/bin or this profile's folder in
+# ../BAY.md), into ~/.local/bin or this profile's folder in
 # %LOCALAPPDATA%, and each arrival leaves a record in ./bay/.
 #
 # NOT OURS, AND LISTED SO NOBODY TAKES IT FOR OURS: the OBS in Program Files

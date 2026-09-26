@@ -8,13 +8,10 @@ came aboard:
 > It's like the opposite of a release, obviously. It's an install. But it's like
 > the engineering bay.
 
-Ablative is personal and does not come to FCPM (`../../docs/STATION.md`). The
+Ablative is personal and does not come to FCPM (`../docs/STATION.md`). The
 bay is the part of it that is not personal: any machine that takes in software
 somebody else built has to say what arrived, what vouched for it, and what had
 to bounce. This is that part, restated for Windows.
-
-A directory here is not a profile: it has no `PROFILE.md`, so `binding` does
-not count it (`../README.md`).
 
 ## The stages
 
@@ -41,7 +38,7 @@ Ablative's table, with Windows' own words for the heavier two:
 | `none` | nothing; a file is replaced | none |
 | `app` | one application | none, unless the app is itself a guard |
 | `job` | a scheduled task: `End` then `Run` | the task's own gap |
-| `session` | sign out and back in | nothing runs until somebody signs in (`../kiosk-1/PROFILE.md`, *Asked of IT*) |
+| `session` | sign out and back in | nothing runs until somebody signs in (`kiosk-1/PROFILE.md`, *Asked of IT*) |
 | `machine` | restart | the same, and longer |
 
 ## Where things are written
@@ -59,9 +56,9 @@ In this repository:
 
 | | |
 |---|---|
-| a **procedure** | carried by whatever needs the payload: a trove (`../../troves/*/bay/`) or this folder. Every procedure has a `check` that changes nothing |
-| a **payload record** | `../<profile>/bay/<payload>-<version>.yml`, one per arrival on one host. Its `status:` moves `staged → installed`, or `rolled-back`, or `installed-outside` when the thing arrived and the bay did not do it |
-| **proofs of our own runnables** | `../<profile>/bay/runnables.proven`, beside the payload records: this holder, at this git blob, does what its claims in `../RUNNABLES` say. Foreign software gets a payload record; our own scripts get a proof. See `../../docs/RUNNABLES.md` |
+| a **procedure** | carried by whatever needs the payload, such as a trove (`../troves/*/bay/`). Every procedure has a `check` that changes nothing |
+| a **payload record** | `<profile>/bay/<payload>-<version>.yml`, one per arrival on one host. Its `status:` moves `staged → installed`, or `rolled-back`, or `installed-outside` when the thing arrived and the bay did not do it |
+| **proofs of our own runnables** | `<profile>/bay/runnables.proven`, beside the payload records: this holder, at this git blob, does what its claims in `RUNNABLES` say. Foreign software gets a payload record; our own scripts get a proof. See `../docs/RUNNABLES.md` |
 
 The record is the host's because an arrival is a fact about one machine on one
 day. The procedure is the trove's because it is the same on every machine that

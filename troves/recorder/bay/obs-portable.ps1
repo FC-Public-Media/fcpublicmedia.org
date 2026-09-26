@@ -8,7 +8,7 @@ obs-portable.ps1 — bring the recorder's OBS aboard through the bay.
     obs-portable.ps1 install   [-Version v] [-Node p]   swap in; the previous copy goes to the cellar
     obs-portable.ps1 confirm   [-Version v] [-Node p]   start it, see it kept to itself, stop it
 
-The stages and where they write are ../../../machines/bay/README.md. What this
+The stages and where they write are ../../../machines/BAY.md. What this
 OBS is, and why it is a second one, is ../README.md.
 
 IT NEVER TOUCHES THE OBS PEOPLE OPERATE. Nothing here writes to

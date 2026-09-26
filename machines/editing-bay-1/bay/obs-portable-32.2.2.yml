@@ -1,5 +1,5 @@
 # A payload the bay has taken in. One file per arrival; the file is the record.
-# See ../../bay/README.md. The procedure is ../../../troves/recorder/bay/obs-portable.ps1.
+# See ../../BAY.md. The procedure is ../../../troves/recorder/bay/obs-portable.ps1.
 #
 # This folder is the first claim editing bay 1's profile makes: that it takes
 # payloads in through the bay. Under ../../README.md, a folder is a claim to

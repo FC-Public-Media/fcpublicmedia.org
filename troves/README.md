@@ -43,7 +43,7 @@ display stack can say it is there.
   machines other people sit down to every week. Their OBS, their browsers, and
   their settings are theirs. A trove brings its own copy, its own profile and its
   own ports, or it does not run.
-- **A trove's gear comes aboard through the bay** (`../machines/bay/`): received,
+- **A trove's gear comes aboard through the bay** (`../machines/BAY.md`): received,
   verified, staged, installed at a declared restart tier, confirmed. The trove
   carries the procedure; the host keeps the record of each arrival.
 
