@@ -114,6 +114,11 @@ deferred.
   one used is signal at 30%, so the way back is easy to see. The rest are the
   dark slate, told apart by a hairline. There's no yellow text in the footer.
   A section is a button named by its title. There's no rotation.
+- **Light mode follows the content:** at rest, the strips are the content's
+  white (as in dark mode they are its dark), and every name is ink: at rest,
+  last-used and active alike. The footer and the arrow keys take soft lights.
+  The Dark key is always dark and the Light key always white: each key wears
+  the mode it gives.
 - **The footer's corner: CLASS**, as the wall's bar says FCPM, over a 2×2 of
   round keys that look pressable: Dark and Light, then previous and next.
   **Nothing flickers on repeated presses:** Dark and Light are two keys, not
