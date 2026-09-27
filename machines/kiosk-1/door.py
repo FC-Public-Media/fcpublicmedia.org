@@ -2,7 +2,7 @@
 
     door.py serve              become the door, on [::]:8080
     door.py supervise          run `serve`, restart it when it exits, pull in the background
-    door.py screens [--launch] are the screens in node.yml up and full-screen
+    door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
@@ -513,7 +513,13 @@ POLL = """<script>
   var seen = null;
   function check() {
     fetch('/revision', {cache: 'no-store'}).then(function (r) { return r.text(); })
-      .then(function (v) { if (seen === null) seen = v; else if (v !== seen) location.reload(); })
+      .then(function (v) {
+        if (seen === null) seen = v; else if (v !== seen) return location.reload();
+        // The door answers, but a picture on this page never arrived: the page
+        // loaded while the door was restarting. Load it again (2026-09-26).
+        if (Array.prototype.some.call(document.images, function (i) { return i.complete && !i.naturalWidth; }))
+          location.reload();
+      })
       .catch(function () {});
   }
   check(); setInterval(check, 20000);
@@ -1895,13 +1901,29 @@ def supervise():
     me = pathlib.Path(__file__).read_bytes()
 
     def raise_screens():
-        # Once, when supervise starts: at logon, or after it was restarted.
-        # Not on a timer: a panel somebody closed on purpose stays closed.
+        # Kept, every half minute, once the door answers: a screen that is
+        # missing or astray (the monitors dropped out and Windows piled the
+        # panels onto one) is put back, in its own browser. Only the lines
+        # that change are logged.
         for _ in range(60):
             if door_answers():
-                return screens(launch=True, say=log)
+                break
             time.sleep(2)
-        log("screens: the door did not answer in two minutes; not launching")
+        else:
+            log("screens: the door did not answer in two minutes; keeping watch anyway")
+        said = None
+        while True:
+            try:
+                out = []
+                screens(launch=True, say=out.append)
+                news = [l for l in out if not l.startswith("ok ")]
+                if news and news != said:
+                    for l in news:
+                        log("screens: " + l.strip())
+                said = news
+            except Exception as exc:
+                log("screens: %r" % exc)
+            time.sleep(30)
 
     def puller():
         while True:
@@ -1968,7 +1990,7 @@ def browser_windows(exe):
         u.GetWindowRect(h, ctypes.byref(r))
         style = u.GetWindowLongW(h, -16)
         found.append({"title": title.value, "rect": [r.l, r.t, r.r - r.l, r.b - r.t],
-                      "fullscreen": not (style & 0x00C00000)})
+                      "fullscreen": not (style & 0x00C00000), "pid": pid.value, "hwnd": h})
         return True
 
     u.EnumWindows(each, 0)
@@ -1995,26 +2017,153 @@ def launch_screen(exe, s, url):
     subprocess.Popen(args)
 
 
-def screens(launch=False, say=print):
+def command_line(pid):
+    """A process's command line (ours, so no administrator), or ""."""
+    from ctypes import wintypes as W
+    k, nt = ctypes.windll.kernel32, ctypes.windll.ntdll
+    k.OpenProcess.restype = W.HANDLE
+    h = k.OpenProcess(0x1000, False, pid)                  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return ""
+    try:
+        size = W.ULONG(0)
+        nt.NtQueryInformationProcess(W.HANDLE(h), 60, None, 0, ctypes.byref(size))   # ProcessCommandLineInformation
+        if not size.value:
+            return ""
+        buf = ctypes.create_string_buffer(size.value)
+        if nt.NtQueryInformationProcess(W.HANDLE(h), 60, buf, size, ctypes.byref(size)) != 0:
+            return ""
+
+        class USTR(ctypes.Structure):
+            _fields_ = [("Length", W.USHORT), ("MaximumLength", W.USHORT), ("Buffer", ctypes.c_void_p)]
+        u = USTR.from_buffer(buf)
+        return ctypes.wstring_at(u.Buffer, u.Length // 2) if u.Buffer else ""
+    finally:
+        k.CloseHandle(W.HANDLE(h))
+
+
+def monitors():
+    """The rects of the monitors attached right now."""
+    u = ctypes.windll.user32
+    found = []
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("l", ctypes.c_long), ("t", ctypes.c_long), ("r", ctypes.c_long), ("b", ctypes.c_long)]
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(RECT), ctypes.c_void_p)
+    def each(hm, dc, r, _):
+        found.append([r.contents.l, r.contents.t, r.contents.r - r.contents.l, r.contents.b - r.contents.t])
+        return True
+    u.EnumDisplayMonitors(None, None, each, 0)
+    return found
+
+
+def top_pid(x, y):
+    """The process of the top-level window at a point on the screen."""
+    from ctypes import wintypes as W
+    u = ctypes.windll.user32
+    u.WindowFromPoint.restype = W.HWND
+    u.WindowFromPoint.argtypes = [W.POINT]
+    u.GetAncestor.restype = W.HWND
+    u.GetAncestor.argtypes = [W.HWND, W.UINT]
+    h = u.GetAncestor(u.WindowFromPoint(W.POINT(x, y)), 2)             # GA_ROOT
+    if not h:
+        return None
+    pid = W.DWORD()
+    u.GetWindowThreadProcessId(h, ctypes.byref(pid))
+    return pid.value
+
+
+def raise_window(hwnd):
+    from ctypes import wintypes as W
+    u = ctypes.windll.user32
+    u.keybd_event(0x12, 0, 0, 0); u.keybd_event(0x12, 0, 2, 0)          # an Alt tap lets the next line through
+    u.SetForegroundWindow(W.HWND(hwnd))
+    u.SetWindowPos(W.HWND(hwnd), W.HWND(0), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # HWND_TOP, no move/size, show
+
+
+def close_profile(pids, wait=10):
+    """Close a screen's own browser: ask each of its windows to close, then, if
+    it will not go, end it. Only processes the door launched for that screen."""
+    from ctypes import wintypes as W
+    u, k = ctypes.windll.user32, ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    for win in browser_windows(node().get("browser", "msedge")):
+        if win["pid"] in pids:
+            u.PostMessageW(W.HWND(win["hwnd"]), 0x0010, 0, 0)            # WM_CLOSE
+    for pid in pids:
+        h = k.OpenProcess(0x00100001, False, pid)                       # SYNCHRONIZE | PROCESS_TERMINATE
+        if not h:
+            continue
+        if k.WaitForSingleObject(W.HANDLE(h), wait * 1000) != 0:        # still running
+            k.TerminateProcess(W.HANDLE(h), 1)
+            k.WaitForSingleObject(W.HANDLE(h), 5000)
+        k.CloseHandle(W.HANDLE(h))
+
+
+def screens(launch=False, reset=False, say=print):
+    """Each screen wants its own browser (the profile the door launches for
+    it), full-screen at its rect. Anything else covering that rect does not
+    count: a browser somebody opened by hand is not the screen.
+
+    With launch (supervise does this every half minute), a screen that is
+    missing is launched, and one whose own browser is on the wrong monitor or
+    not full-screen is closed and launched again in place. That is the way
+    back after the monitors drop out: Windows piles the kiosk windows onto one
+    monitor, and neither Task View nor the window menu can move a full-screen
+    window back across (Autumn, 2026-09-26). The door can: it closes its own
+    and starts them where they belong. Nothing is launched while a screen's
+    monitor is missing, or it would only land on the wrong one again. reset
+    closes and relaunches every screen, wherever it is."""
     cfg = node()
     exe = cfg.get("browser", "msedge")
     wins = browser_windows(exe)
+    mons = monitors()
+    lines = {}
+    for w in wins:
+        if w["pid"] not in lines:
+            lines[w["pid"]] = command_line(w["pid"]).lower()
     bad = 0
     for s in cfg.get("screens") or []:
         x, y, w, h = s["rect"]
-        hit = next((win for win in wins if win["fullscreen"]
+        prof = str(STATE / "screens" / s["name"]).lower()
+        own = [win for win in wins if prof in lines.get(win["pid"], "")]
+        hit = next((win for win in own if win["fullscreen"]
                     and abs(win["rect"][0] - x) <= 8 and abs(win["rect"][1] - y) <= 8
                     and abs(win["rect"][2] - w) <= 16 and abs(win["rect"][3] - h) <= 16), None)
-        if hit:
+        if hit and not reset:
+            top = top_pid(x + w // 2, y + h // 2)
+            if top is not None and top != hit["pid"]:
+                # Its own browser is there, but something else covers it (a
+                # browser opened by hand, while the screens were astray).
+                # Bring ours to the front; never close somebody else's.
+                bad += 1
+                say("covered  %-8s %-9s by another window" % (s["name"], s["display"]))
+                if launch:
+                    raise_window(hit["hwnd"])
+                    say("         raised %s's browser" % s["name"])
+                continue
             say("ok       %-8s %-9s full-screen  %s" % (s["name"], s["display"], hit["title"]))
             continue
         bad += 1
-        say("missing  %-8s %-9s nothing full-screen at %s" % (s["name"], s["display"], s["rect"]))
-        if launch:
-            url = "http://%s.local:%d%s" % (socket.gethostname().lower(), PORT, s["url"])
-            launch_screen(exe, s, url)
-            say("         launched %s there" % url)
-    return 1 if bad and not launch else 0
+        here = any(abs(m[0] - x) <= 8 and abs(m[1] - y) <= 8 for m in mons)
+        what = ("reset" if reset and hit else
+                "astray   %-8s %-9s its browser is not full-screen at %s" % (s["name"], s["display"], s["rect"]) if own else
+                "missing  %-8s %-9s its browser is not running" % (s["name"], s["display"]))
+        if what != "reset":
+            say(what)
+        if not (launch or reset):
+            continue
+        if not here:
+            say("         its monitor is not attached; waiting for it")
+            continue
+        if own:
+            close_profile({win["pid"] for win in own})
+            say("         closed %s's browser" % s["name"])
+        url = "http://%s.local:%d%s" % (socket.gethostname().lower(), PORT, s["url"])
+        launch_screen(exe, s, url)
+        say("         launched %s there" % url)
+    return 1 if bad and not (launch or reset) else 0
 
 
 # ------------------------------------------------------------------ sessions --
@@ -2372,7 +2521,7 @@ def startup(argv):
 if __name__ == "__main__":
     verb = sys.argv[1] if len(sys.argv) > 1 else "status"
     if verb == "screens":
-        sys.exit(screens(launch="--launch" in sys.argv))
+        sys.exit(screens(launch="--launch" in sys.argv, reset="--reset" in sys.argv))
     if verb == "startup":
         sys.exit(startup(sys.argv[2:]))
     if verb == "sessions":
