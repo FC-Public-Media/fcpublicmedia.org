@@ -2,7 +2,7 @@
 
     door.py serve              become the door, on [::]:8080
     door.py supervise          run `serve`, restart it when it exits, pull in the background
-    door.py screens [--launch] are the screens in node.yml up and full-screen
+    door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
@@ -513,7 +513,13 @@ POLL = """<script>
   var seen = null;
   function check() {
     fetch('/revision', {cache: 'no-store'}).then(function (r) { return r.text(); })
-      .then(function (v) { if (seen === null) seen = v; else if (v !== seen) location.reload(); })
+      .then(function (v) {
+        if (seen === null) seen = v; else if (v !== seen) return location.reload();
+        // The door answers, but a picture on this page never arrived: the page
+        // loaded while the door was restarting. Load it again (2026-09-26).
+        if (Array.prototype.some.call(document.images, function (i) { return i.complete && !i.naturalWidth; }))
+          location.reload();
+      })
       .catch(function () {});
   }
   check(); setInterval(check, 20000);
@@ -1223,25 +1229,45 @@ CLASSMODE_CSS = """html, body { height:100%; overflow:hidden; }
 body { display:grid; grid-template-rows:25vh 1fr auto; grid-template-columns:minmax(0, 1fr); user-select:none;
   background:var(--ink); }
 body.light { background:#fff; }
-.top { position:relative; }
+/* Two whites for the dark, as the ink and slate are for the light: the bright
+   one says "now", the dim one "before" and "the time". */
+body { --now:var(--paper); --then:#7d848d; --yet:transparent; }
+body.light { --now:var(--ink); --then:var(--slate); --yet:transparent; }
+.top { position:relative; z-index:2; pointer-events:none; }
+.top a, .top button { pointer-events:auto; }
 .head { height:100%; box-sizing:border-box; background:var(--slate); display:flex; align-items:flex-start; gap:6vw;
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%); padding:3.4vh 7vw 0; }
 .head .mark { flex:none; width:14vh; height:14vh; padding:.9vh; box-sizing:border-box; }
 .head .mark img { display:block; width:100%; height:100%; }
 .head .mark .ticks { display:none; }
 .head h1 { margin:.6vh 0 0; font-size:4.2vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
-.head .hours { margin:1vh 0 0; font-size:2.4vh; color:var(--soft); font-variant-numeric:tabular-nums; }
-/* The time of day, under the edge on the slant, where the wall's timer runs.
-   A convenience, not a headline: regular weight, soft. */
-.now { position:absolute; right:7vw; top:calc(100% - 13.07vw + 1.2vh); transform-origin:100% 0; rotate:-8deg;
-  font-size:2.4vh; font-weight:400; color:var(--soft); font-variant-numeric:tabular-nums; white-space:nowrap; }
-body.light .now { color:#6b737c; }
-/* Who is presenting: the time's mirror, over the edge at the left, on the
-   slant. Kept off the footer, which is the tabs' (Autumn, 2026-09-26). */
-.who { position:absolute; left:7vw; bottom:1.4vh; transform-origin:0 100%; rotate:-8deg; margin:0;
-  font-size:2.2vh; font-weight:650; color:var(--paper); white-space:nowrap; }
+/* On the slant, above the edge: who is presenting at the left, in a serif so
+   the name reads apart from everything else; the class's hours at the right. */
+.who, .hours { position:absolute; bottom:1.4vh; rotate:-8deg; margin:0; white-space:nowrap; }
+.who { left:7vw; transform-origin:0 100%; font:600 2.5vh/1 Georgia, "Times New Roman", serif;
+  color:var(--paper); }
+.hours { right:5vw; bottom:calc(13.35vw + 1.2vh); transform-origin:100% 100%; font-size:2vh; color:var(--soft);
+  font-variant-numeric:tabular-nums; }
+/* Under the edge at the right, tucked toward the corner: a pill for each hour
+   of the class, an overline for the time. The hour we are in is lit; the ones
+   before it stay lit, dimmer; hours not yet reached are not drawn at all
+   (their places are kept); outside the class's hours nothing is bright, so
+   the floor is visibly given back. Fixed pills, anchored at the right: a
+   longer class reaches further toward the middle, not off the screen. The
+   time under it is a convenience: small, dim, for the edge of the eye. */
+.hourbar { position:absolute; right:5vw; top:calc(100% - 13.35vw + .9vh); transform-origin:100% 0; rotate:-8deg;
+  display:flex; gap:.5vw; }
+.hourbar i { width:3.6vw; height:.7vh; border-radius:99px; background:var(--yet); }
+.hourbar i.then { background:var(--then); }
+.hourbar i.on { background:var(--now); }
+.now { position:absolute; right:5vw; top:calc(100% - 13.35vw + 2.4vh); transform-origin:100% 0; rotate:-8deg;
+  font-size:1.8vh; font-weight:400; color:var(--then); font-variant-numeric:tabular-nums; white-space:nowrap; }
 
-main { overflow:hidden; padding:4vh 7vw; color:var(--paper); }
+/* The content runs under the overhang if it has to scroll: its top reaches up
+   behind the header's slant, which hides its top-left corner, and its
+   scrollbar starts at the slant. */
+main { position:relative; z-index:1; margin-top:-14.05vw; padding:calc(14.05vw + 4vh) 7vw 4vh; overflow-y:auto;
+  color:var(--paper); }
 body.light main { color:var(--ink); }
 main article[hidden] { display:none; }
 main h1 { margin:0 0 2.4vh; font-size:4.6vh; line-height:1.1; }
@@ -1258,7 +1284,42 @@ main li { margin:.6vh 0; }
    the strip's alone (a pseudo-element behind the name); the name is turned
    the same 8 degrees, so it runs along the strip without being sheared. Up is signal; the one before it is signal at 30%%; the rest are
    the dark slate, told apart by a hairline (Autumn, 2026-09-26). */
-footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; }
+footer { background:var(--slate); padding:0 6vw 0 5vw; display:flex; align-items:stretch; gap:5vw; overflow:hidden; }
+/* The footer's own corner: CLASS, as the wall's bar says FCPM, over four
+   round keys. Dark and Light are two keys, not a toggle, and the arrows stop
+   at the ends: pressing anything again, or fast, cannot make the screen
+   flicker (Autumn, 2026-09-26). */
+.keys { flex:none; align-self:center; display:flex; flex-direction:column; align-items:center; gap:1.4vh; padding:2vh 0; }
+.keys b { font-size:1.8vh; font-weight:750; letter-spacing:.14em; text-transform:uppercase; color:var(--paper); }
+.keys div { display:grid; grid-template-columns:repeat(2, 4.6vh); gap:1.1vh; }
+/* A key's face is the slate, its underside the ink: raised, not a hole. The
+   Light key always wears light mode's colours, so it shows what it gives
+   before it is pressed. Pressed, a key sits down on its underside. */
+.keys button { width:4.6vh; height:4.6vh; padding:0; border:0; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; background:var(--slate); color:var(--soft);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); transition:transform .08s, box-shadow .08s; }
+.keys #light { background:#fff; color:var(--ink); box-shadow:inset 0 0 0 1px #d5d9de, 0 .45vh 0 #aeb4bb; }
+.keys button:active, .keys button[aria-pressed=true] { transform:translateY(.35vh);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
+.keys #light:active, .keys #light[aria-pressed=true] { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #aeb4bb; }
+.keys #dark[aria-pressed=true] { color:var(--paper); }
+.keys button:disabled { opacity:.35; cursor:default; }
+/* In light mode the footer and the arrow keys take the two lights, so the
+   Dark key (always dark) and the Light key (always white) each stand out
+   against it: a key wears the mode it gives. */
+body.light footer { background:#e9ecef; }
+body.light .keys b { color:var(--ink); }
+body.light .keys button { background:#f6f7f8; color:#6b737c; box-shadow:inset 0 0 0 1px #d5d9de, 0 .45vh 0 #bcc2c9; }
+body.light .keys button:active { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #bcc2c9; }
+body.light .keys #dark { background:var(--slate); color:var(--soft); box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); }
+body.light .keys #dark:active { box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
+body.light .keys #light { background:#fff; color:var(--ink); }
+/* The section strips in light mode: at rest they are the content's white,
+   as at night they are the content's dark; every name is ink, whatever its
+   strip's colour (Autumn, 2026-09-26). */
+body.light .tabs button, body.light .tabs button.recent { color:var(--ink); }
+body.light .tabs button:not([aria-current=true]):not(.recent)::before { background:#fff; box-shadow:inset 1px 0 0 #d5d9de; }
+.keys svg { width:55%; height:55%; }
 .tabs { display:flex; align-items:stretch; }
 .tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
   padding:2.2vh .6vh; border:0; background:transparent; cursor:pointer; font:inherit; font-size:1.6vh;
@@ -1275,8 +1336,20 @@ footer { background:var(--slate); padding:0 7vw; display:flex; overflow:hidden; 
 CLASSMODE_JS = """<script>
 (function () {
   var tabs = document.querySelectorAll('.tabs button'), arts = document.querySelectorAll('main article'),
-      now = document.getElementById('now'), cur = -1, recent = -1;
-  if (/[?&]light\\b/.test(location.search)) document.body.classList.add('light');
+      now = document.getElementById('now'), bar = document.getElementById('hourbar'), cur = -1, recent = -1,
+      H = @HOURS@, at = /[?&]at=(\\d\\d?):(\\d\\d)/.exec(location.search), skew = 0;
+  if (at) { var t = new Date(); t.setHours(+at[1], +at[2], 0, 0); skew = t - Date.now(); }
+  function clock() { return new Date(Date.now() + skew); }
+  var dark = document.getElementById('dark'), light = document.getElementById('light'),
+      prev = document.getElementById('prev'), next = document.getElementById('next'), stepped = 0;
+  // Two keys, each only ever sets its own mode: a second press is nothing.
+  function mode(lit) {
+    document.body.classList.toggle('light', lit);
+    dark.setAttribute('aria-pressed', !lit); light.setAttribute('aria-pressed', lit);
+  }
+  mode(/[?&]light\\b/.test(location.search));
+  dark.addEventListener('click', function () { mode(false); });
+  light.addEventListener('click', function () { mode(true); });
   function show(i) {
     if (i === cur) return;
     if (cur >= 0) recent = cur;
@@ -1285,10 +1358,31 @@ CLASSMODE_JS = """<script>
       t.setAttribute('aria-current', k === cur); t.classList.toggle('recent', k === recent);
     });
     arts.forEach(function (a, k) { a.hidden = k !== cur; });
+    prev.disabled = cur <= 0; next.disabled = cur >= tabs.length - 1;
     try { history.replaceState(null, '', location.search + '#' + (cur + 1)); } catch (e) {}
   }
   tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
-  function tick() { now.textContent = new Date().toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); }
+  // The arrows step one section, stop at the ends (no wrapping round), and
+  // take at most one step per quarter second, however fast they are pressed.
+  function step(d) {
+    var t = Date.now(); if (t - stepped < 250) return; stepped = t;
+    show(Math.max(0, Math.min(tabs.length - 1, cur + d)));
+  }
+  prev.addEventListener('click', function () { step(-1); });
+  next.addEventListener('click', function () { step(1); });
+  // One pill per hour of the class, from its start: lit while it is on, the
+  // earlier ones dimmer; nothing bright before the start or after the end.
+  function hours(d) {
+    if (!H) return;
+    var m = d.getHours() * 60 + d.getMinutes();
+    Array.prototype.forEach.call(bar.children, function (p, k) {
+      var from = H[0] + 60 * k, to = Math.min(H[1], from + 60);
+      p.className = m >= to ? 'then' : m >= from && m < H[1] ? 'on' : '';
+    });
+  }
+  function tick() {
+    var d = clock(); now.textContent = d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); hours(d);
+  }
   tick(); setInterval(tick, 5000);
   var h = parseInt(location.hash.slice(1), 10);
   show(h >= 1 && h <= tabs.length ? h - 1 : 0);
@@ -1297,17 +1391,45 @@ CLASSMODE_JS = """<script>
 </script>"""
 
 
+def class_hours(card):
+    """(start, end) in minutes after midnight, from class.yml's starts/ends."""
+    def mins(v):
+        m = re.fullmatch(r"(\d{1,2}):(\d{2})", str(v or ""))
+        return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+    a, b = mins(card.get("starts")), mins(card.get("ends"))
+    return (a, b) if a is not None and b is not None and b > a else None
+
+
+def hours_label(span):
+    """6–8 PM: the minutes only when they are not :00, the half once."""
+    def part(v, half):
+        h, m = divmod(v, 60)
+        return "%d%s%s" % ((h - 1) % 12 + 1, ":%02d" % m if m else "", " " + half if half else "")
+    a, b = span
+    ha, hb = ("AM" if a < 720 else "PM"), ("AM" if b < 720 else "PM")
+    return "%s\u2013%s" % (part(a, ha if ha != hb else ""), part(b, hb))
+
+
 def class_mode_page(path):
     card, kinds = class_folder(path)
+    span = class_hours(card)
     kind = kinds[0] if kinds else {"kind": "", "sections": []}
     tabs = "".join('<button type=button><span>%s</span></button>' % e(x["title"]) for x in kind["sections"])
     arts = "".join("<article hidden>%s</article>" % x["html"] for x in kind["sections"])
-    body = """<div class=top><header class=head>%s<div><h1>%s</h1><p class=hours>%s</p></div></header>
-<p class=who>%s</p><div class=now id=now aria-hidden=true></div></div>
+    pills = "<i></i>" * (-(-(span[1] - span[0]) // 60)) if span else ""
+    body = """<div class=top><header class=head>%s<div><h1>%s</h1></div></header>
+<p class=who>%s</p><p class=hours>%s</p><div class=hourbar id=hourbar aria-hidden=true>%s</div>
+<div class=now id=now aria-hidden=true></div></div>
 <main>%s</main>
-<footer><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
-        checkin_mark(inline=True), e(card.get("title")), e(card.get("hours")), e(card.get("presenter")), arts,
-        html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS)
+<footer><div class=keys><b>%s</b><div>
+<button type=button id=dark aria-label="Dark" aria-pressed=true><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx=12 cy=12 r=8 fill=none stroke=currentColor stroke-width=2 /><path d="M12 4 A8 8 0 0 0 12 20 Z" fill=currentColor /></svg></button>
+<button type=button id=light aria-label="Light" aria-pressed=false><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx=12 cy=12 r=4.5 fill=currentColor /><g stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></g></svg></button>
+<button type=button id=prev aria-label="Previous section"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 L8 12 L15 19" fill=none stroke=currentColor stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg></button>
+<button type=button id=next aria-label="Next section"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 L16 12 L9 19" fill=none stroke=currentColor stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg></button>
+</div></div><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
+        checkin_mark(inline=True), e(card.get("title")), e(card.get("presenter")),
+        e(hours_label(span) if span else card.get("hours")), pills, arts,
+        e(card.get("label", "Class")), html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@HOURS@", json.dumps(list(span) if span else None)))
     return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
 
 
@@ -1779,13 +1901,29 @@ def supervise():
     me = pathlib.Path(__file__).read_bytes()
 
     def raise_screens():
-        # Once, when supervise starts: at logon, or after it was restarted.
-        # Not on a timer: a panel somebody closed on purpose stays closed.
+        # Kept, every half minute, once the door answers: a screen that is
+        # missing or astray (the monitors dropped out and Windows piled the
+        # panels onto one) is put back, in its own browser. Only the lines
+        # that change are logged.
         for _ in range(60):
             if door_answers():
-                return screens(launch=True, say=log)
+                break
             time.sleep(2)
-        log("screens: the door did not answer in two minutes; not launching")
+        else:
+            log("screens: the door did not answer in two minutes; keeping watch anyway")
+        said = None
+        while True:
+            try:
+                out = []
+                screens(launch=True, say=out.append)
+                news = [l for l in out if not l.startswith("ok ")]
+                if news and news != said:
+                    for l in news:
+                        log("screens: " + l.strip())
+                said = news
+            except Exception as exc:
+                log("screens: %r" % exc)
+            time.sleep(30)
 
     def puller():
         while True:
@@ -1852,7 +1990,7 @@ def browser_windows(exe):
         u.GetWindowRect(h, ctypes.byref(r))
         style = u.GetWindowLongW(h, -16)
         found.append({"title": title.value, "rect": [r.l, r.t, r.r - r.l, r.b - r.t],
-                      "fullscreen": not (style & 0x00C00000)})
+                      "fullscreen": not (style & 0x00C00000), "pid": pid.value, "hwnd": h})
         return True
 
     u.EnumWindows(each, 0)
@@ -1879,26 +2017,153 @@ def launch_screen(exe, s, url):
     subprocess.Popen(args)
 
 
-def screens(launch=False, say=print):
+def command_line(pid):
+    """A process's command line (ours, so no administrator), or ""."""
+    from ctypes import wintypes as W
+    k, nt = ctypes.windll.kernel32, ctypes.windll.ntdll
+    k.OpenProcess.restype = W.HANDLE
+    h = k.OpenProcess(0x1000, False, pid)                  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return ""
+    try:
+        size = W.ULONG(0)
+        nt.NtQueryInformationProcess(W.HANDLE(h), 60, None, 0, ctypes.byref(size))   # ProcessCommandLineInformation
+        if not size.value:
+            return ""
+        buf = ctypes.create_string_buffer(size.value)
+        if nt.NtQueryInformationProcess(W.HANDLE(h), 60, buf, size, ctypes.byref(size)) != 0:
+            return ""
+
+        class USTR(ctypes.Structure):
+            _fields_ = [("Length", W.USHORT), ("MaximumLength", W.USHORT), ("Buffer", ctypes.c_void_p)]
+        u = USTR.from_buffer(buf)
+        return ctypes.wstring_at(u.Buffer, u.Length // 2) if u.Buffer else ""
+    finally:
+        k.CloseHandle(W.HANDLE(h))
+
+
+def monitors():
+    """The rects of the monitors attached right now."""
+    u = ctypes.windll.user32
+    found = []
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("l", ctypes.c_long), ("t", ctypes.c_long), ("r", ctypes.c_long), ("b", ctypes.c_long)]
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(RECT), ctypes.c_void_p)
+    def each(hm, dc, r, _):
+        found.append([r.contents.l, r.contents.t, r.contents.r - r.contents.l, r.contents.b - r.contents.t])
+        return True
+    u.EnumDisplayMonitors(None, None, each, 0)
+    return found
+
+
+def top_pid(x, y):
+    """The process of the top-level window at a point on the screen."""
+    from ctypes import wintypes as W
+    u = ctypes.windll.user32
+    u.WindowFromPoint.restype = W.HWND
+    u.WindowFromPoint.argtypes = [W.POINT]
+    u.GetAncestor.restype = W.HWND
+    u.GetAncestor.argtypes = [W.HWND, W.UINT]
+    h = u.GetAncestor(u.WindowFromPoint(W.POINT(x, y)), 2)             # GA_ROOT
+    if not h:
+        return None
+    pid = W.DWORD()
+    u.GetWindowThreadProcessId(h, ctypes.byref(pid))
+    return pid.value
+
+
+def raise_window(hwnd):
+    from ctypes import wintypes as W
+    u = ctypes.windll.user32
+    u.keybd_event(0x12, 0, 0, 0); u.keybd_event(0x12, 0, 2, 0)          # an Alt tap lets the next line through
+    u.SetForegroundWindow(W.HWND(hwnd))
+    u.SetWindowPos(W.HWND(hwnd), W.HWND(0), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # HWND_TOP, no move/size, show
+
+
+def close_profile(pids, wait=10):
+    """Close a screen's own browser: ask each of its windows to close, then, if
+    it will not go, end it. Only processes the door launched for that screen."""
+    from ctypes import wintypes as W
+    u, k = ctypes.windll.user32, ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    for win in browser_windows(node().get("browser", "msedge")):
+        if win["pid"] in pids:
+            u.PostMessageW(W.HWND(win["hwnd"]), 0x0010, 0, 0)            # WM_CLOSE
+    for pid in pids:
+        h = k.OpenProcess(0x00100001, False, pid)                       # SYNCHRONIZE | PROCESS_TERMINATE
+        if not h:
+            continue
+        if k.WaitForSingleObject(W.HANDLE(h), wait * 1000) != 0:        # still running
+            k.TerminateProcess(W.HANDLE(h), 1)
+            k.WaitForSingleObject(W.HANDLE(h), 5000)
+        k.CloseHandle(W.HANDLE(h))
+
+
+def screens(launch=False, reset=False, say=print):
+    """Each screen wants its own browser (the profile the door launches for
+    it), full-screen at its rect. Anything else covering that rect does not
+    count: a browser somebody opened by hand is not the screen.
+
+    With launch (supervise does this every half minute), a screen that is
+    missing is launched, and one whose own browser is on the wrong monitor or
+    not full-screen is closed and launched again in place. That is the way
+    back after the monitors drop out: Windows piles the kiosk windows onto one
+    monitor, and neither Task View nor the window menu can move a full-screen
+    window back across (Autumn, 2026-09-26). The door can: it closes its own
+    and starts them where they belong. Nothing is launched while a screen's
+    monitor is missing, or it would only land on the wrong one again. reset
+    closes and relaunches every screen, wherever it is."""
     cfg = node()
     exe = cfg.get("browser", "msedge")
     wins = browser_windows(exe)
+    mons = monitors()
+    lines = {}
+    for w in wins:
+        if w["pid"] not in lines:
+            lines[w["pid"]] = command_line(w["pid"]).lower()
     bad = 0
     for s in cfg.get("screens") or []:
         x, y, w, h = s["rect"]
-        hit = next((win for win in wins if win["fullscreen"]
+        prof = str(STATE / "screens" / s["name"]).lower()
+        own = [win for win in wins if prof in lines.get(win["pid"], "")]
+        hit = next((win for win in own if win["fullscreen"]
                     and abs(win["rect"][0] - x) <= 8 and abs(win["rect"][1] - y) <= 8
                     and abs(win["rect"][2] - w) <= 16 and abs(win["rect"][3] - h) <= 16), None)
-        if hit:
+        if hit and not reset:
+            top = top_pid(x + w // 2, y + h // 2)
+            if top is not None and top != hit["pid"]:
+                # Its own browser is there, but something else covers it (a
+                # browser opened by hand, while the screens were astray).
+                # Bring ours to the front; never close somebody else's.
+                bad += 1
+                say("covered  %-8s %-9s by another window" % (s["name"], s["display"]))
+                if launch:
+                    raise_window(hit["hwnd"])
+                    say("         raised %s's browser" % s["name"])
+                continue
             say("ok       %-8s %-9s full-screen  %s" % (s["name"], s["display"], hit["title"]))
             continue
         bad += 1
-        say("missing  %-8s %-9s nothing full-screen at %s" % (s["name"], s["display"], s["rect"]))
-        if launch:
-            url = "http://%s.local:%d%s" % (socket.gethostname().lower(), PORT, s["url"])
-            launch_screen(exe, s, url)
-            say("         launched %s there" % url)
-    return 1 if bad and not launch else 0
+        here = any(abs(m[0] - x) <= 8 and abs(m[1] - y) <= 8 for m in mons)
+        what = ("reset" if reset and hit else
+                "astray   %-8s %-9s its browser is not full-screen at %s" % (s["name"], s["display"], s["rect"]) if own else
+                "missing  %-8s %-9s its browser is not running" % (s["name"], s["display"]))
+        if what != "reset":
+            say(what)
+        if not (launch or reset):
+            continue
+        if not here:
+            say("         its monitor is not attached; waiting for it")
+            continue
+        if own:
+            close_profile({win["pid"] for win in own})
+            say("         closed %s's browser" % s["name"])
+        url = "http://%s.local:%d%s" % (socket.gethostname().lower(), PORT, s["url"])
+        launch_screen(exe, s, url)
+        say("         launched %s there" % url)
+    return 1 if bad and not (launch or reset) else 0
 
 
 # ------------------------------------------------------------------ sessions --
@@ -2256,7 +2521,7 @@ def startup(argv):
 if __name__ == "__main__":
     verb = sys.argv[1] if len(sys.argv) > 1 else "status"
     if verb == "screens":
-        sys.exit(screens(launch="--launch" in sys.argv))
+        sys.exit(screens(launch="--launch" in sys.argv, reset="--reset" in sys.argv))
     if verb == "startup":
         sys.exit(startup(sys.argv[2:]))
     if verb == "sessions":
