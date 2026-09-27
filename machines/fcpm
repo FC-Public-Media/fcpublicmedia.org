@@ -11,7 +11,7 @@
 #   fcpm runnables [...]      the census, compile, prove (bin/runnables)
 #   fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
 #                             the staff OBS (troves/recorder/obs.ps1)
-#   fcpm screen [status|on|off|reset]   the rolling TV's page (troves/kiosk-screen)
+#   fcpm screen [status|on|off|reset|class|wall]   the rolling TV (troves/kiosk-screen)
 #   fcpm help                 this
 #
 # FOR PEOPLE; A TASK NAMES THE HOLDER. A verb here is how a person reaches a

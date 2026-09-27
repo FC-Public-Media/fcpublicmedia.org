@@ -142,7 +142,7 @@ until it runs something that has to be rebased under it.
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
     with a profile of its own. It uses the depot's copy when the depot
     answers, and a local render otherwise. `fcpm screen` shows it, and
-    `fcpm screen off|on` holds it off or lets it back. That Edge is the only
+    `fcpm screen off|on` holds it off or lets it back, and `fcpm screen class|wall` switches between class mode and the wall. That Edge is the only
     thing left running between passes.
 - Peers over Remote Control: `kiosk` (media-node) and `digitization`
   (station-node). They appear in the session list only while this session has

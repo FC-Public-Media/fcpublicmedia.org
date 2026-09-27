@@ -16,6 +16,8 @@ No service: the pool's five-minute task runs one `keep` per pass.
 - [x] followed on the roller, 2026-09-27: keep (launched), keep (ok, left alone),
       off, keep while off (stays off), on (launched), status
 - [x] READMEs: troves table, the trove's own, instruments, the bay's AGENTS.md
+- [x] class mode: `fcpm screen class [light]` / `fcpm screen wall`, held in a `page` file;
+      followed on the roller 2026-09-27 (sample class, dark)
 - [ ] after merge: `fcpm install` (Autumn) so ~/code/bin/pool.ps1 carries the Screens step
 - [ ] not followed: the TV unplugged (absent) and the depot answering
 

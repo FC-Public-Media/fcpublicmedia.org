@@ -6,13 +6,16 @@ screen.ps1 -- keep a studio page on a screen this host finds plugged in.
     screen.ps1 off    [INSTRUMENT]   close our browser and stay off until `on`
     screen.ps1 on     [INSTRUMENT]   keep it again, starting now
     screen.ps1 reset  [INSTRUMENT]   close our browser and start it again
+    screen.ps1 class  [light|dark]   show class mode instead of the wall, until wall`n    screen.ps1 wall   [INSTRUMENT]   back to the wall
 
 INSTRUMENT is a folder in ../../instruments/ (default roller-tv). Its
 instrument.yml `match:` says what the screen reports about itself over EDID;
 the screen is looked up by that, every time, never by display number
 (../../instruments/README.md).
 
-What goes on it is the wall. The depot's copy, which kiosk-1 writes, when the
+What goes on it is the wall, or class mode while a person has asked for it
+(../../instruments/roller-tv/class-mode.md: the teacher's materials, written
+as class.html beside the wall, with no turning). Either way, the depot's copy, which kiosk-1 writes, when the
 depot answers; otherwise the wall rendered here from this checkout's door.py
 (render.py, under uv). It is played the way door.py's launch_screen plays a
 screen: Edge in kiosk mode, fullscreen, with a profile of its own under
@@ -30,7 +33,7 @@ browser is touched and nothing is kept between starts.
 Windows PowerShell 5.1, no modules. ASCII only.
 #>
 param(
-    [Parameter(Position = 0)] [ValidateSet('status', 'keep', 'off', 'on', 'reset')]
+    [Parameter(Position = 0)] [ValidateSet('status', 'keep', 'off', 'on', 'reset', 'class', 'wall')]
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Instrument = 'roller-tv',
     [string] $Node = 'editing-bay-1'
@@ -38,12 +41,17 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
 
+# `class light`: the word after `class` is the mode, not an instrument.
+$Mode = ''
+if ($Verb -eq 'class' -and @('light', 'dark') -contains $Instrument) { $Mode = $Instrument; $Instrument = 'roller-tv' }
+
 $Repo    = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Spec    = Join-Path $Repo "instruments\$Instrument\instrument.yml"
 $Root    = Join-Path $env:LOCALAPPDATA "$Node\troves\kiosk-screen\$Instrument"
 $Profile_ = Join-Path $Root 'profile'
 $Wall    = Join-Path $Root 'wall'
 $OffFile = Join-Path $Root 'off'
+$PageFile = Join-Path $Root 'page'   # 'class' or 'class light' while class mode is asked for
 $Said    = Join-Path $Root 'said'
 $Log     = Join-Path $Root 'screen.log'
 $Edge    = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
@@ -222,7 +230,14 @@ function DepotAnswers([string]$path) {
     return (Test-Path -LiteralPath $path)
 }
 
-function Source {
+function Page {
+    # Which page is asked for: the file under the wall's folder, and the query.
+    $p = if (Test-Path $PageFile) { (Get-Content $PageFile -Raw).Trim() } else { '' }
+    if ($p -like 'class*') { return @('class.html', $(if ($p -match 'light') { '?light' } else { '' }), 'class mode') }
+    return @('index.html', '', 'the wall')
+}
+
+function Source([string]$file, [string]$query) {
     # Render here every pass, so the fallback is never stale, then prefer the
     # depot's copy if it answers. Returns the URL, and says which.
     $uv = FindUv
@@ -235,9 +250,11 @@ function Source {
         $ErrorActionPreference = 'Stop'
         if ($ok -and $out) { $depot = ($out | ConvertFrom-Json).depot }
     }
-    if (DepotAnswers $depot) { return @(([Uri]$depot).AbsoluteUri, 'the depot') }
-    $local = Join-Path $Wall 'index.html'
-    if (Test-Path $local) { return @(([Uri]$local).AbsoluteUri, 'a local render') }
+    if ($depot) { $depot = Join-Path (Split-Path -Parent $depot) $file }
+    if (DepotAnswers $depot) { return @((([Uri]$depot).AbsoluteUri + $query), 'the depot') }
+    $local = Join-Path $Wall $file
+    if (Test-Path $local) { return @((([Uri]$local).AbsoluteUri + $query), 'a local render') }
+    if ($file -ne 'index.html') { return @($null, "nothing: the render has no $file (node.yml's wall: class:)") }
     return @($null, $(if ($uv) { 'nothing: the render failed' } else { 'nothing: no uv to render with' }))
 }
 
@@ -258,27 +275,33 @@ function Keep([bool]$force) {
         if ($ours.pids.Count) { Close $ours; LogLine "no $($m['product']) attached: closed our browser rather than show it elsewhere" }
         Changed 'absent'; Say "absent   $Instrument  no $($m['product']) attached; nothing shown"; return
     }
-    $url, $from = Source
+    $file, $query, $what = Page
+    $url, $from = Source $file $query
+    $from = "$what, from $from"
     if (-not $url) { Changed "no page: $from"; Say "no page  $Instrument  $from"; return }
     if (-not $force -and (Placed $ours $mon) -and $ours.url -eq $url) {
-        Changed "ok: $from"; Say "ok       $Instrument  $($mon.device) fullscreen, from $from"; return
+        Changed "ok: $from"; Say "ok       $Instrument  $($mon.device) fullscreen, $from"; return
     }
-    $why = if ($force) { 'reset' } elseif (-not $ours.pids.Count) { 'missing' } elseif ($ours.url -ne $url) { "now from $from" } else { 'astray' }
+    $why = if ($force) { 'reset' } elseif (-not $ours.pids.Count) { 'missing' } elseif ($ours.url -ne $url) { 'page changed' } else { 'astray' }
     if ($ours.pids.Count) { Close $ours }
     Launch $mon $url
-    LogLine "launched on $($mon.device) ($why), from $from"
+    LogLine "launched on $($mon.device) ($why), $from"
     Changed "ok: $from"
-    Say "launched $Instrument  $($mon.device) ($why), from $from"
+    Say "launched $Instrument  $($mon.device) ($why), $from"
 }
 
 switch ($Verb) {
     'keep'  { Keep $false }
+    'class' { New-Item -ItemType Directory -Force $Root | Out-Null; [IO.File]::WriteAllText($PageFile, (('class ' + $Mode).Trim())); LogLine ('class mode ' + $Mode).Trim(); Keep $false }
+    'wall'  { Remove-Item -Force $PageFile -ErrorAction SilentlyContinue; LogLine 'the wall'; Keep $false }
     'reset' { Remove-Item -Force $OffFile -ErrorAction SilentlyContinue; Keep $true }
     'on'    { Remove-Item -Force $OffFile -ErrorAction SilentlyContinue; LogLine 'on'; Keep $false }
     'off'   { New-Item -ItemType Directory -Force $Root | Out-Null; New-Item -ItemType File -Force $OffFile | Out-Null; Keep $false }
     'status' {
         $m = Match; $mon = Find $m; $ours = Ours
         Say ("screen   {0}" -f $(if ($mon) { "{0} at {1},{2} {3}x{4}" -f $mon.device, $mon.x, $mon.y, $mon.w, $mon.ht } else { "no $($m['product']) attached" }))
+        $file, $query, $what = Page
+        Say ("page     {0}" -f $what)
         Say ("kept     {0}" -f $(if (Test-Path $OffFile) { 'off (fcpm screen on)' } else { 'yes, every pool pass' }))
         Say ("browser  {0}" -f $(if (-not $ours.pids.Count) { 'not running' } elseif (Placed $ours $mon) { 'fullscreen on it' } else { 'running, not on it' }))
         if ($ours.url) { Say "showing  $($ours.url)" }
