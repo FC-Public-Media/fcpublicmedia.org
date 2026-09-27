@@ -231,6 +231,67 @@ holding a record of who was in the building and when. Retention, who can read
 it, what happens on a subpoena, whether it needs a privacy notice — board
 decisions, not technical ones.
 
+### Where a check-in goes: proposed 2026-09-26, not decided
+
+Autumn wants check-ins to finally reach the worker, which has been
+provisioned since day one and does nothing for them. In her words, what it
+sends is what a wizard would produce, and the destination is open: "I think
+I need to be taking suggestions about where." What was proposed, from what
+is already on file:
+
+- **The worker receives it, in the shape a wizard's form step produces**:
+  the card (name, email), the reason (from the scanned code, or the class),
+  the time, the device's random id, and, when there is one, the whole claim
+  token, which the worker re-verifies against `CLAIM_KEYS` (the reason
+  `identity.yml` keeps the token whole). A passkey assertion is the later
+  upgrade, and it needs a new intent action in `worker/src/intent.js`.
+- **It lands as a small file on a branch of a *private* check-in
+  repository**, through the GitHub App the worker already holds. That
+  branch is an outbox: shape 1 above with a commit instead of a dispatch,
+  and the same idea as station-node's "the outbox is a branch"
+  (`docs/the-antenna.md` there). Nothing personal touches this public repo.
+- **The media node drains it into a SharePoint list**, next to what the
+  paper log becomes, because the media node is the only machine holding a
+  Microsoft 365 credential (a non-exportable certificate). The worker holds
+  none and should not start.
+
+Why this shape: no new credential anywhere, no personal data in public, and
+the record is already what a wizard's output is (a commit a node checks)
+rather than a second format invented for check-ins.
+
+What it still needs:
+
+- The board questions in the section above: retention, readers, subpoena,
+  a privacy notice. Sending anything changes the page's promise, which
+  today is that nothing leaves the phone.
+- The test that asserts check-in makes no network request. It changes with
+  the page's wording, not before it.
+- A decision on the destination itself. This is a proposal.
+
+### The pass, next: a stack of cards (planned 2026-09-26)
+
+The pass (#147, #164) is one card: a name, an email and the phone's name.
+Autumn's next step for it:
+
+- **More than one card on a device**, for a shared phone or a desk. Each
+  card has a name, an email and a colour from a fixed set, and the black
+  card is the default. The edges of the other cards show on the right, so
+  it reads as swipeable, and the last one is "add a card". Adding one is
+  cheap to find out about and cheap to undo. Removing a card lives in This
+  phone, or in the bottom-right corner that a keyboard covers anyway.
+- **No picker boxes.** Swiping between cards replaces choosing from a list.
+- **A check-in records which card it came from.** One device and several
+  cards is a device account rather than a user account, and that is
+  discernible downstream, which is fine.
+- **The check-in page is a wizard in shape** (a prescribed form with a
+  known output), even though nothing here delivers it as one yet. The
+  worker's payload above is that output.
+- **Defaults beyond expectations:** the phone already names itself
+  (`deviceKind` in `assets/js/checkin.js`), and the name and email offer
+  the person's own contact card through autocomplete, or the Contact
+  Picker where it exists. Anything asked for should arrive already useful,
+  so changing it feels like a refinement rather than a form.
+
 ### Identity: proving an email address without a server
 
 Nothing on the site proves anything today. The paper log by the door accepts
