@@ -113,7 +113,7 @@ is InPrivate and keeps nothing between starts.
 
 | instrument | a folder yet | where | show |
 |---|---|---|---|
-| `roller-tv` | yes | the control-room opening, on a rolling stand; driven by editing bay 1 | the wall, for a pointer, not a finger |
+| `roller-tv` | yes | the control-room opening, on a rolling stand; driven by editing bay 1 (`../troves/kiosk-screen/`) | the wall, for a pointer, not a finger |
 | kiosk-1 Dell P2213 | no | media node, portrait 1050×1680. DEL / DELF043 | Check-in, `/kiosk/` |
 | kiosk-1 Dell P2210 | no | media node, portrait 1050×1680. DEL / DEL404D. The one with the speaker bar and USB hub | Files, `/depot/` |
 | kiosk-1 third | no | media node, waiting on a DVI adapter | none yet |

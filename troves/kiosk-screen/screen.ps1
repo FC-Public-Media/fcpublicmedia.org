@@ -275,7 +275,7 @@ switch ($Verb) {
     'keep'  { Keep $false }
     'reset' { Remove-Item -Force $OffFile -ErrorAction SilentlyContinue; Keep $true }
     'on'    { Remove-Item -Force $OffFile -ErrorAction SilentlyContinue; LogLine 'on'; Keep $false }
-    'off'   { New-Item -ItemType Directory -Force $Root | Out-Null; New-Item -ItemType File -Force $OffFile | Out-Null; LogLine 'off'; Keep $false }
+    'off'   { New-Item -ItemType Directory -Force $Root | Out-Null; New-Item -ItemType File -Force $OffFile | Out-Null; Keep $false }
     'status' {
         $m = Match; $mon = Find $m; $ours = Ours
         Say ("screen   {0}" -f $(if ($mon) { "{0} at {1},{2} {3}x{4}" -f $mon.device, $mon.x, $mon.y, $mon.w, $mon.ht } else { "no $($m['product']) attached" }))

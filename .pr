@@ -4,17 +4,20 @@ Editing bay 1 drives the rolling TV the way kiosk-1 keeps its panels: Edge in
 kiosk mode, fullscreen, a profile of its own, put back when it goes missing.
 No service: the pool's five-minute task runs one `keep` per pass.
 
-- [ ] troves/kiosk-screen/screen.ps1: status | keep | on | off | reset
-  - find the instrument by EDID (instrument.yml `match:`), never the display number
+- [x] troves/kiosk-screen/screen.ps1: status | keep | on | off | reset
+  - finds the instrument by EDID (instrument.yml `match: product`), never the display number
   - no match: nothing shown, and our own browser closed if Windows piled it elsewhere
   - source: the depot's wall when 10.209.1.1:445 answers, else a local render
     of the wall from the mirror's door.py (Autumn, 2026-09-27)
-  - stop by the pid it started, never by name (GRANTS)
-- [ ] troves/kiosk-screen/render.py: wall_files() to the trove's prefix, whole or not at all
-- [ ] pool.ps1 pass calls `keep roller-tv`
-- [ ] fcpm screen [status|on|off|reset]
-- [ ] follow it on the roller: keep, close by hand, keep, off, on, unplug-shaped (no match)
-- [ ] READMEs: troves table, instruments, editing-bay-1 PROFILE
+  - stops by process id, never by name (GRANTS)
+- [x] troves/kiosk-screen/render.py: wall_files() to the trove's prefix, whole or not at all
+- [x] pool.ps1 pass calls `keep roller-tv` from the mirror
+- [x] fcpm screen [status|on|off|reset]
+- [x] followed on the roller, 2026-09-27: keep (launched), keep (ok, left alone),
+      off, keep while off (stays off), on (launched), status
+- [x] READMEs: troves table, the trove's own, instruments, the bay's AGENTS.md
+- [ ] after merge: `fcpm install` (Autumn) so ~/code/bin/pool.ps1 carries the Screens step
+- [ ] not followed: the TV unplugged (absent) and the depot answering
 
 Open: the local render has no bookings (the M365 key is kiosk-1's) and no depot
-files, so Studio shows the map without appointments and Files is empty.
+files, so Studio shows bookings.sample.yml, pills marked Sample, and Files is empty.

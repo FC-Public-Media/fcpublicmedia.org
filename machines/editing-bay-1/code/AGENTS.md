@@ -117,7 +117,7 @@ until it runs something that has to be rebased under it.
 - **`fcpm` is the one switch** (`machines/fcpm` in the site repo, 2026-09-26),
   the same in cmd and PowerShell once `fcpm install` has put it on PATH:
   `fcpm` (what differs), `fcpm check`, `fcpm refs ...`, `fcpm pool ...`,
-  `fcpm runnables ...`, `fcpm help`. When handing Autumn a step, hand her an
+  `fcpm runnables ...`, `fcpm screen ...`, `fcpm help`. When handing Autumn a step, hand her an
   `fcpm` verb, never a path, an interpreter or a choice of window. A step that
   needs one is a gap in `fcpm` to fill. `fcpm install` is hers, never a
   session's.
@@ -138,6 +138,12 @@ until it runs something that has to be rebased under it.
   - `bin\pool.ps1 status` shows the pool, and `pin in|out <id|name>` always
     or never brings a session back. `uninstall` removes the task.
   - A background session needs its folder trusted first. `~/code` is.
+  - Each pass also keeps the rolling TV's page up
+    (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
+    with a profile of its own. It uses the depot's copy when the depot
+    answers, and a local render otherwise. `fcpm screen` shows it, and
+    `fcpm screen off|on` holds it off or lets it back. That Edge is the only
+    thing left running between passes.
 - Peers over Remote Control: `kiosk` (media-node) and `digitization`
   (station-node). They appear in the session list only while this session has
   Remote Control on.
