@@ -4,6 +4,32 @@
 the next session, on any machine, starts from what was decided rather than from
 a conversation that may not survive. Nothing below is built unless it says so.
 
+## Pick up here (state at end of 2026-09-26)
+
+- **Nothing is built.** This page is the whole deliverable so far; merge it as
+  a plan, then each gap below is its own PR.
+- **Waiting on Autumn, before building:**
+  1. `learn.` as `learn.you.fcpublicmedia.org` (bubbles and code-e3 both
+     recommend it), or related origins, or separate passkeys. Decide-once.
+  2. Per wizard: public-but-protected (sealed to a class key, attendance hands
+     out the key) or private, shown only on our screens.
+  3. An attendee whose passkey lacks PRF: a weaker minted key on their phone,
+     or no materials.
+  4. Check-in: it sends and returns once it hands out keys, unless the key
+     also travels optically.
+  5. The library's first shelves; FCPM's wizards in `wizards/` on main
+     (recommended) or in `.you-engine`.
+- **Who is on what:**
+  - **code-e3** (editing bay 1, `EDIT2`): the screen player (gap 5) and the
+    pin file `machines/kiosk-1/anecdote.channel.pin`.
+  - **bubbles** (kiosk-1, the media node, `200-FCPANEDIT2`): the camera catcher
+    (gap 6), the door's loopback `/modules/` and bottle endpoints, and the
+    passkey-derived age identity.
+- **Settled** (details below): planBroadcast frames drawn with qr-encode;
+  references `sha256:` / `wizard:` / `public:`; delivery as flat residency
+  keys; code served from one pinned anecdote.channel commit via `git show`;
+  a class key per session.
+
 > I need FCPM to start growing its own library instead of this refs folder.
 > Because that's going to be the way it behaves.
 
