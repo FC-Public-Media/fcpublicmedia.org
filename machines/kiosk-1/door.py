@@ -2006,6 +2006,7 @@ def supervise():
     threading.Thread(target=puller, daemon=True).start()
     threading.Thread(target=raise_screens, daemon=True).start()
     threading.Thread(target=keep_sessions, daemon=True).start()
+    threading.Thread(target=keep_helo_clock, daemon=True).start()
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
         if code == BOUNCE and pathlib.Path(__file__).read_bytes() != me:
@@ -2467,6 +2468,83 @@ def status():
     print("down  %s" % door_url())
     print("log   %s" % (STATE / "door.log"))
     return 1
+
+
+# ---------------------------------------------------------------------- helo --
+# THE HELO's CLOCK. The AJA HELO (the studio's H.264 recorder) forgets the time
+# whenever it loses power and wakes up in 2000, and its time source is Manual:
+# its NTP server is a name it cannot resolve. So the door keeps it, from this
+# machine's clock, which Windows keeps: once a minute it reads the HELO's
+# /clock, and if it is more than 90 seconds out, sets it on the next minute
+# through the same call AJA's own page makes (eParamID_DateSet, "mm/dd/yyyy
+# HH:MM", the box's own zone). Never while it is recording. Read-only
+# otherwise. Device facts: FC-Public-Media/aja-helo (Autumn, 2026-09-28).
+HELO_DRIFT = 90
+
+
+def helo_host():
+    return (node().get("helo") or {}).get("host")
+
+
+def helo_get(path, timeout=5):
+    import urllib.request
+    with urllib.request.urlopen("http://%s%s" % (helo_host(), path), timeout=timeout) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def helo_clock():
+    """The HELO's clock as epoch seconds, or None if it cannot be asked."""
+    try:
+        return float(json.loads(helo_get("/clock"))["epoch"])
+    except Exception:
+        return None
+
+
+def helo_recording():
+    try:
+        v = json.loads(helo_get("/config?action=get&paramid=eParamID_ReplicatorRecordState"))
+        return "record" in str(v.get("value_name", "")).lower() and "idle" not in str(v.get("value_name", "")).lower()
+    except Exception:
+        return False
+
+
+def helo_set_clock():
+    """Set the HELO's date and time to this machine's, on a minute boundary
+    (the call takes minutes, not seconds)."""
+    import urllib.request, urllib.parse
+    while datetime.datetime.now().second != 0:
+        time.sleep(0.2)
+    value = datetime.datetime.now().strftime("%m/%d/%Y %H:%M")
+    data = urllib.parse.urlencode({"paramName": "eParamID_DateSet", "newValue": value}).encode()
+    req = urllib.request.Request("http://%s/values?eParamID_DateSet" % helo_host(), data=data, method="POST")
+    with urllib.request.urlopen(req, timeout=5) as r:
+        r.read()
+    return value
+
+
+def keep_helo_clock():
+    said = None
+    while True:
+        try:
+            if helo_host():
+                t = helo_clock()
+                if t is None:
+                    note = "helo: not answering at %s" % helo_host()
+                elif abs(t - time.time()) <= HELO_DRIFT:
+                    note = None
+                elif helo_recording():
+                    note = "helo: clock is out (%s) but it is recording; leaving it" % \
+                        time.strftime("%Y-%m-%d %H:%M", time.localtime(t))
+                else:
+                    was = time.strftime("%Y-%m-%d %H:%M", time.localtime(t))
+                    log("helo: clock read %s; set to %s" % (was, helo_set_clock()))
+                    note = None
+                if note != said and note:
+                    log(note)
+                said = note
+        except Exception as exc:
+            log("helo: %r" % exc)
+        time.sleep(60)
 
 
 # ------------------------------------------------------------------- startup --
