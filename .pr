@@ -1,13 +1,17 @@
-Screens at rest: plan for one dim mode on every studio screen
+Screens fall to dim: brand/idle/dim.js, in every page
 
-A plan, not code: docs/SCREENS-DIM.md. Autumn's brief (2026-09-27), drafted on
-bay 1 with the media node's session, which answered for the door and kiosk-1.
+Step 1 of docs/SCREENS-DIM.md, on the media node's contract (#174): the verdict
+from the page's own clock against window.FCPM_AWAKE, the layer, and the mark.
 
-- [x] draft: awake windows (rota, bookings, classes; 60 min lead, no tail, 7 days)
-- [x] media node's answers folded in: brand/idle/dim.js + dim.css inlined by page();
-      windows baked, and in /kiosk/now and /depot/now; the wall pauses its turn
-      while dim; Hold and takeovers hold it awake; first touch swallowed
-- [x] monitors: kiosk-1 never DPMS-sleeps, Dells and the Vizio are DisplayPort;
-      bay 1 sleeps displays after 2 h (Autumn's call)
-- [x] Autumn answered: 10% over black; squares alone, split clock, gliding; an hour per touch; host shifts + classes (bookings are inside host hours); bay display sleep left alone
-- [ ] then build: bay 1 steps 1, 4, 5 (dim.js first); media node steps 2, 3 on top
+- [x] brand/idle/dim.css + dim.js: 10% over pure black; the three squares with a
+      split clock (hours top, seconds middle, minutes bottom), the lit square
+      walking, the column gliding and bouncing off the edges
+- [x] awake: inside a window, <html class="fcpm-awake">, an hour after any touch,
+      click, key or real pointer movement; no list or past its end fails awake
+- [x] the first touch only wakes (the layer keeps catching 700 ms after)
+- [x] top window only; FCPMDim = { isDim(), tally(el) }; ?at= / ?awake / ?dim
+- [x] door.py page() inlines both; /idle/dim.js and /idle/dim.css served
+- [x] brand/idle/index.html draws the shared mark instead of its own copy
+- [x] checked in Edge (Playwright) against a local wall render: 20 checks pass
+- [ ] on the roller, for real (tonight is Monday: no host, so it should dim)
+- [ ] attendant recipe (step 4)
