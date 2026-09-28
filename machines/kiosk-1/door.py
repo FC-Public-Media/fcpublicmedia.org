@@ -606,6 +606,26 @@ def clock_mark(inner="", cls=""):
 # fcpm-awake on <html>.
 AWAKE_JS = """<script>
 window.FCPM_AWAKE = %s;
+// One computer, one waking (Autumn, 2026-09-28): a mouse or key anywhere on
+// this machine wakes every panel together, not just the one under the
+// pointer. The door reads the session's last input (Windows keeps it for the
+// whole computer); each page asks every two seconds and, when there is new
+// input, wakes its own dim layer. Only pages the door serves: file:// pages
+// have no door to ask.
+(function () {
+  if (location.protocol.indexOf('http') !== 0 || window !== window.top) return;
+  var last = null;
+  setInterval(function () {
+    fetch('/input', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      var at = Date.now() - d.idle * 1000;
+      if (last !== null && at - last > 1500 && d.idle < 3) {
+        if (window.FCPMDim && window.FCPMDim.wake) window.FCPMDim.wake();
+        else window.dispatchEvent(new KeyboardEvent('keydown'));
+      }
+      last = at;
+    }).catch(function () {});
+  }, 2000);
+})();
 window.fcpmAwake = function (list) {
   if (!list) return;
   window.FCPM_AWAKE = list;
@@ -626,6 +646,19 @@ def dim_inline():
             (DIM / "dim.css").read_text(encoding="utf-8"), (DIM / "dim.js").read_text(encoding="utf-8"))
     except OSError:
         return ""
+
+
+def idle_seconds():
+    """Seconds since this session last had mouse or keyboard input, anywhere."""
+    from ctypes import wintypes as W
+
+    class LASTINPUTINFO(ctypes.Structure):
+        _fields_ = [("cbSize", W.UINT), ("dwTime", W.DWORD)]
+    li = LASTINPUTINFO(ctypes.sizeof(LASTINPUTINFO), 0)
+    if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(li)):
+        return None
+    tick = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF
+    return ((tick - li.dwTime) & 0xFFFFFFFF) / 1000.0
 
 
 def page(title, body, style=""):
@@ -1871,6 +1904,17 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, kiosk_page())
             if route in ("/depot", "/depot/"):
                 return self.reply(200, depot_page())
+            if route in ("/preview", "/preview/"):
+                return self.reply(200, preview_page())
+            if route == "/helo/feed.jpg":
+                try:
+                    return self.reply(200, helo_feed(), "image/jpeg")
+                except Exception:
+                    return self.reply(503, "", TYPES[".txt"])
+            if route == "/helo/state":
+                return self.reply(200, json.dumps(helo_state()), TYPES[".json"])
+            if route == "/input":
+                return self.reply(200, json.dumps({"idle": idle_seconds()}), TYPES[".json"])
             if route == "/depot/now":
                 return self.reply(200, json.dumps(depot_now()), TYPES[".json"])
             if route == "/kiosk/now":
@@ -2534,10 +2578,33 @@ def helo_host():
     return (node().get("helo") or {}).get("host")
 
 
-def helo_get(path, timeout=5):
+_helo_addr = {"name": None, "ip": None, "at": 0}
+
+
+def helo_addr(fresh=False):
+    """The HELO's address, looked up by its mDNS name and kept for ten minutes:
+    resolving the .local name costs about a second each time, and the preview
+    asks once a second."""
+    name = helo_host()
+    if fresh or _helo_addr["name"] != name or time.time() - _helo_addr["at"] > 600:
+        _helo_addr.update(name=name, ip=socket.getaddrinfo(name, 80, socket.AF_INET)[0][4][0], at=time.time())
+    return _helo_addr["ip"]
+
+
+def helo_fetch(path, timeout=5):
+    """Bytes from the HELO; looks its name up again once if the kept address fails."""
     import urllib.request
-    with urllib.request.urlopen("http://%s%s" % (helo_host(), path), timeout=timeout) as r:
-        return r.read().decode("utf-8", "replace")
+    for fresh in (False, True):
+        try:
+            with urllib.request.urlopen("http://%s%s" % (helo_addr(fresh), path), timeout=timeout) as r:
+                return r.read()
+        except OSError:
+            if fresh:
+                raise
+
+
+def helo_get(path, timeout=5):
+    return helo_fetch(path, timeout).decode("utf-8", "replace")
 
 
 def helo_clock():
@@ -2564,10 +2631,98 @@ def helo_set_clock():
         time.sleep(0.2)
     value = datetime.datetime.now().strftime("%m/%d/%Y %H:%M")
     data = urllib.parse.urlencode({"paramName": "eParamID_DateSet", "newValue": value}).encode()
-    req = urllib.request.Request("http://%s/values?eParamID_DateSet" % helo_host(), data=data, method="POST")
+    req = urllib.request.Request("http://%s/values?eParamID_DateSet" % helo_addr(), data=data, method="POST")
     with urllib.request.urlopen(req, timeout=5) as r:
         r.read()
     return value
+
+
+
+def helo_state():
+    """What the preview says beside the picture: the format it detects, and
+    whether it streams or records. None if the HELO cannot be asked."""
+    if not helo_host():
+        return None
+    out = {}
+    try:
+        for key, pid in (("input", "DetectInputFormat"), ("select", "VideoInSelect"),
+                         ("stream", "ReplicatorStreamState"), ("record", "ReplicatorRecordState"),
+                         ("free", "CurrentMediaUnusedBytes")):
+            v = json.loads(helo_get("/config?action=get&paramid=eParamID_" + pid, timeout=3))
+            out[key] = v.get("value_name") or v.get("value")
+    except Exception:
+        return None
+    return out
+
+
+def helo_feed():
+    """The HELO's own preview: a 240x135 JPEG of what it receives, about one a
+    second on AJA's page. With no input it is the TEST PATTERN (its fallback),
+    so the page says "no signal" from the detected format instead."""
+    return helo_fetch("/wall/videofeed.jpg", timeout=3)
+
+
+PREVIEW_CSS = """
+html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:auto 1fr auto; }
+header { background:var(--slate); padding:5vh 6vw 4vh; display:flex; align-items:center; gap:4vw; }
+header .mark { width:7vh; height:7vh; flex:none; }
+header h1 { margin:0; font-size:5.2vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
+header p { margin:1vh 0 0; font-size:1.7vh; color:var(--soft); }
+main { display:flex; align-items:center; justify-content:center; padding:0 3vw; }
+.frame { position:relative; width:100%; aspect-ratio:16 / 9; background:#000; }
+.frame img { display:block; width:100%; height:100%; object-fit:contain; }
+.frame .none { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:2.6vh; color:var(--soft); background:#000; }
+.frame .none[hidden] { display:none; }
+footer { background:var(--slate); padding:2.4vh 6vw; display:flex; gap:4vw; font-size:1.8vh; }
+footer b { display:block; font-size:1.3vh; letter-spacing:.12em; text-transform:uppercase; color:var(--signal); margin-bottom:.4vh; }
+footer span { font-variant-numeric:tabular-nums; }
+"""
+
+PREVIEW_JS = """<script>
+(function () {
+  var img = document.getElementById('feed'), none = document.getElementById('none'), W = @WORDS@;
+  // The next picture loads off-screen and is swapped in whole: no flicker.
+  function next() {
+    var n = new Image();
+    n.onload = function () { img.src = n.src; setTimeout(next, 1000); };
+    n.onerror = function () { none.textContent = W.gone; none.hidden = false; setTimeout(next, 5000); };
+    n.src = '/helo/feed.jpg?t=' + Date.now();
+  }
+  function says(id, t) { document.getElementById(id).textContent = t; }
+  function state() {
+    fetch('/helo/state', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d) { none.textContent = W.gone; none.hidden = false; return; }
+      var signal = d.select === 'Test Pattern' || !/no input|unknown|none/i.test(d.input || '');
+      none.textContent = W.nosignal; none.hidden = signal;
+      says('input', signal ? d.input : W.nosignal);
+      says('stream', /stream/i.test(d.stream) && !/idle|fail/i.test(d.stream) ? W.on : W.off);
+      says('record', /record/i.test(d.record) && !/idle|fail/i.test(d.record) ? W.on : W.off);
+      says('free', d.free ? (d.free / 1e9).toFixed(1) + ' GB' : '');
+    }).catch(function () {});
+  }
+  next(); state(); setInterval(state, 5000);
+})();
+</script>"""
+
+
+def preview_page():
+    """The studio's cameras, as the HELO sees them: the ATEM's multiview
+    through its HDMI, once a second. The Files panel's place for now (Autumn,
+    2026-09-28); the full picture waits for a player that can take its RTSP."""
+    words = (node().get("wording") or {}).get("preview") or {}
+    w = {"gone": words.get("gone", "The recorder is not answering"),
+         "nosignal": words.get("nosignal", "No signal"), "on": words.get("on", "On"), "off": words.get("off", "Off")}
+    body = """<header>%s<div><h1>%s</h1><p>%s</p></div></header>
+<main><div class=frame><img id=feed alt="%s"><div class=none id=none hidden></div></div></main>
+<footer><div><b>%s</b><span id=input></span></div><div><b>%s</b><span id=stream></span></div>
+<div><b>%s</b><span id=record></span></div><div><b>%s</b><span id=free></span></div></footer>%s""" % (
+        clock_mark(), e(words.get("head", "Cameras")), e(words.get("sub", "The studio, as the recorder sees it")),
+        html.escape(words.get("alt", "The studio's cameras, as the recorder receives them"), quote=True),
+        e(words.get("input", "Input")), e(words.get("stream", "Streaming")), e(words.get("record", "Recording")),
+        e(words.get("free", "Card free")), PREVIEW_JS.replace("@WORDS@", json.dumps(w)))
+    return page(words.get("head", "Cameras"), body, PREVIEW_CSS)
 
 
 def keep_helo_clock():
