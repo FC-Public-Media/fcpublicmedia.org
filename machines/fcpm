@@ -11,6 +11,7 @@
 #   fcpm runnables [...]      the census, compile, prove (bin/runnables)
 #   fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
 #                             the staff OBS (troves/recorder/obs.ps1)
+#   fcpm screen [status|on|off|reset|class|wall]   the rolling TV (troves/kiosk-screen)
 #   fcpm help                 this
 #
 # FOR PEOPLE; A TASK NAMES THE HOLDER. A verb here is how a person reaches a
@@ -62,6 +63,7 @@ case "$cmd" in
     ps1 "$CODE/bin/pool.ps1" "$@" ;;
   runnables) exec "$REPO/bin/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
-  help|-h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  screen)    ps1 "$REPO/troves/kiosk-screen/screen.ps1" "$@" ;;
+  help|-h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) echo "fcpm: no verb '$cmd'. fcpm help" >&2; exit 2 ;;
 esac
