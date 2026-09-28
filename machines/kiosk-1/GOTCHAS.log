@@ -22,3 +22,4 @@
 2026-09-24    schtasks  a logon trigger's repetition keeps a task alive -> it arms only at a logon; mid-session it never repeats
 2026-09-24    yaml      a key named on: is the string on -> PyYAML reads bare on/off/yes/no as booleans; the footer label went blank
 2026-09-26    monitors  a panel's window can be moved back to its monitor -> if the monitors drop out, Windows piles the kiosk windows onto one, and Task View can't move full-screen windows across; close and relaunch them
+2026-09-28    ipv6      a panel can load from this box's .local name -> it resolves to rotating temporary IPv6 addresses; a page stuck on a dead one asked nothing and sat broken. Panels use 127.0.0.1
