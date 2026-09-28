@@ -1,1 +1,10 @@
-no draft yet - replace this file: line 1 becomes the PR title, the rest the body
+Screens at rest: plan for one dim mode on every studio screen
+
+A plan, not code: docs/SCREENS-REST.md. Autumn's brief (2026-09-27), drafted on
+bay 1 with the media node's session asked for its notes.
+
+- [x] draft the plan: awake windows from the rota (60 min lead, no tail),
+      one brand/rest/rest.js, 10% over black with brand/idle's three squares
+- [ ] fold in the kiosk session's answers (where it lives, conflicts, the Dells)
+- [ ] Autumn's open questions answered
+- [ ] then split into build PRs (steps at the end of the doc)
