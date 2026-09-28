@@ -148,6 +148,35 @@ def occurrences(entries, now, days_ahead=8):
     return sorted(out, key=lambda o: o[0])
 
 
+AWAKE_LEAD = datetime.timedelta(minutes=60)
+
+
+def awake_windows(now=None, days=7):
+    """When the screens are awake (docs/SCREENS-DIM.md, Autumn 2026-09-27):
+    each host shift in the rota and each class, from an hour before it starts
+    to its end, merged, for the next week. Bookings are not a source: one is
+    always inside host hours, since the host is who lets a member in. As
+    [start, end] pairs of epoch milliseconds, for the pages' own clocks."""
+    now = now or datetime.datetime.now()
+    spans = [(b, e) for b, e, _ in occurrences(load(ROOT / "kiosk" / "rota.yml").get("shifts") or [], now, days + 1)]
+    for c in class_config().get("sessions") or []:
+        try:
+            b = datetime.datetime.fromisoformat(c["starts"]).astimezone().replace(tzinfo=None)
+            e = datetime.datetime.fromisoformat(c["ends"]).astimezone().replace(tzinfo=None)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if now - AWAKE_LEAD < e and b < now + datetime.timedelta(days=days):
+            spans.append((b, e))
+    merged = []
+    for b, e in sorted((b - AWAKE_LEAD, e) for b, e in spans):
+        if merged and b <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([b, e])
+    ms = lambda t: int(time.mktime(t.timetuple()) * 1000)
+    return [[ms(b), ms(e)] for b, e in merged if e > now]
+
+
 def when(t, now):
     """`3 PM` if it is today, `Thu 10:30 AM` otherwise."""
     s = t.strftime("%I:%M %p").lstrip("0").replace(":00", "")
@@ -504,7 +533,13 @@ def watch_depot():
 
 def depot_now():
     with _depot_lock:
-        return {"at": _depot["at"], "now": time.time(), "shares": _depot["shares"]}
+        out = {"at": _depot["at"], "now": time.time(), "shares": _depot["shares"]}
+    out["awake"] = awake_windows()
+    return out
+
+
+def kiosk_now():
+    return {"on": on_now(), "map": stations(), "awake": awake_windows()}
 
 
 # --------------------------------------------------------------------- pages --
@@ -558,11 +593,27 @@ def clock_mark(inner="", cls=""):
     return '<div class="mark clock%s">%s%s</div>' % (" " + cls if cls else "", inner, clock_hands())
 
 
+# Every page carries the awake windows as it was drawn, and a hook the pages'
+# own polling calls with fresh ones, for the dim layer (brand/idle/dim.js,
+# docs/SCREENS-DIM.md) to read: window.FCPM_AWAKE, and an fcpm:awake event.
+# A page that must not dim (held, or a class taking it over) sets the class
+# fcpm-awake on <html>.
+AWAKE_JS = """<script>
+window.FCPM_AWAKE = %s;
+window.fcpmAwake = function (list) {
+  if (!list) return;
+  window.FCPM_AWAKE = list;
+  try { window.dispatchEvent(new CustomEvent('fcpm:awake')); } catch (e) {}
+};
+</script>"""
+
+
 def page(title, body, style=""):
     return with_poll("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>%s</title><style>%s
-%s</style></head><body>%s</body></html>""" % (html.escape(title), BRAND, style, body))
+%s</style>%s</head><body>%s</body></html>""" % (html.escape(title), BRAND, style,
+                                               AWAKE_JS % json.dumps(awake_windows()), body))
 
 
 def e(s):
@@ -676,7 +727,7 @@ NOW_JS = """<script>
   }
   function tick() {
     fetch('/kiosk/now', {cache: 'no-store'}).then(function (r) { return r.json(); })
-      .then(function (d) { footer(d.on); map(d.map); }).catch(function () {});
+      .then(function (d) { footer(d.on); map(d.map); window.fcpmAwake(d.awake); }).catch(function () {});
   }
   tick(); setInterval(tick, 60000);
 })();
@@ -787,6 +838,7 @@ DESK_CLASS_JS = """<script>
     var s = K.pick();
     if (s) K.card(box, s);
     box.hidden = !s; words.hidden = !!s;
+    document.documentElement.classList.toggle('fcpm-awake', !!s);
   }
   draw(); setInterval(draw, 15000);
 })();
@@ -918,7 +970,8 @@ DEPOT_JS = """<script>
     });
   }
   function tick() {
-    fetch('/depot/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {});
+    fetch('/depot/now', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { draw(d); window.fcpmAwake(d.awake); }).catch(function () {});
   }
   tick(); setInterval(tick, 10000);
 })();
@@ -1460,8 +1513,7 @@ def class_mode_page(path):
 # module comes in as it goes. Then the bar creeps up again, knobless. Red,
 # because the brand's on-air red is for what is live. The only motion here.
 WALL_PAGES = {
-    "kiosk": (lambda: kiosk_page(wall=True, map_only=True), "/kiosk/now",
-              lambda: {"on": on_now(), "map": stations()}),
+    "kiosk": (lambda: kiosk_page(wall=True, map_only=True), "/kiosk/now", kiosk_now),
     "depot": (depot_page, "/depot/now", depot_now),
     "drive": (lambda: drive_page(), "/depot/now", depot_now),
     "classes": (classes_page, None, None),
@@ -1582,7 +1634,8 @@ WALL_JS = """<script>
   // The turn, drawn every frame. Stopped (held, or a class on), time stops
   // with it and picks up where it was.
   function frame(now) {
-    if (held || taken) { if (!stopped) stopped = now; return requestAnimationFrame(frame); }
+    var dim = window.FCPMDim && window.FCPMDim.isDim && window.FCPMDim.isDim();
+    if (held || taken || dim) { if (!stopped) stopped = now; return requestAnimationFrame(frame); }
     if (stopped) { t0 += now - stopped; stopped = 0; }
     var t = now - t0;
     if (t < 0) {                                      // the gap after the take-off: empty
@@ -1629,6 +1682,7 @@ WALL_JS = """<script>
   function setHold(on) {
     held = on ? Date.now() : 0; pinned = false; label();
     timer.classList.toggle('held', !!on);
+    document.documentElement.classList.toggle('fcpm-awake', !!held || taken);
   }
   function press() {
     if (!held) return setHold(true);
@@ -1640,6 +1694,7 @@ WALL_JS = """<script>
     taken = !!s;
     if (s) K.card(card, s, K.words.hint_wall);
     card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
+    document.documentElement.classList.toggle('fcpm-awake', !!held || taken);
     timer.classList.toggle('off', taken);
     if (taken) showing.textContent = K.words.head;
     else if (was) show(cur);
@@ -1792,7 +1847,7 @@ class Door(BaseHTTPRequestHandler):
             if route == "/depot/now":
                 return self.reply(200, json.dumps(depot_now()), TYPES[".json"])
             if route == "/kiosk/now":
-                return self.reply(200, json.dumps({"on": on_now(), "map": stations()}), TYPES[".json"])
+                return self.reply(200, json.dumps(kiosk_now()), TYPES[".json"])
             if route.startswith("/kiosk/wifi/") and tail.isdigit():
                 svg = wifi_svg(int(tail))
                 return self.reply(200, svg, TYPES[".svg"]) if svg else self.file(None)
