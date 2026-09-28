@@ -10,4 +10,4 @@ bay 1 with the media node's session, which answered for the door and kiosk-1.
 - [x] monitors: kiosk-1 never DPMS-sleeps, Dells and the Vizio are DisplayPort;
       bay 1 sleeps displays after 2 h (Autumn's call)
 - [ ] Autumn's six open questions
-- [ ] then build, in the doc's five steps
+- [ ] then build: bay 1 steps 1, 4, 5 (dim.js first); media node steps 2, 3 on top

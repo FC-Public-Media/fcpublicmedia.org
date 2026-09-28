@@ -151,6 +151,10 @@ From the media node, 2026-09-27:
 
 ## Steps, once agreed
 
+Who builds what (agreed 2026-09-27): **bay 1** does steps 1, 4 and 5. **The
+media node** does steps 2 and 3, on top of step 1 once it lands, so only one
+session writes `dim.js`.
+
 1. `brand/idle/dim.js` and `dim.css`: the mark lifted out of
    `brand/idle/index.html`, the verdict, the layer, the swallowed first
    touch, `?at=` / `?awake` / `?dim`. The idle screen uses them.
