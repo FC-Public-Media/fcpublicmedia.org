@@ -1,8 +1,8 @@
 # Screens at rest: one dim mode for every studio screen
 
-Status: **a plan, 2026-09-27.** Nothing is built. Autumn's brief, drafted on
-editing bay 1 (which holds the pen) with the media node's session (`kiosk`),
-which answered for the door and for kiosk-1's panels.
+Status: **agreed, 2026-09-27; not built.** Autumn's brief and her answers,
+drafted on editing bay 1 (which holds the pen) with the media node's session
+(`kiosk`), which answered for the door and for kiosk-1's panels.
 
 ## What Autumn asked for
 
@@ -22,7 +22,34 @@ which answered for the door and for kiosk-1's panels.
 > The roller TV can be turned off. A monitor that is attached but off is not
 > an emergency.
 
-(Paraphrased from speech, 2026-09-27. Her words win where this differs.)
+And her answers to the plan's questions, the same day:
+
+> Very, very dim. If it's on, nobody's here. The point is not to turn the
+> kiosk machine's monitors off; the roller TV is what it is. Try 10% the way
+> I said it.
+>
+> The animated page the way it is. It doesn't need to show anything. It's an
+> excuse not to have the screen off: nobody would see it, but if they did,
+> they'd know it was working. We're free to be stylistic with the three
+> squares, like split clock silliness: the middle square ticks the seconds,
+> the top one has the hour hand, the bottom one the minute hand. Be weird.
+>
+> There won't be touches, but treating touch and the mouse together is right.
+> Five minutes is ridiculously short: an hour. I'm not putting an audience
+> through the screen dimming every five minutes because the schedule doesn't
+> know they're here.
+>
+> Bookings are necessarily a subset of the host schedule, so they're covered.
+> Classes are what we add.
+>
+> Against burn-in, the squares can glide around like perpetual-motion hockey
+> discs, calmly. That would be funny.
+>
+> A visitor checking in during off time isn't legitimate: the door is locked,
+> which is why a host is here. The space is small; ten short paces in and you
+> see all three rooms. The host schedule covers it.
+
+(Both paraphrased from speech, 2026-09-27. Her words win where this differs.)
 
 ## The shape
 
@@ -53,9 +80,12 @@ already has a clock.
 ### Awake windows
 
 - **Sources:**
-  - rota shifts (`kiosk/rota.yml`, the same source `on_now()` reads);
-  - bookings (`bookings:` in `node.yml`; only `sample` today);
+  - rota shifts, the host schedule (`kiosk/rota.yml`, the same source
+    `on_now()` reads);
   - class sessions (a class `soon`, `late` or `now` by `pickSession`).
+  - **Not bookings.** A booking is always inside host hours, because the
+    host is who lets the member in. So the rota already covers every booking
+    (Autumn, 2026-09-27).
 - **Rule:** each one from **60 minutes before its start to its end**, merged
   where they overlap. No grace period after the end. The door computes
   them for the next 7 days, in local ISO time.
@@ -75,13 +105,24 @@ already has a clock.
 ### Dim, drawn
 
 - **Awake:** the page as it is, with nothing drawn over it.
-- **Dim:** a layer of pure black over the page, the page showing through at
-  about **10%**, and the three squares centred on the black, stepping on
-  brand/idle's 4 s beat. Sized in `vmin`, so portrait or landscape makes no
-  difference.
+- **Dim:** very, very dim. Pure black, with the page showing through at
+  **10%**, and over it the three squares, as the idle screen draws them. The
+  squares show nothing but the fact that the screen is working. Sized in
+  `vmin`, so portrait or landscape makes no difference.
+- **The squares are allowed to be weird.** The idle screen's walk of the lit
+  square stays. On top of it, a split clock: the **top** square carries an
+  hour hand, the **bottom** one a minute hand, and the **middle** one ticks
+  the seconds. The hands are thin marks inside each square, in the soft
+  grey.
+- **They glide, against burn-in.** The column of three drifts slowly
+  across the black, like a perpetual-motion hockey disc: a straight line at
+  a calm, constant speed, and a bounce off each edge of the screen. The
+  pixels it lights are never the same for long.
 - **Fade** into dim slowly (tens of seconds), and **wake quickly** (under a
-  second). **Reduced motion:** no fade, and the mark stops on the middle
-  square, as brand/idle already promises.
+  second). **Reduced motion:** no fade, no glide, and the lit square stops on
+  the middle one, as brand/idle already promises. The column then moves to a
+  new resting place once an hour instead of gliding, so burn-in is still
+  kept away.
 - **The page itself.** Not the backlight: kiosk-1 has no DDC/CI tooling and
   no administrator, so brightness and panel power cannot be controlled from
   there.
@@ -90,16 +131,21 @@ already has a clock.
 
 Outside a window:
 
-- **A pointer or a touch** wakes it for **5 minutes to start** (Autumn's to
-  tune), then it falls back to the schedule. A wake never shortens a window.
+- **A pointer or a touch** wakes it for **an hour**, and each later touch or
+  movement starts that hour again. Then it falls back to the schedule. A room
+  with people in it should not watch the screen dim because the schedule
+  didn't know they were there. A wake never shortens a window. (None of these
+  screens is touched today, but a touch and the mouse count the same.)
 - **The first touch only wakes.** The layer catches it and swallows it, so
   it never also presses the button underneath.
 - **The page can hold it awake:**
   - a class takeover (`pickSession` not null) on the wall and the desk. That
     check already runs every 15 s on the client;
   - the wall's **Hold / Keep paused** pressed, because somebody is there.
-- **A check-in does not wake it.** It happens on the visitor's phone, and
-  the door never sees one. The schedule has to cover it.
+- **A check-in does not wake it,** and doesn't need to. It happens on the
+  visitor's phone, so the door never sees one. And a check-in outside host
+  hours isn't legitimate anyway: the door is locked, and a host is why anybody
+  is inside. The host schedule covers it.
 - **Proofs:** `?at=` already exists on the wall and class mode, and `dim.js`
   reads the same one, so one query shows a screen at 4 AM. `?awake` and `?dim`
   pin either state for a look.
@@ -125,40 +171,42 @@ From the media node, 2026-09-27:
   incident). #168 relaunches each panel's kiosk in place when its monitor
   comes back, and does nothing while it is missing. So "attached but off",
   on these, means *missing for a while*, and the door recovers on its own.
-- **Editing bay 1 and the roller:** the Vizio also reads as **DisplayPort**
-  (10), so switching it off will most likely look the same.
-  `troves/kiosk-screen` already treats a missing screen as *nothing shown*
-  and puts the page back when it returns. Not yet followed on the TV.
+- **Editing bay 1 and the roller:** the Vizio reads as **DisplayPort** (10)
+  because it is on an HDMI-to-DisplayPort adapter; the studio has no native
+  HDMI-to-DisplayPort cable. On 2026-09-27 Autumn moved its cable between
+  ports while testing. The roller dropped out and came back 1 px lower, and
+  our Edge was gone. One `keep` launched it again in place. Once #170 merges,
+  the pool's pass does that within five minutes. The long HDMI cables with
+  blue insides have never worked here, possibly because they need more
+  power. Suspect them first.
 - **Bay 1 sleeps its displays after 2 hours** idle on AC (`powercfg`, read
-  2026-09-27). That would blacken the roller whatever the page does. The
-  bay's display settings are not ours (`machines/editing-bay-1/PROFILE.md`),
-  so this is Autumn's call: leave it, or keep the display awake from the
-  trove while it drives the roller (a per-process request, not a settings
-  change).
+  2026-09-27). **Left as it is:** "the roller TV is what it is." The page
+  dims on schedule, and the bay may blank the TV on top of that. Neither is
+  an emergency.
 
-## Open, for Autumn
+## Decided (Autumn, 2026-09-27)
 
-1. **How dark.** Is 10% the page's opacity over black? That is the same as a
-   90% black layer.
-2. **Should the mark be alone** in dim, or keep the clock and one line under
-   it (who is on next, the Wi-Fi), the way brand/idle's slot does?
-3. **How long a touch keeps it awake** (5 minutes to start).
-4. **Bookings and classes as windows.** The media node proposes counting both,
-   not only rota shifts.
-5. **Burn-in.** The mark sits in one place all night: should it drift a
-   little each hour?
-6. **Bay 1's two-hour display sleep** while it drives the roller (above).
+1. **How dark:** 10% the way she said it: the page at 10% over pure black.
+2. **Dim is the animated squares alone,** with no text. They can be weird:
+   a split clock across the three squares.
+3. **A touch or the mouse keeps it awake for an hour,** restarted by each
+   later touch or movement. Not five minutes.
+4. **Windows are host shifts plus classes.** Bookings are inside host hours
+   by definition.
+5. **Burn-in:** the squares glide calmly and bounce off the edges.
+6. **Bay 1's display sleep is left alone.**
 
-## Steps, once agreed
+## Steps
 
 Who builds what (agreed 2026-09-27): **bay 1** does steps 1, 4 and 5. **The
 media node** does steps 2 and 3, on top of step 1 once it lands, so only one
 session writes `dim.js`.
 
 1. `brand/idle/dim.js` and `dim.css`: the mark lifted out of
-   `brand/idle/index.html`, the verdict, the layer, the swallowed first
-   touch, `?at=` / `?awake` / `?dim`. The idle screen uses them.
-2. `door.py`: an `awake_windows(now)` beside `on_now()` (rota, bookings,
+   `brand/idle/index.html`, the split clock, the glide, the verdict, the
+   layer at 10%, the hour-long wake with the first touch swallowed, and
+   `?at=` / `?awake` / `?dim`. The idle screen uses them.
+2. `door.py`: an `awake_windows(now)` beside `on_now()` (rota shifts and
    classes, 60 min lead, merged, 7 days); `page()` inlines `dim.*` and bakes
    the windows; an `awake` field in `/kiosk/now` and `/depot/now`.
 3. The wall: pause the turn while dim; Hold and a class takeover hold it
