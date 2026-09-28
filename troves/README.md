@@ -52,4 +52,4 @@ display stack can say it is there.
 | trove | plays | status |
 |---|---|---|
 | [`recorder/`](recorder/) | anything that produces files a node catches: capture decks, the RØDECaster | drafting |
-| `kiosk-screen/` | a screen that shows a studio page | roller-tv's, after `instruments/` merges |
+| [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
