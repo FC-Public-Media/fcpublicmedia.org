@@ -19,7 +19,7 @@ screens:
   - name: left
     display: DISPLAY2
     rect: [-1050, 0, 1050, 1680]
-    url: /depot/           # was the idle screen. The depot is tried here first
+    url: /preview/         # the cameras, from the HELO (2026-09-28); was /depot/, still at that address
 
 # ---------------------------------------------------------------------------
 # NETWORKS shown as Wi-Fi QR codes on the welcome screen.
