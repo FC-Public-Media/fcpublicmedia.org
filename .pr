@@ -13,5 +13,5 @@ from the page's own clock against window.FCPM_AWAKE, the layer, and the mark.
 - [x] door.py page() inlines both; /idle/dim.js and /idle/dim.css served
 - [x] brand/idle/index.html draws the shared mark instead of its own copy
 - [x] checked in Edge (Playwright) against a local wall render: 20 checks pass
-- [ ] on the roller, for real (tonight is Monday: no host, so it should dim)
-- [ ] attendant recipe (step 4)
+- [x] on the roller, for real, 2026-09-28 00:36: Monday, no host, and it fell to dim by itself
+- [ ] next, its own PR: the attendant recipe (step 4)
