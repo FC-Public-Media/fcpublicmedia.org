@@ -1,25 +1,13 @@
-The roller keeps itself: troves/kiosk-screen, kept by bay 1's pool pass
+Screens at rest: plan for one dim mode on every studio screen
 
-Editing bay 1 drives the rolling TV the way kiosk-1 keeps its panels: Edge in
-kiosk mode, fullscreen, a profile of its own, put back when it goes missing.
-No service: the pool's five-minute task runs one `keep` per pass.
+A plan, not code: docs/SCREENS-DIM.md. Autumn's brief (2026-09-27), drafted on
+bay 1 with the media node's session, which answered for the door and kiosk-1.
 
-- [x] troves/kiosk-screen/screen.ps1: status | keep | on | off | reset
-  - finds the instrument by EDID (instrument.yml `match: product`), never the display number
-  - no match: nothing shown, and our own browser closed if Windows piled it elsewhere
-  - source: the depot's wall when 10.209.1.1:445 answers, else a local render
-    of the wall from the mirror's door.py (Autumn, 2026-09-27)
-  - stops by process id, never by name (GRANTS)
-- [x] troves/kiosk-screen/render.py: wall_files() to the trove's prefix, whole or not at all
-- [x] pool.ps1 pass calls `keep roller-tv` from the mirror
-- [x] fcpm screen [status|on|off|reset]
-- [x] followed on the roller, 2026-09-27: keep (launched), keep (ok, left alone),
-      off, keep while off (stays off), on (launched), status
-- [x] READMEs: troves table, the trove's own, instruments, the bay's AGENTS.md
-- [x] class mode: `fcpm screen class [light]` / `fcpm screen wall`, held in a `page` file;
-      followed on the roller 2026-09-27 (sample class, dark)
-- [ ] after merge: `fcpm install` (Autumn) so ~/code/bin/pool.ps1 carries the Screens step
-- [ ] not followed: the TV unplugged (absent) and the depot answering
-
-Open: the local render has no bookings (the M365 key is kiosk-1's) and no depot
-files, so Studio shows bookings.sample.yml, pills marked Sample, and Files is empty.
+- [x] draft: awake windows (rota, bookings, classes; 60 min lead, no tail, 7 days)
+- [x] media node's answers folded in: brand/idle/dim.js + dim.css inlined by page();
+      windows baked, and in /kiosk/now and /depot/now; the wall pauses its turn
+      while dim; Hold and takeovers hold it awake; first touch swallowed
+- [x] monitors: kiosk-1 never DPMS-sleeps, Dells and the Vizio are DisplayPort;
+      bay 1 sleeps displays after 2 h (Autumn's call)
+- [x] Autumn answered: 10% over black; squares alone, split clock, gliding; an hour per touch; host shifts + classes (bookings are inside host hours); bay display sleep left alone
+- [ ] then build: bay 1 steps 1, 4, 5 (dim.js first); media node steps 2, 3 on top
