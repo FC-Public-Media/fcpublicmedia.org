@@ -2,7 +2,8 @@
 #
 #   bin\pool.ps1 status              what ran at the last snapshot, and what runs now
 #   bin\pool.ps1 pass                one pass: revive after a logon, make sure the root
-#                                    has a session, snapshot. What the logon task runs
+#                                    has a session, snapshot, keep the roller's screen
+#                                    (troves/kiosk-screen). What the logon task runs
 #   bin\pool.ps1 revive              bring back what is missing now, logon or not
 #   bin\pool.ps1 pin in|out|clear X  always bring X back, never, or follow the snapshot
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
@@ -144,6 +145,17 @@ function EnsureRoot {
     if ($code -eq 0) { Say "started $RootName in $Root" } else { Say ("could not start {0}: {1}" -f $RootName, $out) }
 }
 
+function Screens {
+    # The screens this bay drives, kept each pass by their trove, from the
+    # mirror (the admitted code). A child process: the trove's strict mode and
+    # types stay out of the pool. It logs to its own screen.log.
+    $s = Join-Path $Root "refs\fcpublicmedia.org\troves\kiosk-screen\screen.ps1"
+    if (-not (Test-Path $s)) { return }
+    $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    & $ps -NoProfile -ExecutionPolicy Bypass -File $s keep roller-tv 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
+}
+
 function Snapshot {
     $live = Running
     if ($null -eq $live) { Say "could not list sessions; keeping the last snapshot"; return }
@@ -159,6 +171,7 @@ switch ($Verb) {
         # empty desktop a logon leaves and forget what was running.
         if (ReviveAll $false) { EnsureRoot }
         Snapshot
+        Screens
     }
     "revive" { ReviveAll $true | Out-Null; Snapshot }
     "pin" {
@@ -208,5 +221,5 @@ switch ($Verb) {
                 $s.kind, $s.name, $id.Substring(0, 8), $(if ($pin) { "pin:" + $pin.pin } else { "" }))
         }
     }
-    default { Get-Content $PSCommandPath -TotalCount 9 | Select-Object -Skip 1; exit 2 }
+    default { Get-Content $PSCommandPath -TotalCount 10 | Select-Object -Skip 1; exit 2 }
 }

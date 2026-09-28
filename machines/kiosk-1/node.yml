@@ -167,9 +167,8 @@ wall:
 wording:
   checkin:
     head: Check in
-    sub: |-                  # one sentence per line, as written
-      No apps.
-      Free public tech.
+    sub: Fort Collins Public Media   # our name, large, where people look (Autumn, 2026-09-27);
+                                     # was "No apps. / Free public tech."
   wall:                      # the roller: the check-in head stays, the words are its own
     sub: |-                  # one line each, title case, as Autumn wrote it (2026-09-26)
       Don’t Just View It.
