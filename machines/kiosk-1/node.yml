@@ -167,8 +167,9 @@ wall:
 wording:
   checkin:
     head: Check in
-    sub: Fort Collins Public Media   # our name, large, where people look (Autumn, 2026-09-27);
-                                     # was "No apps. / Free public tech."
+    sub: |-                  # our name, large, where people look; "Fort Collins" together
+      Fort Collins
+      Public Media
   wall:                      # the roller: the check-in head stays, the words are its own
     sub: |-                  # one line each, title case, as Autumn wrote it (2026-09-26)
       Don’t Just View It.
