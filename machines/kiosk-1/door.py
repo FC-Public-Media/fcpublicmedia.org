@@ -85,10 +85,12 @@ PULL_EVERY = 300
 STATE = pathlib.Path(os.environ.get("LOCALAPPDATA", ROOT)) / "media-node"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper"}
+NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
+              "idle": ROOT / "brand" / "idle"}          # /idle/ is the idle screen; these are its dim.js and dim.css
 TYPES = {".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".txt": "text/plain; charset=utf-8",
-         ".json": "application/json"}
+         ".json": "application/json",
+         ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
 
 # ------------------------------------------------------------------- sources --
@@ -608,12 +610,26 @@ window.fcpmAwake = function (list) {
 </script>"""
 
 
+DIM = ROOT / "brand" / "idle"
+
+
+def dim_inline():
+    """The dim layer (brand/idle/dim.css and dim.js), inlined: the wall is read
+    over file://, where nothing else can be fetched. Read every time, so an
+    edit shows on the next page drawn. Empty if the files are missing."""
+    try:
+        return "<style>%s</style><script>%s</script>" % (
+            (DIM / "dim.css").read_text(encoding="utf-8"), (DIM / "dim.js").read_text(encoding="utf-8"))
+    except OSError:
+        return ""
+
+
 def page(title, body, style=""):
     return with_poll("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>%s</title><style>%s
-%s</style>%s</head><body>%s</body></html>""" % (html.escape(title), BRAND, style,
-                                               AWAKE_JS % json.dumps(awake_windows()), body))
+%s</style>%s%s</head><body>%s</body></html>""" % (html.escape(title), BRAND, style,
+                                               AWAKE_JS % json.dumps(awake_windows()), dim_inline(), body))
 
 
 def e(s):

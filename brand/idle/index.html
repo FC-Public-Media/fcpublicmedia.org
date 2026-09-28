@@ -77,35 +77,12 @@
 
   /* --- The mark ---------------------------------------------------------- */
 
-  /* Three squares in a column with a rule behind them, the same set the
-     wallpapers draw. Here the lit one walks, which is the only reason this is
-     a web page and not a PNG. */
-  .tally {
-    display: grid;
-    gap: 4.2vmin;
-    justify-items: center;
-    position: relative;
-  }
-  .tally::before {
-    content: "";
-    position: absolute;
-    left: 50%; top: 0; bottom: 0;
-    width: 0.4vmin;
-    translate: -50% 0;
-    background: var(--slate);
-  }
-  .mark {
-    width: 12vmin; height: 12vmin;
-    background: var(--slate);
-    /* NEGATIVE. Counterclockwise, the same -8deg as site/assets/img/icon.svg and
-       as .wordmark-mark in the stylesheet. Leaning the other way reads as
-       rolling forward, which is the O in the Roblox wordmark; there are
-       copies of our mark in the wild that got this backwards. */
-    rotate: -8deg;
-    position: relative;
-    transition: background 420ms steps(2, end);
-  }
-  .mark.lit { background: var(--signal); }
+  /* dim.css and dim.js draw it: three squares in a column with a rule
+     behind them, the same set the wallpapers draw, the lit one walking, and a
+     clock split across the three (hours, seconds, minutes). The same mark is
+     what every studio screen shows when it falls to dim, so there is one of
+     it (docs/SCREENS-DIM.md). Linked, not inlined, and still no network: the
+     two files sit beside this one, in the same folder, on the same stick. */
 
   /* --- The type ---------------------------------------------------------- */
 
@@ -148,24 +125,19 @@
   .slot strong { color: var(--paper); font-weight: 600; }
 
   /* Motion is a vestibular trigger and this panel is in a room people sit in.
-     Nothing here slides or spins even by default — it steps — but when the
-     machine says no motion, the mark simply stops on the middle square. The
-     stylesheet makes the same promise; see the note above @keyframes in
-     site/assets/css/site.css. */
-  @media (prefers-reduced-motion: reduce) {
-    .mark { transition: none; }
-  }
+     Nothing here slides or spins even by default — it steps — and when the
+     machine says no motion, the mark (dim.css) simply stops on the middle
+     square. The stylesheet makes the same promise; see the note above
+     @keyframes in site/assets/css/site.css. */
 </style>
+<link rel="stylesheet" href="dim.css">
+<script src="dim.js"></script>
 
 <div class="screen">
   <div></div>
 
   <div class="brand">
-    <div class="tally" id="tally">
-      <div class="mark"></div>
-      <div class="mark lit"></div>
-      <div class="mark"></div>
-    </div>
+    <div id="tally"></div>
 
     <p class="lockup">
       <b>Fort Collins</b>
@@ -180,20 +152,10 @@
 </div>
 
 <script>
-  var marks = document.querySelectorAll('#tally .mark');
   var clock = document.getElementById('clock');
-  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  // The walk. Down the column and back up rather than wrapping around, so the
-  // motion is a level meter and not a progress bar — nothing here is loading
-  // and a screen that looks like it is loading is a screen somebody waits at.
-  var at = 1, dir = 1;
-  function step() {
-    if (still.matches) return;
-    at += dir;
-    if (at === marks.length - 1 || at === 0) dir = -dir;
-    marks.forEach(function (mark, i) { mark.classList.toggle('lit', i === at); });
-  }
+  // The mark, the same one every screen shows when it falls to dim.
+  if (window.FCPMDim) window.FCPMDim.tally(document.getElementById('tally'));
 
   function tick() {
     // No seconds. A wall clock with a seconds hand invites people to watch it,
@@ -215,10 +177,6 @@
 
   tick();
   setInterval(tick, 15000);
-
-  var dwell = parseFloat(getComputedStyle(document.documentElement)
-    .getPropertyValue('--step')) * 1000 || 4000;
-  setInterval(step, dwell);
 
   // A panel that has been on for a week drifts: setInterval falls behind while
   // a laptop lid is shut, and the clock comes back wrong. Re-read it on wake.
