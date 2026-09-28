@@ -150,6 +150,24 @@ Outside a window:
   reads the same one, so one query shows a screen at 4 AM. `?awake` and `?dim`
   pin either state for a look.
 
+### The contract between the door and `dim.js`
+
+Set by the media node on branch `screens-awake-windows`, and accepted for
+`dim.js` on 2026-09-27:
+
+| | |
+|---|---|
+| `window.FCPM_AWAKE` | `[[startMs, endMs], ...]`, epoch ms, merged. `page()` bakes it into `<head>` before any body script |
+| `window.fcpmAwake(list)` | called by the kiosk page (every 60 s) and the depot page (every 10 s) with fresh windows. It replaces `FCPM_AWAKE` and dispatches `fcpm:awake` on `window` |
+| `<html class="fcpm-awake">` | awake whatever the schedule. The wall sets it while held and during a class takeover; the desk sets it during a takeover |
+| `window.FCPMDim.isDim()` | the wall asks every frame and stops its turn while it is true |
+| `window !== window.top` | `dim.js` does nothing, so a module's iframe draws no second layer |
+| no list, an empty list, or past its last end | **awake** |
+
+A touch inside a module's iframe while the screen is awake does not reach the
+shell, so it does not restart the hour. While dim, the layer sits above the
+iframes and catches the touch itself.
+
 ### Designing around what the door already does
 
 From the media node, 2026-09-27:
