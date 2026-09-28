@@ -437,6 +437,7 @@ def wifi_svg(i):
 # until it is seen again.
 DEPOT_EVERY = 15
 _depot = {"at": None, "shares": [], "files": {}}
+_heard, _serving_since = {}, time.time()     # screen name -> when its page last polled; this serve's start
 _depot_lock = threading.Lock()
 
 
@@ -549,7 +550,10 @@ POLL = """<script>
 (function () {
   var seen = null;
   function check() {
-    fetch('/revision', {cache: 'no-store'}).then(function (r) { return r.text(); })
+    // A screen's page says which screen it is (?screen=, from the launch), so
+    // the door can tell a page that has gone quiet (screens(), "silent").
+    var q = /[?&]screen=([\\w-]+)/.exec(location.search);
+    fetch('/revision' + (q ? '?screen=' + q[1] : ''), {cache: 'no-store'}).then(function (r) { return r.text(); })
       .then(function (v) {
         if (seen === null) seen = v; else if (v !== seen) return location.reload();
         // The door answers, but a picture on this page never arrived: the page
@@ -1855,7 +1859,14 @@ class Door(BaseHTTPRequestHandler):
             if route == "/":
                 return self.reply(200, board_page())
             if route == "/revision":
+                m = re.search(r"[?&]screen=([\w-]+)", self.path)
+                if m:
+                    _heard[m.group(1)] = time.time()
                 return self.reply(200, revision(), TYPES[".txt"])
+            if route == "/heard":
+                now = time.time()
+                return self.reply(200, json.dumps({"up": now - _serving_since,
+                                                   "heard": {k: now - v for k, v in _heard.items()}}), TYPES[".json"])
             if route in ("/kiosk", "/kiosk/"):
                 return self.reply(200, kiosk_page())
             if route in ("/depot", "/depot/"):
@@ -2172,6 +2183,28 @@ def close_profile(pids, wait=10):
         k.CloseHandle(W.HANDLE(h))
 
 
+SILENT = 120     # seconds a screen's page may go without polling before it is relaunched
+
+
+def screen_url(s):
+    """Loopback, not this machine's name: the name resolves to a shifting set
+    of IPv6 addresses, some of them temporary ones Windows rotates, and a page
+    loaded through one that went away sat broken, asking nothing (2026-09-26,
+    -28). ?screen= lets the page say which screen it is."""
+    return "http://127.0.0.1:%d%s%sscreen=%s" % (PORT, s["url"], "&" if "?" in s["url"] else "?", s["name"])
+
+
+def heard():
+    """{"up": seconds the door has served, "heard": {screen: seconds since its
+    page last polled}}, or None if the door cannot be asked."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:%d/heard" % PORT, timeout=5) as r:
+            return json.loads(r.read().decode())
+    except Exception:
+        return None
+
+
 def screens(launch=False, reset=False, say=print):
     """Each screen wants its own browser (the profile the door launches for
     it), full-screen at its rect. Anything else covering that rect does not
@@ -2195,6 +2228,7 @@ def screens(launch=False, reset=False, say=print):
         if w["pid"] not in lines:
             lines[w["pid"]] = command_line(w["pid"]).lower()
     bad = 0
+    ears = heard()
     for s in cfg.get("screens") or []:
         x, y, w, h = s["rect"]
         prof = str(STATE / "screens" / s["name"]).lower()
@@ -2202,6 +2236,20 @@ def screens(launch=False, reset=False, say=print):
         hit = next((win for win in own if win["fullscreen"]
                     and abs(win["rect"][0] - x) <= 8 and abs(win["rect"][1] - y) <= 8
                     and abs(win["rect"][2] - w) <= 16 and abs(win["rect"][3] - h) <= 16), None)
+        # Its own browser is there, but its page has stopped asking the door
+        # anything: the page is stuck (broken pictures, empty map). Whatever
+        # the cause, a fresh launch mends it.
+        quiet = (hit and ears and ears["up"] > SILENT and
+                 ears["heard"].get(s["name"], SILENT + 1) > SILENT)
+        if quiet and not reset:
+            bad += 1
+            say("silent   %-8s %-9s its page has not asked the door anything for %d s" % (
+                s["name"], s["display"], min(ears["heard"].get(s["name"], ears["up"]), ears["up"])))
+            if launch:
+                close_profile({hit["pid"]})
+                launch_screen(exe, s, screen_url(s))
+                say("         relaunched %s" % screen_url(s))
+            continue
         if hit and not reset:
             top = top_pid(x + w // 2, y + h // 2)
             if top is not None and top != hit["pid"]:
@@ -2231,7 +2279,7 @@ def screens(launch=False, reset=False, say=print):
         if own:
             close_profile({win["pid"] for win in own})
             say("         closed %s's browser" % s["name"])
-        url = "http://%s.local:%d%s" % (socket.gethostname().lower(), PORT, s["url"])
+        url = screen_url(s)
         launch_screen(exe, s, url)
         say("         launched %s there" % url)
     return 1 if bad and not (launch or reset) else 0
