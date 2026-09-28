@@ -27,9 +27,9 @@
    PROOFS, on the top page's URL: ?at=HH:MM or ?at=<ISO time> pretends it is
    then (as the wall and class mode do), ?awake and ?dim pin either state.
 
-   window.FCPMDim = { isDim(), tally(el) }. The wall asks isDim() every frame
-   and stops turning while it is true. tally() draws the mark into any
-   element; the idle screen uses it.
+   window.FCPMDim = { isDim(), tally(el), wake() }. The wall asks isDim() every
+   frame and stops turning while it is true. tally() draws the mark into any
+   element; the idle screen uses it. wake() is a touch from elsewhere.
 
    Only the top window runs it. The wall's modules are pages in iframes that
    carry this file too, and there must be one layer, the shell's.
@@ -254,7 +254,13 @@
     setInterval(function () { for (var i = 0; i < tallies.length; i++) walk(tallies[i]); }, STEP);
   }
 
-  window.FCPMDim = { isDim: function () { return dim; }, tally: tally };
+  // wake(): what a touch does, without a touch: the hour starts again and the
+  // screen wakes. For input seen somewhere else, such as kiosk-1's door
+  // reading Windows' last input so a mouse on one panel wakes both (#178).
+  // Nothing was pressed, so nothing needs swallowing.
+  function wake() { wokeUntil = now() + HOUR; judge(); }
+
+  window.FCPMDim = { isDim: function () { return dim; }, tally: tally, wake: wake };
   if (document.body) start();
   else document.addEventListener('DOMContentLoaded', start);
 })();
