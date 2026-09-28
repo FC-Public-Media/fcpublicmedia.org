@@ -1,10 +1,13 @@
 Screens at rest: plan for one dim mode on every studio screen
 
-A plan, not code: docs/SCREENS-REST.md. Autumn's brief (2026-09-27), drafted on
-bay 1 with the media node's session asked for its notes.
+A plan, not code: docs/SCREENS-DIM.md. Autumn's brief (2026-09-27), drafted on
+bay 1 with the media node's session, which answered for the door and kiosk-1.
 
-- [x] draft the plan: awake windows from the rota (60 min lead, no tail),
-      one brand/rest/rest.js, 10% over black with brand/idle's three squares
-- [ ] fold in the kiosk session's answers (where it lives, conflicts, the Dells)
-- [ ] Autumn's open questions answered
-- [ ] then split into build PRs (steps at the end of the doc)
+- [x] draft: awake windows (rota, bookings, classes; 60 min lead, no tail, 7 days)
+- [x] media node's answers folded in: brand/idle/dim.js + dim.css inlined by page();
+      windows baked, and in /kiosk/now and /depot/now; the wall pauses its turn
+      while dim; Hold and takeovers hold it awake; first touch swallowed
+- [x] monitors: kiosk-1 never DPMS-sleeps, Dells and the Vizio are DisplayPort;
+      bay 1 sleeps displays after 2 h (Autumn's call)
+- [ ] Autumn's six open questions
+- [ ] then build, in the doc's five steps
