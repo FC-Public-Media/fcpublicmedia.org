@@ -10,21 +10,24 @@ chain of them left the studio network at 100 Mb/s (2026-09-28). An EdgeRouter
 set up as a switch forwards at gigabit on its switch chip and can be asked,
 from a bay, what every port is doing.
 
-Status: drafted 2026-09-28 on editing bay 1. Unit 1 has been reset and read;
-nothing has been applied to any unit yet.
+Status: unit 1 prepared from `switch.cfg` on 2026-09-28 from editing bay 1
+(both phases, confirmed from its link-local address). Units 2 and 3 are reset
+and waiting.
 
 ## The units
 
 | unit | hardware address | serial | firmware | seen |
 |---|---|---|---|---|
-| 1 | `B4:FB:E4:B1:80:28` | B4FBE4B18028 | EdgeOS v2.0.9-hotfix.2 | reset and read 2026-09-28 |
+| 1 | `B4:FB:E4:B1:80:28` | B4FBE4B18028 | EdgeOS v2.0.9-hotfix.2 | prepared 2026-09-28; switch link-local `fe80::b6fb:e4ff:feb1:802d` |
 | 2 | | | | in the bench chain |
 | 3 | | | | in the bench chain; a different print on its underside, same model |
 
-Each unit's IPv6 link-local address comes from its hardware address (flip the
-seventh bit of the first byte, put `ff:fe` in the middle), so unit 1 is
-`fe80::b6fb:e4ff:feb1:8028`. It answers on any network, with or without DHCP,
-which is how a prepared unit is found on a bench.
+A prepared unit answers on the IPv6 link-local address of its switch
+(`switch0`), which answers on any network, with or without DHCP: that is how a
+prepared unit is found on a bench. The switch has its own hardware address, the
+label's plus 5 (unit 1: label `…80:28`, switch `…80:2D`). Flip the seventh bit
+of the first byte and put `ff:fe` in the middle: unit 1's switch is
+`fe80::b6fb:e4ff:feb1:802d`.
 
 ## Factory state, as read from unit 1
 
@@ -47,10 +50,13 @@ It reboots with factory settings in about a minute.
 3. **Phase 1** of `switch.cfg`, plus the password from Credential Manager
    (`fcpm-edgerouter-x:ubnt`), committed and saved. `eth0` is untouched, so
    the unit stays at 192.168.1.1.
-4. Check that it answers on its link-local address.
-5. **Phase 2**, with `commit-confirm`: `eth0` joins the switch and 192.168.1.1
-   goes away. Confirm from the link-local address; if that fails, the unit
-   rolls itself back to phase 1 when the time runs out.
+4. **Phase 2**, with `commit-confirm 5`: `eth0` joins the switch and
+   192.168.1.1 goes away. The preparing bay is on `eth0`, which wasn't in the
+   switch until now, so the switch's link-local address can't be checked before
+   this commit; that is what the confirm is for. Reconnect on the switch's
+   link-local address and `confirm`, then `save`. Unconfirmed, EdgeOS reboots
+   into the saved phase-1 config and 192.168.1.1 comes back.
+5. (renumbered: the link-local check happens inside step 4.)
 6. Read it back: every port in `switch0`, no `eth` addresses, UNMS gone.
 7. Record the unit in the table above.
 
