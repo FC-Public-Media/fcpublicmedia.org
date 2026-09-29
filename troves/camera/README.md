@@ -82,6 +82,11 @@ and says which took. The first four are drafts for Autumn to curate.
   for white balance, tint, ND and ISO, with the ATEM session on station-node),
   and Bluetooth carries the full Blackmagic protocol. A later console could
   choose its route; this one is USB.
+- **Whether the ATEM puts values back.** Blackmagic says a camera under ATEM
+  control has settings changed on the camera reset by the switcher. The ATEM
+  now holds white balance, tint, ND, ISO and shutter angle for Camera 4, sent
+  during the 2026-09-28 tests, so a USB preset may be undone for those. Test it:
+  apply a preset with the camera on the ATEM and read back a minute later.
 - **Four properties still unnamed** (`D007`–`D00A`).
 - **The camera's own device trove**, like `FC-Public-Media/atem-mini-pro`: its
   `instrument.yml` of measured facts.

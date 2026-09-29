@@ -12,3 +12,4 @@ curated presets that sets the camera with one button and checks it.
 - [x] run with the camera unplugged: "not connected", no hang, both pages clean light/dark/phone
 - [ ] followed with the camera attached: a control, a preset, the read-back
 - [ ] record start/stop (makes a clip; needs a yes)
+- [ ] does the ATEM reset values a USB preset sets? (it holds WB, tint, ND, ISO, angle for Camera 4)
