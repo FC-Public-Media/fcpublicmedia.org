@@ -10,9 +10,11 @@ chain of them left the studio network at 100 Mb/s (2026-09-28). An EdgeRouter
 set up as a switch forwards at gigabit on its switch chip and can be asked,
 from a bay, what every port is doing.
 
-Status: units 1 and 2 prepared from `switch.cfg` on 2026-09-28 from editing
-bay 1 (both phases, confirmed from their link-local addresses). Unit 2 was
-prepared through unit 1, with no re-cabling. Unit 3 is reset and waiting.
+Status: all three prepared from `switch.cfg` on 2026-09-28 from editing bay 1
+(both phases, confirmed from their link-local addresses), in a bench chain:
+bay → unit 1 → unit 2 → unit 3. Units 2 and 3 were prepared through the
+units before them, with no re-cabling: each new unit's `eth0` on the previous
+one's `eth4`. They have not joined the studio network yet.
 
 ## The units
 
@@ -20,7 +22,7 @@ prepared through unit 1, with no re-cabling. Unit 3 is reset and waiting.
 |---|---|---|---|---|
 | 1 | `B4:FB:E4:B1:80:28` | B4FBE4B18028 | EdgeOS v2.0.9-hotfix.2 | prepared 2026-09-28; switch link-local `fe80::b6fb:e4ff:feb1:802d` |
 | 2 | `80:2A:A8:5F:52:6F` | 802AA85F526F | EdgeOS v3.0.1 | prepared 2026-09-28; switch link-local `fe80::822a:a8ff:fe5f:5274` |
-| 3 | | | | in the bench chain; a different print on its underside, same model |
+| 3 | `74:83:C2:FC:63:D8` | 7483C2FC63D8 | EdgeOS v2.0.9-hotfix.2 | prepared 2026-09-28; switch link-local `fe80::7683:c2ff:fefc:63dd`. A different print on its underside; its first reset didn't take, a firmer 10 s hold did |
 
 A prepared unit answers on the IPv6 link-local address of its switch
 (`switch0`), which answers on any network, with or without DHCP: that is how a
@@ -67,6 +69,9 @@ Only one unit at a time is on the factory address: they all start at
 192.168.1.1, so prepare them one by one, each alone on the preparing bay's cable.
 
 ## Not yet
+
+- **Joining the studio network.** On it, each switch asks the studio router for
+  a management address; a reservation per hardware address fixes the numbers.
 
 - A script that does steps 3 to 6, once the steps have been followed by hand
   on unit 1.

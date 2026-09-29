@@ -7,6 +7,6 @@ recipe to prepare each unit from a factory reset.
 - [x] unit 1 reset and read (EdgeOS v2.0.9-hotfix.2, factory config)
 - [x] switch.cfg drafted: all ports in switch0, DHCP management, UNMS off
 - [x] login password generated into Credential Manager (fcpm-edgerouter-x:ubnt), not in any file
-- [ ] Autumn approves switch.cfg; phase 1 applied to unit 1; link-local checked
-- [ ] phase 2 with commit-confirm; read back
-- [ ] units 2 and 3
+- [x] Autumn approved switch.cfg; units 1, 2 and 3 prepared (both phases, confirmed by link-local)
+- [x] EdgeOS v3 (unit 2) refuses a password without a symbol: shared password rotated to one with a symbol
+- [ ] the three join the studio network (DHCP; reservations if fixed numbers wanted)
