@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Camera Console</title>
+<style>
+/* Everything the camera reports over USB, grouped as an operator thinks of it; one row per setting. */
+:root {
+  --bg: #f3f4f6; --panel: #ffffff; --ink: #15181c; --muted: #5d6671; --rule: #d8dce1;
+  --accent: #b3261e; --ok: #1d7a44; --ok-bg: #e2f2e8; --bad: #a3321f; --bad-bg: #f7e1dc; --field: #ffffff;
+  --sans: "Segoe UI", system-ui, -apple-system, sans-serif; --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1215; --panel: #171b20; --ink: #e7eaee; --muted: #9aa3ad; --rule: #2a3037;
+  --accent: #ff6b5e; --ok: #6fd197; --ok-bg: #153020; --bad: #f28b78; --bad-bg: #3a1c16; --field: #0f1215; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1215; --panel: #171b20; --ink: #e7eaee; --muted: #9aa3ad; --rule: #2a3037;
+  --accent: #ff6b5e; --ok: #6fd197; --ok-bg: #153020; --bad: #f28b78; --bad-bg: #3a1c16; --field: #0f1215; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 18px; padding-block: 18px 48px; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+h1 { font-size: 1.5rem; margin: 0; }
+h2 { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; padding: 5px 11px; border-radius: 999px; }
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--ok); background: var(--ok-bg); } .pill.bad { color: var(--bad); background: var(--bad-bg); }
+.id { color: var(--muted); font-size: 0.9rem; }
+nav a { color: var(--accent); font-weight: 600; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+section.group { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 9px 0; border-top: 1px solid var(--rule); align-items: center; }
+.row:first-of-type { border-top: 0; }
+.name { font-weight: 600; }
+.name small { display: block; font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+.value { font: 600 1.05rem/1.2 var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.value.changed { color: var(--accent); }
+.ctl { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+select, input { font: inherit; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--field); color: var(--ink); min-width: 0; }
+input[type=number] { width: 9em; }
+button { font: inherit; font-weight: 600; padding: 5px 12px; border-radius: 4px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: 0.5; cursor: default; }
+.ro { color: var(--muted); font-size: 0.82rem; }
+.rec { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.rec button.start { background: var(--accent); color: #fff; border-color: var(--accent); }
+.msg { min-height: 1.4em; font-size: 0.9rem; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+ol.log { list-style: none; margin: 0; padding: 0; font-size: 0.86rem; display: grid; gap: 3px; max-height: 260px; overflow: auto; }
+ol.log time { color: var(--muted); font-family: var(--mono); margin-right: 8px; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Camera Console</h1>
+    <span class="pill bad" id="link" role="status">Looking for the camera</span>
+    <span class="id" id="ident"></span>
+    <nav><a href="/presets">Presets</a></nav>
+  </header>
+
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+
+  <div class="cols" id="groups"></div>
+
+  <section class="group" aria-labelledby="rec-h">
+    <h2 id="rec-h">Recording</h2>
+    <div class="rec">
+      <button type="button" class="start" id="rec-start">Start recording</button>
+      <button type="button" id="rec-stop">Stop recording</button>
+      <span class="ro">Records to the camera's card. Press twice to confirm.</span>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="log-h">
+    <h2 id="log-h">What happened</h2>
+    <ol class="log" id="log"></ol>
+  </section>
+</div>
+
+<script>
+// Groups, in an operator's order. A property the camera lists that isn't
+// named here lands in "Other".
+const GROUPS = [
+  ['Exposure', ['iso', 'shutter', 'shutter_angle', 'nd', 'iris']],
+  ['Colour', ['wb', 'tint']],
+  ['Lens', ['focus', 'focus_distance', 'focal']],
+  ['Format', ['resolution', 'fps', 'd007']],
+  ['Camera', ['battery']],
+];
+// How a person enters each unit: divide the stored number by this.
+const FACTOR = { 'fps x100': 100, 'f/x100': 100, 'deg x100': 100, 'mm x100': 100, 'fixed16': 2048 };
+const $ = (id) => document.getElementById(id);
+let built = false, last = {};
+
+function say(text, ok) { const m = $('msg'); m.textContent = text || ''; m.className = 'msg' + (text ? (ok ? ' ok' : ' bad') : ''); }
+
+async function post(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+function control(p) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ctl';
+  if (!p.writable) { wrap.innerHTML = '<span class="ro">Read only</span>'; return wrap; }
+  let field;
+  if (p.choices) {
+    field = document.createElement('select');
+    for (const c of p.choices) {
+      const o = document.createElement('option'); o.value = JSON.stringify(c.raw); o.textContent = c.shown; field.append(o);
+    }
+  } else {
+    const f = FACTOR[p.unit] || 1;
+    field = document.createElement('input');
+    field.type = 'number';
+    if (p.min !== undefined) { field.min = p.min / f; field.max = p.max / f; field.step = (p.step || 1) / f; }
+  }
+  field.id = 'set-' + p.key;
+  field.setAttribute('aria-label', p.name);
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = 'Set'; b.setAttribute('aria-label', 'Set ' + p.name);
+  b.addEventListener('click', async () => {
+    b.disabled = true;
+    const body = p.choices ? { key: p.key, code: p.code, value: JSON.parse(field.value) }
+                           : { key: p.key, code: p.code, value: field.value, as: 'shown' };
+    try {
+      const r = await post('/set', body);
+      say(r.error ? p.name + ': ' + r.error : p.name + ' set.', !r.error);
+    } catch (e) { say('The console did not answer: ' + e); }
+    b.disabled = false;
+  });
+  wrap.append(field, b);
+  return wrap;
+}
+
+function build(props) {
+  const byKey = Object.fromEntries(props.map(p => [p.key, p]));
+  const groups = GROUPS.map(([title, keys]) => [title, keys.filter(k => byKey[k])]);
+  const other = props.map(p => p.key).filter(k => !GROUPS.some(([, ks]) => ks.includes(k)));
+  if (other.length) groups.push(['Other', other]);
+  const root = $('groups'); root.textContent = '';
+  for (const [title, keys] of groups) {
+    if (!keys.length) continue;
+    const s = document.createElement('section'); s.className = 'group';
+    const h = document.createElement('h2'); h.textContent = title; s.append(h);
+    for (const k of keys) {
+      const p = byKey[k];
+      const row = document.createElement('div'); row.className = 'row';
+      const n = document.createElement('div'); n.className = 'name'; n.textContent = p.name;
+      if (p.note) { const sm = document.createElement('small'); sm.textContent = p.note; n.append(sm); }
+      const v = document.createElement('div'); v.className = 'value'; v.id = 'val-' + k; v.textContent = p.shown ?? '';
+      row.append(n, v, control(p));
+      s.append(row);
+    }
+    root.append(s);
+  }
+  built = true;
+}
+
+function update(state) {
+  const link = $('link');
+  if (state.link.state === 'connected') { link.className = 'pill ok'; link.textContent = 'Camera connected'; }
+  else { link.className = 'pill bad'; link.textContent = 'Camera not connected'; }
+  $('ident').textContent = state.info.model ? state.info.model + ' · firmware ' + state.info.firmware : '';
+  if (state.props.length && !built) build(state.props);
+  for (const p of state.props) {
+    const v = $('val-' + p.key); if (!v) continue;
+    if (v.textContent !== String(p.shown ?? '')) {
+      v.textContent = p.shown ?? '';
+      if (last[p.key] !== undefined) { v.classList.add('changed'); setTimeout(() => v.classList.remove('changed'), 2500); }
+    }
+    last[p.key] = p.shown;
+  }
+  const log = $('log'); log.textContent = '';
+  for (const e of state.events.slice().reverse()) {
+    const li = document.createElement('li');
+    const t = document.createElement('time'); t.textContent = new Date(e.t * 1000).toLocaleTimeString();
+    li.append(t, document.createTextNode(e.text)); log.append(li);
+  }
+}
+
+async function tick() {
+  try { update(await (await fetch('/state')).json()); }
+  catch (e) { $('link').className = 'pill bad'; $('link').textContent = 'Console stopped'; }
+  setTimeout(tick, 1000);
+}
+
+// Recording: a second press within 4 s confirms, so a stray click never starts a clip.
+function twoPress(button, on) {
+  let armed = 0; const label = button.textContent;
+  button.addEventListener('click', async () => {
+    if (Date.now() - armed > 4000) {
+      armed = Date.now(); button.textContent = 'Press again to ' + (on ? 'start' : 'stop');
+      setTimeout(() => { if (Date.now() - armed >= 4000) button.textContent = label; }, 4100);
+      return;
+    }
+    armed = 0; button.textContent = label; button.disabled = true;
+    try { const r = await post('/record', { on }); say(r.error ? 'Recording: ' + r.error : (on ? 'Recording started.' : 'Recording stopped.'), !r.error); }
+    catch (e) { say('The console did not answer: ' + e); }
+    button.disabled = false;
+  });
+}
+twoPress($('rec-start'), true);
+twoPress($('rec-stop'), false);
+tick();
+</script>
+</body>
+</html>

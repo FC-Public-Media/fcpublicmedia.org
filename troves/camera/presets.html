@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Camera Presets</title>
+<style>
+/* One big button per curated preset; a strip of what the camera is set to now; one sentence of result. */
+:root {
+  --bg: #f3f4f6; --panel: #ffffff; --ink: #15181c; --muted: #5d6671; --rule: #d8dce1;
+  --accent: #b3261e; --ok: #1d7a44; --ok-bg: #e2f2e8; --bad: #a3321f; --bad-bg: #f7e1dc;
+  --sans: "Segoe UI", system-ui, -apple-system, sans-serif; --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1215; --panel: #171b20; --ink: #e7eaee; --muted: #9aa3ad; --rule: #2a3037;
+  --accent: #ff6b5e; --ok: #6fd197; --ok-bg: #153020; --bad: #f28b78; --bad-bg: #3a1c16; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1215; --panel: #171b20; --ink: #e7eaee; --muted: #9aa3ad; --rule: #2a3037;
+  --accent: #ff6b5e; --ok: #6fd197; --ok-bg: #153020; --bad: #f28b78; --bad-bg: #3a1c16; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 var(--sans); }
+.wrap { max-width: 900px; margin: 0 auto; padding-inline: 18px; padding-block: 22px 48px; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+h1 { font-size: 1.7rem; margin: 0; }
+.pill { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; padding: 5px 11px; border-radius: 999px; }
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--ok); background: var(--ok-bg); } .pill.bad { color: var(--bad); background: var(--bad-bg); }
+nav { margin-left: auto; font-size: 0.9rem; } nav a { color: var(--muted); }
+.now:empty { display: none; }
+.now { display: flex; flex-wrap: wrap; gap: 8px 22px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 16px; }
+.now div { display: grid; }
+.now dt { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.now dd { margin: 0; font: 600 1.1rem/1.3 var(--mono); font-variant-numeric: tabular-nums; }
+.presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 14px; }
+.preset { text-align: left; display: grid; gap: 6px; align-content: start; padding: 18px; min-height: 150px; border-radius: 8px;
+  border: 2px solid var(--rule); background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; }
+.preset:hover { border-color: var(--muted); }
+.preset:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.preset:disabled { cursor: default; opacity: 0.6; }
+.preset.current { border-color: var(--ok); }
+.preset b { font-size: 1.25rem; }
+.preset span { color: var(--muted); font-size: 0.92rem; }
+.preset small { font: 0.8rem/1.4 var(--mono); color: var(--muted); }
+.result { min-height: 1.5em; font-size: 1.05rem; font-weight: 600; }
+.result.ok { color: var(--ok); } .result.bad { color: var(--bad); }
+.result ul { font-weight: 400; font-size: 0.92rem; margin: 6px 0 0; padding-left: 1.2em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Camera Presets</h1>
+    <span class="pill bad" id="link" role="status">Looking for the camera</span>
+    <nav><a href="/">Console</a></nav>
+  </header>
+
+  <dl class="now" id="now" aria-label="The camera now"></dl>
+
+  <div class="presets" id="presets" role="group" aria-label="Presets"></div>
+
+  <div class="result" id="result" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const SHOW = [['wb', 'White balance'], ['iso', 'ISO'], ['shutter', 'Shutter'], ['nd', 'ND'], ['fps', 'Frame rate']];
+// A preset's settings as they're written in presets.yml, for the small line
+// under each button and for "which one is it on now".
+const WRITE = { wb: (v) => v + ' K', iso: (v) => 'ISO ' + v, shutter: (v) => '1/' + v, nd: (v) => v ? 'ND ' + v : 'no ND',
+                fps: (v) => v + ' fps', tint: (v) => v ? 'tint ' + v : '', resolution: (v) => v };
+let presets = [], raw = {}, busy = false;
+
+function summary(p) {
+  return Object.entries(p.settings || {}).map(([k, v]) => (WRITE[k] || String)(v)).filter(Boolean).join(' · ');
+}
+
+// Is the camera on this preset right now? Compared in stored units.
+const STORE = { fps: 100, nd: 2048 };
+function matches(p) {
+  return Object.entries(p.settings || {}).every(([k, v]) =>
+    raw[k] !== undefined && (k === 'resolution' ? raw[k] === v : raw[k] === Math.round(Number(v) * (STORE[k] || 1))));
+}
+
+async function load() {
+  try {
+    const r = await (await fetch('/presets.json')).json();
+    if (r.error) { $('result').textContent = r.error; $('result').className = 'result bad'; return; }
+    presets = r.presets;
+  } catch (e) { return; }
+  const box = $('presets'); box.textContent = '';
+  for (const p of presets) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'preset'; b.dataset.name = p.name;
+    const t = document.createElement('b'); t.textContent = p.label || p.name;
+    const s = document.createElement('span'); s.textContent = p.says || '';
+    const m = document.createElement('small'); m.textContent = summary(p);
+    b.append(t, s, m);
+    b.addEventListener('click', () => apply(p, b));
+    box.append(b);
+  }
+}
+
+async function apply(p, b) {
+  const all = document.querySelectorAll('.preset'); busy = true; all.forEach(x => x.disabled = true);
+  const res = $('result'); res.className = 'result'; res.textContent = 'Setting "' + (p.label || p.name) + '"…';
+  try {
+    const r = await (await fetch('/preset', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ name: p.name }) })).json();
+    if (r.error) { res.className = 'result bad'; res.textContent = r.error; }
+    else {
+      const bad = r.result.filter(c => !c.ok);
+      if (!bad.length) { res.className = 'result ok'; res.textContent = '"' + (p.label || p.name) + '" is set. All ' + r.result.length + ' settings checked.'; }
+      else {
+        res.className = 'result bad';
+        res.textContent = bad.length + ' of ' + r.result.length + ' settings did not take:';
+        const ul = document.createElement('ul');
+        for (const c of bad) { const li = document.createElement('li'); li.textContent = c.name + ': wanted ' + c.wanted + ', camera has ' + (c.got ?? 'nothing') + (c.error ? ' (' + c.error + ')' : ''); ul.append(li); }
+        res.append(ul);
+      }
+    }
+  } catch (e) { res.className = 'result bad'; res.textContent = 'The console did not answer: ' + e; }
+  busy = false; all.forEach(x => x.disabled = false);
+}
+
+async function tick() {
+  try {
+    const st = await (await fetch('/state')).json();
+    const on = st.link.state === 'connected';
+    $('link').className = 'pill ' + (on ? 'ok' : 'bad');
+    $('link').textContent = on ? 'Camera connected' : 'Camera not connected';
+    raw = Object.fromEntries(st.props.map(p => [p.key, p.raw]));
+    const shown = Object.fromEntries(st.props.map(p => [p.key, p.shown]));
+    const now = $('now'); now.textContent = '';
+    for (const [k, label] of SHOW) {
+      if (shown[k] === undefined) continue;
+      const d = document.createElement('div'); const dt = document.createElement('dt'); const dd = document.createElement('dd');
+      dt.textContent = label; dd.textContent = shown[k]; d.append(dt, dd); now.append(d);
+    }
+    for (const b of document.querySelectorAll('.preset')) {
+      const p = presets.find(x => x.name === b.dataset.name);
+      const cur = on && p && matches(p);
+      b.classList.toggle('current', cur);
+      b.setAttribute('aria-pressed', cur ? 'true' : 'false');
+      b.disabled = !on || busy;
+    }
+  } catch (e) { $('link').className = 'pill bad'; $('link').textContent = 'Console stopped'; }
+  setTimeout(tick, 1000);
+}
+load().then(tick);
+</script>
+</body>
+</html>
