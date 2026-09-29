@@ -20,7 +20,15 @@ recoverable.
 
 ## A2 · A recorded decision about the dormant Azure deploy
 
-`status: draft` · `target: FCPM board / whoever holds the Azure account` · `first said: 2026-09-09`
+`status: ready` · `target: FCPM board / whoever holds the Azure account` · `first said: 2026-09-09`
+
+**Update, 2026-09-29 — the decision now exists; what is left is reconciling.**
+`docs/deploying.md` §"Cloudflare or Azure?" records it with a date and a quotation:
+Cloudflare is live, the Azure argument is retired, "nothing is planned for it".
+That is the recorded decision G2 asks for. Still saying otherwise: `docs/ADVOCATE.md`
+§4 ("this repository deploys twice… nobody has decided which is real"). Marked
+`ready` because it is now one edit's worth of agreement between documents, not a
+question. Whether to delete the Azure workflow is the board's; I do not ask for it.
 
 **Shape:** a person who finds the Azure workflow can tell whether it is waiting
 for a token on purpose or waiting for one by accident, without reading a run log.
@@ -41,7 +49,11 @@ the second path. That is the template. Nobody has yet applied it to Azure.
 
 ## A3 · A note in the repository saying what the Cablecast mirror is and is not
 
-`status: draft` · `target: whoever maintains the sync` · `first said: 2026-09-09`
+`status: open` · `target: whoever maintains the sync` · `first said: 2026-09-09`
+
+**Update, 2026-09-29:** the wording that exists points the other way — the sync's
+docstring says the archive is "still there if Cablecast is down". The catalogue is;
+the media is not. One clause would fix it.
 
 **Shape:** a reader who finds `_data/cablecast.json` and `_data/airings.json` in
 git cannot come away believing the archive is backed up.

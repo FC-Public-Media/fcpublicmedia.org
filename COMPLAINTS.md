@@ -19,7 +19,14 @@ likely.
 
 ## V2 · We would keep the card catalogue and lose the library
 
-`status: draft` · `source: observed` · `first said: 2026-09-09`
+`status: open` · `source: observed` · `first said: 2026-09-09` · `moved: 2026-09-29`
+
+**2026-09-29 — the misreading I predicted is now in the repository's own words.**
+`site/bin/sync-cablecast.py` says the snapshot leaves the archive "still there if
+Cablecast is down", and `docs/MANIFEST.md` calls the page "a searchable archive of
+1,060 programmes". True of the catalogue; neither says the video is not held. The
+mirror itself is alive: sync commits on 2026-09-14 and 2026-09-21 (1080 → 1083 →
+1083 programmes).
 
 `observed`, because it is a fact about the repository rather than a feeling: the
 sync commits Cablecast's *metadata* into git, so the catalogue and the airing log
@@ -33,7 +40,15 @@ categories is a very good thing to have and it is not the archive.
 
 ## V3 · A second front door that nobody has opened yet
 
-`status: draft` · `source: observed` · `first said: 2026-09-09`
+`status: open` · `source: observed` · `first said: 2026-09-09` · `moved: 2026-09-29`
+
+**2026-09-29 — narrowed, not closed.** `docs/deploying.md` now says on a page that
+Azure is retired as an option ("nothing is planned for it"), and the argument for
+it (Entra sign-in, `api/`) was deleted on 2026-09-17. The intent is legible now.
+Still true: `deploy.yml` builds on every pull request and still holds a complete
+deploy step that fires the day someone creates `AZURE_STATIC_WEB_APPS_API_TOKEN`,
+and `docs/ADVOCATE.md` §4 still says nobody has decided which host is real. What is
+left is the narrow worry: a wired deploy step outliving its stated purpose.
 
 The Azure deploy is wired, built on every pull request, and skipped on every
 merge for want of a token. So there is a complete, tested, dormant path to a
@@ -74,7 +89,16 @@ am not speaking for it.
 
 ## V6 · The host stopped deploying and nobody was told — a person had to notice
 
-`status: draft` · `source: observed` · `first said: 2026-09-10`
+`status: open` · `source: observed` · `first said: 2026-09-10` · `moved: 2026-09-29`
+
+**2026-09-29 — better in one respect, worse in another.** The Actions path I called
+an unarmed spare was **removed on 2026-09-17**. `deploying.md` now says Cloudflare's
+git build is the only thing that publishes the site, deliberately ("two ways to
+publish one site is a way to be confused about which one did"). That is the board's
+call and a defensible one, but the spare this complaint described no longer exists:
+if the git connection breaks as it did in September, nothing else can publish.
+Better: `deploying.md` now carries a written diagnosis for two known failures, which
+answers "the fix worked before anyone knew why". Unchanged: nobody is told.
 
 Cloudflare's git-connected builder began reporting this repository as
 *damaged* and stopped deploying. Nothing paged anyone. CI stayed green
@@ -101,5 +125,6 @@ V3, which is the same family of complaint about a different dormant path.
 
 ---
 
-**Nothing closed this session.** Nothing genuinely resolved or went stale —
-V1–V5 are all still true as stated. One new draft, V6.
+**2026-09-29:** nothing closed. V2, V3 and V6 moved `draft` → `open` on evidence
+read this session. V1, V4, V5 stay `draft`; nothing in the range bears on them. No
+new complaint: the range moved the deploy question, which V3 and V6 already hold.
