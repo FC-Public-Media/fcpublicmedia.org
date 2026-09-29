@@ -1,0 +1,67 @@
+# The EdgeRouter X trove
+
+**If you have an EdgeRouter X, this makes it a dumb switch.** Five gigabit
+ports that all reach each other and do nothing else: no routing, no NAT, no
+DHCP server, no cloud. The studio has three, donated, and they are instruments
+like any other: not special, all prepared the same way from `switch.cfg`.
+
+Why: the studio's cheap switches can't say how fast their links are, and a
+chain of them left the studio network at 100 Mb/s (2026-09-28). An EdgeRouter
+set up as a switch forwards at gigabit on its switch chip and can be asked,
+from a bay, what every port is doing.
+
+Status: drafted 2026-09-28 on editing bay 1. Unit 1 has been reset and read;
+nothing has been applied to any unit yet.
+
+## The units
+
+| unit | hardware address | serial | firmware | seen |
+|---|---|---|---|---|
+| 1 | `B4:FB:E4:B1:80:28` | B4FBE4B18028 | EdgeOS v2.0.9-hotfix.2 | reset and read 2026-09-28 |
+| 2 | | | | in the bench chain |
+| 3 | | | | in the bench chain; a different print on its underside, same model |
+
+Each unit's IPv6 link-local address comes from its hardware address (flip the
+seventh bit of the first byte, put `ff:fe` in the middle), so unit 1 is
+`fe80::b6fb:e4ff:feb1:8028`. It answers on any network, with or without DHCP,
+which is how a prepared unit is found on a bench.
+
+## Factory state, as read from unit 1
+
+- `eth0` 192.168.1.1/24, no DHCP server. The login is `ubnt` / `ubnt`.
+- `eth1` asks upstream for an address (DHCP client). `eth2`–`eth4` do nothing.
+- UNMS (Ubiquiti's cloud management) on. SSH on 22, the web page on 80 and 443.
+- `eth4` has passive PoE output, off.
+
+**The reset:** power it on and let it boot for about a minute, then hold the
+reset pinhole about 10 seconds. Ubiquiti's docs say the eth0 light flashes;
+on these units it was **eth4's** light that showed it (Autumn, 2026-09-28).
+It reboots with factory settings in about a minute.
+
+## Preparing a unit
+
+1. Factory reset it (above).
+2. Connect the preparing bay to its `eth0`. The bay's adapter needs a fixed
+   address on the factory network: `192.168.1.2`, mask `255.255.255.0`, no
+   gateway. That change needs an administrator, so it's a person's step.
+3. **Phase 1** of `switch.cfg`, plus the password from Credential Manager
+   (`fcpm-edgerouter-x:ubnt`), committed and saved. `eth0` is untouched, so
+   the unit stays at 192.168.1.1.
+4. Check that it answers on its link-local address.
+5. **Phase 2**, with `commit-confirm`: `eth0` joins the switch and 192.168.1.1
+   goes away. Confirm from the link-local address; if that fails, the unit
+   rolls itself back to phase 1 when the time runs out.
+6. Read it back: every port in `switch0`, no `eth` addresses, UNMS gone.
+7. Record the unit in the table above.
+
+Only one unit at a time is on the factory address: they all start at
+192.168.1.1, so prepare them one by one, each alone on the preparing bay's cable.
+
+## Not yet
+
+- A script that does steps 3 to 6, once the steps have been followed by hand
+  on unit 1.
+- Firmware: all three are on whatever they shipped with. Whether to update is
+  open.
+- Where they go on the studio network, and a DHCP reservation for each on the
+  studio router if fixed addresses are wanted.

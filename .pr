@@ -1,7 +1,12 @@
-dim.js: FCPMDim.wake(), a touch from elsewhere
+The EdgeRouter X trove: three donated routers made dumb switches
 
-For #178: kiosk-1's door reads Windows' last input so a mouse on one panel
-wakes both. It calls FCPMDim.wake() instead of dispatching a synthetic keydown.
+troves/edgerouter-x: one config (switch.cfg) that makes any EdgeRouter X a
+five-port gigabit switch with no routing, NAT, DHCP server or cloud, and the
+recipe to prepare each unit from a factory reset.
 
-- [x] FCPMDim.wake(): the hour restarts and the screen wakes; nothing swallowed
-- [x] checked in Edge on a dim wall: dim -> wake() -> awake, and stays awake
+- [x] unit 1 reset and read (EdgeOS v2.0.9-hotfix.2, factory config)
+- [x] switch.cfg drafted: all ports in switch0, DHCP management, UNMS off
+- [x] login password generated into Credential Manager (fcpm-edgerouter-x:ubnt), not in any file
+- [ ] Autumn approves switch.cfg; phase 1 applied to unit 1; link-local checked
+- [ ] phase 2 with commit-confirm; read back
+- [ ] units 2 and 3
