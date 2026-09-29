@@ -1,15 +1,12 @@
-The camera trove: a console and a presets page for a USB camera
+The EdgeRouter X trove: three donated routers made dumb switches
 
-troves/camera: everything the studio's Pocket 6K Pro reports over USB, a
-control for everything it lets us set, and the first operator page, a page of
-curated presets that sets the camera with one button and checks it.
+troves/edgerouter-x: one config (switch.cfg) that makes any EdgeRouter X a
+five-port gigabit switch with no routing, NAT, DHCP server or cloud, and the
+recipe to prepare each unit from a factory reset.
 
-- [x] ptp.py: PTP over Windows Portable Devices (no driver, no admin)
-- [x] camera.py: one thread owns the camera; console on 127.0.0.1:8790; state/apply/presets verbs
-- [x] console.html: every property, grouped, with a control; record with a two-press confirm
-- [x] presets.html + presets.yml: four draft presets; apply, read back, say what took
-- [x] fcpm camera
-- [x] run with the camera unplugged: "not connected", no hang, both pages clean light/dark/phone
-- [ ] followed with the camera attached: a control, a preset, the read-back
-- [ ] record start/stop (makes a clip; needs a yes)
-- [ ] does the ATEM reset values a USB preset sets? (it holds WB, tint, ND, ISO, angle for Camera 4)
+- [x] unit 1 reset and read (EdgeOS v2.0.9-hotfix.2, factory config)
+- [x] switch.cfg drafted: all ports in switch0, DHCP management, UNMS off
+- [x] login password generated into Credential Manager (fcpm-edgerouter-x:ubnt), not in any file
+- [x] Autumn approved switch.cfg; units 1, 2 and 3 prepared (both phases, confirmed by link-local)
+- [x] EdgeOS v3 (unit 2) refuses a password without a symbol: shared password rotated to one with a symbol
+- [ ] the three join the studio network (DHCP; reservations if fixed numbers wanted)

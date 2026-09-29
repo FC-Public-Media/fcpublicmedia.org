@@ -54,3 +54,4 @@ display stack can say it is there.
 | [`recorder/`](recorder/) | anything that produces files a node catches: capture decks, the RØDECaster | drafting |
 | [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
 | [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
+| [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
