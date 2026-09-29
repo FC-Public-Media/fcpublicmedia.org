@@ -10,16 +10,16 @@ chain of them left the studio network at 100 Mb/s (2026-09-28). An EdgeRouter
 set up as a switch forwards at gigabit on its switch chip and can be asked,
 from a bay, what every port is doing.
 
-Status: unit 1 prepared from `switch.cfg` on 2026-09-28 from editing bay 1
-(both phases, confirmed from its link-local address). Units 2 and 3 are reset
-and waiting.
+Status: units 1 and 2 prepared from `switch.cfg` on 2026-09-28 from editing
+bay 1 (both phases, confirmed from their link-local addresses). Unit 2 was
+prepared through unit 1, with no re-cabling. Unit 3 is reset and waiting.
 
 ## The units
 
 | unit | hardware address | serial | firmware | seen |
 |---|---|---|---|---|
 | 1 | `B4:FB:E4:B1:80:28` | B4FBE4B18028 | EdgeOS v2.0.9-hotfix.2 | prepared 2026-09-28; switch link-local `fe80::b6fb:e4ff:feb1:802d` |
-| 2 | | | | in the bench chain |
+| 2 | `80:2A:A8:5F:52:6F` | 802AA85F526F | EdgeOS v3.0.1 | prepared 2026-09-28; switch link-local `fe80::822a:a8ff:fe5f:5274` |
 | 3 | | | | in the bench chain; a different print on its underside, same model |
 
 A prepared unit answers on the IPv6 link-local address of its switch
@@ -48,7 +48,11 @@ It reboots with factory settings in about a minute.
    address on the factory network: `192.168.1.2`, mask `255.255.255.0`, no
    gateway. That change needs an administrator, so it's a person's step.
 3. **Phase 1** of `switch.cfg`, plus the password from Credential Manager
-   (`fcpm-edgerouter-x:ubnt`), committed and saved. `eth0` is untouched, so
+   (`fcpm-edgerouter-x:ubnt`), committed and saved. **EdgeOS v3 refuses a
+   password without a symbol** ("Password must contain at least one
+   non-alphanumeric character", then "Set failed"); v2 accepts it. The shared
+   password has one since 2026-09-28. Check the reply to the password line,
+   not only the commit. `eth0` is untouched, so
    the unit stays at 192.168.1.1.
 4. **Phase 2**, with `commit-confirm 5`: `eth0` joins the switch and
    192.168.1.1 goes away. The preparing bay is on `eth0`, which wasn't in the
