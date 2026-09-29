@@ -56,9 +56,8 @@ It reboots with factory settings in about a minute.
    this commit; that is what the confirm is for. Reconnect on the switch's
    link-local address and `confirm`, then `save`. Unconfirmed, EdgeOS reboots
    into the saved phase-1 config and 192.168.1.1 comes back.
-5. (renumbered: the link-local check happens inside step 4.)
-6. Read it back: every port in `switch0`, no `eth` addresses, UNMS gone.
-7. Record the unit in the table above.
+5. Read it back: every port in `switch0`, no `eth` addresses, UNMS gone.
+6. Record the unit in the table above.
 
 Only one unit at a time is on the factory address: they all start at
 192.168.1.1, so prepare them one by one, each alone on the preparing bay's cable.
