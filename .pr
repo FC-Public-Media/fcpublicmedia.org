@@ -1,7 +1,14 @@
-dim.js: FCPMDim.wake(), a touch from elsewhere
+The camera trove: a console and a presets page for a USB camera
 
-For #178: kiosk-1's door reads Windows' last input so a mouse on one panel
-wakes both. It calls FCPMDim.wake() instead of dispatching a synthetic keydown.
+troves/camera: everything the studio's Pocket 6K Pro reports over USB, a
+control for everything it lets us set, and the first operator page, a page of
+curated presets that sets the camera with one button and checks it.
 
-- [x] FCPMDim.wake(): the hour restarts and the screen wakes; nothing swallowed
-- [x] checked in Edge on a dim wall: dim -> wake() -> awake, and stays awake
+- [x] ptp.py: PTP over Windows Portable Devices (no driver, no admin)
+- [x] camera.py: one thread owns the camera; console on 127.0.0.1:8790; state/apply/presets verbs
+- [x] console.html: every property, grouped, with a control; record with a two-press confirm
+- [x] presets.html + presets.yml: four draft presets; apply, read back, say what took
+- [x] fcpm camera
+- [x] run with the camera unplugged: "not connected", no hang, both pages clean light/dark/phone
+- [ ] followed with the camera attached: a control, a preset, the read-back
+- [ ] record start/stop (makes a clip; needs a yes)
