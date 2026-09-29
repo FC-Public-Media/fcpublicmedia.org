@@ -1,21 +1,24 @@
-# The council — fcpublicmedia.org
+# The council
 
 **Where every seat stands, as of the last round.** Rewritten whole each time: this page is a
 position, not a log. Each seat's own history is its branch, which is the receipt.
 
-Generated 2026-09-19 by `.advocate-engine/bin/digest.mjs`. Do not edit it — edit the seat.
+Generated 2026-09-29 by `.advocate-engine/bin/digest.mjs`. Do not edit it — edit the seat.
 
 | seat | last spoke | sessions | draft | ready | state |
 | --- | --- | --- | --- | --- | --- |
 | [`payments`](payments.md) | 2026-09-19 | 10 | 5 | 0 | up to date |
 | [`credentials`](credentials.md) | 2026-09-19 | 11 | 9 | 0 | up to date |
-| [`vendors`](vendors.md) | 2026-09-18 | 7 | 10 | 0 | up to date |
+| [`vendors`](vendors.md) | 2026-09-29 | 8 | 5 | 1 | up to date |
 | [`truthfulness`](truthfulness.md) | 2026-09-19 | 10 | 12 | 0 | up to date |
+| [`node`](node.md) | 2026-09-29 | 1 | 6 | 0 | up to date |
 
 ## Asking to graduate
 
-Nothing is `ready`. That is a normal reading and not a stall — `draft` is where thinking is
-supposed to sit until it ripens, and a seat is not owed a promotion for having run.
+A human at triage decides where each of these goes, marks it `promoted → <where>`, and the
+seat stops holding it. Nothing on this page is a decision.
+
+- **vendors** · A2 · A recorded decision about the dormant Azure deploy  <sub>ASKS.md</sub>
 
 ## What a seat is
 
