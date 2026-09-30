@@ -27,8 +27,9 @@ browser is touched and nothing is kept between starts.
 - Our browser is the one whose command line carries our profile folder. It is
   closed by asking its windows, then by its process ids. Never by name: every
   Edge on this machine is msedge.exe, and the others are people's.
-- Nothing here runs for long. The pool's task runs `keep` every five minutes,
-  and a person's `off` holds until their `on`.
+- Nothing here runs for long. The pool's task runs `keep -By pool` every
+  minute, and a person's `off` holds until their `on`. Each pass leaves a
+  heartbeat, and `status` reports when the pool last ran it, not a promise.
 
 Windows PowerShell 5.1, no modules. ASCII only.
 #>
@@ -36,7 +37,10 @@ param(
     [Parameter(Position = 0)] [ValidateSet('status', 'keep', 'off', 'on', 'reset', 'class', 'wall')]
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Instrument = 'roller-tv',
-    [string] $Node = 'editing-bay-1'
+    [string] $Node = 'editing-bay-1',
+    # Who is running this pass. The pool says `-By pool`; anything else is a
+    # person, or a session acting for one.
+    [ValidateSet('pool', 'hand')] [string] $By = 'hand'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
@@ -54,6 +58,11 @@ $OffFile = Join-Path $Root 'off'
 $PageFile = Join-Path $Root 'page'   # 'class' or 'class light' while class mode is asked for
 $Said    = Join-Path $Root 'said'
 $Log     = Join-Path $Root 'screen.log'
+# The heartbeat: when a pass last ran, one file per who ran it. `status` reads
+# these rather than promising. For a week in September it said "every pool
+# pass" while the pool running on EDIT2 had no screens step at all.
+$Beat    = @{ pool = (Join-Path $Root 'kept-pool'); hand = (Join-Path $Root 'kept-hand') }
+$Fresh   = 180   # seconds. The pool runs every minute: three missed passes is not kept
 $Edge    = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 
 function Say([string]$m) { Write-Output $m }
@@ -265,7 +274,32 @@ function Launch($mon, [string]$url) {
     Start-Process -FilePath $Edge -ArgumentList $a | Out-Null
 }
 
+function Beat {
+    New-Item -ItemType Directory -Force $Root | Out-Null
+    [IO.File]::WriteAllText($Beat[$By], (Get-Date).ToString('o'))
+}
+function LastBeat([string]$who) {
+    if (-not (Test-Path $Beat[$who])) { return $null }
+    try { return [datetime]::Parse((Get-Content $Beat[$who] -Raw).Trim(), $null, 'RoundtripKind') } catch { return $null }
+}
+function Ago([datetime]$t) {
+    $s = [int]((Get-Date) - $t).TotalSeconds
+    if ($s -lt 120) { return "$s s ago" }
+    if ($s -lt 7200) { return "$([int]($s / 60)) min ago" }
+    return $t.ToString('yyyy-MM-dd HH:mm')
+}
+function Kept {
+    # What `status` says about keeping, from the heartbeats.
+    if (Test-Path $OffFile) { return 'off (fcpm screen on)' }
+    $pool = LastBeat 'pool'; $hand = LastBeat 'hand'
+    if ($pool -and ((Get-Date) - $pool).TotalSeconds -le $Fresh) { return "yes, by the pool, $(Ago $pool)" }
+    $pooled = if ($pool) { "the pool last kept it $(Ago $pool)" } else { 'the pool has never kept it' }
+    $byhand = if ($hand) { "; by hand $(Ago $hand)" } else { '' }
+    return "NO - $pooled$byhand. Run fcpm to see whether the pool on this machine is out of date"
+}
+
 function Keep([bool]$force) {
+    Beat
     $m = Match; $mon = Find $m; $ours = Ours
     if (Test-Path $OffFile) {
         if ($ours.pids.Count) { Close $ours; LogLine 'off: closed our browser' }
@@ -302,7 +336,7 @@ switch ($Verb) {
         Say ("screen   {0}" -f $(if ($mon) { "{0} at {1},{2} {3}x{4}" -f $mon.device, $mon.x, $mon.y, $mon.w, $mon.ht } else { "no $($m['product']) attached" }))
         $file, $query, $what = Page
         Say ("page     {0}" -f $what)
-        Say ("kept     {0}" -f $(if (Test-Path $OffFile) { 'off (fcpm screen on)' } else { 'yes, every pool pass' }))
+        Say ("kept     {0}" -f (Kept))
         Say ("browser  {0}" -f $(if (-not $ours.pids.Count) { 'not running' } elseif (Placed $ours $mon) { 'fullscreen on it' } else { 'running, not on it' }))
         if ($ours.url) { Say "showing  $($ours.url)" }
         if (Test-Path $Log) { Say '--'; Get-Content $Log -Tail 5 -Encoding UTF8 }
