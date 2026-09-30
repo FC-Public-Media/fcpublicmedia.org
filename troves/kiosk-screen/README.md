@@ -10,7 +10,7 @@ Status: on the roller since 2026-09-27, from a local render.
 ## What it does
 
 `screen.ps1 keep <instrument>` makes one pass, and bay 1's pool task runs it
-every minute as `keep -By pool` (`machines/editing-bay-1/code/bin/pool.ps1`, `pass`). Nothing
+every minute as the pool (`machines/editing-bay-1/code/bin/pool.ps1`, `pass`, with `FCPM_BY=pool`). Nothing
 runs between passes except Edge itself.
 
 1. **Find the screen.** Ask Windows for the monitor whose EDID product code is

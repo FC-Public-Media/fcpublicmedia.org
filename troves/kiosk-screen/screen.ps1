@@ -27,9 +27,9 @@ browser is touched and nothing is kept between starts.
 - Our browser is the one whose command line carries our profile folder. It is
   closed by asking its windows, then by its process ids. Never by name: every
   Edge on this machine is msedge.exe, and the others are people's.
-- Nothing here runs for long. The pool's task runs `keep -By pool` every
-  minute, and a person's `off` holds until their `on`. Each pass leaves a
-  heartbeat, and `status` reports when the pool last ran it, not a promise.
+- Nothing here runs for long. The pool's task runs `keep` every minute, with
+  FCPM_BY=pool, and a person's `off` holds until their `on`. Each pass leaves
+  a heartbeat, and `status` reports when the pool last ran it, not a promise.
 
 Windows PowerShell 5.1, no modules. ASCII only.
 #>
@@ -38,9 +38,11 @@ param(
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Instrument = 'roller-tv',
     [string] $Node = 'editing-bay-1',
-    # Who is running this pass. The pool says `-By pool`; anything else is a
-    # person, or a session acting for one.
-    [ValidateSet('pool', 'hand')] [string] $By = 'hand'
+    # Who is running this pass: the pool, or a person (or a session acting
+    # for one). The pool says so with FCPM_BY=pool in the environment, not
+    # with this flag, so a pool newer than this file's copy in the mirror
+    # still keeps the screen instead of failing on an unknown parameter.
+    [ValidateSet('pool', 'hand')] [string] $By = $(if ($env:FCPM_BY -eq 'pool') { 'pool' } else { 'hand' })
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2

@@ -152,7 +152,11 @@ function Screens {
     $s = Join-Path $Root "refs\fcpublicmedia.org\troves\kiosk-screen\screen.ps1"
     if (-not (Test-Path $s)) { return }
     $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-    & $ps -NoProfile -ExecutionPolicy Bypass -File $s keep roller-tv -By pool 2>&1 | Out-Null
+    # FCPM_BY, not -By: the mirror's copy may predate the flag, and must still
+    # keep the screen (screen.ps1's param block).
+    $env:FCPM_BY = 'pool'
+    try { & $ps -NoProfile -ExecutionPolicy Bypass -File $s keep roller-tv 2>&1 | Out-Null }
+    finally { Remove-Item Env:FCPM_BY -ErrorAction SilentlyContinue }
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
