@@ -152,7 +152,7 @@ function Screens {
     $s = Join-Path $Root "refs\fcpublicmedia.org\troves\kiosk-screen\screen.ps1"
     if (-not (Test-Path $s)) { return }
     $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-    & $ps -NoProfile -ExecutionPolicy Bypass -File $s keep roller-tv 2>&1 | Out-Null
+    & $ps -NoProfile -ExecutionPolicy Bypass -File $s keep roller-tv -By pool 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
@@ -195,13 +195,13 @@ switch ($Verb) {
             -Argument ("--headless `"{0}`" -NoProfile -ExecutionPolicy Bypass -File `"{1}`" pass" -f $ps, $PSCommandPath)
         $me = "$env:USERDOMAIN\$env:USERNAME"
         $atLogon = New-ScheduledTaskTrigger -AtLogOn -User $me
-        $every = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
+        $every = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
         $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
             -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew
         $who = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
         Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($atLogon, $every) -Settings $set `
             -Principal $who -Description "Editing bay 1's Claude sessions: revive after a logon, keep the root reachable, snapshot. bin\pool.ps1 in $Root." -Force | Out-Null
-        Write-Output "registered '$TaskName': at logon, and every 5 minutes"
+        Write-Output "registered '$TaskName': at logon, and every minute"
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }
     "status" {
