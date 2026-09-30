@@ -124,7 +124,7 @@ until it runs something that has to be rebased under it.
 - `bin/refs pull` and `bin/refs status` keep the mirrors current.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1
-  pool` at logon and every 5 minutes, with no window. Each pass snapshots
+  pool` at logon and every minute, with no window. Each pass snapshots
   what `claude agents --json` lists.
   - On the first pass after a logon, it revives every session from the
     snapshot under its own id, in the background with Remote Control, like
@@ -141,9 +141,14 @@ until it runs something that has to be rebased under it.
   - Each pass also keeps the rolling TV's page up
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
     with a profile of its own. It uses the depot's copy when the depot
-    answers, and a local render otherwise. `fcpm screen` shows it, and
-    `fcpm screen off|on` holds it off or lets it back, and `fcpm screen class|wall` switches between class mode and the wall. That Edge is the only
-    thing left running between passes.
+    answers, and a local render otherwise. `fcpm screen` shows it,
+    `fcpm screen off|on` holds it off or lets it back, and
+    `fcpm screen class|wall` switches between class mode and the wall.
+    That Edge is the only thing left running between passes.
+  - `fcpm screen`'s `kept` line says when the pool last kept the screen,
+    from a heartbeat. If it says NO, the pool running here is out of date:
+    a change to `code/bin/pool.ps1` does nothing until `fcpm install`, and
+    a change to the task's timing needs `fcpm pool install` as well.
 - Peers over Remote Control: `kiosk` (media-node) and `digitization`
   (station-node). They appear in the session list only while this session has
   Remote Control on.
