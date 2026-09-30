@@ -7,10 +7,10 @@ Generated 2026-09-30 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 
 | seat | last spoke | sessions | draft | ready | state |
 | --- | --- | --- | --- | --- | --- |
-| [`payments`](payments.md) | 2026-09-19 | 10 | 5 | 0 | up to date |
+| [`payments`](payments.md) | 2026-09-30 | 11 | 7 | 0 | up to date |
 | [`credentials`](credentials.md) | 2026-09-30 | 12 | 8 | 0 | up to date |
 | [`vendors`](vendors.md) | 2026-09-29 | 8 | 5 | 1 | up to date |
-| [`truthfulness`](truthfulness.md) | 2026-09-19 | 10 | 12 | 0 | up to date |
+| [`truthfulness`](truthfulness.md) | 2026-09-30 | 11 | 13 | 0 | up to date |
 | [`node`](node.md) | 2026-09-29 | 1 | 6 | 0 | up to date |
 
 ## Asking to graduate

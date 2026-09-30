@@ -1,6 +1,6 @@
 # Seat · truthfulness
 
-`advocate/truthfulness` · last spoke **2026-09-19** · 10 session(s) · 12 draft · 0 ready
+`advocate/truthfulness` · last spoke **2026-09-30** · 11 session(s) · 13 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -9,98 +9,55 @@ overwritten every round.</sub>
 
 ### Truthfulness — position
 
-**As of 2026-09-10.** Second session. Range: `2d9fdd5..e63fc7b`, ten merged
-pull requests, 2026-09-09.
+**As of 2026-09-30.** Range `e63fc7b..919a413`: 51 first-parent commits,
+2026-09-09 → 2026-09-24. Almost all of it is structure (member sites, the
+factory build, machine profiles, the node, deploy, DNS) and is not mine.
 
 I speak for the member who reads the site, believes it, and turns up.
 
 ## The one sentence
 
-**The reserve page now asks a member to agree to a document that does not
-exist, and the people who wrote the sentence said so in writing before it
-shipped.**
+**Nothing I reported on 2026-09-10 has been fixed, and the site is being
+readied to become the public one.**
 
-PR #56 put *"Any User of FC Public Media equipment must agree to FC Public
-Media's Equipment Terms and Conditions"* on `reserve.md`. No such page or PDF
-exists anywhere in this repository. This is not something I found that the
-maintainers missed — `REVIEW-NOTES.md`, merged in the same range, already
-calls it *"the one that should not sit,"* and `CONTENT-TODO.md` marks it
-**BLOCKING**. The gap here is not attention. It is that the sentence went
-live in the same commit that flagged it as not ready to.
-
-Full account in `COMPLAINTS.md` T7.
-
-## What moved, against my goals
-
-Ten PRs merged. Most of what's in them is outside my constituency entirely —
-deploy pipeline (#59, #62), Ruby toolchain (#57), test speed (#61), the
-payments checklist and KV bootstrap (#60, #63) are the payments seat's
-concern, not mine. Two touched what I watch:
-
-- **#56 (bryans-wording)** — the board president's copy review landing on
-  `index.html`, `reserve.md`, `_data/community.yml`, `_data/org.yml`. This is
-  where T7 came from. It also added a real events calendar (`community.yml`
-  `events:`, still `[]` — nobody has entered anything yet) and a verbatim
-  mission statement, neither of which asserts anything stale or false.
-- **#58 (bryans-meet-and-learn-notes)** — added `office_hours` and `photo` to
-  `_data/board.yml` and rendered them on `/meet/`. The roster itself is still
-  `[]`; nothing here changes G1 or G2. One thing outside every seat, flagged
-  and not claimed: the new `person.photo` render in `meet.md` hardcodes
-  `alt=""` on what would be a photograph of a named, identifiable board
-  member, with none of the guard `classes.md`'s own photo field has (alt
-  required whenever src is set). Nobody holds accessibility as a seat. I am
-  raising a hand, not opening a complaint.
+The range touched none of the four files I watch — I read their current state
+rather than the diff, and each is as I left it (see the table). What changed
+is the stakes: `docs/OPEN.md` records that the DNS switch from Wix was aimed
+at the weekend after 2026-09-24. **I cannot tell from this checkout whether
+that has happened** — measured on 2026-09-24 the public host was still Wix.
+If it has, every finding below is now what a member reads; if not, it is what
+they will read the day it does.
 
 ## Goals
 
 | | says | today |
 | --- | --- | --- |
-| **G1** | No page asserts a date, a price or an availability that is out of date. | **Not met, and worse by one.** The two stale findings from last session are unchanged: `governance.yml`'s meeting schedule is still `""` while `meetings.open: true`, and both classes in `classes.yml` are a day further into the past (30 and 15 days now) than they were at last count. New this session: `reserve.md` now asserts an obligation — an agreement a member must make — that has no referent at all. That is a different failure mode than "stale": it was never true, not even on the day it shipped. |
-| **G2** | Every internal link resolves, including anchors, and `REDIRECTS.md` reports nothing unaccounted for. | **Unchanged.** `REDIRECTS.md` still reports one unaccounted address, `/equipment`. The link-and-anchor half stays `unmeasured` — nothing in this range added a link check, and T7 is not a broken link at all (it's deliberately unlinked prose), so even a link checker built tomorrow would not have caught it. |
+| **G1** | No page asserts a date, a price or an availability that is out of date. | **Not met, and older.** Both classes in `_data/classes.yml` are past — 50 and 35 days (Aug 11, Aug 26). `governance.yml` still says meetings are open with `schedule: ""`. `reserve.md` still asks a member to agree to Equipment Terms and Conditions that do not exist (`CONTENT-TODO.md` still marks it BLOCKING). The "a class is on" surfaces render empty. `OPEN.md` names the class finding as *still unverified*; it is verified, and true. |
+| **G2** | Every internal link resolves, including anchors, and `REDIRECTS.md` reports nothing unaccounted for. | **Redirect half: unchanged, one address** — `/equipment`, `REDIRECTS.md:103`. **And newly qualified:** `OPEN.md` states `REDIRECTS.md` records where addresses *will* go, not where they go now, and that the one automated publish check skips `_redirects`. So the report can read clean while every legacy link is dead. **Link-and-anchor half: `unmeasured`** — still no link walk anywhere. |
 
-## T1–T6, checked against this range
+## What moved that my constituency would notice
 
-None closed. I looked before adding T7, as the method asks:
+Two things, both from the maintainers' own candour in `docs/OPEN.md`, not
+from a content change:
 
-- `_data/governance.yml` is byte-identical to the last session's baseline —
-  T1 stands.
-- The two class dates in `_data/classes.yml` are untouched — T2 stands, one
-  day worse.
-- `classmode.js`'s TODO guard is untouched — T4 stands, same shape.
-- `REDIRECTS.md` still names `/equipment` unaccounted for — T5 stands.
-- No link-checking machinery appeared in this range — T6 stands.
-- T3 (no page signals its own freshness) is the general form of T2 and has
-  no single line to check; it stands by inheritance.
-
-## Something worth recording about how this range was built
-
-Last session's note was that the site kept handling things honestly before I
-had to say so. This range is the opposite instance of the same discipline,
-and it is worth being precise about which: **the maintainers' own review
-caught this exact problem, on the record, before I did — and shipped it
-anyway.** That is not dishonesty. `REVIEW-NOTES.md` is unusually candid about
-its own gaps; nothing here was hidden. But a defect that is named in the same
-commit that ships it is a different thing from a defect nobody has looked at,
-and my seat exists for the member reading the page today, who cannot see
-`REVIEW-NOTES.md` and has only the sentence on `reserve.md` to go on. The
-gap between "we know" and "it's fixed" is exactly the gap this seat watches,
-regardless of how well-documented the gap is on the inside.
+- **The check-in promise is untrue on a shared browser.** `/check-in/` and the
+  kiosk say *"your visits stay on your phone."* OPEN.md records that on any
+  machine more than one person uses, the form prefills the previous visitor's
+  name and email. The kiosk sidesteps it (QR only); a staffer helping someone
+  at the desk machine does not. New draft T8.
+- **The redirect check has a blind spot with a date on it** — folded into T5,
+  not a new complaint.
 
 ## What would make us stop
 
-Unchanged from last session in kind, widened by one instance: a member reads
-a promise on this site — a meeting they can attend, a class that's on, a
-form they can agree to — and acts on it or is stopped by it, and in each
-case the promise was not true when they read it. They don't file a bug. They
-conclude something about FC Public Media that isn't warranted, and the site
-is what told them so.
+Unchanged: a member acts on a promise this site made — a meeting, a class, a
+form to agree to, a privacy assurance — and it was not true when they read
+it. They do not file a bug; they conclude something about FC Public Media.
 
 ## Next session
 
-Monthly. **Due 2026-10-09.** I will re-check `_data/classes.yml` for a
-future date, `_data/governance.yml`'s schedule field, and whether T7 has a
-document to point to — that last one is the cheapest and most urgent of the
-three, since the site's own maintainers already ranked it first.
+Monthly, due 2026-10-28. First thing: whether the cutover happened, which
+decides whether "will read" becomes "reads". Then the same four files.
 
 ## Complaints
 
@@ -214,6 +171,22 @@ actually runs. I am not opening a separate complaint for it; it is the same
 shape — copy that now promises something nobody has verified is true — and it
 travelled here in the same sentence.
 
+## T8 · It said my visits stay on my phone, and I was at the desk computer
+
+`status: draft` · `source: observed` · `first said: 2026-09-30`
+
+`/check-in/` and the kiosk both promise *"your visits stay on your phone."*
+`docs/OPEN.md` (2026-09-23) records that on any browser more than one person
+uses, `checkin.js` keeps name, reason, note and email in `localStorage` and
+prefills them for the next visitor. The realistic case is a staffer opening the
+page on the desk machine to help someone who is stuck.
+
+As with T7, I did not find this — the maintainers wrote it down, with a check
+to reproduce it. The kiosk avoids it by design (QR only). What the member
+cannot know is that the promise holds on their phone and not on the machine at
+the desk. Draft: whether shared-machine use should be designed for at all is
+explicitly undecided upstream, and I do not hold a view.
+
 ## T6 · Nothing here checks that our own links work
 
 `status: draft` · `source: simulated` · `first said: 2026-09-09`
@@ -231,6 +204,17 @@ Kept as a complaint rather than an ask because I have not decided what the right
 shape is, and the honest state of my thinking is "there is a hole here."
 
 ---
+
+**2026-09-30:** Checked T1–T7 against current state (I could not diff the
+range; I read the files). None closed. T1: `governance.yml` schedule still `""`.
+T2: classes now 50 and 35 days past; `OPEN.md` calls this unverified, it is
+verified. T4: `dropin` still `TODO` in `classes.yml`, guard not re-read. T5:
+`/equipment` still unaccounted (`REDIRECTS.md:103`) — **widened:** `OPEN.md`
+says that report records where addresses *will* go and that the publish check
+skips `_redirects`, so a clean report would not mean the links work. T6: still
+no link check. T7: sentence still in `reserve.md`; `CONTENT-TODO.md` still
+BLOCKING. The cutover was aimed at the weekend after 09-24; all of the above
+may now be public-facing, and I cannot tell. T8 opened.
 
 **2026-09-10:** Checked T1–T6 against the range. None closed — `governance.yml`
 is byte-identical, the two classes are a day further into the past, the TODO
@@ -285,6 +269,11 @@ mechanism for saying "we chose this" exists and is used. `/equipment` just has
 not been through it. Either answer closes my goal; I have no view on which is
 right.
 
+*2026-09-30:* `OPEN.md` now says the redirect report describes intent, not
+live behaviour, and that nobody owns the one post-cutover check. A clean
+report therefore would not fully close G2's redirect half; someone has to hit
+a real legacy URL once after any change of publisher. Same shape, stated once.
+
 ## A5 · A way to know, before copy ships, that what it names exists
 
 `status: draft` · `target: whoever reviews content before merge` · `first said: 2026-09-10`
@@ -321,9 +310,43 @@ cover test design, and the constitution is explicit that an advocate reading the
 existing automation and following it beats inventing a parallel one. There may
 already be a route to this through `script/` that I have not found.
 
-## Last session note — 2026-09-19
+## Last session note — 2026-09-30
 
-### 2026-09-19
+### 2026-09-30
 
-Subject unchanged at `e63fc7b`. Nothing merged since the last session; nothing to say.
+**Range:** `e63fc7b..919a413` — 51 first-parent commits, 2026-09-09 → 2026-09-24.
+Replaces an earlier one-line "subject unchanged" note for today, which was wrong:
+the range was not empty.
+
+**Read:** the work order and method; the seat; `docs/ADVOCATE.md` §5 (the
+standard — unchanged text); `docs/OPEN.md`; current `governance.yml`,
+`classes.yml`, `community.yml`, `reserve.md`, `REDIRECTS.md`, `kiosk/content.yml`.
+I could not run `git log`/`diff` against the subject checkout from here, so I
+judged the four watched files by **current state**, not by diff. That answers
+"is it still true," which is my question, but not "when did it change."
+
+**What changed in my files:** POSITION rewritten. T1–T7 checked, none closed,
+T5 widened, T8 opened (draft). A1–A5 carried; A3 gains a note. No new asks.
+
+**Tally:** 8 complaints, 5 asks — all `draft`. Nothing ripened; nothing closed.
+T7 is the one closest to `open` and I have not moved it: it needs the board's
+answer, not more evidence from me.
+
+**Did not say:**
+- Whether the DNS cutover happened. Unmeasured. I will not guess from a
+  document written six days ago.
+- Anything about member sites, the factory build, machine profiles, the node,
+  Cloudflare build posture, pins. Not my constituency's felt experience.
+- What the class dates, meeting schedule, or terms document should be. Out of
+  scope; the board's.
+- A proposal for a shared-browser fix (T8). `OPEN.md` already says it is
+  Autumn's call.
+
+**Outside every seat (hand raised, not claimed):** `docs/OPEN.md` says the
+`truthfulness` seat "does not run" and that its own finding sat unactioned.
+The 09-17..19 quiet notes were correct for a subject pinned at `e63fc7b`; the
+pin simply did not move until this round, so that was the cadence, not an error.
+The finding sat for three weeks because the pin did.
+
+**Next:** whether cutover happened; the same four files.
 
