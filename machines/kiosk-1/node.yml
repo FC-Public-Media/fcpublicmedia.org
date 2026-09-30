@@ -113,6 +113,16 @@ m365:
 # remote, so their files are listed. A share the router offers that is not
 # named here still appears, beneath its group's rows, in the group whose
 # `match` prefix fits its name, or else in the first group.
+# THE DROPBOX QUEUE: TO DROPBOX goes up to Dropbox and is then removed from
+# the depot, an eviction, not a sync (door.py, "the Dropbox queue"). Off until
+# `to` is set and the app is linked (door.py dropbox link). app_key is the
+# app's public key from the Dropbox App Console: not a secret. The refresh
+# token is in Credential Manager, never here.
+dropbox:
+  app_key: ""                # from the App Console, once the app exists
+  to: ""                     # the folder staff already use (Autumn, 2026-09-29): which one, to be named
+  share: TO DROPBOX
+
 # THE HELO, the studio's AJA H.264 recorder. The door keeps its clock (it
 # forgets the time with the power); see door.py, "the HELO's clock". By its
 # mDNS name, since the router hands out its address.

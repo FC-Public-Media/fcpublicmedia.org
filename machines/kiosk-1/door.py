@@ -7,6 +7,7 @@
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
     door.py sessions [pin|--revive]  the Claude sessions that come back after a sign-in
+    door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
     door.py                    is the door up
 
 Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
@@ -2062,6 +2063,7 @@ def supervise():
     threading.Thread(target=raise_screens, daemon=True).start()
     threading.Thread(target=keep_sessions, daemon=True).start()
     threading.Thread(target=keep_helo_clock, daemon=True).start()
+    threading.Thread(target=keep_dropbox, daemon=True).start()
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
         if code == BOUNCE and pathlib.Path(__file__).read_bytes() != me:
@@ -2750,6 +2752,243 @@ def keep_helo_clock():
         time.sleep(60)
 
 
+# ------------------------------------------------------------------- dropbox --
+# THE DROPBOX QUEUE: TO DROPBOX is a hand-off out. Whatever lands there goes up
+# to Dropbox, at the same path under one folder (the one staff already use),
+# and is then removed from the depot. Nothing is kept here: it is an eviction,
+# not a sync (Autumn, 2026-09-29). No desktop client: this box has no
+# administrator, and a sync client keeps copies. The door talks to Dropbox's
+# API instead, as an app Autumn approved once (door.py dropbox link), holding
+# only a refresh token, in Credential Manager.
+#
+# A file goes only when it has stopped changing (the same size and mtime two
+# passes running, and two minutes old), and it is removed only when Dropbox
+# says it holds the same bytes: its content_hash matches ours. A file already
+# there with other content is left alone and logged. Mac leftovers are
+# skipped. Names are kept as they are: no rules of ours.
+DROPBOX_API, DROPBOX_CONTENT = "https://api.dropboxapi.com", "https://content.dropboxapi.com"
+DROPBOX_SECRET = "fcpm-dropbox:refresh"
+DROPBOX_CHUNK = 8 * 1024 * 1024
+DROPBOX_JUNK = re.compile(r"^(\..*|Thumbs\.db|desktop\.ini)$", re.I)
+_dropbox = {"token": None, "until": 0, "seen": {}}
+
+
+def dropbox_cfg():
+    return node().get("dropbox") or {}
+
+
+def dropbox_hash(path):
+    """Dropbox's content_hash: SHA-256 of each 4 MB block, then SHA-256 of
+    those digests together."""
+    import hashlib
+    outer = hashlib.sha256()
+    with open(path, "rb") as fh:
+        while True:
+            block = fh.read(4 * 1024 * 1024)
+            if not block:
+                break
+            outer.update(hashlib.sha256(block).digest())
+    return outer.hexdigest()
+
+
+def dropbox_post(url, body=None, arg=None, data=None, token=True, form=None):
+    """One call. JSON in (body) or bytes in (data, with arg in the header);
+    JSON out, or (status, error JSON) on a 409."""
+    import urllib.request, urllib.parse, urllib.error
+    headers = {}
+    if token:
+        headers["Authorization"] = "Bearer " + dropbox_token()
+    if form is not None:
+        payload = urllib.parse.urlencode(form).encode()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    elif data is not None:
+        payload = data
+        headers["Content-Type"] = "application/octet-stream"
+        headers["Dropbox-API-Arg"] = json.dumps(arg)          # ASCII-escaped, as the header needs
+    elif body is not None:
+        payload = json.dumps(body).encode()
+        headers["Content-Type"] = "application/json"
+    else:
+        payload = None
+    req = urllib.request.Request(url, data=payload if payload is not None else b"", headers=headers, method="POST")
+    if payload is None:
+        req.data = None
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            raw = r.read()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as err:
+        if err.code == 409:
+            return {"error_409": json.loads(err.read() or b"{}")}
+        raise RuntimeError("dropbox %s: %s %s" % (url.rsplit("/", 2)[-2:], err.code, err.read()[:200]))
+
+
+def dropbox_token():
+    """A short-lived access token, from the refresh token in Credential Manager."""
+    if _dropbox["token"] and time.time() < _dropbox["until"] - 60:
+        return _dropbox["token"]
+    refresh, key = secret(DROPBOX_SECRET), dropbox_cfg().get("app_key")
+    if not (refresh and key):
+        raise RuntimeError("not linked: run door.py dropbox link")
+    d = dropbox_post(DROPBOX_API + "/oauth2/token", token=False,
+                     form={"grant_type": "refresh_token", "refresh_token": refresh, "client_id": key})
+    _dropbox.update(token=d["access_token"], until=time.time() + int(d.get("expires_in", 3600)))
+    return _dropbox["token"]
+
+
+def dropbox_meta(path):
+    d = dropbox_post(DROPBOX_API + "/2/files/get_metadata", {"path": path})
+    return None if "error_409" in d else d
+
+
+def dropbox_upload(local, remote):
+    """Upload whole, or in 8 MB pieces past 150 MB. Returns Dropbox's metadata,
+    or {"error_409": ...} when something else is already at that path."""
+    size = os.path.getsize(local)
+    commit = {"path": remote, "mode": "add", "autorename": False, "mute": True}
+    with open(local, "rb") as fh:
+        if size <= 150 * 1024 * 1024:
+            return dropbox_post(DROPBOX_CONTENT + "/2/files/upload", arg=commit, data=fh.read())
+        sid = dropbox_post(DROPBOX_CONTENT + "/2/files/upload_session/start", arg={"close": False},
+                           data=fh.read(DROPBOX_CHUNK))["session_id"]
+        while True:
+            offset = fh.tell()
+            chunk = fh.read(DROPBOX_CHUNK)
+            cursor = {"session_id": sid, "offset": offset}
+            if fh.tell() >= size:
+                return dropbox_post(DROPBOX_CONTENT + "/2/files/upload_session/finish",
+                                    arg={"cursor": cursor, "commit": commit}, data=chunk)
+            dropbox_post(DROPBOX_CONTENT + "/2/files/upload_session/append_v2",
+                         arg={"cursor": cursor, "close": False}, data=chunk)
+
+
+def dropbox_queue_root():
+    server = (node().get("depot") or {}).get("server")
+    share = dropbox_cfg().get("share", "TO DROPBOX")
+    return pathlib.Path(share_root(server, share)) if server else None
+
+
+def dropbox_waiting(root):
+    """Files in the queue, skipping Mac leftovers and hidden folders."""
+    for dirpath, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if not DROPBOX_JUNK.match(d)]
+        for n in names:
+            if not DROPBOX_JUNK.match(n):
+                yield pathlib.Path(dirpath) / n
+
+
+def dropbox_pass(dry=False, say=log):
+    """One look at the queue: send what has settled, remove what Dropbox holds."""
+    cfg, root = dropbox_cfg(), dropbox_queue_root()
+    to = (cfg.get("to") or "").rstrip("/")
+    if not (to and root):
+        return
+    now, seen, sent = time.time(), _dropbox["seen"], 0
+    for f in list(dropbox_waiting(root)):
+        try:
+            st = f.stat()
+        except OSError:
+            continue
+        mark = (st.st_size, st.st_mtime)
+        settled = seen.get(str(f)) == mark and now - st.st_mtime > 120
+        seen[str(f)] = mark
+        if not settled:
+            continue
+        rel = f.relative_to(root).as_posix()
+        remote = to + "/" + rel
+        ours = dropbox_hash(f)
+        if dry:
+            say("dropbox: would send %s (%d bytes) -> %s" % (rel, st.st_size, remote))
+            continue
+        there = dropbox_meta(remote)
+        if there is None:
+            there = dropbox_upload(f, remote)
+            if "error_409" in there:
+                say("dropbox: %s is already taken in Dropbox; leaving %s" % (remote, rel))
+                continue
+        if there.get("content_hash") != ours:
+            say("dropbox: %s in Dropbox is not these bytes; leaving %s" % (remote, rel))
+            continue
+        os.remove(f)
+        seen.pop(str(f), None)
+        parent = f.parent
+        while parent != root:
+            try:
+                parent.rmdir()                           # only if empty
+            except OSError:
+                break
+            parent = parent.parent
+        sent += 1
+        say("dropbox: sent %s (%d bytes) -> %s; removed from %s" % (rel, st.st_size, remote, root.name))
+    return sent
+
+
+def keep_dropbox():
+    said = None
+    while True:
+        try:
+            if dropbox_cfg().get("to") and secret(DROPBOX_SECRET):
+                dropbox_pass()
+                said = None
+        except Exception as exc:
+            note = "dropbox: %s" % exc
+            if note != said:
+                log(note)
+            said = note
+        time.sleep(60)
+
+
+DROPBOX_PENDING = STATE / "dropbox-link.json"
+
+
+def dropbox(argv):
+    """door.py dropbox link           print the link to approve the app (once)
+    door.py dropbox link <code>    finish: trade the code Dropbox shows for a refresh token
+    door.py dropbox status         who it is signed in as, and whether the folder is there
+    door.py dropbox pass [--dry]   look at the queue once, now"""
+    import base64 as b64, hashlib, secrets, urllib.parse
+    key = dropbox_cfg().get("app_key")
+    if argv[:1] == ["link"] and len(argv) == 1:
+        if not key:
+            print("no app_key in node.yml's dropbox block yet")
+            return 2
+        verifier = b64.urlsafe_b64encode(secrets.token_bytes(48)).decode().rstrip("=")
+        challenge = b64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+        STATE.mkdir(parents=True, exist_ok=True)
+        DROPBOX_PENDING.write_text(json.dumps({"verifier": verifier}), encoding="utf-8")
+        print("Open this, approve, then run: door.py dropbox link <the code it shows>\n")
+        print("https://www.dropbox.com/oauth2/authorize?" + urllib.parse.urlencode({
+            "client_id": key, "response_type": "code", "token_access_type": "offline",
+            "code_challenge": challenge, "code_challenge_method": "S256"}))
+        return 0
+    if argv[:1] == ["link"] and len(argv) == 2:
+        try:
+            verifier = json.loads(DROPBOX_PENDING.read_text(encoding="utf-8"))["verifier"]
+        except (OSError, ValueError, KeyError):
+            print("run door.py dropbox link first")
+            return 2
+        d = dropbox_post(DROPBOX_API + "/oauth2/token", token=False, form={
+            "grant_type": "authorization_code", "code": argv[1].strip(), "client_id": key,
+            "code_verifier": verifier})
+        set_secret(DROPBOX_SECRET, "dropbox", d["refresh_token"])
+        DROPBOX_PENDING.unlink()
+        print("linked; the refresh token is in Credential Manager as %s" % DROPBOX_SECRET)
+        return 0
+    if argv[:1] == ["status"]:
+        me = dropbox_post(DROPBOX_API + "/2/users/get_current_account")
+        print("signed in as  %s" % me.get("email"))
+        to = dropbox_cfg().get("to")
+        print("lands in      %s  (%s)" % (to or "(not set)", "there" if to and dropbox_meta(to) else "not found"))
+        print("queue         %s" % dropbox_queue_root())
+        return 0
+    if argv[:1] == ["pass"]:
+        dropbox_pass(dry="--dry" in argv, say=print)
+        dropbox_pass(dry="--dry" in argv, say=print)      # a file must look the same twice
+        return 0
+    print(dropbox.__doc__)
+    return 2
+
+
 # ------------------------------------------------------------------- startup --
 TASK = "media-node door"
 VENV_PYTHONW = STATE / "venv" / "Scripts" / "pythonw.exe"
@@ -2878,6 +3117,8 @@ if __name__ == "__main__":
         sys.exit(startup(sys.argv[2:]))
     if verb == "sessions":
         sys.exit(sessions(sys.argv[2:]))
+    if verb == "dropbox":
+        sys.exit(dropbox(sys.argv[2:]))
     if verb == "wifi-password" and len(sys.argv) > 2:
         sys.exit(wifi_password(sys.argv[2]))
     sys.exit({"serve": serve, "supervise": supervise, "status": status}.get(verb, status)())
