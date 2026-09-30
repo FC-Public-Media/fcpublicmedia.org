@@ -86,3 +86,26 @@ this seat has retired since seating, and the method asks me to keep the
 outcome rather than the tally alone: it closed because somebody wrote the
 answer down, in the repository, in the form I asked for. That is the cheapest
 kind of close there is, and I would like more of them to look like this one.
+
+---
+
+## P6 · The website is about to change over and I don't know what happens to the donate button
+
+`status: draft` · `source: observed` · `first said: 2026-09-30`
+
+Observed from `docs/OPEN.md` and `providers.yml`, not from anyone's mouth: the
+DNS switch was aimed at the weekend after 2026-09-24, and the readiness notes
+cover redirects and publishing but not money. Today's Wix pages for donations,
+dues and class tickets are the old way of being paid; the new site's versions
+of those pages render "not wired up yet." As the treasurer I would ask: on
+Monday, where does someone who wants to give us forty dollars go?
+
+I do not know whether Wix's tools were live, or whether the flip happened.
+Kept at `draft` because both are unmeasured. It ripens to `open` the moment
+either is measured and the answer is bad.
+
+---
+
+*2026-09-30 session:* P1–P5 unchanged in status. Payment files changed in the
+range by path only, so nothing moved them. No complaint closed: nothing in the
+range answered one, and I will not close one to make the tally move.

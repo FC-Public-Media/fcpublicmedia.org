@@ -61,3 +61,18 @@ the generator stops refusing.
 Explicitly **not** my decision and I will not suggest a figure. My out-of-scope
 says so and it is right: a plausible guess at a price is worse than a blank,
 because a blank is obviously unfinished and a guess is not.
+
+## A5 · Someone who knows whether the old money paths survive the flip
+
+`status: draft` · `target: whoever runs the cutover / FCPM board` · `first said: 2026-09-30`
+
+**Shape:** whoever decides the day `www` moves can say, before it moves,
+whether the Wix donation, dues and ticket tools keep working, are deliberately
+turned off, or are already dead — and a visitor who lands on `/donate/` that
+day is handed somewhere real or told plainly.
+
+Not a request to pick a provider or build anything; that is the board's and out
+of this seat. It is a request for a recorded answer, like A2 was.
+*Candidate advisory:* a moving external deadline is what the method says may
+warrant an issue. I have not posted one (outside this session's reach) and
+leave that to a human.
