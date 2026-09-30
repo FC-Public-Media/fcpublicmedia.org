@@ -108,6 +108,22 @@ actually runs. I am not opening a separate complaint for it; it is the same
 shape — copy that now promises something nobody has verified is true — and it
 travelled here in the same sentence.
 
+## T8 · It said my visits stay on my phone, and I was at the desk computer
+
+`status: draft` · `source: observed` · `first said: 2026-09-30`
+
+`/check-in/` and the kiosk both promise *"your visits stay on your phone."*
+`docs/OPEN.md` (2026-09-23) records that on any browser more than one person
+uses, `checkin.js` keeps name, reason, note and email in `localStorage` and
+prefills them for the next visitor. The realistic case is a staffer opening the
+page on the desk machine to help someone who is stuck.
+
+As with T7, I did not find this — the maintainers wrote it down, with a check
+to reproduce it. The kiosk avoids it by design (QR only). What the member
+cannot know is that the promise holds on their phone and not on the machine at
+the desk. Draft: whether shared-machine use should be designed for at all is
+explicitly undecided upstream, and I do not hold a view.
+
 ## T6 · Nothing here checks that our own links work
 
 `status: draft` · `source: simulated` · `first said: 2026-09-09`
@@ -125,6 +141,17 @@ Kept as a complaint rather than an ask because I have not decided what the right
 shape is, and the honest state of my thinking is "there is a hole here."
 
 ---
+
+**2026-09-30:** Checked T1–T7 against current state (I could not diff the
+range; I read the files). None closed. T1: `governance.yml` schedule still `""`.
+T2: classes now 50 and 35 days past; `OPEN.md` calls this unverified, it is
+verified. T4: `dropin` still `TODO` in `classes.yml`, guard not re-read. T5:
+`/equipment` still unaccounted (`REDIRECTS.md:103`) — **widened:** `OPEN.md`
+says that report records where addresses *will* go and that the publish check
+skips `_redirects`, so a clean report would not mean the links work. T6: still
+no link check. T7: sentence still in `reserve.md`; `CONTENT-TODO.md` still
+BLOCKING. The cutover was aimed at the weekend after 09-24; all of the above
+may now be public-facing, and I cannot tell. T8 opened.
 
 **2026-09-10:** Checked T1–T6 against the range. None closed — `governance.yml`
 is byte-identical, the two classes are a day further into the past, the TODO

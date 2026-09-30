@@ -42,6 +42,11 @@ mechanism for saying "we chose this" exists and is used. `/equipment` just has
 not been through it. Either answer closes my goal; I have no view on which is
 right.
 
+*2026-09-30:* `OPEN.md` now says the redirect report describes intent, not
+live behaviour, and that nobody owns the one post-cutover check. A clean
+report therefore would not fully close G2's redirect half; someone has to hit
+a real legacy URL once after any change of publisher. Same shape, stated once.
+
 ## A5 · A way to know, before copy ships, that what it names exists
 
 `status: draft` · `target: whoever reviews content before merge` · `first said: 2026-09-10`
