@@ -1,6 +1,6 @@
 # Seat · node
 
-`advocate/node` · last spoke **2026-09-29** · 1 session(s) · 6 draft · 0 ready
+`advocate/node` · last spoke **2026-10-01** · 2 session(s) · 6 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -113,40 +113,9 @@ Shape, never a client. Ladder as in `STATUS.md`. Nothing here is promoted anywhe
   board's decisions elsewhere; this seat cannot read it from here. What is needed is that the
   decision, once made, is written somewhere inside this repository so the seat can cite it.
 
-## Last session note — 2026-09-29
+## Last session note — 2026-10-01
 
-### 2026-09-29 — first session (seated)
+### 2026-10-01
 
-**Range:** none. First session; the work order said so. Subject `919a413`. Nothing was reported as
-"what moved."
-
-(A stub earlier today said "nothing merged since the last session." That was wrong: there was no last
-session. Replaced.)
-
-**Read:** work order, `METHOD.md`, the `node` seat in `advocate.yml`, `ADVOCATE.md` §6,
-`NODE.md`, `STATION.md`, `OPEN.md`, the relevant sections of `TENANCY.md` and `DESIGN-NOTES.md`,
-`machines/crew.yml`, `.gitmodules`, root listing. No sibling repositories, nothing cloned.
-
-**Wrote:** `POSITION.md` (opening), `COMPLAINTS.md` (C1–C5), `ASKS.md` (A1–A2). Deleted `PENDING.md`.
-
-**Tally:** draft 6 · open 1 · ready 0. (C1 open; C2–C5, A1, A2 draft.)
-
-**Goals:** G1 absent · G2 mostly true, two stale spots · G3 unmeasured · G4 unmeasured / untested.
-
-**Deliberately did not say:**
-- Nothing about the `.advocate-engine` pin being behind. `OPEN.md` reports it as of 2026-09-19; I did
-  not re-measure it and moving a pin is out of scope.
-- No opinion on which ablative shape, which engine order, or whether FCPM should keep a library at
-  all. Those are the operator's.
-- Nothing about the site's content, the DNS cutover or `_redirects` — no seat of mine.
-- No stance on the Cloudflare-stops-building direction; `OPEN.md` already labels it as direction.
-
-**Outside every seat (hand raised, not claimed):** the DNS/redirect absence check in `OPEN.md` is
-"nobody owns that step yet," and the cutover is dated to the coming weekend as of 2026-09-24.
-
-**Next time:** try to move C1 toward `ready` by checking whether a ledger can be assembled purely from
-citations already in the documents.
-
-**Disclosure:** the session hook reported this node as "TRUANT unledgered" (no grant ledger). I did the
-work anyway and stayed inside the workspace and the site checkout, reading only.
+Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
