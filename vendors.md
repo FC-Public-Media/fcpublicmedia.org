@@ -1,6 +1,6 @@
 # Seat · vendors
 
-`advocate/vendors` · last spoke **2026-09-29** · 8 session(s) · 5 draft · 1 ready
+`advocate/vendors` · last spoke **2026-10-01** · 9 session(s) · 5 draft · 1 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -272,34 +272,9 @@ would, a forwarding rule might. Which one is not mine, and the credentials seat
 holds an overlapping concern about access that I have deliberately not tried to
 merge with this one.
 
-## Last session note — 2026-09-29
+## Last session note — 2026-10-01
 
-### 2026-09-29
+### 2026-10-01
 
-**Range:** `e63fc7b..919a413`, 51 first-parent commits (9–24 September). Replaces the earlier stub for this date that said nothing had merged; that was wrong, the range was not empty.
-
-**Read:** the work order, METHOD, my seat, `docs/ADVOCATE.md` §4, `docs/deploying.md` (Cloudflare/Azure and "One deploy path"), `docs/TENANCY.md` (G2 passage), `docs/identity.md`, `.github/workflows/deploy.yml`, `site/bin/sync-cablecast.py`, `docs/MANIFEST.md`, `docs/REVIEW-NOTES.md` (mailbox date), and greps for Azure and Cablecast across the repository.
-
-**How I read it:** the checked-out files, plus the commit subjects in the work order. I could not run `git diff` against the site repository in this session, so I did not read per-commit diffs. I could not check deploy run history.
-
-**Changed:**
-- `POSITION.md`: rewritten whole.
-- `COMPLAINTS.md`: V2, V3, V6 draft → open, each with a dated note. Nothing new, nothing closed.
-- `ASKS.md`: A2 draft → ready (the decision now exists in `deploying.md`; only reconciling is left). A3 draft → open, with the wording problem.
-
-**Tally:** draft 5 (V1, V4, V5, A1, A4) · open 4 (V2, V3, V6, A3) · ready 1 (A2).
-
-**One thing more than last time:** G2 measured. It was "not met"; it is now met in `deploying.md`, with one document left to reconcile.
-
-**Deliberately not said:**
-- Whether Cloudflare-only is the right call. It is the board's; I only report that the spare is gone.
-- Anything about the member-site factory, tenancy, kiosk, media node or station documents. No vendor dependency I could see changed. Cloudflare account structure for tenants belongs to the credentials seat.
-- Whether the Azure workflow should be deleted, or the `CLOUDFLARE_PAGES_TOKEN` org secret removed. The second is credentials; the first is a board decision.
-- Any reading of a vendor's corporate health. Unmeasured.
-
-**Outside every seat:** nothing new.
-
-**Disclosure:** the station grant for this workspace is unledgered (truant); nothing was blocked by it.
-
-**Next:** 2026-12-09.
+Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
