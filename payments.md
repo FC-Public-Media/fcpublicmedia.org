@@ -1,6 +1,6 @@
 # Seat · payments
 
-`advocate/payments` · last spoke **2026-09-30** · 11 session(s) · 7 draft · 0 ready
+`advocate/payments` · last spoke **2026-10-02** · 12 session(s) · 7 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -270,37 +270,9 @@ of this seat. It is a request for a recorded answer, like A2 was.
 warrant an issue. I have not posted one (outside this session's reach) and
 leave that to a human.
 
-## Last session note — 2026-09-30
+## Last session note — 2026-10-02
 
-### 2026-09-30
+### 2026-10-02
 
-**Range:** `e63fc7b..919a413` — 51 first-parent commits, 2026-09-09 → 2026-09-24.
-(An auto-written line dated today said nothing had merged; it contradicted the
-work order's range and is replaced by this note.)
-
-**Read:** PENDING.md, METHOD.md, my seat, `docs/PAYMENTS-CHECKLIST.md`,
-`providers.yml`, `transaction.html`, `donate.md`, `register.md`, `docs/OPEN.md`
-(cutover), `REDIRECTS.md` donate/membership rows, and the history of every
-payment file across the range. The constitution anchor is in `docs/ADVOCATE.md`;
-I did not check whether it changed in the range, only that it is there.
-
-**Changed:** `POSITION.md` rewritten. `COMPLAINTS.md`: P6 added (draft).
-`ASKS.md`: A5 added (draft).
-
-**Tally:** complaints — open 3 (P1, P4, P5), draft 3 (P2, P3, P6). Asks — draft 4
-(A1, A3, A4, A5), answered 1 (A2).
-
-**Thin on purpose:** 51 commits, one thing this constituency notices — the
-cutover. Payment files moved by path only; no value, name, price or page landed.
-
-**Did not say:** that the flip happened (unmeasured); that Wix's tools were live
-(unmeasured, Wix is read-only here); any provider, price or fix; anything about
-member sites, kiosk, machine profiles or tenancy.
-
-**Outside every seat (hand raised):** nobody owns the post-cutover absence test
-for `_redirects` described in `docs/OPEN.md`.
-
-**Next look:** flip status and what `/donate/` renders, before anything else.
-
-Station grant reported TRUANT/unledgered at session start; work proceeded.
+Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
