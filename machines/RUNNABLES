@@ -45,9 +45,9 @@ machines/kiosk-1/door.py        | python     | screens --launch     | outside | 
 machines/kiosk-1/door.py        | python     | startup              | read    | what starts the door at logon, and does it point here
 machines/kiosk-1/door.py        | python     | startup --xml        | read    | the logon task this checkout implies, to stdout
 machines/kiosk-1/door.py        | python     | startup --install    | desk    | register that task, and retire the Startup shortcut
-machines/kiosk-1/door.py        | python     | sessions             | read    | the Claude sessions that come back after a sign-in
-machines/kiosk-1/door.py        | python     | sessions pin *       | outside | always or never bring a session back
-machines/kiosk-1/door.py        | python     | sessions --revive    | outside | start the snapshot's sessions now
+machines/kiosk-1/door.py        | python     | sessions             | read    | the one session this node keeps, and what else runs
+machines/kiosk-1/door.py        | python     | sessions off         | outside | stop starting the kept session
+machines/kiosk-1/door.py        | python     | sessions on          | outside | keep it again, from the next pass
 machines/kiosk-1/door.py        | python     | serve                | service | become the door, on [::]:8080. The logon task's
 machines/kiosk-1/door.py        | python     | supervise            | service | run serve, restart it, pull. The logon task's
 machines/kiosk-1/door.py        | python     | wifi-password *      | secret  | prints a saved network's key

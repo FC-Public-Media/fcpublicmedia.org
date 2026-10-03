@@ -170,18 +170,32 @@ instance per panel with a profile folder of its own under
 `%LOCALAPPDATA%\media-node\screens\`. The door opens any missing panel when
 it starts, and `door.py screens --launch` does the same by hand.
 
-The Claude sessions come back the same way (2026-09-25, after a power flicker
-took three). Every pass, `supervise` writes down what `claude agents --json`
-lists as running, into `%LOCALAPPDATA%\media-node\sessions.json`, so no
-session ids go in the repo. At its first start after a sign-in, it resumes each
-one that isn't running with `claude --bg --resume`: same id, same history, and
-Remote Control on, so they're reachable from a phone as before. They come back
-in the background: `claude attach <id>` opens one in a terminal. A supervise
-restart in the middle of a day revives nothing, so a session closed on purpose
-stays closed. It times from the sign-in, not the boot: Fast Startup is on
-here, so after Shut down the uptime carries on while every session is gone. `door.py sessions` shows the list. `door.py sessions pin in|out
-<id>` always or never brings one back, and `door.py sessions --revive` does it
-now. Station-node turned its own revival off, because a revived session could
+One Claude session comes back the same way, and only one. Every pass,
+`supervise` makes sure a background session named `startup` is running, rooted
+at `~/code` with Remote Control on, so the node is reachable from a phone
+whether or not anybody is at this desk. `door.py sessions` says whether it is
+up and prints its id, which `claude attach <id>` opens in a terminal (the name
+is for finding it; attach takes the id). `door.py sessions
+off|on` stops and resumes the node starting it; a session already running is
+never stopped by either.
+
+Every pass also writes down what `claude agents --json` lists, into
+`%LOCALAPPDATA%\media-node\sessions.json`, so no session ids go in the repo.
+That snapshot is a record and nothing else: `door.py sessions` prints it, and
+nothing is resumed from it. It is stamped against the sign-in rather than the
+boot, because Fast Startup is on here and after Shut down the uptime carries
+on while every session is gone — so a snapshot older than the sign-in is
+labelled as listing sessions that no longer exist.
+
+**Why only one** (2026-10-03). Until then the node resumed every session in
+the snapshot, once, at the first pass after a sign-in. It restored the desktop
+after a power cut (2026-09-25, after a flicker took three), but only then:
+three sessions revived on 10-01 died later in that same sign-in, revival had
+already fired, and the five-minute snapshot recorded them gone, so the ids
+were out of the book before anybody looked. The node sat with nothing running
+for two days. Resuming N of somebody else's sessions is a promise this node
+cannot keep; one seat it starts itself, every pass, is one it can. Station-node
+turned its own revival off for a different reason — a revived session could
 take a grant meant for a new one. This node has no grants, so that doesn't
 apply here yet.
 
