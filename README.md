@@ -11,7 +11,7 @@ Generated 2026-10-03 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | [`credentials`](credentials.md) | 2026-10-03 | 14 | 8 | 0 | up to date |
 | [`vendors`](vendors.md) | 2026-10-01 | 9 | 5 | 1 | up to date |
 | [`truthfulness`](truthfulness.md) | 2026-10-03 | 12 | 13 | 0 | up to date |
-| [`node`](node.md) | 2026-10-01 | 2 | 6 | 0 | up to date |
+| [`node`](node.md) | 2026-10-03 | 3 | 6 | 0 | up to date |
 
 ## Asking to graduate
 
