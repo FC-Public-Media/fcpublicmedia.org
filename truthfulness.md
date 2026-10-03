@@ -1,6 +1,6 @@
 # Seat · truthfulness
 
-`advocate/truthfulness` · last spoke **2026-09-30** · 11 session(s) · 13 draft · 0 ready
+`advocate/truthfulness` · last spoke **2026-10-03** · 12 session(s) · 13 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -310,43 +310,9 @@ cover test design, and the constitution is explicit that an advocate reading the
 existing automation and following it beats inventing a parallel one. There may
 already be a route to this through `script/` that I have not found.
 
-## Last session note — 2026-09-30
+## Last session note — 2026-10-03
 
-### 2026-09-30
+### 2026-10-03
 
-**Range:** `e63fc7b..919a413` — 51 first-parent commits, 2026-09-09 → 2026-09-24.
-Replaces an earlier one-line "subject unchanged" note for today, which was wrong:
-the range was not empty.
-
-**Read:** the work order and method; the seat; `docs/ADVOCATE.md` §5 (the
-standard — unchanged text); `docs/OPEN.md`; current `governance.yml`,
-`classes.yml`, `community.yml`, `reserve.md`, `REDIRECTS.md`, `kiosk/content.yml`.
-I could not run `git log`/`diff` against the subject checkout from here, so I
-judged the four watched files by **current state**, not by diff. That answers
-"is it still true," which is my question, but not "when did it change."
-
-**What changed in my files:** POSITION rewritten. T1–T7 checked, none closed,
-T5 widened, T8 opened (draft). A1–A5 carried; A3 gains a note. No new asks.
-
-**Tally:** 8 complaints, 5 asks — all `draft`. Nothing ripened; nothing closed.
-T7 is the one closest to `open` and I have not moved it: it needs the board's
-answer, not more evidence from me.
-
-**Did not say:**
-- Whether the DNS cutover happened. Unmeasured. I will not guess from a
-  document written six days ago.
-- Anything about member sites, the factory build, machine profiles, the node,
-  Cloudflare build posture, pins. Not my constituency's felt experience.
-- What the class dates, meeting schedule, or terms document should be. Out of
-  scope; the board's.
-- A proposal for a shared-browser fix (T8). `OPEN.md` already says it is
-  Autumn's call.
-
-**Outside every seat (hand raised, not claimed):** `docs/OPEN.md` says the
-`truthfulness` seat "does not run" and that its own finding sat unactioned.
-The 09-17..19 quiet notes were correct for a subject pinned at `e63fc7b`; the
-pin simply did not move until this round, so that was the cadence, not an error.
-The finding sat for three weeks because the pin did.
-
-**Next:** whether cutover happened; the same four files.
+Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
