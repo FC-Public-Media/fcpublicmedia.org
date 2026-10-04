@@ -1,6 +1,6 @@
 # Seat · credentials
 
-`advocate/credentials` · last spoke **2026-10-03** · 14 session(s) · 8 draft · 0 ready
+`advocate/credentials` · last spoke **2026-10-04** · 15 session(s) · 8 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -245,9 +245,9 @@ reader can tell "unused and gone" from "unused and still live."
 
 Instance: `CLOUDFLARE_PAGES_TOKEN`; see C6. Not specified who acts or how.
 
-## Last session note — 2026-10-03
+## Last session note — 2026-10-04
 
-### 2026-10-03
+### 2026-10-04
 
 Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
