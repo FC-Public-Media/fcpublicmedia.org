@@ -304,14 +304,14 @@ rest:
 6. Whether the root's Remote Control server is up, how the screen is, and
    when the last weekly pull ran.
 
-Then a menu of only the choices that apply, with Enter for nothing:
+Then a menu of only the choices that apply. Enter picks the first; `q` quits:
 
 | Choice | What happens |
 |---|---|
 | **Make my working copy** | `work/fcpublicmedia.org@<called>`, on a branch of that name: the people's one place to edit on this machine. `fcpm install` makes it, so this shows only if something removed it |
-| **Bring in the latest** | pulls every mirror and brings the working copy up to `main`, then offers the install. It never installs on its own |
+| **Bring in the latest** | pulls every mirror and brings the working copy up to `main`, then asks to install, and Enter means yes |
 | **Send my changes up** | adds everything, asks "what did you change?", commits, catches up with `main`, pushes the `<called>` branch, and opens a pull request for Autumn to merge. A later send joins the open request, or opens a new one once that has merged |
-| **Put the profile back on** | `fcpm install` |
+| **Install the updates on this computer** | `fcpm install`, in full |
 
 If someone's edits and the latest change the same lines, it stops and says
 so. Nothing is lost.
@@ -330,58 +330,6 @@ happens without a call for help.
 
 **Upstream is GitHub for now.** Station-node keeps an origin on the LAN, and
 these machines will pull from it once they can reach it.
-
-### `fcpm` on its own: the watcher (planned, not built)
-
-Autumn, 2026-10-05. Somebody finds `fcpm`, wonders what it does, and types
-those four letters. Something useful happens: it shows them the whole picture,
-and doesn't take over. There are no arguments to learn.
-
-It is the watcher, not the control room. Station-node's 8080 page can do
-everything; this can do one thing, getting changes in and out. Everything
-else it shows, and at most offers.
-
-**What it shows**, one line each, `ok` or what is wrong:
-
-1. Which machine this is, by the name Autumn uses (*production*, *kiosk*),
-   and the profile it wears.
-2. GitHub is ready: `gh` is signed in.
-3. There is an upstream: the machine's working copy has a remote it can pull
-   from and push to, and is so many changes behind it.
-4. Edits are lying around: files changed in the working copy, by name.
-5. The machine differs from its profile (`sync` status).
-6. What should be awake is awake: the root's Remote Control server
-   (`fcpm pool`), and the screens (`fcpm screen`).
-
-**Then a tiny menu**, of only the choices that apply:
-
-    1  Bring in the latest          (pull)
-    2  Send my changes up           (all of them, with a message you write)
-    3  Put the profile back on      (fcpm install)
-    Enter  nothing
-
-"Send my changes up" is a `git add -A`, a commit with the person's message,
-and a push. They never need to know git is involved. Pulling is the reason to
-run it, so after a pull it offers the install rather than running it.
-
-**Weekly, by itself.** A scheduled task does the pull once a week, so the
-studio is in a known state when people come in, and something that blocked
-somebody gets fixed without a call for help. It never sends changes up.
-
-**Upstream is GitHub for now.** Station-node keeps an origin on the LAN, and
-these machines will pull from it once they can reach it. Until then, GitHub.
-
-**To decide before it is built:**
-
-- **The people's working copy.** `refs/` is read-only and `work/` holds one
-  worktree per branch, so people don't have one yet. Proposed: one per
-  machine, `~/code/work/fcpublicmedia.org@production` (or `@kiosk`), on a
-  branch of that name.
-- **Where "send" lands.** Straight on `main`, or on the machine's branch with
-  a pull request Autumn merges. Proposed: the branch and pull request, opened
-  for them if there isn't one.
-- **The weekly task:** pull only, or pull and install. Also which day and
-  hour.
 
 ## What a machine is called, and how its sessions arrive
 
@@ -402,20 +350,20 @@ an administrator's Windows change. In conversation, use *production* and
 
 **How a session arrives is how it starts** (Autumn, 2026-10-05). At sign-in a
 machine brings its root up as a Remote Control *server* at `~/code`:
-`claude remote-control --name <root>`, with no session pre-created. Every
-session then starts from zero at claude.ai or on the phone, and the server
-names it `<root>-...` rather than after the hostname, which is where the stray
-`EDIT2-...` names came from. Nothing is revived and no seat session is kept.
+`claude remote-control --no-create-session-in-dir`. That option is the one
+that matters: without it the server opens a session of its own. No `--name`
+either (2026-10-06). A session is never called *production* or *kiosk*. Those
+name the machine and its worktree (`work/fcpublicmedia.org@production`). Every
+session starts from zero at claude.ai or on the phone. Nothing is revived and
+no seat session is kept.
 A running session is never stopped. One that closes stays closed, and the
 server stays up for the next one.
 
 - Editing bay 1 does this in `code/bin/pool.ps1`. Each minute's pass starts
   the server if none is running, and leaves alone one started by hand in a
   terminal.
-- Kiosk-1 still keeps a `startup` seat session (PR #184), and a session there
-  is already named `kiosk`. Moving its door to the server is kiosk-1's change
-  to make. Until then, a `kiosk` server and a `kiosk` session would both show
-  up in the claude.ai list.
+- Kiosk-1 is moving its door to the same server with no session (its own
+  change).
 
 ## What is not decided
 

@@ -1,0 +1,30 @@
+# The storage pools production watches, for `fcpm pools`. Doc: troves/pools/README.md.
+
+pools:
+  - name: depot
+    title: The depot
+    kind: smb
+    server: 10.209.1.1
+    user: FCPM
+    shares_from: machines/kiosk-1/node.yml
+    stage_by_share:
+      TO ENHANCE: to-enhance
+      TO DROPBOX: to-dropbox
+      TO STEM: to-stem
+    stage: landed
+
+  - name: emulated
+    title: Emulated pool
+    kind: folder
+    path: ~/code/pools/emulated
+    capacity: 64 GB
+    stage: landed
+
+stages:
+  landed:      {label: Landed,       color: "#5b8def"}
+  to-enhance:  {label: To enhance,   color: "#e0a63a"}
+  enhanced:    {label: Enhanced,     color: "#3ec28f"}
+  transcribed: {label: Transcribed,  color: "#b07cf0"}
+  declined:    {label: Not promoted, color: "#5d6470"}
+  to-dropbox:  {label: To Dropbox,   color: "#4fb3d9"}
+  to-stem:     {label: To stem,      color: "#d96b9b"}
