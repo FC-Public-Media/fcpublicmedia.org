@@ -74,3 +74,12 @@ files.
 | [`pools/`](pools/) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |
 | [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | retired 2026-10-06: it won't join any network here. Kept for its notes |
 | [`ptz/`](ptz/) | PTZ cameras on the studio network: presets operators trigger, and behind-the-scenes capture | concept, waiting on the donated cameras |
+
+## Troves in their own repositories
+
+Private in FC-Public-Media until Autumn opens them. Station-node submodules
+them under `library/FCPM/`; `game-intake` is not there yet.
+
+| repository | plays | status |
+|---|---|---|
+| [`game-intake`](https://github.com/FC-Public-Media/game-intake) | game recording intake: consoles, handhelds and YouTube as instruments | started 2026-10-05; researched, not measured |
