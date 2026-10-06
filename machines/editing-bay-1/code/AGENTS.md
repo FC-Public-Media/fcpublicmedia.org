@@ -67,10 +67,10 @@ placed yet.
 | `refs/` | read-only mirrors of every repo we read. **Never commit here.** |
 | `work/REPO@BRANCH` | a worktree per branch. Make one with `bin/refs work REPO BRANCH`, and remove it with `bin/refs done REPO BRANCH` once it's merged |
 | `bin/refs` | media-node's script. Diverges from media-node by one line: `REF` points at `refs/`, which is this bay's name for it (2026-09-25) |
-| `bin/pool.ps1` | keeps the root's `production` server up: `status`, `pass`, `off`, `on`, `install`. See *Tending it* |
+| `bin/pool.ps1` | keeps the root's Remote Control server up: `status`, `pass`, `off`, `on`, `install`. See *Tending it* |
 | `%LOCALAPPDATA%\editing-bay-1\` | the pool's `pool.log`, the server's `server.log`; later this bay's venv and scratch. Named for the profile |
 
-No live checkout, and nothing long-running but the `production` server. A bay needs no `@<node>` branch
+No live checkout, and nothing long-running but the root's Remote Control server. A bay needs no `@<node>` branch
 until it runs something that has to be rebased under it.
 
 ## How work moves
@@ -105,8 +105,8 @@ until it runs something that has to be rebased under it.
     AGENTS.md`). Never edit the root's own `CLAUDE.md` or `AGENTS.md`: they
     are pointers, and `fcpm install` puts them back.
 - **How a session arrives is how it starts** (Autumn, 2026-10-05). The
-  root keeps one thing up, the `production` Remote Control server, and opens
-  no session of its own. Each session is started from zero at claude.ai or
+  root keeps one thing up, a Remote Control server, and opens and names no
+  session of its own (`--no-create-session-in-dir`). Each session is started from zero at claude.ai or
   the phone. A session starts no service, keeps no live checkout, and holds
   no long-running process. If it's closed, it picks back up from its
   worktree and its commits, and nothing revives it.
@@ -130,10 +130,10 @@ until it runs something that has to be rebased under it.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1
   pool` at logon and every minute, with no window.
-  - Each pass makes sure `claude remote-control --name production` is
-    serving `~/code`. It is started with no session in it, and names the
-    sessions it spawns `production-...`. One started by hand in a terminal
-    counts, and is left alone.
+  - Each pass makes sure `claude remote-control --no-create-session-in-dir`
+    is serving `~/code`, with no name. *Production* names the worktree
+    (`work/fcpublicmedia.org@production`), never a session. A server started
+    by hand in a terminal counts, and is left alone.
   - Nothing is revived, and no seat session is kept. That was tried twice,
     and it was not what Autumn asked for. A session that closes stays closed.
   - `fcpm pool` shows the task, the server and the sessions running.

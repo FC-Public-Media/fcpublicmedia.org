@@ -8,13 +8,10 @@
 #                                    server already running is never stopped
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
-# The root is ~/code, and its name is `production` (Autumn, 2026-10-05): what
-# goes on when agents run at this bay's root. The pool keeps one thing up there,
-# `claude remote-control --name production`, the same server Autumn used to
-# start by hand in a terminal. It is a server, not a session: it opens none
-# (--no-create-session-in-dir), and every session starts from zero at claude.ai
-# or the phone, in ~/code, named `production-...` rather than after the
-# hostname. How a session arrives is how it starts.
+# The root is ~/code. The pool keeps one thing up there, `claude remote-control
+# --no-create-session-in-dir`: a server, not a session. It opens none and
+# names none, and every session starts from zero at claude.ai or the phone
+# (Autumn, 2026-10-06). `production` names the worktree, not a session.
 #
 # Earlier pools revived every session after a logon, then kept one seat
 # session open. Both are gone: nothing is resumed and no session is started
@@ -38,7 +35,6 @@ $Log = Join-Path $State "pool.log"
 $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "editing-bay-1 pool"
-$RootName = "production"
 
 function Say([string]$m) {
     New-Item -ItemType Directory -Force $State | Out-Null
@@ -69,11 +65,11 @@ function EnsureServer {
     if (@(Servers).Count) { return }
     # conhost --headless: a console of its own and no window on a shared desktop.
     # It outlives this pass, as the roller's Edge does.
-    $a = "--headless `"$Claude`" remote-control --name $RootName --remote-control-session-name-prefix $RootName --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
+    $a = "--headless `"$Claude`" remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
     try {
         $p = Start-Process -FilePath "conhost.exe" -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru
-        Say ("started the {0} server in {1} (conhost {2})" -f $RootName, $Root, $p.Id)
-    } catch { Say ("could not start the {0} server: {1}" -f $RootName, $_) }
+        Say ("started the root's server in {0} (conhost {1})" -f $Root, $p.Id)
+    } catch { Say ("could not start the root's server: {0}" -f $_) }
 }
 
 function Screens {
@@ -107,7 +103,7 @@ switch ($Verb) {
             -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew
         $who = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
         Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($atLogon, $every) -Settings $set `
-            -Principal $who -Description "Editing bay 1's root: keep the '$RootName' Remote Control server up in $Root, and the roller's screen. bin\pool.ps1." -Force | Out-Null
+            -Principal $who -Description "Editing bay 1's root: keep the Remote Control server up in $Root, and the roller's screen. bin\pool.ps1." -Force | Out-Null
         Write-Output "registered '$TaskName': at logon, and every minute"
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }
