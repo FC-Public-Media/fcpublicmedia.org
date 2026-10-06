@@ -402,20 +402,20 @@ an administrator's Windows change. In conversation, use *production* and
 
 **How a session arrives is how it starts** (Autumn, 2026-10-05). At sign-in a
 machine brings its root up as a Remote Control *server* at `~/code`:
-`claude remote-control --name <root>`, with no session pre-created. Every
-session then starts from zero at claude.ai or on the phone, and the server
-names it `<root>-...` rather than after the hostname, which is where the stray
-`EDIT2-...` names came from. Nothing is revived and no seat session is kept.
+`claude remote-control --no-create-session-in-dir`. That option is the one
+that matters: without it the server opens a session of its own. No `--name`
+either (2026-10-06). A session is never called *production* or *kiosk*. Those
+name the machine and its worktree (`work/fcpublicmedia.org@production`). Every
+session starts from zero at claude.ai or on the phone. Nothing is revived and
+no seat session is kept.
 A running session is never stopped. One that closes stays closed, and the
 server stays up for the next one.
 
 - Editing bay 1 does this in `code/bin/pool.ps1`. Each minute's pass starts
   the server if none is running, and leaves alone one started by hand in a
   terminal.
-- Kiosk-1 still keeps a `startup` seat session (PR #184), and a session there
-  is already named `kiosk`. Moving its door to the server is kiosk-1's change
-  to make. Until then, a `kiosk` server and a `kiosk` session would both show
-  up in the claude.ai list.
+- Kiosk-1 is moving its door to the same server with no session (its own
+  change).
 
 ## What is not decided
 

@@ -66,8 +66,8 @@ administrator except where it says so.
    Open it once in `~/code` and accept the folder. The root's server can't
    start there until the folder is trusted.
 6. **The pool.** `fcpm pool install` registers the per-user logon task. From
-   then on the root is reachable as `production` after every sign-in: a
-   Remote Control server with no session open, where sessions start from
+   then the root is reachable after every sign-in: a Remote Control server
+   with no session open and none named, where sessions start from
    claude.ai or the phone (`../README.md`, *What a machine is called*).
 7. **Gear, through the bay.** `gh`, then `uv`, then Node, each from the
    vendor's portable archive, verified and recorded (`gear.yml`, `bay/`).
