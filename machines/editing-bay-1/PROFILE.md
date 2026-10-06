@@ -67,10 +67,12 @@ administrator except where it says so.
 4. **Developer Mode, at the desk.** Settings > System > For developers. It lets
    symlinks be made without elevation.
 5. **Claude Code, at the desk.** The vendor's installer, into `~/.local/bin`.
-   Open it once in `~/code` and accept the folder, which a background session
-   needs before it can start there.
+   Open it once in `~/code` and accept the folder. The root's server can't
+   start there until the folder is trusted.
 6. **The pool.** `fcpm pool install` registers the per-user logon task. From
-   then on a session is waiting in `~/code` after every sign-in.
+   then on the root is reachable as `production` after every sign-in: a
+   Remote Control server with no session open, where sessions start from
+   claude.ai or the phone (`../README.md`, *What a machine is called*).
 7. **Gear, through the bay.** `gh`, then `uv`, then Node, each from the
    vendor's portable archive, verified and recorded (`gear.yml`, `bay/`).
    `gh auth login` is the desk's.

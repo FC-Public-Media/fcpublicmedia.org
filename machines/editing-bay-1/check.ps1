@@ -54,7 +54,7 @@ if (Test-Path $cj) {
         if ($key) { $trusted = [bool]$p.$key.hasTrustDialogAccepted }
     } catch { }
 }
-Say $trusted "~/code trusted for Claude Code (a background session needs it)" "open claude in ~/code once and accept"
+Say $trusted "~/code trusted for Claude Code (the root's server needs it)" "open claude in ~/code once and accept"
 
 # Where this bay reaches, and what it cannot yet.
 $depot = Test-NetConnection 10.209.1.1 -Port 445 -InformationLevel Quiet -WarningAction SilentlyContinue
