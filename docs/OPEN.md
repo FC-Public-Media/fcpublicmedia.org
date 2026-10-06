@@ -229,11 +229,10 @@ protects one file; an assertion protects the class.
 Surveyed 2026-10-05 for the standing order in [`../AGENTS.md`](../AGENTS.md),
 *Documentation is gathered*.
 
-**Kiosk's root instructions are not in this repository.** `machines/kiosk-1`
-has no `code/` folder, so whatever kiosk's `~/code/CLAUDE.md` and `AGENTS.md`
-say exists only on that box. It is kiosk's to bring in, as
-`machines/kiosk-1/code/AGENTS.md`, with its `~/code/CLAUDE.md` pointing at it
-the way production's does. To check, on kiosk: `type %USERPROFILE%\code\CLAUDE.md`.
+**Kiosk's root instructions are now in this repository** (2026-10-05), at
+`machines/kiosk-1/code/AGENTS.md`, and its `~/code/CLAUDE.md` points at them
+in its mirror the way production's does. Kiosk's mirror folder is `ref/`,
+production's is `refs/`, and `watch` reads either.
 
 **55 of 186 code and config files open with 25 or more comment lines.** These
 are the longest headers. Each shrinks to five lines when its file is next

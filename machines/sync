@@ -69,7 +69,7 @@ while read -r mode src dst <&3; do
       [ -e "$to" ] && mv "$to" "$to.pre-sync" && echo "aside     ~/$dst -> $(basename "$to").pre-sync"
       cp -p "$from" "$to" && echo "placed    ~/$dst" ;;
     mirror:mirror)
-      case "$REPO" in */refs/*) echo "sync: $REPO is a read-only mirror; mirror into a work/ worktree" >&2; exit 2 ;; esac
+      case "$REPO" in */refs/*|*/ref/*) echo "sync: $REPO is a read-only mirror; mirror into a work/ worktree" >&2; exit 2 ;; esac
       if [ -e "$to" ] && ! cmp -s "$from" "$to"; then cp -p "$to" "$from" && echo "brought   ~/$dst"; fi ;;
     clone:status|clone:install)
       sed -e 's/#.*$//' "$from" | while read -r url; do
