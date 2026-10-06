@@ -331,6 +331,58 @@ happens without a call for help.
 **Upstream is GitHub for now.** Station-node keeps an origin on the LAN, and
 these machines will pull from it once they can reach it.
 
+### `fcpm` on its own: the watcher (planned, not built)
+
+Autumn, 2026-10-05. Somebody finds `fcpm`, wonders what it does, and types
+those four letters. Something useful happens: it shows them the whole picture,
+and doesn't take over. There are no arguments to learn.
+
+It is the watcher, not the control room. Station-node's 8080 page can do
+everything; this can do one thing, getting changes in and out. Everything
+else it shows, and at most offers.
+
+**What it shows**, one line each, `ok` or what is wrong:
+
+1. Which machine this is, by the name Autumn uses (*production*, *kiosk*),
+   and the profile it wears.
+2. GitHub is ready: `gh` is signed in.
+3. There is an upstream: the machine's working copy has a remote it can pull
+   from and push to, and is so many changes behind it.
+4. Edits are lying around: files changed in the working copy, by name.
+5. The machine differs from its profile (`sync` status).
+6. What should be awake is awake: the root's Remote Control server
+   (`fcpm pool`), and the screens (`fcpm screen`).
+
+**Then a tiny menu**, of only the choices that apply:
+
+    1  Bring in the latest          (pull)
+    2  Send my changes up           (all of them, with a message you write)
+    3  Put the profile back on      (fcpm install)
+    Enter  nothing
+
+"Send my changes up" is a `git add -A`, a commit with the person's message,
+and a push. They never need to know git is involved. Pulling is the reason to
+run it, so after a pull it offers the install rather than running it.
+
+**Weekly, by itself.** A scheduled task does the pull once a week, so the
+studio is in a known state when people come in, and something that blocked
+somebody gets fixed without a call for help. It never sends changes up.
+
+**Upstream is GitHub for now.** Station-node keeps an origin on the LAN, and
+these machines will pull from it once they can reach it. Until then, GitHub.
+
+**To decide before it is built:**
+
+- **The people's working copy.** `refs/` is read-only and `work/` holds one
+  worktree per branch, so people don't have one yet. Proposed: one per
+  machine, `~/code/work/fcpublicmedia.org@production` (or `@kiosk`), on a
+  branch of that name.
+- **Where "send" lands.** Straight on `main`, or on the machine's branch with
+  a pull request Autumn merges. Proposed: the branch and pull request, opened
+  for them if there isn't one.
+- **The weekly task:** pull only, or pull and install. Also which day and
+  hour.
+
 ## What a machine is called, and how its sessions arrive
 
 Every machine has three names. Autumn uses the first one when she talks to a
