@@ -75,7 +75,9 @@ than from documentation.
 ## The order this unlocks in
 
 1. **Batteries in:** `probe`, `screen`, then measure the cable's real speed.
-2. **ROM dump,** checked against the version AMS reports about itself.
+   Done 2026-10-06: about 3.3 KB a second.
+2. **ROM dump,** checked against the version AMS reports about itself. Done
+   2026-10-06: AMS 2.03, 2 MB in 612 s, kept in the prefix.
 3. **Keys and variables** (level 1): push a key, fetch and send a picture and a
    list. That is everything the pad and the kiosk terminal need from the PC side.
 4. **A TI-BASIC pad** (level 2), on the calculator, talking to a stub hub.

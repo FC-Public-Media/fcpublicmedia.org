@@ -6,11 +6,43 @@ system, from a computer.
 
 Status: started 2026-10-05 on the media node (kiosk-1). The calculator is
 Autumn's original TI-89 (not a Titanium). Its cable is on COM1 and reads as a
-**black** link. The calculator itself has not answered yet.
+**black** link. **It answered on 2026-10-06**: AMS 2.03 (dated 12/08/1999),
+boot code 1.07, hardware revision 1. Its ROM has been dumped.
 
     fcpm ti89 probe              is a calculator on COM1, and ready?
+    fcpm ti89 version            its OS, boot code and hardware
     fcpm ti89 screen [OUT.png]   its screen, as a PNG (160×100)
+    fcpm ti89 rom [OUT.rom]      its whole ROM, 2 MB, in about 10 minutes
     fcpm ti89 probe --port COM3  another port; --cable black|gray to skip the guess
+
+**The ROM never goes in this repo.** It is TI's code, and this repo is public.
+It lives in the prefix, `%LOCALAPPDATA%\media-node\troves\ti-89\`, beside the
+dumper that made it.
+
+## What the calculator answered (2026-10-06)
+
+- **Speed**: about 3.3 KB a second over the black link, clocked through the
+  serial API. A screen takes about a second, and the ROM takes 612 s.
+- **The ROM**: 2,097,152 bytes. Its reset vectors point into itself (stack
+  `0x4800`, start `0x200132`, with the ROM at `0x200000`), and its test menu
+  reads "2.03, 12/08/1999". 172 of its 512 blocks are blank flash. The
+  certificate block (`0x10000` to `0x12000`) is read-protected, and is filled
+  with FF the way TiLP does it.
+- **How the dump runs**: `rom` sends TiLP's dumper (`main\romdump`, 1,329
+  bytes, fetched once from libticalcs' `rom89.h`), types
+  `main\romdump()` ENTER by remote keys, and asks it for 4 KB blocks. The
+  program stays on the calculator afterwards; delete it there if it's in the
+  way.
+- **Surprises**:
+  - With the calculator on, auto-detect used to call the cable gray, because
+    the calculator answers on CTS when DTR is pulled. Now only DSR is checked.
+  - That test, and opening the port, can each feed the calculator a stray
+    bit, so the first packet after opening is lost. Every verb starts with a
+    ready check, retried.
+  - This calculator signs some answers `0x89` (libticalcs' "TI-89 to CBL")
+    instead of `0x98`. The two are treated alike.
+  - Its screen packet ends in a checksum that is not the screen's sum, though
+    every pixel is right. The screen's length is checked instead.
 
 ## How it reaches the calculator
 
@@ -73,11 +105,6 @@ What the cable can carry, and the scenarios it opens (calculator VMs, a pad
 for multiplayer, piloting the kiosk, an IDE), are in
 [`SCENARIOS.md`](SCENARIOS.md).
 
-- **The calculator answering.** Run `probe` and `screen` with it switched on at
-  the home screen, and record what it answers in this README.
-- **Keep its OS.** Dump the calculator's own ROM (the OS it is running now,
-  plus its boot code). That is what an emulator wants, and it is ours. TiLP
-  does it over a black link; `link.py` could too.
 - **Files**: list folders, back up variables, and send a program. These are the
   next verbs for `link.py`, in the same protocol.
 - **OS installs.** Send them from TiLP or TI Connect, not from `link.py`. A
