@@ -69,6 +69,10 @@ one verb at a time as we need one.
 
 ## Not yet
 
+What the cable can carry, and the scenarios it opens (calculator VMs, a pad
+for multiplayer, piloting the kiosk, an IDE), are in
+[`SCENARIOS.md`](SCENARIOS.md).
+
 - **The calculator answering.** Run `probe` and `screen` with it switched on at
   the home screen, and record what it answers in this README.
 - **Keep its OS.** Dump the calculator's own ROM (the OS it is running now,
