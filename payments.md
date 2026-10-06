@@ -1,6 +1,6 @@
 # Seat · payments
 
-`advocate/payments` · last spoke **2026-10-04** · 13 session(s) · 7 draft · 0 ready
+`advocate/payments` · last spoke **2026-10-06** · 14 session(s) · 7 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -270,9 +270,9 @@ of this seat. It is a request for a recorded answer, like A2 was.
 warrant an issue. I have not posted one (outside this session's reach) and
 leave that to a human.
 
-## Last session note — 2026-10-04
+## Last session note — 2026-10-06
 
-### 2026-10-04
+### 2026-10-06
 
 Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
