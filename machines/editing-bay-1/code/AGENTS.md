@@ -100,9 +100,10 @@ until it runs something that has to be rebased under it.
   - When the PR merges, `bin/refs done REPO BRANCH` and `bin/refs pull`.
     A worktree whose PR has merged is not reused: a commit made after the
     merge never lands.
-  - Shared files outside `refs/` and `work/` (this one, `CLAUDE.md`) belong
-    to every session here. Re-read before writing, and tell the others
-    what changed.
+  - This file is read from the mirror, through `~/code/CLAUDE.md`. Change
+    it like any other file, in a worktree (`machines/editing-bay-1/code/
+    AGENTS.md`). Never edit the root's own `CLAUDE.md` or `AGENTS.md`: they
+    are pointers, and `fcpm install` puts them back.
 - **How a session arrives is how it starts** (Autumn, 2026-10-05). The
   root keeps one thing up, the `production` Remote Control server, and opens
   no session of its own. Each session is started from zero at claude.ai or
