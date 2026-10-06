@@ -1,0 +1,61 @@
+# gear.yml — the TI-89 trove's gear. See README.md.
+#
+# The same fields as ../recorder/gear.yml. PRESENCE IS NOT DECLARED HERE: whether
+# a calculator, a cable or any of this is on a host is found, never written.
+# Located 2026-10-05; nothing below has been installed or run against a
+# calculator yet.
+
+version: 1
+
+gear:
+  - gear: link.py
+    for: >
+      Ours. Probe a TI-89 on a serial GraphLink and take its screen, with
+      nothing installed but pyserial (through uv). What the box can do without
+      an administrator, while the TI software below waits on one.
+    platform: windows, macos, linux
+    vendor: this trove
+    provisioner: uv            # --with pyserial; `fcpm ti89`
+    cable: black or gray GraphLink (serial), on a host's own RS-232 port; it tells them apart
+    grants: none. Any user may open a COM port
+
+  - gear: tilp2
+    for: >
+      The full link program: files, backups, OS and app installs, screens.
+      Open source, every TI cable and calculator. Its last Windows release is
+      2016; Debian still builds it from git (1.19~git20231112).
+    platform: windows
+    vendor: TiLP project (tilp.info, github.com/debrouxl/tilp_and_gfm), GPL-2.0
+    package: tilp.zip (TILP II 1.18, 2016-11-01; tilp2-setup.exe inside)
+    source: https://www.ticalc.org/archives/files/fileinfo/374/37481.html
+    provisioner: bay
+    at: troves\ti-89\tilp
+    needs: >
+      a GTK+ 2 runtime beside it (the 2017 review on ticalc.org: install it by
+      hand, with the compatibility DLLs, into the install's lib). Whether the
+      setup will install per-user without an administrator is untried; if not,
+      the bay unpacks it into the prefix.
+    cable: >
+      gray GraphLink: through the Windows serial API, no driver. Silver Link
+      (USB): needs a libusb driver bound to it, which needs an administrator.
+
+  - gear: ti-connect
+    for: >
+      TI's own link software, the one TI still names for TI-89 OS updates. Not
+      TI Connect CE, which has no TI-89 support.
+    platform: windows
+    vendor: Texas Instruments, freeware
+    package: TI-Connect-4.0.0.218.exe (17,665 KB)
+    source: https://education.ti.com/en/software/details/en/14D11109C9F44D55B9BBF65E5A62E7F1/swticonnectsoftwareforwindows
+    provisioner: a person with an administrator      # an installer with USB drivers
+    cable: gray serial and Silver USB, on Windows
+    open: whether 4.0 still finds a serial cable on Windows 10
+
+  - gear: ti-89-os
+    for: what the calculator runs. Kept in the trove's library, sent by TiLP or TI Connect
+    vendor: Texas Instruments
+    packages:
+      - TI89Titanium_OS.89u   # OS 3.10, TI-89 Titanium
+      - "AMS 2.09 .89u"       # the original TI-89 (not the Titanium)
+    source: https://education.ti.com/en/software/search/ti-89-ti-89-titanium
+    provisioner: bay
