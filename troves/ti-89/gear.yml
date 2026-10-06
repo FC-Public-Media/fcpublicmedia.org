@@ -2,17 +2,19 @@
 #
 # The same fields as ../recorder/gear.yml. PRESENCE IS NOT DECLARED HERE: whether
 # a calculator, a cable or any of this is on a host is found, never written.
-# Located 2026-10-05; nothing below has been installed or run against a
-# calculator yet.
+# Located 2026-10-05. link.py has run against the calculator since
+# 2026-10-06; nothing else below has been installed.
 
 version: 1
 
 gear:
   - gear: link.py
     for: >
-      Ours. Probe a TI-89 on a serial GraphLink and take its screen, with
-      nothing installed but pyserial (through uv). What the box can do without
-      an administrator, while the TI software below waits on one.
+      Ours. Probe a TI-89 on a serial GraphLink, read its version, take its
+      screen and dump its ROM, with nothing installed but pyserial (through
+      uv). What the box can do without an administrator, while the TI software
+      below waits on one. The ROM dump borrows TiLP's dumper program,
+      fetched from libticalcs on first use.
     platform: windows, macos, linux
     vendor: this trove
     provisioner: uv            # --with pyserial; `fcpm ti89`
