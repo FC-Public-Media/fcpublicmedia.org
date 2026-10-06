@@ -2343,8 +2343,8 @@ SILENT = 120     # seconds a screen's page may go without polling before it is r
 ASIDE_FOR = 600
 ASIDE = STATE / "aside"
 
-ASIDE_HTML = """<button type=button id=fcpm-aside hidden>
-<svg viewBox="0 0 24 24" aria-hidden=true><rect x=4 y=17 width=16 height=3 /></svg>Minimize</button>
+ASIDE_HTML = """<button type=button id=fcpm-aside hidden aria-label=Minimize title=Minimize>
+<svg viewBox="0 0 24 24" aria-hidden=true><rect x=4 y=17 width=16 height=3 /></svg></button>
 <style>#fcpm-aside { position:fixed; top:2.5vh; right:2.5vw; z-index:2147483000; display:flex; align-items:center;
   gap:1.2vh; padding:1.6vh 3vh; border:0; border-radius:1vh; background:var(--signal); color:var(--ink);
   font:750 3.4vh/1 system-ui, sans-serif; cursor:pointer; box-shadow:0 .6vh 3vh rgba(0,0,0,.5); }
@@ -2465,6 +2465,18 @@ def screens(launch=False, reset=False, say=print):
                 s["name"], s["display"], min(ears["heard"].get(s["name"], ears["up"]), ears["up"])))
             if launch:
                 close_profile({hit["pid"]})
+                launch_screen(exe, s, screen_url(s))
+                say("         relaunched %s" % screen_url(s))
+            continue
+        # Its own browser is there, but on the page it was launched with, and
+        # node.yml has since moved it (left went to /turn/ and stayed on
+        # /preview/ all night, 2026-10-05). A page's reload keeps its address,
+        # so only a relaunch brings the new one.
+        if hit and not reset and screen_url(s).lower() not in lines.get(hit["pid"], ""):
+            bad += 1
+            say("moved    %-8s %-9s node.yml has it at %s now" % (s["name"], s["display"], s["url"]))
+            if launch:
+                close_profile({win["pid"] for win in own})
                 launch_screen(exe, s, screen_url(s))
                 say("         relaunched %s" % screen_url(s))
             continue
