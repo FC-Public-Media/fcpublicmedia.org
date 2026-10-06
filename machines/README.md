@@ -308,13 +308,18 @@ Then a menu of only the choices that apply, with Enter for nothing:
 
 | Choice | What happens |
 |---|---|
-| **Make my working copy** | `work/fcpublicmedia.org@<called>`, on a branch of that name. It is the people's one place to edit on this machine |
+| **Make my working copy** | `work/fcpublicmedia.org@<called>`, on a branch of that name: the people's one place to edit on this machine. `fcpm install` makes it, so this shows only if something removed it |
 | **Bring in the latest** | pulls every mirror and brings the working copy up to `main`, then offers the install. It never installs on its own |
 | **Send my changes up** | adds everything, asks "what did you change?", commits, catches up with `main`, pushes the `<called>` branch, and opens a pull request for Autumn to merge. A later send joins the open request, or opens a new one once that has merged |
 | **Put the profile back on** | `fcpm install` |
 
 If someone's edits and the latest change the same lines, it stops and says
 so. Nothing is lost.
+
+**Before there is an `fcpm`.** A machine with nothing on it can't run a tool
+that lives in this repository. The way in is the start line on the front page
+(`../README.md`, *Setting up a machine*). It is readable in a browser and pasted
+once. It gets the repository and runs `fcpm install`.
 
 **Weekly, by itself.** `fcpm install` also registers the task `fcpm weekly`.
 It runs at sign-in and every morning, and does its work once per week: it

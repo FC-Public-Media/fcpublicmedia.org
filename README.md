@@ -11,6 +11,16 @@ Contents:
 * `library/` holds the work we process for you for publishing, pick up or download. Read on.
 * `advocate.yml` declares in what ways we use API-driven agents to perform caretaking tasks.
 
+## Setting up a machine
+
+On a studio computer that has Git, paste this into any window, cmd or PowerShell:
+
+    powershell -NoProfile -Command "git config --global core.autocrlf false; if (Test-Path $HOME\code\refs\fcpublicmedia.org) { git -C $HOME\code\refs\fcpublicmedia.org pull -q } else { git clone -q https://github.com/FC-Public-Media/fcpublicmedia.org $HOME\code\refs\fcpublicmedia.org }; & 'C:\Program Files\Git\bin\bash.exe' -c '~/code/refs/fcpublicmedia.org/machines/fcpm install'"
+
+It gets this repository, or updates it, then puts the computer's profile on. That
+includes the working copy people edit in and a weekly pull. From then on, type
+`fcpm`. See [`machines/README.md`](machines/README.md).
+
 ## Site
 
 We use Ruby and Jekyll to construct our flat site, and Cloudflare to host.

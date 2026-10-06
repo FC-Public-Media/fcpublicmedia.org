@@ -23,6 +23,7 @@ case "$cmd" in
   status)    exec "$HERE/sync" ;;
   install)
     "$HERE/sync" install || exit
+    "$HERE/watch" copy
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$HERE/watch" weekly install ;; esac ;;
   weekly)    exec "$HERE/watch" weekly ;;
   check)
