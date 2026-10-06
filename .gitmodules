@@ -28,3 +28,13 @@
 	# the depot, so receipt is ours. Private like contact-sheets, and for
 	# the same reason as its entry above: nothing in a build needs it.
 	update = none
+[submodule ".atlas-engine"]
+	path = .atlas-engine
+	url = https://github.com/FCCN-ANTIBODY/atlas.anecdote.channel.git
+	# Mounted 2026-10-05: the directory. We are our own Atlas, and our Tell
+	# registers to it. `atlas.yml` is who we are. docs/DIRECTORY.md.
+[submodule ".tell-engine"]
+	path = .tell-engine
+	url = https://github.com/FCCN-ANTIBODY/tell.anecdote.channel.git
+	# Mounted 2026-10-05: the hub member data piles register to. `tell.yml`
+	# is who we are and `keys/tell.fpr` signs for it. docs/DIRECTORY.md.
