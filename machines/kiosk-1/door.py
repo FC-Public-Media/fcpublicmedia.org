@@ -32,10 +32,11 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /depot/            what is on the studio drive, for the third panel
     GET /depot/now         the drive's index, as JSON. The page polls it
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
+    GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
-    GET /revision          what a screen polls: <commit>-<kiosk revision>
+    GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
 
 THE BOUNCE. Content is read per request. Code is loaded once, so `serve`
 watches the commit its worktree has checked out and exits with 75 when it
@@ -94,13 +95,14 @@ NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
 TYPES = {".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".txt": "text/plain; charset=utf-8",
          ".json": "application/json",
-         ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
+         ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+         ".webmanifest": "application/manifest+json"}
 
 
 # ------------------------------------------------------------------- sources --
-def git(*args):
+def git(*args, where=None):
     try:
-        out = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True,
+        out = subprocess.run(["git", "-C", str(where or ROOT), *args], capture_output=True,
                              text=True, timeout=60, creationflags=NO_WINDOW)
         return out.stdout.strip() if out.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
@@ -126,7 +128,39 @@ def revision():
         kiosk = str(welcome().get("revision", "?"))
     except Exception:
         kiosk = "unreadable"
-    return "%s-%s" % (git("rev-parse", "--short", "HEAD") or "nogit", kiosk)
+    rev = "%s-%s" % (git("rev-parse", "--short", "HEAD") or "nogit", kiosk)
+    code = ti89_path("code")
+    if code and (code / ".git").exists():       # the runner moves on its own merges too
+        rev += "-" + (git("rev-parse", "--short", "HEAD", where=code) or "nogit")
+    return rev
+
+
+# THE TI-89 (Autumn, 2026-10-06): the calculator runner, FC-Public-Media/ti-89,
+# booting her own TI-89's ROM on our own 68000. The door serves it from its
+# mirror in ref/, which the puller fast-forwards like bin/refs pull, so a
+# merge reaches the panel within five minutes. The ROM is TI's code, kept here
+# as gear: it goes to this box's own browsers and to nothing else.
+def ti89_path(key):
+    v = (node().get("ti89") or {}).get(key)
+    return pathlib.Path(os.path.expandvars(str(v))).expanduser() if v else None
+
+
+def ti89_pull():
+    """Fast-forward the runner's mirror. Never forced: a mirror that has
+    diverged or has changes is someone's business, and is left alone."""
+    code = ti89_path("code")
+    if not code or not (code / ".git").exists():
+        return
+    if git("status", "--porcelain", where=code) != "":
+        return log("ti-89: mirror has changes, not pulling")
+    before = git("rev-parse", "--short", "HEAD", where=code)
+    if git("fetch", "--quiet", "origin", where=code) is None:
+        return log("ti-89: fetch failed")
+    if git("merge", "--ff-only", "--quiet", "origin/main", where=code) is None:
+        return log("ti-89: mirror cannot fast-forward to origin/main; left as it is")
+    after = git("rev-parse", "--short", "HEAD", where=code)
+    if after != before:
+        log("ti-89: mirror %s -> %s" % (before, after))
 
 
 # -------------------------------------------------------------- the schedule --
@@ -2059,6 +2093,21 @@ class Door(BaseHTTPRequestHandler):
             if route == "/turn" or route.startswith("/turn/"):
                 body = turn_file(tail or "index.html")
                 return self.reply(200, body) if body else self.file(None)
+            if route == "/ti-89":
+                self.send_response(301)
+                self.send_header("Location", "/ti-89/")
+                self.end_headers()
+                return
+            if route.startswith("/ti-89/"):
+                rest = route[len("/ti-89/"):]
+                if rest == "local/rom":
+                    if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                        return self.reply(403, "", TYPES[".txt"])
+                    rom = ti89_path("rom")
+                    return self.reply(200, rom.read_bytes(), "application/octet-stream") \
+                        if rom and rom.is_file() else self.file(None)
+                code = ti89_path("code")
+                return self.file(inside(code, rest or "index.html") if code else None)
             if route in ("/idle", "/idle/"):
                 return self.file(ROOT / "brand" / "idle" / "index.html")
             head, _, rest = route.strip("/").partition("/")
@@ -2188,6 +2237,10 @@ def supervise():
                 pull_once()
             except Exception as exc:
                 log("pull: %r" % exc)
+            try:
+                ti89_pull()
+            except Exception as exc:
+                log("ti-89: %r" % exc)
             time.sleep(PULL_EVERY)
     threading.Thread(target=puller, daemon=True).start()
     threading.Thread(target=raise_screens, daemon=True).start()

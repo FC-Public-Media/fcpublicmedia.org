@@ -163,7 +163,17 @@ turn:
   modules:
     - {name: cameras, label: Cameras, url: /preview/}
     - {name: files, label: Files, url: /depot/}
+    - {name: ti-89, label: TI-89, url: '/ti-89/?wake&rom=/ti-89/local/rom'}   # Autumn's TI-89, running (ti89: below)
 
+# ---------------------------------------------------------------------------
+# THE TI-89: Autumn's TI-89 running in a browser, its own ROM on our own
+# 68000 (FC-Public-Media/ti-89, 2026-10-06). The door serves the runner from
+# its mirror and fast-forwards it with its own pulls, so a merge there reaches
+# the turn within five minutes. The ROM is TI's code, kept here as gear: the
+# door gives it to this box's own browsers only, and it is never published.
+ti89:
+  code: '%USERPROFILE%\code\ref\ti-89'
+  rom: '%LOCALAPPDATA%\media-node\troves\ti-89\ti89-ams203-hw1.rom'
 # ---------------------------------------------------------------------------
 # THE WALL: pages for screens elsewhere on the network, written to a share
 # because nothing out there can reach this box's port (door.py, "THE WALL").
