@@ -109,15 +109,15 @@ fi
 
 differs=$(printf '%s\n' "$SYNC" | grep -c '^differs')
 wanted=$(printf '%s\n' "$SYNC" | grep -c '^WANTED')
-if [ "$differs" -gt 0 ]; then line differs "$differs file(s) on this machine differ from its profile"
-else line ok "this machine matches its profile"; fi
+if [ "$differs" -gt 0 ]; then line update "$differs file(s) on this computer are out of date: Install the updates"
+else line ok "this computer is up to date with the repository"; fi
 [ "$wanted" -gt 0 ] && line NEEDS "$wanted thing(s) wanted: fcpm check"
 
 if [ -f "$CODE/bin/pool.ps1" ]; then
   s=$(ps1 "$CODE/bin/pool.ps1" status 2>/dev/null | tr -d '\r' | awk '$1 == "server" { $1 = ""; print; exit }')
   case "$s" in
     *up*) line ok "the root's server is up$s" ;;
-    '') line NEEDS "this machine's pool is out of date: Put the profile back on" ;;
+    '') line NEEDS "this computer's startup is out of date: Install the updates" ;;
     *) line NEEDS "the root's server is$s: fcpm pool on" ;;
   esac
 fi
@@ -135,12 +135,17 @@ offer() { n=$((n + 1)); opts="$opts $1"; printf '  %d  %s\n' "$n" "$2"; }
 [ -n "$called" ] && [ ! -d "$WC" ] && offer make "Make my working copy  (work/$REPO@$called)"
 [ "$behind" -gt 0 ] && offer pull "Bring in the latest"
 [ "$edits" -gt 0 ] || [ "$unsent" -gt 0 ] && offer send "Send my changes up"
-[ "$differs" -gt 0 ] && offer install "Put the profile back on"
+[ "$differs" -gt 0 ] && offer install "Install the updates on this computer"
 [ "$n" -eq 0 ] && { echo "Nothing to do. All good."; exit 0; }
-printf '  Enter  nothing\n\n'
+printf '  q  quit\n\n'
 [ -t 0 ] || exit 0
-ask "Which?"
-case "$REPLY" in ''|*[!0-9]*) exit 0 ;; esac
+ask "Which? [1]"
+case "$REPLY" in
+  '') REPLY=1 ;;
+  q|Q) exit 0 ;;
+  *[!0-9]*|0) echo "No choice '$REPLY'. Run fcpm again."; exit 1 ;;
+esac
+[ "$REPLY" -le "$n" ] || { echo "No choice $REPLY. Run fcpm again."; exit 1; }
 pick=$(echo $opts | cut -d ' ' -f "$REPLY")
 echo
 
@@ -150,8 +155,11 @@ case "$pick" in
     "$CODE/bin/refs" pull
     catch_up && line ok "your working copy has the latest"
     if [ "$(cd "$HERE" && ./sync 2>&1 | grep -c '^differs')" -gt 0 ]; then
-      ask "Put the profile back on now too? [y/N]"
-      case "$REPLY" in y|Y|yes) exec "$HERE/sync" install ;; esac
+      ask "Install the updates on this computer now? [Y/n]"
+      case "$REPLY" in
+        n|N|no|No) echo "Not installed. Run fcpm again to install." ;;
+        *) exec "$HERE/fcpm" install ;;
+      esac
     fi ;;
   send)
     if [ "$edits" -gt 0 ]; then
@@ -169,5 +177,5 @@ case "$pick" in
       pr=$(cd "$WC" && "$GH" pr create --base main --head "$called" --title "$msg" --body "Sent from $called with \`fcpm\`." 2>&1 | tail -n 1)
       line ok "sent. Waiting for Autumn to merge it: $pr"
     fi ;;
-  install) exec "$HERE/sync" install ;;
+  install) exec "$HERE/fcpm" install ;;
 esac
