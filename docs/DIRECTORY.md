@@ -72,7 +72,7 @@ repository root. So the root holds it, beside `advocate.yml`:
 | `tell.yml` | who our Tell is: `id`, `name`, `url`, `scope`, `reports` |
 | `atlas.yml` | who our Atlas is. Only peering with another Atlas reads it |
 | `keys/tell.{pub,signers,fpr}` | the Tell's public signer. A pile pins `tell.fpr` |
-| `_data/tells.yml` | the Tells our Atlas lists. Created by the registration PR |
+| `_data/tells.yml` | the Tells our Atlas lists. Registration appends to it, and fails if `_data/` is missing |
 
 The build root is `site/`, so none of this is published by the site.
 
@@ -102,7 +102,8 @@ door.py tell            what is published, and whether this machine holds the ke
 door.py tell register   .tell-engine/bin/register pr, against this repository
 ```
 
-`register` opens a PR here on `tell/fort-collins/fcpublicmedia`. The branch name
+`register` clones `main`, so it runs once `_data/tells.yml` is there. It opens a
+PR here on `tell/fort-collins/fcpublicmedia`. The branch name
 is the claim, the commit is signed with the Tell's key, and the PR appends our
 entry to `_data/tells.yml`. **Merging it is the Atlas's consent.** Checking the
 signature against `keys/tell.fpr` is manual at every tier, as the Atlas's own

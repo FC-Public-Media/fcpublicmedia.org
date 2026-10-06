@@ -81,7 +81,7 @@ to do. The node is the container for that second thing.
 README.md            the repository's front page.
 AGENTS.md            standing orders. At the root because that is where they are looked for.
 advocate.yml         the seat declarations.
-tell.yml, atlas.yml  who our Tell and our Atlas are. keys/ holds the Tell's public signer. See DIRECTORY.md.
+tell.yml, atlas.yml  who our Tell and our Atlas are. keys/ is the Tell's public signer, _data/ the Atlas's registry. See DIRECTORY.md.
 site/                THE WEBSITE, and the build root. Jekyll runs from in here.
   _config.yml        the site's config. No `source:`; the source is this folder.
   Gemfile            one gem. Jekyll.
