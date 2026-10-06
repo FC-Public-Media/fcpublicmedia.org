@@ -1,7 +1,7 @@
 #!/bin/sh
 # watch — what `fcpm` alone does: show this machine's state, then offer pull,
-# send and install. `watch weekly` is the scheduled pull, and `watch weekly
-# install` registers it. Doc: machines/README.md, "fcpm on its own".
+# send and install. `watch copy` makes the people's working copy, `watch weekly`
+# is the scheduled pull. Doc: machines/README.md, "fcpm on its own".
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -58,7 +58,13 @@ Register-ScheduledTask -TaskName 'fcpm weekly' -Action \$a -Trigger \$t -Setting
 EOF
 }
 
+make_copy() {
+  [ -n "$called" ] && [ ! -d "$WC" ] && [ -x "$CODE/bin/refs" ] || return 0
+  "$CODE/bin/refs" work "$REPO" "$called" >/dev/null 2>&1 && echo "made      ~/code/work/$REPO@$called, the people's working copy"
+}
+
 case "${1:-}" in
+  copy) make_copy; exit ;;
   weekly) if [ "${2:-}" = install ]; then weekly_install; else weekly; fi; exit ;;
 esac
 

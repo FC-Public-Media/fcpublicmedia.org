@@ -48,21 +48,16 @@ administrator except where it says so.
 
 1. **Git, at the desk.** `winget install --id Git.Git --exact`. This is the
    one thing that has to arrive before these bytes can.
-2. **This repository.** In Git Bash:
-
-       mkdir -p ~/code/refs && cd ~/code/refs
-       git clone https://github.com/fc-public-media/fcpublicmedia.org
-       git config --global core.autocrlf false
-
-   Then clone station-node's mirror beside it by hand, if this bay is to read it.
-3. **Put the profile on, once by hand.** Paste this into any window, cmd or
-   PowerShell; it reads the same in both:
-
-       powershell -NoProfile -Command "& 'C:\Program Files\Git\bin\bash.exe' -c '~/code/refs/fcpublicmedia.org/machines/fcpm install'"
-
-   It finds `editing-bay-1` by name and puts on everything the MANIFEST
-   carries: the `~/code` root, every mirror in `refs.wanted`, the compiled
-   settings, and `fcpm` itself on PATH. **From then on, in a new window, it is
+2. **The start line, once.** Copy it from the repository's front page on
+   GitHub (`README.md`, *Setting up a machine*) into any window, cmd or
+   PowerShell. It gets this repository, or updates it, and runs `fcpm
+   install`. Clone station-node's mirror beside it by hand, if this bay is to
+   read it.
+3. **What that put on.** `fcpm install` finds `editing-bay-1` by name and
+   puts on everything the MANIFEST carries: the `~/code` root, every mirror in
+   `refs.wanted`, the compiled settings and `fcpm` itself on PATH. It also
+   makes the people's working copy (`work/fcpublicmedia.org@production`) and
+   registers the weekly pull. **From then on, in a new window, it is
    `fcpm`**: `fcpm` shows what is going on and offers what to do, `fcpm install` puts the profile on. A person
    runs `install`, never a session.
 4. **Developer Mode, at the desk.** Settings > System > For developers. It lets
