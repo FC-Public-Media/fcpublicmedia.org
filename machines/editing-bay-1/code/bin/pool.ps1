@@ -63,13 +63,23 @@ function Running {
 function EnsureServer {
     if (Test-Path $Off) { return }
     if (@(Servers).Count) { return }
-    # conhost --headless: a console of its own and no window on a shared desktop.
-    # It outlives this pass, as the roller's Edge does.
-    $a = "--headless `"$Claude`" remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
+    # No console: input from an empty file, output to server.out. It outlives
+    # this pass, as the roller's Edge does. On 2026-10-06, started on a console
+    # (conhost --headless, or a hidden window), the server died about a second
+    # in, mid-registration and with nothing in its log, nearly every time, and
+    # a cmd.exe under one failed to start (0xc0000142, a popup on the
+    # desktop). With its output in a file it stays up.
+    $a = "remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
+    $none = Join-Path $State "server.in"
+    if (-not (Test-Path $none)) { New-Item -ItemType File $none | Out-Null }
     try {
-        $p = Start-Process -FilePath "conhost.exe" -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru
-        Say ("started the root's server in {0} (conhost {1})" -f $Root, $p.Id)
-    } catch { Say ("could not start the root's server: {0}" -f $_) }
+        $p = Start-Process -FilePath $Claude -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru `
+            -RedirectStandardInput $none -RedirectStandardOutput (Join-Path $State "server.out") -RedirectStandardError (Join-Path $State "server.err")
+    } catch { Say ("could not start the root's server: {0}" -f $_); return }
+    # A start is not a server. Say so only if it is still up once registered.
+    Start-Sleep -Seconds 15
+    if (-not $p.HasExited) { Say ("started the root's server in {0} (pid {1})" -f $Root, $p.Id) }
+    else { Say ("the root's server exited within 15s of starting ({0}); see server.log" -f $p.ExitCode) }
 }
 
 function Screens {
