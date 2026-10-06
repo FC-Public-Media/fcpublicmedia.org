@@ -239,7 +239,7 @@ the way production's does. To check, on kiosk: `type %USERPROFILE%\code\CLAUDE.m
 are the longest headers. Each shrinks to five lines when its file is next
 touched, and the rest moves to a doc:
 
-| header lines | file | its doc |
+| header lines | file | moves to |
 |---|---|---|
 | 72 | `site/bin/reprice-subscriptions.py` | `docs/payments.md` |
 | 71 | `bin/build-sites.py` | `docs/TENANCY.md` |

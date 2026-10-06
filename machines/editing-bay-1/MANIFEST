@@ -26,8 +26,11 @@
 # - Session state, memory and the pool's snapshot. They are in
 #   %LOCALAPPDATA%\editing-bay-1 and ~/.claude, and none of it is a decision.
 
-mirror  code/AGENTS.md         code/AGENTS.md
-mirror  code/CLAUDE.md         code/CLAUDE.md
+# The root's instructions are read from the mirror, never copied: what is
+# placed is a pointer (`@refs/...`), so a `refs pull` keeps them current
+# without an install. code/AGENTS.md is the instructions themselves.
+mirror  home/code/CLAUDE.md    code/CLAUDE.md
+mirror  home/code/AGENTS.md    code/AGENTS.md
 mirror  code/bin/refs          code/bin/refs
 mirror  code/bin/pool.ps1      code/bin/pool.ps1
 mirror  code/refs.wanted       code/refs.wanted
