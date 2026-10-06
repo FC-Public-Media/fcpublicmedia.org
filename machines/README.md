@@ -273,6 +273,40 @@ bash, so cmd and PowerShell behave alike, and nobody needs to know which one a
 window is. **A step that needs a path, an interpreter or a choice of shell is a
 gap in `fcpm`, not something to type.**
 
+## What a machine is called, and how its sessions arrive
+
+Every machine has three names. Autumn uses the first one when she talks to a
+machine or its agents, so a session should know it means *this* root.
+
+| Called | Sticker, and profile | Windows answers to | Its root's Remote Control server |
+|---|---|---|---|
+| **production** | Editing bay 1, `editing-bay-1` | `EDIT2` | `production` |
+| **kiosk** | the kiosk, `kiosk-1`; it was editing bay 2 | `200-FCPANEDIT2` | `kiosk`, once kiosk-1 adopts the server (below) |
+
+**`EDIT2` is bay 1, not bay 2.** Both Windows names end in `EDIT2`, and
+neither is wrong. The kiosk kept the old editing bay 2's name when it was
+retired from media work, and bay 1 answers to `EDIT2` on its own. The
+hostnames stay in `names`, because `binding` matches on them and renaming is
+an administrator's Windows change. In conversation, use *production* and
+*kiosk*.
+
+**How a session arrives is how it starts** (Autumn, 2026-10-05). At sign-in a
+machine brings its root up as a Remote Control *server* at `~/code`:
+`claude remote-control --name <root>`, with no session pre-created. Every
+session then starts from zero at claude.ai or on the phone, and the server
+names it `<root>-...` rather than after the hostname, which is where the stray
+`EDIT2-...` names came from. Nothing is revived and no seat session is kept.
+A running session is never stopped. One that closes stays closed, and the
+server stays up for the next one.
+
+- Editing bay 1 does this in `code/bin/pool.ps1`. Each minute's pass starts
+  the server if none is running, and leaves alone one started by hand in a
+  terminal.
+- Kiosk-1 still keeps a `startup` seat session (PR #184), and a session there
+  is already named `kiosk`. Moving its door to the server is kiosk-1's change
+  to make. Until then, a `kiosk` server and a `kiosk` session would both show
+  up in the claude.ai list.
+
 ## What is not decided
 
 - **Some names are placeholders.** `editing-bay-2` is what Autumn calls it out

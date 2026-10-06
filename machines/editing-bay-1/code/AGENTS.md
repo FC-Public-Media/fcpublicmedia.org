@@ -4,8 +4,11 @@
 
 This directory is the project: an editing bay in Fort Collins Public Media's
 studio, a `*-node` holding like the media node (the kiosk, `200-FCPANEDIT2`)
-and synced with it. This box answers to `EDIT2`; Autumn calls it Bay 1. Sessions
-start here. Windows 11 Home, user `fcpub`. It is the strongest machine in the
+and synced with it. **Autumn calls this root `production`**: what goes on
+when agents run here. The sticker says editing bay 1, and Windows answers to
+`EDIT2`. That is not bay 2: the kiosk, once editing bay 2, is `200-FCPANEDIT2`,
+and Autumn calls it `kiosk` (site repo `machines/README.md`, *What a machine is
+called*). Sessions start here. Windows 11 Home, user `fcpub`. It is the strongest machine in the
 studio (i7-13700KF, 24 threads, 32 GB, RTX 4080, 2 TB on `D:`), so it takes
 heavy work when media-node or station-node grants it. No grants have been
 placed yet.
@@ -64,10 +67,10 @@ placed yet.
 | `refs/` | read-only mirrors of every repo we read. **Never commit here.** |
 | `work/REPO@BRANCH` | a worktree per branch. Make one with `bin/refs work REPO BRANCH`, and remove it with `bin/refs done REPO BRANCH` once it's merged |
 | `bin/refs` | media-node's script. Diverges from media-node by one line: `REF` points at `refs/`, which is this bay's name for it (2026-09-25) |
-| `bin/pool.ps1` | this bay's session pool: `status`, `pass`, `revive`, `pin`, `install`. See *Tending it* |
-| `%LOCALAPPDATA%\editing-bay-1\` | the pool's `sessions.json` and `pool.log`; later this bay's venv and scratch. Named for the profile, pending Autumn |
+| `bin/pool.ps1` | keeps the root's `production` server up: `status`, `pass`, `off`, `on`, `install`. See *Tending it* |
+| `%LOCALAPPDATA%\editing-bay-1\` | the pool's `pool.log`, the server's `server.log`; later this bay's venv and scratch. Named for the profile |
 
-No live checkout and no long-running service: a bay needs no `@<node>` branch
+No live checkout, and nothing long-running but the `production` server. A bay needs no `@<node>` branch
 until it runs something that has to be rebased under it.
 
 ## How work moves
@@ -100,11 +103,12 @@ until it runs something that has to be rebased under it.
   - Shared files outside `refs/` and `work/` (this one, `CLAUDE.md`) belong
     to every session here. Re-read before writing, and tell the others
     what changed.
-- **A pool, not a service.** Each install site keeps sessions and
-  worktrees available, but idle until called for. A session here waits to
-  be asked. It starts no service, keeps no live checkout, and holds no
-  long-running process. If it's closed or restarted, it resumes from its
-  worktree and its commits, not from anything still running.
+- **How a session arrives is how it starts** (Autumn, 2026-10-05). The
+  root keeps one thing up, the `production` Remote Control server, and opens
+  no session of its own. Each session is started from zero at claude.ai or
+  the phone. A session starts no service, keeps no live checkout, and holds
+  no long-running process. If it's closed, it picks back up from its
+  worktree and its commits, and nothing revives it.
 - **Push before telling Autumn a PR is ready.** Once a PR merges, a commit
   pushed after it never lands; open a new PR for it.
 - **Other machines are reached outward only.** Code goes by commit
@@ -124,27 +128,24 @@ until it runs something that has to be rebased under it.
 - `bin/refs pull` and `bin/refs status` keep the mirrors current.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1
-  pool` at logon and every minute, with no window. Each pass snapshots
-  what `claude agents --json` lists.
-  - On the first pass after a logon, it revives every session from the
-    snapshot under its own id, in the background with Remote Control, like
-    media-node's `door.py sessions`.
-  - Then, if nothing is running in `~/code`, it starts one idle background
-    session there named `bay1`.
-  - Later passes revive nothing, so a session closed during the day stays
-    closed.
-  - The clock is the logon, not the boot, because Fast Startup keeps the
-    boot time old across a shutdown.
-  - `bin\pool.ps1 status` shows the pool, and `pin in|out <id|name>` always
-    or never brings a session back. `uninstall` removes the task.
-  - A background session needs its folder trusted first. `~/code` is.
+  pool` at logon and every minute, with no window.
+  - Each pass makes sure `claude remote-control --name production` is
+    serving `~/code`. It is started with no session in it, and names the
+    sessions it spawns `production-...`. One started by hand in a terminal
+    counts, and is left alone.
+  - Nothing is revived, and no seat session is kept. That was tried twice,
+    and it was not what Autumn asked for. A session that closes stays closed.
+  - `fcpm pool` shows the task, the server and the sessions running.
+    `fcpm pool off|on` stops or resumes the pool starting the server, and
+    never stops a running one. `uninstall` removes the task.
+  - The server needs `~/code` trusted first. It is.
   - Each pass also keeps the rolling TV's page up
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
     with a profile of its own. It uses the depot's copy when the depot
     answers, and a local render otherwise. `fcpm screen` shows it,
     `fcpm screen off|on` holds it off or lets it back, and
     `fcpm screen class|wall` switches between class mode and the wall.
-    That Edge is the only thing left running between passes.
+    That Edge and the server are all that run between passes.
   - `fcpm screen`'s `kept` line says when the pool last kept the screen,
     from a heartbeat. If it says NO, the pool running here is out of date:
     a change to `code/bin/pool.ps1` does nothing until `fcpm install`, and
