@@ -80,8 +80,15 @@ before trusting anyone's guess, including your own.
   Control server and no session. This box still keeps one background session,
   `startup`, through `door.py supervise` (PR #184). Moving to a `kiosk` server
   is this profile's change to make (site repo `machines/README.md`).
-- **`fcpm` is not installed here yet.** `fcpm install` is Autumn's to run,
-  never a session's. Until then the verbs are the tools themselves.
+- **The weekly pull is the gate, and sessions here run it** (Autumn,
+  2026-10-05). This box has no keyboard or mouse. It is out of people's reach,
+  and its ports are not for playing with; people meet it only through its
+  screens. So nobody sits down here to type `fcpm`. The task `fcpm weekly`
+  (registered 2026-10-05) brings in the latest once a week, so the box sets
+  the stage for what the studio runs that week. Keep it registered
+  (`machines/watch weekly install`). If it can't run, a session does the pull
+  itself. The steps other machines leave to a person at the desk are a
+  session's here, when Autumn asks. Don't hedge them back to her.
 - Clear merged worktrees out of `work/`. Keep `media-node` clean, or the
   door stops rebasing.
 - Surprises go in the log: `machines/kiosk-1/gotcha <tag> "assumed -> true"`

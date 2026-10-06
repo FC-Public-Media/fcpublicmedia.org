@@ -199,6 +199,17 @@ turned its own revival off for a different reason — a revived session could
 take a grant meant for a new one. This node has no grants, so that doesn't
 apply here yet.
 
+**The weekly gate** (Autumn, 2026-10-05). A kiosk has no keyboard or mouse
+attached and sits out of people's reach. Nobody plays with its ports, and
+people meet it only through its screens. So the person at the desk that `fcpm` assumes
+on other machines is not here, and the weekly pull is what makes this box set
+the stage for what the studio runs that week. `fcpm weekly` is a per-user
+task, like `media-node door`, and needs no administrator: registered and run
+once by a session on Autumn's say-so, 2026-10-05 (the log is
+`%LOCALAPPDATA%\fcpm\weekly.log`). The door keeps `media-node` current every
+five minutes. The weekly pull keeps `ref/` current, and that is where this
+root's instructions are read from.
+
 ### Asked of IT
 
 - **Sign in automatically.** A reboot waits at the sign-in screen until
