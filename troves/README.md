@@ -55,4 +55,4 @@ display stack can say it is there.
 | [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
 | [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
 | [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
-| [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | its setup drive read from editing bay 1; nothing run, and whether it joins the studio is open |
+| [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | setup drive read from editing bay 1; planned: a muted 24-hour stream as a proof of concept, waiting on an account |
