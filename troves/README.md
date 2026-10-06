@@ -47,6 +47,21 @@ display stack can say it is there.
   verified, staged, installed at a declared restart tier, confirmed. The trove
   carries the procedure; the host keeps the record of each arrival.
 
+## Gear that brings its own software
+
+Some gear shows up on the bus as a drive with its own programs on it (the Nest
+Cam did, 2026-10-05). That drive is the instrument's offer, and the bay decides
+whether to take it:
+
+1. copy the drive into the bay's `received\` and run nothing from it;
+2. record each file's hash and signature, as for any payload;
+3. read what each program does before calling it an installer;
+4. check whether the place it sends you still answers;
+5. write the verdict in the trove, per platform.
+
+The programs are the vendor's, so the repository keeps their hashes, not the
+files.
+
 ## The troves
 
 | trove | plays | status |
@@ -58,3 +73,14 @@ display stack can say it is there.
 | [`ti-89/`](ti-89/) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; a black link on COM1, the calculator not answering yet |
 | [`pools/`](pools/) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |
 | [`ki-pro/`](ki-pro/) | an AJA Ki Pro: ProRes recorder and player, read over the LAN | Studio Ki Pro, the TriCaster's backup recorder, read from editing bay 1 |
+| [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | retired 2026-10-06: it won't join any network here. Kept for its notes |
+| [`ptz/`](ptz/) | PTZ cameras on the studio network: presets operators trigger, and behind-the-scenes capture | concept, waiting on the donated cameras |
+
+## Troves in their own repositories
+
+Private in FC-Public-Media until Autumn opens them. Station-node submodules
+them under `library/FCPM/`; `game-intake` is not there yet.
+
+| repository | plays | status |
+|---|---|---|
+| [`game-intake`](https://github.com/FC-Public-Media/game-intake) | game recording intake: consoles, handhelds and YouTube as instruments | started 2026-10-05; researched, not measured |
