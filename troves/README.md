@@ -56,6 +56,7 @@ display stack can say it is there.
 | [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
 | [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
 | [`ti-89/`](ti-89/) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; a black link on COM1, the calculator not answering yet |
+| [`pools/`](pools/) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |
 
 ## Troves in their own repositories
 
