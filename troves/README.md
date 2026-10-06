@@ -55,3 +55,4 @@ display stack can say it is there.
 | [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
 | [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
 | [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
+| [`pools/`](pools/) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |

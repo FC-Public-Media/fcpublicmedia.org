@@ -39,6 +39,9 @@ case "$cmd" in
   runnables) exec "$REPO/bin/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
   screen)    ps1 "$REPO/troves/kiosk-screen/screen.ps1" "$@" ;;
+  pools)
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/pools.py" "$@" ;;
   camera)
     # uv brings its own Python; a window opened before uv was installed may not
     # have it on PATH, so fall back to where winget puts it.
@@ -56,6 +59,7 @@ fcpm runnables [...]      the census, compile, prove (bin/runnables)
 fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
 fcpm screen [status|on|off|reset|class|wall]   the rolling TV
 fcpm camera [console|presets|apply NAME|state]   the USB camera
+fcpm pools [key|sample|sample clear]   the storage pools, as a page (key: the depot's password)
 fcpm help                 this
 EOF
  ;;

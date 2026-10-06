@@ -74,7 +74,7 @@ to go looking ([`../AGENTS.md`](../AGENTS.md), *Documentation is gathered*).
 | [`SCREENS-DIM.md`](SCREENS-DIM.md) | one dim mode for every studio screen |
 | [`INTERMEDIATES.md`](INTERMEDIATES.md) | what we hand over to be deployed |
 | [`LIBRARY-AND-WIZARDS.md`](LIBRARY-AND-WIZARDS.md) | the library on main, and the wizards it keeps |
-| [`../troves/README.md`](../troves/README.md) | **the troves**, kits a machine can wear: [camera](../troves/camera/README.md), [edgerouter-x](../troves/edgerouter-x/README.md), [kiosk-screen](../troves/kiosk-screen/README.md), [recorder](../troves/recorder/README.md) |
+| [`../troves/README.md`](../troves/README.md) | **the troves**, kits a machine can wear: [camera](../troves/camera/README.md), [edgerouter-x](../troves/edgerouter-x/README.md), [kiosk-screen](../troves/kiosk-screen/README.md), [recorder](../troves/recorder/README.md), [pools](../troves/pools/README.md) |
 | [`../instruments/README.md`](../instruments/README.md) | instruments; [class mode on the rolling TV](../instruments/roller-tv/class-mode.md) |
 | [`../attendant/README.md`](../attendant/README.md) | attendants: [bugs found following recipes](../attendant/BUGS.md), [pausing the wall](../attendant/wall.md) |
 | [`../brand/README.md`](../brand/README.md) | brand assets for the screens in the building |
