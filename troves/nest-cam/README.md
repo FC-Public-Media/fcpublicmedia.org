@@ -8,9 +8,12 @@ instrument carries itself, so it is also a draft of how a trove records a
 **setup volume**: what is on it, by platform, what each piece does, and
 whether to run it.
 
-Status: read on 2026-10-05 from editing bay 1, which the camera was plugged
-into. Nothing on the drive has been run. Planned use: a 24-hour stream, as a
-proof of concept (below).
+Status: **retired, 2026-10-06.** Its setup drive was read on 2026-10-05 from
+editing bay 1, and nothing on it was run. The camera offered only WPA and WEP
+when Autumn last set it up, and no network in the building, including her own
+router as it is now, offers one it will join. The notes stay because they
+hold up past this camera: the 24-hour stream concept (below) and the setup
+volume pattern (`../README.md`, *Gear that brings its own software*).
 
 ## What the camera is, on the cable
 
@@ -61,7 +64,9 @@ from the bay over the cable. This one can't be run from here: everything it
 does goes through a Google account and Google's servers, and the cable does
 nothing once it is set up.
 
-## What it is for: a 24-hour stream, as a proof of concept
+## What it was for: a 24-hour stream, as a proof of concept
+
+This outlived the camera. `../ptz/` picks it up.
 
 Autumn, 2026-10-05: the studio has talked about security cameras and would
 buy something better than a Nest for that. This one is for demonstrating the
@@ -102,7 +107,7 @@ bay the camera keeps putting its setup drive on the bay.
 [sdm-cam]: https://developers.google.com/nest/device-access/api/camera
 [sdm-start]: https://developers.google.com/nest/device-access/get-started
 
-## Waiting on Autumn
+## What it would have waited on
 
 - **Whose Google account.** The camera is probably still on the account it
   was a baby monitor under. The demo needs a consumer Google account to own both
@@ -115,14 +120,3 @@ bay the camera keeps putting its setup drive on the bay.
 - Whether a cloud camera belongs in the studio for real is the board's,
   and this demo is meant to inform it, not to answer it.
 
-## Setup volumes, as a pattern
-
-Some gear arrives with its own software on board. When it does, the trove:
-
-1. copies the volume into the bay's `received\` and runs nothing from it;
-2. records each file's hash and signature in the bay, as for any payload;
-3. reads what each program does before calling it an installer;
-4. checks whether the place it sends you still answers;
-5. writes the verdict here, per platform.
-
-The volume is the instrument's offer. The bay decides whether to take it.
