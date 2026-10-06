@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pools</title>
+<style>
+  :root {
+    --bg: #07090d; --ink: #c9d1dc; --dim: #6b7584; --faint: rgba(255,255,255,.07);
+    --row: 86px; --label: 150px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 20% -10%, #14203a 0%, transparent 55%),
+                radial-gradient(ellipse at 90% 110%, #1d1430 0%, transparent 50%), var(--bg);
+    background-attachment: fixed;
+    color: var(--ink); font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+  }
+  body { display: flex; flex-direction: column; }
+  header { flex: none; padding: 14px 18px 18px; display: flex; gap: 8px 22px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  header .meta { color: var(--dim); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--dim); }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
+  .legend .b { background: transparent; }
+  main { flex: 1; min-height: 0; overflow: auto; }
+  .pool { margin: 0 0 34px; width: max-content; min-width: 100%; }
+  .pool > h2 { position: sticky; left: 0; margin: 0 0 6px; padding: 0 18px; font-size: 11px; font-weight: 600;
+               letter-spacing: .14em; text-transform: uppercase; color: var(--dim); width: max-content; }
+  .pool > h2 span { letter-spacing: 0; text-transform: none; font-weight: 400; margin-left: 10px; }
+  .row { display: flex; align-items: center; height: var(--row); border-top: 1px solid var(--faint); }
+  .row .label { position: sticky; left: 0; z-index: 2; flex: 0 0 var(--label); height: 100%; padding: 0 12px 0 18px;
+                display: flex; flex-direction: column; justify-content: center; cursor: pointer;
+                background: linear-gradient(90deg, var(--bg) 80%, transparent); }
+  .row .label b { font-weight: 500; }
+  .row .label small { color: var(--dim); }
+  .row .label:hover b { text-decoration: underline; }
+  .strip { display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 100%; }
+  .sq { flex: none; border-radius: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,.12); position: relative; }
+  .sq.fresh { border: 2px solid rgba(255,255,255,.55); }
+  .sq.live { border: 2px solid #fff; animation: live 1.2s ease-in-out infinite; }
+  .sq.short { border-style: dashed; }
+  .sq:hover { outline: 2px solid #fff; outline-offset: 2px; }
+  @keyframes live { 50% { box-shadow: 0 0 0 4px rgba(255,255,255,.25); } }
+  .dayg { flex: none; display: flex; align-items: center; gap: 6px; height: 100%; min-width: 84px; padding: 16px 8px 0;
+          border-left: 1px solid var(--faint); position: relative; }
+  .dayg > span { position: absolute; top: 4px; left: 6px; font-size: 10px; color: var(--dim); white-space: nowrap; }
+  .free { flex: none; height: 46px; border-radius: 3px; display: flex; align-items: center; padding-left: 10px;
+          color: var(--dim); font-size: 11px; white-space: nowrap;
+          background: repeating-linear-gradient(135deg, var(--faint) 0 6px, transparent 6px 12px); }
+  .note { color: var(--dim); padding: 0 12px; }
+  .note code { color: var(--ink); }
+  #tip { position: fixed; z-index: 9; pointer-events: none; display: none; max-width: 340px; padding: 8px 10px;
+         background: rgba(12,15,21,.95); border: 1px solid var(--faint); border-radius: 4px; font-size: 12px; }
+  #tip b { display: block; font-weight: 500; margin-bottom: 2px; word-break: break-all; }
+  #tip span { color: var(--dim); display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pools</h1>
+  <span class="meta" id="meta">looking…</span>
+  <span class="legend" id="legend"></span>
+</header>
+<main id="main"></main>
+<div id="tip" role="tooltip"></div>
+<script>
+(function () {
+  var main = document.getElementById('main'), tip = document.getElementById('tip');
+
+  function bytes(n) {
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
+    while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+    return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i];
+  }
+  function dur(s) {
+    if (s == null) return 'length unknown';
+    if (s < 60) return s.toFixed(s < 10 ? 1 : 0) + ' s';
+    var m = Math.floor(s / 60);
+    return m < 60 ? m + ' min ' + Math.round(s % 60) + ' s' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
+  }
+  function when(t) { return new Date(t * 1000).toLocaleString([], {weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}); }
+  function day(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function open(path) {
+    fetch('/open', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({path: path})});
+  }
+
+  function draw(d) {
+    var stages = d.stages || {}, all = [];
+    d.pools.forEach(function (p) { p.rows.forEach(function (r) { (r.files || []).forEach(function (f) { all.push(f); }); }); });
+    var max = Math.max.apply(null, all.map(function (f) { return f.bytes; }).concat([1]));
+
+    document.getElementById('meta').textContent = all.length + ' recordings · looked ' +
+      new Date(d.at * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    var lg = document.getElementById('legend'); lg.textContent = '';
+    Object.keys(stages).forEach(function (k) {
+      var s = el('span'), i = el('i'); i.style.background = stages[k].color; s.appendChild(i); s.appendChild(document.createTextNode(stages[k].label)); lg.appendChild(s);
+    });
+    [['live', '2px solid #fff', 'being written'], ['fresh', '2px solid rgba(255,255,255,.55)', 'today'],
+     ['short', '1px dashed rgba(255,255,255,.5)', 'under 3 s']].forEach(function (b) {
+      var s = el('span'), i = el('i', 'b'); i.style.border = b[1]; s.appendChild(i); s.appendChild(document.createTextNode(b[2])); lg.appendChild(s);
+    });
+
+    var keep = main.scrollLeft; main.textContent = '';
+    d.pools.forEach(function (p) {
+      var sec = el('section', 'pool'), h = el('h2', null, p.title);
+      if (p.capacity) h.appendChild(el('span', null, bytes(p.used) + ' used of ' + bytes(p.capacity)));
+      sec.appendChild(h);
+      var errs = p.rows.map(function (r) { return r.error || ''; });
+      var rows = errs.length > 1 && errs[0] && errs.every(function (e) { return e === errs[0]; })
+        ? [{label: p.rows.length + ' partitions', error: errs[0], path: p.rows[0].path, files: []}] : p.rows;
+      rows.forEach(function (r) {
+        var row = el('div', 'row'), lab = el('div', 'label'), strip = el('div', 'strip');
+        var files = r.files || [];
+        lab.appendChild(el('b', null, r.label));
+        lab.appendChild(el('small', null, r.error ? r.error : files.length + (files.length === 1 ? ' recording' : ' recordings') +
+          (r.other ? ' · ' + r.other + ' other' : '')));
+        lab.title = 'Open ' + r.path + ' in Explorer';
+        lab.setAttribute('role', 'button'); lab.tabIndex = 0;
+        lab.onclick = function () { open(r.path); };
+        row.appendChild(lab);
+
+        if (r.error === 'locked') {
+          strip.appendChild(el('span', 'note')).innerHTML = 'locked: this computer has no key for the depot yet. At a window: <code>fcpm pools key</code>';
+        } else if (r.error) {
+          strip.appendChild(el('span', 'note', 'not reachable from here right now'));
+        }
+        var color = (stages[r.stage] || {}).color || '#888', lastDay = null, width = 0, group = null;
+        files.forEach(function (f) {
+          var dd = day(f.start);
+          if (dd !== lastDay) { group = el('div', 'dayg'); group.appendChild(el('span', null, dd)); strip.appendChild(group); lastDay = dd; width += 17; }
+          var side = Math.round(10 + 46 * Math.sqrt(f.bytes / max));
+          var sq = el('div', 'sq ' + f.state + (f.short ? ' short' : ''));
+          sq.style.width = sq.style.height = side + 'px';
+          sq.style.background = color;
+          sq.setAttribute('aria-label', f.name);
+          sq.onmouseenter = function (e) {
+            tip.innerHTML = '';
+            tip.appendChild(el('b', null, f.name));
+            tip.appendChild(el('span', null, when(f.start) + ' · ' + dur(f.duration)));
+            tip.appendChild(el('span', null, bytes(f.bytes) + ' · ' + ((stages[r.stage] || {}).label || r.stage) + ' · ' +
+              (f.state === 'live' ? 'being written now' : f.state === 'fresh' ? 'today' : 'settled') + (f.short ? ' · under 3 s' : '')));
+            tip.style.display = 'block';
+          };
+          sq.onmousemove = function (e) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 350) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; };
+          sq.onmouseleave = function () { tip.style.display = 'none'; };
+          sq.onclick = function () { open(f.path); };
+          group.appendChild(sq); width += side + 6;
+        });
+        var free = r.free != null ? r.free : null, used = r.used != null ? r.used : null;
+        if (free != null) {
+          var w = used ? Math.max(60, Math.min(2400, Math.max(width, 60) * free / Math.max(used, 1))) : 240;
+          strip.appendChild(el('div', 'free', bytes(free) + ' free')).style.width = w + 'px';
+        }
+        row.appendChild(strip); sec.appendChild(row);
+      });
+      if (p.kind === 'folder' && p.free != null) {
+        var fr = el('div', 'row'), fl = el('div', 'label'), fs = el('div', 'strip'), n = 0;
+        p.rows.forEach(function (r) { n = Math.max(n, (r.files || []).length); });
+        fl.appendChild(el('b', null, 'Free')); fl.appendChild(el('small', null, 'of ' + bytes(p.capacity)));
+        fr.appendChild(fl);
+        fs.appendChild(el('div', 'free', bytes(p.free) + ' free')).style.width =
+          Math.max(60, Math.min(2400, Math.max(n * 40, 200) * p.free / Math.max(p.used, 1))) + 'px';
+        fr.appendChild(fs); sec.appendChild(fr);
+      }
+      main.appendChild(sec);
+    });
+    main.scrollLeft = keep;
+  }
+
+  function tick() {
+    fetch('/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw)
+      .catch(function () { document.getElementById('meta').textContent = 'the window that showed this has closed'; });
+  }
+  tick(); setInterval(tick, 15000);
+})();
+</script>
+</body>
+</html>
