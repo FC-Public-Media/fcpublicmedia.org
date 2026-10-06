@@ -63,23 +63,27 @@ function Running {
 function EnsureServer {
     if (Test-Path $Off) { return }
     if (@(Servers).Count) { return }
-    # No console: input from an empty file, output to server.out. It outlives
-    # this pass, as the roller's Edge does. On 2026-10-06, started on a console
-    # (conhost --headless, or a hidden window), the server died about a second
-    # in, mid-registration and with nothing in its log, nearly every time, and
-    # a cmd.exe under one failed to start (0xc0000142, a popup on the
-    # desktop). With its output in a file it stays up.
+    # Why the last one stopped, if it said. A server that ended without
+    # signing off (a sign-out, a kill) still holds ~/code for a few minutes,
+    # and each start until then is refused: "already served by a terminal
+    # `claude remote-control`". That is the churn after a sign-in. This pass
+    # tries again, as every pass does.
+    $err = Join-Path $State "server.err"
+    $why = Get-Content $err -ErrorAction SilentlyContinue | Where-Object { $_ -match '^Error:' } | Select-Object -Last 1
+    if ($why) { Say ("the last server stopped: {0}" -f $why) }
+    # No console: input from an empty file, output to server.out and
+    # server.err. It outlives this pass, as the roller's Edge does. Under
+    # conhost --headless a refused server left in about a second with nothing
+    # said anywhere, and at the 2026-10-06 sign-in a cmd.exe under one failed
+    # to start (0xc0000142, a popup on the desktop).
     $a = "remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
     $none = Join-Path $State "server.in"
     if (-not (Test-Path $none)) { New-Item -ItemType File $none | Out-Null }
     try {
         $p = Start-Process -FilePath $Claude -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru `
-            -RedirectStandardInput $none -RedirectStandardOutput (Join-Path $State "server.out") -RedirectStandardError (Join-Path $State "server.err")
-    } catch { Say ("could not start the root's server: {0}" -f $_); return }
-    # A start is not a server. Say so only if it is still up once registered.
-    Start-Sleep -Seconds 15
-    if (-not $p.HasExited) { Say ("started the root's server in {0} (pid {1})" -f $Root, $p.Id) }
-    else { Say ("the root's server exited within 15s of starting ({0}); see server.log" -f $p.ExitCode) }
+            -RedirectStandardInput $none -RedirectStandardOutput (Join-Path $State "server.out") -RedirectStandardError $err
+        Say ("started the root's server in {0} (pid {1})" -f $Root, $p.Id)
+    } catch { Say ("could not start the root's server: {0}" -f $_) }
 }
 
 function Screens {
