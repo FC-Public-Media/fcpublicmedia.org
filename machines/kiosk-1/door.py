@@ -30,6 +30,8 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /kiosk/now         who is on, and the studio map, as JSON. The page polls it
     GET /depot/            what is on the studio drive, for the third panel
     GET /depot/now         the drive's index, as JSON. The page polls it
+    GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
+    POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>
@@ -852,7 +854,7 @@ def kiosk_page(wall=False, map_only=False):
         body = body[body.index('<section class="half map">'):]
         return page(w.get("place", "Welcome"), body, KIOSK_CSS + MAP_ONLY_CSS)
     if not wall:
-        body += class_js() + DESK_CLASS_JS
+        body += class_js() + DESK_CLASS_JS + ASIDE_HTML
     return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS)
 
 
@@ -1672,7 +1674,7 @@ WALL_JS = """<script>
   function show(i) {
     cur = (i + M.length) %% M.length;
     var m = M[cur], f = document.createElement('iframe');
-    f.title = m.label; f.src = m.name + '.html' + qs;
+    f.title = m.label; f.src = (m.src || m.name + '.html') + qs;
     f.addEventListener('load', function () {
       f.classList.add('shown');
       Array.prototype.forEach.call(stage.querySelectorAll('iframe'), function (o) {
@@ -1779,13 +1781,42 @@ def wall_modules():
 def wall_files():
     """Every file of the wall, by name: the shell, then one per module."""
     cfg = wall_cfg()
-    every, rotate = int(cfg.get("every", 60)), int(cfg.get("rotate", 45))
     mods = wall_modules()
     files = {}
     for m in mods:
         build, url, data = WALL_PAGES[m["page"]]
         shim = WALL_SHIM % json.dumps({url: data()}).replace("</", "<\\/") if url else ""
         files[m["name"] + ".html"] = build().replace(POLL, "").replace("</head>", shim + "</head>", 1)
+    files["index.html"] = wall_shell(cfg, mods).replace(POLL, "")
+    if cfg.get("class"):                       # class mode's demo: beside the wall, never in its turn
+        files["class.html"] = class_mode_page(cfg["class"])
+    return files
+
+
+# THE TURN: the wall's shell on one of this box's own panels (Autumn,
+# 2026-10-05: "act like" the roller). Its modules are the door's live pages,
+# so nothing is snapshotted: `url:` frames a page as it is served, and `page:`
+# is a wall page drawn live. node.yml `turn:`; the panel's url is /turn/.
+def turn_modules():
+    return [m for m in (node().get("turn") or {}).get("modules") or []
+            if re.fullmatch(r"[a-z0-9-]+", str(m.get("name", "")))
+            and (str(m.get("url", "")).startswith("/") or m.get("page") in WALL_PAGES)]
+
+
+def turn_file(name):
+    mods = turn_modules()
+    if name == "index.html":
+        shell = wall_shell(node().get("turn") or {}, mods)
+        i = shell.rfind("</body>")
+        return shell[:i] + ASIDE_HTML + shell[i:]
+    for m in mods:
+        if name == m["name"] + ".html" and m.get("page") in WALL_PAGES:
+            return WALL_PAGES[m["page"]][0]()
+    return None
+
+
+def wall_shell(cfg, mods):
+    every, rotate = int(cfg.get("every", 60)), int(cfg.get("rotate", 45))
     ci = (node().get("wording") or {}).get("checkin") or {}
     ww = (node().get("wording") or {}).get("wall") or {}
     rail = "".join('<button type=button data-m="%s">%s</button>' % (
@@ -1800,14 +1831,11 @@ def wall_files():
            e(ww.get("brand", "FCPM")), rail, e(cfg.get("pause", "Pause")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
-               [{"name": m["name"], "label": m.get("label", m["name"])} for m in mods]))
+               [{"name": m["name"], "label": m.get("label", m["name"]), "src": m.get("url")} for m in mods]))
            .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
            .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
                                     "play": cfg.get("play", "Play")})))
-    files["index.html"] = page("Studio wall", body, WALL_CSS + CLASS_CSS).replace(POLL, "")
-    if cfg.get("class"):                       # class mode's demo: beside the wall, never in its turn
-        files["class.html"] = class_mode_page(cfg["class"])
-    return files
+    return page("Studio wall", body, WALL_CSS + CLASS_CSS)
 
 
 def wall_target():
@@ -1886,6 +1914,16 @@ class Door(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do_GET()
 
+    def do_POST(self):
+        # Only the panels themselves step aside: they are on this computer.
+        if self.path.split("?", 1)[0] == "/aside" and self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+            try:
+                step_aside()
+            except Exception as exc:
+                log("aside: %r" % exc)
+            return self.reply(204, "", TYPES[".txt"])
+        return self.reply(404, "", TYPES[".txt"])
+
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
@@ -1929,6 +1967,9 @@ class Door(BaseHTTPRequestHandler):
                 files = wall_files()           # the same bytes the share gets
                 name = tail or "index.html"
                 return self.reply(200, files[name]) if name in files else self.file(None)
+            if route == "/turn" or route.startswith("/turn/"):
+                body = turn_file(tail or "index.html")
+                return self.reply(200, body) if body else self.file(None)
             if route in ("/idle", "/idle/"):
                 return self.file(ROOT / "brand" / "idle" / "index.html")
             head, _, rest = route.strip("/").partition("/")
@@ -2233,6 +2274,69 @@ def close_profile(pids, wait=10):
 SILENT = 120     # seconds a screen's page may go without polling before it is relaunched
 
 
+# STEPPING ASIDE (Autumn, 2026-10-05): a mouse moving on a screen means
+# somebody is at the desk, and the screens kept raising themselves over their
+# window every half minute. The page's Minimize button posts /aside. The
+# screens are minimized and left alone until this computer has had no mouse
+# or keyboard for ASIDE_FOR; then they come back by themselves.
+ASIDE_FOR = 600
+ASIDE = STATE / "aside"
+
+ASIDE_HTML = """<button type=button id=fcpm-aside hidden>
+<svg viewBox="0 0 24 24" aria-hidden=true><rect x=4 y=17 width=16 height=3 /></svg>Minimize</button>
+<style>#fcpm-aside { position:fixed; top:2.5vh; right:2.5vw; z-index:2147483000; display:flex; align-items:center;
+  gap:1.2vh; padding:1.6vh 3vh; border:0; border-radius:1vh; background:var(--signal); color:var(--ink);
+  font:750 3.4vh/1 system-ui, sans-serif; cursor:pointer; box-shadow:0 .6vh 3vh rgba(0,0,0,.5); }
+#fcpm-aside[hidden] { display:none; }
+#fcpm-aside svg { width:3.4vh; height:3.4vh; fill:currentColor; }</style>
+<script>
+(function () {
+  // Shown only while a real mouse moves here; gone ten seconds after it stops.
+  if (location.protocol.indexOf('http') !== 0 || window !== window.top) return;
+  var b = document.getElementById('fcpm-aside'), px = null, py = null, t = 0;
+  window.addEventListener('pointermove', function (ev) {
+    if (px !== null && (Math.abs(ev.screenX - px) > 2 || Math.abs(ev.screenY - py) > 2)) {
+      b.hidden = false; clearTimeout(t); t = setTimeout(function () { b.hidden = true; }, 10000);
+    }
+    px = ev.screenX; py = ev.screenY;
+  }, true);
+  b.addEventListener('click', function () {
+    b.hidden = true;
+    fetch('/aside', {method: 'POST'}).catch(function () {});
+  });
+})();
+</script>"""
+
+
+def aside():
+    """True while the screens are stepped aside for somebody at the desk.
+    Ends, and says so, once nobody has touched this computer for ASIDE_FOR."""
+    if not ASIDE.exists():
+        return False
+    idle = idle_seconds()
+    if idle is not None and idle >= ASIDE_FOR:
+        try:
+            ASIDE.unlink()
+        except OSError:
+            pass
+        log("screens: nobody at the desk for %d min; the screens come back" % (ASIDE_FOR // 60))
+        return False
+    return True
+
+
+def step_aside():
+    """Minimize every screen's own browser, and keep them down (aside())."""
+    from ctypes import wintypes as W
+    STATE.mkdir(parents=True, exist_ok=True)
+    ASIDE.write_text(time.strftime("%Y-%m-%d %H:%M:%S"), encoding="utf-8")
+    log("screens: stepped aside for somebody at the desk")
+    profs = [str(STATE / "screens" / s["name"]).lower() for s in node().get("screens") or []]
+    for win in browser_windows(node().get("browser", "msedge")):
+        line = command_line(win["pid"]).lower()
+        if any(p in line for p in profs):
+            ctypes.windll.user32.ShowWindow(W.HWND(win["hwnd"]), 6)       # SW_MINIMIZE
+
+
 def screen_url(s):
     """Loopback, not this machine's name: the name resolves to a shifting set
     of IPv6 addresses, some of them temporary ones Windows rotates, and a page
@@ -2266,6 +2370,12 @@ def screens(launch=False, reset=False, say=print):
     and starts them where they belong. Nothing is launched while a screen's
     monitor is missing, or it would only land on the wrong one again. reset
     closes and relaunches every screen, wherever it is."""
+    if reset and ASIDE.exists():
+        ASIDE.unlink()
+    elif aside():
+        say("aside    minimized for somebody at the desk; back after %d min with no mouse or keyboard"
+            % (ASIDE_FOR // 60))
+        return 0
     cfg = node()
     exe = cfg.get("browser", "msedge")
     wins = browser_windows(exe)

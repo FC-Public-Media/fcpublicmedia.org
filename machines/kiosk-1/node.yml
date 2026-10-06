@@ -19,7 +19,7 @@ screens:
   - name: left
     display: DISPLAY2
     rect: [-1050, 0, 1050, 1680]
-    url: /preview/         # the cameras, from the HELO (2026-09-28); was /depot/, still at that address
+    url: /turn/            # turns like the roller: the cameras, then the files (2026-10-05). Was /preview/
 
 # ---------------------------------------------------------------------------
 # NETWORKS shown as Wi-Fi QR codes on the welcome screen.
@@ -151,6 +151,18 @@ depot:
             - {share: TO DROPBOX, label: To Dropbox}
             - {share: TO ENHANCE, label: To Enhance}
             - {share: TO STEM, label: To Stem}
+
+# ---------------------------------------------------------------------------
+# THE TURN: the wall's shell, on a panel of this box's own (door.py, "THE
+# TURN"). Autumn, 2026-10-05: one of our panels should act like the roller,
+# turning through the cameras and the files, with more to come (what we've
+# aired recently, say). A module frames a live page by `url:`, or draws a wall
+# page by `page:`. Add one here and the panel picks it up at its next reload.
+turn:
+  rotate: 45                 # seconds on each, as on the wall
+  modules:
+    - {name: cameras, label: Cameras, url: /preview/}
+    - {name: files, label: Files, url: /depot/}
 
 # ---------------------------------------------------------------------------
 # THE WALL: pages for screens elsewhere on the network, written to a share
