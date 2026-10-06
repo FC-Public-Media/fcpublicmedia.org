@@ -44,6 +44,9 @@ case "$cmd" in
     # have it on PATH, so fall back to where winget puts it.
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with comtypes --with pyyaml "$REPO/troves/camera/camera.py" "$@" ;;
+  ti89)
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    exec "$uv" run --no-project --python 3.12 --with pyserial "$REPO/troves/ti-89/link.py" "$@" ;;
   help|-h|--help) cat <<'EOF'
 fcpm                      the watcher: what is going on here, and a short menu
 fcpm status               which profile, and what differs from what it carries
@@ -56,6 +59,7 @@ fcpm runnables [...]      the census, compile, prove (bin/runnables)
 fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
 fcpm screen [status|on|off|reset|class|wall]   the rolling TV
 fcpm camera [console|presets|apply NAME|state]   the USB camera
+fcpm ti89 [probe|screen OUT.png] [--port COM1]   a TI-89 on a gray GraphLink
 fcpm help                 this
 EOF
  ;;
