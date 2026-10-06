@@ -8,6 +8,7 @@
     door.py startup --install  register that task, and retire the Startup shortcut
     door.py sessions [off|on]  the one session this node keeps, and what else is running
     door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
+    door.py tell [mint|register]       our Tell's signer, and listing it with our Atlas
     door.py                    is the door up
 
 Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
@@ -353,6 +354,66 @@ def wifi_password(ssid):
     set_secret("fcpm-wifi:" + ssid, ssid, first)
     print("stored in Windows Credential Manager as fcpm-wifi:%s" % ssid)
     return 0
+
+
+# ------------------------------------------------------------------ the Tell --
+TELL_SIGNER = "fcpm-tell-signer"                  # its Credential Manager target
+OUR_ATLAS = "FC-Public-Media/fcpublicmedia.org"   # we are our own Atlas
+
+
+def git_bash():
+    """Git's bash, which the engines' scripts are written for. Never WSL's."""
+    exe = shutil.which("git")
+    for p in pathlib.Path(exe).resolve().parents if exe else ():
+        if (p / "bin" / "bash.exe").exists():
+            return str(p / "bin" / "bash.exe")
+    return "bash"
+
+
+def tell(args):
+    """door.py tell [mint|register]: our Tell's signer, and listing it with our Atlas.
+
+    The private half lives only in Credential Manager. `register` writes it to
+    a temporary file for the one signing call. See docs/DIRECTORY.md."""
+    import tempfile
+    keys, verb = ROOT / "keys", (args[0] if args else "status")
+    held = secret(TELL_SIGNER)
+    if verb == "mint":
+        if held or (keys / "tell.fpr").exists():
+            print("already minted. A new signer makes every pile re-pin; rotate by hand if you mean it.")
+            return 1
+        with tempfile.TemporaryDirectory() as tmp:
+            key = pathlib.Path(tmp) / "tell-signer"
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "tell-delivery-signer",
+                            "-f", str(key)], check=True)
+            pub = key.with_suffix(".pub").read_text().strip()
+            fpr = subprocess.run(["ssh-keygen", "-lf", str(key.with_suffix(".pub"))], capture_output=True,
+                                 text=True, check=True).stdout.split()[1]
+            set_secret(TELL_SIGNER, "tell", key.read_text())
+        keys.mkdir(exist_ok=True)
+        for name, text in (("tell.pub", pub), ("tell.signers", "tell " + pub), ("tell.fpr", fpr)):
+            with open(keys / name, "w", newline="\n") as f:     # LF: piles compare these byte for byte
+                f.write(text + "\n")
+        print("minted %s\n  private  Credential Manager, %s\n  public   keys/tell.{pub,signers,fpr}; commit them"
+              % (fpr, TELL_SIGNER))
+        return 0
+    if verb == "register":
+        if not held:
+            print("no signer on this machine. door.py tell mint")
+            return 1
+        token = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True).stdout.strip()
+        with tempfile.TemporaryDirectory() as tmp:
+            key = pathlib.Path(tmp) / "tell-signer"
+            with open(key, "w", newline="\n") as f:
+                f.write(held)
+            env = dict(os.environ, ATLAS_REPO=OUR_ATLAS, TELL_SIGNER_KEY_FILE=key.as_posix(), GH_TOKEN=token)
+            return subprocess.run([git_bash(), "-c", "chmod 600 \"$TELL_SIGNER_KEY_FILE\"; bash .tell-engine/bin/register pr"],
+                                  cwd=str(ROOT), env=env).returncode
+    fpr = (keys / "tell.fpr").read_text().strip() if (keys / "tell.fpr").exists() else None
+    print("signer    %s" % (fpr or "none published.  door.py tell mint"))
+    print("private   %s" % ("in Credential Manager, %s" % TELL_SIGNER if held else "not on this machine"))
+    print("lists to  %s, _data/tells.yml.  door.py tell register" % OUR_ATLAS)
+    return 0 if fpr and held else 1
 
 
 def networks_declared():
@@ -3231,6 +3292,8 @@ if __name__ == "__main__":
         sys.exit(sessions(sys.argv[2:]))
     if verb == "dropbox":
         sys.exit(dropbox(sys.argv[2:]))
+    if verb == "tell":
+        sys.exit(tell(sys.argv[2:]))
     if verb == "wifi-password" and len(sys.argv) > 2:
         sys.exit(wifi_password(sys.argv[2]))
     sys.exit({"serve": serve, "supervise": supervise, "status": status}.get(verb, status)())
