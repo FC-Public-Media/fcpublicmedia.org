@@ -55,3 +55,12 @@ display stack can say it is there.
 | [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
 | [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
 | [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
+
+## Troves in their own repositories
+
+Private in FC-Public-Media until Autumn opens them. Station-node submodules
+them under `library/FCPM/`; `game-intake` is not there yet.
+
+| repository | plays | status |
+|---|---|---|
+| [`game-intake`](https://github.com/FC-Public-Media/game-intake) | game recording intake: consoles, handhelds and YouTube as instruments | started 2026-10-05; researched, not measured |
