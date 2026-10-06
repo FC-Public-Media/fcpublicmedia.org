@@ -262,7 +262,8 @@ decisions — but it is the first concrete sentence pointing at one.
 | `.enhance-engine` | **mounted 2026-09-24**, private | Recordings out to the enhance suite and back, enhanced or stemmed. The RØDECaster is the first source, via station-node. The depot is this node's, so receipt is ours. |
 | `.ablative-engine` | **partly, and it needs a conversation** | See below. |
 | `.proofing-engine` | **wanted, with new faces** | Needs none of station-node's private-client configuration. See `DESIGN-NOTES.md`. |
-| `.tell-engine` | **later, on purpose** | *"We're going to be bringing the tell engine, but I don't think we need to go there yet. I wanna have a bulletproof implementation before I try that."* |
+| `.tell-engine` | **mounted 2026-10-05** | Member data piles register to it, and it registers to our Atlas. Earlier: *"I wanna have a bulletproof implementation before I try that."* See `DIRECTORY.md`. |
+| `.atlas-engine` | **mounted 2026-10-05** | The directory. We are our own Atlas. See `DIRECTORY.md`. |
 | Bottles | **not yet** | *"I don't need the bottles yet."* |
 
 ### The ablative conversation, stated rather than settled
@@ -569,7 +570,6 @@ not resolve under a shallow clone, and the unconfirmed hypothesis in
 
 - **Agents running on FCPM machines.** In the cards, not immediate. Machine
   profiles are written for them anyway.
-- **The tell engine.** Waiting on a bulletproof implementation, by her call.
 - **Bottles.** Not needed yet.
 - **A full media archive.** Explicitly out of scope — see *what goes in it*.
 - **Anything that needs a secret in a public repository.** Structurally out, not
