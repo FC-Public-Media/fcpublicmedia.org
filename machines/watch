@@ -116,7 +116,7 @@ else line ok "this computer is up to date with the repository"; fi
 if [ -f "$CODE/bin/pool.ps1" ]; then
   s=$(ps1 "$CODE/bin/pool.ps1" status 2>/dev/null | tr -d '\r' | awk '$1 == "server" { $1 = ""; print; exit }')
   case "$s" in
-    *up*) line ok "the root's server is up$s" ;;
+    *up*) line ok "the root's server is$s" ;;
     '') line NEEDS "this computer's startup is out of date: Install the updates" ;;
     *) line NEEDS "the root's server is$s: fcpm pool on" ;;
   esac
