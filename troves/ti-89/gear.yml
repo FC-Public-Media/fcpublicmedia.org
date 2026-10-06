@@ -10,13 +10,13 @@ version: 1
 gear:
   - gear: link.py
     for: >
-      Ours. Probe a TI-89 on a gray GraphLink and take its screen, with nothing
-      installed but pyserial (through uv). What the box can do without an
-      administrator, while the TI software below waits on one.
+      Ours. Probe a TI-89 on a serial GraphLink and take its screen, with
+      nothing installed but pyserial (through uv). What the box can do without
+      an administrator, while the TI software below waits on one.
     platform: windows, macos, linux
     vendor: this trove
     provisioner: uv            # --with pyserial; `fcpm ti89`
-    cable: gray GraphLink (serial), on a host's own RS-232 port
+    cable: black or gray GraphLink (serial), on a host's own RS-232 port; it tells them apart
     grants: none. Any user may open a COM port
 
   - gear: tilp2

@@ -55,4 +55,4 @@ display stack can say it is there.
 | [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
 | [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
 | [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
-| [`ti-89/`](ti-89/) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; no calculator connected yet |
+| [`ti-89/`](ti-89/) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; a black link on COM1, the calculator not answering yet |

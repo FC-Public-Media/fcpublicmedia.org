@@ -4,22 +4,29 @@
 calculator on a GraphLink cable: its screen, its files, and its operating
 system, from a computer.
 
-Status: started 2026-10-05 on the media node (kiosk-1). No calculator has been
-connected yet. `link.py` has been run against an empty COM1, which opened and
-got no answer, as expected.
+Status: started 2026-10-05 on the media node (kiosk-1). The calculator is
+Autumn's original TI-89 (not a Titanium). Its cable is on COM1 and reads as a
+**black** link. The calculator itself has not answered yet.
 
     fcpm ti89 probe              is a calculator on COM1, and ready?
     fcpm ti89 screen [OUT.png]   its screen, as a PNG (160×100)
-    fcpm ti89 probe --port COM3  another port
+    fcpm ti89 probe --port COM3  another port; --cable black|gray to skip the guess
 
 ## How it reaches the calculator
 
-**Over the gray GraphLink, on a real serial port, with nothing installed.** The
+**Over a serial GraphLink, on a real serial port, with nothing installed.** The
 media node has one: COM1, on the motherboard (`ACPI\PNP0501`, up to 115200
 baud). Any user can open it, and this box has no administrator, so this is
-the route that works today. The gray cable is plain RS-232 at 9600 baud, 8N1.
-It is powered from DTR and RTS, which `link.py` raises. The packets are TI's
-link protocol, as the TiLP project documents it in libticalcs.
+the route that works today. The packets are TI's link protocol, as the TiLP
+project documents it in libticalcs.
+
+**The cable on COM1** is labelled *Texas Instruments TI-GRAPH LINK™ for
+Windows™*, in a charcoal housing. It is a black link. The test was made
+2026-10-05: each output line reads back on its partner (DTR on DSR, RTS on
+CTS), which is how a black link passes the calculator's two wires through. A
+gray link would not do that. `link.py` clocks bytes over those lines one
+handshake per bit, as libticables' serial cable does. Every step is an
+ordinary serial-port call, so it needs no administrator, though it is slow.
 
 The box's second serial device, *PCI Serial Port* (`VEN_8086&DEV_1D3D`), is
 the Intel management engine's serial-over-LAN. It has no driver and is not a
@@ -28,12 +35,12 @@ port for a cable.
 | cable | how it connects | what it needs here |
 |---|---|---|
 | gray GraphLink | DB-9 serial, a real UART | nothing: COM1 |
-| black GraphLink | serial, but the pins are toggled by software | TiLP's direct port access, which needs an administrator. Avoid it |
+| black GraphLink | serial, but the pins are toggled by software | nothing: `link.py` toggles them through the serial API. **This is ours** |
 | Silver Link / USB | USB, `VID_0451&PID_E001` | a driver: TI Connect's, or libusb for TiLP. An administrator either way |
 | TI-89 Titanium's own mini-USB | USB, `VID_0451&PID_E004` | the same |
 
-So **the original TI-89 on a gray cable needs nothing installed**. A Titanium
-can use the same gray cable through its I/O port.
+So **a TI-89 on either serial cable needs nothing installed**. A Titanium can
+use the same cables through its I/O port.
 
 ## The gear, found online (2026-10-05)
 
@@ -49,8 +56,10 @@ Details and sources are in `gear.yml`.
   GTK+ 2 runtime placed beside it by hand. Debian still builds it from git
   (2023), so the code is alive even though the Windows build is not.
 - **The calculator's OS**: OS 3.10 for the TI-89 Titanium
-  (`TI89Titanium_OS.89u`), and AMS 2.09 for the original TI-89. Both are still
-  on education.ti.com.
+  (`TI89Titanium_OS.89u`) is a direct download. **AMS 2.09 for the original
+  TI-89** (2003-05-06) is listed on education.ti.com, but it is now behind
+  TI's *protected download request form*, which emails the link to whoever
+  asks.
 
 **Where support stands.** TI discontinued the TI-89 Titanium at the start of
 2025, and the original TI-89 long before that. The software is still
@@ -60,9 +69,11 @@ one verb at a time as we need one.
 
 ## Not yet
 
-- **A calculator on the cable.** Find out which model and which cable we
-  have. Then run `probe` and `screen` against it, and record what it answers
-  in this README.
+- **The calculator answering.** Run `probe` and `screen` with it switched on at
+  the home screen, and record what it answers in this README.
+- **Keep its OS.** Dump the calculator's own ROM (the OS it is running now,
+  plus its boot code). That is what an emulator wants, and it is ours. TiLP
+  does it over a black link; `link.py` could too.
 - **Files**: list folders, back up variables, and send a program. These are the
   next verbs for `link.py`, in the same protocol.
 - **OS installs.** Send them from TiLP or TI Connect, not from `link.py`. A
