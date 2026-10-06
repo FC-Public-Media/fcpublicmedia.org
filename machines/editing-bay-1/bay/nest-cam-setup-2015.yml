@@ -1,0 +1,46 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../BAY.md. The trove is ../../../troves/nest-cam/.
+#
+# This one arrived on the instrument itself: a 2015 Nest Cam, plugged into
+# editing bay 1 by USB, presents it as a drive. Received and verified only.
+
+payload: nest-cam-setup
+version: "the camera's setup volume, files dated 2015-04-24"
+replaces: nothing
+vendor: Dropcam, Inc. (Nest, now Google)
+role: first-time setup of the camera; not an installer, puts nothing on the host
+trove: nest-cam
+
+received: 2026-10-05
+source: the camera's own USB drive, "Nest Cam Setup" (USB 0525:A4A5, 1.3 MB FAT)
+copied-to: "%LOCALAPPDATA%\\editing-bay-1\\bay\\received\\nest-cam-setup-2026-10-05"
+
+verified:
+  # No published digests to match: the drive is the only source.
+  sha256:
+    "Nest Cam Setup (Windows).exe": 893c2e8866494e272ed51d3910a458e451927023f6c0b7e5e1792815243595ad
+    "Nest Cam Setup (Macintosh).app/Contents/MacOS/Nest Cam Setup (Macintosh)": 4924d7adcc2ad424e8e176ee83d058989023c104fa745cded7efe1da92408f8a
+    "Nest Cam Setup (Macintosh).app/Contents/Info.plist": 29130ba0669543d68ad4d14084c20d42e97c8cda5158591b8a29e56502db456e
+    "Nest Cam Setup (Macintosh).app/Contents/_CodeSignature/CodeResources": 32d0571fa7522daa5304d3a76bde7d4a87b032f15e7fb6a219b1037ae6c99197
+    ".dcdata/offset": ad454d6d6e4e4d0f1b5bed64047406b72684d4d775e03de71777b13bda756d3c
+  windows: >
+    Authenticode valid, signed "Dropcam, Inc." (GlobalSign). The certificate
+    expired 2017-12-29; the signature is timestamped, so it still verifies.
+  macos: >
+    carries an Apple code signature (Developer ID, by its strings), not
+    verified because there is no Mac here. Universal ppc/i386 for
+    Mac OS X 10.4; cannot run on macOS 10.15 or later.
+  sends-to: "https://www.dropcam.com/setup/... -- on 2026-10-05, a redirect to home.nest.com/#camera/failed/setup"
+
+staged: no
+install-to: nowhere; there is nothing to install
+restart-tier: none
+cover: none
+grants: none
+
+# received | staged | installed | held | refused
+status: held
+# Held, not refused: signed by its vendor, and harmless to keep. It is not run
+# because the service it hands off to is gone, and because whether this camera
+# joins the studio at all is Autumn's call (troves/nest-cam, "Waiting on
+# Autumn").
