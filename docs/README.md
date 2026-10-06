@@ -55,6 +55,30 @@ looked for.
 | [`MANIFEST.md`](MANIFEST.md) | what the site claims to be |
 | [`ADVOCATE.md`](ADVOCATE.md) | the constitution the advocate seats answer to. `../advocate.yml` declares them |
 
+## Beside what they describe
+
+These live next to their code or machine. They are listed here so nobody has
+to go looking ([`../AGENTS.md`](../AGENTS.md), *Documentation is gathered*).
+
+| | |
+|---|---|
+| [`../machines/README.md`](../machines/README.md) | **the machines.** Profiles, `fcpm`, and what each machine is called: *production* is editing bay 1 (`EDIT2`), *kiosk* is kiosk-1 (`200-FCPANEDIT2`) |
+| [`../machines/BAY.md`](../machines/BAY.md) | the bay |
+| [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md) | kiosk: the media node, its door, screens and sessions |
+| [`../machines/editing-bay-1/PROFILE.md`](../machines/editing-bay-1/PROFILE.md) | production: setting it up from nothing |
+| [`../machines/editing-bay-1/code/AGENTS.md`](../machines/editing-bay-1/code/AGENTS.md) | production's root instructions, which its `~/code/CLAUDE.md` points at |
+| [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md) | editing bay 2, not yet asked its name |
+| [`RUNNABLES.md`](RUNNABLES.md) | what a session may run without asking |
+| [`KIOSK.md`](KIOSK.md) | the kiosk screen: what it says, which this repository owns |
+| [`SCREENS-DIM.md`](SCREENS-DIM.md) | one dim mode for every studio screen |
+| [`INTERMEDIATES.md`](INTERMEDIATES.md) | what we hand over to be deployed |
+| [`LIBRARY-AND-WIZARDS.md`](LIBRARY-AND-WIZARDS.md) | the library on main, and the wizards it keeps |
+| [`../troves/README.md`](../troves/README.md) | **the troves**, kits a machine can wear: [camera](../troves/camera/README.md), [edgerouter-x](../troves/edgerouter-x/README.md), [kiosk-screen](../troves/kiosk-screen/README.md), [recorder](../troves/recorder/README.md) |
+| [`../instruments/README.md`](../instruments/README.md) | instruments; [class mode on the rolling TV](../instruments/roller-tv/class-mode.md) |
+| [`../attendant/README.md`](../attendant/README.md) | attendants: [bugs found following recipes](../attendant/BUGS.md), [pausing the wall](../attendant/wall.md) |
+| [`../brand/README.md`](../brand/README.md) | brand assets for the screens in the building |
+| [`../worker/README.md`](../worker/README.md) | the broker |
+
 ---
 
 ## None of this is published
