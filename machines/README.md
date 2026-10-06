@@ -264,66 +264,67 @@ never stored), and `path` (a home folder on the user's PATH).
 
 ## The crew's one switch: `fcpm`
 
-After station-node's `bin/station`: every verb a person or a session runs on an
-FCPM machine is `fcpm <verb>`, found by name, the same in any window. `fcpm`
-is `sync` status, `fcpm install` puts the profile on, and `fcpm check`, `fcpm
-refs`, `fcpm pool` and `fcpm runnables` reach the tools that already do those
-jobs. On Windows a profile carries an `fcpm.cmd` shim that runs it with Git's
-bash, so cmd and PowerShell behave alike, and nobody needs to know which one a
-window is. **A step that needs a path, an interpreter or a choice of shell is a
-gap in `fcpm`, not something to type.**
+Every verb a person runs on an FCPM machine is `fcpm <verb>`, found by name, the
+same in any window. `fcpm help` lists them. **A step that needs a path, an
+interpreter or a choice of shell is a gap in `fcpm`, not something to type.**
 
-### `fcpm` on its own: the watcher (planned, not built)
+- **One file serves every profile.** `fcpm` asks the machine which profile it
+  wears (`sync`), and finds this repository from where it lives.
+- **On Windows it is `fcpm.cmd` in `~/.local/bin`.** The shim runs the mirror's
+  `machines/fcpm` with Git's bash, so cmd and PowerShell behave alike.
+  `fcpm install` puts the shim and `~/.local/bin` on PATH. The first install
+  is started by hand once (the profile's `PROFILE.md`, Day 0).
+- **Each verb is a tool that already does the job,** reached by name.
+  Nothing in `fcpm` re-implements one. This follows station-node's
+  `bin/station`, the node as one switch.
+- **Verbs are for people. A task names the tool itself.** A session's
+  permission to run something without asking goes to the tool, through the
+  command a crew's `GRANTS` names (`../docs/RUNNABLES.md`), because that is
+  what a proof pins. An edit to `obs.ps1` revokes its grant, and would not
+  revoke one given to `fcpm recorder`, whose bytes didn't change.
+
+### `fcpm` on its own: the watcher
 
 Autumn, 2026-10-05. Somebody finds `fcpm`, wonders what it does, and types
-those four letters. Something useful happens: it shows them the whole picture,
-and doesn't take over. There are no arguments to learn.
+those four letters. It shows them the whole picture, and doesn't take over.
+There are no arguments to learn. It is `machines/watch`.
 
 It is the watcher, not the control room. Station-node's 8080 page can do
-everything; this can do one thing, getting changes in and out. Everything
-else it shows, and at most offers.
+everything. This does one thing, getting changes in and out, and shows the
+rest:
 
-**What it shows**, one line each, `ok` or what is wrong:
+1. Which machine this is, by the name Autumn uses (the profile's `called`
+   file: *production*, *kiosk*), and the profile it wears.
+2. Whether GitHub is ready: `gh` is signed in.
+3. The upstream, and how many changes behind this machine is.
+4. Edits lying around in the people's working copy, by name, and saved changes
+   not yet sent.
+5. Whether the machine differs from its profile (`sync`), and what
+   `fcpm check` wants.
+6. Whether the root's Remote Control server is up, how the screen is, and
+   when the last weekly pull ran.
 
-1. Which machine this is, by the name Autumn uses (*production*, *kiosk*),
-   and the profile it wears.
-2. GitHub is ready: `gh` is signed in.
-3. There is an upstream: the machine's working copy has a remote it can pull
-   from and push to, and is so many changes behind it.
-4. Edits are lying around: files changed in the working copy, by name.
-5. The machine differs from its profile (`sync` status).
-6. What should be awake is awake: the root's Remote Control server
-   (`fcpm pool`), and the screens (`fcpm screen`).
+Then a menu of only the choices that apply, with Enter for nothing:
 
-**Then a tiny menu**, of only the choices that apply:
+| Choice | What happens |
+|---|---|
+| **Make my working copy** | `work/fcpublicmedia.org@<called>`, on a branch of that name. It is the people's one place to edit on this machine |
+| **Bring in the latest** | pulls every mirror and brings the working copy up to `main`, then offers the install. It never installs on its own |
+| **Send my changes up** | adds everything, asks "what did you change?", commits, catches up with `main`, pushes the `<called>` branch, and opens a pull request for Autumn to merge. A later send joins the open request, or opens a new one once that has merged |
+| **Put the profile back on** | `fcpm install` |
 
-    1  Bring in the latest          (pull)
-    2  Send my changes up           (all of them, with a message you write)
-    3  Put the profile back on      (fcpm install)
-    Enter  nothing
+If someone's edits and the latest change the same lines, it stops and says
+so. Nothing is lost.
 
-"Send my changes up" is a `git add -A`, a commit with the person's message,
-and a push. They never need to know git is involved. Pulling is the reason to
-run it, so after a pull it offers the install rather than running it.
-
-**Weekly, by itself.** A scheduled task does the pull once a week, so the
-studio is in a known state when people come in, and something that blocked
-somebody gets fixed without a call for help. It never sends changes up.
+**Weekly, by itself.** `fcpm install` also registers the task `fcpm weekly`.
+It runs at sign-in and every morning, and does its work once per week: it
+pulls the mirrors and fast-forwards the working copy. It never merges, sends
+or installs. Its log is `%LOCALAPPDATA%\fcpm\weekly.log`. So the studio is
+in a known state each week, and a pull that would have unblocked somebody
+happens without a call for help.
 
 **Upstream is GitHub for now.** Station-node keeps an origin on the LAN, and
-these machines will pull from it once they can reach it. Until then, GitHub.
-
-**To decide before it is built:**
-
-- **The people's working copy.** `refs/` is read-only and `work/` holds one
-  worktree per branch, so people don't have one yet. Proposed: one per
-  machine, `~/code/work/fcpublicmedia.org@production` (or `@kiosk`), on a
-  branch of that name.
-- **Where "send" lands.** Straight on `main`, or on the machine's branch with
-  a pull request Autumn merges. Proposed: the branch and pull request, opened
-  for them if there isn't one.
-- **The weekly task:** pull only, or pull and install. Also which day and
-  hour.
+these machines will pull from it once they can reach it.
 
 ## What a machine is called, and how its sessions arrive
 

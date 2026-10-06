@@ -121,7 +121,7 @@ until it runs something that has to be rebased under it.
 
 - **`fcpm` is the one switch** (`machines/fcpm` in the site repo, 2026-09-26),
   the same in cmd and PowerShell once `fcpm install` has put it on PATH:
-  `fcpm` (what differs), `fcpm check`, `fcpm refs ...`, `fcpm pool ...`,
+  `fcpm` (the watcher: what is going on, and a short menu), `fcpm check`, `fcpm refs ...`, `fcpm pool ...`,
   `fcpm runnables ...`, `fcpm screen ...`, `fcpm help`. When handing Autumn a step, hand her an
   `fcpm` verb, never a path, an interpreter or a choice of window. A step that
   needs one is a gap in `fcpm` to fill. `fcpm install` is hers, never a

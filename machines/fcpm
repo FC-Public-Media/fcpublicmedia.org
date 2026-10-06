@@ -1,38 +1,7 @@
 #!/bin/sh
-# fcpm — the crew's one switch on an FCPM machine. Every verb a person or a
-# session runs here, by name, the same in any window.
-#
-#   fcpm                      which profile, and what differs from what it carries
-#   fcpm install              put the profile on: carried files, settings, PATH,
-#                             mirrors. A person runs this, never a session
-#   fcpm check                what files cannot say: gear, settings, the pool
-#   fcpm refs [pull|status|work R B|done R B]   the mirrors, and worktrees
-#   fcpm pool [status|pass|pin in|out X]        the session pool
-#   fcpm runnables [...]      the census, compile, prove (bin/runnables)
-#   fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
-#                             the staff OBS (troves/recorder/obs.ps1)
-#   fcpm screen [status|on|off|reset|class|wall]   the rolling TV (troves/kiosk-screen)
-#   fcpm camera [console|presets|apply NAME|state]   the USB camera (troves/camera)
-#   fcpm help                 this
-#
-# FOR PEOPLE; A TASK NAMES THE HOLDER. A verb here is how a person reaches a
-# tool. What a session may run without asking is granted to the tool itself,
-# by the command a crew's GRANTS names (docs/RUNNABLES.md), because that is
-# what a proof pins: an edit to obs.ps1 revokes its grant, and would not revoke
-# one given to `fcpm recorder`, whose own bytes did not change.
-#
-# AFTER STATION-NODE, WHICH NO LONGER TYPES A RAW COMMAND. Its `bin/station` is
-# the node as one switch; this is that, for a crew that may be any of several
-# profiles on Windows or a Mac. Each verb is the tool that already does the
-# job, reached by name: nothing here re-implements one.
-#
-# ON WINDOWS IT IS `fcpm.cmd` IN ~/.local/bin, which calls this with Git's
-# bash, so cmd and PowerShell run it identically and nobody has to know which
-# window they are in. `fcpm install` puts that shim and ~/.local/bin on PATH;
-# the first install is started by hand once (the profile's PROFILE.md, Day 0).
-#
-# It asks the machine which profile it wears (`machines/sync`), and finds this
-# repository from where it lives, so the same file serves every profile.
+# fcpm — the crew's one switch on an FCPM machine: every verb a person runs
+# here, by name, the same in cmd and PowerShell. Alone, it is the watcher
+# (./watch). Verbs: `fcpm help`. Doc: machines/README.md, "The crew's one switch".
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -48,10 +17,14 @@ ps1() {
   powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$f" 2>/dev/null || echo "$f")" "$@"
 }
 
-cmd=${1:-status}; [ $# -gt 0 ] && shift
+cmd=${1:-watch}; [ $# -gt 0 ] && shift
 case "$cmd" in
+  watch)     exec "$HERE/watch" ;;
   status)    exec "$HERE/sync" ;;
-  install)   exec "$HERE/sync" install ;;
+  install)
+    "$HERE/sync" install || exit
+    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$HERE/watch" weekly install ;; esac ;;
+  weekly)    exec "$HERE/watch" weekly ;;
   check)
     p=$(profile)
     [ -n "$p" ] || { echo "fcpm: this machine wears no profile"; exit 0; }
@@ -70,6 +43,20 @@ case "$cmd" in
     # have it on PATH, so fall back to where winget puts it.
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with comtypes --with pyyaml "$REPO/troves/camera/camera.py" "$@" ;;
-  help|-h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' ;;
+  help|-h|--help) cat <<'EOF'
+fcpm                      the watcher: what is going on here, and a short menu
+fcpm status               which profile, and what differs from what it carries
+fcpm install              put the profile on, and the weekly pull. A person runs this
+fcpm check                what files cannot say: gear, settings, the pool
+fcpm weekly               bring in the latest, once a week (the task runs it)
+fcpm refs [pull|status|work R B|done R B]   the mirrors, and worktrees
+fcpm pool [status|pass|off|on|install]      the root's server
+fcpm runnables [...]      the census, compile, prove (bin/runnables)
+fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
+fcpm screen [status|on|off|reset|class|wall]   the rolling TV
+fcpm camera [console|presets|apply NAME|state]   the USB camera
+fcpm help                 this
+EOF
+ ;;
   *) echo "fcpm: no verb '$cmd'. fcpm help" >&2; exit 2 ;;
 esac

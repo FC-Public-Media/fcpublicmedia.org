@@ -1,0 +1,166 @@
+#!/bin/sh
+# watch — what `fcpm` alone does: show this machine's state, then offer pull,
+# send and install. `watch weekly` is the scheduled pull, and `watch weekly
+# install` registers it. Doc: machines/README.md, "fcpm on its own".
+
+set -u
+HERE=$(cd "$(dirname "$0")" && pwd)
+CODE="$HOME/code"
+REPO=fcpublicmedia.org
+MIRROR="$CODE/refs/$REPO"
+GH=$(command -v gh 2>/dev/null || echo "$HOME/.local/bin/gh.exe")
+STATE="${LOCALAPPDATA:-$HOME/.local/state}/fcpm"
+
+line() { printf '%-7s %s\n' "$1" "$2"; }
+ps1() { f=$1; shift; powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$f" 2>/dev/null || echo "$f")" "$@"; }
+ask() { printf '%s ' "$1"; read -r REPLY || REPLY=""; }
+
+SYNC=$("$HERE/sync" 2>&1)
+profile=$(printf '%s\n' "$SYNC" | awk '$1 == "profile" { print $2; exit }')
+called=""
+[ -n "$profile" ] && [ -f "$HERE/$profile/called" ] && called=$(head -n 1 "$HERE/$profile/called" | tr -d '\r ')
+WC="$CODE/work/$REPO@$called"
+
+# Fast-forward the people's copy to main; a merge only when asked to keep both.
+catch_up() {
+  [ -d "$WC" ] || return 0
+  git -C "$WC" merge -q --ff-only origin/main 2>/dev/null && return 0
+  [ "${1:-}" = ff ] && return 1
+  if ! git -C "$WC" merge -q --no-edit origin/main >/dev/null 2>&1; then
+    git -C "$WC" merge --abort 2>/dev/null
+    line STOP "your edits and the latest change the same lines. Nothing was lost; ask for help merging them."
+    return 1
+  fi
+}
+
+weekly() {
+  mkdir -p "$STATE"
+  week=$(date +%G-W%V)
+  [ "$(cat "$STATE/weekly.done" 2>/dev/null)" = "$week" ] && return 0
+  {
+    echo "$(date '+%Y-%m-%d %H:%M:%S')  weekly pull for $week"
+    "$CODE/bin/refs" pull 2>&1 | tail -n 3
+    catch_up ff && echo "working copy current" || echo "working copy has its own changes; left for a person"
+  } >> "$STATE/weekly.log" 2>&1
+  echo "$week" > "$STATE/weekly.done"
+}
+
+weekly_install() {
+  # At sign-in and every morning; `weekly` itself does the work once per week.
+  bash=$(cygpath -w /usr/bin/bash 2>/dev/null) || { echo "watch: weekly install is for Windows"; return 1; }
+  me=$(cygpath -m "$HERE/watch")
+  powershell -NoProfile -Command - <<EOF
+\$a = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument '--headless "$bash" -l "$me" weekly'
+\$t = @((New-ScheduledTaskTrigger -AtLogOn -User "\$env:USERDOMAIN\\\$env:USERNAME"), (New-ScheduledTaskTrigger -Daily -At 7am))
+\$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 15)
+Register-ScheduledTask -TaskName 'fcpm weekly' -Action \$a -Trigger \$t -Settings \$s -Description 'Once a week: bring in the latest (fcpm). Never sends, never installs.' -Force | Out-Null
+'registered ''fcpm weekly'': the first sign-in or morning of each week'
+EOF
+}
+
+case "${1:-}" in
+  weekly) if [ "${2:-}" = install ]; then weekly_install; else weekly; fi; exit ;;
+esac
+
+# --- What it shows -----------------------------------------------------------
+
+if [ -z "$profile" ]; then
+  line "--" "this machine (${COMPUTERNAME:-$(hostname)}) wears no FCPM profile. Nothing to watch."
+  exit 0
+fi
+line ok "this is ${called:-$profile} (profile $profile, Windows name ${COMPUTERNAME:-?})"
+
+if "$GH" auth status >/dev/null 2>&1; then line ok "GitHub is signed in"
+else line NEEDS "GitHub is not signed in. Someone at the desk runs: gh auth login"; fi
+
+behind=0
+if git -C "$MIRROR" fetch -q origin 2>/dev/null; then
+  mb=$(git -C "$MIRROR" rev-list --count HEAD..origin/main)
+  line ok "upstream is $(git -C "$MIRROR" remote get-url origin)"
+  [ "$mb" -gt 0 ] && { line behind "this machine's copy is $mb change(s) behind"; behind=$mb; }
+else
+  line NEEDS "cannot reach upstream ($(git -C "$MIRROR" remote get-url origin 2>/dev/null)). Network?"
+fi
+
+edits=0; unsent=0
+if [ -z "$called" ]; then
+  line "--" "profile $profile has no 'called' name, so no working copy for people"
+elif [ -d "$WC" ]; then
+  wb=$(git -C "$WC" rev-list --count HEAD..origin/main)
+  [ "$wb" -gt "$behind" ] && behind=$wb
+  edits=$(git -C "$WC" status --porcelain | wc -l | tr -d ' ')
+  base=origin/main; git -C "$WC" rev-parse -q --verify "origin/$called" >/dev/null && base="origin/$called"
+  unsent=$(git -C "$WC" rev-list --count --no-merges "$base"..HEAD)
+  if [ "$edits" -gt 0 ]; then
+    line edits "$edits file(s) changed in work/$REPO@$called:"
+    git -C "$WC" status --porcelain | head -n 8 | sed 's/^.. /          /'
+  else line ok "no edits lying around (work/$REPO@$called)"; fi
+  [ "$unsent" -gt 0 ] && line unsent "$unsent saved change(s) not sent up yet"
+else
+  line "--" "no working copy for people yet"
+fi
+
+differs=$(printf '%s\n' "$SYNC" | grep -c '^differs')
+wanted=$(printf '%s\n' "$SYNC" | grep -c '^WANTED')
+if [ "$differs" -gt 0 ]; then line differs "$differs file(s) on this machine differ from its profile"
+else line ok "this machine matches its profile"; fi
+[ "$wanted" -gt 0 ] && line NEEDS "$wanted thing(s) wanted: fcpm check"
+
+if [ -f "$CODE/bin/pool.ps1" ]; then
+  s=$(ps1 "$CODE/bin/pool.ps1" status 2>/dev/null | tr -d '\r' | awk '$1 == "server" { $1 = ""; print; exit }')
+  case "$s" in
+    *up*) line ok "the root's server is up$s" ;;
+    '') line NEEDS "this machine's pool is out of date: Put the profile back on" ;;
+    *) line NEEDS "the root's server is$s: fcpm pool on" ;;
+  esac
+fi
+if [ -f "$MIRROR/troves/kiosk-screen/screen.ps1" ]; then
+  s=$(ps1 "$MIRROR/troves/kiosk-screen/screen.ps1" status 2>/dev/null | tr -d '\r' | head -n 1 | sed 's/^screen *//')
+  line "--" "screen: $s"
+fi
+[ -f "$STATE/weekly.done" ] && line "--" "last weekly pull: $(cat "$STATE/weekly.done")"
+
+# --- The menu ----------------------------------------------------------------
+
+echo
+n=0; opts=""
+offer() { n=$((n + 1)); opts="$opts $1"; printf '  %d  %s\n' "$n" "$2"; }
+[ -n "$called" ] && [ ! -d "$WC" ] && offer make "Make my working copy  (work/$REPO@$called)"
+[ "$behind" -gt 0 ] && offer pull "Bring in the latest"
+[ "$edits" -gt 0 ] || [ "$unsent" -gt 0 ] && offer send "Send my changes up"
+[ "$differs" -gt 0 ] && offer install "Put the profile back on"
+[ "$n" -eq 0 ] && { echo "Nothing to do. All good."; exit 0; }
+printf '  Enter  nothing\n\n'
+[ -t 0 ] || exit 0
+ask "Which?"
+case "$REPLY" in ''|*[!0-9]*) exit 0 ;; esac
+pick=$(echo $opts | cut -d ' ' -f "$REPLY")
+echo
+
+case "$pick" in
+  make) exec "$CODE/bin/refs" work "$REPO" "$called" ;;
+  pull)
+    "$CODE/bin/refs" pull
+    catch_up && line ok "your working copy has the latest"
+    if [ "$(cd "$HERE" && ./sync 2>&1 | grep -c '^differs')" -gt 0 ]; then
+      ask "Put the profile back on now too? [y/N]"
+      case "$REPLY" in y|Y|yes) exec "$HERE/sync" install ;; esac
+    fi ;;
+  send)
+    if [ "$edits" -gt 0 ]; then
+      ask "In a few words, what did you change?"
+      msg=${REPLY:-"Changes from $called"}
+      git -C "$WC" add -A && git -C "$WC" commit -q -m "$msg" || { line STOP "could not save the changes"; exit 1; }
+    else
+      msg=$(git -C "$WC" log -1 --format=%s)
+    fi
+    catch_up || exit 1
+    git -C "$WC" push -q origin "HEAD:refs/heads/$called" || { line STOP "could not send to GitHub"; exit 1; }
+    pr=$(cd "$WC" && "$GH" pr list --head "$called" --state open --json url -q '.[0].url' 2>/dev/null)
+    if [ -n "$pr" ]; then line ok "sent. It joins the request already waiting: $pr"
+    else
+      pr=$(cd "$WC" && "$GH" pr create --base main --head "$called" --title "$msg" --body "Sent from $called with \`fcpm\`." 2>&1 | tail -n 1)
+      line ok "sent. Waiting for Autumn to merge it: $pr"
+    fi ;;
+  install) exec "$HERE/sync" install ;;
+esac
