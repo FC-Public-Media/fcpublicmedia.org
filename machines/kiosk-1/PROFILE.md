@@ -219,6 +219,10 @@ are the first claims this profile makes:
 | `node.yml` | what the door shows, and where: screens, Wi-Fi networks, stations, the depot's shares, draft wording |
 | `bookings.sample.yml` | a made-up week standing in for the booking calendars. Every booking is for "Sample" |
 | `GOTCHAS.log`, `gotcha` | what this box taught us, one line each. `merge=union`, after station-node's |
+| `called` | what Autumn calls it: `kiosk` |
+| `MANIFEST` | what `../sync` carries of this machine's home: the `~/code` root |
+| `code/` | that root: `AGENTS.md` (its instructions, read in place from the mirror at `ref/`), and the carried `bin/refs` |
+| `home/code/` | what is placed at the root instead of a copy: a `CLAUDE.md` that imports `code/AGENTS.md` from the mirror, and an `AGENTS.md` that says where it is |
 
 Secrets are not here. The Wi-Fi passwords and the drive's login are in
 Windows Credential Manager on the box, readable only by its user.

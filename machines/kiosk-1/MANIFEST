@@ -1,0 +1,8 @@
+# MANIFEST: what kiosk carries of its own home, for `../sync`.
+# Modes are as in ../editing-bay-1/MANIFEST. Doc: PROFILE.md, *What this folder holds now*.
+
+# The root's instructions are read from the mirror (`ref/` here), never copied:
+# what is placed is a pointer, so a `bin/refs pull` keeps them current.
+mirror  home/code/CLAUDE.md    code/CLAUDE.md
+mirror  home/code/AGENTS.md    code/AGENTS.md
+mirror  code/bin/refs          code/bin/refs

@@ -65,6 +65,7 @@ to go looking ([`../AGENTS.md`](../AGENTS.md), *Documentation is gathered*).
 | [`../machines/README.md`](../machines/README.md) | **the machines.** Profiles, `fcpm`, and what each machine is called: *production* is editing bay 1 (`EDIT2`), *kiosk* is kiosk-1 (`200-FCPANEDIT2`) |
 | [`../machines/BAY.md`](../machines/BAY.md) | the bay |
 | [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md) | kiosk: the media node, its door, screens and sessions |
+| [`../machines/kiosk-1/code/AGENTS.md`](../machines/kiosk-1/code/AGENTS.md) | kiosk's root instructions, which its `~/code/CLAUDE.md` points at, and every name it answers to |
 | [`../machines/editing-bay-1/PROFILE.md`](../machines/editing-bay-1/PROFILE.md) | production: setting it up from nothing |
 | [`../machines/editing-bay-1/code/AGENTS.md`](../machines/editing-bay-1/code/AGENTS.md) | production's root instructions, which its `~/code/CLAUDE.md` points at |
 | [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md) | editing bay 2, not yet asked its name |

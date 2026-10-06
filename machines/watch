@@ -8,6 +8,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 CODE="$HOME/code"
 REPO=fcpublicmedia.org
 MIRROR="$CODE/refs/$REPO"
+[ -d "$MIRROR" ] || MIRROR="$CODE/ref/$REPO"   # kiosk's mirrors are in ref/
 GH=$(command -v gh 2>/dev/null || echo "$HOME/.local/bin/gh.exe")
 STATE="${LOCALAPPDATA:-$HOME/.local/state}/fcpm"
 
