@@ -1867,12 +1867,14 @@ def turn_modules():
 
 # The turn's own head (Autumn, 2026-10-06): our name in the wordmark's face on
 # the yellow, not check-in's code and clock. And while the dim layer stops the
-# turn, the line and the pause button show it, lit, through the dim.
+# turn, the line shows it, and the pause button is pressed in: solid yellow,
+# like the lit module's button, not a pause glyph waiting to be pushed.
 TURN_CSS = """%s
 .super h1.name { font-family:"Source Serif 4", Georgia, serif; font-size:6vh; font-weight:780; letter-spacing:-.02em; }
 .stilled .timer { height:.9vh; }
 .stilled .timer i { background:var(--signal); }
-.stilled #hold .pause { fill:var(--signal); }"""
+.stilled #hold { background:var(--signal); }
+.stilled #hold .pause { fill:var(--ink); }"""
 
 
 def turn_font():
