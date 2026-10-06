@@ -264,14 +264,67 @@ never stored), and `path` (a home folder on the user's PATH).
 
 ## The crew's one switch: `fcpm`
 
-After station-node's `bin/station`: every verb a person or a session runs on an
-FCPM machine is `fcpm <verb>`, found by name, the same in any window. `fcpm`
-is `sync` status, `fcpm install` puts the profile on, and `fcpm check`, `fcpm
-refs`, `fcpm pool` and `fcpm runnables` reach the tools that already do those
-jobs. On Windows a profile carries an `fcpm.cmd` shim that runs it with Git's
-bash, so cmd and PowerShell behave alike, and nobody needs to know which one a
-window is. **A step that needs a path, an interpreter or a choice of shell is a
-gap in `fcpm`, not something to type.**
+Every verb a person runs on an FCPM machine is `fcpm <verb>`, found by name, the
+same in any window. `fcpm help` lists them. **A step that needs a path, an
+interpreter or a choice of shell is a gap in `fcpm`, not something to type.**
+
+- **One file serves every profile.** `fcpm` asks the machine which profile it
+  wears (`sync`), and finds this repository from where it lives.
+- **On Windows it is `fcpm.cmd` in `~/.local/bin`.** The shim runs the mirror's
+  `machines/fcpm` with Git's bash, so cmd and PowerShell behave alike.
+  `fcpm install` puts the shim and `~/.local/bin` on PATH. The first install
+  is started by hand once (the profile's `PROFILE.md`, Day 0).
+- **Each verb is a tool that already does the job,** reached by name.
+  Nothing in `fcpm` re-implements one. This follows station-node's
+  `bin/station`, the node as one switch.
+- **Verbs are for people. A task names the tool itself.** A session's
+  permission to run something without asking goes to the tool, through the
+  command a crew's `GRANTS` names (`../docs/RUNNABLES.md`), because that is
+  what a proof pins. An edit to `obs.ps1` revokes its grant, and would not
+  revoke one given to `fcpm recorder`, whose bytes didn't change.
+
+### `fcpm` on its own: the watcher
+
+Autumn, 2026-10-05. Somebody finds `fcpm`, wonders what it does, and types
+those four letters. It shows them the whole picture, and doesn't take over.
+There are no arguments to learn. It is `machines/watch`.
+
+It is the watcher, not the control room. Station-node's 8080 page can do
+everything. This does one thing, getting changes in and out, and shows the
+rest:
+
+1. Which machine this is, by the name Autumn uses (the profile's `called`
+   file: *production*, *kiosk*), and the profile it wears.
+2. Whether GitHub is ready: `gh` is signed in.
+3. The upstream, and how many changes behind this machine is.
+4. Edits lying around in the people's working copy, by name, and saved changes
+   not yet sent.
+5. Whether the machine differs from its profile (`sync`), and what
+   `fcpm check` wants.
+6. Whether the root's Remote Control server is up, how the screen is, and
+   when the last weekly pull ran.
+
+Then a menu of only the choices that apply, with Enter for nothing:
+
+| Choice | What happens |
+|---|---|
+| **Make my working copy** | `work/fcpublicmedia.org@<called>`, on a branch of that name. It is the people's one place to edit on this machine |
+| **Bring in the latest** | pulls every mirror and brings the working copy up to `main`, then offers the install. It never installs on its own |
+| **Send my changes up** | adds everything, asks "what did you change?", commits, catches up with `main`, pushes the `<called>` branch, and opens a pull request for Autumn to merge. A later send joins the open request, or opens a new one once that has merged |
+| **Put the profile back on** | `fcpm install` |
+
+If someone's edits and the latest change the same lines, it stops and says
+so. Nothing is lost.
+
+**Weekly, by itself.** `fcpm install` also registers the task `fcpm weekly`.
+It runs at sign-in and every morning, and does its work once per week: it
+pulls the mirrors and fast-forwards the working copy. It never merges, sends
+or installs. Its log is `%LOCALAPPDATA%\fcpm\weekly.log`. So the studio is
+in a known state each week, and a pull that would have unblocked somebody
+happens without a call for help.
+
+**Upstream is GitHub for now.** Station-node keeps an origin on the LAN, and
+these machines will pull from it once they can reach it.
 
 ## What a machine is called, and how its sessions arrive
 

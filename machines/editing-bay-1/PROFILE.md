@@ -63,7 +63,7 @@ administrator except where it says so.
    It finds `editing-bay-1` by name and puts on everything the MANIFEST
    carries: the `~/code` root, every mirror in `refs.wanted`, the compiled
    settings, and `fcpm` itself on PATH. **From then on, in a new window, it is
-   `fcpm`**: `fcpm` says what differs, `fcpm install` puts it right. A person
+   `fcpm`**: `fcpm` shows what is going on and offers what to do, `fcpm install` puts the profile on. A person
    runs `install`, never a session.
 4. **Developer Mode, at the desk.** Settings > System > For developers. It lets
    symlinks be made without elevation.
