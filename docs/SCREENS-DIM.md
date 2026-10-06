@@ -118,6 +118,11 @@ already has a clock.
   across the black, like a perpetual-motion hockey disc: a straight line at
   a calm, constant speed, and a bounce off each edge of the screen. The
   pixels it lights are never the same for long.
+- **In step, on every screen of one computer** (Autumn, 2026-10-05). The
+  column's place and its lit square are read off the clock rather than kept
+  from frame to frame, so kiosk-1's panels show the same thing at the same
+  moment. They need no messages for that, which is as well: each panel is
+  a browser profile of its own, and tabs in different profiles can't talk.
 - **Fade** into dim slowly (tens of seconds), and **wake quickly** (under a
   second). **Reduced motion:** no fade, no glide, and the lit square stops on
   the middle one, as brand/idle already promises. The column then moves to a

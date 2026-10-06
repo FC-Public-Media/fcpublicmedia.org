@@ -1,0 +1,10 @@
+# Who our Atlas is: the directory our Tell registers to, in _data/tells.yml.
+# Public by design. Only used to peer with another Atlas, which we do not do yet.
+# `.atlas-engine/bin/register-atlas` reads this. See docs/DIRECTORY.md.
+
+id: fcpublicmedia
+name: "FC Public Media"
+url: "https://www.fcpublicmedia.org"
+repo: FC-Public-Media/fcpublicmedia.org
+scope: fort-collins
+reports: "reports/aggregate-*"
