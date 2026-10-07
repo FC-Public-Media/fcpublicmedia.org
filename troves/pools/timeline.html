@@ -100,6 +100,9 @@
   #ctl .gap { flex: 1; }
   #ctl .keys { color: var(--dim); font-size: 11px; }
   #ctl .err { color: #f0a050; }
+  #ctl label.opt { color: var(--dim); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  #ctl label.opt input { accent-color: #8fb0ff; margin: 0; }
+  #ctl select.under { font: inherit; font-size: 12px; color: var(--ink); background: #10141c; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; padding: 1px 2px; }
   #tip { position: fixed; z-index: 9; pointer-events: none; display: none; max-width: 360px; padding: 8px 10px;
          background: rgba(12,15,21,.95); border: 1px solid var(--faint); border-radius: 4px; font-size: 12px; }
   #tip b { display: block; font-weight: 500; word-break: break-all; }
@@ -130,7 +133,15 @@
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
   var data = null, files = [], lanes = [], shows = [], groups = [], ghosts = [], sig = '';
   var win = null, views = [], drag = null;
-  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: ''};
+  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: '', forced: null};
+
+  // Proofing settings, kept between visits: amplify the waveform, and skip
+  // clips shorter than `under` seconds when playing or placing the playhead.
+  var S = {amp: true, skip: true, under: 6};
+  try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
+  function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
+  // A short clip is passed over, unless someone insisted on it (P.forced).
+  function skipped(x) { return S.skip && x !== P.forced && x.f.duration != null && x.f.duration < S.under; }
   P.audio.preload = 'auto';
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -447,24 +458,25 @@
     var v = view(), span = v.b - v.a, w = winEl.clientWidth, h = winEl.clientHeight - 44, dpr = devicePixelRatio || 1;
     cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
     var c = cv.getContext('2d'); c.scale(dpr, dpr);
-    var base = h, H = h - 4, lineY = base - LINE * H;
+    var gain = S.amp ? LINE / STRONG : 1;   // amplified: STRONG reaches LINE; otherwise true scale, 0 dBFS at the top
+    var base = h, H = h - 4, lineY = base - Math.min(1, STRONG * gain) * H;
     within(v.a, v.b).forEach(function (x) {
       var x0 = (x.start - v.a) / span * w, x1 = (x.end - v.a) / span * w, pw = x1 - x0;
       var e = env[x.f.path];
       if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
       var chs = e.ch || [e], cols = Math.max(1, Math.round(pw)), cw = Math.max(1, pw / cols);
-      var a0 = x === P.cur ? .62 : x.i % 2 ? .46 : .32;
+      var a0 = skipped(x) ? .1 : x === P.cur ? .62 : x.i % 2 ? .46 : .32;
       chs.forEach(function (ch) {
         var n = ch.length;
         for (var i = 0; i < cols; i++) {
           var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
           for (var j = a; j < b; j++) if (ch[j] > pk) pk = ch[j];
-          var y = Math.min(1, pk / STRONG * LINE) * H, xx = x0 + i * pw / cols;
+          var y = Math.min(1, pk * gain) * H, xx = x0 + i * pw / cols;
           c.globalAlpha = a0; c.fillStyle = x.color;
           c.fillRect(xx, base - y, cw, y);
-          if (pk > STRONG) {   // over the line: forceful
+          if (pk > STRONG && !skipped(x)) {   // over the line: forceful
             c.globalAlpha = .9; c.fillStyle = '#fff';
-            c.fillRect(xx, base - y, cw, y - LINE * H);
+            c.fillRect(xx, base - y, cw, Math.max(0, lineY - (base - y)));
           }
         }
       });
@@ -496,6 +508,20 @@
     if (!P.muted) mute.classList.add('on');
     mute.onclick = function () { setMuted(!P.muted); };
     ctl.appendChild(play); ctl.appendChild(mute);
+    function check(label, on, change) {
+      var l = el('label', 'opt'), cb = el('input'); cb.type = 'checkbox'; cb.checked = on;
+      cb.onchange = function () { change(cb.checked); keepS(); cb.blur(); drawWin(); };   // blur: Space goes back to playing
+      l.appendChild(cb); l.appendChild(document.createTextNode(' ' + label)); return l;
+    }
+    ctl.appendChild(check('amplify', S.amp, function (v) { S.amp = v; }));
+    var sk = check('skip clips under', S.skip, function (v) { S.skip = v; drawCtl(); });
+    var under = el('select', 'under');
+    [3, 6, 10].forEach(function (n) { var o = el('option', null, n + ' s'); o.value = n; if (S.under === n) o.selected = true; under.appendChild(o); });
+    under.onchange = function () { S.under = +under.value; keepS(); under.blur(); drawWin(); };
+    under.onkeydown = function (e) { e.stopPropagation(); };
+    sk.appendChild(under);
+    sk.title = 'playing and clicking pass over short clips; ctrl-click, right-click or hold to play one anyway';
+    ctl.appendChild(sk);
     ctl.appendChild(el('span', 'clock', P.t != null ? hms(P.t) : '')).id = 'clock';
     if (P.err) ctl.appendChild(el('span', 'err', P.err));
     var sum = el('span', 'sum');
@@ -601,11 +627,15 @@
 
   function at(t) {   // the recording playing at t, or the next one after it, inside the window
     var hit = within(win.a, win.b);
-    return hit.filter(function (x) { return x.end > t; })[0] || null;
+    return hit.filter(function (x) { return x.end > t && !skipped(x); })[0] || null;
   }
 
-  function seek(t, quiet) {
-    var x = at(t);
+  // Seek to t. Insisting (ctrl-click, right-click, a long press) lands exactly
+  // there, on that clip, short or not, for as long as it plays.
+  function seek(t, quiet, force) {
+    var x;
+    if (force) { x = within(win.a, win.b).filter(function (y) { return y.end > t; })[0] || null; P.forced = x; }
+    else { P.forced = null; x = at(t); }
     if (!x) { stop(); return; }
     P.t = Math.max(t, x.start);
     if (P.playing) start(x, P.t - x.start);
@@ -632,13 +662,22 @@
     drawWin();
   }
 
+  function after(cur) {   // the next clip to play after cur, inside the window, passing over what is skipped
+    P.forced = null;
+    for (var k = files.indexOf(cur) + 1; k < files.length; k++) {
+      var n = files[k];
+      if (n.start >= win.b) return null;
+      if (!skipped(n)) return n;
+    }
+    return null;
+  }
   P.audio.onended = function () {
-    var i = files.indexOf(P.cur), n = files[i + 1];
-    if (P.playing && n && n.start < win.b) { P.t = n.start; start(n, 0); } else stop();
+    var n = after(P.cur);
+    if (P.playing && n) { P.t = n.start; start(n, 0); } else stop();
   };
   P.audio.onerror = function () {   // a recording that cannot be read: go on to the next
-    var i = files.indexOf(P.cur), n = files[i + 1];
-    if (P.playing && n && n.start < win.b) { P.t = n.start; start(n, 0); } else stop();
+    var n = after(P.cur);
+    if (P.playing && n) { P.t = n.start; start(n, 0); } else stop();
   };
 
   function frame() {
@@ -701,7 +740,10 @@
       var on = e.target.closest('#win') ? 'win' : e.target.closest('.lane .track') ? 'lanes' : null;
       if (!on || e.target.closest('.grp, .grpname')) return;
       var t = on === 'win' ? winTime(e) : laneTime(e);
-      drag = {on: on, a: t, b: t, x: e.clientX, y: e.clientY};
+      drag = {on: on, a: t, b: t, x: e.clientX, y: e.clientY, force: on === 'win' && (e.ctrlKey || e.metaKey)};
+      if (on === 'win') drag.hold = setTimeout(function () {   // a long press insists: play exactly here
+        if (drag && !drag.moved) { drag.long = true; seek(drag.a, false, true); }
+      }, 500);
     }
     tip.style.display = 'none';
     e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
@@ -722,6 +764,8 @@
   document.addEventListener('pointerup', function () {
     if (!drag) return;
     var d = drag; drag = null;
+    clearTimeout(d.hold);
+    if (d.long) return;
     if (d.on === 'edge') {
       var now = {a: win.a, b: win.b};
       win = d.from;
@@ -729,7 +773,7 @@
       return;
     }
     if (!d.moved) {   // a click: put the playhead there
-      if (win && d.on === 'win') seek(d.a);
+      if (win && d.on === 'win') seek(d.a, false, d.force);
       else { if (win) drawWin(); paintLanes(); }
       return;
     }
@@ -737,6 +781,12 @@
     if (d.on === 'win') setView(a, b);
     else setWindow(a, b);
     if (!win) paintLanes();
+  });
+
+  winEl.addEventListener('contextmenu', function (e) {   // a right-click insists too
+    if (!win) return;
+    e.preventDefault();
+    seek(winTime(e), false, true);
   });
 
   // The wheel zooms the window about the pointer: down is out, up is in. One
