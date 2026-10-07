@@ -4,7 +4,7 @@
 #   pools.py [view|scan|key|sample|sample clear|groups]
 # Doc: troves/pools/README.md. Config: machines/<profile>/pools.yml.
 
-import functools, json, os, re, shutil, struct, subprocess, sys, threading, time
+import functools, json, os, re, shutil, struct, subprocess, sys, threading, time, urllib.parse
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -264,6 +264,77 @@ def group(body):
     return gs
 
 
+def as_wav(path):
+    """A recording as WAV bytes, for the page's player: browsers cannot play
+    AIFF, which is big-endian PCM, so its samples are swapped into a WAV."""
+    raw = Path(path).read_bytes()
+    if raw[:4] == b"RIFF":
+        return raw
+    if raw[:4] != b"FORM" or raw[8:12] not in (b"AIFF", b"AIFC"):
+        raise ValueError("not WAV or AIFF")
+    i, ch, bits, rate, pcm, swap = 12, 0, 0, 0, b"", True
+    while i + 8 <= len(raw):
+        cid, n = raw[i:i + 4], struct.unpack(">I", raw[i + 4:i + 8])[0]
+        body = raw[i + 8:i + 8 + n]
+        if cid == b"COMM":
+            ch, _, bits = struct.unpack(">hIh", body[:8])
+            e = body[8:18]
+            rate = round(int.from_bytes(e[2:10], "big") * 2.0 ** (((e[0] & 0x7f) << 8 | e[1]) - 16383 - 63))
+            swap = raw[8:12] == b"AIFF" or body[18:22] not in (b"sowt",)
+        elif cid == b"SSND":
+            off = struct.unpack(">I", body[:4])[0]
+            pcm = body[8 + off:]
+        i += 8 + n + (n & 1)
+    w = (bits + 7) // 8
+    if swap and w > 1:
+        b = bytearray(len(pcm) - len(pcm) % w)
+        for k in range(w):
+            b[k::w] = pcm[w - 1 - k:len(b):w]
+        pcm = bytes(b)
+    if w == 1:
+        pcm = bytes((x + 128) & 0xff for x in pcm)   # AIFF 8-bit is signed, WAV's is not
+    head = struct.pack("<4sI4s4sIHHIIHH4sI", b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ", 16, 1, ch, rate,
+                       rate * ch * w, ch * w, bits, b"data", len(pcm))
+    return head + pcm
+
+
+_peaks = {}   # (path, size, mtime) -> 512 loudness buckets, 0..1: an envelope is worked out once
+
+
+def peaks(path, n=512):
+    """A recording's envelope: the loudest sample in each of n slices, both
+    channels together, 0..1. 16-bit PCM only; anything else is flat."""
+    st = os.stat(path)
+    key = (path, st.st_size, st.st_mtime)
+    if key not in _peaks:
+        import array
+        body = _wavs.get(path) or as_wav(path)   # not wav_of: leave the player's cache alone
+        bits = struct.unpack("<H", body[34:36])[0]
+        out = [0.0] * n
+        if bits == 16:
+            a = array.array("h")
+            a.frombytes(body[44:44 + (len(body) - 44) // 2 * 2])
+            if len(a):
+                size = max(1, -(-len(a) // n))
+                for i in range(n):
+                    s = a[i * size:(i + 1) * size]
+                    if s:
+                        out[i] = round(max(max(s), -min(s)) / 32768, 3)
+        _peaks[key] = out
+    return _peaks[key]
+
+
+_wavs = {}   # path -> bytes, the last few played
+
+
+def wav_of(path):
+    if path not in _wavs:
+        if len(_wavs) > 6:
+            _wavs.pop(next(iter(_wavs)))
+        _wavs[path] = as_wav(path)
+    return _wavs[path]
+
+
 def known_path(data, path):
     roots = [r["path"] for p in data["pools"] for r in p["rows"]]
     rp = os.path.normcase(os.path.abspath(path))
@@ -293,8 +364,48 @@ def serve(cfg):
                 self.send(200, json.dumps(current(cfg)).encode(), "application/json")
             elif self.path == "/groups":
                 self.send(200, json.dumps({"shows": shows(), "groups": groups()}).encode(), "application/json")
+            elif self.path.startswith("/peaks?"):
+                path = urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("p", [""])[0]
+                if not path or not os.path.isfile(path) or not known_path(current(cfg), path):
+                    return self.send(403, b"not a pool recording", "text/plain")
+                try:
+                    self.send(200, json.dumps(peaks(path)).encode(), "application/json")
+                except (OSError, ValueError, struct.error) as e:
+                    self.send(415, str(e).encode(), "text/plain")
+            elif self.path.startswith("/audio?"):
+                self.audio(urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("p", [""])[0])
             else:
                 self.send(404, b"", "text/plain")
+
+        def audio(self, path):
+            """One recording, as WAV, with byte ranges so the player can seek.
+            Only a file inside a pool, as with /open."""
+            if not path or not os.path.isfile(path) or not known_path(current(cfg), path):
+                return self.send(403, b"not a pool recording", "text/plain")
+            try:
+                body = wav_of(path)
+            except (OSError, ValueError, struct.error) as e:
+                return self.send(415, str(e).encode(), "text/plain")
+            a, b = 0, len(body) - 1
+            m = re.match(r"bytes=(\d*)-(\d*)", self.headers.get("Range", ""))
+            if m and (m.group(1) or m.group(2)):
+                if m.group(1):
+                    a, b = int(m.group(1)), int(m.group(2) or b)
+                else:
+                    a = max(0, len(body) - int(m.group(2)))
+                b = min(b, len(body) - 1)
+            part = a > 0 or b < len(body) - 1
+            self.send_response(206 if part else 200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(b - a + 1))
+            if part:
+                self.send_header("Content-Range", f"bytes {a}-{b}/{len(body)}")
+            self.end_headers()
+            try:
+                self.wfile.write(body[a:b + 1])
+            except (ConnectionError, OSError):
+                pass   # the player moved on
 
         def do_POST(self):
             if self.path not in ("/open", "/group"):
