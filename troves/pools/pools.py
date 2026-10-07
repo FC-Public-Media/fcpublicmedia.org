@@ -453,7 +453,11 @@ def groups_file():
 
 def groups():
     f = groups_file()
-    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+    gs = json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+    for g in gs:   # a removal mark is not a name: early marks were saved as one
+        if not g.get("show") and g.get("name") == "to remove" and (g.get("remove") or g.get("removed")):
+            g["name"] = None
+    return gs
 
 
 def save_groups(gs):
@@ -468,13 +472,21 @@ def group(body):
     has identified yet ("unknown 1"), replacing any group it overlaps; or
     ungroup it, when neither is given."""
     start, end = float(body["start"]), float(body["end"])
-    if "remove" in body:   # mark (or unmark) the groups this stretch covers; a stretch with none becomes one
-        gs, hit = groups(), False
+    if "remove" in body:
+        # Mark (or unmark) the groups this stretch covers. A stretch with none
+        # gets a bare mark: no show and no name, only "remove". Unmarking a bare
+        # mark takes it away; a named group only loses the flag.
+        gs, hit, keep = groups(), False, []
         for g in gs:
             if g["end"] > start and g["start"] < end:
-                g["remove"], hit = bool(body["remove"]), True
+                hit = True
+                if not body["remove"] and not g.get("show") and not g.get("name"):
+                    continue
+                g["remove"] = bool(body["remove"])
+            keep.append(g)
+        gs = keep
         if not hit and body["remove"]:
-            gs.append({"show": None, "name": "to remove", "start": start, "end": end, "remove": True,
+            gs.append({"show": None, "name": None, "start": start, "end": end, "remove": True,
                        "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
                        "at": datetime.now().astimezone().isoformat(timespec="seconds")})
         save_groups(gs)

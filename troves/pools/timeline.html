@@ -146,9 +146,9 @@
   function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
   // A group belongs to a show, or carries a provisional name until someone
   // knows what it is ("unknown 1"). Provisional ones are drawn dashed.
-  function gname(g) { return g.show ? title(g.show) : (g.name || 'unnamed'); }
+  function gname(g) { return g.show ? title(g.show) : g.name ? g.name : g.remove ? 'to remove' : g.removed ? 'removed' : 'unnamed'; }
   function ncolor(name) { var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return COLORS[(shows.length + h) % COLORS.length]; }
-  function gcolor(g) { return g.show ? color(g.show) : ncolor(g.name || ''); }
+  function gcolor(g) { return g.show ? color(g.show) : g.name ? ncolor(g.name) : '#e0574f'; }
   function names() {   // the provisional names in use, so they can be given again
     var seen = {};
     return groups.filter(function (g) { return !g.show && g.name && !seen[g.name] && (seen[g.name] = 1); }).map(function (g) { return g.name; });
