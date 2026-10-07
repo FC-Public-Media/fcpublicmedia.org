@@ -112,6 +112,43 @@ marked** in the header moves every recording inside them into the pool's
 `.removed/<date>/` folder, after asking. Nothing is deleted: moving a file back
 undoes it.
 
+## Next: the window as a dispatch hub (Autumn, 2026-10-07)
+
+The window is where calls to Audition are made, or at least where what is
+sent is decided. Its settings are not only ways of looking: skipping, cutting
+gaps and silencing are a manual pre-processing step, and they are what gets
+rasterized into the job (an edit list: what plays, what is cut, what is
+silenced). A show's profile can add steps per group (transcription, say).
+Think like production engineers: a map, not a form.
+
+1. **Silence what is marked for removal.** Marked stretches pass silently,
+   like skipped clips, and count as cut. A toggle beside the others.
+2. **An icon strip, not words.** Checkbox-driven toggles drawn as glyphs,
+   words only in tooltips:
+   - amplify: a small waveform, pressed in when on;
+   - compress gaps: drawn the way cuts are drawn, an ellipsis pinched in;
+   - skip short clips: a short, tightly ticked slider whose stops (3, 6, 10 s,
+     and off) are what matter and are clickable; the space between stops shows
+     only their relative size, not to scale;
+   - silence marked: the removal mark's own glyph.
+3. **The waveform as a path.** Trace the peaks as one line in the group's
+   (show's) colour; the area under it is the same colour, much dimmer, falling
+   toward the background (a mask, not a solid fill), so focus goes where it is
+   due. A run of touching clips is one path, not a shape per clip, so it is no
+   longer crooked at gaps that nothing skips. The alternating tones go.
+4. **The selection range is the readout.** The clock and range are coded in
+   the selection's own look, not washed-out text. Counts (shown, cuts, skipped,
+   silenced) become a cluster of small badges with glyphs; the words go into
+   tooltips. Nothing ends in an ellipsis.
+5. **A night's label selects the night.** Clicking the date at a lane's left
+   opens the whole night as the window. The wheel then zooms in and out of it;
+   zooming out stops at what there is, not three days into nowhere.
+6. **Everything can be one window.** Selecting all the nights at once is
+   allowed: compressed, it reads as a timeline to shuttle to Audition, and well
+   marked, whole swaths drop out.
+7. **Missing nights are dividers.** Not "1 night, nothing": one hard divider
+   per missing night, drawn like the zone underlines.
+
 ## Not yet
 
 - **Squares that are units, not files** (Autumn, 2026-10-07). On a pile of
