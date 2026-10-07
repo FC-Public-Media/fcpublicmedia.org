@@ -33,6 +33,26 @@ Status: first pass, on production (editing bay 1). `fcpm pools` opens it.
   Audio Hijack names them. Without one, it's the file's last write minus its
   length. Length is read from a WAV's header.
 
+## The timeline
+
+`timeline`, at the top of the page, shows the same recordings on the clock:
+one lane per night, noon to noon, so a session past midnight stays whole. Each
+recording sits where it ran, as long as it ran: its last write, less its
+length (AIFF and WAV lengths are read from their headers, once). What was
+silent has no bytes and is left empty, so sessions, the breaks inside them,
+and the nights with nothing show for what they are.
+
+**Grouping is selecting along time**, the way text is selected: press, drag,
+let go. Crossing into the next lane carries on from its start, as a line of
+text does. It snaps to the recordings it covers, and a bar offers the shows
+FCPM has a record of (`site/_shows/`). Choosing one groups that stretch under
+the show; click a group's line to change it or ungroup it. Esc lets go.
+Double-click a recording to open it in Explorer.
+
+Groups are kept on this computer (`%LOCALAPPDATA%\<profile>\pools\groups.json`)
+until they are written to the show's own repository. `pools.py groups` lists
+them.
+
 It runs only while its window is open. `fcpm pools` starts a small server on
 `127.0.0.1:8091`, opens Edge onto it, and stops when that window closes.
 Running it a second time just opens another window onto the first.

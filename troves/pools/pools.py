@@ -1,9 +1,10 @@
 # pools.py — scan this machine's storage pools and show them as a page on
-# 127.0.0.1, for as long as the window that ran it stays open.
-#   pools.py [view|scan|key|sample|sample clear]
+# 127.0.0.1, for as long as the window that ran it stays open: squares at /,
+# the timeline at /timeline, where stretches of it are grouped into shows.
+#   pools.py [view|scan|key|sample|sample clear|groups]
 # Doc: troves/pools/README.md. Config: machines/<profile>/pools.yml.
 
-import json, os, re, shutil, struct, subprocess, sys, threading, time
+import functools, json, os, re, shutil, struct, subprocess, sys, threading, time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,10 +15,12 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 PORT = 8091
 AUDIO = {".wav", ".aif", ".aiff", ".mp3", ".m4a", ".flac", ".caf", ".ogg"}
+SYSTEM = {"System Volume Information"}   # and anything starting "$" or ".": Windows' and macOS's own
 LIVE_S, FRESH_S, SHORT_S = 90, 24 * 3600, 3.0
 STAMP = re.compile(r"(20\d\d)-?(\d\d)-?(\d\d)\D{0,4}?(\d\d)[.:\-h]?(\d\d)[.:\-m]?(\d\d)")
 
 
+@functools.lru_cache(None)
 def profile():
     out = subprocess.run(["sh", str(REPO / "machines" / "sync")], capture_output=True, text=True).stdout
     return next((l.split()[1] for l in out.splitlines() if l.startswith("profile ")), None)
@@ -51,26 +54,75 @@ def wav_rate(f):
         return None
 
 
+def aiff_seconds(f):
+    """Length from an AIFF's COMM chunk (frames over an 80-bit float rate), or None."""
+    try:
+        with open(f, "rb") as h:
+            if h.read(12)[:4] != b"FORM":
+                return None
+            while True:
+                c = h.read(8)
+                if len(c) < 8:
+                    return None
+                n = struct.unpack(">I", c[4:])[0]
+                if c[:4] == b"COMM":
+                    b = h.read(18)
+                    frames = struct.unpack(">I", b[2:6])[0]
+                    e = b[8:18]
+                    rate = int.from_bytes(e[2:10], "big") * 2.0 ** (((e[0] & 0x7f) << 8 | e[1]) - 16383 - 63)
+                    return frames / rate if rate else None
+                h.seek(n + (n & 1), 1)
+    except OSError:
+        return None
+
+
+_lengths = {}   # (path, size, mtime) -> seconds: a header is read once, not every pass
+
+
+def length_of(f, st):
+    key = (str(f), st.st_size, st.st_mtime)
+    if key not in _lengths:
+        ext = f.suffix.lower()
+        if ext == ".wav":
+            rate = wav_rate(f)
+            _lengths[key] = max(0.0, (st.st_size - 44) / rate) if rate else None
+        elif ext in (".aif", ".aiff"):
+            _lengths[key] = aiff_seconds(f)
+        else:
+            _lengths[key] = None
+    return _lengths[key]
+
+
 def describe(f, st, now):
-    """One recording: when it ran, how long, and what state it is in."""
+    """One recording: when it ran, how long, and what state it is in.
+
+    It ran until its last write, for as long as it is: Audio Hijack names a
+    file for the minute it was armed, which can be long before its first byte
+    (enhance/docs/CAPTURE.md). The name's stamp is only for a file whose
+    length cannot be read."""
     end = st.st_mtime
-    rate = wav_rate(f) if f.suffix.lower() == ".wav" else None
-    dur = max(0.0, (st.st_size - 44) / rate) if rate else None
+    dur = length_of(f, st)
     m = STAMP.search(f.stem)
-    if m:
+    if dur is not None:
+        start = end - dur
+    elif m:
         start = datetime(*map(int, m.groups())).timestamp()
     else:
-        start = end - dur if dur is not None else end
+        start = end
     age = now - end
     state = "live" if age < LIVE_S else "fresh" if age < FRESH_S else "settled"
     return {"name": f.name, "start": start, "end": end, "duration": dur, "bytes": st.st_size,
             "state": state, "short": dur is not None and dur < SHORT_S}
 
 
+def hidden(name):
+    return name.startswith((".", "$")) or name in SYSTEM
+
+
 def walk(root, now):
     files, other = [], 0
     for dirpath, dirs, names in os.walk(root):
-        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        dirs[:] = [d for d in dirs if not hidden(d)]
         for n in names:
             f = Path(dirpath) / n
             if n.startswith("."):
@@ -127,10 +179,16 @@ def scan(cfg):
                 p["rows"].append(row)
         else:
             base = Path(os.path.expanduser(pool["path"]))
-            base.mkdir(parents=True, exist_ok=True)
+            if not base.exists():
+                if pool.get("create"):
+                    base.mkdir(parents=True, exist_ok=True)
+                else:
+                    p["rows"].append({"id": "-", "label": p["title"], "path": str(base), "error": "unreachable", "files": []})
+                    out["pools"].append(p)
+                    continue
             cap = size_of(pool["capacity"]) if pool.get("capacity") else shutil.disk_usage(base).total
             order = list(out["stages"])
-            subs = sorted([d for d in base.iterdir() if d.is_dir() and not d.name.startswith(".")],
+            subs = sorted([d for d in base.iterdir() if d.is_dir() and not hidden(d.name)],
                           key=lambda d: (order.index(d.name) if d.name in order else len(order), d.name)) or [base]
             used = 0
             for d in subs:
@@ -138,7 +196,8 @@ def scan(cfg):
                 files, other = walk(d, now)
                 b = sum(f["bytes"] for f in files)
                 used += b
-                p["rows"].append({"id": d.name, "label": out["stages"].get(stage, {}).get("label", d.name),
+                label = out["stages"][d.name]["label"] if d.name in out["stages"] else d.name
+                p["rows"].append({"id": d.name, "label": label,
                                   "path": str(d), "stage": stage, "files": files, "other": other, "used": b})
             p.update(capacity=cap, used=used, free=max(0, cap - used))
         out["pools"].append(p)
@@ -156,6 +215,53 @@ def current(cfg):
         if time.time() - _last["at"] > 20:
             _last.update(data=scan(cfg), at=time.time())
         return _last["data"]
+
+
+def shows():
+    """The shows FCPM keeps a record of (site/_shows/*.md): slug and title."""
+    out = []
+    for f in sorted((REPO / "site" / "_shows").glob("*.md")):
+        head = f.read_text(encoding="utf-8").split("---")
+        meta = yaml.safe_load(head[1]) if len(head) > 2 else {}
+        out.append({"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem)})
+    return out
+
+
+# A group is a stretch of the timeline someone has said belongs to one show.
+# Kept on this machine until it is written to the show's own repository.
+def groups_file():
+    d = Path(os.environ.get("LOCALAPPDATA", Path.home())) / (profile() or "pools") / "pools"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "groups.json"
+
+
+def groups():
+    f = groups_file()
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+
+
+def save_groups(gs):
+    f = groups_file()
+    tmp = f.with_suffix(".tmp")
+    tmp.write_text(json.dumps(sorted(gs, key=lambda g: g["start"]), indent=1), encoding="utf-8")
+    os.replace(tmp, f)
+
+
+def group(body):
+    """Assign [start, end] to a show, replacing any group it overlaps; or
+    ungroup it, when show is empty."""
+    start, end, show = float(body["start"]), float(body["end"]), str(body.get("show") or "")
+    if not end > start:
+        raise ValueError("empty stretch")
+    if show and show not in [s["slug"] for s in shows()]:
+        raise ValueError("no such show")
+    gs = [g for g in groups() if g["end"] <= start or g["start"] >= end]
+    if show:
+        gs.append({"show": show, "start": start, "end": end,
+                   "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
+                   "at": datetime.now().astimezone().isoformat(timespec="seconds")})
+    save_groups(gs)
+    return gs
 
 
 def known_path(data, path):
@@ -181,18 +287,25 @@ def serve(cfg):
         def do_GET(self):
             if self.path == "/":
                 self.send(200, (HERE / "view.html").read_bytes(), "text/html; charset=utf-8")
+            elif self.path == "/timeline":
+                self.send(200, (HERE / "timeline.html").read_bytes(), "text/html; charset=utf-8")
             elif self.path == "/now":
                 self.send(200, json.dumps(current(cfg)).encode(), "application/json")
+            elif self.path == "/groups":
+                self.send(200, json.dumps({"shows": shows(), "groups": groups()}).encode(), "application/json")
             else:
                 self.send(404, b"", "text/plain")
 
         def do_POST(self):
-            if self.path != "/open":
+            if self.path not in ("/open", "/group"):
                 return self.send(404, b"", "text/plain")
             try:
-                path = str(json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}").get("path", ""))
-            except (ValueError, AttributeError):
-                return self.send(400, b"bad request", "text/plain")
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                if self.path == "/group":
+                    return self.send(200, json.dumps({"shows": shows(), "groups": group(body)}).encode(), "application/json")
+                path = str(body.get("path", ""))
+            except (ValueError, AttributeError, KeyError, TypeError) as e:
+                return self.send(400, str(e).encode(), "text/plain")
             if not known_path(current(cfg), path):
                 return self.send(403, b"not a pool path", "text/plain")
             arg = ["explorer", "/select,", path] if os.path.isfile(path) else ["explorer", path]
@@ -223,9 +336,10 @@ def serve(cfg):
 # --- sample recordings for the emulated pool, so the page has something real to show
 
 def sample(cfg, clear=False):
-    pool = next((p for p in cfg["pools"] if p["kind"] == "folder"), None)
+    # Only a pool this page made (`create:`), never a real disk that happens to be a folder.
+    pool = next((p for p in cfg["pools"] if p["kind"] == "folder" and p.get("create")), None)
     if not pool:
-        sys.exit("pools: no folder pool to put samples in")
+        sys.exit("pools: no emulated pool (kind: folder, create: true) to put samples in")
     base = Path(os.path.expanduser(pool["path"]))
     for f in base.rglob("sample *.wav"):
         f.unlink()
@@ -271,5 +385,12 @@ if __name__ == "__main__":
         sys.exit(subprocess.run(["cmdkey", f"/add:{smb['server']}", f"/user:{smb.get('user', 'FCPM')}", "/pass"]).returncode)
     elif verb == "sample":
         sample(cfg, clear=sys.argv[2:3] == ["clear"])
+    elif verb == "groups":
+        titles = {s["slug"]: s["title"] for s in shows()}
+        for g in groups():
+            a, b = datetime.fromtimestamp(g["start"]), datetime.fromtimestamp(g["end"])
+            print(f"{titles.get(g['show'], g['show']):24} {a:%a %Y-%m-%d %H:%M} -> {b:%a %H:%M}"
+                  f"  {g['files']:5} files  {g['sound'] / 3600:4.1f} h sound")
+        print(f"({groups_file()})")
     else:
-        sys.exit("pools.py [view|scan|key|sample|sample clear]")
+        sys.exit("pools.py [view|scan|key|sample|sample clear|groups]")
