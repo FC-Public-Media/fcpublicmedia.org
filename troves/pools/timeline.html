@@ -32,7 +32,8 @@
   .axis .track span { position: absolute; top: 3px; font-size: 10px; color: var(--dim); transform: translateX(-50%); }
   .lane { height: var(--lane); border-top: 1px solid var(--faint); }
   .lane .track, #win { cursor: text; touch-action: none; }
-  .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); pointer-events: none; }
+  .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.11); pointer-events: none; }
+  .tick.hour { background: rgba(255,255,255,.04); }
   .f { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px; }
   .f.short { opacity: .35; }
   .sel { position: absolute; top: 1px; bottom: 1px; background: rgba(255,255,255,.16);
@@ -48,10 +49,17 @@
   #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 50vh; min-height: 200px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
-  #win .f { top: 22px; bottom: 16px; }
-  #win .f.now { box-shadow: 0 0 0 1px #fff; }
-  #win .t { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); pointer-events: none; }
-  #win .t span { position: absolute; top: 2px; left: 4px; font-size: 10px; color: var(--dim); white-space: nowrap; }
+  #win .f { top: 22px; bottom: 22px; opacity: .22; }
+  #win .f.short { opacity: .12; }
+  #win .f.now { opacity: .4; box-shadow: 0 0 0 1px #fff; }
+  #wave { position: absolute; left: 0; top: 22px; pointer-events: none; }
+  /* the grid, over the recordings: major lines labelled top and bottom, minor between */
+  #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
+  #win .g.minor { background: rgba(255,255,255,.05); top: 18px; bottom: 18px; }
+  #win .g.major { background: rgba(255,255,255,.17); }
+  #win .g span { position: absolute; left: 4px; font-size: 10px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #win .g span.top { top: 3px; } #win .g span.bot { bottom: 3px; }
+  #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
   #ctl button { font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.14);
@@ -203,12 +211,14 @@
       L.track = tr;
     });
     var W = lanes.length ? lanes[0].track.clientWidth : 0;
-    [0, 6, 12, 18, 24].forEach(function (h) {
+    [0, 3, 6, 9, 12, 15, 18, 21, 24].forEach(function (h) {
       var s = el('span', null, ((h + 12) % 24) + ':00'); s.style.left = (W * h / 24) + 'px'; at.appendChild(s);
     });
     lanes.forEach(function (L) {
       L.w = L.track.clientWidth;
-      [6, 12, 18].forEach(function (h) { var t = el('div', 'tick'); t.style.left = (L.w * h / 24) + 'px'; L.track.appendChild(t); });
+      for (var h = 1; h < 24; h++) {   // every hour faint, every six stronger
+        var t = el('div', 'tick' + (h % 6 ? ' hour' : '')); t.style.left = (L.w * h / 24) + 'px'; L.track.appendChild(t);
+      }
       L.files.forEach(function (x) { L.track.appendChild(frag(x, L.origin, L.end - L.origin, L.w)); });
     });
     paintLanes();
@@ -267,13 +277,17 @@
   function drawWin() {
     winEl.textContent = '';
     if (!win) return;
-    var v = view(), span = v.b - v.a, w = winEl.clientWidth;
-    var steps = [1, 5, 15, 30, 60, 300, 600, 900, 1800, 3600, 7200, 10800];
-    var step = steps.filter(function (s) { return span / s <= 10; })[0] || 21600;
-    for (var t = Math.ceil(v.a / step) * step; t < v.b; t += step) {
-      var k = el('div', 't'); k.style.left = ((t - v.a) / span * w) + 'px';
-      k.appendChild(el('span', null, step < 60 ? hms(t) : hm(t))); winEl.appendChild(k);
+    var v = view(), span = v.b - v.a, w = winEl.clientWidth, g = grid(span);
+    for (var t = Math.ceil(v.a / g.minor) * g.minor; t < v.b; t += g.minor) {
+      var major = Math.abs(t / g.major - Math.round(t / g.major)) < 1e-6;
+      var k = el('div', 'g ' + (major ? 'major' : 'minor')); k.style.left = ((t - v.a) / span * w) + 'px';
+      if (major) {
+        var lab = g.major < 60 ? hms(t) : hm(t);
+        k.appendChild(el('span', 'top', lab)); k.appendChild(el('span', 'bot', lab));
+      }
+      winEl.appendChild(k);
     }
+    var cv = el('canvas'); cv.id = 'wave'; winEl.appendChild(cv);
     groups.forEach(function (g) {
       var s = Math.max(g.start, v.a), e = Math.min(g.end, v.b);
       if (e <= s) return;
@@ -288,6 +302,55 @@
       winEl.appendChild(s);
     }
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = ((P.t - v.a) / span * w) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
+    waves();
+  }
+
+  // Grid spacing for a span of seconds: about eight labelled lines across,
+  // finer unlabelled ones between.
+  var GRID = [[1, .25], [2, .5], [5, 1], [10, 2], [15, 5], [30, 5], [60, 15], [120, 30], [300, 60], [600, 120],
+              [900, 300], [1800, 300], [3600, 900], [7200, 1800], [10800, 3600], [21600, 3600]];
+  function grid(span) {
+    var g = GRID.filter(function (p) { return span / p[0] <= 9; })[0] || GRID[GRID.length - 1];
+    return {major: g[0], minor: g[1]};
+  }
+  function every(s) { return s < 60 ? s + ' s' : s < 3600 ? s / 60 + ' min' : s / 3600 + ' h'; }
+
+  // Waveforms: each recording's envelope, from the server, drawn on one canvas
+  // in its stage's colour, mirrored about the middle. Asked for as they come on
+  // screen, a few at a time; kept once had.
+  var env = {}, asking = 0, wanted = [];
+  function waves() {
+    var cv = document.getElementById('wave');
+    if (!cv || !win) return;
+    var v = view(), span = v.b - v.a, w = winEl.clientWidth, h = winEl.clientHeight - 44, dpr = devicePixelRatio || 1;
+    cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    var c = cv.getContext('2d'); c.scale(dpr, dpr);
+    var mid = h / 2;
+    within(v.a, v.b).forEach(function (x) {
+      var x0 = (x.start - v.a) / span * w, x1 = (x.end - v.a) / span * w, pw = x1 - x0;
+      var e = env[x.f.path];
+      if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
+      c.fillStyle = x.color; c.globalAlpha = x === P.cur ? 1 : .85;
+      var n = e.length, cols = Math.max(1, Math.round(pw));
+      for (var i = 0; i < cols; i++) {
+        var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
+        for (var j = a; j < b; j++) if (e[j] > pk) pk = e[j];
+        var y = Math.max(.5, Math.sqrt(pk) * mid);   // square root: quiet speech still shows
+        c.fillRect(x0 + i * pw / cols, mid - y, Math.max(1, pw / cols), y * 2);
+      }
+    });
+    ask();
+  }
+  function ask() {
+    while (asking < 4 && wanted.length) {
+      var x = wanted.shift();
+      if (env[x.f.path] || !win || x.end < view().a || x.start > view().b) continue;
+      asking++;
+      fetch('/peaks?p=' + encodeURIComponent(x.f.path)).then(function (r) { return r.ok ? r.json() : null; })
+        .then((function (x) { return function (e) { env[x.f.path] = e || [0]; }; })(x))
+        .catch(function () {})
+        .then(function () { asking--; clearTimeout(ask.t); ask.t = setTimeout(waves, 120); ask(); });
+    }
   }
 
   function drawCtl() {
@@ -305,6 +368,8 @@
     sum.appendChild(el('b', null, wd(win.a) + ' ' + hm(win.a) + ' → ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b)));
     sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
     ctl.appendChild(sum);
+    var vv = view(), gg = grid(vv.b - vv.a);
+    ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a) + ' across · lines every ' + every(gg.major) + ', fine every ' + every(gg.minor)));
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     shows.forEach(function (s) {

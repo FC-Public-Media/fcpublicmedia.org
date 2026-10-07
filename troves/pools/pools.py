@@ -298,6 +298,32 @@ def as_wav(path):
     return head + pcm
 
 
+_peaks = {}   # (path, size, mtime) -> 512 loudness buckets, 0..1: an envelope is worked out once
+
+
+def peaks(path, n=512):
+    """A recording's envelope: the loudest sample in each of n slices, both
+    channels together, 0..1. 16-bit PCM only; anything else is flat."""
+    st = os.stat(path)
+    key = (path, st.st_size, st.st_mtime)
+    if key not in _peaks:
+        import array
+        body = _wavs.get(path) or as_wav(path)   # not wav_of: leave the player's cache alone
+        bits = struct.unpack("<H", body[34:36])[0]
+        out = [0.0] * n
+        if bits == 16:
+            a = array.array("h")
+            a.frombytes(body[44:44 + (len(body) - 44) // 2 * 2])
+            if len(a):
+                size = max(1, -(-len(a) // n))
+                for i in range(n):
+                    s = a[i * size:(i + 1) * size]
+                    if s:
+                        out[i] = round(max(max(s), -min(s)) / 32768, 3)
+        _peaks[key] = out
+    return _peaks[key]
+
+
 _wavs = {}   # path -> bytes, the last few played
 
 
@@ -338,6 +364,14 @@ def serve(cfg):
                 self.send(200, json.dumps(current(cfg)).encode(), "application/json")
             elif self.path == "/groups":
                 self.send(200, json.dumps({"shows": shows(), "groups": groups()}).encode(), "application/json")
+            elif self.path.startswith("/peaks?"):
+                path = urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("p", [""])[0]
+                if not path or not os.path.isfile(path) or not known_path(current(cfg), path):
+                    return self.send(403, b"not a pool recording", "text/plain")
+                try:
+                    self.send(200, json.dumps(peaks(path)).encode(), "application/json")
+                except (OSError, ValueError, struct.error) as e:
+                    self.send(415, str(e).encode(), "text/plain")
             elif self.path.startswith("/audio?"):
                 self.audio(urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("p", [""])[0])
             else:
