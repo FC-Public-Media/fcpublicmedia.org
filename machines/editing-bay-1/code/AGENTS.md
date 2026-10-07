@@ -81,6 +81,12 @@ until it runs something that has to be rebased under it.
   signed in. A shell that doesn't find it on PATH can use the full path.
   Autumn merges. Within 5 minutes the door rebases
   `media-node` onto main and restarts on the new code.
+- **Every PR asks Autumn to review it** (Autumn, 2026-10-07). We push and
+  open PRs as `fcpm-public`; she reviews as `tiliv`. Open each with
+  `gh pr create ... --reviewer tiliv`, in any repository, drafts included,
+  and add her (`gh pr edit N --add-reviewer tiliv`) to one opened without.
+  Her one filter, "review requested", is then everything waiting on her,
+  on the phone as on the desktop, without going repository by repository.
 - **Commit as we go** (Autumn, 2026-09-25). On a work branch, commit each
   step as it lands rather than holding a pile of changes. Committing is
   local and cheap; pushing and opening the PR are still separate, and a
