@@ -387,6 +387,95 @@ def recycled(base):
     return out
 
 
+# --- transcription: a selection out, a transcript back ------------------------
+# A job is the window's edit list: the recordings that play, in order, after
+# the page's skips, silences and cuts. It is kept (jobs/<id>.json, beside the
+# groups) with its settings, so what was sent can be read back, and its result
+# (jobs/<id>.result.json) fills in as each recording is heard. The engine is
+# the machine's choice (pools.yml `transcribe: engine:`); engines/ holds them.
+
+ENGINES = {"windows-speech": HERE / "engines" / "windows-speech.ps1"}
+_jobs_lock = threading.Lock()
+
+
+def jobs_dir():
+    d = groups_file().with_name("jobs")
+    d.mkdir(exist_ok=True)
+    return d
+
+
+def mono16k(path):
+    """A recording as 16 kHz mono 16-bit WAV, which speech engines prefer."""
+    import array
+    body = as_wav(path)
+    ch, rate, bits = struct.unpack("<H", body[22:24])[0], struct.unpack("<I", body[24:28])[0], struct.unpack("<H", body[34:36])[0]
+    if bits != 16:
+        raise ValueError("not 16-bit")
+    a = array.array("h"); a.frombytes(body[44:44 + (len(body) - 44) // 2 * 2])
+    step = max(1, round(rate / 16000)) * ch
+    m = array.array("h", (sum(a[i:i + step]) // step for i in range(0, len(a) - step + 1, step)))
+    pcm = m.tobytes()
+    return struct.pack("<4sI4s4sIHHIIHH4sI", b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ", 16, 1, 1, 16000, 32000, 2, 16,
+                       b"data", len(pcm)) + pcm
+
+
+def transcribe(cfg, body):
+    engine = ((cfg.get("transcribe") or {}).get("engine")) or "windows-speech"
+    if engine not in ENGINES:
+        raise ValueError(f"no engine {engine!r} here")
+    data = current(cfg)
+    clips = [c for c in body.get("clips") or [] if known_path(data, str(c.get("path", "")))]
+    if not clips:
+        raise ValueError("nothing to transcribe in this window")
+    jid = datetime.now().strftime("%Y%m%d-%H%M%S")
+    job = {"id": jid, "at": datetime.now().astimezone().isoformat(timespec="seconds"), "engine": engine,
+           "range": [body.get("a"), body.get("b")], "settings": body.get("settings") or {}, "clips": clips}
+    (jobs_dir() / f"{jid}.json").write_text(json.dumps(job, indent=1), encoding="utf-8")
+    result = {"id": jid, "engine": engine, "state": "running", "done": 0, "total": len(clips), "segments": []}
+
+    def save():
+        with _jobs_lock:
+            (jobs_dir() / f"{jid}.result.json").write_text(json.dumps(result), encoding="utf-8")
+
+    def run():
+        tmp = jobs_dir() / f"{jid}.wav"
+        for c in clips:
+            try:
+                tmp.write_bytes(mono16k(c["path"]))
+                out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ENGINES[engine]),
+                                      "-Wav", str(tmp)], capture_output=True, text=True, timeout=600).stdout.strip()
+                for s in json.loads(out or "[]") or []:
+                    if s.get("text"):
+                        result["segments"].append({"t": float(c["start"]) + float(s["at"]), "d": float(s["len"]),
+                                                   "text": s["text"], "conf": s.get("conf"), "path": c["path"]})
+            except (OSError, ValueError, subprocess.TimeoutExpired) as e:
+                result.setdefault("errors", []).append(f"{Path(c['path']).name}: {e}")
+            result["done"] += 1
+            save()
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        result["state"] = "done"
+        save()
+
+    save()
+    threading.Thread(target=run, daemon=True).start()
+    return {"id": jid, "engine": engine, "total": len(clips)}
+
+
+def transcripts():
+    """Every job's result: what was asked, how far it has got, what was heard."""
+    out = []
+    for f in sorted(jobs_dir().glob("*.result.json")):
+        try:
+            with _jobs_lock:
+                out.append(json.loads(f.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            pass
+    return out
+
+
 def remove_marked(cfg):
     """Move every recording inside a group marked for removal into its pool's
     .removed/<date>/ folder, keeping its place below the pool. Nothing is
@@ -605,6 +694,8 @@ def serve(cfg):
                 self.send(200, (HERE / "timeline.html").read_bytes(), "text/html; charset=utf-8")
             elif self.path == "/now":
                 self.send(200, json.dumps(current(cfg)).encode(), "application/json")
+            elif self.path == "/transcripts":
+                self.send(200, json.dumps(transcripts()).encode(), "application/json")
             elif self.path == "/groups":
                 self.send(200, json.dumps({"shows": shows(), "groups": groups()}).encode(), "application/json")
             elif self.path.startswith("/peaks?"):
@@ -651,6 +742,12 @@ def serve(cfg):
                 pass   # the player moved on
 
         def do_POST(self):
+            if self.path == "/transcribe":
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                    return self.send(200, json.dumps(transcribe(cfg, body)).encode(), "application/json")
+                except (ValueError, KeyError, TypeError) as e:
+                    return self.send(400, str(e).encode(), "text/plain")
             if self.path == "/remove-marked":
                 n = int(self.headers.get("Content-Length", 0)); self.rfile.read(n)
                 try:

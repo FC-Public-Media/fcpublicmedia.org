@@ -42,3 +42,10 @@ stages:
   declined:    {label: Not promoted, color: "#5d6470"}
   to-dropbox:  {label: To Dropbox,   color: "#4fb3d9"}
   to-stem:     {label: To stem,      color: "#d96b9b"}
+
+# Transcription, from the timeline's window (experimental): the engine a job is
+# sent to (troves/pools/engines/). windows-speech is Windows' own dictation
+# recognizer: nothing installed, and rough. A real engine (Whisper, say) comes
+# in the bay's way before it is named here.
+transcribe:
+  engine: windows-speech

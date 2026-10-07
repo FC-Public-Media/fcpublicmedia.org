@@ -112,6 +112,19 @@ marked** in the header moves every recording inside them into the pool's
 `.removed/<date>/` folder, after asking. Nothing is deleted: moving a file back
 undoes it.
 
+## Transcription (experimental)
+
+The speech-bubble button in the window's strip sends the window out as a job:
+its edit list, the recordings that play after the skips, silences and cuts,
+with the settings that made it (`jobs/<id>.json`, beside the groups). The
+machine's engine (`transcribe: engine:` in its `pools.yml`; `engines/`) hears
+each recording, and what it heard comes back onto the window as a line of text
+where it was said (`jobs/<id>.result.json`, filling in as it goes); a badge
+counts it. The only engine so far is `windows-speech`: Windows' own dictation
+recognizer, nothing installed, and rough on a room of people. It proves the
+leg; a real engine (Whisper on the bay's RTX 4080, Audition's own, or Audio
+Hijack's Transcribe on station-node) arrives the bay's way before it is named.
+
 ## Next: the window as a dispatch hub (Autumn, 2026-10-07)
 
 The window is where calls to Audition are made, or at least where what is

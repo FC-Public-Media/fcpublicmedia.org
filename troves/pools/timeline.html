@@ -126,6 +126,11 @@
                         background: radial-gradient(circle, #ff3b30 2.6px, rgba(255,59,48,.35) 3.2px, transparent 3.6px) 0 50% / 14px 8px repeat-x;
                         animation: flowdots 1.1s linear infinite; }
   @keyframes flowdots { from { background-position: 0 50%; } to { background-position: 14px 50%; } }
+  /* what was heard: a line of text where it was said, along the top of the waveform */
+  #win .heard { position: absolute; top: 18px; height: 15px; z-index: 3; overflow: hidden; white-space: nowrap; text-overflow: clip;
+                font-size: 10px; line-height: 15px; padding: 0 3px; color: #e8edf4; background: rgba(12,15,21,.72);
+                border-left: 1px solid rgba(255,255,255,.5); border-radius: 0 2px 2px 0; cursor: default; }
+  #win .heard.unsure { color: rgba(232,237,244,.55); }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
@@ -250,6 +255,8 @@
   ICONS.follow = '<path d="M12 3v18" stroke="currentColor" stroke-width="2"/><path d="M8.5 3h7l-3.5 4z" fill="currentColor"/>' +
                  '<path d="M4 12h4M16 12h4M6 10l-2 2 2 2M18 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
   ICONS.zoom = '<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+  ICONS.speech = '<path d="M4 5h16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 16h-9l-4.5 3.5V16H4a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 4 5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
+                 '<path d="M6.5 9h11M6.5 12h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
   ICONS.dot = '<circle cx="12" cy="12" r="3.2" fill="currentColor"/>';
   ICONS.files = '<rect x="4" y="5" width="3" height="14" rx="1" fill="currentColor"/><rect x="9" y="8" width="3" height="11" rx="1" fill="currentColor"/><rect x="14" y="4" width="3" height="15" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="9" rx="1" fill="currentColor"/>';
   ICONS.grid = '<path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8v8M15.5 8v8" stroke="currentColor" stroke-width=".9" opacity=".6"/>';
@@ -651,6 +658,12 @@
       var mid = (P.cur.start + P.cur.end) / 2, og = groups.filter(function (g) { return !g.remove && mid >= g.start && mid <= g.end; })[0];
       now.style.color = og ? gcolor(og) : P.cur.color; winEl.appendChild(now);   // the colour its trace is drawn in
     }
+    said(v.a, v.b).forEach(function (s) {
+      var d = place(el('div', 'heard', s.text), s.t, s.t + s.d, 3);
+      if (s.conf != null && s.conf < .35) d.classList.add('unsure');
+      d.title = hms(s.t) + ' \u00b7 ' + s.text + (s.conf != null ? ' (confidence ' + Math.round(s.conf * 100) + '%)' : '');
+      winEl.appendChild(d);
+    });
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
     var rl = el('div'); rl.id = 'reach'; winEl.appendChild(rl);
     var rt = el('div'); rt.id = 'reachlbl'; winEl.appendChild(rt);
@@ -885,6 +898,11 @@
     tog('silence', S.silence, 'Silence what is marked for removal: passed over and cut', function (v) { S.silence = v; });
     tog('follow', S.follow, 'Follow the playhead: the wheel zooms about it, and the window turns the page to keep it in sight while playing', function (v) { S.follow = v; });
     strip.appendChild(stops());
+    var tr = icon('speech', running() ? 'Transcribing: ' + running().done + ' of ' + running().total + ' recordings heard'
+                                      : 'Transcribe this window: what plays here (after skips, silences and cuts) goes to the engine, and the transcript comes back under the waveform');
+    tr.classList.add('tog'); if (running()) tr.classList.add('on');
+    tr.onclick = function () { tr.blur(); if (!running()) sendTranscription(); };
+    strip.appendChild(tr);
     ctl.appendChild(strip);
 
     // The readout, in the selection's own look: where the playhead is, the
@@ -910,6 +928,9 @@
     var z = zoom();
     badge('zoom', (z >= 10 ? Math.round(z) : z.toFixed(1)) + '\u00d7', 'zoom: ' + (z >= 1 ? z.toFixed(1) + ' times further out than' : (1 / z).toFixed(1) + ' times closer in than') +
           ' 1x (about 4\u00bd minutes of recording across); the traced line is solid at 1x');
+    var job = running();
+    if (job) badge('speech', job.done + '/' + job.total, 'transcribing (' + job.engine + '): ' + job.done + ' of ' + job.total + ' recordings heard');
+    else { var nHeard = said(win.a, win.b).length; if (nHeard) badge('speech', String(nHeard), nHeard + ' things heard in this window (' + engines() + ')'); }
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     // One list, however many names there come to be: the shows on record, the
@@ -989,6 +1010,31 @@
     var a = Infinity, b = -Infinity;
     files.concat(ghosts).forEach(function (x) { if (x.start < a) a = x.start; if (x.end > b) b = x.end; });
     return {a: a, b: b};
+  }
+
+  // --- transcription: the window out as a job, the transcript back ---------
+  var heard = [];   // every job's result, from the server
+  function running() { return heard.filter(function (j) { return j.state === 'running'; })[0] || null; }
+  function said(a, b) {
+    var out = [];
+    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { if (s.t + s.d > a && s.t < b) out.push(s); }); });
+    return out;
+  }
+  function engines() { var e = {}; heard.forEach(function (j) { e[j.engine] = 1; }); return Object.keys(e).join(', '); }
+  function loadHeard() {
+    return fetch('/transcripts', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } if (running()) setTimeout(loadHeard, 2500); })
+      .catch(function () {});
+  }
+  function sendTranscription() {
+    // the edit list: the recordings that play here, in order, after skips, silences and cuts
+    var clips = within(win.a, win.b).filter(function (x) { return !skipped(x); })
+      .map(function (x) { return {path: x.f.path, start: x.start, end: x.end}; });
+    if (!clips.length) return;
+    post('/transcribe', {a: win.a, b: win.b, settings: S, clips: clips})
+      .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t); }); return r.json(); })
+      .then(function () { loadHeard(); })
+      .catch(function (e) { P.err = 'transcription did not start: ' + e.message; drawCtl(); });
   }
 
   function closeWindow() {
@@ -1310,7 +1356,7 @@
       .catch(function () { document.getElementById('meta').textContent = 'the window that showed this has closed'; });
   }
   addEventListener('resize', function () { sig = ''; tick(); });
-  tick(); setInterval(tick, 15000);
+  tick(); setInterval(tick, 15000); loadHeard();
 })();
 </script>
 </body>
