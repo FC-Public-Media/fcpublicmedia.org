@@ -61,7 +61,7 @@
   .none { height: 18px; padding-left: var(--label); color: var(--dim); font-size: 10px; border-top: 1px solid var(--faint); line-height: 18px; }
 
   /* the window: a stretch, at full width, that plays */
-  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 36vh; min-height: 220px;
+  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 24vh; min-height: 170px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
@@ -87,6 +87,12 @@
   #win .g.major { background: rgba(255,255,255,.17); }
   #win .g span { position: absolute; left: 4px; font-size: 10px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   #win .g span.top { top: 3px; } #win .g span.bot { bottom: 3px; }
+  /* a cut: time with no recording (and clips the skip passes over), squeezed to a sliver that says how long it was */
+  #win .cut { position: absolute; top: 0; bottom: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+              background: repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 4px), rgba(0,0,0,.35);
+              border-left: 1px solid rgba(255,255,255,.12); border-right: 1px solid rgba(255,255,255,.12); pointer-events: none; overflow: hidden; }
+  #win .cut .len { font-size: 9px; color: var(--dim); writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #win .cut .dots { font-size: 9px; letter-spacing: 1px; color: #8a8d94; writing-mode: vertical-rl; white-space: nowrap; }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
@@ -140,7 +146,7 @@
 
   // Proofing settings, kept between visits: amplify the waveform, and skip
   // clips shorter than `under` seconds when playing or placing the playhead.
-  var S = {amp: true, skip: true, under: 6};
+  var S = {amp: true, skip: true, under: 6, squeeze: true};
   try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
   function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
   // A short clip is passed over, unless someone insisted on it (P.forced).
@@ -400,43 +406,119 @@
     return {a: win.a - pad, b: win.b + pad};
   }
 
+  // --- the window's layout: time to pixels ---------------------------------
+  // With "compress gaps" on, every stretch with no recording (and every clip
+  // the skip passes over) becomes a narrow cut that says how much time it
+  // holds, and the recordings share the width. Off, it is plain time.
+  var M = null, CUT = 34, EDGE = 12;
+  function layout() {
+    var v = view(), w = winEl.clientWidth;
+    var keep = within(v.a, v.b).filter(function (x) { return !skipped(x); });
+    if (!S.squeeze || !keep.length) return (M = {segs: [{t0: v.a, t1: v.b, x0: 0, x1: w}], w: w, linear: true, cut: []});
+    // A pause is part of the talk; only a gap that is long for this zoom is cut:
+    // at least 20 s, and at least 1/120 of what the window spans.
+    var merge = Math.max(20, (v.b - v.a) / 120), runs = [];
+    keep.forEach(function (x) {
+      var s = Math.max(x.start, v.a), e = Math.min(x.end, v.b), r = runs[runs.length - 1];
+      if (r && s - r.t1 <= merge) r.t1 = Math.max(r.t1, e); else runs.push({t0: s, t1: e});
+    });
+    var segs = [], t = v.a;
+    runs.forEach(function (r) {
+      if (r.t0 > t) segs.push({t0: t, t1: r.t0, cut: true});
+      segs.push({t0: r.t0, t1: r.t1}); t = r.t1;
+    });
+    if (v.b > t) segs.push({t0: t, t1: v.b, cut: true});
+    segs.forEach(function (s, i) { if (s.cut) s.edge = i === 0 || i === segs.length - 1; });
+    var cutW = segs.reduce(function (n, s) { return n + (s.cut ? (s.edge ? EDGE : CUT) : 0); }, 0);
+    var shrink = cutW > w * .45 ? w * .45 / cutW : 1;   // a great many cuts share at most 45% of the width
+    var runT = runs.reduce(function (n, r) { return n + (r.t1 - r.t0); }, 0);
+    var per = (w - cutW * shrink) / Math.max(runT, 1e-3), x = 0;
+    segs.forEach(function (s) {
+      s.x0 = x; x += s.cut ? (s.edge ? EDGE : CUT) * shrink : (s.t1 - s.t0) * per; s.x1 = x;
+      if (s.cut) s.skips = within(s.t0, s.t1).filter(function (y) { return skipped(y) && y.start >= s.t0 - .5; });
+    });
+    return (M = {segs: segs, w: w, cut: segs.filter(function (s) { return s.cut && !s.edge; })});
+  }
+  function seg(t) {   // the segment holding t
+    var ss = M.segs, lo = 0, hi = ss.length - 1;
+    if (t <= ss[0].t0) return ss[0];
+    if (t >= ss[hi].t1) return ss[hi];
+    while (lo < hi) { var m = (lo + hi) >> 1; if (ss[m].t1 < t) lo = m + 1; else hi = m; }
+    return ss[lo];
+  }
+  function tx(t) {
+    var s = seg(t), f = s.t1 > s.t0 ? (Math.min(Math.max(t, s.t0), s.t1) - s.t0) / (s.t1 - s.t0) : 0;
+    return s.x0 + f * (s.x1 - s.x0);
+  }
+  function xt(x) {
+    var ss = M.segs, s = ss[ss.length - 1];
+    for (var i = 0; i < ss.length; i++) if (x <= ss[i].x1) { s = ss[i]; break; }
+    var f = s.x1 > s.x0 ? (Math.min(Math.max(x, s.x0), s.x1) - s.x0) / (s.x1 - s.x0) : 0;
+    return s.t0 + f * (s.t1 - s.t0);
+  }
+  function inCut(x) { return !M.linear && skipped(x) && seg((x.start + x.end) / 2).cut; }
+  function place(d, a, b, min) {
+    var x0 = tx(a), x1 = tx(b);
+    d.style.left = x0 + 'px'; d.style.width = Math.max(min || 1, x1 - x0) + 'px';
+    return d;
+  }
+  function clockish(s) {   // a cut's length: +45 s, +2:14, +1:02:10
+    s = Math.round(s);
+    if (s < 60) return '+' + s + ' s';
+    var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = s % 60;
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return '+' + (h ? h + ':' + p(m) : m) + ':' + p(r);
+  }
+
   function drawWin() {
     winEl.textContent = '';
     if (!win) return;
-    var v = view(), span = v.b - v.a, w = winEl.clientWidth, g = grid(span);
-    for (var t = Math.ceil(v.a / g.minor) * g.minor; t < v.b; t += g.minor) {
-      var major = Math.abs(t / g.major - Math.round(t / g.major)) < 1e-6;
-      var k = el('div', 'g ' + (major ? 'major' : 'minor')); k.style.left = ((t - v.a) / span * w) + 'px';
-      if (major) {
-        var lab = g.major < 60 ? hms(t) : hm(t);
-        k.appendChild(el('span', 'top', lab)); k.appendChild(el('span', 'bot', lab));
+    var v = view(), span = v.b - v.a, w = winEl.clientWidth;
+    layout();
+    if (M.linear) {
+      var g = grid(span);
+      for (var t = Math.ceil(v.a / g.minor) * g.minor; t < v.b; t += g.minor) {
+        var major = Math.abs(t / g.major - Math.round(t / g.major)) < 1e-6;
+        var k = el('div', 'g ' + (major ? 'major' : 'minor')); k.style.left = tx(t) + 'px';
+        if (major) { var lab = g.major < 60 ? hms(t) : hm(t); k.appendChild(el('span', 'top', lab)); k.appendChild(el('span', 'bot', lab)); }
+        winEl.appendChild(k);
       }
-      winEl.appendChild(k);
+    } else {
+      // compressed: a time at the start of a run wherever there is room for it, and the cuts
+      var last = -1e9;
+      M.segs.forEach(function (s) {
+        if (s.cut) {
+          if (s.edge) return;
+          var c = el('div', 'cut'); c.style.left = s.x0 + 'px'; c.style.width = (s.x1 - s.x0) + 'px';
+          c.title = clockish(s.t1 - s.t0).slice(1) + ' cut, ' + hms(s.t0) + ' to ' + hms(s.t1) +
+                    (s.skips.length ? ', including ' + s.skips.length + ' short ' + (s.skips.length === 1 ? 'clip' : 'clips') : '');
+          if (s.x1 - s.x0 >= 14) c.appendChild(el('span', 'len', clockish(s.t1 - s.t0)));
+          if (s.skips.length) c.appendChild(el('span', 'dots', s.skips.length <= 6 ? new Array(s.skips.length + 1).join('•') : '•×' + s.skips.length));
+          winEl.appendChild(c);
+          return;
+        }
+        if (s.x0 - last < 80) return;
+        var k = el('div', 'g major'); k.style.left = s.x0 + 'px';
+        k.appendChild(el('span', 'top', hms(s.t0))); winEl.appendChild(k); last = s.x0;
+      });
     }
     var cv = el('canvas'); cv.id = 'wave'; winEl.appendChild(cv);
     groups.forEach(function (g) {
       var s = Math.max(g.start, v.a), e = Math.min(g.end, v.b);
       if (e <= s) return;
-      var d = groupLine(g, false, winEl, v.a, span, w);
-      d.style.left = ((s - v.a) / span * w) + 'px'; d.style.width = Math.max(2, (e - s) / span * w) + 'px';
-      winEl.appendChild(d);
+      winEl.appendChild(place(groupLine(g, false, winEl, v.a, span, w), s, e, 2));
     });
-    ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(ghost(g, v.a, span, w)); });
-    within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, (x.i % 2 ? ' alt' : '') + (skipped(x) ? ' skip' : ''))); });
-    if (drag && drag.on === 'win') {
-      var a = Math.min(drag.a, drag.b), b = Math.max(drag.a, drag.b), s = el('div', 'sel');
-      s.style.left = ((a - v.a) / span * w) + 'px'; s.style.width = Math.max(2, (b - a) / span * w) + 'px';
-      winEl.appendChild(s);
-    }
+    ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(place(ghost(g, v.a, span, w), g.start, g.end)); });
+    within(v.a, v.b).forEach(function (x) {
+      if (inCut(x)) return;   // compressed: a skipped clip inside a cut is one of its dots
+      winEl.appendChild(place(frag(x, v.a, span, w, (x.i % 2 ? ' alt' : '') + (skipped(x) ? ' skip' : '')), x.start, x.end));
+    });
+    if (drag && drag.on === 'win') winEl.appendChild(place(el('div', 'sel'), Math.min(drag.a, drag.b), Math.max(drag.a, drag.b), 2));
     // beyond the edges, dimmed; the edges themselves, to drag
-    [[v.a, win.a], [win.b, v.b]].forEach(function (r) {
-      if (r[1] <= r[0]) return;
-      var o = el('div', 'out'); o.style.left = ((r[0] - v.a) / span * w) + 'px'; o.style.width = ((r[1] - r[0]) / span * w) + 'px';
-      winEl.appendChild(o);
-    });
-    winEl.appendChild(handle('a', (win.a - v.a) / span * w));
-    winEl.appendChild(handle('b', (win.b - v.a) / span * w));
-    if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = ((P.t - v.a) / span * w) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
+    [[v.a, win.a], [win.b, v.b]].forEach(function (r) { if (r[1] > r[0]) winEl.appendChild(place(el('div', 'out'), r[0], r[1])); });
+    winEl.appendChild(handle('a', tx(win.a)));
+    winEl.appendChild(handle('b', tx(win.b)));
+    if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
     waves();
   }
 
@@ -451,40 +533,55 @@
   function every(s) { return s < 60 ? s + ' s' : s < 3600 ? s / 60 + ' min' : s / 3600 + ' h'; }
 
   // Waveforms: each recording's envelope, from the server, drawn on one canvas
-  // in its stage's colour, rising from the bottom. Amplified: a peak of STRONG
-  // (about -9 dBFS) reaches the dashed line near the top, so ordinary talk fills
-  // the height and only a strong, forceful voice pokes over the line, drawn
-  // bright. The two channels are laid one over the other, translucent: where
-  // they differ, one pokes out past the other. Asked for as recordings come on
-  // screen, a few at a time; kept once had.
+  // in its stage's colour, rising from the bottom as a filled contour, not a
+  // spike per pixel: binned every BIN pixels (the loudest moment in the bin)
+  // and eased with its neighbours (1-2-1), never averaged further than that.
+  // Amplify draws it in decibels, FLOOR to the top, so talk sits in a steady
+  // band and quiet speech shows; off, it is plain amplitude. A peak over STRONG
+  // (about -9 dBFS) crosses the dashed line and is drawn bright. The two
+  // channels lie one over the other, translucent: where they differ, one pokes
+  // past the other. Asked for as recordings come on screen; kept once had.
   var env = {}, asking = 0, wanted = [];
-  var STRONG = .35, LINE = .8, SKIPPED = '#7d8087';   // a skipped clip is neutral grey, not a faint blue
+  var STRONG = .35, SKIPPED = '#7d8087', BIN = 3, FLOOR = -54;
+  function level(pk) {   // 0..1 up the window
+    if (!S.amp) return Math.min(1, pk);
+    var db = 20 * Math.log(Math.max(pk, 1e-6)) / Math.LN10;
+    return Math.max(0, Math.min(1, (db - FLOOR) / -FLOOR));
+  }
+  function contour(c, x0, x1, bw, sm, base, H) {
+    c.beginPath(); c.moveTo(x0, base);
+    sm.forEach(function (y, i) { c.lineTo(x0 + (i + .5) * bw, base - y * H); });
+    c.lineTo(x1, base - sm[sm.length - 1] * H); c.lineTo(x1, base); c.closePath();
+  }
   function waves() {
     var cv = document.getElementById('wave');
     if (!cv || !win) return;
-    var v = view(), span = v.b - v.a, w = winEl.clientWidth, h = winEl.clientHeight - 44, dpr = devicePixelRatio || 1;
+    var v = view(), w = winEl.clientWidth, h = winEl.clientHeight - 44, dpr = devicePixelRatio || 1;
     cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
     var c = cv.getContext('2d'); c.scale(dpr, dpr);
-    var gain = S.amp ? LINE / STRONG : 1;   // amplified: STRONG reaches LINE; otherwise true scale, 0 dBFS at the top
-    var base = h, H = h - 4, lineY = base - Math.min(1, STRONG * gain) * H;
+    var base = h, H = h - 4, lineY = base - level(STRONG) * H;
     within(v.a, v.b).forEach(function (x) {
-      var x0 = (x.start - v.a) / span * w, x1 = (x.end - v.a) / span * w, pw = x1 - x0;
+      var off = skipped(x);
+      if (inCut(x)) return;
+      var x0 = tx(x.start), x1 = tx(x.end), pw = x1 - x0;
       var e = env[x.f.path];
       if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
-      var chs = e.ch || [e], cols = Math.max(1, Math.round(pw)), cw = Math.max(1, pw / cols);
-      var off = skipped(x), a0 = off ? .55 : x === P.cur ? .62 : x.i % 2 ? .46 : .32;
+      var chs = e.ch || [e], bins = Math.max(1, Math.round(pw / BIN)), bw = pw / bins;
+      var a0 = off ? .55 : x === P.cur ? .7 : x.i % 2 ? .55 : .42;
       chs.forEach(function (ch) {
-        var n = ch.length;
-        for (var i = 0; i < cols; i++) {
-          var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
+        var n = ch.length, ys = [];
+        for (var i = 0; i < bins; i++) {
+          var a = Math.floor(i / bins * n), b = Math.max(a + 1, Math.floor((i + 1) / bins * n)), pk = 0;
           for (var j = a; j < b; j++) if (ch[j] > pk) pk = ch[j];
-          var y = Math.min(1, pk * gain) * H, xx = x0 + i * pw / cols;
-          c.globalAlpha = a0; c.fillStyle = off ? SKIPPED : x.color;
-          c.fillRect(xx, base - y, cw, y);
-          if (pk > STRONG && !skipped(x)) {   // over the line: forceful
-            c.globalAlpha = .9; c.fillStyle = '#fff';
-            c.fillRect(xx, base - y, cw, Math.max(0, lineY - (base - y)));
-          }
+          ys.push(level(pk));
+        }
+        var sm = ys.map(function (y, i) { return ((i > 0 ? ys[i - 1] : y) + 2 * y + (i < ys.length - 1 ? ys[i + 1] : y)) / 4; });
+        contour(c, x0, x1, bw, sm, base, H);
+        c.globalAlpha = a0; c.fillStyle = off ? SKIPPED : x.color; c.fill();
+        if (!off) {   // over the line: forceful, bright
+          c.save(); c.beginPath(); c.rect(x0, 0, pw, lineY); c.clip();
+          contour(c, x0, x1, bw, sm, base, H);
+          c.globalAlpha = .9; c.fillStyle = '#fff'; c.fill(); c.restore();
         }
       });
     });
@@ -517,14 +614,15 @@
     ctl.appendChild(play); ctl.appendChild(mute);
     function check(label, on, change) {
       var l = el('label', 'opt'), cb = el('input'); cb.type = 'checkbox'; cb.checked = on;
-      cb.onchange = function () { change(cb.checked); keepS(); cb.blur(); drawWin(); };   // blur: Space goes back to playing
+      cb.onchange = function () { change(cb.checked); keepS(); cb.blur(); drawWin(); drawCtl(); };   // blur: Space goes back to playing
       l.appendChild(cb); l.appendChild(document.createTextNode(' ' + label)); return l;
     }
-    ctl.appendChild(check('amplify', S.amp, function (v) { S.amp = v; }));
-    var sk = check('skip clips under', S.skip, function (v) { S.skip = v; drawCtl(); });
+    ctl.appendChild(check('amplify', S.amp, function (v) { S.amp = v; })).title = 'draw loudness in decibels, so quiet talk shows; off: plain amplitude';
+    ctl.appendChild(check('compress gaps', S.squeeze, function (v) { S.squeeze = v; })).title = 'squeeze every stretch with no recording (and every skipped clip) into a short cut that says how long it was';
+    var sk = check('skip clips under', S.skip, function (v) { S.skip = v; });
     var under = el('select', 'under');
     [3, 6, 10].forEach(function (n) { var o = el('option', null, n + ' s'); o.value = n; if (S.under === n) o.selected = true; under.appendChild(o); });
-    under.onchange = function () { S.under = +under.value; keepS(); under.blur(); drawWin(); };
+    under.onchange = function () { S.under = +under.value; keepS(); under.blur(); drawWin(); drawCtl(); };
     under.onkeydown = function (e) { e.stopPropagation(); };
     sk.appendChild(under);
     sk.title = 'playing and clicking pass over short clips; ctrl-click, right-click or hold to play one anyway';
@@ -536,7 +634,12 @@
     sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
     ctl.appendChild(sum);
     var vv = view(), gg = grid(vv.b - vv.a);
-    ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a) + ' across · lines every ' + every(gg.major) + ', fine every ' + every(gg.minor)));
+    if (!M) layout();
+    if (M.linear) ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a) + ' across · lines every ' + every(gg.major) + ', fine every ' + every(gg.minor)));
+    else {
+      var cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0), sk = M.cut.reduce(function (n, s) { return n + s.skips.length; }, 0);
+      ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a - cutT) + ' shown · ' + M.cut.length + ' cuts, ' + dur(cutT) + (sk ? ', ' + sk + ' short clips' : '')));
+    }
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     // One list, however many names there come to be: the shows on record, the
@@ -691,7 +794,7 @@
     if (!P.playing) return;
     if (P.cur && !P.audio.paused) P.t = P.cur.start + P.audio.currentTime;
     var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
-    if (ph) ph.style.left = ((P.t - v.a) / (v.b - v.a) * winEl.clientWidth) + 'px';
+    if (ph && M) ph.style.left = tx(P.t) + 'px';
     if (c) c.textContent = hms(P.t);
     P.raf = requestAnimationFrame(frame);   // first, so a failed repaint never stops the player
     if (!frame.n || ++frame.n % 15 === 0) { frame.n = 1; try { paintLanes(); } catch (e) {} }
@@ -725,9 +828,10 @@
     var x = Math.min(Math.max(e.clientX - best.r.left, 0), best.r.width);
     return best.L.origin + x / best.r.width * (best.L.end - best.L.origin);
   }
-  function winTime(e) {
-    var r = winEl.getBoundingClientRect(), v = view();
-    return v.a + Math.min(Math.max(e.clientX - r.left, 0), r.width) / r.width * (v.b - v.a);
+  function winTime(e) {   // through the window's layout, compressed or not
+    var r = winEl.getBoundingClientRect();
+    if (!M) layout();
+    return xt(Math.min(Math.max(e.clientX - r.left, 0), r.width));
   }
 
   // Dragging: along the nights (a new window, snapped to its recordings),
