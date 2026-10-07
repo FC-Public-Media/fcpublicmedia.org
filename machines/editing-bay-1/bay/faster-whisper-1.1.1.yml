@@ -1,0 +1,39 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../BAY.md. Run by hand by a code session, 2026-10-07, step by step.
+
+payload: faster-whisper
+version: 1.1.1
+replaces: nothing        # the first speech-to-text engine of its own on this host (windows-speech is Windows')
+vendor: SYSTRAN (github.com/SYSTRAN/faster-whisper), MIT; the model is OpenAI's Whisper large-v3, MIT
+role: the pools page's transcription engine (troves/pools/engines/whisper.py), on the RTX 4080
+asked: >
+  Autumn, 2026-10-07: a transcription leg for marked ranges, whose result can
+  say which recordings hold nothing worth keeping (a pause and an "um") so they
+  can be recommended for removal; first as a trial on a control passage.
+
+received: 2026-10-07
+how: >
+  uv venv (Python 3.12) at install-to, then uv pip install of the pinned
+  packages below from PyPI. No administrator. The model came from Hugging Face
+  on first load (huggingface_hub), into models/.
+packages:                # pinned; what else came with them is in the venv's own record
+  faster-whisper: 1.1.1
+  ctranslate2: 4.8.2
+  nvidia-cublas-cu12: 12.4.5.8     # CUDA's libraries for ctranslate2, as wheels: no CUDA install
+  nvidia-cudnn-cu12: 9.1.0.70
+  requests: 2.32.3                 # faster-whisper 1.1.1 imports it; huggingface-hub 1.x no longer brings it
+  av: 19.0.1                       # came along; NOT used: its open() no longer takes faster-whisper's
+                                   # metadata_errors, so the engine hands it samples it reads itself
+model:
+  repo: Systran/faster-whisper-large-v3
+  revision: edaa852ec7e145841d8ffdb056a99866b5f0a478
+  model.bin sha256: 69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1
+  # matches the file's name in the Hugging Face store, which is its content
+  # hash (LFS). Only as good as the TLS that fetched it.
+  size: 2.9 GB
+
+install-to: "%LOCALAPPDATA%\\editing-bay-1\\whisper"   # venv\ and models\
+measured: >
+  a 49 s studio recording (16 kHz mono) in 4.8 s on the GPU, float16, beam 5,
+  voice-activity filter on; the model loads in about 22 s, once per job
+removal: delete install-to. Nothing else was touched.
