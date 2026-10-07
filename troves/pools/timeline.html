@@ -150,6 +150,7 @@
   /* the pre-processing strip: glyph toggles, pressed in when on, and the stop slider */
   #ctl .strip { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; border-left: 1px solid rgba(255,255,255,.08); border-right: 1px solid rgba(255,255,255,.08); }
   #ctl .ico.tog { width: 30px; color: rgba(201,209,220,.38); border-color: transparent; }
+  #ctl .ico.tog.idle { opacity: .35; }
   #ctl .ico.tog.on { color: var(--ink); background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); box-shadow: inset 0 1px 3px rgba(0,0,0,.6); }
   #ctl .stops { display: inline-flex; align-items: center; height: 30px; padding: 0 10px 0 8px; cursor: pointer; }
   #ctl .stops .track { position: relative; width: 58px; height: 2px; background: rgba(255,255,255,.18); border-radius: 1px; touch-action: none; }
@@ -232,9 +233,19 @@
   function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
   // A group belongs to a show, or carries a provisional name until someone
   // knows what it is ("unknown 1"). Provisional ones are drawn dashed.
-  function gname(g) { return g.show ? title(g.show) : g.name ? g.name : g.remove ? 'to remove' : g.removed ? 'removed' : 'unnamed'; }
+  function gname(g) { return g.show ? title(g.show) : g.name ? g.name : g.remove ? 'to remove' : g.removed ? 'removed' : g.transcribe ? 'to transcribe' : 'unnamed'; }
   function ncolor(name) { var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return COLORS[(shows.length + h) % COLORS.length]; }
-  function gcolor(g) { return g.show ? color(g.show) : g.name ? ncolor(g.name) : '#e0574f'; }
+  function gcolor(g) { return g.show ? color(g.show) : g.name ? ncolor(g.name) : g.transcribe && !g.remove ? '#c9d1dc' : '#e0574f'; }
+  // Where a group marked for transcription stands: marked, being heard, heard (or heard with failures).
+  function txState(g) {
+    if (!g.transcribe) return null;
+    var ev = (g.events || []).filter(function (e) { return e.phase === 'transcribe'; }), last = ev[ev.length - 1];
+    if (!last) return {glyph: '\u25cb', says: 'marked for transcription: not sent yet'};
+    var j = heard.filter(function (h) { return h.id === last.job; })[0];
+    if (!j || j.state === 'running') return {glyph: '\u25d0', says: 'being heard (' + last.engine + ', sent ' + last.at.slice(11, 16) + ')'};
+    var bad = (j.errors || []).length;
+    return {glyph: bad ? '\u25cf!' : '\u25cf', says: 'heard by ' + last.engine + ' at ' + last.at.slice(11, 16) + ': ' + (j.segments || []).length + ' phrases' + (bad ? ', ' + bad + ' recordings could not be heard' : '')};
+  }
   function names() {   // the provisional names in use, so they can be given again
     var seen = {};
     return groups.filter(function (g) { return !g.show && g.name && !seen[g.name] && (seen[g.name] = 1); }).map(function (g) { return g.name; });
@@ -486,8 +497,10 @@
     d.onpointerdown = function (e) { e.stopPropagation(); };
     d.onclick = function () { openView(g.start, g.end); };
     if (first) {
-      var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '') + (gone ? ' gone' : ''), (g.remove ? '✕ ' : '') + gname(g)); n.style.color = gone ? '#7a4a4a' : gcolor(g);
-      n.title = 'open this group';
+      var tx = txState(g);
+      var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '') + (gone ? ' gone' : ''), (g.remove ? '✕ ' : '') + gname(g) + (tx ? '  ' + tx.glyph : '')); n.style.color = gone ? '#7a4a4a' : gcolor(g);
+      if (tx) n.dataset.tx = tx.says;
+      n.title = (tx ? tx.says + ' ' + String.fromCharCode(183) + ' ' : '') + 'open this group';
       n.onpointerdown = function (e) { e.stopPropagation(); };
       n.onclick = function () { openView(g.start, g.end); };
       n.style.left = ((Math.max(g.start, span0) - span0) / span * w) + 'px';
@@ -899,9 +912,11 @@
     tog('silence', S.silence, 'Silence what is marked for removal: passed over and cut', function (v) { S.silence = v; });
     tog('follow', S.follow, 'Follow the playhead: the wheel zooms about it, and the window turns the page to keep it in sight while playing', function (v) { S.follow = v; });
     strip.appendChild(stops());
+    var txMarks = marksHere();
     var tr = icon('speech', running() ? 'Transcribing: ' + running().done + ' of ' + running().total + ' recordings heard'
-                                      : 'Transcribe this window: what plays here (after skips, silences and cuts) goes to the engine, and the transcript comes back under the waveform');
-    tr.classList.add('tog'); if (running()) tr.classList.add('on');
+                          : txMarks.length ? 'Send what is marked for transcription here (' + txMarks.length + (txMarks.length === 1 ? ' range' : ' ranges') + ', after skips, silences and cuts) to the engine; what was heard comes back on the window'
+                          : 'Nothing here is marked for transcription: mark it first, from the group list');
+    tr.classList.add('tog'); if (running()) tr.classList.add('on'); if (!txMarks.length && !running()) tr.classList.add('idle');
     tr.onclick = function () { tr.blur(); if (!running()) sendTranscription(); };
     strip.appendChild(tr);
     ctl.appendChild(strip);
@@ -932,6 +947,8 @@
     var job = running();
     if (job) badge('speech', job.done + '/' + job.total, 'transcribing (' + job.engine + '): ' + job.done + ' of ' + job.total + ' recordings heard');
     else { var nHeard = said(win.a, win.b).length; if (nHeard) badge('speech', String(nHeard), nHeard + ' things heard in this window (' + engines() + ')'); }
+    var nMiss = unheard(win.a, win.b);
+    if (nMiss) badge('silence', String(nMiss), nMiss + (nMiss === 1 ? ' recording' : ' recordings') + ' here could not be heard by the engine: transcribe again to retry them');
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     // One list, however many names there come to be: the shows on record, the
@@ -950,9 +967,17 @@
     opt('new name…', 'new');
     var any = groups.some(function (g) { return g.end > win.a && g.start < win.b && g.remove; });
     opt(any ? 'unmark: keep these' : 'mark for removal', any ? 'keep' : 'rm');
+    var anyTx = groups.some(function (g) { return g.end > win.a && g.start < win.b && g.transcribe; });
+    opt(anyTx ? 'unmark: no transcription' : 'mark for transcription', anyTx ? 'untx' : 'tx');
     pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
     pick.onchange = function () {
       if (pick.value === 'new') return askName();
+      if (pick.value === 'tx' || pick.value === 'untx') {
+        saves++;
+        return post('/group', {start: win.a, end: win.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
+          .then(function (r) { return r.json(); })
+          .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); });
+      }
       if (pick.value === 'rm' || pick.value === 'keep') {
         saves++;
         return post('/group', {start: win.a, end: win.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
@@ -1016,10 +1041,22 @@
   // --- transcription: the window out as a job, the transcript back ---------
   var heard = [];   // every job's result, from the server
   function running() { return heard.filter(function (j) { return j.state === 'running'; })[0] || null; }
+  // A recording heard more than once shows its newest hearing only: jobs come
+  // back in the order they were made, so the last to hear a recording wins.
   function said(a, b) {
-    var out = [];
-    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { if (s.t + s.d > a && s.t < b) out.push(s); }); });
+    var latest = {}, out = [];
+    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { latest[s.path] = j.id; }); });
+    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { if (latest[s.path] === j.id && s.t + s.d > a && s.t < b) out.push(s); }); });
     return out;
+  }
+  function unheard(a, b) {   // recordings in [a, b] whose last hearing failed
+    var last = {}, n = 0;
+    heard.forEach(function (j) {
+      (j.segments || []).forEach(function (s) { last[s.path] = 'ok'; });
+      (j.errors || []).forEach(function (e) { if (e && e.path) last[e.path] = e.why; });
+    });
+    within(a, b).forEach(function (x) { if (last[x.f.path] && last[x.f.path] !== 'ok') n++; });
+    return n;
   }
   function engines() { var e = {}; heard.forEach(function (j) { e[j.engine] = 1; }); return Object.keys(e).join(', '); }
   function loadHeard() {
@@ -1027,14 +1064,25 @@
       .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } if (running()) setTimeout(loadHeard, 2500); })
       .catch(function () {});
   }
+  function marksHere() {   // the ranges marked for transcription that the window covers, clipped to it
+    return groups.filter(function (g) { return g.transcribe && g.end > win.a && g.start < win.b; })
+      .map(function (g) { return {start: Math.max(g.start, win.a), end: Math.min(g.end, win.b)}; });
+  }
   function sendTranscription() {
-    // the edit list: the recordings that play here, in order, after skips, silences and cuts
-    var clips = within(win.a, win.b).filter(function (x) { return !skipped(x); })
-      .map(function (x) { return {path: x.f.path, start: x.start, end: x.end}; });
-    if (!clips.length) return;
-    post('/transcribe', {a: win.a, b: win.b, settings: S, clips: clips})
+    // Only what is marked for transcription goes, and only what plays of it:
+    // the edit list, after skips, silences and cuts. Sending it is an event,
+    // kept on each marked group with what went and what came back.
+    var marks = marksHere();
+    if (!marks.length) { P.err = 'nothing here is marked for transcription'; drawCtl(); return; }
+    var clips = within(win.a, win.b).filter(function (x) {
+      var mid = (x.start + x.end) / 2;
+      return !skipped(x) && marks.some(function (m) { return mid >= m.start && mid <= m.end; });
+    }).map(function (x) { return {path: x.f.path, start: x.start, end: x.end}; });
+    if (!clips.length) { P.err = 'nothing marked here plays'; drawCtl(); return; }
+    post('/transcribe', {a: win.a, b: win.b, settings: S, marks: marks, clips: clips})
       .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t); }); return r.json(); })
-      .then(function () { loadHeard(); })
+      .then(function () { return fetch('/groups', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { groups = d.groups; }); })
+      .then(function () { loadHeard(); paintLanes(); })
       .catch(function (e) { P.err = 'transcription did not start: ' + e.message; drawCtl(); });
   }
 

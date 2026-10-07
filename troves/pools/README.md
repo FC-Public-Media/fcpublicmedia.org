@@ -65,7 +65,7 @@ to change it or ungroup it. Double-click a recording to open it in Explorer.
 **Compressed time.** With **compress gaps** on (the default), a gap that is long
 for the zoom (at least 20 s, and 1/120 of the window) shrinks to a narrow cut
 labelled with how long it was (`+22:17`), and short clips the skip passes over
-inside it show as dots (`•×8`). Recordings share the width. The waveform is a
+inside it show as dots (`â¢Ã8`). Recordings share the width. The waveform is a
 smoothed contour (binned every 3 px, eased 1-2-1), drawn in decibels when
 **amplify** is on. Off, the window is plain time with its grid.
 
@@ -114,7 +114,14 @@ undoes it.
 
 ## Transcription (experimental)
 
-The speech-bubble button in the window's strip sends the window out as a job:
+Transcription is a phase you choose, not a button anywhere: `mark for transcription`
+in a window's list marks the groups it covers (or makes a bare mark, "to
+transcribe"), and only what is marked goes. Beside a marked group's name, its
+state: ○ marked, ◐ being heard, ● heard (●! if some recordings could not be). Sending is
+an event, kept on each group it was sent for (job, engine, when, how much).
+Transcripts are private: they stay on this computer, never in a public repository.
+
+The speech-bubble button in the window's strip sends what is marked out as a job:
 its edit list, the recordings that play after the skips, silences and cuts,
 with the settings that made it (`jobs/<id>.json`, beside the groups). The
 machine's engine (`transcribe: engine:` in its `pools.yml`; `engines/`) hears
