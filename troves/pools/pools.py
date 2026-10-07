@@ -895,7 +895,7 @@ def known_path(data, path):
     return any(r and (rp == r or rp.startswith(r + os.sep)) for r in roots)
 
 
-def serve(cfg):
+def serve(cfg, page=""):
 
 
     class H(BaseHTTPRequestHandler):
@@ -1014,7 +1014,7 @@ def serve(cfg):
     class Server(ThreadingHTTPServer):
         allow_reuse_address = False   # on Windows, True lets a second copy share the port silently
 
-    url = f"http://127.0.0.1:{PORT}/"
+    url = f"http://127.0.0.1:{PORT}/{page}"
     edge = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
     show = os.path.exists(edge) and not os.environ.get("POOLS_NO_OPEN")
     try:
@@ -1075,6 +1075,8 @@ if __name__ == "__main__":
     cfg = config()
     if verb == "view":
         serve(cfg)
+    elif verb == "timeline":   # the same, opened at the nights' timeline (the desktop's shortcut)
+        serve(cfg, "timeline")
     elif verb == "scan":
         print(json.dumps(scan(cfg), indent=1)[:4000])
     elif verb == "key":
