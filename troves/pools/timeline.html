@@ -932,6 +932,8 @@
     var job = running();
     if (job) badge('speech', job.done + '/' + job.total, 'transcribing (' + job.engine + '): ' + job.done + ' of ' + job.total + ' recordings heard');
     else { var nHeard = said(win.a, win.b).length; if (nHeard) badge('speech', String(nHeard), nHeard + ' things heard in this window (' + engines() + ')'); }
+    var nMiss = unheard(win.a, win.b);
+    if (nMiss) badge('silence', String(nMiss), nMiss + (nMiss === 1 ? ' recording' : ' recordings') + ' here could not be heard by the engine: transcribe again to retry them');
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     // One list, however many names there come to be: the shows on record, the
@@ -1016,10 +1018,22 @@
   // --- transcription: the window out as a job, the transcript back ---------
   var heard = [];   // every job's result, from the server
   function running() { return heard.filter(function (j) { return j.state === 'running'; })[0] || null; }
+  // A recording heard more than once shows its newest hearing only: jobs come
+  // back in the order they were made, so the last to hear a recording wins.
   function said(a, b) {
-    var out = [];
-    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { if (s.t + s.d > a && s.t < b) out.push(s); }); });
+    var latest = {}, out = [];
+    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { latest[s.path] = j.id; }); });
+    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { if (latest[s.path] === j.id && s.t + s.d > a && s.t < b) out.push(s); }); });
     return out;
+  }
+  function unheard(a, b) {   // recordings in [a, b] whose last hearing failed
+    var last = {}, n = 0;
+    heard.forEach(function (j) {
+      (j.segments || []).forEach(function (s) { last[s.path] = 'ok'; });
+      (j.errors || []).forEach(function (e) { if (e && e.path) last[e.path] = e.why; });
+    });
+    within(a, b).forEach(function (x) { if (last[x.f.path] && last[x.f.path] !== 'ok') n++; });
+    return n;
   }
   function engines() { var e = {}; heard.forEach(function (j) { e[j.engine] = 1; }); return Object.keys(e).join(', '); }
   function loadHeard() {

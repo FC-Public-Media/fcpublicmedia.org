@@ -396,6 +396,7 @@ def recycled(base):
 
 ENGINES = {"windows-speech": HERE / "engines" / "windows-speech.ps1"}
 _jobs_lock = threading.Lock()
+_engine_lock = threading.Lock()   # one recording heard at a time, across every job: engines do not share well
 
 
 def jobs_dir():
@@ -439,17 +440,28 @@ def transcribe(cfg, body):
 
     def run():
         tmp = jobs_dir() / f"{jid}.wav"
+
+        def hear():
+            run = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ENGINES[engine]),
+                                  "-Wav", str(tmp)], capture_output=True, text=True, timeout=600)
+            return run.stdout.strip(), run.stderr.strip()
+
         for c in clips:
             try:
-                tmp.write_bytes(mono16k(c["path"]))
-                out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ENGINES[engine]),
-                                      "-Wav", str(tmp)], capture_output=True, text=True, timeout=600).stdout.strip()
-                for s in json.loads(out or "[]") or []:
+                with _engine_lock:
+                    tmp.write_bytes(mono16k(c["path"]))
+                    out, err = hear()
+                    if not out:   # an empty answer: once more before it counts as a failure
+                        time.sleep(1)
+                        out, err = hear()
+                if not out:
+                    raise ValueError("the engine said nothing" + (": " + err.splitlines()[-1][:160] if err else ""))
+                for s in json.loads(out) or []:
                     if s.get("text"):
                         result["segments"].append({"t": float(c["start"]) + float(s["at"]), "d": float(s["len"]),
                                                    "text": s["text"], "conf": s.get("conf"), "path": c["path"]})
             except (OSError, ValueError, subprocess.TimeoutExpired) as e:
-                result.setdefault("errors", []).append(f"{Path(c['path']).name}: {e}")
+                result.setdefault("errors", []).append({"path": c["path"], "why": str(e)})
             result["done"] += 1
             save()
         try:
