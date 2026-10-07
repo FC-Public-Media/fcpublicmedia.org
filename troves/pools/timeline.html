@@ -76,12 +76,12 @@
   /* the window: a stretch, at full width, that plays */
   #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 24vh; min-height: 170px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
-  /* the scroll bar: the show's own bar, thicker when the pointer is on it */
-  #scroll { position: relative; flex: none; height: 6px; margin: 5px 0 0; border-radius: 3px; cursor: pointer; touch-action: none;
-            background: color-mix(in srgb, currentColor 18%, transparent); transition: height .12s; }
-  #scroll:hover, body.panning #scroll { height: 12px; }
-  #scroll .thumb { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: currentColor; opacity: .85; cursor: grab; }
-  #scroll.full .thumb { opacity: .45; cursor: default; }
+  /* the show's own line under the window is its scroll bar: thicker under the pointer, the window's part lit inside it */
+  #win .grp.bar { height: 6px; bottom: 3px; cursor: pointer; touch-action: none; z-index: 5; transition: height .12s; }
+  #win .grp.bar:hover, body.panning #win .grp.bar { height: 12px; }
+  #win .grp.bar .thumb { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: rgba(255,255,255,.82); cursor: grab;
+                         box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+  #win .grp.bar.full .thumb { background: rgba(255,255,255,.35); cursor: pointer; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
      touch edge to edge still read as separate. The one playing is shown by its
@@ -187,6 +187,8 @@
   #ctl .span .slice { position: absolute; left: 0; bottom: 0; width: 100%; max-width: 170px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); }
   #ctl .span .slice .lit { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
   #ctl .span .ico { width: 26px; height: 26px; }
+  #ctl .chip.range, #ctl .chip.picked { cursor: pointer; }
+  #ctl .chip.range:hover, #ctl .chip.picked:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); }
   #ctl .chip.range { color: var(--ink); background: rgba(255,255,255,.13); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.35); }
   #ctl .badge { display: inline-flex; align-items: center; gap: 3px; color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #ctl .badge svg { opacity: .8; }
@@ -210,7 +212,6 @@
 <main id="main"></main>
 <div id="dock">
   <div id="win"></div>
-  <div id="scroll"><div class="thumb"></div></div>
   <div id="ctl"></div>
 </div>
 <div id="tip" role="tooltip"></div>
@@ -674,10 +675,13 @@
     }
     var cv = el('canvas'); cv.id = 'wave'; winEl.appendChild(cv);
     var cn = el('canvas'); cn.id = 'wavenow'; winEl.appendChild(cn);
+    var G = scope();
     groups.forEach(function (g) {
       var s = Math.max(g.start, v.a), e = Math.min(g.end, v.b);
       if (e <= s) return;
-      winEl.appendChild(place(groupLine(g, false, winEl, v.a, span, w), s, e, 2));
+      var line = place(groupLine(g, false, winEl, v.a, span, w), s, e, 2);
+      if (g === G.g) scrollBar(line, g);   // the show the window is in: its line scrolls it
+      winEl.appendChild(line);
     });
     ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(place(ghost(g, v.a, span, w), g.start, g.end)); });
     within(v.a, v.b).forEach(function (x) {
@@ -726,15 +730,15 @@
     var rt = el('div'); rt.id = 'reachlbl'; winEl.appendChild(rt);
     showReach();
     waves();
-    drawScroll();
   }
 
-  // --- the scroll bar: the show's own bar, under the window ------------------
-  // The track is the group the window is in (the one it overlaps most), or
-  // everything there is outside a group: that is what scrolling moves within.
-  // The thumb is the part the window shows, in the group's colour. Drag it to
-  // pan inside the group's span; click the track to go there; the wheel pans.
-  var scrollEl = document.getElementById('scroll'), thumbEl = scrollEl.querySelector('.thumb');
+  // --- the scroll bar is the show's own line ---------------------------------
+  // The group the window is in (the one it overlaps most) draws its line along
+  // the bottom of the window, as far as it is in view. That line is its scroll
+  // bar: however much of the screen it spans, it stands for the whole group
+  // (parallax: zoomed in, the full width is the whole show), and the window's
+  // part of it is lit. Drag to scroll within the group; click to go there;
+  // double-click for the whole group again; the wheel over it scrolls.
   function scope() {
     var best = null, most = 0;
     groups.forEach(function (g) {
@@ -746,46 +750,44 @@
     var X = extent();
     return {a: X.a, b: X.b, g: null};
   }
-  function drawScroll() {
-    if (!win) return;
-    var G = scope(), W = scrollEl.clientWidth, span = G.b - G.a || 1;
-    var x0 = Math.max(0, (win.a - G.a) / span * W), x1 = Math.min(W, (win.b - G.a) / span * W);
-    if (x1 - x0 < 18) { var c = (x0 + x1) / 2; x0 = Math.max(0, c - 9); x1 = Math.min(W, x0 + 18); }
-    var colr = G.g ? gcolor(G.g) : '#c9d1dc';
-    scrollEl.style.color = colr;
-    thumbEl.style.left = x0 + 'px'; thumbEl.style.width = Math.max(18, x1 - x0) + 'px';
-    scrollEl.title = (G.g ? gname(G.g) : 'everything') + ': ' + hm(G.a) + '\u2013' + hm(G.b) + ' \u00b7 drag to scroll, click to go there';
-    scrollEl.classList.toggle('full', x0 <= 0 && x1 >= W);
-  }
   function scrollTo(a) {   // the window's start, kept inside the group's span; its width stays
     var G = scope(), w = win.b - win.a;
     if (w < G.b - G.a) a = Math.max(G.a, Math.min(G.b - w, a)); else a = win.a;
     setView(a, a + w, true);
   }
-  scrollEl.addEventListener('pointerdown', function (e) {
-    if (!win || e.button !== 0) return;
-    e.preventDefault(); e.stopPropagation();
-    var G = scope(), W = scrollEl.clientWidth, r = scrollEl.getBoundingClientRect(), per = (G.b - G.a) / W;
-    remember();   // Backspace returns to where this began
-    if (e.target !== thumbEl) {   // the track: go there, the window centred on it
-      scrollTo(G.a + (e.clientX - r.left) * per - (win.b - win.a) / 2);
-    }
-    var x = e.clientX, a0 = win.a;
-    scrollEl.setPointerCapture(e.pointerId);
-    document.body.classList.add('panning');
-    function move(ev) { var dx = ev.clientX - x; soon(function () { scrollTo(a0 + dx * per); }); }
-    function up() {
-      scrollEl.removeEventListener('pointermove', move); scrollEl.removeEventListener('pointerup', up);
-      document.body.classList.remove('panning'); drawCtl();
-    }
-    scrollEl.addEventListener('pointermove', move); scrollEl.addEventListener('pointerup', up);
-  });
-  scrollEl.addEventListener('wheel', function (e) {
-    if (!win) return;
-    e.preventDefault();
-    var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * (e.deltaMode ? 40 : 1);
-    scrollTo(win.a + d / scrollEl.clientWidth * (scope().b - scope().a) * .5);
-  }, {passive: false});
+  function scrollBar(line, g) {
+    var glen = g.end - g.start || 1, lw = parseFloat(line.style.width) || 1;
+    var th = el('div', 'thumb');
+    var x0 = Math.max(0, (win.a - g.start) / glen * lw), x1 = Math.min(lw, (win.b - g.start) / glen * lw);
+    if (x1 - x0 < 14) { var c = (x0 + x1) / 2; x0 = Math.max(0, Math.min(lw - 14, c - 7)); x1 = x0 + 14; }
+    th.style.left = x0 + 'px'; th.style.width = (x1 - x0) + 'px';
+    line.appendChild(th);
+    line.classList.add('bar');
+    if (win.a <= g.start + .5 && win.b >= g.end - .5) line.classList.add('full');
+    line.title = gname(g) + ' ' + hm(g.start) + '\u2013' + hm(g.end) + ': drag to scroll, click to go there, double-click for the whole of it';
+    line.onclick = null;
+    line.onpointerdown = function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      var per = glen / lw, r = line.getBoundingClientRect();
+      remember();   // Backspace returns to where this began
+      if (e.target !== th) scrollTo(g.start + (e.clientX - r.left) * per - (win.b - win.a) / 2);   // the track: go there
+      var x = e.clientX, a0 = win.a;
+      document.body.classList.add('panning');
+      function move(ev) { var dx = ev.clientX - x; soon(function () { scrollTo(a0 + dx * per); }); }
+      function up() {
+        document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+        document.body.classList.remove('panning'); drawCtl();
+      }
+      document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+    };
+    line.ondblclick = function (e) { e.stopPropagation(); setView(g.start, g.end); };   // the whole group again
+    line.addEventListener('wheel', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * (e.deltaMode ? 40 : 1);
+      scrollTo(win.a + d / lw * glen * .5);
+    }, {passive: false});
+  }
 
   // Grid spacing for a span of seconds: about eight labelled lines across,
   // finer unlabelled ones between.
@@ -1032,7 +1034,8 @@
     ctl.appendChild(clk);
     if (P.err) ctl.appendChild(el('span', 'err', P.err));
     var rg = el('span', 'chip range', wd(win.a) + ' ' + hm(win.a) + ' – ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b));
-    rg.title = 'the window: ' + hms(win.a) + ' to ' + hms(win.b);
+    rg.title = 'the window: ' + hms(win.a) + ' to ' + hms(win.b) + '. Click: open Explorer with the recordings in view selected';
+    rg.onclick = function () { reveal(win.a, win.b); };
     if (!M) layout();
     var vv = view(), cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0);
     var inWin = within(win.a, win.b), nShort = inWin.filter(function (x) { return short(x) && !silenced(x); }).length, nSil = inWin.filter(silenced).length;
@@ -1064,7 +1067,8 @@
     var span = el('span', 'span');
     if (SEL) {
       var sc = el('span', 'chip picked', hm(SEL.a) + ' \u2013 ' + hm(SEL.b));
-      sc.title = 'selected: ' + hms(SEL.a) + ' to ' + hms(SEL.b) + ' (' + dur(SEL.b - SEL.a) + '). The list acts on it. Esc lets go';
+      sc.title = 'selected: ' + hms(SEL.a) + ' to ' + hms(SEL.b) + ' (' + dur(SEL.b - SEL.a) + '). The list acts on it; Esc lets go. Click: open Explorer with these recordings selected';
+      sc.onclick = function () { reveal(SEL.a, SEL.b); };
       span.appendChild(sc);
       var zin = icon('zoom', 'Look closer: the window becomes the selection (or double-click it, or z)');
       zin.onclick = function () { zin.blur(); var z = SEL; setView(z.a, z.b); };
@@ -1221,6 +1225,12 @@
         a.download = m.file; document.body.appendChild(a); a.click(); a.remove();
       })
       .catch(function (e) { P.err = 'manifest not written: ' + e.message; drawCtl(); });
+  }
+
+  function reveal(a, b) {   // Explorer, with the recordings in [a, b] selected
+    var paths = within(a, b).map(function (x) { return x.f.path; });
+    if (!paths.length) return;
+    post('/reveal', {paths: paths}).then(function (r) { if (!r.ok) return r.text().then(function (t) { P.err = 'Explorer: ' + t; drawCtl(); }); });
   }
 
   function marksHere() {   // the ranges marked for transcription that the window covers, clipped to it
