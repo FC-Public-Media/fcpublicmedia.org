@@ -198,8 +198,9 @@
 
   // Proofing settings, kept between visits: amplify the waveform, and skip
   // clips shorter than `under` seconds when playing or placing the playhead.
-  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: true, follow: true};
+  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: true, follow: true, muted: false};
   try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
+  P.muted = !!S.muted;   // sound is on unless it was last turned off; the choice is kept
   function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
   // A short clip is passed over, unless someone insisted on it (P.forced).
   function short(x) { return S.skip && x !== P.forced && x.f.duration != null && x.f.duration < S.under; }
@@ -1108,7 +1109,7 @@
     if (win) { drawWin(); drawCtl(); paintLanes(); }
   }
 
-  function setMuted(m) { P.muted = m; P.audio.muted = m; drawCtl(); }
+  function setMuted(m) { P.muted = S.muted = m; P.audio.muted = m; keepS(); drawCtl(); }
 
   // --- gestures -------------------------------------------------------------
 
