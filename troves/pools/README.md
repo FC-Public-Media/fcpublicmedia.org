@@ -78,6 +78,15 @@ takes them out.
 
 ## Not yet
 
+- **Squares that are units, not files** (Autumn, 2026-10-07). On a pile of
+  silence-split fragments, one square per file is a sliver per file, and the
+  page runs to a width nobody can use. A square should be what gets enhanced
+  as a unit: one long continuous stretch is one square, and a cluster of a lot
+  of little activity close together is one square too. That clustering is our
+  guess at what belonged together, so a square's time varies; its size stops
+  meaning duration and the page shows structure instead. The squares page
+  becomes that; the timeline keeps real time.
+
 - **Real mass storage.** The Buffalo and the Drobo, as iSCSI targets with this
   computer as the initiator. Each becomes a pool beside the depot, which stays
   a small pickup station that kiosk hands things out of. A file in this
