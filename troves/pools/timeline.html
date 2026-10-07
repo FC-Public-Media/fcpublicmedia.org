@@ -59,7 +59,8 @@
   #ctl button:hover { border-color: rgba(255,255,255,.5); }
   #ctl button.on { border-color: rgba(255,255,255,.6); }
   #ctl button i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  #ctl .play { width: 36px; padding: 4px 0; }
+  #ctl .ico { width: 34px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--dim); }
+  #ctl .ico:hover, #ctl .ico.on { color: var(--ink); }
   #ctl .clock { font-variant-numeric: tabular-nums; min-width: 74px; }
   #ctl .sum { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
   #ctl .sum b { color: var(--ink); font-weight: 500; }
@@ -110,6 +111,22 @@
   function next(o) { var d = new Date(o * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; }
   function color(slug) { var i = shows.map(function (s) { return s.slug; }).indexOf(slug); return COLORS[(i < 0 ? 0 : i) % COLORS.length]; }
   function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
+  // Icons, drawn in the page's own ink: a button is its icon; its name is in
+  // the tooltip and for screen readers.
+  var ICONS = {
+    play:  '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
+    pause: '<rect x="6" y="4.5" width="4" height="15" rx="1" fill="currentColor"/><rect x="14" y="4.5" width="4" height="15" rx="1" fill="currentColor"/>',
+    sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>' +
+           '<path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    muted: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>' +
+           '<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+  };
+  function icon(name, label) {
+    var b = el('button', 'ico');
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">' + ICONS[name] + '</svg>';
+    b.title = label; b.setAttribute('aria-label', label);
+    return b;
+  }
   function post(path, body) { return fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); }
   function within(a, b) { return files.filter(function (x) { return x.end > a && x.start < b; }); }
 
@@ -277,9 +294,9 @@
     ctl.textContent = '';
     if (!win) return;
     var hit = within(win.a, win.b), sound = hit.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
-    var play = el('button', 'play', P.playing ? '❚❚' : '▶'); play.title = 'play / pause (space)'; play.onclick = toggle;
-    var mute = el('button', P.muted ? '' : 'on', P.muted ? '\u{1F507} sound off' : '\u{1F50A} sound on');
-    mute.title = 'click (or m) to turn sound ' + (P.muted ? 'on' : 'off');
+    var play = icon(P.playing ? 'pause' : 'play', P.playing ? 'Pause (space)' : 'Play (space)'); play.onclick = toggle;
+    var mute = icon(P.muted ? 'muted' : 'sound', P.muted ? 'Sound is off: turn it on (m)' : 'Sound is on: turn it off (m)');
+    if (!P.muted) mute.classList.add('on');
     mute.onclick = function () { setMuted(!P.muted); };
     ctl.appendChild(play); ctl.appendChild(mute);
     ctl.appendChild(el('span', 'clock', P.t != null ? hms(P.t) : '')).id = 'clock';
