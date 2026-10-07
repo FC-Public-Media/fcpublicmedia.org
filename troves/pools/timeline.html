@@ -92,6 +92,14 @@
   #rmbtn:hover { border-color: #f07a6e; }
   #wave, #wavenow { position: absolute; left: 0; top: 22px; pointer-events: none; }
   #wavenow { z-index: 2; }
+  /* a clip's own particulars, printed faintly in its background: it is fine for them to run out of frame */
+  #win .lbl { position: absolute; bottom: 30px; z-index: 1; pointer-events: none; display: flex; flex-direction: column;
+              font-size: 9px; line-height: 11px; color: rgba(201,209,220,.32); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #win .lbl .nm { color: rgba(201,209,220,.18); }
+  /* the reach: from the playhead out to the cursor */
+  #reach { position: absolute; height: 4px; z-index: 4; pointer-events: none; display: none; }
+  #reachlbl { position: absolute; z-index: 4; pointer-events: none; display: none; font-size: 11px; color: #fff; white-space: pre;
+              font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000, 0 0 2px #000; }
   /* the grid, over the recordings: major lines labelled top and bottom, minor between */
   #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
   #win .g.minor { background: rgba(255,255,255,.05); top: 18px; bottom: 18px; }
@@ -621,7 +629,17 @@
     ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(place(ghost(g, v.a, span, w), g.start, g.end)); });
     within(v.a, v.b).forEach(function (x) {
       if (inCut(x)) return;   // compressed: a skipped clip inside a cut is one of its dots
-      winEl.appendChild(place(frag(x, v.a, span, w, (x.i % 2 ? ' alt' : '') + (skipped(x) ? ' skip' : '')), x.start, x.end));
+      var fd = place(frag(x, v.a, span, w, (x.i % 2 ? ' alt' : '') + (skipped(x) ? ' skip' : '')), x.start, x.end);
+      fd.onmouseenter = fd.onmousemove = fd.onmouseleave = null;   // the window prints, it does not pop up
+      winEl.appendChild(fd);
+      var x0 = tx(x.start), x1 = tx(x.end);
+      if (x1 - x0 >= 46 && !inCut(x)) {
+        var lb = el('div', 'lbl'); lb.style.left = (x0 + 3) + 'px';
+        lb.appendChild(el('span', null, hms(x.start)));
+        lb.appendChild(el('span', null, dur(x.f.duration) + (x.f.level != null ? ' \u00b7 ' + Math.round(x.f.level) + ' dB' : '')));
+        lb.appendChild(el('span', 'nm', x.f.name.replace(/\.[^.]+$/, '')));
+        winEl.appendChild(lb);
+      }
     });
     if (drag && drag.on === 'win') winEl.appendChild(place(el('div', 'sel'), Math.min(drag.a, drag.b), Math.max(drag.a, drag.b), 2));
     // beyond the edges, dimmed; the edges themselves, to drag
@@ -634,6 +652,9 @@
       now.style.color = og ? gcolor(og) : P.cur.color; winEl.appendChild(now);   // the colour its trace is drawn in
     }
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
+    var rl = el('div'); rl.id = 'reach'; winEl.appendChild(rl);
+    var rt = el('div'); rt.id = 'reachlbl'; winEl.appendChild(rt);
+    showReach();
     waves();
   }
 
@@ -1062,6 +1083,7 @@
     var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
     if (ph && M) ph.style.left = tx(P.t) + 'px';
     drawNow();
+    if (hover) showReach();
     if (S.follow && M && win && !drag && P.t > xt(winEl.clientWidth * .9)) {   // near the right edge: turn the page
       var span = win.b - win.a;
       if (P.t + span * .85 <= extent().b + span) { setView(P.t - span * .1, P.t + span * .9, true); }
@@ -1104,6 +1126,40 @@
     seek(t == null ? win.a : t);
     if (!P.playing) toggle();
   }
+
+  // The reach: a line out from the middle of the playhead to the cursor,
+  // thick at the playhead and tapering to the cursor, and at its end how far
+  // the cursor is in playing time (cuts and skipped clips do not count), with
+  // the clock time there. While playing, it counts down.
+  var hover = null;
+  function ahead(a, b) {   // seconds of playing from a to b (negative if b is behind)
+    var lo = Math.min(a, b), hi = Math.max(a, b), n = 0;
+    within(lo, hi).forEach(function (x) { if (!skipped(x)) n += Math.max(0, Math.min(x.end, hi) - Math.max(x.start, lo)); });
+    return b >= a ? n : -n;
+  }
+  function signed(sec) {
+    var s = Math.round(Math.abs(sec)), m = Math.floor(s / 60), r = s % 60;
+    return (sec < 0 ? '\u2212' : '+') + (m >= 60 ? Math.floor(m / 60) + ':' + (m % 60 < 10 ? '0' : '') + (m % 60) : m) + ':' + (r < 10 ? '0' : '') + r;
+  }
+  function showReach() {
+    var rl = document.getElementById('reach'), rt = document.getElementById('reachlbl');
+    if (!rl || !rt) return;
+    if (!hover || !win || !M) { rl.style.display = rt.style.display = 'none'; return; }
+    var cx = hover.x, tc = xt(cx), mid = winEl.clientHeight / 2;
+    rt.textContent = (P.t != null ? signed(ahead(P.t, tc)) + '  ' : '') + hms(tc);
+    rt.style.display = 'block'; rt.style.top = (mid - 20) + 'px';
+    var wl = winEl.clientWidth, right = cx < wl - 120;
+    rt.style.left = right ? (cx + 8) + 'px' : 'auto'; rt.style.right = right ? 'auto' : (wl - cx + 8) + 'px';
+    if (P.t == null) { rl.style.display = 'none'; return; }
+    var px = tx(P.t);
+    rl.style.display = 'block'; rl.style.top = (mid - 2) + 'px';
+    rl.style.left = Math.min(px, cx) + 'px'; rl.style.width = Math.max(1, Math.abs(cx - px)) + 'px';
+    rl.style.clipPath = cx >= px ? 'polygon(0 0, 100% 45%, 100% 55%, 0 100%)' : 'polygon(0 45%, 100% 0, 100% 100%, 0 55%)';
+    rl.style.background = cx >= px ? 'linear-gradient(90deg, rgba(255,255,255,.8), rgba(201,209,220,.35))'
+                                   : 'linear-gradient(270deg, rgba(255,255,255,.8), rgba(201,209,220,.35))';
+  }
+  winEl.addEventListener('mousemove', function (e) { hover = {x: e.clientX - winEl.getBoundingClientRect().left}; showReach(); });
+  winEl.addEventListener('mouseleave', function () { hover = null; showReach(); });
 
   function winTime(e) {   // through the window's layout, compressed or not
     var r = winEl.getBoundingClientRect();
