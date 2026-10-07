@@ -80,9 +80,9 @@
   /* the show's own line under the window is its scroll bar: thicker under the pointer, the window's part lit inside it */
   #win .grp.bar { height: 6px; bottom: 3px; cursor: pointer; touch-action: none; z-index: 5; transition: height .12s; }
   #win .grp.bar:hover, body.panning #win .grp.bar { height: 9px; }
-  #win .grp.bar .thumb { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: rgba(7,9,13,.82); cursor: grab;
-                         box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
-  #win .grp.bar.full .thumb { background: rgba(7,9,13,.45); cursor: pointer; }
+  #win .grp.bar .thumb { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: currentColor; cursor: grab;
+                         box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+  #win .grp.bar.full .thumb { opacity: .75; cursor: pointer; }
   /* on the bar, the reach's count sits on its own dark ground, so it reads over the colour or the slot */
   #reachlbl.onbar { background: rgba(7,9,13,.82); padding: 0 4px; border-radius: 2px; text-shadow: none; }
   /* the control panel: the right third of the dock, for a transcription region's own words */
@@ -136,6 +136,9 @@
   #win .lbl .nm { color: rgba(201,209,220,.18); }
   /* the reach: from the playhead out to the cursor */
   #reach { position: absolute; height: 4px; z-index: 4; pointer-events: none; display: none; }
+  #reach i { position: absolute; inset: 0; }
+  #reach.onbar { z-index: 7; filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000); }
+  #reachlbl.onbar { z-index: 8; }
   #strong { position: absolute; left: 3px; display: none; font-size: 9px; line-height: 12px; color: var(--dim); cursor: help; }
   #reachlbl { position: absolute; z-index: 6; pointer-events: none; display: none; font-size: 10px; line-height: 13px; color: #fff; white-space: pre;
               font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000, 0 0 2px #000; }
@@ -173,6 +176,10 @@
                         background: radial-gradient(circle, #ff3b30 2.6px, rgba(255,59,48,.35) 3.2px, transparent 3.6px) 0 50% / 14px 8px repeat-x;
                         animation: flowdots 1.1s linear infinite; }
   @keyframes flowdots { from { background-position: 0 50%; } to { background-position: 14px 50%; } }
+  /* clinging to the playing clip's right end (just past it, when the clip is too narrow): in it, and left of it */
+  #cliptag { position: absolute; bottom: 20px; z-index: 9; pointer-events: none; font-size: 9px; line-height: 12px; padding: 0 4px;
+             border-radius: 2px; background: rgba(7,9,13,.8); color: #fff; white-space: pre; font-variant-numeric: tabular-nums; }
+  #cliptag b { font-weight: normal; color: #ff8a80; }
   /* what was heard: a line of text where it was said, along the top of the waveform */
   #win .heard { position: absolute; bottom: 11px; height: 13px; z-index: 3; overflow: hidden; white-space: nowrap; text-overflow: clip;
                 font-size: 9.5px; line-height: 13px; padding: 0 3px; color: #e8edf4; background: rgba(12,15,21,.78);
@@ -749,6 +756,7 @@
       var now = place(el('div', 'state playing'), Math.max(P.cur.start, v.a), Math.min(P.cur.end, v.b), 3);
       var mid = (P.cur.start + P.cur.end) / 2, og = groups.filter(function (g) { return !g.remove && mid >= g.start && mid <= g.end; })[0];
       now.style.color = og ? gcolor(og) : P.cur.color; winEl.appendChild(now);   // the colour its trace is drawn in
+      var ct = el('div'); ct.id = 'cliptag'; winEl.appendChild(ct); clipTag();
     }
     said(v.a, v.b).forEach(function (s) {
       var d = place(el('div', 'heard', s.text), s.t, s.t + s.d, 3);
@@ -759,7 +767,7 @@
       winEl.appendChild(d);
     });
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
-    var rl = el('div'); rl.id = 'reach'; winEl.appendChild(rl);
+    var rl = el('div'); rl.id = 'reach'; rl.appendChild(el('i')); winEl.appendChild(rl);
     var rt = el('div'); rt.id = 'reachlbl'; winEl.appendChild(rt);
     showReach();
     waves();
@@ -790,7 +798,9 @@
   }
   function scrollBar(line, g) {
     var glen = g.end - g.start || 1, lw = parseFloat(line.style.width) || 1;
-    var th = el('div', 'thumb');
+    var th = el('div', 'thumb'), col = gcolor(g);
+    line.style.background = 'color-mix(in srgb, ' + col + ' 28%, #07090d)';   // the track: the show's colour, darkened
+    th.style.background = col;                                                  // what you grab: the show's colour
     var x0 = Math.max(0, (win.a - g.start) / glen * lw), x1 = Math.min(lw, (win.b - g.start) / glen * lw);
     if (x1 - x0 < 14) { var c = (x0 + x1) / 2; x0 = Math.max(0, Math.min(lw - 14, c - 7)); x1 = x0 + 14; }
     th.style.left = x0 + 'px'; th.style.width = (x1 - x0) + 'px';
@@ -1497,6 +1507,21 @@
   };
   P.audio.addEventListener('playing', function () { P.fails = 0; P.tried = null; });
 
+  function mss(s) {   // 0:07, 2:14, 1:02:10
+    s = Math.max(0, Math.floor(s));
+    var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = ('0' + s % 60).slice(-2);
+    return h ? h + ':' + ('0' + m).slice(-2) + ':' + r : m + ':' + r;
+  }
+  function clipTag() {
+    var ct = document.getElementById('cliptag');
+    if (!ct || !P.cur || !M) return;
+    var into = Math.min(Math.max(P.t - P.cur.start, 0), P.cur.end - P.cur.start);
+    ct.innerHTML = mss(into) + ' · <b>−' + mss(P.cur.end - P.cur.start - into) + '</b>';
+    var wl = winEl.clientWidth, x0 = Math.max(tx(P.cur.start), 0), x1 = Math.min(tx(P.cur.end), wl), tw = ct.offsetWidth;
+    if (x1 - x0 >= tw + 4) { ct.style.left = (x1 - tw - 1) + 'px'; }   // room inside: against its right end
+    else ct.style.left = Math.min(x1 + 3, wl - tw) + 'px';             // too narrow: just past it
+  }
+
   function frame() {
     if (!P.playing) return;
     if (P.cur && !P.audio.paused) P.t = P.cur.start + P.audio.currentTime;
@@ -1509,6 +1534,7 @@
       if (P.t + span * .85 <= extent().b + span) { setView(P.t - span * .1, P.t + span * .9, true); }
     }
     if (c) c.textContent = hms(P.t);
+    try { clipTag(); } catch (e) {}
     P.raf = requestAnimationFrame(frame);   // first, so a failed repaint never stops the player
     if (!frame.n || ++frame.n % 15 === 0) { frame.n = 1; try { paintLanes(); } catch (e) {} }
   }
@@ -1575,11 +1601,11 @@
     rt.style.left = right ? (cx + 8) + 'px' : 'auto'; rt.style.right = right ? 'auto' : (wl - cx + 8) + 'px';
     if (P.t == null) { rl.style.display = 'none'; return; }
     var px = tx(P.t);
-    rl.style.display = 'block'; rl.style.top = (mid - 2) + 'px';
+    rl.style.display = 'block'; rl.style.top = (mid - 2) + 'px'; rl.classList.toggle('onbar', !!onBar);
     rl.style.left = Math.min(px, cx) + 'px'; rl.style.width = Math.max(1, Math.abs(cx - px)) + 'px';
-    rl.style.clipPath = cx >= px ? 'polygon(0 0, 100% 45%, 100% 55%, 0 100%)' : 'polygon(0 45%, 100% 0, 100% 100%, 0 55%)';
-    rl.style.background = cx >= px ? 'linear-gradient(90deg, rgba(255,255,255,.8), rgba(201,209,220,.35))'
-                                   : 'linear-gradient(270deg, rgba(255,255,255,.8), rgba(201,209,220,.35))';
+    var ri = rl.firstChild, far = onBar ? 'rgba(255,255,255,.75)' : 'rgba(201,209,220,.35)';   // on the bar: white to the end
+    ri.style.clipPath = cx >= px ? 'polygon(0 0, 100% 45%, 100% 55%, 0 100%)' : 'polygon(0 45%, 100% 0, 100% 100%, 0 55%)';
+    ri.style.background = 'linear-gradient(' + (cx >= px ? 90 : 270) + 'deg, rgba(255,255,255,.8), ' + far + ')';
   }
   winEl.addEventListener('mousemove', function (e) { hover = {x: e.clientX - winEl.getBoundingClientRect().left}; showReach(); });
   winEl.addEventListener('mouseleave', function () { hover = null; showReach(); });
