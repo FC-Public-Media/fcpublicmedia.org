@@ -63,6 +63,7 @@
   #ctl select.pick { font: inherit; color: var(--ink); background: #10141c; border: 1px solid rgba(255,255,255,.2);
                      border-radius: 4px; padding: 4px 8px; max-width: 260px; cursor: pointer; }
   #ctl select.pick.tmp { font-style: italic; border-style: dashed; }
+  #ctl select.pick option:disabled { color: var(--dim); }
   #ctl select.pick option, #ctl select.pick optgroup { background: #10141c; color: var(--ink); font-style: normal; }
   #ctl input.name { user-select: text; -webkit-user-select: text; font: inherit; color: var(--ink); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.4);
                     border-radius: 4px; padding: 4px 8px; width: 160px; }
@@ -1097,7 +1098,10 @@
     var pick = el('select', 'pick'), opts = [];
     pick.setAttribute('aria-label', 'group this window as');
     function opt(label, value, parent) { var o = el('option', null, label); o.value = value; (parent || pick).appendChild(o); return o; }
-    opt(over ? 'grouped as ' + gname(over) : 'group as…', '');
+    var head = opt(SEL ? 'on the selection ' + hm(SEL.a) + '\u2013' + hm(SEL.b) + ':'
+                       : 'on the whole window' + (over ? ', in ' + gname(over) : '') + ':', '');
+    head.disabled = true; head.selected = true;   // a label for what follows, not something to pick
+    if (SEL) opt('let go of the selection', 'clear');
     var og = el('optgroup'); og.label = 'shows'; pick.appendChild(og);
     shows.forEach(function (s) { opts.push({show: s.slug}); opt(s.title, opts.length - 1, og); });
     var ns = names();
@@ -1114,18 +1118,19 @@
     pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
     pick.onchange = function () {
       if (pick.value === 'new') return askName();
+      if (pick.value === 'clear') { SEL = null; drawWin(); drawCtl(); return; }
       if (pick.value === 'ungroup') return save({}, hit, sound);
       if (pick.value === 'tx' || pick.value === 'untx') {
         saves++;
         return post('/group', {start: tgt.a, end: tgt.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
-          .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); });
+          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); });
       }
       if (pick.value === 'rm' || pick.value === 'keep') {
         saves++;
         return post('/group', {start: tgt.a, end: tgt.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
-          .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); marked(); });
+          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); });
       }
       if (pick.value !== '') save(opts[+pick.value], hit, sound);
     };
@@ -1169,10 +1174,11 @@
   function setWindow(a, b) {
     var hit = within(a, b);
     if (!hit.length) return;
+    SEL = null;   // a new window: the selection was the old one's
     setView(hit[0].start, Math.max.apply(null, hit.map(function (x) { return x.end; })));
   }
 
-  function openView(a, b) { setView(a, b); }
+  function openView(a, b) { SEL = null; setView(a, b); }
 
   function extent() {   // everything there is: the first recording (or ghost) to the last
     var a = Infinity, b = -Infinity;
@@ -1282,7 +1288,7 @@
     var t = SEL || win;
     post('/group', {start: t.a, end: t.b, show: as.show || '', name: as.name || '', files: hit.length, sound: sound})
       .then(function (r) { return r.json(); })
-      .then(function (d) { shows = d.shows; groups = d.groups; drawWin(); drawCtl(); paintLanes(); marked(); });
+      .then(function (d) { shows = d.shows; groups = d.groups; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); });
   }
 
   // --- the player: the window's recordings in order, gaps skipped --------
@@ -1510,6 +1516,7 @@
       return;
     }
     if (!d.moved) {   // a click: put the playhead there
+      if (d.on === 'win' && SEL) { SEL = null; drawCtl(); }   // a plain click lets go of the selection
       if (win && d.on === 'win' && !d.force && d.a <= win.a) playFromStartOr(null);   // the gutter: play from the start
       else if (win && d.on === 'win') seek(d.a, false, d.force);
       else { if (win) drawWin(); paintLanes(); }
