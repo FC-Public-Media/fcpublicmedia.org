@@ -42,12 +42,20 @@ length (AIFF and WAV lengths are read from their headers, once). What was
 silent has no bytes and is left empty, so sessions, the breaks inside them,
 and the nights with nothing show for what they are.
 
-**Grouping is selecting along time**, the way text is selected: press, drag,
-let go. Crossing into the next lane carries on from its start, as a line of
-text does. It snaps to the recordings it covers, and a bar offers the shows
-FCPM has a record of (`site/_shows/`). Choosing one groups that stretch under
-the show; click a group's line to change it or ungroup it. Esc lets go.
-Double-click a recording to open it in Explorer.
+**Dragging along time sets a window**, the way text is selected: press, drag,
+let go, carrying on into the next lane as a line of text does. The window is
+that stretch at full width, docked below, snapped to the recordings it covers.
+It is the zoom: drag inside it to look closer, Backspace to back out, Esc to
+close. It is also a player, silent until `m` (or the button) turns sound on:
+click to place the playhead, Space to play. It runs through the recordings in
+order at real speed and skips the gaps, which have no bytes. Browsers cannot
+play AIFF, so `/audio` hands the page each recording as WAV.
+
+The window can be grouped under a show from its bar, one button per show FCPM
+has a record of (`site/_shows/`). Click a group's line to open its window,
+to change it or ungroup it. Double-click a recording to open it in Explorer.
+A recording on two pools (the same name and size) counts once; its tooltip
+says where else it is.
 
 Groups are kept on this computer (`%LOCALAPPDATA%\<profile>\pools\groups.json`)
 until they are written to the show's own repository. `pools.py groups` lists

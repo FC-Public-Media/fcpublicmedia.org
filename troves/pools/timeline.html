@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg: #07090d; --ink: #c9d1dc; --dim: #6b7584; --faint: rgba(255,255,255,.07);
-    --lane: 46px; --label: 150px;
+    --lane: 46px; --label: 150px; --dock: 0px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -21,8 +21,8 @@
   header h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
   header a { color: var(--dim); text-decoration: none; }
   header a:hover { color: var(--ink); }
-  header .meta { color: var(--dim); }
-  main { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 80px; user-select: none; }
+  header .meta, header .hint { color: var(--dim); }
+  main { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(var(--dock) + 24px); user-select: none; }
   .axis, .lane { display: flex; }
   .axis { position: sticky; top: 0; z-index: 3; height: 20px; background: var(--bg); }
   .lab { flex: 0 0 var(--label); padding: 0 12px 0 18px; display: flex; flex-direction: column; justify-content: center; }
@@ -31,27 +31,40 @@
   .track { flex: 1; position: relative; margin-right: 18px; }
   .axis .track span { position: absolute; top: 3px; font-size: 10px; color: var(--dim); transform: translateX(-50%); }
   .lane { height: var(--lane); border-top: 1px solid var(--faint); }
-  .lane .track { cursor: text; }
+  .lane .track, #win { cursor: text; touch-action: none; }
   .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); pointer-events: none; }
   .f { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px; }
   .f.short { opacity: .35; }
-  .sel { position: absolute; top: 2px; bottom: 2px; background: rgba(255,255,255,.13); pointer-events: none; }
+  .sel { position: absolute; top: 1px; bottom: 1px; background: rgba(255,255,255,.16);
+         box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.35); pointer-events: none; }
+  .ph { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fff; pointer-events: none; z-index: 2; }
   .grp { position: absolute; bottom: 3px; height: 3px; border-radius: 2px; cursor: pointer; }
   .grp:hover { height: 5px; }
   .grpname { position: absolute; top: -1px; font-size: 10px; white-space: nowrap; pointer-events: none; }
   .none { height: 18px; padding-left: var(--label); color: var(--dim); font-size: 10px; border-top: 1px solid var(--faint); line-height: 18px; }
-  #act { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 5; display: none;
-         align-items: center; gap: 14px; padding: 9px 12px 9px 16px; border-radius: 6px;
-         background: rgba(12,15,21,.96); border: 1px solid rgba(255,255,255,.12); white-space: nowrap; }
-  #act .sum { color: var(--dim); }
-  #act .sum b { color: var(--ink); font-weight: 500; }
-  #act button { font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.14);
+
+  /* the window: a stretch, at full width, that plays */
+  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none;
+          background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
+  #win { position: relative; height: 104px; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
+  #win .f { top: 18px; bottom: 14px; }
+  #win .f.now { box-shadow: 0 0 0 1px #fff; }
+  #win .t { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); pointer-events: none; }
+  #win .t span { position: absolute; top: 2px; left: 4px; font-size: 10px; color: var(--dim); white-space: nowrap; }
+  #win .grp { bottom: 4px; }
+  #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
+  #ctl button { font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.14);
                 border-radius: 4px; padding: 4px 10px; cursor: pointer; }
-  #act button:hover { border-color: rgba(255,255,255,.5); }
-  #act button i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  #act button.on { border-color: rgba(255,255,255,.6); }
-  #act .esc { color: var(--dim); font-size: 11px; }
-  #tip { position: fixed; z-index: 9; pointer-events: none; display: none; max-width: 340px; padding: 8px 10px;
+  #ctl button:hover { border-color: rgba(255,255,255,.5); }
+  #ctl button.on { border-color: rgba(255,255,255,.6); }
+  #ctl button i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  #ctl .play { width: 36px; padding: 4px 0; }
+  #ctl .clock { font-variant-numeric: tabular-nums; min-width: 74px; }
+  #ctl .sum { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+  #ctl .sum b { color: var(--ink); font-weight: 500; }
+  #ctl .gap { flex: 1; }
+  #ctl .keys { color: var(--dim); font-size: 11px; }
+  #tip { position: fixed; z-index: 9; pointer-events: none; display: none; max-width: 360px; padding: 8px 10px;
          background: rgba(12,15,21,.95); border: 1px solid var(--faint); border-radius: 4px; font-size: 12px; }
   #tip b { display: block; font-weight: 500; word-break: break-all; }
   #tip span { color: var(--dim); display: block; }
@@ -62,23 +75,31 @@
   <h1>Timeline</h1>
   <a href="/">squares</a>
   <span class="meta" id="meta">looking…</span>
+  <span class="hint" id="hint">drag along a night to look closer</span>
 </header>
 <main id="main"></main>
-<div id="act" role="toolbar"></div>
+<div id="dock">
+  <div id="win"></div>
+  <div id="ctl"></div>
+</div>
 <div id="tip" role="tooltip"></div>
 <script>
 (function () {
-  // One lane per night, noon to noon, so a session past midnight stays whole.
-  // Selecting is along time, like selecting text: from where you press to where
-  // you let go, across lanes in reading order. It snaps to the recordings it
-  // covers, and a show is given to it from the bar that appears.
-  var main = document.getElementById('main'), act = document.getElementById('act'), tip = document.getElementById('tip');
+  // Nights, noon to noon, each recording where it ran. Dragging along time,
+  // the way text is selected, sets a window: that stretch at full width in the
+  // dock, where it plays (silently until sound is turned on) and where a
+  // narrower drag looks closer still. A window can be given to a show.
+  var main = document.getElementById('main'), dock = document.getElementById('dock'),
+      winEl = document.getElementById('win'), ctl = document.getElementById('ctl'), tip = document.getElementById('tip');
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
   var data = null, files = [], lanes = [], shows = [], groups = [], sig = '';
-  var sel = null, drag = null;
+  var win = null, stack = [], drag = null;
+  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0};
+  P.audio.preload = 'auto';
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function hm(t) { return new Date(t * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); }
+  function hms(t) { return new Date(t * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}); }
   function dayname(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
   function wd(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short'}); }
   function hours(s) { return s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h'; }
@@ -87,32 +108,60 @@
   function next(o) { var d = new Date(o * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; }
   function color(slug) { var i = shows.map(function (s) { return s.slug; }).indexOf(slug); return COLORS[(i < 0 ? 0 : i) % COLORS.length]; }
   function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
-  function post(path, body) {
-    return fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
-  }
+  function post(path, body) { return fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); }
+  function within(a, b) { return files.filter(function (x) { return x.end > a && x.start < b; }); }
 
-  // --- lanes ----------------------------------------------------------------
+  // --- recordings: one per name and size, wherever its copies are ---------
 
   function build() {
-    var stages = data.stages || {}, seen = {};
+    var stages = data.stages || {}, by = {};
     files = [];
     data.pools.forEach(function (p) {
       p.rows.forEach(function (r) {
         (r.files || []).forEach(function (f) {
-          if (seen[f.path]) return; seen[f.path] = 1;
+          var key = f.name + '|' + f.bytes, where = r.label + (p.kind === 'smb' ? ' (' + p.title + ')' : '');
+          var x = by[key];
+          if (x) {
+            x.copies.push(where);
+            if (p.kind !== 'smb' && x.remote) { x.f = f; x.remote = false; }   // play the local copy
+            return;
+          }
           var end = f.duration != null ? f.start + f.duration : f.end;
-          files.push({f: f, start: f.start, end: Math.max(end, f.start + 1), color: (stages[r.stage] || {}).color || '#888', stage: (stages[r.stage] || {}).label || r.stage});
+          x = by[key] = {f: f, start: f.start, end: Math.max(end, f.start + 1), copies: [where], remote: p.kind === 'smb',
+                         color: (stages[r.stage] || {}).color || '#888', stage: (stages[r.stage] || {}).label || r.stage};
+          files.push(x);
         });
       });
     });
     files.sort(function (a, b) { return a.start - b.start; });
-    var by = {};
-    files.forEach(function (x) { var o = noon(x.start); (by[o] = by[o] || []).push(x); });
-    lanes = Object.keys(by).map(Number).sort(function (a, b) { return a - b; })
-      .map(function (o) { return {origin: o, end: next(o), files: by[o]}; });
+    var lane = {};
+    files.forEach(function (x) { var o = noon(x.start); (lane[o] = lane[o] || []).push(x); });
+    lanes = Object.keys(lane).map(Number).sort(function (a, b) { return a - b; })
+      .map(function (o) { return {origin: o, end: next(o), files: lane[o]}; });
   }
 
-  function draw() {
+  function frag(x, span0, span, w, cls) {
+    var d = el('div', 'f' + (x.f.short ? ' short' : '') + (cls || ''));
+    d.style.left = ((x.start - span0) / span * w) + 'px';
+    d.style.width = ((x.end - x.start) / span * w) + 'px';
+    d.style.background = x.color;
+    d.onmouseenter = function () {
+      if (drag) return;
+      tip.textContent = '';
+      tip.appendChild(el('b', null, x.f.name));
+      tip.appendChild(el('span', null, hms(x.start) + '–' + hms(x.end) + ' · ' + dur(x.f.duration) + ' · ' + x.stage));
+      if (x.copies.length > 1) tip.appendChild(el('span', null, 'also on: ' + x.copies.slice(1).join(', ')));
+      tip.style.display = 'block';
+    };
+    d.onmousemove = function (e) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 370) + 'px'; tip.style.top = Math.max(8, e.clientY - 64) + 'px'; };
+    d.onmouseleave = function () { tip.style.display = 'none'; };
+    d.ondblclick = function () { post('/open', {path: x.f.path}); };
+    return d;
+  }
+
+  // --- the nights ---------------------------------------------------------
+
+  function drawLanes() {
     main.textContent = '';
     var axis = el('div', 'axis'), at = el('div', 'track');
     axis.appendChild(el('div', 'lab')); axis.appendChild(at); main.appendChild(axis);
@@ -137,67 +186,204 @@
     lanes.forEach(function (L) {
       L.w = L.track.clientWidth;
       [6, 12, 18].forEach(function (h) { var t = el('div', 'tick'); t.style.left = (L.w * h / 24) + 'px'; L.track.appendChild(t); });
-      var span = L.end - L.origin;
-      L.files.forEach(function (x) {
-        var d = el('div', 'f' + (x.f.short ? ' short' : ''));
-        d.style.left = ((x.start - L.origin) / span * L.w) + 'px';
-        d.style.width = ((x.end - x.start) / span * L.w) + 'px';
-        d.style.background = x.color;
-        d.onmouseenter = function () {
-          if (drag) return;
-          tip.textContent = '';
-          tip.appendChild(el('b', null, x.f.name));
-          tip.appendChild(el('span', null, hm(x.start) + '–' + hm(x.end) + ' · ' + dur(x.f.duration) + ' · ' + x.stage));
-          tip.style.display = 'block';
-        };
-        d.onmousemove = function (e) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 350) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; };
-        d.onmouseleave = function () { tip.style.display = 'none'; };
-        d.ondblclick = function () { post('/open', {path: x.f.path}); };
-        L.track.appendChild(d);
-      });
+      L.files.forEach(function (x) { L.track.appendChild(frag(x, L.origin, L.end - L.origin, L.w)); });
     });
-    paint();
+    paintLanes();
   }
 
-  // Paint a [a, b] stretch on every lane it crosses, the way text selection
-  // runs to the end of a line and on from the start of the next.
+  // A stretch [a, b] painted on every lane it crosses, the way a text
+  // selection runs to the end of a line and on from the start of the next.
   function spans(a, b, make) {
-    var out = [];
+    var n = 0;
     lanes.forEach(function (L) {
       var s = Math.max(a, L.origin), e = Math.min(b, L.end);
       if (e <= s) return;
-      var span = L.end - L.origin, d = make(L, out.length === 0);
+      var span = L.end - L.origin, d = make(L, n++ === 0);
       d.style.left = ((s - L.origin) / span * L.w) + 'px';
       d.style.width = Math.max(2, (e - s) / span * L.w) + 'px';
-      L.track.appendChild(d); out.push(d);
+      L.track.appendChild(d);
     });
-    return out;
   }
 
-  function paint() {
-    Array.prototype.forEach.call(main.querySelectorAll('.sel, .grp, .grpname'), function (n) { n.remove(); });
+  function groupLine(g, first, L, span0, span, w) {
+    var d = el('div', 'grp'); d.style.background = color(g.show);
+    d.title = title(g.show) + ' · ' + hm(g.start) + '–' + hm(g.end);
+    d.onpointerdown = function (e) { e.stopPropagation(); };
+    d.onclick = function () { stack = []; setWindow(g.start, g.end); };
+    if (first) {
+      var n = el('div', 'grpname', title(g.show)); n.style.color = color(g.show);
+      n.style.left = ((Math.max(g.start, span0) - span0) / span * w) + 'px';
+      L.appendChild(n);
+    }
+    return d;
+  }
+
+  function paintLanes() {
+    Array.prototype.forEach.call(main.querySelectorAll('.sel, .grp, .grpname, .ph'), function (n) { n.remove(); });
     groups.forEach(function (g) {
-      spans(g.start, g.end, function (L, first) {
-        var d = el('div', 'grp'); d.style.background = color(g.show);
-        d.title = title(g.show) + ' · ' + hm(g.start) + '–' + hm(g.end);
-        d.onpointerdown = function (e) { e.stopPropagation(); };
-        d.onclick = function () { choose(g.start, g.end, g); };
-        if (first) {
-          var n = el('div', 'grpname', title(g.show)); n.style.color = color(g.show);
-          n.style.left = ((Math.max(g.start, L.origin) - L.origin) / (L.end - L.origin) * L.w) + 'px';
-          L.track.appendChild(n);
-        }
-        return d;
-      });
+      spans(g.start, g.end, function (L, first) { return groupLine(g, first, L.track, L.origin, L.end - L.origin, L.w); });
     });
-    var s = drag ? {start: Math.min(drag.a, drag.b), end: Math.max(drag.a, drag.b)} : sel;
-    if (s) spans(s.start, s.end, function () { return el('div', 'sel'); });
+    var s = drag && drag.on === 'lanes' ? {a: Math.min(drag.a, drag.b), b: Math.max(drag.a, drag.b)} : win;
+    if (s) spans(s.a, s.b, function () { return el('div', 'sel'); });
+    if (P.t != null && win) lanes.forEach(function (L) {
+      if (P.t < L.origin || P.t >= L.end) return;
+      var d = el('div', 'ph'); d.style.left = ((P.t - L.origin) / (L.end - L.origin) * L.w) + 'px'; L.track.appendChild(d);
+    });
   }
 
-  // --- selecting ------------------------------------------------------------
+  // --- the window ---------------------------------------------------------
 
-  function timeAt(e) {
-    if (!lanes.length) return null;
+  function view() {   // the window's span on screen, a little wider than the stretch
+    var pad = Math.max(2, (win.b - win.a) * 0.02);
+    return {a: win.a - pad, b: win.b + pad};
+  }
+
+  function drawWin() {
+    winEl.textContent = '';
+    if (!win) return;
+    var v = view(), span = v.b - v.a, w = winEl.clientWidth;
+    var steps = [1, 5, 15, 30, 60, 300, 600, 900, 1800, 3600, 7200, 10800];
+    var step = steps.filter(function (s) { return span / s <= 10; })[0] || 21600;
+    for (var t = Math.ceil(v.a / step) * step; t < v.b; t += step) {
+      var k = el('div', 't'); k.style.left = ((t - v.a) / span * w) + 'px';
+      k.appendChild(el('span', null, step < 60 ? hms(t) : hm(t))); winEl.appendChild(k);
+    }
+    groups.forEach(function (g) {
+      var s = Math.max(g.start, v.a), e = Math.min(g.end, v.b);
+      if (e <= s) return;
+      var d = groupLine(g, false, winEl, v.a, span, w);
+      d.style.left = ((s - v.a) / span * w) + 'px'; d.style.width = Math.max(2, (e - s) / span * w) + 'px';
+      winEl.appendChild(d);
+    });
+    within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, x === P.cur ? ' now' : '')); });
+    if (drag && drag.on === 'win') {
+      var a = Math.min(drag.a, drag.b), b = Math.max(drag.a, drag.b), s = el('div', 'sel');
+      s.style.left = ((a - v.a) / span * w) + 'px'; s.style.width = Math.max(2, (b - a) / span * w) + 'px';
+      winEl.appendChild(s);
+    }
+    if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = ((P.t - v.a) / span * w) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
+  }
+
+  function drawCtl() {
+    ctl.textContent = '';
+    if (!win) return;
+    var hit = within(win.a, win.b), sound = hit.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
+    var play = el('button', 'play', P.playing ? '❚❚' : '▶'); play.title = 'play / pause (space)'; play.onclick = toggle;
+    var mute = el('button', P.muted ? '' : 'on', P.muted ? 'silent' : 'sound'); mute.title = 'sound on / off (m)';
+    mute.onclick = function () { setMuted(!P.muted); };
+    ctl.appendChild(play); ctl.appendChild(mute);
+    ctl.appendChild(el('span', 'clock', P.t != null ? hms(P.t) : '')).id = 'clock';
+    var sum = el('span', 'sum');
+    sum.appendChild(el('b', null, wd(win.a) + ' ' + hm(win.a) + ' → ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b)));
+    sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
+    ctl.appendChild(sum);
+    ctl.appendChild(el('span', 'gap'));
+    var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
+    shows.forEach(function (s) {
+      var bt = el('button', over && over.show === s.slug ? 'on' : ''), i = el('i');
+      i.style.background = color(s.slug); bt.appendChild(i); bt.appendChild(document.createTextNode(s.title));
+      bt.title = 'group this window under ' + s.title;
+      bt.onclick = function () { save(s.slug, hit, sound); };
+      ctl.appendChild(bt);
+    });
+    if (over) { var u = el('button', null, 'Ungroup'); u.onclick = function () { save('', hit, sound); }; ctl.appendChild(u); }
+    ctl.appendChild(el('span', 'keys', (stack.length ? 'backspace: back out · ' : '') + 'esc: close'));
+  }
+
+  function setWindow(a, b, push) {
+    var hit = within(a, b);
+    if (!hit.length) return;
+    if (push && win) stack.push(win);
+    win = {a: hit[0].start, b: Math.max.apply(null, hit.map(function (x) { return x.end; }))};
+    if (P.t == null || P.t < win.a || P.t > win.b) seek(win.a, true);
+    dock.style.display = 'block';
+    document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
+    document.getElementById('hint').textContent = 'click to place the playhead · drag in the window to look closer';
+    drawWin(); drawCtl(); paintLanes();
+  }
+
+  function closeWindow() {
+    stop(); win = null; stack = []; P.t = null; P.cur = null;
+    dock.style.display = 'none'; document.documentElement.style.setProperty('--dock', '0px');
+    document.getElementById('hint').textContent = 'drag along a night to look closer';
+    paintLanes();
+  }
+
+  function back() {
+    if (!stack.length) return closeWindow();
+    var w = stack.pop(); win = w; drawWin(); drawCtl(); paintLanes();
+  }
+
+  function save(show, hit, sound) {
+    post('/group', {start: win.a, end: win.b, show: show, files: hit.length, sound: sound})
+      .then(function (r) { return r.json(); })
+      .then(function (d) { shows = d.shows; groups = d.groups; drawWin(); drawCtl(); paintLanes(); });
+  }
+
+  // --- the player: the window's recordings in order, gaps skipped --------
+
+  function at(t) {   // the recording playing at t, or the next one after it, inside the window
+    var hit = within(win.a, win.b);
+    return hit.filter(function (x) { return x.end > t; })[0] || null;
+  }
+
+  function seek(t, quiet) {
+    var x = at(t);
+    if (!x) { stop(); return; }
+    P.t = Math.max(t, x.start);
+    if (P.playing) start(x, P.t - x.start);
+    else P.cur = x;
+    if (!quiet) { drawWin(); drawCtl(); paintLanes(); }
+  }
+
+  function start(x, offset) {
+    var a = P.audio, url = '/audio?p=' + encodeURIComponent(x.f.path);
+    P.cur = x;
+    if (a.dataset.src !== url) { a.dataset.src = url; a.src = url; }
+    var go = function () { try { a.currentTime = Math.max(0, offset); } catch (e) {} a.muted = P.muted; a.play().catch(function () {}); };
+    if (a.readyState >= 1) go(); else a.onloadedmetadata = function () { a.onloadedmetadata = null; go(); };
+    drawWin();
+  }
+
+  P.audio.onended = function () {
+    var i = files.indexOf(P.cur), n = files[i + 1];
+    if (P.playing && n && n.start < win.b) { P.t = n.start; start(n, 0); } else stop();
+  };
+  P.audio.onerror = function () {   // a recording that cannot be read: go on to the next
+    var i = files.indexOf(P.cur), n = files[i + 1];
+    if (P.playing && n && n.start < win.b) { P.t = n.start; start(n, 0); } else stop();
+  };
+
+  function frame() {
+    if (!P.playing) return;
+    if (P.cur && !P.audio.paused) P.t = P.cur.start + P.audio.currentTime;
+    var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
+    if (ph) ph.style.left = ((P.t - v.a) / (v.b - v.a) * winEl.clientWidth) + 'px';
+    if (c) c.textContent = hms(P.t);
+    if (!frame.n || ++frame.n % 15 === 0) { frame.n = 1; paintLanes(); }
+    P.raf = requestAnimationFrame(frame);
+  }
+
+  function toggle() {
+    if (!win) return;
+    if (P.playing) return stop();
+    var x = at(P.t != null ? P.t : win.a);
+    if (!x) x = at(win.a);
+    if (!x) return;
+    P.playing = true; P.t = Math.max(P.t || x.start, x.start);
+    start(x, P.t - x.start); drawCtl(); frame();
+  }
+
+  function stop() {
+    P.playing = false; P.audio.pause(); cancelAnimationFrame(P.raf);
+    if (win) { drawWin(); drawCtl(); paintLanes(); }
+  }
+
+  function setMuted(m) { P.muted = m; P.audio.muted = m; drawCtl(); }
+
+  // --- gestures -------------------------------------------------------------
+
+  function laneTime(e) {
     var best = null, bd = Infinity;
     lanes.forEach(function (L) {
       var r = L.track.getBoundingClientRect(), d = e.clientY < r.top ? r.top - e.clientY : e.clientY > r.bottom ? e.clientY - r.bottom : 0;
@@ -206,61 +392,46 @@
     var x = Math.min(Math.max(e.clientX - best.r.left, 0), best.r.width);
     return best.L.origin + x / best.r.width * (best.L.end - best.L.origin);
   }
+  function winTime(e) {
+    var r = winEl.getBoundingClientRect(), v = view();
+    return v.a + Math.min(Math.max(e.clientX - r.left, 0), r.width) / r.width * (v.b - v.a);
+  }
 
-  main.addEventListener('pointerdown', function (e) {
-    if (e.button !== 0 || !e.target.closest('.lane .track')) return;
-    var t = timeAt(e);
-    drag = {a: e.shiftKey && sel ? sel.anchor : t, b: t, x: e.clientX, y: e.clientY};
+  document.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0) return;
+    var on = e.target.closest('#win') ? 'win' : e.target.closest('.lane .track') ? 'lanes' : null;
+    if (!on || e.target.closest('.grp')) return;
+    var t = on === 'win' ? winTime(e) : laneTime(e);
+    drag = {on: on, a: t, b: t, x: e.clientX, y: e.clientY};
     tip.style.display = 'none';
-    main.setPointerCapture(e.pointerId);
-    paint();
+    e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+    e.preventDefault();
   });
-  main.addEventListener('pointermove', function (e) {
+  document.addEventListener('pointermove', function (e) {
     if (!drag) return;
-    drag.b = timeAt(e); paint();
+    drag.b = drag.on === 'win' ? winTime(e) : laneTime(e);
+    drag.moved = drag.moved || Math.abs(e.clientX - drag.x) > 3 || Math.abs(e.clientY - drag.y) > 3;
+    if (drag.on === 'win') drawWin(); else paintLanes();
   });
-  main.addEventListener('pointerup', function (e) {
+  document.addEventListener('pointerup', function () {
     if (!drag) return;
     var d = drag; drag = null;
-    if (Math.abs(d.a - d.b) < 1 || (Math.abs(e.clientX - d.x) < 3 && Math.abs(e.clientY - d.y) < 3 && !e.shiftKey)) {
-      clear(); return;
+    if (!d.moved) {   // a click: put the playhead there
+      if (win && d.a >= view().a && d.a <= view().b) seek(d.a);
+      else { drawWin(); paintLanes(); }
+      return;
     }
     var a = Math.min(d.a, d.b), b = Math.max(d.a, d.b);
-    var hit = files.filter(function (x) { return x.end > a && x.start < b; });
-    if (!hit.length) { clear(); return; }
-    choose(hit[0].start, Math.max.apply(null, hit.map(function (x) { return x.end; })), null, d.a);
+    if (d.on === 'win') setWindow(a, b, true);
+    else { stack = []; setWindow(a, b); }
+    if (!win) paintLanes();
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clear(); });
-
-  function clear() { sel = null; act.style.display = 'none'; paint(); }
-
-  function choose(a, b, existing, anchor) {
-    var hit = files.filter(function (x) { return x.end > a && x.start < b; });
-    var sound = hit.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
-    sel = {start: a, end: b, anchor: anchor != null ? anchor : a, files: hit.length, sound: sound};
-    var over = existing || groups.filter(function (g) { return g.end > a && g.start < b; })[0];
-    act.textContent = '';
-    var sum = el('span', 'sum');
-    sum.appendChild(el('b', null, wd(a) + ' ' + hm(a) + ' → ' + (wd(b) !== wd(a) ? wd(b) + ' ' : '') + hm(b)));
-    sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
-    act.appendChild(sum);
-    shows.forEach(function (s) {
-      var bt = el('button', over && over.show === s.slug ? 'on' : ''), i = el('i');
-      i.style.background = color(s.slug); bt.appendChild(i); bt.appendChild(document.createTextNode(s.title));
-      bt.onclick = function () { save(s.slug); };
-      act.appendChild(bt);
-    });
-    if (over) { var u = el('button', null, 'Ungroup'); u.onclick = function () { save(''); }; act.appendChild(u); }
-    act.appendChild(el('span', 'esc', 'esc'));
-    act.style.display = 'flex';
-    paint();
-  }
-
-  function save(show) {
-    post('/group', {start: sel.start, end: sel.end, show: show, files: sel.files, sound: sel.sound})
-      .then(function (r) { return r.json(); })
-      .then(function (d) { shows = d.shows; groups = d.groups; clear(); });
-  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === ' ' && win) { e.preventDefault(); toggle(); }
+    else if ((e.key === 'm' || e.key === 'M') && win) setMuted(!P.muted);
+    else if (e.key === 'Backspace' && win) { e.preventDefault(); back(); }
+    else if (e.key === 'Escape') closeWindow();
+  });
 
   // --- data -----------------------------------------------------------------
 
@@ -268,13 +439,17 @@
     Promise.all([fetch('/now', {cache: 'no-store'}).then(function (r) { return r.json(); }),
                  fetch('/groups', {cache: 'no-store'}).then(function (r) { return r.json(); })])
       .then(function (v) {
+        if (drag) return;
         data = v[0]; shows = v[1].shows; groups = v[1].groups;
+        var cur = P.cur && P.cur.f.path;
         build();
+        if (cur) P.cur = files.filter(function (x) { return x.f.path === cur; })[0] || null;
         var sound = files.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
         document.getElementById('meta').textContent = files.length + ' recordings · ' + hours(sound) + ' of sound · ' +
           groups.length + (groups.length === 1 ? ' group' : ' groups');
         var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth;
-        if (s !== sig && !drag) { sig = s; draw(); } else paint();
+        if (s !== sig) { sig = s; drawLanes(); } else paintLanes();
+        if (win) { drawWin(); if (!P.playing) drawCtl(); }
       })
       .catch(function () { document.getElementById('meta').textContent = 'the window that showed this has closed'; });
   }
