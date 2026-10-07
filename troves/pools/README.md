@@ -80,6 +80,20 @@ Running it a second time just opens another window onto the first.
 last six days, so the page has something to show. `fcpm pools sample clear`
 takes them out.
 
+## Removing
+
+A recording that was here and is not now stays on the timeline as a ghost (a
+dashed outline) where it was: the page remembers every recording it has seen
+(`seen.json`, beside the groups), and reads the drive's Recycle Bin, where
+Windows keeps each deleted file's original path and times. A pool that cannot be
+reached makes no ghosts.
+
+Groups are how a stretch is removed. `mark for removal` in a window's list marks
+the groups it covers (or makes one, "to remove"); they draw red. **Remove
+marked** in the header moves every recording inside them into the pool's
+`.removed/<date>/` folder, after asking. Nothing is deleted: moving a file back
+undoes it.
+
 ## Not yet
 
 - **Squares that are units, not files** (Autumn, 2026-10-07). On a pile of

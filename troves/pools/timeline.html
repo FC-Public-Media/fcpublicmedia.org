@@ -61,16 +61,22 @@
   .none { height: 18px; padding-left: var(--label); color: var(--dim); font-size: 10px; border-top: 1px solid var(--faint); line-height: 18px; }
 
   /* the window: a stretch, at full width, that plays */
-  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 50vh; min-height: 200px;
+  #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 36vh; min-height: 220px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
      touch edge to edge still read as separate. The one playing is shown by its
      waveform alone: nothing jumps but the playhead. */
-  #win .f { top: 22px; bottom: 22px; opacity: .2; box-shadow: inset 1px 0 0 rgba(0,0,0,.75); }
-  #win .f.alt { opacity: .34; }
-  #win .f.short { opacity: .1; }
-  #win .f.short.alt { opacity: .16; }
+  /* in the window a recording's body is only a faint field (and its seam); the waveform is the picture */
+  #win .f { top: 22px; bottom: 22px; opacity: .07; box-shadow: inset 1px 0 0 rgba(0,0,0,.75); }
+  #win .f.alt { opacity: .13; }
+  /* a ghost: a recording that was here and is not now */
+  .ghost { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border: 1px dashed rgba(240,120,110,.55); border-radius: 1px; }
+  #win .ghost { top: 22px; bottom: 22px; }
+  .grp.rm { background: repeating-linear-gradient(135deg, #e0574f 0 4px, transparent 4px 7px) !important; height: 5px; }
+  .grpname.rm { color: #f07a6e !important; }
+  #rmbtn { font: inherit; color: #f07a6e; background: none; border: 1px solid rgba(240,122,110,.5); border-radius: 4px; padding: 3px 10px; cursor: pointer; }
+  #rmbtn:hover { border-color: #f07a6e; }
   #wave { position: absolute; left: 0; top: 22px; pointer-events: none; }
   /* the grid, over the recordings: major lines labelled top and bottom, minor between */
   #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
@@ -122,7 +128,7 @@
   var main = document.getElementById('main'), dock = document.getElementById('dock'),
       winEl = document.getElementById('win'), ctl = document.getElementById('ctl'), tip = document.getElementById('tip');
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
-  var data = null, files = [], lanes = [], shows = [], groups = [], sig = '';
+  var data = null, files = [], lanes = [], shows = [], groups = [], ghosts = [], sig = '';
   var win = null, views = [], drag = null;
   var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: ''};
   P.audio.preload = 'auto';
@@ -192,6 +198,11 @@
     files.forEach(function (x, i) { x.i = i; });   // order, for alternating tones
     var lane = {};
     files.forEach(function (x) { var o = noon(x.start); (lane[o] = lane[o] || []).push(x); });
+    // ghosts: what was here and is not now, where it was (a night of only ghosts still gets its lane)
+    ghosts = (data.removed || []).map(function (r) {
+      return {start: r.start, end: Math.max(r.end, r.start + 1), r: r};
+    });
+    ghosts.forEach(function (g) { var o = noon(g.start); lane[o] = lane[o] || []; });
     // keep each night's drawn track across reloads: a repaint between redraws
     // must find the lane it painted before
     var old = {};
@@ -210,6 +221,45 @@
     if (lv == null) { d.classList.add('unk'); return d; }
     var h = Math.max(.12, Math.min(1, (lv - LOW) / (HIGH - LOW)));
     d.style.top = (9 + (1 - h) * 26) + 'px';
+    return d;
+  }
+
+  // What is marked for removal, and the one way to act on it: moved aside into
+  // the pool's .removed/<date>/ folder, never deleted. Asks first.
+  function marked() {
+    var ms = groups.filter(function (g) { return g.remove; });
+    var hit = files.filter(function (x) { return ms.some(function (g) { return x.end > g.start && x.start < g.end; }); });
+    var b = document.getElementById('rmbtn');
+    if (!hit.length) { if (b) b.remove(); return; }
+    if (!b) { b = el('button'); b.id = 'rmbtn'; document.querySelector('header').appendChild(b); }
+    var size = hit.reduce(function (s, x) { return s + x.f.bytes; }, 0);
+    b.textContent = 'Remove marked: ' + hit.length + ' recordings, ' + (size / 1e9).toFixed(2) + ' GB…';
+    b.onclick = function () {
+      if (!confirm('Move ' + hit.length + ' recordings (' + (size / 1e9).toFixed(2) + ' GB) in ' + ms.length +
+                   (ms.length === 1 ? ' marked group' : ' marked groups') + ' into .removed on their drive?\n\n' +
+                   'Nothing is deleted: moving them back undoes it. They will show here as ghosts.')) return;
+      b.disabled = true; b.textContent = 'moving…';
+      fetch('/remove-marked', {method: 'POST'}).then(function (r) { return r.json(); })
+        .then(function (d) { b.remove(); alert('Moved ' + d.moved + ' recordings into .removed.'); tick(); })
+        .catch(function () { b.disabled = false; b.textContent = 'could not move them: see the window that ran fcpm pools'; });
+    };
+  }
+
+  function ghost(g, span0, span, w) {
+    var d = el('div', 'ghost');
+    d.style.left = ((g.start - span0) / span * w) + 'px';
+    d.style.width = ((g.end - g.start) / span * w) + 'px';
+    d.onmouseenter = function () {
+      if (drag) return;
+      tip.textContent = '';
+      tip.appendChild(el('b', null, g.r.name));
+      tip.appendChild(el('span', null, 'removed · was ' + hms(g.start) + '–' + hms(g.end) + ' · ' + dur(g.r.duration)));
+      tip.appendChild(el('span', null, g.r.held === 'Recycle Bin' ? 'in the Recycle Bin: restore it there'
+        : g.r.held ? 'moved aside: ' + g.r.held : 'gone: not in the Recycle Bin or .removed'));
+      tip.style.display = 'block';
+    };
+    d.onmousemove = function (e) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 370) + 'px'; tip.style.top = Math.max(8, e.clientY - 64) + 'px'; };
+    d.onmouseleave = function () { tip.style.display = 'none'; };
     return d;
   }
 
@@ -263,6 +313,7 @@
         var t = el('div', 'tick' + (h % 6 ? ' hour' : '')); t.style.left = (L.w * h / 24) + 'px'; L.track.appendChild(t);
       }
       L.files.forEach(function (x) { L.track.appendChild(meter(frag(x, L.origin, L.end - L.origin, L.w), x)); });
+      ghosts.forEach(function (g) { if (g.start >= L.origin && g.start < L.end) L.track.appendChild(ghost(g, L.origin, L.end - L.origin, L.w)); });
     });
     paintLanes();
   }
@@ -282,13 +333,13 @@
   }
 
   function groupLine(g, first, L, span0, span, w) {
-    var d = el('div', 'grp' + (g.show ? '' : ' tmp')); d.style.color = gcolor(g);
+    var d = el('div', 'grp' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '')); d.style.color = gcolor(g);
     if (g.show) d.style.background = gcolor(g);
     d.title = gname(g) + (g.show ? '' : ' (not yet a show)') + ' · ' + hm(g.start) + '–' + hm(g.end);
     d.onpointerdown = function (e) { e.stopPropagation(); };
     d.onclick = function () { openView(g.start, g.end); };
     if (first) {
-      var n = el('div', 'grpname' + (g.show ? '' : ' tmp'), gname(g)); n.style.color = gcolor(g);
+      var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : ''), (g.remove ? '✕ ' : '') + gname(g)); n.style.color = gcolor(g);
       n.title = 'open this group';
       n.onpointerdown = function (e) { e.stopPropagation(); };
       n.onclick = function () { openView(g.start, g.end); };
@@ -352,6 +403,7 @@
       d.style.left = ((s - v.a) / span * w) + 'px'; d.style.width = Math.max(2, (e - s) / span * w) + 'px';
       winEl.appendChild(d);
     });
+    ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(ghost(g, v.a, span, w)); });
     within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, x.i % 2 ? ' alt' : '')); });
     if (drag && drag.on === 'win') {
       var a = Math.min(drag.a, drag.b), b = Math.max(drag.a, drag.b), s = el('div', 'sel');
@@ -381,29 +433,46 @@
   function every(s) { return s < 60 ? s + ' s' : s < 3600 ? s / 60 + ' min' : s / 3600 + ' h'; }
 
   // Waveforms: each recording's envelope, from the server, drawn on one canvas
-  // in its stage's colour, mirrored about the middle. Asked for as they come on
+  // in its stage's colour, rising from the bottom. Amplified: a peak of STRONG
+  // (about -9 dBFS) reaches the dashed line near the top, so ordinary talk fills
+  // the height and only a strong, forceful voice pokes over the line, drawn
+  // bright. The two channels are laid one over the other, translucent: where
+  // they differ, one pokes out past the other. Asked for as recordings come on
   // screen, a few at a time; kept once had.
   var env = {}, asking = 0, wanted = [];
+  var STRONG = .35, LINE = .8;
   function waves() {
     var cv = document.getElementById('wave');
     if (!cv || !win) return;
     var v = view(), span = v.b - v.a, w = winEl.clientWidth, h = winEl.clientHeight - 44, dpr = devicePixelRatio || 1;
     cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
     var c = cv.getContext('2d'); c.scale(dpr, dpr);
-    var mid = h / 2;
+    var base = h, H = h - 4, lineY = base - LINE * H;
     within(v.a, v.b).forEach(function (x) {
       var x0 = (x.start - v.a) / span * w, x1 = (x.end - v.a) / span * w, pw = x1 - x0;
       var e = env[x.f.path];
       if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
-      c.fillStyle = x.color; c.globalAlpha = x === P.cur ? 1 : x.i % 2 ? .78 : .5;
-      var n = e.length, cols = Math.max(1, Math.round(pw));
-      for (var i = 0; i < cols; i++) {
-        var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
-        for (var j = a; j < b; j++) if (e[j] > pk) pk = e[j];
-        var y = Math.max(.5, Math.sqrt(pk) * mid);   // square root: quiet speech still shows
-        c.fillRect(x0 + i * pw / cols, mid - y, Math.max(1, pw / cols), y * 2);
-      }
+      var chs = e.ch || [e], cols = Math.max(1, Math.round(pw)), cw = Math.max(1, pw / cols);
+      var a0 = x === P.cur ? .62 : x.i % 2 ? .46 : .32;
+      chs.forEach(function (ch) {
+        var n = ch.length;
+        for (var i = 0; i < cols; i++) {
+          var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
+          for (var j = a; j < b; j++) if (ch[j] > pk) pk = ch[j];
+          var y = Math.min(1, pk / STRONG * LINE) * H, xx = x0 + i * pw / cols;
+          c.globalAlpha = a0; c.fillStyle = x.color;
+          c.fillRect(xx, base - y, cw, y);
+          if (pk > STRONG) {   // over the line: forceful
+            c.globalAlpha = .9; c.fillStyle = '#fff';
+            c.fillRect(xx, base - y, cw, y - LINE * H);
+          }
+        }
+      });
     });
+    c.globalAlpha = .45; c.strokeStyle = '#fff'; c.setLineDash([4, 5]); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(0, lineY + .5); c.lineTo(w, lineY + .5); c.stroke();
+    c.setLineDash([]); c.globalAlpha = .55; c.fillStyle = '#c9d1dc'; c.font = '10px Segoe UI, sans-serif';
+    c.fillText('strong voice · peaks over about -9 dBFS', 6, lineY - 4);
     ask();
   }
   function ask() {
@@ -451,9 +520,17 @@
       ns.forEach(function (n) { opts.push({name: n}); opt(n, opts.length - 1, on); });
     }
     opt('new name…', 'new');
+    var any = groups.some(function (g) { return g.end > win.a && g.start < win.b && g.remove; });
+    opt(any ? 'unmark: keep these' : 'mark for removal', any ? 'keep' : 'rm');
     pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
     pick.onchange = function () {
       if (pick.value === 'new') return askName();
+      if (pick.value === 'rm' || pick.value === 'keep') {
+        saves++;
+        return post('/group', {start: win.a, end: win.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
+          .then(function (r) { return r.json(); })
+          .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); marked(); });
+      }
       if (pick.value !== '') save(opts[+pick.value], hit, sound);
     };
     if (over) { pick.style.borderColor = gcolor(over); pick.classList.toggle('tmp', !over.show); }
@@ -517,7 +594,7 @@
     saves++;
     post('/group', {start: win.a, end: win.b, show: as.show || '', name: as.name || '', files: hit.length, sound: sound})
       .then(function (r) { return r.json(); })
-      .then(function (d) { shows = d.shows; groups = d.groups; drawWin(); drawCtl(); paintLanes(); });
+      .then(function (d) { shows = d.shows; groups = d.groups; drawWin(); drawCtl(); paintLanes(); marked(); });
   }
 
   // --- the player: the window's recordings in order, gaps skipped --------
@@ -697,9 +774,10 @@
         if (cur) P.cur = files.filter(function (x) { return x.f.path === cur; })[0] || null;
         var sound = files.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
         document.getElementById('meta').textContent = files.length + ' recordings · ' + hours(sound) + ' of sound · ' +
-          groups.length + (groups.length === 1 ? ' group' : ' groups');
+          groups.length + (groups.length === 1 ? ' group' : ' groups') + (ghosts.length ? ' · ' + ghosts.length + ' removed' : '');
+        marked();
         var known = files.filter(function (x) { return x.f.level != null; }).length;   // levels arriving redraw the nights
-        var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth + ':' + known;
+        var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth + ':' + known + ':' + ghosts.length;
         if (s !== sig) { sig = s; drawLanes(); } else paintLanes();
         if (win) { drawWin(); if (!P.playing) drawCtl(); }
       })

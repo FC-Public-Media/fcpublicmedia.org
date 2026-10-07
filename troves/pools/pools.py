@@ -288,8 +288,136 @@ def scan(cfg):
                 p["rows"].append({"id": d.name, "label": label,
                                   "path": str(d), "stage": stage, "files": files, "other": other, "used": b})
             p.update(capacity=cap, used=used, free=max(0, cap - used))
+            p["base"] = str(base)
         out["pools"].append(p)
+    out["removed"] = remember_seen(out)
     return out
+
+
+# --- what was here and is not now --------------------------------------------
+# Every recording a folder pool has shown is remembered (seen.json, beside the
+# groups). One that has gone from a folder that is still there is a ghost:
+# moved aside into .removed (by this page or by hand), or gone. A pool that is
+# not reachable makes no ghosts: its recordings are not gone, only out of sight.
+
+_seen = None
+
+
+def seen_file():
+    return groups_file().with_name("seen.json")
+
+
+def remember_seen(out):
+    global _seen
+    if _seen is None:
+        try:
+            _seen = json.loads(seen_file().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _seen = {}
+    here, changed, removed = set(), False, []
+    for p in out["pools"]:
+        if p["kind"] != "folder" or not p.get("base"):
+            continue
+        for r in p["rows"]:
+            for f in r.get("files") or []:
+                here.add(f["path"])
+                if f["path"] not in _seen:
+                    _seen[f["path"]] = {k: f[k] for k in ("name", "start", "end", "duration", "bytes")}
+                    _seen[f["path"]]["base"] = p["base"]
+                    changed = True
+                elif f.get("level") is not None and _seen[f["path"]].get("level") is None:
+                    _seen[f["path"]]["level"] = f["level"]; changed = True
+    for path, f in _seen.items():
+        if path in here or not os.path.isdir(f.get("base", "")) or not os.path.isdir(os.path.dirname(path)):
+            continue
+        aside = Path(f["base"]) / ".removed"
+        held = next((str(c) for c in aside.rglob(f["name"])), None) if aside.is_dir() else None
+        removed.append(dict(f, path=path, held=held))
+    listed = {r["path"] for r in removed}
+    bases = {p["base"] for p in out["pools"] if p["kind"] == "folder" and p.get("base")}
+    for b in bases:
+        for f in recycled(b):
+            if f["path"] not in listed and f["path"] not in here:
+                removed.append(f)
+    if changed:
+        tmp = seen_file().with_suffix(".tmp")
+        tmp.write_text(json.dumps(_seen), encoding="utf-8")
+        os.replace(tmp, seen_file())
+    return removed
+
+
+_bin = {}   # $I file -> what it says, read once
+
+
+def recycled(base):
+    """Recordings from under base that sit in its drive's Recycle Bin. Windows
+    keeps, per deleted file, an $I record (original path, size, when) beside
+    the file itself ($R, with its original times), so the ghost goes exactly
+    where the recording was."""
+    out, root = [], Path(Path(base).anchor) / "$RECYCLE.BIN"
+    try:
+        sids = [d for d in root.iterdir() if d.is_dir()]
+    except OSError:
+        return out
+    for sid in sids:
+        try:
+            infos = list(sid.glob("$I*"))
+        except OSError:
+            continue
+        for i in infos:
+            if str(i) not in _bin:
+                rec = None
+                try:
+                    b = i.read_bytes()
+                    ver, size, ft = struct.unpack("<qqq", b[:24])
+                    path = (b[28:28 + 2 * struct.unpack("<i", b[24:28])[0]] if ver == 2 else b[24:24 + 520]).decode("utf-16-le").split("\0")[0]
+                    r = i.with_name("$R" + i.name[2:])
+                    if Path(path).suffix.lower() in AUDIO and r.is_file():
+                        st = r.stat()
+                        d = length_of(r, st) if r.suffix.lower() in (".aif", ".aiff", ".wav") else None
+                        rec = {"name": Path(path).name, "path": path, "bytes": size, "end": st.st_mtime,
+                               "start": st.st_mtime - (d or 0), "duration": d, "held": "Recycle Bin",
+                               "deleted": ft / 1e7 - 11644473600}
+                except (OSError, struct.error, UnicodeDecodeError):
+                    rec = None
+                _bin[str(i)] = rec
+            rec = _bin[str(i)]
+            if rec and os.path.normcase(rec["path"]).startswith(os.path.normcase(str(base))):
+                out.append(rec)
+    return out
+
+
+def remove_marked(cfg):
+    """Move every recording inside a group marked for removal into its pool's
+    .removed/<date>/ folder, keeping its place below the pool. Nothing is
+    deleted: moving it back undoes it. Returns what moved."""
+    data = scan(cfg)
+    marked = [g for g in groups() if g.get("remove")]
+    moved, size = 0, 0
+    day = datetime.now().strftime("%Y-%m-%d")
+    for p in data["pools"]:
+        if p["kind"] != "folder" or not p.get("base"):
+            continue
+        base = Path(p["base"])
+        for r in p["rows"]:
+            for f in r.get("files") or []:
+                end = f["start"] + (f["duration"] or 0)
+                if f["state"] == "live" or not any(end > g["start"] and f["start"] < g["end"] for g in marked):
+                    continue
+                src = Path(f["path"])
+                dst = base / ".removed" / day / src.relative_to(base)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(src, dst)
+                moved += 1
+                size += f["bytes"]
+    gs = groups()
+    for g in gs:
+        if g.get("remove"):
+            g["remove"], g["removed"] = False, datetime.now().astimezone().isoformat(timespec="seconds")
+    save_groups(gs)
+    with _lock:
+        _last["at"] = 0
+    return {"moved": moved, "bytes": size}
 
 
 # --- the page, and the one thing it may ask of this machine: open Explorer --
@@ -340,6 +468,17 @@ def group(body):
     has identified yet ("unknown 1"), replacing any group it overlaps; or
     ungroup it, when neither is given."""
     start, end = float(body["start"]), float(body["end"])
+    if "remove" in body:   # mark (or unmark) the groups this stretch covers; a stretch with none becomes one
+        gs, hit = groups(), False
+        for g in gs:
+            if g["end"] > start and g["start"] < end:
+                g["remove"], hit = bool(body["remove"]), True
+        if not hit and body["remove"]:
+            gs.append({"show": None, "name": "to remove", "start": start, "end": end, "remove": True,
+                       "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
+                       "at": datetime.now().astimezone().isoformat(timespec="seconds")})
+        save_groups(gs)
+        return gs
     show, name = str(body.get("show") or ""), " ".join(str(body.get("name") or "").split())[:60]
     if not end > start:
         raise ValueError("empty stretch")
@@ -392,25 +531,27 @@ _peaks = {}   # (path, size, mtime) -> 512 loudness buckets, 0..1: an envelope i
 
 
 def peaks(path, n=512):
-    """A recording's envelope: the loudest sample in each of n slices, both
-    channels together, 0..1. 16-bit PCM only; anything else is flat."""
+    """A recording's envelope: the loudest sample in each of n slices, per
+    channel, 0..1: {"ch": [[...], [...]]}. 16-bit PCM only; else flat."""
     st = os.stat(path)
     key = (path, st.st_size, st.st_mtime)
     if key not in _peaks:
         import array
         body = _wavs.get(path) or as_wav(path)   # not wav_of: leave the player's cache alone
-        bits = struct.unpack("<H", body[34:36])[0]
-        out = [0.0] * n
+        bits, chans = struct.unpack("<H", body[34:36])[0], struct.unpack("<H", body[22:24])[0] or 1
+        out = []
         if bits == 16:
             a = array.array("h")
             a.frombytes(body[44:44 + (len(body) - 44) // 2 * 2])
-            if len(a):
-                size = max(1, -(-len(a) // n))
+            for c in range(min(chans, 2)):
+                ch, env = a[c::chans], [0.0] * n
+                size = max(1, -(-len(ch) // n))
                 for i in range(n):
-                    s = a[i * size:(i + 1) * size]
+                    s = ch[i * size:(i + 1) * size]
                     if s:
-                        out[i] = round(max(max(s), -min(s)) / 32768, 3)
-        _peaks[key] = out
+                        env[i] = round(max(max(s), -min(s)) / 32768, 3)
+                out.append(env)
+        _peaks[key] = {"ch": out or [[0.0] * n]}
     return _peaks[key]
 
 
@@ -498,6 +639,12 @@ def serve(cfg):
                 pass   # the player moved on
 
         def do_POST(self):
+            if self.path == "/remove-marked":
+                n = int(self.headers.get("Content-Length", 0)); self.rfile.read(n)
+                try:
+                    return self.send(200, json.dumps(remove_marked(cfg)).encode(), "application/json")
+                except OSError as e:
+                    return self.send(500, str(e).encode(), "text/plain")
             if self.path not in ("/open", "/group"):
                 return self.send(404, b"", "text/plain")
             try:
