@@ -107,10 +107,12 @@
   #win .cut .dots.rm { color: #f07a6e; }
   /* a clip's state, where its waveform is not: loading flows gently backwards; unreadable and unplayable lie still */
   #win .state { position: absolute; bottom: 24px; height: 4px; z-index: 1; pointer-events: auto; border-radius: 2px; }
-  #win .state.loading { background: repeating-linear-gradient(90deg, rgba(201,209,220,.5) 0 6px, transparent 6px 14px);
-                        background-size: 28px 4px; animation: flowback 2.8s linear infinite; opacity: .7; }
+  /* loading is the peaks, not here yet: a flat dotted line at talk height, where the trace will be, flowing back */
+  #win .state.loading { bottom: auto; top: calc(22px + (100% - 44px) * .38); height: 4px;
+                        background: radial-gradient(circle, rgba(201,209,220,.75) 1.3px, transparent 1.8px) 0 50% / 9px 4px repeat-x;
+                        animation: flowback 2.2s linear infinite; opacity: .8; }
   #win .state.unreadable, #win .state.unplayable { background: repeating-linear-gradient(90deg, rgba(220,110,100,.75) 0 2px, transparent 2px 6px); }
-  @keyframes flowback { from { background-position: 0 0; } to { background-position: -28px 0; } }
+  @keyframes flowback { from { background-position: 0 50%; } to { background-position: -9px 50%; } }
   /* the clip playing: the same flow, gently forward, in its own colour, exactly as wide as the clip */
   #win .state.playing { pointer-events: none; opacity: .95;
                         background: radial-gradient(circle, #ff5a4f 1.5px, transparent 2px) 0 50% / 9px 4px repeat-x;
@@ -685,8 +687,10 @@
     return [14, Math.min(16, 3 + 9 * (1 / z - 1))];
   }
 
-  // The clip playing: red dots flow forward along its peaks, on a layer of its
-  // own redrawn each frame, so nothing else on the timeline moves.
+  // The clip playing: its traced line's own dashes march forward along its
+  // peaks, a marquee, in its colour, on a layer of its own redrawn each frame,
+  // so nothing else on the timeline moves. (Near 1x, where the line is solid,
+  // the playing clip still gets dashes, to have something to march.)
   var NOW = null;
   function drawNow(ms) {
     var cv = document.getElementById('wavenow');
@@ -700,8 +704,10 @@
     if (!NOW || !P.playing || NOW.pts.length < 2) return;
     c.beginPath(); c.moveTo(NOW.pts[0][0], NOW.pts[0][1]);
     NOW.pts.forEach(function (q) { c.lineTo(q[0], q[1]); });
-    c.setLineDash([0.01, 8]); c.lineDashOffset = -((ms || performance.now()) / 1000 * 16);
-    c.lineCap = 'round'; c.lineWidth = 3.2; c.strokeStyle = '#ff5a4f'; c.stroke();
+    var dash = dashes(); if (!dash.length) dash = [9, 5];
+    var period = dash[0] + dash[1];
+    c.setLineDash(dash); c.lineDashOffset = -(((ms || performance.now()) / 1000 * 18) % period);
+    c.lineJoin = 'round'; c.lineWidth = 1.8; c.strokeStyle = NOW.colour || '#c9d1dc'; c.stroke();
   }
 
   function waves() {
@@ -770,9 +776,11 @@
       });
       var sm = ys.map(function (y, i) { return ((i > 0 ? ys[i - 1] : y) + 2 * y + (i < ys.length - 1 ? ys[i + 1] : y)) / 4; });
       var pts = sm.map(function (y, i) { return [r.x0 + (i + .5) * bw, base - y * H]; });
+      var hold = null;
       if (!quiet && P.cur && r.clips.some(function (k) { return k.x === P.cur; })) {
         var c0 = tx(P.cur.start), c1 = tx(P.cur.end);
-        NOW = {pts: pts.filter(function (q) { return q[0] >= c0 && q[0] <= c1; }), w: w, h: h};
+        NOW = {pts: pts.filter(function (q) { return q[0] >= c0 && q[0] <= c1; }), w: w, h: h, colour: colour};
+        if (P.playing) hold = [c0, c1];   // its dashes march on a layer of their own; the still ones step aside
       }
       function line(cont) {   // cont: carry on the shape already begun (a fill), not start another
         if (cont) c.lineTo(r.x0, pts[0][1]); else c.moveTo(r.x0, pts[0][1]);
@@ -786,7 +794,10 @@
       // the path itself, traced along the peaks
       c.beginPath(); line();
       c.lineJoin = 'round'; c.lineWidth = quiet ? 1 : 1.6; c.strokeStyle = rgba(colour, quiet ? .45 : .95);
-      c.setLineDash(quiet ? [] : dashes()); c.stroke(); c.setLineDash([]);
+      c.setLineDash(quiet ? [] : dashes());
+      if (hold) { c.save(); c.beginPath(); c.rect(0, 0, hold[0], h); c.rect(hold[1], 0, w - hold[1], h); c.clip(); c.beginPath(); line(); }
+      c.stroke(); c.setLineDash([]);
+      if (hold) c.restore();
       if (!quiet) {   // over the strong-voice line: bright
         c.save(); c.beginPath(); c.rect(r.x0, 0, r.x1 - r.x0, lineY); c.clip();
         c.beginPath(); c.moveTo(r.x0, base); line(true); c.lineTo(r.x1, base); c.closePath();
