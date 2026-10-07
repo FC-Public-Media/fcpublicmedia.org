@@ -248,16 +248,18 @@ def save_groups(gs):
 
 
 def group(body):
-    """Assign [start, end] to a show, replacing any group it overlaps; or
-    ungroup it, when show is empty."""
-    start, end, show = float(body["start"]), float(body["end"]), str(body.get("show") or "")
+    """Assign [start, end] to a show, or to a provisional name for what nobody
+    has identified yet ("unknown 1"), replacing any group it overlaps; or
+    ungroup it, when neither is given."""
+    start, end = float(body["start"]), float(body["end"])
+    show, name = str(body.get("show") or ""), " ".join(str(body.get("name") or "").split())[:60]
     if not end > start:
         raise ValueError("empty stretch")
     if show and show not in [s["slug"] for s in shows()]:
         raise ValueError("no such show")
     gs = [g for g in groups() if g["end"] <= start or g["start"] >= end]
-    if show:
-        gs.append({"show": show, "start": start, "end": end,
+    if show or name:
+        gs.append({"show": show or None, "name": None if show else name, "start": start, "end": end,
                    "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
                    "at": datetime.now().astimezone().isoformat(timespec="seconds")})
     save_groups(gs)
@@ -500,7 +502,7 @@ if __name__ == "__main__":
         titles = {s["slug"]: s["title"] for s in shows()}
         for g in groups():
             a, b = datetime.fromtimestamp(g["start"]), datetime.fromtimestamp(g["end"])
-            print(f"{titles.get(g['show'], g['show']):24} {a:%a %Y-%m-%d %H:%M} -> {b:%a %H:%M}"
+            print(f"{(titles.get(g['show']) if g.get('show') else '~' + (g.get('name') or '?')):24} {a:%a %Y-%m-%d %H:%M} -> {b:%a %H:%M}"
                   f"  {g['files']:5} files  {g['sound'] / 3600:4.1f} h sound")
         print(f"({groups_file()})")
     else:

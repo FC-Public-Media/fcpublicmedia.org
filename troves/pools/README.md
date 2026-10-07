@@ -45,14 +45,18 @@ and the nights with nothing show for what they are.
 **Dragging along time sets a window**, the way text is selected: press, drag,
 let go, carrying on into the next lane as a line of text does. The window is
 that stretch at full width, docked below, snapped to the recordings it covers.
-It is the zoom: drag inside it to look closer, Backspace to back out, Esc to
-close. It is also a player, silent until `m` (or the button) turns sound on:
+It is the zoom: drag inside it to look closer, drag either edge's handle (in
+the window or on the nights) to adjust it, or turn the wheel over it to zoom
+about the pointer. Backspace returns to the previous view, whatever changed
+it; Esc closes. It is also a player, silent until `m` (or the button) turns sound on:
 click to place the playhead, Space to play. It runs through the recordings in
 order at real speed and skips the gaps, which have no bytes. Browsers cannot
 play AIFF, so `/audio` hands the page each recording as WAV.
 
 The window can be grouped under a show from its bar, one button per show FCPM
-has a record of (`site/_shows/`). Click a group's line to open its window,
+has a record of (`site/_shows/`), or under a provisional name for what nobody
+has identified yet (`+ new group`: "unknown 1", editable). Provisional groups
+are dashed and italic, and their names come back as buttons to reuse. Click a group's line to open its window,
 to change it or ungroup it. Double-click a recording to open it in Explorer.
 A recording on two pools (the same name and size) counts once; its tooltip
 says where else it is.
