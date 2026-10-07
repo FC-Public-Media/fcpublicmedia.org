@@ -132,6 +132,20 @@ recognizer, nothing installed, and rough on a room of people. It proves the
 leg; a real engine (Whisper on the bay's RTX 4080, Audition's own, or Audio
 Hijack's Transcribe on station-node) arrives the bay's way before it is named.
 
+## The manifest
+
+The manifest button in the window's strip writes down what the window did, so
+it can be proved later: every recording in the window by SHA-256, with its part
+in the edit (played; short, skipped; silenced, marked for removal; removed,
+hashed where it still exists in the Recycle Bin or `.removed`), the cuts and
+their lengths, the settings that made the edit, the groups the window touches,
+and the transcription results there, each by hash. Then the manifest's own
+SHA-256, over its canonical form (keys sorted, no spaces, without that line):
+the one value to timestamp or seal. Revealing any one recording later can be
+checked against it without revealing the others; what was left out is listed
+as surely as what was kept. Kept in `manifests/` beside the jobs, on this
+computer only, and downloaded exactly as written.
+
 ## Next: the window as a dispatch hub (Autumn, 2026-10-07)
 
 The window is where calls to Audition are made, or at least where what is

@@ -376,7 +376,7 @@ def recycled(base):
                         st = r.stat()
                         d = length_of(r, st) if r.suffix.lower() in (".aif", ".aiff", ".wav") else None
                         rec = {"name": Path(path).name, "path": path, "bytes": size, "end": st.st_mtime,
-                               "start": st.st_mtime - (d or 0), "duration": d, "held": "Recycle Bin",
+                               "start": st.st_mtime - (d or 0), "duration": d, "held": "Recycle Bin", "file": str(r),
                                "deleted": ft / 1e7 - 11644473600}
                 except (OSError, struct.error, UnicodeDecodeError):
                     rec = None
@@ -484,6 +484,91 @@ def transcribe(cfg, body):
     save()
     threading.Thread(target=run, daemon=True).start()
     return {"id": jid, "engine": engine, "total": len(clips)}
+
+
+# --- the manifest: what the window did, provably ------------------------------
+# Every recording in the window by SHA-256, with its part in the edit (played,
+# skipped as short, silenced as marked, removed), the cuts, the settings, the
+# groups and the transcription events; then the manifest's own SHA-256, the one
+# value to timestamp or seal. A recording revealed later can be checked against
+# it without revealing any other. Kept beside the jobs (manifests/), on this
+# computer only: like the transcripts, it is private.
+
+_hashes = {}   # "path|size|mtime" -> sha256, read once
+_hash_lock = threading.Lock()
+
+
+def sha256_of(path):
+    import hashlib
+    st = os.stat(path)
+    key = f"{path}|{st.st_size}|{int(st.st_mtime)}"
+    with _hash_lock:
+        if not _hashes:
+            try:
+                _hashes.update(json.loads(groups_file().with_name("hashes.json").read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                pass
+        if key in _hashes:
+            return _hashes[key]
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    with _hash_lock:
+        _hashes[key] = h.hexdigest()
+    return _hashes[key]
+
+
+def manifest(cfg, body):
+    a, b = float(body["a"]), float(body["b"])
+    data = current(cfg)
+    items, seen = [], set()
+    for it in body.get("items") or []:
+        path = str(it.get("path", ""))
+        if not known_path(data, path) or path in seen:
+            continue
+        seen.add(path)
+        st = os.stat(path)
+        items.append({"name": Path(path).name, "role": it.get("role"), "start": it.get("start"), "end": it.get("end"),
+                      "bytes": st.st_size, "sha256": sha256_of(path)})
+    removed = []
+    for g in data.get("removed") or []:
+        if g["end"] <= a or g["start"] >= b:
+            continue
+        held = g.get("file") or (g.get("held") if g.get("held") and g.get("held") != "Recycle Bin" else None)
+        removed.append({"name": g["name"], "role": "removed", "start": g["start"], "end": g["end"], "bytes": g.get("bytes"),
+                        "where": "Recycle Bin" if g.get("held") == "Recycle Bin" else ".removed" if held else "gone",
+                        "sha256": sha256_of(held) if held and os.path.isfile(held) else None})
+    heard = []
+    for f in sorted(jobs_dir().glob("*.result.json")):
+        try:
+            r = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if any(s["t"] + s["d"] > a and s["t"] < b for s in r.get("segments") or []):
+            heard.append({"job": r["id"], "engine": r.get("engine"), "phrases": len(r.get("segments") or []),
+                          "failed": len(r.get("errors") or []), "sha256": sha256_of(str(f))})
+    gs = [{k: g.get(k) for k in ("show", "name", "start", "end", "remove", "removed", "transcribe", "events")}
+          for g in groups() if g["end"] > a and g["start"] < b]
+    m = {"made": datetime.now().astimezone().isoformat(timespec="seconds"), "machine": profile(),
+         "window": {"start": a, "end": b,
+                    "from": datetime.fromtimestamp(a).astimezone().isoformat(timespec="seconds"),
+                    "to": datetime.fromtimestamp(b).astimezone().isoformat(timespec="seconds")},
+         "settings": body.get("settings") or {}, "cuts": body.get("cuts") or [],
+         "recordings": items, "removed": removed, "groups": gs, "transcription": heard}
+    import hashlib
+    canon = json.dumps(m, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    m["sha256"] = hashlib.sha256(canon).hexdigest()   # of the manifest without this line, keys sorted, no spaces
+    d = groups_file().with_name("manifests")
+    d.mkdir(exist_ok=True)
+    name = datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + m["sha256"][:12] + ".json"
+    (d / name).write_text(json.dumps(m, indent=1, ensure_ascii=False), encoding="utf-8")
+    with _hash_lock:
+        tmp = groups_file().with_name("hashes.tmp")
+        tmp.write_text(json.dumps(_hashes), encoding="utf-8")
+        os.replace(tmp, groups_file().with_name("hashes.json"))
+    m["file"] = name
+    return m
 
 
 def transcripts():
@@ -693,9 +778,11 @@ def wav_of(path):
 
 
 def known_path(data, path):
-    roots = [r["path"] for p in data["pools"] for r in p["rows"]]
+    # A share's root comes with a trailing separator (\\server\share\); trim it,
+    # or nothing on a depot share is ever inside it.
+    roots = [os.path.normcase(r["path"]).rstrip("\\/") for p in data["pools"] for r in p["rows"]]
     rp = os.path.normcase(os.path.abspath(path))
-    return any(rp == os.path.normcase(r) or rp.startswith(os.path.normcase(r) + os.sep) for r in roots)
+    return any(r and (rp == r or rp.startswith(r + os.sep)) for r in roots)
 
 
 def serve(cfg):
@@ -767,6 +854,12 @@ def serve(cfg):
                 pass   # the player moved on
 
         def do_POST(self):
+            if self.path == "/manifest":
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                    return self.send(200, json.dumps(manifest(cfg, body), ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+                except (ValueError, KeyError, TypeError, OSError) as e:
+                    return self.send(400, str(e).encode(), "text/plain")
             if self.path == "/transcribe":
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")

@@ -269,6 +269,8 @@
   ICONS.zoom = '<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
   ICONS.speech = '<path d="M4 5h16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 16h-9l-4.5 3.5V16H4a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 4 5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
                  '<path d="M6.5 9h11M6.5 12h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
+  ICONS.manifest = '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
+                   '<path d="M9 11h7M9 14h7M9 17h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M15 3v4h4" fill="none" stroke="currentColor" stroke-width="1.4"/>';
   ICONS.dot = '<circle cx="12" cy="12" r="3.2" fill="currentColor"/>';
   ICONS.files = '<rect x="4" y="5" width="3" height="14" rx="1" fill="currentColor"/><rect x="9" y="8" width="3" height="11" rx="1" fill="currentColor"/><rect x="14" y="4" width="3" height="15" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="9" rx="1" fill="currentColor"/>';
   ICONS.grid = '<path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8v8M15.5 8v8" stroke="currentColor" stroke-width=".9" opacity=".6"/>';
@@ -919,6 +921,9 @@
     tr.classList.add('tog'); if (running()) tr.classList.add('on'); if (!txMarks.length && !running()) tr.classList.add('idle');
     tr.onclick = function () { tr.blur(); if (!running()) sendTranscription(); };
     strip.appendChild(tr);
+    var mf = icon('manifest', 'Write a manifest of this window: every recording in it by SHA-256 and its part in the edit (played, short, silenced, removed), the cuts, the settings, the groups and the transcriptions, and the manifest\u2019s own SHA-256 to timestamp or seal. Kept on this computer; downloaded too');
+    mf.classList.add('tog'); mf.onclick = function () { mf.blur(); writeManifest(); };
+    strip.appendChild(mf);
     ctl.appendChild(strip);
 
     // The readout, in the selection's own look: where the playhead is, the
@@ -947,6 +952,8 @@
     var job = running();
     if (job) badge('speech', job.done + '/' + job.total, 'transcribing (' + job.engine + '): ' + job.done + ' of ' + job.total + ' recordings heard');
     else { var nHeard = said(win.a, win.b).length; if (nHeard) badge('speech', String(nHeard), nHeard + ' things heard in this window (' + engines() + ')'); }
+    if (lastManifest && lastManifest.window.start === win.a && lastManifest.window.end === win.b)
+      badge('manifest', lastManifest.sha256.slice(0, 12), 'manifest written ' + lastManifest.made.slice(11, 19) + ' (' + lastManifest.file + '), SHA-256 ' + lastManifest.sha256);
     var nMiss = unheard(win.a, win.b);
     if (nMiss) badge('silence', String(nMiss), nMiss + (nMiss === 1 ? ' recording' : ' recordings') + ' here could not be heard by the engine: transcribe again to retry them');
     ctl.appendChild(el('span', 'gap'));
@@ -1064,6 +1071,30 @@
       .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } if (running()) setTimeout(loadHeard, 2500); })
       .catch(function () {});
   }
+  // The manifest: what this window did, by hash. The page says each recording's
+  // part, as the player sees it; the server hashes them and the whole.
+  var lastManifest = null;
+  function writeManifest() {
+    if (!M) layout();
+    var items = within(win.a, win.b).map(function (x) {
+      return {path: x.f.path, start: x.start, end: x.end,
+              role: inCut(x) ? (silenced(x) ? 'silenced, cut' : 'short, cut') : silenced(x) ? 'silenced' : short(x) ? 'short' : 'played'};
+    });
+    var cuts = (M.cut || []).map(function (c) { return {start: c.t0, end: c.t1, seconds: Math.round((c.t1 - c.t0) * 10) / 10}; });
+    post('/manifest', {a: win.a, b: win.b, settings: S, items: items, cuts: cuts})
+      .then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error(t); return t; }); })
+      .then(function (text) {
+        // the download is the server's text exactly: re-serialising it here would change
+        // how numbers are written (300.0 becomes 300) and so the hash it carries
+        var m = JSON.parse(text);
+        lastManifest = m; drawCtl();
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([text], {type: 'application/json'}));
+        a.download = m.file; document.body.appendChild(a); a.click(); a.remove();
+      })
+      .catch(function (e) { P.err = 'manifest not written: ' + e.message; drawCtl(); });
+  }
+
   function marksHere() {   // the ranges marked for transcription that the window covers, clipped to it
     return groups.filter(function (g) { return g.transcribe && g.end > win.a && g.start < win.b; })
       .map(function (g) { return {start: Math.max(g.start, win.a), end: Math.min(g.end, win.b)}; });
