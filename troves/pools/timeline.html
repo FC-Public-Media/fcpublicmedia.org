@@ -70,6 +70,9 @@
   /* in the window a recording's body is only a faint field (and its seam); the waveform is the picture */
   #win .f { top: 22px; bottom: 22px; opacity: .07; box-shadow: inset 1px 0 0 rgba(0,0,0,.75); }
   #win .f.alt { opacity: .13; }
+  /* skipped: out of play, at any size. A grey hatch over the whole body, so even
+     a clip whose waveform is a sliver reads as disabled */
+  #win .f.skip { opacity: .5; background: repeating-linear-gradient(135deg, #8a8d94 0 2px, #2c2f35 2px 6px) !important; }
   /* a ghost: a recording that was here and is not now */
   .ghost { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border: 1px dashed rgba(240,120,110,.55); border-radius: 1px; }
   #win .ghost { top: 22px; bottom: 22px; }
@@ -415,7 +418,7 @@
       winEl.appendChild(d);
     });
     ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(ghost(g, v.a, span, w)); });
-    within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, x.i % 2 ? ' alt' : '')); });
+    within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, (x.i % 2 ? ' alt' : '') + (skipped(x) ? ' skip' : ''))); });
     if (drag && drag.on === 'win') {
       var a = Math.min(drag.a, drag.b), b = Math.max(drag.a, drag.b), s = el('div', 'sel');
       s.style.left = ((a - v.a) / span * w) + 'px'; s.style.width = Math.max(2, (b - a) / span * w) + 'px';
@@ -451,7 +454,7 @@
   // they differ, one pokes out past the other. Asked for as recordings come on
   // screen, a few at a time; kept once had.
   var env = {}, asking = 0, wanted = [];
-  var STRONG = .35, LINE = .8;
+  var STRONG = .35, LINE = .8, SKIPPED = '#7d8087';   // a skipped clip is neutral grey, not a faint blue
   function waves() {
     var cv = document.getElementById('wave');
     if (!cv || !win) return;
@@ -465,14 +468,14 @@
       var e = env[x.f.path];
       if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
       var chs = e.ch || [e], cols = Math.max(1, Math.round(pw)), cw = Math.max(1, pw / cols);
-      var a0 = skipped(x) ? .1 : x === P.cur ? .62 : x.i % 2 ? .46 : .32;
+      var off = skipped(x), a0 = off ? .55 : x === P.cur ? .62 : x.i % 2 ? .46 : .32;
       chs.forEach(function (ch) {
         var n = ch.length;
         for (var i = 0; i < cols; i++) {
           var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
           for (var j = a; j < b; j++) if (ch[j] > pk) pk = ch[j];
           var y = Math.min(1, pk * gain) * H, xx = x0 + i * pw / cols;
-          c.globalAlpha = a0; c.fillStyle = x.color;
+          c.globalAlpha = a0; c.fillStyle = off ? SKIPPED : x.color;
           c.fillRect(xx, base - y, cw, y);
           if (pk > STRONG && !skipped(x)) {   // over the line: forceful
             c.globalAlpha = .9; c.fillStyle = '#fff';
