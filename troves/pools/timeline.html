@@ -58,7 +58,12 @@
   #ctl select.pick option, #ctl select.pick optgroup { background: #10141c; color: var(--ink); font-style: normal; }
   #ctl input.name { font: inherit; color: var(--ink); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.4);
                     border-radius: 4px; padding: 4px 8px; width: 160px; }
-  .none { height: 18px; padding-left: var(--label); color: var(--dim); font-size: 10px; border-top: 1px solid var(--faint); line-height: 18px; }
+  .miss { height: 9px; margin: 0 18px 0 var(--label); border-top: 1px solid var(--faint);
+          background: linear-gradient(rgba(255,255,255,.16), rgba(255,255,255,.16)) center / 100% 3px no-repeat; }
+  .lane .lab { cursor: pointer; }
+  .lane .lab:hover b { text-decoration: underline; }
+  .axis .lab.all { cursor: pointer; color: var(--dim); font-size: 11px; justify-content: center; }
+  .axis .lab.all:hover { color: var(--ink); text-decoration: underline; }
 
   /* the window: a stretch, at full width, that plays */
   #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 24vh; min-height: 170px;
@@ -384,18 +389,23 @@
   function drawLanes() {
     main.textContent = '';
     var axis = el('div', 'axis'), at = el('div', 'track');
-    axis.appendChild(el('div', 'lab')); axis.appendChild(at); main.appendChild(axis);
+    var all = el('div', 'lab all', 'all');
+    all.title = 'every night as one window: compressed, a timeline to shuttle on';
+    all.onclick = function () { if (files.length) setWindow(extent().a, extent().b); };
+    axis.appendChild(all); axis.appendChild(at); main.appendChild(axis);
     var prev = null;
     lanes.forEach(function (L) {
-      if (prev && L.origin > next(prev.origin) + 3600) {
-        var n = Math.round((L.origin - next(prev.origin)) / 86400);
-        main.appendChild(el('div', 'none', n + (n === 1 ? ' night' : ' nights') + ', nothing'));
+      for (var o = next(prev ? prev.origin : L.origin); prev && o < L.origin - 3600; o = next(o)) {
+        var d = el('div', 'miss'); d.title = dayname(o) + ' \u2192 ' + wd(next(o)) + ': nothing recorded';
+        main.appendChild(d);   // a night with nothing: a hard divider of its own
       }
       prev = L;
       var lane = el('div', 'lane'), lab = el('div', 'lab'), tr = el('div', 'track');
       var sound = L.files.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
       lab.appendChild(el('b', null, dayname(L.origin) + ' → ' + wd(L.end)));
       lab.appendChild(el('small', null, hours(sound) + ' sound · ' + L.files.length));
+      lab.title = 'open this whole night';
+      lab.onclick = (function (L) { return function () { setWindow(L.origin, L.end); }; })(L);
       lane.appendChild(lab); lane.appendChild(tr); main.appendChild(lane);
       L.track = tr;
     });
@@ -851,6 +861,12 @@
 
   function openView(a, b) { setView(a, b); }
 
+  function extent() {   // everything there is: the first recording (or ghost) to the last
+    var a = Infinity, b = -Infinity;
+    files.concat(ghosts).forEach(function (x) { if (x.start < a) a = x.start; if (x.end > b) b = x.end; });
+    return {a: a, b: b};
+  }
+
   function closeWindow() {
     stop(); win = null; views = []; P.t = null; P.cur = null;
     dock.style.display = 'none'; document.documentElement.style.setProperty('--dock', '0px');
@@ -1046,7 +1062,12 @@
     e.preventDefault();
     var t = winTime(e), f = Math.exp((e.deltaMode ? e.deltaY * 40 : e.deltaY) * 0.0015);
     var a = t - (t - win.a) * f, b = t + (win.b - t) * f;
-    if (b - a < 1 || b - a > 3 * 86400) return;
+    var X = extent(), pad = (X.b - X.a) * .03;
+    if (b - a < 1) return;
+    if (b - a > X.b - X.a + 2 * pad) { a = X.a - pad; b = X.b + pad; }   // out no further than everything there is
+    if (a < X.a - pad) { b += X.a - pad - a; a = X.a - pad; }
+    if (b > X.b + pad) { a -= b - X.b - pad; b = X.b + pad; }
+    if (Math.abs(a - win.a) < .01 && Math.abs(b - win.b) < .01) return;
     if (!wheeling) remember();
     clearTimeout(wheeling); wheeling = setTimeout(function () { wheeling = 0; }, 450);
     setView(a, b, true);
