@@ -1001,9 +1001,11 @@
     opt(any ? 'unmark: keep these' : 'mark for removal', any ? 'keep' : 'rm');
     var anyTx = groups.some(function (g) { return g.end > win.a && g.start < win.b && g.transcribe; });
     opt(anyTx ? 'unmark: no transcription' : 'mark for transcription', anyTx ? 'untx' : 'tx');
+    if (over) opt('ungroup', 'ungroup');   // in the list, not a button of its own: the bar keeps its room
     pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
     pick.onchange = function () {
       if (pick.value === 'new') return askName();
+      if (pick.value === 'ungroup') return save({}, hit, sound);
       if (pick.value === 'tx' || pick.value === 'untx') {
         saves++;
         return post('/group', {start: win.a, end: win.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
@@ -1033,7 +1035,6 @@
       };
       ctl.replaceChild(f, pick); f.focus(); f.select();
     }
-    if (over) { var u = el('button', null, 'Ungroup'); u.onclick = function () { save({}, hit, sound); }; ctl.appendChild(u); }
     var keys = el('span', 'badge keys', '?');
     keys.title = 'drag: look closer \u00b7 drag an edge: adjust \u00b7 wheel: zoom \u00b7 backspace: previous view \u00b7 esc: close \u00b7 space: play \u00b7 m: sound \u00b7 ctrl-click, right-click or hold: play exactly here';
     ctl.appendChild(keys);
