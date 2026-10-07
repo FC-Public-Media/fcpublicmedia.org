@@ -148,6 +148,15 @@ Think like production engineers: a map, not a form.
    marked, whole swaths drop out.
 7. **Missing nights are dividers.** Not "1 night, nothing": one hard divider
    per missing night, drawn like the zone underlines.
+8. **Send the selection to transcription, and see it come back here.** An
+   experiment to prove the transcription leg: the window's range (with its
+   cuts, skips and silences applied) goes out as a job, and the transcript
+   returns onto this timeline, text aligned under the waveform to when it was
+   said. The first engine to try is whichever proves out on this bay:
+   Audition's own speech-to-text (it ships Whisper's tokenizer and speech
+   models), Whisper run locally on the RTX 4080, or Audio Hijack's Transcribe on
+   station-node (the reel's route, `enhance/docs/REEL.md`). The job and its
+   result belong to the group, so a show's profile can later ask for it.
 
 ## Not yet
 
