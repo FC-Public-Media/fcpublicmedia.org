@@ -32,6 +32,7 @@ pools:
 view:
   debris_seconds: 6     # under this, a recording is a chip in a pile
   cluster_minutes: 5    # more than this apart starts another heap
+  day_starts_at: 9      # the hour a day begins, on both pages: the studio's quietest (noon cut through debris)
 
 stages:
   landed:      {label: Landed,       color: "#5b8def"}

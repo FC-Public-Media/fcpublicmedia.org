@@ -96,7 +96,9 @@
     return m < 60 ? m + ' min ' + Math.round(s % 60) + ' s' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
   }
   function when(t) { return new Date(t * 1000).toLocaleString([], {weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}); }
-  function day(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
+  // A day starts at the seam (pools.yml view: day_starts_at), as on the timeline: a session past midnight stays with its evening.
+  var SEAM = 9;
+  function day(t) { return new Date((t - SEAM * 3600) * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
   // How the page draws, from pools.yml `view:`. A way of looking, not a decision:
@@ -111,6 +113,7 @@
   function draw(d) {
     var stages = d.stages || {}, all = [], vw = d.view || {};
     DEBRIS = vw.debris_seconds != null ? +vw.debris_seconds : 6;
+    SEAM = vw.day_starts_at != null ? +vw.day_starts_at : 9;
     CLUSTER = vw.cluster_minutes != null ? vw.cluster_minutes * 60 : 300;
     d.pools.forEach(function (p) { p.rows.forEach(function (r) { (r.files || []).forEach(function (f) { all.push(f); }); }); });
     var max = Math.max.apply(null, all.map(function (f) { return f.bytes; }).concat([1]));

@@ -127,7 +127,7 @@
 <div id="tip" role="tooltip"></div>
 <script>
 (function () {
-  // Nights, noon to noon, each recording where it ran. Dragging along time,
+  // Nights, from the day's seam to the next (pools.yml view: day_starts_at, 9 here), each recording where it ran. Dragging along time,
   // the way text is selected, sets a window: that stretch at full width in the
   // dock, where it plays (silently until sound is turned on) and where a
   // narrower drag looks closer still. A window can be given to a show.
@@ -154,7 +154,10 @@
   function wd(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short'}); }
   function hours(s) { return s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h'; }
   function dur(s) { return s == null ? 'length unknown' : s < 60 ? s.toFixed(s < 10 ? 1 : 0) + ' s' : hours(s); }
-  function noon(t) { var d = new Date(t * 1000); d.setHours(12, 0, 0, 0); if (d.getTime() / 1000 > t) d.setDate(d.getDate() - 1); return d.getTime() / 1000; }
+  // A lane runs from the day's seam to the next: an hour the studio is quiet,
+  // so no session is cut in two and no debris sits at a lane's far end.
+  var SEAM = 9;
+  function dayStart(t) { var d = new Date(t * 1000); d.setHours(SEAM, 0, 0, 0); if (d.getTime() / 1000 > t) d.setDate(d.getDate() - 1); return d.getTime() / 1000; }
   function next(o) { var d = new Date(o * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; }
   function color(slug) { var i = shows.map(function (s) { return s.slug; }).indexOf(slug); return COLORS[(i < 0 ? 0 : i) % COLORS.length]; }
   function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
@@ -189,7 +192,8 @@
   // --- recordings: one per name and size, wherever its copies are ---------
 
   function build() {
-    var stages = data.stages || {}, by = {};
+    var stages = data.stages || {}, by = {}, vw = data.view || {};
+    SEAM = vw.day_starts_at != null ? +vw.day_starts_at : 9;
     files = [];
     data.pools.forEach(function (p) {
       p.rows.forEach(function (r) {
@@ -211,12 +215,12 @@
     files.sort(function (a, b) { return a.start - b.start; });
     files.forEach(function (x, i) { x.i = i; });   // order, for alternating tones
     var lane = {};
-    files.forEach(function (x) { var o = noon(x.start); (lane[o] = lane[o] || []).push(x); });
+    files.forEach(function (x) { var o = dayStart(x.start); (lane[o] = lane[o] || []).push(x); });
     // ghosts: what was here and is not now, where it was (a night of only ghosts still gets its lane)
     ghosts = (data.removed || []).map(function (r) {
       return {start: r.start, end: Math.max(r.end, r.start + 1), r: r};
     });
-    ghosts.forEach(function (g) { var o = noon(g.start); lane[o] = lane[o] || []; });
+    ghosts.forEach(function (g) { var o = dayStart(g.start); lane[o] = lane[o] || []; });
     // keep each night's drawn track across reloads: a repaint between redraws
     // must find the lane it painted before
     var old = {};
@@ -319,7 +323,7 @@
     });
     var W = lanes.length ? lanes[0].track.clientWidth : 0;
     [0, 3, 6, 9, 12, 15, 18, 21, 24].forEach(function (h) {
-      var s = el('span', null, ((h + 12) % 24) + ':00'); s.style.left = (W * h / 24) + 'px'; at.appendChild(s);
+      var s = el('span', null, ((h + SEAM) % 24) + ':00'); s.style.left = (W * h / 24) + 'px'; at.appendChild(s);
     });
     lanes.forEach(function (L) {
       L.w = L.track.clientWidth;
