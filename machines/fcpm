@@ -43,7 +43,7 @@ case "$cmd" in
     p=$(profile)
     [ -f "$HERE/$p/audition.ps1" ] || { echo "fcpm: ${p:-this machine} carries no Audition panel"; exit 0; }
     ps1 "$HERE/$p/audition.ps1" "$@" ;;
-  drobo|share)
+  drobo|share|audit)
     p=$(profile)
     [ -f "$HERE/$p/$cmd.ps1" ] || { echo "fcpm: ${p:-this machine} carries no $cmd"; exit 0; }
     ps1 "$HERE/$p/$cmd.ps1" "$@" ;;
@@ -72,6 +72,7 @@ fcpm screen [status|on|off|reset|class|wall]   the rolling TV
 fcpm audition [status|install|remove]   Audition as gear: the enhance engine's panel
 fcpm drobo [status|connect|header|list OUT]   the Drobo, over iSCSI (CHAP)
 fcpm share [status|install]   the drop shares: enhance (E:, TO ENHANCE)
+fcpm audit [status|on|off|collect [OUT]]   a record, kept here, of the commands run on this machine
 fcpm camera [console|presets|apply NAME|state]   the USB camera
 fcpm ti89 [probe|version|screen OUT.png|rom OUT.rom] [--port COM1]   a TI-89 on a GraphLink
 fcpm pools [timeline|key|sample|sample clear]   the storage pools, as a page (timeline: opened at the nights; key: the depot's password)
