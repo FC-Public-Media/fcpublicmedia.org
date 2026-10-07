@@ -43,6 +43,10 @@ case "$cmd" in
     p=$(profile)
     [ -f "$HERE/$p/audition.ps1" ] || { echo "fcpm: ${p:-this machine} carries no Audition panel"; exit 0; }
     ps1 "$HERE/$p/audition.ps1" "$@" ;;
+  drobo|share)
+    p=$(profile)
+    [ -f "$HERE/$p/$cmd.ps1" ] || { echo "fcpm: ${p:-this machine} carries no $cmd"; exit 0; }
+    ps1 "$HERE/$p/$cmd.ps1" "$@" ;;
   pools)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/pools.py" "$@" ;;
@@ -66,6 +70,8 @@ fcpm runnables [...]      the census, compile, prove (bin/runnables)
 fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
 fcpm screen [status|on|off|reset|class|wall]   the rolling TV
 fcpm audition [status|install|remove]   Audition as gear: the enhance engine's panel
+fcpm drobo [status|connect|header|list OUT]   the Drobo, over iSCSI (CHAP)
+fcpm share [status|install]   the drop shares: enhance (E:, TO ENHANCE)
 fcpm camera [console|presets|apply NAME|state]   the USB camera
 fcpm ti89 [probe|version|screen OUT.png|rom OUT.rom] [--port COM1]   a TI-89 on a GraphLink
 fcpm pools [key|sample|sample clear]   the storage pools, as a page (key: the depot's password)
