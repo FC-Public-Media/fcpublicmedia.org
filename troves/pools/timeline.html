@@ -117,6 +117,14 @@
   /* a clip's state, where its waveform is not: loading flows gently backwards; unreadable and unplayable lie still */
   #win .state { position: absolute; bottom: 24px; height: 4px; z-index: 1; pointer-events: auto; border-radius: 2px; }
   /* loading is the peaks, not here yet: a flat dotted line at talk height, where the trace will be, flowing back */
+  /* the selection in the window: what the list acts on */
+  #win .sel.pick { background: rgba(143,176,255,.16); box-shadow: inset 0 1px 0 rgba(143,176,255,.7), inset 0 -1px 0 rgba(143,176,255,.7),
+                   inset 1px 0 0 rgba(143,176,255,.9), inset -1px 0 0 rgba(143,176,255,.9); z-index: 3; }
+  /* staged for removal: still there, still playing, plainly marked */
+  #win .staged { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: none;
+                 background: repeating-linear-gradient(135deg, rgba(224,87,79,.2) 0 5px, transparent 5px 11px);
+                 box-shadow: inset 0 2px 0 rgba(224,87,79,.6); }
+  #ctl .chip.picked { color: #dbe5ff; background: rgba(143,176,255,.16); box-shadow: inset 0 0 0 1px rgba(143,176,255,.6); }
   #win .state.loading { bottom: auto; top: calc(22px + (100% - 44px) * .38); height: 4px;
                         background: radial-gradient(circle, rgba(201,209,220,.75) 1.3px, transparent 1.8px) 0 50% / 9px 4px repeat-x;
                         animation: flowback 2.2s linear infinite; opacity: .8; }
@@ -145,7 +153,7 @@
   #ctl .clock { font-variant-numeric: tabular-nums; min-width: 74px; }
   #ctl .sum { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
   #ctl .sum b { color: var(--ink); font-weight: 500; }
-  #ctl .gap { flex: 1; }
+  #ctl .gap { flex: 1; min-width: 0; }
   #ctl .keys { color: var(--dim); font-size: 11px; }
   #ctl .err { color: #f0a050; }
   /* the pre-processing strip: glyph toggles, pressed in when on, and the stop slider */
@@ -163,7 +171,7 @@
   /* the readout, in the selection's look */
   #ctl .chip { font-variant-numeric: tabular-nums; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
   #ctl .chip.clock { color: #fff; box-shadow: inset 2px 0 0 #fff; background: rgba(255,255,255,.05); min-width: 78px; }
-  #ctl .span { display: inline-flex; align-items: center; gap: 4px; position: relative; padding-bottom: 5px; }
+  #ctl .span { display: inline-flex; flex: none; align-items: center; gap: 4px; position: relative; padding-bottom: 5px; }   /* never squeezed: its chips must not overlap */
   #ctl .span .slice { position: absolute; left: 0; bottom: 0; width: 100%; max-width: 170px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); }
   #ctl .span .slice .lit { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
   #ctl .span .ico { width: 26px; height: 26px; }
@@ -204,13 +212,15 @@
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
   var data = null, files = [], lanes = [], shows = [], groups = [], ghosts = [], sig = '';
   var win = null, views = [], drag = null;
+  var SEL = null;   // a stretch selected in the window, for marking or naming; the view does not move
   var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: '', forced: null,
            bad: {}, tried: null, fails: 0};   // bad: path -> why it would not play
 
   // Proofing settings, kept between visits: amplify the waveform, and skip
   // clips shorter than `under` seconds when playing or placing the playhead.
-  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: true, follow: true, muted: false};
+  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: false, follow: true, muted: false, v: 2};
   try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
+  if (S.v !== 2) { S.silence = false; S.v = 2; }   // removals are staged in view now; hearing without them is a preview you choose
   P.muted = !!S.muted;   // sound is on unless it was last turned off; the choice is kept
   function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
   // A short clip is passed over, unless someone insisted on it (P.forced).
@@ -671,7 +681,18 @@
         winEl.appendChild(lb);
       }
     });
-    if (drag && drag.on === 'win') winEl.appendChild(place(el('div', 'sel'), Math.min(drag.a, drag.b), Math.max(drag.a, drag.b), 2));
+    if (drag && drag.on === 'win') winEl.appendChild(place(el('div', 'sel pick'), Math.min(drag.a, drag.b), Math.max(drag.a, drag.b), 2));
+    else if (SEL) {
+      var sb = place(el('div', 'sel pick'), SEL.a, SEL.b, 2);
+      winEl.appendChild(sb);
+    }
+    // staged for removal: hatched over its whole height, and still playing unless the preview is on
+    groups.forEach(function (g) {
+      if (!g.remove || g.end <= v.a || g.start >= v.b) return;
+      var st = place(el('div', 'staged'), Math.max(g.start, v.a), Math.min(g.end, v.b), 2);
+      st.title = 'staged for removal: ' + hms(g.start) + '\u2013' + hms(g.end);
+      winEl.appendChild(st);
+    });
     // beyond the edges, dimmed; the edges themselves, to drag
     [[v.a, win.a], [win.b, v.b]].forEach(function (r) { if (r[1] > r[0]) winEl.appendChild(place(el('div', 'out'), r[0], r[1])); });
     winEl.appendChild(handle('a', tx(win.a)));
@@ -918,7 +939,7 @@
     }
     tog('amp', S.amp, 'Amplify: loudness in decibels, so quiet talk shows', function (v) { S.amp = v; });
     tog('squeeze', S.squeeze, 'Compress gaps: long gaps become short cuts that say how long they were', function (v) { S.squeeze = v; });
-    tog('silence', S.silence, 'Silence what is marked for removal: passed over and cut', function (v) { S.silence = v; });
+    tog('silence', S.silence, 'Preview the removals: pass over what is staged for removal, to hear the result (off: it stays in view and plays)', function (v) { S.silence = v; });
     tog('follow', S.follow, 'Follow the playhead: the wheel zooms about it, and the window turns the page to keep it in sight while playing', function (v) { S.follow = v; });
     strip.appendChild(stops());
     var txMarks = marksHere();
@@ -963,11 +984,20 @@
     var nMiss = unheard(win.a, win.b);
     if (nMiss) badge('silence', String(nMiss), nMiss + (nMiss === 1 ? ' recording' : ' recordings') + ' here could not be heard by the engine: transcribe again to retry them');
     ctl.appendChild(el('span', 'gap'));
-    var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
+    var tgt = SEL || win;   // what the list acts on: the selection if there is one, else the window
+    var over = groups.filter(function (g) { return (g.show || g.name) && g.end > tgt.a && g.start < tgt.b; })[0];
     // The span: the slice of the group you are in that the window shows. Under
     // it the group as a track, the window's part lit; beside it, when the window
     // has wandered from the group, a reset back to the group's own span.
     var span = el('span', 'span');
+    if (SEL) {
+      var sc = el('span', 'chip picked', hm(SEL.a) + ' \u2013 ' + hm(SEL.b));
+      sc.title = 'selected: ' + hms(SEL.a) + ' to ' + hms(SEL.b) + ' (' + dur(SEL.b - SEL.a) + '). The list acts on it. Esc lets go';
+      span.appendChild(sc);
+      var zin = icon('zoom', 'Look closer: the window becomes the selection (or double-click it, or z)');
+      zin.onclick = function () { zin.blur(); var z = SEL; setView(z.a, z.b); };
+      span.appendChild(zin);
+    }
     span.appendChild(rg);
     if (over) {
       var gw = over.end - over.start, lit = el('span', 'lit'), sl = el('span', 'slice');
@@ -997,9 +1027,9 @@
       ns.forEach(function (n) { opts.push({name: n}); opt(n, opts.length - 1, on); });
     }
     opt('new name…', 'new');
-    var any = groups.some(function (g) { return g.end > win.a && g.start < win.b && g.remove; });
+    var any = groups.some(function (g) { return g.end > tgt.a && g.start < tgt.b && g.remove; });
     opt(any ? 'unmark: keep these' : 'mark for removal', any ? 'keep' : 'rm');
-    var anyTx = groups.some(function (g) { return g.end > win.a && g.start < win.b && g.transcribe; });
+    var anyTx = groups.some(function (g) { return g.end > tgt.a && g.start < tgt.b && g.transcribe; });
     opt(anyTx ? 'unmark: no transcription' : 'mark for transcription', anyTx ? 'untx' : 'tx');
     if (over) opt('ungroup', 'ungroup');   // in the list, not a button of its own: the bar keeps its room
     pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
@@ -1008,13 +1038,13 @@
       if (pick.value === 'ungroup') return save({}, hit, sound);
       if (pick.value === 'tx' || pick.value === 'untx') {
         saves++;
-        return post('/group', {start: win.a, end: win.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
+        return post('/group', {start: tgt.a, end: tgt.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
           .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); });
       }
       if (pick.value === 'rm' || pick.value === 'keep') {
         saves++;
-        return post('/group', {start: win.a, end: win.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
+        return post('/group', {start: tgt.a, end: tgt.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
           .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); marked(); });
       }
@@ -1052,7 +1082,7 @@
     if (P.t == null || P.t < win.a || P.t > win.b) seek(win.a, true);
     dock.style.display = 'flex';
     document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
-    document.getElementById('hint').textContent = 'click to place the playhead · drag to look closer · drag an edge to adjust · wheel to zoom';
+    document.getElementById('hint').textContent = 'drag to select · double-click it (or z) to look closer · wheel zooms, sideways or shift pans · click to place the playhead';
     drawWin(); drawCtl(); paintLanes();
   }
 
@@ -1143,8 +1173,14 @@
       .catch(function (e) { P.err = 'transcription did not start: ' + e.message; drawCtl(); });
   }
 
+  winEl.addEventListener('dblclick', function (e) {   // double-click the selection: look closer at it
+    if (!SEL || !win) return;
+    var t = winTime(e);
+    if (t >= SEL.a && t <= SEL.b) { var z = SEL; setView(z.a, z.b); }
+  });
+
   function closeWindow() {
-    stop(); win = null; views = []; P.t = null; P.cur = null;
+    stop(); win = null; views = []; P.t = null; P.cur = null; SEL = null;
     dock.style.display = 'none'; document.documentElement.style.setProperty('--dock', '0px');
     document.getElementById('hint').textContent = 'drag along a night to look closer';
     paintLanes();
@@ -1158,7 +1194,8 @@
   var saves = 0;   // a reload that began before a save must not put the old groups back
   function save(as, hit, sound) {
     saves++;
-    post('/group', {start: win.a, end: win.b, show: as.show || '', name: as.name || '', files: hit.length, sound: sound})
+    var t = SEL || win;
+    post('/group', {start: t.a, end: t.b, show: as.show || '', name: as.name || '', files: hit.length, sound: sound})
       .then(function (r) { return r.json(); })
       .then(function (d) { shows = d.shows; groups = d.groups; drawWin(); drawCtl(); paintLanes(); marked(); });
   }
@@ -1392,7 +1429,7 @@
       return;
     }
     var a = Math.min(d.a, d.b), b = Math.max(d.a, d.b);
-    if (d.on === 'win') setView(a, b);
+    if (d.on === 'win') { SEL = {a: a, b: b}; drawWin(); drawCtl(); }   // select; the view stays where it is
     else setWindow(a, b);
     if (!win) paintLanes();
   });
@@ -1418,8 +1455,14 @@
   winEl.addEventListener('wheel', function (e) {
     if (!win) return;
     e.preventDefault();
-    var t = S.follow && P.t != null && P.t >= view().a && P.t <= view().b ? P.t : winTime(e), f = Math.exp((e.deltaMode ? e.deltaY * 40 : e.deltaY) * 0.0015);
-    var a = t - (t - win.a) * f, b = t + (win.b - t) * f;
+    var unit = e.deltaMode ? 40 : 1, dx = e.deltaX * unit, dy = e.deltaY * unit, a, b;
+    if (e.shiftKey || Math.abs(dx) > Math.abs(dy)) {   // sideways: pan, by as much of the view as the wheel turned
+      var sh = (Math.abs(dx) > Math.abs(dy) ? dx : dy) / winEl.clientWidth * (win.b - win.a);
+      a = win.a + sh; b = win.b + sh;
+    } else {   // up and down: zoom, about the pointer
+      var t = winTime(e), f = Math.exp(dy * 0.0015);
+      a = t - (t - win.a) * f; b = t + (win.b - t) * f;
+    }
     var X = extent(), pad = (X.b - X.a) * .03;
     if (b - a < 1) return;
     if (b - a > X.b - X.a + 2 * pad) { a = X.a - pad; b = X.b + pad; }   // out no further than everything there is
@@ -1434,7 +1477,8 @@
     if (e.key === ' ' && win) { e.preventDefault(); toggle(); }
     else if ((e.key === 'm' || e.key === 'M') && win) setMuted(!P.muted);
     else if (e.key === 'Backspace' && win) { e.preventDefault(); back(); }
-    else if (e.key === 'Escape') closeWindow();
+    else if (e.key === 'Escape') { if (SEL) { SEL = null; drawWin(); drawCtl(); } else closeWindow(); }
+    else if ((e.key === 'z' || e.key === 'Z') && SEL) { var z = SEL; setView(z.a, z.b); }
   });
 
   // --- data -----------------------------------------------------------------
