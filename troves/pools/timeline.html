@@ -36,6 +36,7 @@
   .tick.hour { background: rgba(255,255,255,.04); }
   .f { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px; }
   .f.short { opacity: .35; }
+  .lane .f.unk { opacity: .3; }
   .sel { position: absolute; top: 1px; bottom: 1px; background: rgba(255,255,255,.16);
          box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.35); pointer-events: none; }
   .ph { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fff; pointer-events: none; z-index: 2; }
@@ -51,7 +52,10 @@
   .hdl:hover::after { opacity: 1; left: 5px; width: 4px; }
   #win .out { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.5); pointer-events: none; z-index: 1; }
   #ctl button.tmp { font-style: italic; }
-  #ctl button.new { color: var(--dim); border-style: dashed; }
+  #ctl select.pick { font: inherit; color: var(--ink); background: #10141c; border: 1px solid rgba(255,255,255,.2);
+                     border-radius: 4px; padding: 4px 8px; max-width: 260px; cursor: pointer; }
+  #ctl select.pick.tmp { font-style: italic; border-style: dashed; }
+  #ctl select.pick option, #ctl select.pick optgroup { background: #10141c; color: var(--ink); font-style: normal; }
   #ctl input.name { font: inherit; color: var(--ink); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.4);
                     border-radius: 4px; padding: 4px 8px; width: 160px; }
   .none { height: 18px; padding-left: var(--label); color: var(--dim); font-size: 10px; border-top: 1px solid var(--faint); line-height: 18px; }
@@ -196,6 +200,19 @@
       .map(function (o) { return {origin: o, end: next(o), files: lane[o], track: old[o] && old[o].track, w: old[o] && old[o].w}; });
   }
 
+  // On the nights a bar stands as tall as the recording is loud, from the
+  // bottom of its lane, like a meter: a room's background is a stub, people
+  // talking fill it. Average level (RMS), -72 dBFS to -24 dBFS. Not measured
+  // yet: full height, faint.
+  var LOW = -72, HIGH = -24;
+  function meter(d, x) {
+    var lv = x.f.level;
+    if (lv == null) { d.classList.add('unk'); return d; }
+    var h = Math.max(.12, Math.min(1, (lv - LOW) / (HIGH - LOW)));
+    d.style.top = (9 + (1 - h) * 26) + 'px';
+    return d;
+  }
+
   function frag(x, span0, span, w, cls) {
     var d = el('div', 'f' + (x.f.short ? ' short' : '') + (cls || ''));
     d.style.left = ((x.start - span0) / span * w) + 'px';
@@ -206,6 +223,7 @@
       tip.textContent = '';
       tip.appendChild(el('b', null, x.f.name));
       tip.appendChild(el('span', null, hms(x.start) + '–' + hms(x.end) + ' · ' + dur(x.f.duration) + ' · ' + x.stage));
+      tip.appendChild(el('span', null, x.f.level != null ? 'average level ' + x.f.level.toFixed(0) + ' dBFS' : 'level not measured yet'));
       if (x.copies.length > 1) tip.appendChild(el('span', null, 'also on: ' + x.copies.slice(1).join(', ')));
       tip.style.display = 'block';
     };
@@ -244,7 +262,7 @@
       for (var h = 1; h < 24; h++) {   // every hour faint, every six stronger
         var t = el('div', 'tick' + (h % 6 ? ' hour' : '')); t.style.left = (L.w * h / 24) + 'px'; L.track.appendChild(t);
       }
-      L.files.forEach(function (x) { L.track.appendChild(frag(x, L.origin, L.end - L.origin, L.w)); });
+      L.files.forEach(function (x) { L.track.appendChild(meter(frag(x, L.origin, L.end - L.origin, L.w), x)); });
     });
     paintLanes();
   }
@@ -419,19 +437,29 @@
     ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a) + ' across · lines every ' + every(gg.major) + ', fine every ' + every(gg.minor)));
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
-    function choice(label, colr, on, tmp, as) {
-      var bt = el('button', (on ? 'on' : '') + (tmp ? ' tmp' : '')), i = el('i');
-      i.style.background = colr; bt.appendChild(i); bt.appendChild(document.createTextNode(label));
-      bt.title = 'group this window as ' + label;
-      bt.onclick = function () { save(as, hit, sound); };
-      ctl.appendChild(bt);
+    // One list, however many names there come to be: the shows on record, the
+    // provisional names in use, and a new name. Choosing groups the window.
+    var pick = el('select', 'pick'), opts = [];
+    pick.setAttribute('aria-label', 'group this window as');
+    function opt(label, value, parent) { var o = el('option', null, label); o.value = value; (parent || pick).appendChild(o); return o; }
+    opt(over ? 'grouped as ' + gname(over) : 'group as…', '');
+    var og = el('optgroup'); og.label = 'shows'; pick.appendChild(og);
+    shows.forEach(function (s) { opts.push({show: s.slug}); opt(s.title, opts.length - 1, og); });
+    var ns = names();
+    if (ns.length) {
+      var on = el('optgroup'); on.label = 'not yet known'; pick.appendChild(on);
+      ns.forEach(function (n) { opts.push({name: n}); opt(n, opts.length - 1, on); });
     }
-    shows.forEach(function (s) { choice(s.title, color(s.slug), over && over.show === s.slug, false, {show: s.slug}); });
-    names().forEach(function (n) { choice(n, ncolor(n), over && !over.show && over.name === n, true, {name: n}); });
+    opt('new name…', 'new');
+    pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
+    pick.onchange = function () {
+      if (pick.value === 'new') return askName();
+      if (pick.value !== '') save(opts[+pick.value], hit, sound);
+    };
+    if (over) { pick.style.borderColor = gcolor(over); pick.classList.toggle('tmp', !over.show); }
+    ctl.appendChild(pick);
     // a new provisional name: for what nobody has identified yet
-    var nw = el('button', 'new', '+ new group');
-    nw.title = 'group this window under a name of its own, until it is known';
-    nw.onclick = function () {
+    function askName() {
       var k = 1, taken = names();
       while (taken.indexOf('unknown ' + k) >= 0) k++;
       var f = el('input', 'name'); f.value = over && !over.show ? over.name : 'unknown ' + k;
@@ -441,9 +469,8 @@
         if (e.key === 'Enter' && f.value.trim()) save({name: f.value.trim()}, hit, sound);
         if (e.key === 'Escape') drawCtl();
       };
-      ctl.replaceChild(f, nw); f.focus(); f.select();
-    };
-    ctl.appendChild(nw);
+      ctl.replaceChild(f, pick); f.focus(); f.select();
+    }
     if (over) { var u = el('button', null, 'Ungroup'); u.onclick = function () { save({}, hit, sound); }; ctl.appendChild(u); }
     ctl.appendChild(el('span', 'keys', (views.length ? 'backspace: previous view · ' : '') + 'wheel: zoom · esc: close'));
   }
@@ -671,7 +698,8 @@
         var sound = files.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
         document.getElementById('meta').textContent = files.length + ' recordings · ' + hours(sound) + ' of sound · ' +
           groups.length + (groups.length === 1 ? ' group' : ' groups');
-        var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth;
+        var known = files.filter(function (x) { return x.f.level != null; }).length;   // levels arriving redraw the nights
+        var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth + ':' + known;
         if (s !== sig) { sig = s; drawLanes(); } else paintLanes();
         if (win) { drawWin(); if (!P.playing) drawCtl(); }
       })

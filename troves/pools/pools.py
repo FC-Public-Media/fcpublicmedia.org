@@ -112,7 +112,95 @@ def describe(f, st, now):
     age = now - end
     state = "live" if age < LIVE_S else "fresh" if age < FRESH_S else "settled"
     return {"name": f.name, "start": start, "end": end, "duration": dur, "bytes": st.st_size,
-            "state": state, "short": dur is not None and dur < SHORT_S}
+            "state": state, "short": dur is not None and dur < SHORT_S,
+            "level": _levels.get(level_key(f, st))}
+
+
+# --- loudness: one number per recording, its average level (RMS, dBFS) ------
+# Enough to tell a room's background from people talking. Worked out once per
+# file by a background pass and kept on disk beside the groups, so a restart
+# does not read the pile again. A settled file only: one still being written
+# is measured once it settles.
+
+_levels = {}   # level_key -> dBFS
+_levels_lock = threading.Lock()
+
+
+def level_key(f, st):
+    return f"{f}|{st.st_size}|{int(st.st_mtime)}"
+
+
+def levels_file():
+    return groups_file().with_name("levels.json")
+
+
+def measure(path):
+    """Average level of a recording in dBFS (-96 for digital silence)."""
+    body = as_wav(path)
+    if struct.unpack("<H", body[34:36])[0] != 16:
+        return None
+    pcm = body[44:44 + (len(body) - 44) // 2 * 2]
+    if not pcm:
+        return -96.0
+    try:
+        import audioop   # Python 3.12, which fcpm pins; gone in 3.13
+        rms = audioop.rms(pcm, 2)
+    except ImportError:
+        import array
+        a = array.array("h"); a.frombytes(pcm[::max(2, len(pcm) // 400000 * 2)])   # a sample of it
+        rms = (sum(x * x for x in a) / max(1, len(a))) ** .5
+    import math
+    return round(20 * math.log10(rms / 32768), 1) if rms else -96.0
+
+
+def levels_pass(cfg):
+    """Measure every settled recording on a folder pool that has no level yet.
+    Depot copies are skipped: the page counts a copy once, by name and size."""
+    f = levels_file()
+    if f.exists():
+        try:
+            _levels.update(json.loads(f.read_text(encoding="utf-8")))
+        except ValueError:
+            pass
+    while True:
+        done = 0
+        data = current(cfg)
+        for p in data["pools"]:
+            if p["kind"] != "folder":
+                continue
+            for r in p["rows"]:
+                for x in r.get("files") or []:
+                    if x["state"] == "live":
+                        continue
+                    try:
+                        st = os.stat(x["path"])
+                    except OSError:
+                        continue
+                    k = level_key(x["path"], st)
+                    if k in _levels:
+                        continue
+                    try:
+                        lv = measure(x["path"])
+                    except (OSError, ValueError, struct.error):
+                        lv = None
+                    with _levels_lock:
+                        _levels[k] = lv
+                    done += 1
+                    if done % 200 == 0:
+                        save_levels()
+        if done:
+            save_levels()
+            with _lock:
+                _last["at"] = 0   # the next look carries the new levels
+        time.sleep(60)
+
+
+def save_levels():
+    with _levels_lock:
+        body = json.dumps(_levels)
+    tmp = levels_file().with_suffix(".tmp")
+    tmp.write_text(body, encoding="utf-8")
+    os.replace(tmp, levels_file())
 
 
 def hidden(name):
@@ -437,6 +525,7 @@ def serve(cfg):
         if show:
             subprocess.Popen([edge, f"--app={url}"])
         sys.exit(f"pools: another window is already showing {url}; opened it")
+    threading.Thread(target=levels_pass, args=(cfg,), daemon=True).start()
     if show:
         subprocess.Popen([edge, f"--app={url}"])
     print(f"pools: showing {url} until this window closes (Ctrl+C)")

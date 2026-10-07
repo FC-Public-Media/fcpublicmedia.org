@@ -44,8 +44,10 @@
   .sq.short { border-style: dashed; }
   .sq:hover { outline: 2px solid #fff; outline-offset: 2px; }
   @keyframes live { 50% { box-shadow: 0 0 0 4px rgba(255,255,255,.25); } }
-  .dayg { flex: 0 1 auto; max-width: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 5px 4px;
-          min-width: 84px; padding: 18px 8px 2px; border-left: 1px solid var(--faint); position: relative; }
+  /* A day is a block of its own: a full line, a rule, its date and what it holds. */
+  .dayg { flex: 0 0 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 5px 4px;
+          padding: 28px 0 12px; border-top: 1px solid rgba(255,255,255,.13); position: relative; }
+  .dayg:first-child { border-top: none; padding-top: 22px; }
   .brk { flex: none; width: 12px; }                     /* more than 5 minutes apart: another cluster */
   /* Debris: under 6 s, the 2 s buffer and a little noise. Tiny chips, piled
      top to bottom, then the next column, a little askew. */
@@ -56,7 +58,8 @@
   .d.fresh { box-shadow: 0 0 0 1px rgba(255,255,255,.5); }
   .d.live { box-shadow: 0 0 0 1px #fff; }
   .d:hover { outline: 1px solid #fff; }
-  .dayg > span { position: absolute; top: 4px; left: 6px; font-size: 10px; color: var(--dim); white-space: nowrap; }
+  .dayg > span { position: absolute; top: 6px; left: 0; font-size: 12px; color: var(--ink); white-space: nowrap; }
+  .dayg > span small { color: var(--dim); font-size: 11px; margin-left: 10px; }
   .free { flex: 1 0 140px; height: 46px; border-radius: 3px; display: flex; align-items: center; padding-left: 10px;
           color: var(--dim); font-size: 11px; white-space: nowrap;
           background: repeating-linear-gradient(135deg, var(--faint) 0 6px, transparent 6px 12px); }
@@ -152,12 +155,22 @@
         var color = (stages[r.stage] || {}).color || '#888', lastDay = null, group = null, pile = null, prevEnd = null;
         files.forEach(function (f) {
           var dd = day(f.start), end = f.duration != null ? f.start + f.duration : f.end;
-          if (dd !== lastDay) { group = el('div', 'dayg'); group.appendChild(el('span', null, dd)); strip.appendChild(group); lastDay = dd; prevEnd = null; pile = null; }
+          if (dd !== lastDay) {
+            var of = files.filter(function (g) { return day(g.start) === dd; });
+            var snd = of.reduce(function (s, g) { return s + (g.duration || 0); }, 0);
+            var head = el('span', null, dd);
+            head.appendChild(el('small', null, of.length + ' recordings · ' + dur(snd) + ' of sound'));
+            group = el('div', 'dayg'); group.appendChild(head); strip.appendChild(group);
+            lastDay = dd; prevEnd = null; pile = null;
+          }
           if (prevEnd != null && f.start - prevEnd > CLUSTER) { group.appendChild(el('div', 'brk')); pile = null; }
           prevEnd = Math.max(prevEnd || 0, end);
           var debris = f.duration != null ? f.duration < DEBRIS : f.bytes < 600000;
           var sq = el('div', (debris ? 'd ' : 'sq ') + f.state + (f.short ? ' short' : ''));
           sq.style.background = color;
+          // quiet is dim: a room's background fades, people talking stand out (average level, -72 to -24 dBFS)
+          var loud = f.level != null ? Math.max(0, Math.min(1, (f.level + 72) / 48)) : .5;
+          sq.style.opacity = (debris ? .12 + .4 * loud : .25 + .75 * loud).toFixed(2);
           if (debris) {
             if (!pile) { pile = el('div', 'pile'); group.appendChild(pile); }
             var h = hash(f.name);
@@ -174,6 +187,7 @@
             tip.innerHTML = '';
             tip.appendChild(el('b', null, f.name));
             tip.appendChild(el('span', null, when(f.start) + ' · ' + dur(f.duration)));
+            if (f.level != null) tip.appendChild(el('span', null, 'average level ' + f.level.toFixed(0) + ' dBFS'));
             tip.appendChild(el('span', null, bytes(f.bytes) + ' · ' + ((stages[r.stage] || {}).label || r.stage) + ' · ' +
               (f.state === 'live' ? 'being written now' : f.state === 'fresh' ? 'today' : 'settled') + (f.short ? ' · under 3 s' : '')));
             tip.style.display = 'block';
