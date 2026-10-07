@@ -68,8 +68,7 @@
      touch edge to edge still read as separate. The one playing is shown by its
      waveform alone: nothing jumps but the playhead. */
   /* in the window a recording's body is only a faint field (and its seam); the waveform is the picture */
-  #win .f { top: 22px; bottom: 22px; opacity: .07; box-shadow: inset 1px 0 0 rgba(0,0,0,.75); }
-  #win .f.alt { opacity: .13; }
+  #win .f { top: 22px; bottom: 22px; opacity: .04; }
   /* skipped: out of play, at any size. A grey hatch over the whole body, so even
      a clip whose waveform is a sliver reads as disabled */
   #win .f.skip { opacity: .5; background: repeating-linear-gradient(135deg, #8a8d94 0 2px, #2c2f35 2px 6px) !important; }
@@ -607,10 +606,12 @@
   }
   function every(s) { return s < 60 ? s + ' s' : s < 3600 ? s / 60 + ' min' : s / 3600 + ' h'; }
 
-  // Waveforms: each recording's envelope, from the server, drawn on one canvas
-  // in its stage's colour, rising from the bottom as a filled contour, not a
-  // spike per pixel: binned every BIN pixels (the loudest moment in the bin)
-  // and eased with its neighbours (1-2-1), never averaged further than that.
+  // Waveforms: each recording's envelope, from the server, traced as a path
+  // along its peaks in the group's (show's) colour, the area beneath it the same
+  // colour, dim, falling away to the background: binned every BIN pixels (the
+  // loudest moment in the bin) and eased with its neighbours (1-2-1), never
+  // averaged further. Clips that touch on screen make one path, so a run of
+  // them is not notched at every seam.
   // Amplify draws it in decibels, FLOOR to the top, so talk sits in a steady
   // band and quiet speech shows; off, it is plain amplitude. A peak over STRONG
   // (about -9 dBFS) crosses the dashed line and is drawn bright. The two
@@ -635,31 +636,85 @@
     cv.width = w * dpr; cv.height = h * dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px';
     var c = cv.getContext('2d'); c.scale(dpr, dpr);
     var base = h, H = h - 4, lineY = base - level(STRONG) * H;
+    // The clips on screen, each with its place and its loudness per bin.
+    var clips = [];
     within(v.a, v.b).forEach(function (x) {
-      var off = skipped(x);
       if (inCut(x)) return;
-      var x0 = tx(x.start), x1 = tx(x.end), pw = x1 - x0;
-      var e = env[x.f.path];
-      if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
-      var chs = e.ch || [e], bins = Math.max(1, Math.round(pw / BIN)), bw = pw / bins;
-      var a0 = off ? .55 : x === P.cur ? .7 : x.i % 2 ? .55 : .42;
-      chs.forEach(function (ch) {
-        var n = ch.length, ys = [];
-        for (var i = 0; i < bins; i++) {
-          var a = Math.floor(i / bins * n), b = Math.max(a + 1, Math.floor((i + 1) / bins * n)), pk = 0;
-          for (var j = a; j < b; j++) if (ch[j] > pk) pk = ch[j];
-          ys.push(level(pk));
-        }
-        var sm = ys.map(function (y, i) { return ((i > 0 ? ys[i - 1] : y) + 2 * y + (i < ys.length - 1 ? ys[i + 1] : y)) / 4; });
-        contour(c, x0, x1, bw, sm, base, H);
-        c.globalAlpha = a0; c.fillStyle = off ? SKIPPED : x.color; c.fill();
-        if (!off) {   // over the line: forceful, bright
-          c.save(); c.beginPath(); c.rect(x0, 0, pw, lineY); c.clip();
-          contour(c, x0, x1, bw, sm, base, H);
-          c.globalAlpha = .9; c.fillStyle = '#fff'; c.fill(); c.restore();
-        }
-      });
+      var x0 = tx(x.start), x1 = tx(x.end), e = env[x.f.path];
+      if (!e) { if (x1 - x0 >= 3 && wanted.indexOf(x) < 0) wanted.push(x); }
+      clips.push({x: x, x0: x0, x1: x1, e: e, off: skipped(x)});
     });
+    // A run is clips that touch on screen (or nearly): one path, not a shape each.
+    function runs(list) {
+      var out = [];
+      list.slice().sort(function (a, b) { return a.x0 - b.x0; }).forEach(function (k) {
+        var r = out[out.length - 1];
+        if (r && k.x0 - r.x1 < BIN * 1.5) { r.clips.push(k); r.x1 = Math.max(r.x1, k.x1); }
+        else out.push({x0: k.x0, x1: k.x1, clips: [k]});
+      });
+      return out;
+    }
+    function peakAt(k, px0, px1) {   // the loudest moment of clip k between two screen x's, both channels
+      if (!k.e) return null;
+      var chs = k.e.ch || [k.e], pw = k.x1 - k.x0, pk = 0;
+      if (pw <= 0) return 0;
+      chs.forEach(function (ch) {
+        var n = ch.length, a = Math.max(0, Math.floor((px0 - k.x0) / pw * n)), b = Math.min(n, Math.max(a + 1, Math.ceil((px1 - k.x0) / pw * n)));
+        for (var j = a; j < b; j++) if (ch[j] > pk) pk = ch[j];
+      });
+      return pk;
+    }
+    function colourOf(r) {   // the group's (show's) colour over the run's middle, or its recordings' stage colour
+      var t = xt((r.x0 + r.x1) / 2), g = groups.filter(function (g) { return !g.remove && t >= g.start && t <= g.end; })[0];
+      return g ? gcolor(g) : r.clips[0].x.color;
+    }
+    function rgba(hex, a) {
+      var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex) || [0, '88', '88', '88'];
+      return 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',' + a + ')';
+    }
+    function trace(r, colour, quiet) {
+      var bins = Math.max(1, Math.round((r.x1 - r.x0) / BIN)), bw = (r.x1 - r.x0) / bins, ys = [];
+      for (var i = 0; i < bins; i++) {
+        var p0 = r.x0 + i * bw, p1 = p0 + bw, best = null;
+        r.clips.forEach(function (k) {
+          if (k.x1 <= p0 || k.x0 >= p1) return;
+          var pk = peakAt(k, Math.max(p0, k.x0), Math.min(p1, k.x1));
+          if (pk != null && (best == null || pk > best)) best = pk;
+        });
+        ys.push(best == null ? null : level(best));
+      }
+      // a bin no clip covers: bridged from its neighbours if the hole is small, else down to nothing
+      ys = ys.map(function (y, i) {
+        if (y != null) return y;
+        var l = i - 1, rr = i + 1;
+        while (l >= 0 && ys[l] == null) l--;
+        while (rr < ys.length && ys[rr] == null) rr++;
+        return (rr - l <= 3 && l >= 0 && rr < ys.length) ? (ys[l] + ys[rr]) / 2 : 0;
+      });
+      var sm = ys.map(function (y, i) { return ((i > 0 ? ys[i - 1] : y) + 2 * y + (i < ys.length - 1 ? ys[i + 1] : y)) / 4; });
+      var pts = sm.map(function (y, i) { return [r.x0 + (i + .5) * bw, base - y * H]; });
+      function line(cont) {   // cont: carry on the shape already begun (a fill), not start another
+        if (cont) c.lineTo(r.x0, pts[0][1]); else c.moveTo(r.x0, pts[0][1]);
+        pts.forEach(function (p) { c.lineTo(p[0], p[1]); }); c.lineTo(r.x1, pts[pts.length - 1][1]);
+      }
+      // beneath: the same colour, dim, falling away toward the background
+      var gr = c.createLinearGradient(0, base - H, 0, base);
+      gr.addColorStop(0, rgba(colour, quiet ? .08 : .3)); gr.addColorStop(1, rgba(colour, quiet ? .02 : .04));
+      c.beginPath(); c.moveTo(r.x0, base); line(true); c.lineTo(r.x1, base); c.closePath();
+      c.globalAlpha = 1; c.fillStyle = gr; c.fill();
+      // the path itself, traced along the peaks
+      c.beginPath(); line();
+      c.lineJoin = 'round'; c.lineWidth = quiet ? 1 : 1.6; c.strokeStyle = rgba(colour, quiet ? .45 : .95); c.stroke();
+      if (!quiet) {   // over the strong-voice line: bright
+        c.save(); c.beginPath(); c.rect(r.x0, 0, r.x1 - r.x0, lineY); c.clip();
+        c.beginPath(); c.moveTo(r.x0, base); line(true); c.lineTo(r.x1, base); c.closePath();
+        c.fillStyle = 'rgba(255,255,255,.22)'; c.fill();
+        c.beginPath(); line(); c.strokeStyle = '#fff'; c.lineWidth = 1.8; c.stroke();
+        c.restore();
+      }
+    }
+    runs(clips.filter(function (k) { return k.off; })).forEach(function (r) { trace(r, SKIPPED, true); });
+    runs(clips.filter(function (k) { return !k.off; })).forEach(function (r) { trace(r, colourOf(r), false); });
     c.globalAlpha = .45; c.strokeStyle = '#fff'; c.setLineDash([4, 5]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(0, lineY + .5); c.lineTo(w, lineY + .5); c.stroke();
     c.setLineDash([]); c.globalAlpha = .55; c.fillStyle = '#c9d1dc'; c.font = '10px Segoe UI, sans-serif';
