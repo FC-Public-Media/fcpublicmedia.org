@@ -32,6 +32,7 @@
   .axis .track span { position: absolute; top: 3px; font-size: 10px; color: var(--dim); transform: translateX(-50%); }
   .lane { height: var(--lane); border-top: 1px solid var(--faint); }
   .lane .track, #win { cursor: text; touch-action: none; }
+  body.panning, body.panning * { cursor: grabbing !important; }
   .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.11); pointer-events: none; }
   .tick.hour { background: rgba(255,255,255,.04); }
   .f { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px; }
@@ -103,6 +104,12 @@
   #win .cut .len { font-size: 9px; color: var(--dim); writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-variant-numeric: tabular-nums; }
   #win .cut .dots { font-size: 9px; letter-spacing: 1px; color: #8a8d94; writing-mode: vertical-rl; white-space: nowrap; }
   #win .cut .dots.rm { color: #f07a6e; }
+  /* a clip's state, where its waveform is not: loading flows gently backwards; unreadable and unplayable lie still */
+  #win .state { position: absolute; bottom: 24px; height: 4px; z-index: 1; pointer-events: auto; border-radius: 2px; }
+  #win .state.loading { background: repeating-linear-gradient(90deg, rgba(201,209,220,.5) 0 6px, transparent 6px 14px);
+                        background-size: 28px 4px; animation: flowback 2.8s linear infinite; opacity: .7; }
+  #win .state.unreadable, #win .state.unplayable { background: repeating-linear-gradient(90deg, rgba(220,110,100,.75) 0 2px, transparent 2px 6px); }
+  @keyframes flowback { from { background-position: 0 0; } to { background-position: -28px 0; } }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
@@ -170,11 +177,12 @@
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
   var data = null, files = [], lanes = [], shows = [], groups = [], ghosts = [], sig = '';
   var win = null, views = [], drag = null;
-  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: '', forced: null};
+  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: '', forced: null,
+           bad: {}, tried: null, fails: 0};   // bad: path -> why it would not play
 
   // Proofing settings, kept between visits: amplify the waveform, and skip
   // clips shorter than `under` seconds when playing or placing the playhead.
-  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: true};
+  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: true, follow: true};
   try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
   function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
   // A short clip is passed over, unless someone insisted on it (P.forced).
@@ -223,6 +231,9 @@
   ICONS.squeeze = '<rect x="2.5" y="5" width="5" height="14" rx="1" fill="currentColor"/><rect x="16.5" y="5" width="5" height="14" rx="1" fill="currentColor"/>' +
                   '<circle cx="9.8" cy="12" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="14.2" cy="12" r="1.1" fill="currentColor"/>';
   ICONS.silence = '<path d="M3 19.5h18" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2"/><path d="M8 4.5l8 8M16 4.5l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+  ICONS.follow = '<path d="M12 3v18" stroke="currentColor" stroke-width="2"/><path d="M8.5 3h7l-3.5 4z" fill="currentColor"/>' +
+                 '<path d="M4 12h4M16 12h4M6 10l-2 2 2 2M18 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>';
+  ICONS.zoom = '<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
   ICONS.dot = '<circle cx="12" cy="12" r="3.2" fill="currentColor"/>';
   ICONS.files = '<rect x="4" y="5" width="3" height="14" rx="1" fill="currentColor"/><rect x="9" y="8" width="3" height="11" rx="1" fill="currentColor"/><rect x="14" y="4" width="3" height="15" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="9" rx="1" fill="currentColor"/>';
   ICONS.grid = '<path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8v8M15.5 8v8" stroke="currentColor" stroke-width=".9" opacity=".6"/>';
@@ -468,7 +479,7 @@
     });
     var s = drag && drag.on === 'lanes' ? {a: Math.min(drag.a, drag.b), b: Math.max(drag.a, drag.b)} : win;
     if (s) spans(s.a, s.b, function () { return el('div', 'sel'); });
-    if (win && !(drag && drag.on === 'lanes')) lanes.forEach(function (L) {
+    if (win && !(drag && drag.on === 'lanes') && (win.b - win.a) / 86400 * (lanes[0] && lanes[0].w || 0) >= 30) lanes.forEach(function (L) {
       if (!L.track) return;
       var span = L.end - L.origin;
       if (win.a >= L.origin && win.a < L.end) L.track.appendChild(handle('a', (win.a - L.origin) / span * L.w));
@@ -645,6 +656,23 @@
     sm.forEach(function (y, i) { c.lineTo(x0 + (i + .5) * bw, base - y * H); });
     c.lineTo(x1, base - sm[sm.length - 1] * H); c.lineTo(x1, base); c.closePath();
   }
+  // How near 1x the window is: 1x is about four and a half minutes of recording
+  // across the screen, where you can watch it chunk along. The traced line says
+  // it: solid at 1x; zoomed out, its dashes shorten toward dots; zoomed in,
+  // the gaps between them open.
+  var ONE_X = 270;
+  function zoom() {
+    if (!M) layout();
+    var v = view(), cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0);
+    return Math.max(1e-3, (v.b - v.a - cutT) / ONE_X);   // over 1: further out
+  }
+  function dashes() {
+    var z = zoom();
+    if (Math.abs(Math.log(z)) < Math.log(1.25)) return [];
+    if (z > 1) return [Math.max(1.5, 14 / z), 3];
+    return [14, Math.min(16, 3 + 9 * (1 / z - 1))];
+  }
+
   function waves() {
     var cv = document.getElementById('wave');
     if (!cv || !win) return;
@@ -657,7 +685,8 @@
     within(v.a, v.b).forEach(function (x) {
       if (inCut(x)) return;
       var x0 = tx(x.start), x1 = tx(x.end), e = env[x.f.path];
-      if (!e) { if (x1 - x0 >= 3 && wanted.indexOf(x) < 0) wanted.push(x); }
+      if (!e && wanted.indexOf(x) < 0) wanted.push(x);   // every clip on screen is asked for, however narrow: nothing stays loading
+      if (e && e.failed) e = null;
       clips.push({x: x, x0: x0, x1: x1, e: e, off: skipped(x)});
     });
     // A run is clips that touch on screen (or nearly): one path, not a shape each.
@@ -720,7 +749,8 @@
       c.globalAlpha = 1; c.fillStyle = gr; c.fill();
       // the path itself, traced along the peaks
       c.beginPath(); line();
-      c.lineJoin = 'round'; c.lineWidth = quiet ? 1 : 1.6; c.strokeStyle = rgba(colour, quiet ? .45 : .95); c.stroke();
+      c.lineJoin = 'round'; c.lineWidth = quiet ? 1 : 1.6; c.strokeStyle = rgba(colour, quiet ? .45 : .95);
+      c.setLineDash(quiet ? [] : dashes()); c.stroke(); c.setLineDash([]);
       if (!quiet) {   // over the strong-voice line: bright
         c.save(); c.beginPath(); c.rect(r.x0, 0, r.x1 - r.x0, lineY); c.clip();
         c.beginPath(); c.moveTo(r.x0, base); line(true); c.lineTo(r.x1, base); c.closePath();
@@ -729,6 +759,18 @@
         c.restore();
       }
     }
+    // What is not drawn yet says so: a clip still loading flows, gently, backwards;
+    // one that could not be read lies still and dotted; one that would not play is
+    // marked the same. Nothing missing passes for silence.
+    Array.prototype.forEach.call(winEl.querySelectorAll('.state'), function (n) { n.remove(); });
+    clips.forEach(function (k) {
+      var f = env[k.x.f.path], bad = P.bad[k.x.f.path];
+      if (f && !f.failed && !bad) return;
+      var d = el('div', 'state ' + (bad ? 'unplayable' : f && f.failed ? 'unreadable' : 'loading'));
+      d.style.left = k.x0 + 'px'; d.style.width = Math.max(2, k.x1 - k.x0) + 'px';
+      d.title = k.x.f.name + ': ' + (bad ? 'would not play (' + bad + ')' : f && f.failed ? 'could not be read (' + f.failed + ')' : 'loading its waveform');
+      winEl.appendChild(d);
+    });
     runs(clips.filter(function (k) { return k.off; })).forEach(function (r) { trace(r, SKIPPED, true); });
     runs(clips.filter(function (k) { return !k.off; })).forEach(function (r) { trace(r, colourOf(r), false); });
     c.globalAlpha = .45; c.strokeStyle = '#fff'; c.setLineDash([4, 5]); c.lineWidth = 1;
@@ -742,9 +784,10 @@
       var x = wanted.shift();
       if (env[x.f.path] || !win || x.end < view().a || x.start > view().b) continue;
       asking++;
-      fetch('/peaks?p=' + encodeURIComponent(x.f.path)).then(function (r) { return r.ok ? r.json() : null; })
-        .then((function (x) { return function (e) { env[x.f.path] = e || [0]; }; })(x))
-        .catch(function () {})
+      fetch('/peaks?p=' + encodeURIComponent(x.f.path))
+        .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { return {failed: r.status + ' ' + (t || r.statusText)}; }); })
+        .then((function (x) { return function (e) { env[x.f.path] = e; }; })(x))
+        .catch((function (x) { return function () { /* the server did not answer: leave it loading, ask again later */ setTimeout(function () { wanted.push(x); ask(); }, 5000); }; })(x))
         .then(function () { asking--; clearTimeout(ask.t); ask.t = setTimeout(waves, 120); ask(); });
     }
   }
@@ -771,6 +814,7 @@
     tog('amp', S.amp, 'Amplify: loudness in decibels, so quiet talk shows', function (v) { S.amp = v; });
     tog('squeeze', S.squeeze, 'Compress gaps: long gaps become short cuts that say how long they were', function (v) { S.squeeze = v; });
     tog('silence', S.silence, 'Silence what is marked for removal: passed over and cut', function (v) { S.silence = v; });
+    tog('follow', S.follow, 'Follow the playhead: the wheel zooms about it, and the window turns the page to keep it in sight while playing', function (v) { S.follow = v; });
     strip.appendChild(stops());
     ctl.appendChild(strip);
 
@@ -792,6 +836,11 @@
     if (nShort) badge('dot', String(nShort), nShort + ' clips under ' + S.under + ' s passed over');
     if (nSil) badge('silence', String(nSil), nSil + ' clips marked for removal, silenced');
     badge('files', String(hit.length), hit.length + ' recordings in the window');
+    var nb = within(win.a, win.b).filter(function (x) { return P.bad[x.f.path]; }).length;
+    if (nb) badge('silence', String(nb), nb + (nb === 1 ? ' clip' : ' clips') + ' here would not play (marked on the window)');
+    var z = zoom();
+    badge('zoom', (z >= 10 ? Math.round(z) : z.toFixed(1)) + '\u00d7', 'zoom: ' + (z >= 1 ? z.toFixed(1) + ' times further out than' : (1 / z).toFixed(1) + ' times closer in than') +
+          ' 1x (about 4\u00bd minutes of recording across); the traced line is solid at 1x');
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     // One list, however many names there come to be: the shows on record, the
@@ -945,16 +994,29 @@
     var n = after(P.cur);
     if (P.playing && n) { P.t = n.start; start(n, 0); } else stop();
   };
-  P.audio.onerror = function () {   // a recording that cannot be read: go on to the next
-    var n = after(P.cur);
-    if (P.playing && n) { P.t = n.start; start(n, 0); } else stop();
+  P.audio.onerror = function () {
+    // Try once more (the server may only be restarting), then mark the clip and go
+    // on; after three in a row, stop and say so, rather than fall through to the end.
+    var cur = P.cur, a = P.audio;
+    if (!P.playing || !cur) return;
+    if (P.tried !== cur) { P.tried = cur; a.dataset.src = ''; setTimeout(function () { if (P.playing && P.cur === cur) start(cur, Math.max(0, P.t - cur.start)); }, 1500); return; }
+    P.bad[cur.f.path] = a.error && a.error.message ? a.error.message : 'the server did not send it';
+    if (++P.fails >= 3) { stop(); P.err = 'cannot reach the recordings: is fcpm pools still running?'; P.fails = 0; drawCtl(); drawWin(); return; }
+    var n = after(cur);
+    if (n) { P.t = n.start; start(n, 0); } else stop();
+    drawWin();
   };
+  P.audio.addEventListener('playing', function () { P.fails = 0; P.tried = null; });
 
   function frame() {
     if (!P.playing) return;
     if (P.cur && !P.audio.paused) P.t = P.cur.start + P.audio.currentTime;
     var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
     if (ph && M) ph.style.left = tx(P.t) + 'px';
+    if (S.follow && M && win && !drag && P.t > xt(winEl.clientWidth * .9)) {   // near the right edge: turn the page
+      var span = win.b - win.a;
+      if (P.t + span * .85 <= extent().b + span) { setView(P.t - span * .1, P.t + span * .9, true); }
+    }
     if (c) c.textContent = hms(P.t);
     P.raf = requestAnimationFrame(frame);   // first, so a failed repaint never stops the player
     if (!frame.n || ++frame.n % 15 === 0) { frame.n = 1; try { paintLanes(); } catch (e) {} }
@@ -1011,7 +1073,9 @@
       var on = e.target.closest('#win') ? 'win' : e.target.closest('.lane .track') ? 'lanes' : null;
       if (!on || e.target.closest('.grp, .grpname')) return;
       var t = on === 'win' ? winTime(e) : laneTime(e);
-      drag = {on: on, a: t, b: t, x: e.clientX, y: e.clientY, force: on === 'win' && (e.ctrlKey || e.metaKey)};
+      if (on === 'lanes' && win && t > win.a && t < win.b) on = 'pan';   // inside the window on the nights: carry it
+      drag = {on: on, a: t, b: t, x: e.clientX, y: e.clientY, force: on === 'win' && (e.ctrlKey || e.metaKey), from: win && {a: win.a, b: win.b}};
+      if (on === 'pan') document.body.classList.add('panning');
       if (on === 'win') drag.hold = setTimeout(function () {   // a long press insists: play exactly here
         if (drag && !drag.moved) { drag.long = true; seek(drag.a, false, true); }
       }, 500);
@@ -1029,6 +1093,12 @@
       soon(function () { paintLanes(); if (drag && drag.src === 'win') drawWin(); });
       return;
     }
+    if (drag.on === 'pan') {
+      var dt = laneTime(e) - drag.a;
+      win = {a: drag.from.a + dt, b: drag.from.b + dt};
+      soon(function () { paintLanes(); });
+      return;
+    }
     drag.b = drag.on === 'win' ? winTime(e) : laneTime(e);
     soon(function () { if (!drag) return; if (drag.on === 'win') drawWin(); else paintLanes(); });
   });
@@ -1036,7 +1106,14 @@
     if (!drag) return;
     var d = drag; drag = null;
     clearTimeout(d.hold);
+    document.body.classList.remove('panning');
     if (d.long) return;
+    if (d.on === 'pan') {
+      var to = {a: win.a, b: win.b};
+      win = d.from;
+      if (d.moved) setView(to.a, to.b); else { drawWin(); paintLanes(); }
+      return;
+    }
     if (d.on === 'edge') {
       var now = {a: win.a, b: win.b};
       win = d.from;
@@ -1060,13 +1137,22 @@
     seek(winTime(e), false, true);
   });
 
+  // On the nights, the hand says the window can be carried; elsewhere, the text cursor says a new one starts
+  main.addEventListener('pointermove', function (e) {
+    if (drag || !win) return;
+    var tr = e.target.closest && e.target.closest('.lane .track');
+    if (!tr) return;
+    var t = laneTime(e);
+    tr.style.cursor = t > win.a && t < win.b ? 'grab' : '';
+  });
+
   // The wheel zooms the window about the pointer: down is out, up is in. One
   // burst of turning is one step back for Backspace.
   var wheeling = 0;
   winEl.addEventListener('wheel', function (e) {
     if (!win) return;
     e.preventDefault();
-    var t = winTime(e), f = Math.exp((e.deltaMode ? e.deltaY * 40 : e.deltaY) * 0.0015);
+    var t = S.follow && P.t != null && P.t >= view().a && P.t <= view().b ? P.t : winTime(e), f = Math.exp((e.deltaMode ? e.deltaY * 40 : e.deltaY) * 0.0015);
     var a = t - (t - win.a) * f, b = t + (win.b - t) * f;
     var X = extent(), pad = (X.b - X.a) * .03;
     if (b - a < 1) return;
