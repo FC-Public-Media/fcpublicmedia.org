@@ -110,6 +110,11 @@
                         background-size: 28px 4px; animation: flowback 2.8s linear infinite; opacity: .7; }
   #win .state.unreadable, #win .state.unplayable { background: repeating-linear-gradient(90deg, rgba(220,110,100,.75) 0 2px, transparent 2px 6px); }
   @keyframes flowback { from { background-position: 0 0; } to { background-position: -28px 0; } }
+  /* the clip playing: the same flow, gently forward, in its own colour, exactly as wide as the clip */
+  #win .state.playing { pointer-events: none; opacity: .85;
+                        background: repeating-linear-gradient(90deg, currentColor 0 8px, transparent 8px 14px);
+                        background-size: 28px 4px; animation: flowfwd 2.2s linear infinite; }
+  @keyframes flowfwd { from { background-position: 0 0; } to { background-position: 28px 0; } }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
@@ -619,6 +624,11 @@
     [[v.a, win.a], [win.b, v.b]].forEach(function (r) { if (r[1] > r[0]) winEl.appendChild(place(el('div', 'out'), r[0], r[1])); });
     winEl.appendChild(handle('a', tx(win.a)));
     winEl.appendChild(handle('b', tx(win.b)));
+    if (P.playing && P.cur && P.cur.end > v.a && P.cur.start < v.b) {
+      var now = place(el('div', 'state playing'), Math.max(P.cur.start, v.a), Math.min(P.cur.end, v.b), 3);
+      var mid = (P.cur.start + P.cur.end) / 2, og = groups.filter(function (g) { return !g.remove && mid >= g.start && mid <= g.end; })[0];
+      now.style.color = og ? gcolor(og) : P.cur.color; winEl.appendChild(now);   // the colour its trace is drawn in
+    }
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
     waves();
   }
@@ -669,7 +679,7 @@
   function dashes() {
     var z = zoom();
     if (Math.abs(Math.log(z)) < Math.log(1.25)) return [];
-    if (z > 1) return [Math.max(1.5, 14 / z), 3];
+    if (z > 1) return [Math.max(1.5, 14 / z), Math.max(1, 3 / Math.sqrt(z))];
     return [14, Math.min(16, 3 + 9 * (1 / z - 1))];
   }
 
@@ -762,7 +772,7 @@
     // What is not drawn yet says so: a clip still loading flows, gently, backwards;
     // one that could not be read lies still and dotted; one that would not play is
     // marked the same. Nothing missing passes for silence.
-    Array.prototype.forEach.call(winEl.querySelectorAll('.state'), function (n) { n.remove(); });
+    Array.prototype.forEach.call(winEl.querySelectorAll('.state.loading, .state.unreadable, .state.unplayable'), function (n) { n.remove(); });
     clips.forEach(function (k) {
       var f = env[k.x.f.path], bad = P.bad[k.x.f.path];
       if (f && !f.failed && !bad) return;
@@ -1050,6 +1060,12 @@
     var x = Math.min(Math.max(e.clientX - best.r.left, 0), best.r.width);
     return best.L.origin + x / best.r.width * (best.L.end - best.L.origin);
   }
+  function timeAtX(clientX) { var r = winEl.getBoundingClientRect(); if (!M) layout(); return xt(Math.min(Math.max(clientX - r.left, 0), r.width)); }
+  function playFromStartOr(t) {   // the window's start (t null), or t: the playhead goes there, and it plays
+    seek(t == null ? win.a : t);
+    if (!P.playing) toggle();
+  }
+
   function winTime(e) {   // through the window's layout, compressed or not
     var r = winEl.getBoundingClientRect();
     if (!M) layout();
@@ -1117,11 +1133,14 @@
     if (d.on === 'edge') {
       var now = {a: win.a, b: win.b};
       win = d.from;
-      if (d.moved) setView(now.a, now.b); else { drawWin(); paintLanes(); }
+      if (d.moved) setView(now.a, now.b);
+      else if (d.src === 'win') playFromStartOr(d.edge === 'a' ? null : timeAtX(d.x));   // not dragged: a click, fallen through
+      else { drawWin(); paintLanes(); }
       return;
     }
     if (!d.moved) {   // a click: put the playhead there
-      if (win && d.on === 'win') seek(d.a, false, d.force);
+      if (win && d.on === 'win' && !d.force && d.a <= win.a) playFromStartOr(null);   // the gutter: play from the start
+      else if (win && d.on === 'win') seek(d.a, false, d.force);
       else { if (win) drawWin(); paintLanes(); }
       return;
     }
