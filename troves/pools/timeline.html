@@ -171,11 +171,16 @@
                         animation: flowback 2.2s linear infinite; opacity: .8; }
   #win .state.unreadable, #win .state.unplayable { background: repeating-linear-gradient(90deg, rgba(220,110,100,.75) 0 2px, transparent 2px 6px); }
   @keyframes flowback { from { background-position: 0 50%; } to { background-position: -9px 50%; } }
-  /* the clip playing: a record light in motion. Red always, whatever the show's colour: round dots marching forward */
+  /* the clip playing: a record light in motion. Red always, whatever the show's colour: round dots marching forward,
+     only once its sound is coming (see .waiting below) */
   #win .state.playing { pointer-events: none; opacity: 1; height: 8px; bottom: 22px; z-index: 9;   /* over everything in the window */
                         background: radial-gradient(circle, #ff3b30 2.6px, rgba(255,59,48,.35) 3.2px, transparent 3.6px) 0 50% / 14px 8px repeat-x;
                         animation: flowdots 1.1s linear infinite; }
   @keyframes flowdots { from { background-position: 0 50%; } to { background-position: 14px 50%; } }
+  /* the clip asked to play, its sound not here yet: the dots hold still and blink, trying to start, and its time with them */
+  #win.waiting .state.playing { animation: trying .9s ease-in-out infinite; }
+  #win.waiting #cliptag { animation: trying .9s ease-in-out infinite; }
+  @keyframes trying { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
   /* clinging to the playing clip's right end (just past it, when the clip is too narrow): in it, and left of it */
   #cliptag { position: absolute; bottom: 20px; z-index: 9; pointer-events: none; font-size: 9px; line-height: 12px; padding: 0 4px;
              border-radius: 2px; background: rgba(7,9,13,.8); color: #fff; white-space: pre; font-variant-numeric: tabular-nums; }
@@ -906,9 +911,13 @@
     c.beginPath(); c.moveTo(NOW.pts[0][0], NOW.pts[0][1]);
     NOW.pts.forEach(function (q) { c.lineTo(q[0], q[1]); });
     var dash = dashes(); if (!dash.length) dash = [9, 5];
-    var period = dash[0] + dash[1];
-    c.setLineDash(dash); c.lineDashOffset = -(((ms || performance.now()) / 1000 * 18) % period);
+    var period = dash[0] + dash[1], now = ms || performance.now();
+    // waiting for its sound: the dashes stand where they are and blink with the dots
+    if (waiting()) { c.globalAlpha = .6 + .4 * Math.cos((now - (P.waitFrom || now)) / 900 * 2 * Math.PI); }
+    else P.dash = -((now / 1000 * 18) % period);
+    c.setLineDash(dash); c.lineDashOffset = P.dash || 0;
     c.lineJoin = 'round'; c.lineWidth = 1.8; c.strokeStyle = NOW.colour || '#c9d1dc'; c.stroke();
+    c.globalAlpha = 1;
   }
 
   function waves() {
@@ -1522,8 +1531,18 @@
     else ct.style.left = Math.min(x1 + 3, wl - tw) + 'px';             // too narrow: just past it
   }
 
+  // Playing, but its sound is not coming: asked for and not here yet, seeking,
+  // or run dry of what has arrived. The clock is not moving, and says so.
+  function waiting() {
+    var a = P.audio;
+    return P.playing && (a.paused || a.seeking || a.readyState < 3);
+  }
+
   function frame() {
-    if (!P.playing) return;
+    if (!P.playing) { winEl.classList.remove('waiting'); return; }
+    var w = waiting();
+    if (w && !P.waitFrom) P.waitFrom = performance.now(); else if (!w) P.waitFrom = 0;
+    winEl.classList.toggle('waiting', w);   // the class and P.waitFrom start together: dots and dashes blink as one
     if (P.cur && !P.audio.paused) P.t = P.cur.start + P.audio.currentTime;
     var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
     if (ph && M) ph.style.left = tx(P.t) + 'px';
@@ -1550,7 +1569,7 @@
   }
 
   function stop() {
-    P.playing = false; P.audio.pause(); cancelAnimationFrame(P.raf);
+    P.playing = false; P.audio.pause(); cancelAnimationFrame(P.raf); winEl.classList.remove('waiting');
     if (win) { drawWin(); drawCtl(); paintLanes(); }
   }
 
