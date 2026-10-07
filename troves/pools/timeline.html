@@ -49,14 +49,21 @@
   .grp.tmp { background: repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 10px); }
   .grpname.tmp { font-style: italic; }
   /* an edge of the window, to drag: a wide grip around a thin bright bar */
-  .hdl { position: absolute; top: 0; bottom: 0; width: 14px; margin-left: -7px; cursor: ew-resize; z-index: 4; touch-action: none; }
-  .hdl::after { content: ''; position: absolute; left: 6px; top: 12%; bottom: 12%; width: 2px; border-radius: 2px; background: #fff; opacity: .75; }
-  .hdl:hover::after { opacity: 1; left: 5px; width: 4px; }
+  /* an edge's handle sits just outside the edge it holds (the start's to the left, the end's to the right),
+     so what lies right at the edge (a cut, a skipped clip) stays readable; red, like the record light */
+  .hdl { position: absolute; top: 0; bottom: 0; width: 14px; cursor: ew-resize; z-index: 4; touch-action: none; }
+  .hdl[data-edge="a"] { margin-left: -14px; }
+  .hdl[data-edge="b"] { margin-left: 0; }
+  .hdl::after { content: ''; position: absolute; top: 12%; bottom: 12%; width: 3px; border-radius: 2px; background: #ff3b30; opacity: .85; }
+  .hdl[data-edge="a"]::after { right: 2px; }
+  .hdl[data-edge="b"]::after { left: 2px; }
+  .hdl:hover::after { opacity: 1; width: 4px; }
   #win .out { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.5); pointer-events: none; z-index: 1; }
   #ctl button.tmp { font-style: italic; }
   #ctl select.pick { font: inherit; color: var(--ink); background: #10141c; border: 1px solid rgba(255,255,255,.2);
                      border-radius: 4px; padding: 4px 8px; max-width: 260px; cursor: pointer; }
   #ctl select.pick.tmp { font-style: italic; border-style: dashed; }
+  #ctl select.pick option:disabled { color: var(--dim); }
   #ctl select.pick option, #ctl select.pick optgroup { background: #10141c; color: var(--ink); font-style: normal; }
   #ctl input.name { user-select: text; -webkit-user-select: text; font: inherit; color: var(--ink); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.4);
                     border-radius: 4px; padding: 4px 8px; width: 160px; }
@@ -70,6 +77,12 @@
   /* the window: a stretch, at full width, that plays */
   #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 24vh; min-height: 170px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
+  /* the show's own line under the window is its scroll bar: thicker under the pointer, the window's part lit inside it */
+  #win .grp.bar { height: 6px; bottom: 3px; cursor: pointer; touch-action: none; z-index: 5; transition: height .12s; }
+  #win .grp.bar:hover, body.panning #win .grp.bar { height: 12px; }
+  #win .grp.bar .thumb { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: rgba(255,255,255,.82); cursor: grab;
+                         box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+  #win .grp.bar.full .thumb { background: rgba(255,255,255,.35); cursor: pointer; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
      touch edge to edge still read as separate. The one playing is shown by its
@@ -99,7 +112,8 @@
   #win .lbl .nm { color: rgba(201,209,220,.18); }
   /* the reach: from the playhead out to the cursor */
   #reach { position: absolute; height: 4px; z-index: 4; pointer-events: none; display: none; }
-  #reachlbl { position: absolute; z-index: 4; pointer-events: none; display: none; font-size: 11px; color: #fff; white-space: pre;
+  #strong { position: absolute; left: 3px; display: none; font-size: 9px; line-height: 12px; color: var(--dim); cursor: help; }
+  #reachlbl { position: absolute; z-index: 6; pointer-events: none; display: none; font-size: 10px; line-height: 13px; color: #fff; white-space: pre;
               font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000, 0 0 2px #000; }
   /* the grid, over the recordings: major lines labelled top and bottom, minor between */
   #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
@@ -175,6 +189,8 @@
   #ctl .span .slice { position: absolute; left: 0; bottom: 0; width: 100%; max-width: 170px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); }
   #ctl .span .slice .lit { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
   #ctl .span .ico { width: 26px; height: 26px; }
+  #ctl .chip.range, #ctl .chip.picked { cursor: pointer; }
+  #ctl .chip.range:hover, #ctl .chip.picked:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); }
   #ctl .chip.range { color: var(--ink); background: rgba(255,255,255,.13); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.35); }
   #ctl .badge { display: inline-flex; align-items: center; gap: 3px; color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #ctl .badge svg { opacity: .8; }
@@ -197,6 +213,7 @@
 </header>
 <main id="main"></main>
 <div id="dock">
+  <span id="strong" title="strong voice: a peak over about -9 dBFS crosses this dashed line">&minus;9</span>
   <div id="win"></div>
   <div id="ctl"></div>
 </div>
@@ -661,10 +678,13 @@
     }
     var cv = el('canvas'); cv.id = 'wave'; winEl.appendChild(cv);
     var cn = el('canvas'); cn.id = 'wavenow'; winEl.appendChild(cn);
+    var G = scope();
     groups.forEach(function (g) {
       var s = Math.max(g.start, v.a), e = Math.min(g.end, v.b);
       if (e <= s) return;
-      winEl.appendChild(place(groupLine(g, false, winEl, v.a, span, w), s, e, 2));
+      var line = place(groupLine(g, false, winEl, v.a, span, w), s, e, 2);
+      if (g === G.g) scrollBar(line, g);   // the show the window is in: its line scrolls it
+      winEl.appendChild(line);
     });
     ghosts.forEach(function (g) { if (g.end > v.a && g.start < v.b) winEl.appendChild(place(ghost(g, v.a, span, w), g.start, g.end)); });
     within(v.a, v.b).forEach(function (x) {
@@ -713,6 +733,63 @@
     var rt = el('div'); rt.id = 'reachlbl'; winEl.appendChild(rt);
     showReach();
     waves();
+  }
+
+  // --- the scroll bar is the show's own line ---------------------------------
+  // The group the window is in (the one it overlaps most) draws its line along
+  // the bottom of the window, as far as it is in view. That line is its scroll
+  // bar: however much of the screen it spans, it stands for the whole group
+  // (parallax: zoomed in, the full width is the whole show), and the window's
+  // part of it is lit. Drag to scroll within the group; click to go there;
+  // double-click for the whole group again; the wheel over it scrolls.
+  function scope() {
+    var best = null, most = 0;
+    groups.forEach(function (g) {
+      if (!(g.show || g.name)) return;
+      var o = Math.min(g.end, win.b) - Math.max(g.start, win.a);
+      if (o > most) { most = o; best = g; }
+    });
+    if (best) return {a: best.start, b: best.end, g: best};
+    var X = extent();
+    return {a: X.a, b: X.b, g: null};
+  }
+  function scrollTo(a) {   // the window's start, kept inside the group's span; its width stays
+    var G = scope(), w = win.b - win.a;
+    if (w < G.b - G.a) a = Math.max(G.a, Math.min(G.b - w, a)); else a = win.a;
+    setView(a, a + w, true);
+  }
+  function scrollBar(line, g) {
+    var glen = g.end - g.start || 1, lw = parseFloat(line.style.width) || 1;
+    var th = el('div', 'thumb');
+    var x0 = Math.max(0, (win.a - g.start) / glen * lw), x1 = Math.min(lw, (win.b - g.start) / glen * lw);
+    if (x1 - x0 < 14) { var c = (x0 + x1) / 2; x0 = Math.max(0, Math.min(lw - 14, c - 7)); x1 = x0 + 14; }
+    th.style.left = x0 + 'px'; th.style.width = (x1 - x0) + 'px';
+    line.appendChild(th);
+    line.classList.add('bar');
+    if (win.a <= g.start + .5 && win.b >= g.end - .5) line.classList.add('full');
+    line.title = gname(g) + ' ' + hm(g.start) + '\u2013' + hm(g.end) + ': drag to scroll, click to go there, double-click for the whole of it';
+    line.onclick = null;
+    line.onpointerdown = function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      var per = glen / lw, r = line.getBoundingClientRect();
+      remember();   // Backspace returns to where this began
+      if (e.target !== th) scrollTo(g.start + (e.clientX - r.left) * per - (win.b - win.a) / 2);   // the track: go there
+      var x = e.clientX, a0 = win.a;
+      document.body.classList.add('panning');
+      function move(ev) { var dx = ev.clientX - x; soon(function () { scrollTo(a0 + dx * per); }); }
+      function up() {
+        document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+        document.body.classList.remove('panning'); drawCtl();
+      }
+      document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+    };
+    line.ondblclick = function (e) { e.stopPropagation(); setView(g.start, g.end); };   // the whole group again
+    line.addEventListener('wheel', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * (e.deltaMode ? 40 : 1);
+      scrollTo(win.a + d / lw * glen * .5);
+    }, {passive: false});
   }
 
   // Grid spacing for a span of seconds: about eight labelled lines across,
@@ -900,8 +977,9 @@
     runs(clips.filter(function (k) { return !k.off; })).forEach(function (r) { trace(r, colourOf(r), false); });
     c.globalAlpha = .45; c.strokeStyle = '#fff'; c.setLineDash([4, 5]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(0, lineY + .5); c.lineTo(w, lineY + .5); c.stroke();
-    c.setLineDash([]); c.globalAlpha = .55; c.fillStyle = '#c9d1dc'; c.font = '10px Segoe UI, sans-serif';
-    c.fillText('strong voice · peaks over about -9 dBFS', 6, lineY - 4);
+    c.setLineDash([]);
+    var tag = document.getElementById('strong');   // its label lives in the gutter, left of the window, level with it
+    if (tag) { tag.style.top = (winEl.offsetTop + 22 + lineY - 6) + 'px'; tag.style.display = 'block'; }
     drawNow();
     ask();
   }
@@ -960,7 +1038,8 @@
     ctl.appendChild(clk);
     if (P.err) ctl.appendChild(el('span', 'err', P.err));
     var rg = el('span', 'chip range', wd(win.a) + ' ' + hm(win.a) + ' – ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b));
-    rg.title = 'the window: ' + hms(win.a) + ' to ' + hms(win.b);
+    rg.title = 'the window: ' + hms(win.a) + ' to ' + hms(win.b) + '. Click: open Explorer with the recordings in view selected';
+    rg.onclick = function () { reveal(win.a, win.b); };
     if (!M) layout();
     var vv = view(), cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0);
     var inWin = within(win.a, win.b), nShort = inWin.filter(function (x) { return short(x) && !silenced(x); }).length, nSil = inWin.filter(silenced).length;
@@ -992,7 +1071,8 @@
     var span = el('span', 'span');
     if (SEL) {
       var sc = el('span', 'chip picked', hm(SEL.a) + ' \u2013 ' + hm(SEL.b));
-      sc.title = 'selected: ' + hms(SEL.a) + ' to ' + hms(SEL.b) + ' (' + dur(SEL.b - SEL.a) + '). The list acts on it. Esc lets go';
+      sc.title = 'selected: ' + hms(SEL.a) + ' to ' + hms(SEL.b) + ' (' + dur(SEL.b - SEL.a) + '). The list acts on it; Esc lets go. Click: open Explorer with these recordings selected';
+      sc.onclick = function () { reveal(SEL.a, SEL.b); };
       span.appendChild(sc);
       var zin = icon('zoom', 'Look closer: the window becomes the selection (or double-click it, or z)');
       zin.onclick = function () { zin.blur(); var z = SEL; setView(z.a, z.b); };
@@ -1018,7 +1098,10 @@
     var pick = el('select', 'pick'), opts = [];
     pick.setAttribute('aria-label', 'group this window as');
     function opt(label, value, parent) { var o = el('option', null, label); o.value = value; (parent || pick).appendChild(o); return o; }
-    opt(over ? 'grouped as ' + gname(over) : 'group as…', '');
+    var head = opt(SEL ? 'on the selection ' + hm(SEL.a) + '\u2013' + hm(SEL.b) + ':'
+                       : 'on the whole window' + (over ? ', in ' + gname(over) : '') + ':', '');
+    head.disabled = true; head.selected = true;   // a label for what follows, not something to pick
+    if (SEL) opt('let go of the selection', 'clear');
     var og = el('optgroup'); og.label = 'shows'; pick.appendChild(og);
     shows.forEach(function (s) { opts.push({show: s.slug}); opt(s.title, opts.length - 1, og); });
     var ns = names();
@@ -1035,18 +1118,19 @@
     pick.onkeydown = function (e) { e.stopPropagation(); };   // arrows and letters choose, not shortcuts
     pick.onchange = function () {
       if (pick.value === 'new') return askName();
+      if (pick.value === 'clear') { SEL = null; drawWin(); drawCtl(); return; }
       if (pick.value === 'ungroup') return save({}, hit, sound);
       if (pick.value === 'tx' || pick.value === 'untx') {
         saves++;
         return post('/group', {start: tgt.a, end: tgt.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
-          .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); });
+          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); });
       }
       if (pick.value === 'rm' || pick.value === 'keep') {
         saves++;
         return post('/group', {start: tgt.a, end: tgt.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
-          .then(function (gs) { groups = gs.groups || gs; drawWin(); drawCtl(); paintLanes(); marked(); });
+          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); });
       }
       if (pick.value !== '') save(opts[+pick.value], hit, sound);
     };
@@ -1090,10 +1174,11 @@
   function setWindow(a, b) {
     var hit = within(a, b);
     if (!hit.length) return;
+    SEL = null;   // a new window: the selection was the old one's
     setView(hit[0].start, Math.max.apply(null, hit.map(function (x) { return x.end; })));
   }
 
-  function openView(a, b) { setView(a, b); }
+  function openView(a, b) { SEL = null; setView(a, b); }
 
   function extent() {   // everything there is: the first recording (or ghost) to the last
     var a = Infinity, b = -Infinity;
@@ -1151,6 +1236,12 @@
       .catch(function (e) { P.err = 'manifest not written: ' + e.message; drawCtl(); });
   }
 
+  function reveal(a, b) {   // Explorer, with the recordings in [a, b] selected
+    var paths = within(a, b).map(function (x) { return x.f.path; });
+    if (!paths.length) return;
+    post('/reveal', {paths: paths}).then(function (r) { if (!r.ok) return r.text().then(function (t) { P.err = 'Explorer: ' + t; drawCtl(); }); });
+  }
+
   function marksHere() {   // the ranges marked for transcription that the window covers, clipped to it
     return groups.filter(function (g) { return g.transcribe && g.end > win.a && g.start < win.b; })
       .map(function (g) { return {start: Math.max(g.start, win.a), end: Math.min(g.end, win.b)}; });
@@ -1197,7 +1288,7 @@
     var t = SEL || win;
     post('/group', {start: t.a, end: t.b, show: as.show || '', name: as.name || '', files: hit.length, sound: sound})
       .then(function (r) { return r.json(); })
-      .then(function (d) { shows = d.shows; groups = d.groups; drawWin(); drawCtl(); paintLanes(); marked(); });
+      .then(function (d) { shows = d.shows; groups = d.groups; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); });
   }
 
   // --- the player: the window's recordings in order, gaps skipped --------
@@ -1334,9 +1425,11 @@
     var rl = document.getElementById('reach'), rt = document.getElementById('reachlbl');
     if (!rl || !rt) return;
     if (!hover || !win || !M) { rl.style.display = rt.style.display = 'none'; return; }
-    var cx = hover.x, tc = xt(cx), mid = winEl.clientHeight / 2;
+    // in the strip between the waveform's floor (22 px up) and the show's bar (the bottom 9): clear of the
+    // waveform and of the clips' own particulars printed above the floor
+    var cx = hover.x, tc = xt(cx), mid = winEl.clientHeight - 15;
     rt.textContent = (P.t != null ? signed(ahead(P.t, tc)) + '  ' : '') + hms(tc);
-    rt.style.display = 'block'; rt.style.top = (mid - 20) + 'px';
+    rt.style.display = 'block'; rt.style.top = (mid - 7) + 'px';
     var wl = winEl.clientWidth, right = cx < wl - 120;
     rt.style.left = right ? (cx + 8) + 'px' : 'auto'; rt.style.right = right ? 'auto' : (wl - cx + 8) + 'px';
     if (P.t == null) { rl.style.display = 'none'; return; }
@@ -1423,6 +1516,7 @@
       return;
     }
     if (!d.moved) {   // a click: put the playhead there
+      if (d.on === 'win' && SEL) { SEL = null; drawCtl(); }   // a plain click lets go of the selection
       if (win && d.on === 'win' && !d.force && d.a <= win.a) playFromStartOr(null);   // the gutter: play from the start
       else if (win && d.on === 'win') seek(d.a, false, d.force);
       else { if (win) drawWin(); paintLanes(); }

@@ -777,6 +777,43 @@ def wav_of(path):
     return _wavs[path]
 
 
+def reveal(paths):
+    """Explorer at each folder, with the given files selected (all of them, not
+    just one: SHOpenFolderAndSelectItems, which /select cannot do)."""
+    import ctypes
+    from ctypes import wintypes
+    shell32, ole32 = ctypes.windll.shell32, ctypes.windll.ole32
+    shell32.SHParseDisplayName.argtypes = [wintypes.LPCWSTR, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),
+                                           wintypes.ULONG, ctypes.POINTER(wintypes.ULONG)]
+    shell32.ILFindLastID.argtypes = [ctypes.c_void_p]
+    shell32.ILFindLastID.restype = ctypes.c_void_p
+    shell32.SHOpenFolderAndSelectItems.argtypes = [ctypes.c_void_p, wintypes.UINT, ctypes.POINTER(ctypes.c_void_p), wintypes.DWORD]
+    ole32.CoTaskMemFree.argtypes = [ctypes.c_void_p]
+    ole32.CoInitialize(None)
+    by = {}
+    for path in paths:
+        by.setdefault(os.path.dirname(path), []).append(path)
+    shown = 0
+    for folder, files in by.items():
+        pf = ctypes.c_void_p()
+        if shell32.SHParseDisplayName(folder, None, ctypes.byref(pf), 0, None) != 0:
+            continue
+        kids, owned = [], []
+        for f in files:
+            pi = ctypes.c_void_p()
+            if shell32.SHParseDisplayName(f, None, ctypes.byref(pi), 0, None) == 0:
+                owned.append(pi)
+                kids.append(shell32.ILFindLastID(pi))
+        if kids:
+            arr = (ctypes.c_void_p * len(kids))(*kids)
+            shell32.SHOpenFolderAndSelectItems(pf, len(kids), arr, 0)
+            shown += len(kids)
+        for pi in owned:
+            ole32.CoTaskMemFree(pi)
+        ole32.CoTaskMemFree(pf)
+    return shown
+
+
 def known_path(data, path):
     # A share's root comes with a trailing separator (\\server\share\); trim it,
     # or nothing on a depot share is ever inside it.
@@ -854,6 +891,14 @@ def serve(cfg):
                 pass   # the player moved on
 
         def do_POST(self):
+            if self.path == "/reveal":
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                    data = current(cfg)
+                    paths = [str(x) for x in body.get("paths") or [] if known_path(data, str(x)) and os.path.isfile(str(x))]
+                    return self.send(200, json.dumps({"selected": reveal(paths)}).encode(), "application/json")
+                except (ValueError, TypeError, OSError) as e:
+                    return self.send(400, str(e).encode(), "text/plain")
             if self.path == "/manifest":
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
