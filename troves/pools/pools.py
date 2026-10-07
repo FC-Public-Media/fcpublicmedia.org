@@ -598,7 +598,7 @@ def remove_marked(cfg):
         for r in p["rows"]:
             for f in r.get("files") or []:
                 end = f["start"] + (f["duration"] or 0)
-                if f["state"] == "live" or not any(end > g["start"] and f["start"] < g["end"] for g in marked):
+                if f["state"] == "live" or not any(f["start"] >= g["start"] - .5 and end <= g["end"] + .5 for g in marked):
                     continue
                 src = Path(f["path"])
                 dst = base / ".removed" / day / src.relative_to(base)
@@ -670,21 +670,21 @@ def group(body):
     start, end = float(body["start"]), float(body["end"])
     flag = "remove" if "remove" in body else "transcribe" if "transcribe" in body else None
     if flag:
-        # Mark (or unmark) the groups this stretch covers, for removal or for
-        # transcription. A stretch with none gets a bare mark: no show and no
-        # name, only the flag. Unmarking a bare mark takes it away (unless
-        # another flag or a history keeps it); a named group only loses the flag.
-        on, gs, hit, keep = bool(body[flag]), groups(), False, []
+        # A mark is its own range, exactly the stretch given: never a flag set on
+        # the group around it (that once marked a whole show for removal when a
+        # piece of it was meant). Unmarking takes away the marks of that kind the
+        # stretch touches (a mark with a history only loses the flag), and clears
+        # the flag from any named group that carried it the old way.
+        on, gs, keep = bool(body[flag]), groups(), []
         for g in gs:
-            if g["end"] > start and g["start"] < end:
-                hit = True
-                g[flag] = on
-                if not on and not g.get("show") and not g.get("name") and not g.get("remove") \
-                        and not g.get("transcribe") and not g.get("events"):
+            if not on and g.get(flag) and g["end"] > start and g["start"] < end:
+                g[flag] = False
+                if not g.get("show") and not g.get("name") and not g.get("remove") and not g.get("transcribe") \
+                        and not g.get("events") and not g.get("removed"):
                     continue
             keep.append(g)
         gs = keep
-        if not hit and on:
+        if on:
             gs.append({"show": None, "name": None, "start": start, "end": end, flag: True,
                        "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
                        "at": datetime.now().astimezone().isoformat(timespec="seconds")})
@@ -695,7 +695,7 @@ def group(body):
         raise ValueError("empty stretch")
     if show and show not in [s["slug"] for s in shows()]:
         raise ValueError("no such show")
-    gs = [g for g in groups() if g["end"] <= start or g["start"] >= end]
+    gs = [g for g in groups() if g["end"] <= start or g["start"] >= end or not (g.get("show") or g.get("name"))]   # marks stay
     if show or name:
         gs.append({"show": show or None, "name": None if show else name, "start": start, "end": end,
                    "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
