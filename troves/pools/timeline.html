@@ -90,7 +90,8 @@
   .grpname.gone { font-style: italic; opacity: .8; }
   #rmbtn { font: inherit; color: #f07a6e; background: none; border: 1px solid rgba(240,122,110,.5); border-radius: 4px; padding: 3px 10px; cursor: pointer; }
   #rmbtn:hover { border-color: #f07a6e; }
-  #wave { position: absolute; left: 0; top: 22px; pointer-events: none; }
+  #wave, #wavenow { position: absolute; left: 0; top: 22px; pointer-events: none; }
+  #wavenow { z-index: 2; }
   /* the grid, over the recordings: major lines labelled top and bottom, minor between */
   #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
   #win .g.minor { background: rgba(255,255,255,.05); top: 18px; bottom: 18px; }
@@ -111,10 +112,10 @@
   #win .state.unreadable, #win .state.unplayable { background: repeating-linear-gradient(90deg, rgba(220,110,100,.75) 0 2px, transparent 2px 6px); }
   @keyframes flowback { from { background-position: 0 0; } to { background-position: -28px 0; } }
   /* the clip playing: the same flow, gently forward, in its own colour, exactly as wide as the clip */
-  #win .state.playing { pointer-events: none; opacity: .85;
-                        background: repeating-linear-gradient(90deg, currentColor 0 8px, transparent 8px 14px);
-                        background-size: 28px 4px; animation: flowfwd 2.2s linear infinite; }
-  @keyframes flowfwd { from { background-position: 0 0; } to { background-position: 28px 0; } }
+  #win .state.playing { pointer-events: none; opacity: .95;
+                        background: radial-gradient(circle, #ff5a4f 1.5px, transparent 2px) 0 50% / 9px 4px repeat-x;
+                        animation: flowdots 1.4s linear infinite; }
+  @keyframes flowdots { from { background-position: 0 50%; } to { background-position: 9px 50%; } }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
@@ -609,6 +610,7 @@
       });
     }
     var cv = el('canvas'); cv.id = 'wave'; winEl.appendChild(cv);
+    var cn = el('canvas'); cn.id = 'wavenow'; winEl.appendChild(cn);
     groups.forEach(function (g) {
       var s = Math.max(g.start, v.a), e = Math.min(g.end, v.b);
       if (e <= s) return;
@@ -683,6 +685,25 @@
     return [14, Math.min(16, 3 + 9 * (1 / z - 1))];
   }
 
+  // The clip playing: red dots flow forward along its peaks, on a layer of its
+  // own redrawn each frame, so nothing else on the timeline moves.
+  var NOW = null;
+  function drawNow(ms) {
+    var cv = document.getElementById('wavenow');
+    if (!cv) return;
+    var dpr = devicePixelRatio || 1, w = NOW ? NOW.w : winEl.clientWidth, h = NOW ? NOW.h : 10;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    }
+    var c = cv.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+    if (!NOW || !P.playing || NOW.pts.length < 2) return;
+    c.beginPath(); c.moveTo(NOW.pts[0][0], NOW.pts[0][1]);
+    NOW.pts.forEach(function (q) { c.lineTo(q[0], q[1]); });
+    c.setLineDash([0.01, 8]); c.lineDashOffset = -((ms || performance.now()) / 1000 * 16);
+    c.lineCap = 'round'; c.lineWidth = 3.2; c.strokeStyle = '#ff5a4f'; c.stroke();
+  }
+
   function waves() {
     var cv = document.getElementById('wave');
     if (!cv || !win) return;
@@ -727,6 +748,7 @@
       var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex) || [0, '88', '88', '88'];
       return 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',' + a + ')';
     }
+    NOW = null;
     function trace(r, colour, quiet) {
       var bins = Math.max(1, Math.round((r.x1 - r.x0) / BIN)), bw = (r.x1 - r.x0) / bins, ys = [];
       for (var i = 0; i < bins; i++) {
@@ -748,6 +770,10 @@
       });
       var sm = ys.map(function (y, i) { return ((i > 0 ? ys[i - 1] : y) + 2 * y + (i < ys.length - 1 ? ys[i + 1] : y)) / 4; });
       var pts = sm.map(function (y, i) { return [r.x0 + (i + .5) * bw, base - y * H]; });
+      if (!quiet && P.cur && r.clips.some(function (k) { return k.x === P.cur; })) {
+        var c0 = tx(P.cur.start), c1 = tx(P.cur.end);
+        NOW = {pts: pts.filter(function (q) { return q[0] >= c0 && q[0] <= c1; }), w: w, h: h};
+      }
       function line(cont) {   // cont: carry on the shape already begun (a fill), not start another
         if (cont) c.lineTo(r.x0, pts[0][1]); else c.moveTo(r.x0, pts[0][1]);
         pts.forEach(function (p) { c.lineTo(p[0], p[1]); }); c.lineTo(r.x1, pts[pts.length - 1][1]);
@@ -787,6 +813,7 @@
     c.beginPath(); c.moveTo(0, lineY + .5); c.lineTo(w, lineY + .5); c.stroke();
     c.setLineDash([]); c.globalAlpha = .55; c.fillStyle = '#c9d1dc'; c.font = '10px Segoe UI, sans-serif';
     c.fillText('strong voice · peaks over about -9 dBFS', 6, lineY - 4);
+    drawNow();
     ask();
   }
   function ask() {
@@ -1023,6 +1050,7 @@
     if (P.cur && !P.audio.paused) P.t = P.cur.start + P.audio.currentTime;
     var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
     if (ph && M) ph.style.left = tx(P.t) + 'px';
+    drawNow();
     if (S.follow && M && win && !drag && P.t > xt(winEl.clientWidth * .9)) {   // near the right edge: turn the page
       var span = win.b - win.a;
       if (P.t + span * .85 <= extent().b + span) { setView(P.t - span * .1, P.t + span * .9, true); }
