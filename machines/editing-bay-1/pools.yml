@@ -27,6 +27,12 @@ pools:
     capacity: 64 GB
     stage: landed
 
+# How the squares page draws. A presentation choice, not a ruling: debris is
+# not declared noise and a cluster is not declared a take.
+view:
+  debris_seconds: 6     # under this, a recording is a chip in a pile
+  cluster_minutes: 5    # more than this apart starts another heap
+
 stages:
   landed:      {label: Landed,       color: "#5b8def"}
   to-enhance:  {label: To enhance,   color: "#e0a63a"}

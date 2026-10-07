@@ -8,6 +8,7 @@
   :root {
     --bg: #07090d; --ink: #c9d1dc; --dim: #6b7584; --faint: rgba(255,255,255,.07);
     --row: 86px; --label: 150px;
+    --chip: clamp(3px, .34vw, 7px);   /* the one unit: debris is a chip, a square is chips; it scales with the window */
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -25,28 +26,38 @@
   .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
   .legend .b { background: transparent; }
   main { flex: 1; min-height: 0; overflow: auto; }
-  .pool { margin: 0 0 34px; width: max-content; min-width: 100%; }
+  .pool { margin: 0 0 34px; }
   .pool > h2 { position: sticky; left: 0; margin: 0 0 6px; padding: 0 18px; font-size: 11px; font-weight: 600;
                letter-spacing: .14em; text-transform: uppercase; color: var(--dim); width: max-content; }
   .pool > h2 span { letter-spacing: 0; text-transform: none; font-weight: 400; margin-left: 10px; }
-  .row { display: flex; align-items: center; height: var(--row); border-top: 1px solid var(--faint); }
-  .row .label { position: sticky; left: 0; z-index: 2; flex: 0 0 var(--label); height: 100%; padding: 0 12px 0 18px;
-                display: flex; flex-direction: column; justify-content: center; cursor: pointer;
-                background: linear-gradient(90deg, var(--bg) 80%, transparent); }
+  .row { display: flex; align-items: stretch; min-height: var(--row); border-top: 1px solid var(--faint); }
+  .row .label { flex: 0 0 var(--label); padding: 12px 12px 0 18px;
+                display: flex; flex-direction: column; justify-content: flex-start; cursor: pointer; }
   .row .label b { font-weight: 500; }
   .row .label small { color: var(--dim); }
   .row .label:hover b { text-decoration: underline; }
-  .strip { display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 100%; }
+  /* No sideways scrolling: a row wraps onto as many lines as it needs. */
+  .strip { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 6px; padding: 8px 18px 10px 12px; }
   .sq { flex: none; border-radius: 3px; cursor: pointer; border: 1px solid rgba(255,255,255,.12); position: relative; }
   .sq.fresh { border: 2px solid rgba(255,255,255,.55); }
   .sq.live { border: 2px solid #fff; animation: live 1.2s ease-in-out infinite; }
   .sq.short { border-style: dashed; }
   .sq:hover { outline: 2px solid #fff; outline-offset: 2px; }
   @keyframes live { 50% { box-shadow: 0 0 0 4px rgba(255,255,255,.25); } }
-  .dayg { flex: none; display: flex; align-items: center; gap: 6px; height: 100%; min-width: 84px; padding: 16px 8px 0;
-          border-left: 1px solid var(--faint); position: relative; }
+  .dayg { flex: 0 1 auto; max-width: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 5px 4px;
+          min-width: 84px; padding: 18px 8px 2px; border-left: 1px solid var(--faint); position: relative; }
+  .brk { flex: none; width: 12px; }                     /* more than 5 minutes apart: another cluster */
+  /* Debris: under 6 s, the 2 s buffer and a little noise. Tiny chips, piled
+     top to bottom, then the next column, a little askew. */
+  .pile { display: grid; grid-auto-flow: column; grid-template-rows: repeat(6, var(--chip)); grid-auto-columns: var(--chip); gap: 1px; padding: 1px; }
+  .d { width: var(--chip); height: var(--chip); border-radius: 1px; cursor: pointer; }
+  .strip .sq { width: calc(var(--chip) * var(--n)); height: calc(var(--chip) * var(--n)); }
+  .d.short { opacity: .5; }
+  .d.fresh { box-shadow: 0 0 0 1px rgba(255,255,255,.5); }
+  .d.live { box-shadow: 0 0 0 1px #fff; }
+  .d:hover { outline: 1px solid #fff; }
   .dayg > span { position: absolute; top: 4px; left: 6px; font-size: 10px; color: var(--dim); white-space: nowrap; }
-  .free { flex: none; height: 46px; border-radius: 3px; display: flex; align-items: center; padding-left: 10px;
+  .free { flex: 1 0 140px; height: 46px; border-radius: 3px; display: flex; align-items: center; padding-left: 10px;
           color: var(--dim); font-size: 11px; white-space: nowrap;
           background: repeating-linear-gradient(135deg, var(--faint) 0 6px, transparent 6px 12px); }
   .note { color: var(--dim); padding: 0 12px; }
@@ -85,12 +96,19 @@
   function day(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
+  // How the page draws, from pools.yml `view:`. A way of looking, not a decision:
+  // debris is not declared noise, and a cluster is not declared a take.
+  var DEBRIS = 6, CLUSTER = 300;
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+
   function open(path) {
     fetch('/open', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({path: path})});
   }
 
   function draw(d) {
-    var stages = d.stages || {}, all = [];
+    var stages = d.stages || {}, all = [], vw = d.view || {};
+    DEBRIS = vw.debris_seconds != null ? +vw.debris_seconds : 6;
+    CLUSTER = vw.cluster_minutes != null ? vw.cluster_minutes * 60 : 300;
     d.pools.forEach(function (p) { p.rows.forEach(function (r) { (r.files || []).forEach(function (f) { all.push(f); }); }); });
     var max = Math.max.apply(null, all.map(function (f) { return f.bytes; }).concat([1]));
 
@@ -104,6 +122,8 @@
      ['short', '1px dashed rgba(255,255,255,.5)', 'under 3 s']].forEach(function (b) {
       var s = el('span'), i = el('i', 'b'); i.style.border = b[1]; s.appendChild(i); s.appendChild(document.createTextNode(b[2])); lg.appendChild(s);
     });
+    var ds = el('span'), di = el('i'); di.style.cssText = 'width:5px;height:5px;background:var(--dim);transform:rotate(12deg)';
+    ds.appendChild(di); ds.appendChild(document.createTextNode('debris: under ' + DEBRIS + ' s, piled')); lg.appendChild(ds);
 
     var keep = main.scrollLeft; main.textContent = '';
     d.pools.forEach(function (p) {
@@ -129,14 +149,26 @@
         } else if (r.error) {
           strip.appendChild(el('span', 'note', 'not reachable from here right now'));
         }
-        var color = (stages[r.stage] || {}).color || '#888', lastDay = null, width = 0, group = null;
+        var color = (stages[r.stage] || {}).color || '#888', lastDay = null, group = null, pile = null, prevEnd = null;
         files.forEach(function (f) {
-          var dd = day(f.start);
-          if (dd !== lastDay) { group = el('div', 'dayg'); group.appendChild(el('span', null, dd)); strip.appendChild(group); lastDay = dd; width += 17; }
-          var side = Math.round(10 + 46 * Math.sqrt(f.bytes / max));
-          var sq = el('div', 'sq ' + f.state + (f.short ? ' short' : ''));
-          sq.style.width = sq.style.height = side + 'px';
+          var dd = day(f.start), end = f.duration != null ? f.start + f.duration : f.end;
+          if (dd !== lastDay) { group = el('div', 'dayg'); group.appendChild(el('span', null, dd)); strip.appendChild(group); lastDay = dd; prevEnd = null; pile = null; }
+          if (prevEnd != null && f.start - prevEnd > CLUSTER) { group.appendChild(el('div', 'brk')); pile = null; }
+          prevEnd = Math.max(prevEnd || 0, end);
+          var debris = f.duration != null ? f.duration < DEBRIS : f.bytes < 600000;
+          var sq = el('div', (debris ? 'd ' : 'sq ') + f.state + (f.short ? ' short' : ''));
           sq.style.background = color;
+          if (debris) {
+            if (!pile) { pile = el('div', 'pile'); group.appendChild(pile); }
+            var h = hash(f.name);
+            sq.style.transform = 'translate(' + (h % 3 - 1) + 'px,' + ((h >> 2) % 3 - 1) + 'px) rotate(' + ((h >> 4) % 41 - 20) + 'deg)';
+          } else {
+            pile = null;
+            // size grows with duration, gently, in chips: 6 s is barely more than debris,
+            // a minute about 3, half an hour about 10 (bytes when the length is unknown)
+            var secs = f.duration != null ? f.duration : DEBRIS * Math.pow(f.bytes / 576000, 1);
+            sq.style.setProperty('--n', Math.min(14, 1.2 * Math.pow(Math.max(secs, DEBRIS) / DEBRIS, .38)).toFixed(2));
+          }
           sq.setAttribute('aria-label', f.name);
           sq.onmouseenter = function (e) {
             tip.innerHTML = '';
@@ -149,13 +181,9 @@
           sq.onmousemove = function (e) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 350) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; };
           sq.onmouseleave = function () { tip.style.display = 'none'; };
           sq.onclick = function () { open(f.path); };
-          group.appendChild(sq); width += side + 6;
+          (debris ? pile : group).appendChild(sq);
         });
-        var free = r.free != null ? r.free : null, used = r.used != null ? r.used : null;
-        if (free != null) {
-          var w = used ? Math.max(60, Math.min(2400, Math.max(width, 60) * free / Math.max(used, 1))) : 240;
-          strip.appendChild(el('div', 'free', bytes(free) + ' free')).style.width = w + 'px';
-        }
+        if (r.free != null) strip.appendChild(el('div', 'free', bytes(r.free) + ' free'));
         row.appendChild(strip); sec.appendChild(row);
       });
       if (p.kind === 'folder' && p.free != null) {
@@ -163,8 +191,7 @@
         p.rows.forEach(function (r) { n = Math.max(n, (r.files || []).length); });
         fl.appendChild(el('b', null, 'Free')); fl.appendChild(el('small', null, 'of ' + bytes(p.capacity)));
         fr.appendChild(fl);
-        fs.appendChild(el('div', 'free', bytes(p.free) + ' free')).style.width =
-          Math.max(60, Math.min(2400, Math.max(n * 40, 200) * p.free / Math.max(p.used, 1))) + 'px';
+        fs.appendChild(el('div', 'free', bytes(p.free) + ' free'));
         fr.appendChild(fs); sec.appendChild(fr);
       }
       main.appendChild(sec);
