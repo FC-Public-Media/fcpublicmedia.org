@@ -36,7 +36,10 @@ Status: first pass, on production (editing bay 1). `fcpm pools` opens it.
 ## The timeline
 
 `timeline`, at the top of the page, shows the same recordings on the clock:
-one lane per night, noon to noon, so a session past midnight stays whole. Each
+one lane per night, from the day's seam to the next (`view: day_starts_at` in
+the machine's `pools.yml`; 9 on production), so a session past midnight stays
+whole and no debris sits at a lane's far end. The squares page splits days at
+the same hour. Each
 recording sits where it ran, as long as it ran: its last write, less its
 length (AIFF and WAV lengths are read from their headers, once). What was
 silent has no bytes and is left empty, so sessions, the breaks inside them,
