@@ -162,7 +162,7 @@ def depot_shares(pool):
 
 def scan(cfg):
     now = time.time()
-    out = {"at": now, "stages": cfg.get("stages") or {}, "pools": []}
+    out = {"at": now, "stages": cfg.get("stages") or {}, "view": cfg.get("view") or {}, "pools": []}
     for pool in cfg.get("pools") or []:
         p = {"name": pool["name"], "title": pool.get("title", pool["name"]), "kind": pool["kind"], "rows": []}
         if pool["kind"] == "smb":

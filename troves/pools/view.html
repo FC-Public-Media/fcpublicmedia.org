@@ -96,7 +96,9 @@
   function day(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
-  var DEBRIS = 6, CLUSTER = 300;   // seconds: what counts as debris, and the gap that starts a new cluster
+  // How the page draws, from pools.yml `view:`. A way of looking, not a decision:
+  // debris is not declared noise, and a cluster is not declared a take.
+  var DEBRIS = 6, CLUSTER = 300;
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 
   function open(path) {
@@ -104,7 +106,9 @@
   }
 
   function draw(d) {
-    var stages = d.stages || {}, all = [];
+    var stages = d.stages || {}, all = [], vw = d.view || {};
+    DEBRIS = vw.debris_seconds != null ? +vw.debris_seconds : 6;
+    CLUSTER = vw.cluster_minutes != null ? vw.cluster_minutes * 60 : 300;
     d.pools.forEach(function (p) { p.rows.forEach(function (r) { (r.files || []).forEach(function (f) { all.push(f); }); }); });
     var max = Math.max.apply(null, all.map(function (f) { return f.bytes; }).concat([1]));
 
@@ -119,7 +123,7 @@
       var s = el('span'), i = el('i', 'b'); i.style.border = b[1]; s.appendChild(i); s.appendChild(document.createTextNode(b[2])); lg.appendChild(s);
     });
     var ds = el('span'), di = el('i'); di.style.cssText = 'width:5px;height:5px;background:var(--dim);transform:rotate(12deg)';
-    ds.appendChild(di); ds.appendChild(document.createTextNode('debris: under 6 s, piled')); lg.appendChild(ds);
+    ds.appendChild(di); ds.appendChild(document.createTextNode('debris: under ' + DEBRIS + ' s, piled')); lg.appendChild(ds);
 
     var keep = main.scrollLeft; main.textContent = '';
     d.pools.forEach(function (p) {
