@@ -394,7 +394,8 @@ def recycled(base):
 # (jobs/<id>.result.json) fills in as each recording is heard. The engine is
 # the machine's choice (pools.yml `transcribe: engine:`); engines/ holds them.
 
-ENGINES = {"windows-speech": HERE / "engines" / "windows-speech.ps1"}
+ENGINES = {"windows-speech": HERE / "engines" / "windows-speech.ps1",   # one recording per run, PowerShell
+           "whisper": HERE / "engines" / "whisper.py"}                   # a whole job per run, its own venv (pools.yml)
 _jobs_lock = threading.Lock()
 _engine_lock = threading.Lock()   # one recording heard at a time, across every job: engines do not share well
 
@@ -421,9 +422,15 @@ def mono16k(path):
 
 
 def transcribe(cfg, body):
-    engine = ((cfg.get("transcribe") or {}).get("engine")) or "windows-speech"
+    tcfg = cfg.get("transcribe") or {}
+    engine = tcfg.get("engine") or "windows-speech"
     if engine not in ENGINES:
         raise ValueError(f"no engine {engine!r} here")
+    wcfg = tcfg.get(engine) or {}
+    if engine == "whisper":
+        py, models = os.path.expandvars(wcfg.get("python", "")), os.path.expandvars(wcfg.get("models", ""))
+        if not os.path.isfile(py) or not os.path.isdir(models):
+            raise ValueError("whisper is named but not here: pools.yml transcribe: whisper: python, models")
     data = current(cfg)
     marks = [m for m in body.get("marks") or [] if float(m.get("end", 0)) > float(m.get("start", 0))]
     if not marks:
@@ -448,7 +455,60 @@ def transcribe(cfg, body):
         with _jobs_lock:
             (jobs_dir() / f"{jid}.result.json").write_text(json.dumps(result), encoding="utf-8")
 
+    def run_whisper():
+        # The whole job in one run of the engine: the model loads once. A line comes back
+        # per recording as it is heard; the result fills in as they do.
+        work = jobs_dir() / jid
+        work.mkdir(exist_ok=True)
+        wavs = []
+        for i, c in enumerate(clips):
+            w = work / f"{i}.wav"
+            try:
+                w.write_bytes(mono16k(c["path"]))
+            except (OSError, ValueError, struct.error) as e:
+                result.setdefault("errors", []).append({"path": c["path"], "why": f"could not be read: {e}"})
+                w = None
+            wavs.append(str(w) if w else None)
+        todo = [(i, w) for i, w in enumerate(wavs) if w]
+        (work / "list.json").write_text(json.dumps([w for _, w in todo]), encoding="utf-8")
+        result["done"] = len(clips) - len(todo)
+        save()
+        with _engine_lock:
+            proc = subprocess.Popen([py, "-I", str(ENGINES["whisper"]), str(work / "list.json"), models],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
+            seen = set()
+            for line in proc.stdout:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                k = todo[r["i"]][0]
+                c = clips[k]
+                seen.add(k)
+                if r.get("error"):
+                    result.setdefault("errors", []).append({"path": c["path"], "why": r["error"]})
+                for s in r.get("segments") or []:
+                    if s.get("text"):
+                        result["segments"].append({"t": float(c["start"]) + float(s["at"]), "d": float(s["len"]),
+                                                   "text": s["text"], "conf": s.get("conf"), "path": c["path"],
+                                                   "no_speech": s.get("no_speech"), "logp": s.get("logp"), "cr": s.get("cr")})
+                result.setdefault("heard", []).append(c["path"])   # heard, whether or not anything was said
+                result["done"] += 1
+                save()
+            err = proc.stderr.read()
+            proc.wait()
+            for k, _ in todo:
+                if k not in seen:
+                    why = (err.strip().splitlines() or ["the engine stopped"])[-1][:200]
+                    result.setdefault("errors", []).append({"path": clips[k]["path"], "why": why})
+                    result["done"] += 1
+        shutil.rmtree(work, ignore_errors=True)
+        result["state"] = "done"
+        save()
+
     def run():
+        if engine == "whisper":
+            return run_whisper()
         tmp = jobs_dir() / f"{jid}.wav"
 
         def hear():

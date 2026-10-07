@@ -98,5 +98,17 @@ gear:
     updates: bin/refs pull
     restart-tier: audition
 
+  - gear: faster-whisper
+    for: transcription for the pools page (troves/pools/engines/whisper.py):
+      Whisper large-v3 on the RTX 4080. Its output also says which recordings
+      hold nothing worth keeping, so they can be recommended for removal
+    at: "%LOCALAPPDATA%\\editing-bay-1\\whisper\\venv\\Scripts\\python.exe"
+    vendor: SYSTRAN (faster-whisper), MIT; OpenAI (Whisper large-v3), MIT
+    signer: none; packages pinned from PyPI, the model checked by its content
+      hash (bay/faster-whisper-1.1.1.yml)
+    provisioner: bay          # a uv venv and pinned packages; bay/faster-whisper-1.1.1.yml
+    updates: bay
+    restart-tier: none
+
 # PROPOSED, NOT WANTED YET: ffmpeg, for transcoding digitization masters. It
 # waits on the capture decision (Autumn, HDCP testing, and a home for masters).
