@@ -78,10 +78,15 @@
      a clip whose waveform is a sliver reads as disabled */
   #win .f.skip { opacity: .5; background: repeating-linear-gradient(135deg, #8a8d94 0 2px, #2c2f35 2px 6px) !important; }
   /* a ghost: a recording that was here and is not now */
-  .ghost { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border: 1px dashed rgba(240,120,110,.55); border-radius: 1px; }
+  /* a ghost is an absence: it darkens what is under it (many darken more), with
+     only a faint dark-red edge, so removed stretches read as holes, not as light */
+  .ghost { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px;
+           background: rgba(0,0,0,.42); box-shadow: inset 0 0 0 1px rgba(150,60,60,.22); mix-blend-mode: multiply; }
   #win .ghost { top: 22px; bottom: 22px; }
   .grp.rm { background: repeating-linear-gradient(135deg, #e0574f 0 4px, transparent 4px 7px) !important; height: 5px; }
   .grpname.rm { color: #f07a6e !important; }
+  .grp.gone { opacity: .6; }
+  .grpname.gone { font-style: italic; opacity: .8; }
   #rmbtn { font: inherit; color: #f07a6e; background: none; border: 1px solid rgba(240,122,110,.5); border-radius: 4px; padding: 3px 10px; cursor: pointer; }
   #rmbtn:hover { border-color: #f07a6e; }
   #wave { position: absolute; left: 0; top: 22px; pointer-events: none; }
@@ -439,13 +444,14 @@
   }
 
   function groupLine(g, first, L, span0, span, w) {
-    var d = el('div', 'grp' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '')); d.style.color = gcolor(g);
+    var gone = g.removed && !g.remove;
+    var d = el('div', 'grp' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '') + (gone ? ' gone' : '')); d.style.color = gone ? '#5c3535' : gcolor(g);
     if (g.show) d.style.background = gcolor(g);
     d.title = gname(g) + (g.show ? '' : ' (not yet a show)') + ' · ' + hm(g.start) + '–' + hm(g.end);
     d.onpointerdown = function (e) { e.stopPropagation(); };
     d.onclick = function () { openView(g.start, g.end); };
     if (first) {
-      var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : ''), (g.remove ? '✕ ' : '') + gname(g)); n.style.color = gcolor(g);
+      var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '') + (gone ? ' gone' : ''), (g.remove ? '✕ ' : '') + gname(g)); n.style.color = gone ? '#7a4a4a' : gcolor(g);
       n.title = 'open this group';
       n.onpointerdown = function (e) { e.stopPropagation(); };
       n.onclick = function () { openView(g.start, g.end); };
