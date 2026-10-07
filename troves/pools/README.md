@@ -62,6 +62,13 @@ has identified yet (`+ new group`: "unknown 1", editable). Provisional groups
 are dashed and italic, and their names come back as buttons to reuse. Click a group's line to open its window,
 to change it or ungroup it. Double-click a recording to open it in Explorer.
 
+**Compressed time.** With **compress gaps** on (the default), a gap that is long
+for the zoom (at least 20 s, and 1/120 of the window) shrinks to a narrow cut
+labelled with how long it was (`+22:17`), and short clips the skip passes over
+inside it show as dots (`•×8`). Recordings share the width. The waveform is a
+smoothed contour (binned every 3 px, eased 1-2-1), drawn in decibels when
+**amplify** is on. Off, the window is plain time with its grid.
+
 **Proofing.** The bar under the window has two settings, kept between visits:
 **amplify** (on: ordinary talk fills the height and a peak over about -9 dBFS
 crosses the strong-voice line; off: true scale), and **skip clips under
