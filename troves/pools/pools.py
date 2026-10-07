@@ -425,13 +425,23 @@ def transcribe(cfg, body):
     if engine not in ENGINES:
         raise ValueError(f"no engine {engine!r} here")
     data = current(cfg)
+    marks = [m for m in body.get("marks") or [] if float(m.get("end", 0)) > float(m.get("start", 0))]
+    if not marks:
+        raise ValueError("nothing here is marked for transcription")
     clips = [c for c in body.get("clips") or [] if known_path(data, str(c.get("path", "")))]
     if not clips:
-        raise ValueError("nothing to transcribe in this window")
+        raise ValueError("nothing marked here plays")
     jid = datetime.now().strftime("%Y%m%d-%H%M%S")
-    job = {"id": jid, "at": datetime.now().astimezone().isoformat(timespec="seconds"), "engine": engine,
+    at = datetime.now().astimezone().isoformat(timespec="seconds")
+    job = {"id": jid, "at": at, "engine": engine, "marks": marks,
            "range": [body.get("a"), body.get("b")], "settings": body.get("settings") or {}, "clips": clips}
     (jobs_dir() / f"{jid}.json").write_text(json.dumps(job, indent=1), encoding="utf-8")
+    # the event: kept on each group marked for transcription that this sent
+    gs = groups()
+    for g in gs:
+        if g.get("transcribe") and any(g["end"] > float(m["start"]) and g["start"] < float(m["end"]) for m in marks):
+            g.setdefault("events", []).append({"phase": "transcribe", "job": jid, "at": at, "engine": engine, "clips": len(clips)})
+    save_groups(gs)
     result = {"id": jid, "engine": engine, "state": "running", "done": 0, "total": len(clips), "segments": []}
 
     def save():
@@ -573,21 +583,24 @@ def group(body):
     has identified yet ("unknown 1"), replacing any group it overlaps; or
     ungroup it, when neither is given."""
     start, end = float(body["start"]), float(body["end"])
-    if "remove" in body:
-        # Mark (or unmark) the groups this stretch covers. A stretch with none
-        # gets a bare mark: no show and no name, only "remove". Unmarking a bare
-        # mark takes it away; a named group only loses the flag.
-        gs, hit, keep = groups(), False, []
+    flag = "remove" if "remove" in body else "transcribe" if "transcribe" in body else None
+    if flag:
+        # Mark (or unmark) the groups this stretch covers, for removal or for
+        # transcription. A stretch with none gets a bare mark: no show and no
+        # name, only the flag. Unmarking a bare mark takes it away (unless
+        # another flag or a history keeps it); a named group only loses the flag.
+        on, gs, hit, keep = bool(body[flag]), groups(), False, []
         for g in gs:
             if g["end"] > start and g["start"] < end:
                 hit = True
-                if not body["remove"] and not g.get("show") and not g.get("name"):
+                g[flag] = on
+                if not on and not g.get("show") and not g.get("name") and not g.get("remove") \
+                        and not g.get("transcribe") and not g.get("events"):
                     continue
-                g["remove"] = bool(body["remove"])
             keep.append(g)
         gs = keep
-        if not hit and body["remove"]:
-            gs.append({"show": None, "name": None, "start": start, "end": end, "remove": True,
+        if not hit and on:
+            gs.append({"show": None, "name": None, "start": start, "end": end, flag: True,
                        "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
                        "at": datetime.now().astimezone().isoformat(timespec="seconds")})
         save_groups(gs)
