@@ -65,6 +65,7 @@
   #ctl .sum b { color: var(--ink); font-weight: 500; }
   #ctl .gap { flex: 1; }
   #ctl .keys { color: var(--dim); font-size: 11px; }
+  #ctl .err { color: #f0a050; }
   #tip { position: fixed; z-index: 9; pointer-events: none; display: none; max-width: 360px; padding: 8px 10px;
          background: rgba(12,15,21,.95); border: 1px solid var(--faint); border-radius: 4px; font-size: 12px; }
   #tip b { display: block; font-weight: 500; word-break: break-all; }
@@ -95,7 +96,7 @@
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
   var data = null, files = [], lanes = [], shows = [], groups = [], sig = '';
   var win = null, stack = [], drag = null;
-  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0};
+  var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: ''};
   P.audio.preload = 'auto';
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -277,10 +278,12 @@
     if (!win) return;
     var hit = within(win.a, win.b), sound = hit.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
     var play = el('button', 'play', P.playing ? '❚❚' : '▶'); play.title = 'play / pause (space)'; play.onclick = toggle;
-    var mute = el('button', P.muted ? '' : 'on', P.muted ? 'silent' : 'sound'); mute.title = 'sound on / off (m)';
+    var mute = el('button', P.muted ? '' : 'on', P.muted ? '\u{1F507} sound off' : '\u{1F50A} sound on');
+    mute.title = 'click (or m) to turn sound ' + (P.muted ? 'on' : 'off');
     mute.onclick = function () { setMuted(!P.muted); };
     ctl.appendChild(play); ctl.appendChild(mute);
     ctl.appendChild(el('span', 'clock', P.t != null ? hms(P.t) : '')).id = 'clock';
+    if (P.err) ctl.appendChild(el('span', 'err', P.err));
     var sum = el('span', 'sum');
     sum.appendChild(el('b', null, wd(win.a) + ' ' + hm(win.a) + ' → ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b)));
     sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
@@ -348,7 +351,17 @@
     var a = P.audio, url = '/audio?p=' + encodeURIComponent(x.f.path);
     P.cur = x;
     if (a.dataset.src !== url) { a.dataset.src = url; a.src = url; }
-    var go = function () { try { a.currentTime = Math.max(0, offset); } catch (e) {} a.muted = P.muted; a.play().catch(function () {}); };
+    var go = function () {
+      try { a.currentTime = Math.max(0, offset); } catch (e) {}
+      a.muted = P.muted;
+      a.play().then(function () { if (P.err) { P.err = ''; drawCtl(); } }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;   // superseded by a newer seek: not a failure
+        // say it: a player that moves without sound is worse than one that stops
+        P.err = e && e.name === 'NotAllowedError' ? 'Edge would not start the sound: press play again'
+              : 'could not play ' + x.f.name + (e && e.message ? ': ' + e.message : '');
+        P.playing = false; cancelAnimationFrame(P.raf); drawCtl();
+      });
+    };
     if (a.readyState >= 1) go(); else a.onloadedmetadata = function () { a.onloadedmetadata = null; go(); };
     drawWin();
   }
