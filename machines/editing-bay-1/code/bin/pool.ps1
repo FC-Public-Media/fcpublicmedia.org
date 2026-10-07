@@ -63,12 +63,26 @@ function Running {
 function EnsureServer {
     if (Test-Path $Off) { return }
     if (@(Servers).Count) { return }
-    # conhost --headless: a console of its own and no window on a shared desktop.
-    # It outlives this pass, as the roller's Edge does.
-    $a = "--headless `"$Claude`" remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
+    # Why the last one stopped, if it said. A server that ended without
+    # signing off (a sign-out, a kill) still holds ~/code for a few minutes,
+    # and each start until then is refused: "already served by a terminal
+    # `claude remote-control`". That is the churn after a sign-in. This pass
+    # tries again, as every pass does.
+    $err = Join-Path $State "server.err"
+    $why = Get-Content $err -ErrorAction SilentlyContinue | Where-Object { $_ -match '^Error:' } | Select-Object -Last 1
+    if ($why) { Say ("the last server stopped: {0}" -f $why) }
+    # No console: input from an empty file, output to server.out and
+    # server.err. It outlives this pass, as the roller's Edge does. Under
+    # conhost --headless a refused server left in about a second with nothing
+    # said anywhere, and at the 2026-10-06 sign-in a cmd.exe under one failed
+    # to start (0xc0000142, a popup on the desktop).
+    $a = "remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
+    $none = Join-Path $State "server.in"
+    if (-not (Test-Path $none)) { New-Item -ItemType File $none | Out-Null }
     try {
-        $p = Start-Process -FilePath "conhost.exe" -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru
-        Say ("started the root's server in {0} (conhost {1})" -f $Root, $p.Id)
+        $p = Start-Process -FilePath $Claude -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru `
+            -RedirectStandardInput $none -RedirectStandardOutput (Join-Path $State "server.out") -RedirectStandardError $err
+        Say ("started the root's server in {0} (pid {1})" -f $Root, $p.Id)
     } catch { Say ("could not start the root's server: {0}" -f $_) }
 }
 
