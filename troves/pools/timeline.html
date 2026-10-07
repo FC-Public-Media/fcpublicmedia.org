@@ -137,8 +137,12 @@
     files.sort(function (a, b) { return a.start - b.start; });
     var lane = {};
     files.forEach(function (x) { var o = noon(x.start); (lane[o] = lane[o] || []).push(x); });
+    // keep each night's drawn track across reloads: a repaint between redraws
+    // must find the lane it painted before
+    var old = {};
+    lanes.forEach(function (L) { old[L.origin] = L; });
     lanes = Object.keys(lane).map(Number).sort(function (a, b) { return a - b; })
-      .map(function (o) { return {origin: o, end: next(o), files: lane[o]}; });
+      .map(function (o) { return {origin: o, end: next(o), files: lane[o], track: old[o] && old[o].track, w: old[o] && old[o].w}; });
   }
 
   function frag(x, span0, span, w, cls) {
@@ -198,7 +202,7 @@
     var n = 0;
     lanes.forEach(function (L) {
       var s = Math.max(a, L.origin), e = Math.min(b, L.end);
-      if (e <= s) return;
+      if (e <= s || !L.track) return;
       var span = L.end - L.origin, d = make(L, n++ === 0);
       d.style.left = ((s - L.origin) / span * L.w) + 'px';
       d.style.width = Math.max(2, (e - s) / span * L.w) + 'px';
@@ -230,7 +234,7 @@
     var s = drag && drag.on === 'lanes' ? {a: Math.min(drag.a, drag.b), b: Math.max(drag.a, drag.b)} : win;
     if (s) spans(s.a, s.b, function () { return el('div', 'sel'); });
     if (P.t != null && win) lanes.forEach(function (L) {
-      if (P.t < L.origin || P.t >= L.end) return;
+      if (P.t < L.origin || P.t >= L.end || !L.track) return;
       var d = el('div', 'ph'); d.style.left = ((P.t - L.origin) / (L.end - L.origin) * L.w) + 'px'; L.track.appendChild(d);
     });
   }
@@ -364,8 +368,8 @@
     var v = view(), ph = document.getElementById('ph'), c = document.getElementById('clock');
     if (ph) ph.style.left = ((P.t - v.a) / (v.b - v.a) * winEl.clientWidth) + 'px';
     if (c) c.textContent = hms(P.t);
-    if (!frame.n || ++frame.n % 15 === 0) { frame.n = 1; paintLanes(); }
-    P.raf = requestAnimationFrame(frame);
+    P.raf = requestAnimationFrame(frame);   // first, so a failed repaint never stops the player
+    if (!frame.n || ++frame.n % 15 === 0) { frame.n = 1; try { paintLanes(); } catch (e) {} }
   }
 
   function toggle() {
