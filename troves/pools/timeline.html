@@ -49,9 +49,13 @@
   #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 50vh; min-height: 200px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
-  #win .f { top: 22px; bottom: 22px; opacity: .22; }
-  #win .f.short { opacity: .12; }
-  #win .f.now { opacity: .4; box-shadow: 0 0 0 1px #fff; }
+  /* Neighbours alternate in tone and each starts at a dark seam, so clips that
+     touch edge to edge still read as separate. The one playing is shown by its
+     waveform alone: nothing jumps but the playhead. */
+  #win .f { top: 22px; bottom: 22px; opacity: .2; box-shadow: inset 1px 0 0 rgba(0,0,0,.75); }
+  #win .f.alt { opacity: .34; }
+  #win .f.short { opacity: .1; }
+  #win .f.short.alt { opacity: .16; }
   #wave { position: absolute; left: 0; top: 22px; pointer-events: none; }
   /* the grid, over the recordings: major lines labelled top and bottom, minor between */
   #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
@@ -161,6 +165,7 @@
       });
     });
     files.sort(function (a, b) { return a.start - b.start; });
+    files.forEach(function (x, i) { x.i = i; });   // order, for alternating tones
     var lane = {};
     files.forEach(function (x) { var o = noon(x.start); (lane[o] = lane[o] || []).push(x); });
     // keep each night's drawn track across reloads: a repaint between redraws
@@ -295,7 +300,7 @@
       d.style.left = ((s - v.a) / span * w) + 'px'; d.style.width = Math.max(2, (e - s) / span * w) + 'px';
       winEl.appendChild(d);
     });
-    within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, x === P.cur ? ' now' : '')); });
+    within(v.a, v.b).forEach(function (x) { winEl.appendChild(frag(x, v.a, span, w, x.i % 2 ? ' alt' : '')); });
     if (drag && drag.on === 'win') {
       var a = Math.min(drag.a, drag.b), b = Math.max(drag.a, drag.b), s = el('div', 'sel');
       s.style.left = ((a - v.a) / span * w) + 'px'; s.style.width = Math.max(2, (b - a) / span * w) + 'px';
@@ -330,7 +335,7 @@
       var x0 = (x.start - v.a) / span * w, x1 = (x.end - v.a) / span * w, pw = x1 - x0;
       var e = env[x.f.path];
       if (!e) { if (pw >= 3 && wanted.indexOf(x) < 0) wanted.push(x); return; }
-      c.fillStyle = x.color; c.globalAlpha = x === P.cur ? 1 : .85;
+      c.fillStyle = x.color; c.globalAlpha = x === P.cur ? 1 : x.i % 2 ? .78 : .5;
       var n = e.length, cols = Math.max(1, Math.round(pw));
       for (var i = 0; i < cols; i++) {
         var a = Math.floor(i / cols * n), b = Math.max(a + 1, Math.floor((i + 1) / cols * n)), pk = 0;
