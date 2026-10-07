@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pools · timeline</title>
+<style>
+  :root {
+    --bg: #07090d; --ink: #c9d1dc; --dim: #6b7584; --faint: rgba(255,255,255,.07);
+    --lane: 46px; --label: 150px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 20% -10%, #14203a 0%, transparent 55%),
+                radial-gradient(ellipse at 90% 110%, #1d1430 0%, transparent 50%), var(--bg);
+    background-attachment: fixed; display: flex; flex-direction: column;
+    color: var(--ink); font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+  }
+  header { flex: none; padding: 14px 18px 10px; display: flex; gap: 8px 22px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  header a { color: var(--dim); text-decoration: none; }
+  header a:hover { color: var(--ink); }
+  header .meta { color: var(--dim); }
+  main { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 80px; user-select: none; }
+  .axis, .lane { display: flex; }
+  .axis { position: sticky; top: 0; z-index: 3; height: 20px; background: var(--bg); }
+  .lab { flex: 0 0 var(--label); padding: 0 12px 0 18px; display: flex; flex-direction: column; justify-content: center; }
+  .lab b { font-weight: 500; }
+  .lab small { color: var(--dim); }
+  .track { flex: 1; position: relative; margin-right: 18px; }
+  .axis .track span { position: absolute; top: 3px; font-size: 10px; color: var(--dim); transform: translateX(-50%); }
+  .lane { height: var(--lane); border-top: 1px solid var(--faint); }
+  .lane .track { cursor: text; }
+  .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--faint); pointer-events: none; }
+  .f { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px; }
+  .f.short { opacity: .35; }
+  .sel { position: absolute; top: 2px; bottom: 2px; background: rgba(255,255,255,.13); pointer-events: none; }
+  .grp { position: absolute; bottom: 3px; height: 3px; border-radius: 2px; cursor: pointer; }
+  .grp:hover { height: 5px; }
+  .grpname { position: absolute; top: -1px; font-size: 10px; white-space: nowrap; pointer-events: none; }
+  .none { height: 18px; padding-left: var(--label); color: var(--dim); font-size: 10px; border-top: 1px solid var(--faint); line-height: 18px; }
+  #act { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 5; display: none;
+         align-items: center; gap: 14px; padding: 9px 12px 9px 16px; border-radius: 6px;
+         background: rgba(12,15,21,.96); border: 1px solid rgba(255,255,255,.12); white-space: nowrap; }
+  #act .sum { color: var(--dim); }
+  #act .sum b { color: var(--ink); font-weight: 500; }
+  #act button { font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.14);
+                border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  #act button:hover { border-color: rgba(255,255,255,.5); }
+  #act button i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  #act button.on { border-color: rgba(255,255,255,.6); }
+  #act .esc { color: var(--dim); font-size: 11px; }
+  #tip { position: fixed; z-index: 9; pointer-events: none; display: none; max-width: 340px; padding: 8px 10px;
+         background: rgba(12,15,21,.95); border: 1px solid var(--faint); border-radius: 4px; font-size: 12px; }
+  #tip b { display: block; font-weight: 500; word-break: break-all; }
+  #tip span { color: var(--dim); display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Timeline</h1>
+  <a href="/">squares</a>
+  <span class="meta" id="meta">looking…</span>
+</header>
+<main id="main"></main>
+<div id="act" role="toolbar"></div>
+<div id="tip" role="tooltip"></div>
+<script>
+(function () {
+  // One lane per night, noon to noon, so a session past midnight stays whole.
+  // Selecting is along time, like selecting text: from where you press to where
+  // you let go, across lanes in reading order. It snaps to the recordings it
+  // covers, and a show is given to it from the bar that appears.
+  var main = document.getElementById('main'), act = document.getElementById('act'), tip = document.getElementById('tip');
+  var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
+  var data = null, files = [], lanes = [], shows = [], groups = [], sig = '';
+  var sel = null, drag = null;
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function hm(t) { return new Date(t * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); }
+  function dayname(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
+  function wd(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short'}); }
+  function hours(s) { return s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h'; }
+  function dur(s) { return s == null ? 'length unknown' : s < 60 ? s.toFixed(s < 10 ? 1 : 0) + ' s' : hours(s); }
+  function noon(t) { var d = new Date(t * 1000); d.setHours(12, 0, 0, 0); if (d.getTime() / 1000 > t) d.setDate(d.getDate() - 1); return d.getTime() / 1000; }
+  function next(o) { var d = new Date(o * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; }
+  function color(slug) { var i = shows.map(function (s) { return s.slug; }).indexOf(slug); return COLORS[(i < 0 ? 0 : i) % COLORS.length]; }
+  function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
+  function post(path, body) {
+    return fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  }
+
+  // --- lanes ----------------------------------------------------------------
+
+  function build() {
+    var stages = data.stages || {}, seen = {};
+    files = [];
+    data.pools.forEach(function (p) {
+      p.rows.forEach(function (r) {
+        (r.files || []).forEach(function (f) {
+          if (seen[f.path]) return; seen[f.path] = 1;
+          var end = f.duration != null ? f.start + f.duration : f.end;
+          files.push({f: f, start: f.start, end: Math.max(end, f.start + 1), color: (stages[r.stage] || {}).color || '#888', stage: (stages[r.stage] || {}).label || r.stage});
+        });
+      });
+    });
+    files.sort(function (a, b) { return a.start - b.start; });
+    var by = {};
+    files.forEach(function (x) { var o = noon(x.start); (by[o] = by[o] || []).push(x); });
+    lanes = Object.keys(by).map(Number).sort(function (a, b) { return a - b; })
+      .map(function (o) { return {origin: o, end: next(o), files: by[o]}; });
+  }
+
+  function draw() {
+    main.textContent = '';
+    var axis = el('div', 'axis'), at = el('div', 'track');
+    axis.appendChild(el('div', 'lab')); axis.appendChild(at); main.appendChild(axis);
+    var prev = null;
+    lanes.forEach(function (L) {
+      if (prev && L.origin > next(prev.origin) + 3600) {
+        var n = Math.round((L.origin - next(prev.origin)) / 86400);
+        main.appendChild(el('div', 'none', n + (n === 1 ? ' night' : ' nights') + ', nothing'));
+      }
+      prev = L;
+      var lane = el('div', 'lane'), lab = el('div', 'lab'), tr = el('div', 'track');
+      var sound = L.files.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
+      lab.appendChild(el('b', null, dayname(L.origin) + ' → ' + wd(L.end)));
+      lab.appendChild(el('small', null, hours(sound) + ' sound · ' + L.files.length));
+      lane.appendChild(lab); lane.appendChild(tr); main.appendChild(lane);
+      L.track = tr;
+    });
+    var W = lanes.length ? lanes[0].track.clientWidth : 0;
+    [0, 6, 12, 18, 24].forEach(function (h) {
+      var s = el('span', null, ((h + 12) % 24) + ':00'); s.style.left = (W * h / 24) + 'px'; at.appendChild(s);
+    });
+    lanes.forEach(function (L) {
+      L.w = L.track.clientWidth;
+      [6, 12, 18].forEach(function (h) { var t = el('div', 'tick'); t.style.left = (L.w * h / 24) + 'px'; L.track.appendChild(t); });
+      var span = L.end - L.origin;
+      L.files.forEach(function (x) {
+        var d = el('div', 'f' + (x.f.short ? ' short' : ''));
+        d.style.left = ((x.start - L.origin) / span * L.w) + 'px';
+        d.style.width = ((x.end - x.start) / span * L.w) + 'px';
+        d.style.background = x.color;
+        d.onmouseenter = function () {
+          if (drag) return;
+          tip.textContent = '';
+          tip.appendChild(el('b', null, x.f.name));
+          tip.appendChild(el('span', null, hm(x.start) + '–' + hm(x.end) + ' · ' + dur(x.f.duration) + ' · ' + x.stage));
+          tip.style.display = 'block';
+        };
+        d.onmousemove = function (e) { tip.style.left = Math.min(e.clientX + 14, innerWidth - 350) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; };
+        d.onmouseleave = function () { tip.style.display = 'none'; };
+        d.ondblclick = function () { post('/open', {path: x.f.path}); };
+        L.track.appendChild(d);
+      });
+    });
+    paint();
+  }
+
+  // Paint a [a, b] stretch on every lane it crosses, the way text selection
+  // runs to the end of a line and on from the start of the next.
+  function spans(a, b, make) {
+    var out = [];
+    lanes.forEach(function (L) {
+      var s = Math.max(a, L.origin), e = Math.min(b, L.end);
+      if (e <= s) return;
+      var span = L.end - L.origin, d = make(L, out.length === 0);
+      d.style.left = ((s - L.origin) / span * L.w) + 'px';
+      d.style.width = Math.max(2, (e - s) / span * L.w) + 'px';
+      L.track.appendChild(d); out.push(d);
+    });
+    return out;
+  }
+
+  function paint() {
+    Array.prototype.forEach.call(main.querySelectorAll('.sel, .grp, .grpname'), function (n) { n.remove(); });
+    groups.forEach(function (g) {
+      spans(g.start, g.end, function (L, first) {
+        var d = el('div', 'grp'); d.style.background = color(g.show);
+        d.title = title(g.show) + ' · ' + hm(g.start) + '–' + hm(g.end);
+        d.onpointerdown = function (e) { e.stopPropagation(); };
+        d.onclick = function () { choose(g.start, g.end, g); };
+        if (first) {
+          var n = el('div', 'grpname', title(g.show)); n.style.color = color(g.show);
+          n.style.left = ((Math.max(g.start, L.origin) - L.origin) / (L.end - L.origin) * L.w) + 'px';
+          L.track.appendChild(n);
+        }
+        return d;
+      });
+    });
+    var s = drag ? {start: Math.min(drag.a, drag.b), end: Math.max(drag.a, drag.b)} : sel;
+    if (s) spans(s.start, s.end, function () { return el('div', 'sel'); });
+  }
+
+  // --- selecting ------------------------------------------------------------
+
+  function timeAt(e) {
+    if (!lanes.length) return null;
+    var best = null, bd = Infinity;
+    lanes.forEach(function (L) {
+      var r = L.track.getBoundingClientRect(), d = e.clientY < r.top ? r.top - e.clientY : e.clientY > r.bottom ? e.clientY - r.bottom : 0;
+      if (d < bd) { bd = d; best = {L: L, r: r}; }
+    });
+    var x = Math.min(Math.max(e.clientX - best.r.left, 0), best.r.width);
+    return best.L.origin + x / best.r.width * (best.L.end - best.L.origin);
+  }
+
+  main.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || !e.target.closest('.lane .track')) return;
+    var t = timeAt(e);
+    drag = {a: e.shiftKey && sel ? sel.anchor : t, b: t, x: e.clientX, y: e.clientY};
+    tip.style.display = 'none';
+    main.setPointerCapture(e.pointerId);
+    paint();
+  });
+  main.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    drag.b = timeAt(e); paint();
+  });
+  main.addEventListener('pointerup', function (e) {
+    if (!drag) return;
+    var d = drag; drag = null;
+    if (Math.abs(d.a - d.b) < 1 || (Math.abs(e.clientX - d.x) < 3 && Math.abs(e.clientY - d.y) < 3 && !e.shiftKey)) {
+      clear(); return;
+    }
+    var a = Math.min(d.a, d.b), b = Math.max(d.a, d.b);
+    var hit = files.filter(function (x) { return x.end > a && x.start < b; });
+    if (!hit.length) { clear(); return; }
+    choose(hit[0].start, Math.max.apply(null, hit.map(function (x) { return x.end; })), null, d.a);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clear(); });
+
+  function clear() { sel = null; act.style.display = 'none'; paint(); }
+
+  function choose(a, b, existing, anchor) {
+    var hit = files.filter(function (x) { return x.end > a && x.start < b; });
+    var sound = hit.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
+    sel = {start: a, end: b, anchor: anchor != null ? anchor : a, files: hit.length, sound: sound};
+    var over = existing || groups.filter(function (g) { return g.end > a && g.start < b; })[0];
+    act.textContent = '';
+    var sum = el('span', 'sum');
+    sum.appendChild(el('b', null, wd(a) + ' ' + hm(a) + ' → ' + (wd(b) !== wd(a) ? wd(b) + ' ' : '') + hm(b)));
+    sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
+    act.appendChild(sum);
+    shows.forEach(function (s) {
+      var bt = el('button', over && over.show === s.slug ? 'on' : ''), i = el('i');
+      i.style.background = color(s.slug); bt.appendChild(i); bt.appendChild(document.createTextNode(s.title));
+      bt.onclick = function () { save(s.slug); };
+      act.appendChild(bt);
+    });
+    if (over) { var u = el('button', null, 'Ungroup'); u.onclick = function () { save(''); }; act.appendChild(u); }
+    act.appendChild(el('span', 'esc', 'esc'));
+    act.style.display = 'flex';
+    paint();
+  }
+
+  function save(show) {
+    post('/group', {start: sel.start, end: sel.end, show: show, files: sel.files, sound: sel.sound})
+      .then(function (r) { return r.json(); })
+      .then(function (d) { shows = d.shows; groups = d.groups; clear(); });
+  }
+
+  // --- data -----------------------------------------------------------------
+
+  function tick() {
+    Promise.all([fetch('/now', {cache: 'no-store'}).then(function (r) { return r.json(); }),
+                 fetch('/groups', {cache: 'no-store'}).then(function (r) { return r.json(); })])
+      .then(function (v) {
+        data = v[0]; shows = v[1].shows; groups = v[1].groups;
+        build();
+        var sound = files.reduce(function (s, x) { return s + (x.f.duration || 0); }, 0);
+        document.getElementById('meta').textContent = files.length + ' recordings · ' + hours(sound) + ' of sound · ' +
+          groups.length + (groups.length === 1 ? ' group' : ' groups');
+        var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth;
+        if (s !== sig && !drag) { sig = s; draw(); } else paint();
+      })
+      .catch(function () { document.getElementById('meta').textContent = 'the window that showed this has closed'; });
+  }
+  addEventListener('resize', function () { sig = ''; tick(); });
+  tick(); setInterval(tick, 15000);
+})();
+</script>
+</body>
+</html>

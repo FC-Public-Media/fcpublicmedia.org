@@ -13,10 +13,17 @@ pools:
       TO STEM: to-stem
     stage: landed
 
+  - name: drobo-enhance
+    title: TO ENHANCE, the Drobo
+    kind: folder
+    path: "E:/"              # the 1 TB LUN, iSCSI (fcpm drobo); shared as `enhance` (fcpm share)
+    stage: landed
+
   - name: emulated
     title: Emulated pool
     kind: folder
     path: ~/code/pools/emulated
+    create: true
     capacity: 64 GB
     stage: landed
 
