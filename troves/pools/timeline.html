@@ -532,7 +532,9 @@
     d.title = gname(g) + (g.show ? '' : ' (not yet a show)') + ' · ' + hm(g.start) + '–' + hm(g.end);
     d.onpointerdown = function (e) { e.stopPropagation(); };
     d.onclick = function () { openView(g.start, g.end); };
-    if (first) {
+    // A mark for removal (or what was removed) is an omission: its hatched line says it, unlabelled, so it never
+    // fights the show's own name. Named groups, and marks for transcription (their state is the point), keep a label.
+    if (first && (g.show || g.name || !(g.remove || g.removed))) {
       var tx = txState(g);
       var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '') + (gone ? ' gone' : ''), (g.remove ? '✕ ' : '') + gname(g) + (tx ? '  ' + tx.glyph : '')); n.style.color = gone ? '#7a4a4a' : gcolor(g);
       if (tx) n.dataset.tx = tx.says;
