@@ -58,6 +58,14 @@ has a record of (`site/_shows/`), or under a provisional name for what nobody
 has identified yet (`+ new group`: "unknown 1", editable). Provisional groups
 are dashed and italic, and their names come back as buttons to reuse. Click a group's line to open its window,
 to change it or ungroup it. Double-click a recording to open it in Explorer.
+
+**Proofing.** The bar under the window has two settings, kept between visits:
+**amplify** (on: ordinary talk fills the height and a peak over about -9 dBFS
+crosses the strong-voice line; off: true scale), and **skip clips under
+3/6/10 s** (on: playing and clicking pass over short clips, drawn faint).
+Insisting overrides the skip for that spot: ctrl-click, right-click or a long
+press puts the playhead exactly there and plays that clip, then skipping
+resumes.
 A recording on two pools (the same name and size) counts once; its tooltip
 says where else it is.
 
