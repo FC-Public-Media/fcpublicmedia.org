@@ -10,7 +10,7 @@ Generated 2026-10-07 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | [`payments`](payments.md) | 2026-10-06 | 14 | 7 | 0 | up to date |
 | [`credentials`](credentials.md) | 2026-10-07 | 17 | 8 | 0 | up to date |
 | [`vendors`](vendors.md) | 2026-10-06 | 11 | 5 | 1 | up to date |
-| [`truthfulness`](truthfulness.md) | 2026-10-05 | 13 | 13 | 0 | up to date |
+| [`truthfulness`](truthfulness.md) | 2026-10-07 | 14 | 13 | 0 | up to date |
 | [`node`](node.md) | 2026-10-07 | 5 | 6 | 0 | up to date |
 
 ## Asking to graduate
