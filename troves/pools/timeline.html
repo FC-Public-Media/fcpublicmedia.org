@@ -163,6 +163,10 @@
   /* the readout, in the selection's look */
   #ctl .chip { font-variant-numeric: tabular-nums; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
   #ctl .chip.clock { color: #fff; box-shadow: inset 2px 0 0 #fff; background: rgba(255,255,255,.05); min-width: 78px; }
+  #ctl .span { display: inline-flex; align-items: center; gap: 4px; position: relative; padding-bottom: 5px; }
+  #ctl .span .slice { position: absolute; left: 0; bottom: 0; width: 100%; max-width: 170px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); }
+  #ctl .span .slice .lit { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+  #ctl .span .ico { width: 26px; height: 26px; }
   #ctl .chip.range { color: var(--ink); background: rgba(255,255,255,.13); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.35); }
   #ctl .badge { display: inline-flex; align-items: center; gap: 3px; color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #ctl .badge svg { opacity: .8; }
@@ -272,6 +276,8 @@
                  '<path d="M6.5 9h11M6.5 12h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>';
   ICONS.manifest = '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
                    '<path d="M9 11h7M9 14h7M9 17h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M15 3v4h4" fill="none" stroke="currentColor" stroke-width="1.4"/>';
+  ICONS.reset = '<path d="M4 7v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+                '<path d="M4.6 12A7.5 7.5 0 1 0 7 6.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
   ICONS.dot = '<circle cx="12" cy="12" r="3.2" fill="currentColor"/>';
   ICONS.files = '<rect x="4" y="5" width="3" height="14" rx="1" fill="currentColor"/><rect x="9" y="8" width="3" height="11" rx="1" fill="currentColor"/><rect x="14" y="4" width="3" height="15" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="9" rx="1" fill="currentColor"/>';
   ICONS.grid = '<path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8v8M15.5 8v8" stroke="currentColor" stroke-width=".9" opacity=".6"/>';
@@ -934,7 +940,6 @@
     if (P.err) ctl.appendChild(el('span', 'err', P.err));
     var rg = el('span', 'chip range', wd(win.a) + ' ' + hm(win.a) + ' – ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b));
     rg.title = 'the window: ' + hms(win.a) + ' to ' + hms(win.b);
-    ctl.appendChild(rg);
     if (!M) layout();
     var vv = view(), cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0);
     var inWin = within(win.a, win.b), nShort = inWin.filter(function (x) { return short(x) && !silenced(x); }).length, nSil = inWin.filter(silenced).length;
@@ -959,6 +964,25 @@
     if (nMiss) badge('silence', String(nMiss), nMiss + (nMiss === 1 ? ' recording' : ' recordings') + ' here could not be heard by the engine: transcribe again to retry them');
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
+    // The span: the slice of the group you are in that the window shows. Under
+    // it the group as a track, the window's part lit; beside it, when the window
+    // has wandered from the group, a reset back to the group's own span.
+    var span = el('span', 'span');
+    span.appendChild(rg);
+    if (over) {
+      var gw = over.end - over.start, lit = el('span', 'lit'), sl = el('span', 'slice');
+      lit.style.left = Math.max(0, (win.a - over.start) / gw * 100) + '%';
+      lit.style.width = Math.max(2, (Math.min(win.b, over.end) - Math.max(win.a, over.start)) / gw * 100) + '%';
+      lit.style.background = gcolor(over);
+      sl.appendChild(lit); sl.title = 'the window within ' + gname(over) + ' (' + hm(over.start) + '\u2013' + hm(over.end) + ')';
+      span.appendChild(sl);
+      if (Math.abs(win.a - over.start) > .5 || Math.abs(win.b - over.end) > .5) {
+        var back = icon('reset', 'Back to ' + gname(over) + '\u2019s own span, ' + hm(over.start) + '\u2013' + hm(over.end));
+        back.onclick = function () { back.blur(); setView(over.start, over.end); };
+        span.appendChild(back);
+      }
+    }
+    ctl.appendChild(span);
     // One list, however many names there come to be: the shows on record, the
     // provisional names in use, and a new name. Choosing groups the window.
     var pick = el('select', 'pick'), opts = [];
