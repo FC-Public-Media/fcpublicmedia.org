@@ -117,7 +117,7 @@
     }
     var t = { el: el, marks: el.children, hh: parts[0], ss: parts[1], mm: parts[2], at: 1, dir: 1 };
     tallies.push(t);
-    tick(t); walk(t);
+    tick(t);
     return el;
   }
   function tick(t) {
@@ -127,13 +127,14 @@
     t.ss.setAttribute('transform', 'rotate(' + s * 6 + ' 50 50)');
   }
   // Down the column and back up, never wrapping: a level meter, not a
-  // progress bar. Reduced motion keeps it on the middle square. Read off the
-  // clock, so every screen on one computer lights the same square at once
-  // (Autumn, 2026-10-05: the panels' screensavers, synchronized).
+  // progress bar. Reduced motion keeps it on the middle square.
   function walk(t) {
-    var n = t.marks.length, p = 2 * (n - 1), k = Math.floor(now() / STEP) % p;
-    t.at = still.matches ? 1 : k < n ? k : p - k;
-    for (var i = 0; i < n; i++) t.marks[i].classList.toggle('lit', i === t.at);
+    if (still.matches) { t.at = 1; }
+    else {
+      t.at += t.dir;
+      if (t.at <= 0 || t.at >= t.marks.length - 1) t.dir = -t.dir;
+    }
+    for (var i = 0; i < t.marks.length; i++) t.marks[i].classList.toggle('lit', i === t.at);
   }
 
   // --- the layer -----------------------------------------------------------
@@ -166,7 +167,7 @@
     html.classList.toggle('fcpm-dim', d);
     layer.setAttribute('aria-hidden', d ? 'false' : 'true');
     layer.tabIndex = d ? 0 : -1;
-    if (d) glide();
+    if (d) { place(true); glide(); }
     try { window.dispatchEvent(new CustomEvent('fcpm:dim', { detail: { dim: d } })); } catch (e) {}
   }
   function judge() { if (layer) set(!awake()); }
@@ -175,32 +176,41 @@
 
   // A disc on a frictionless table: a straight line at a calm, constant
   // speed, bouncing off the edges. About a minute to cross a portrait panel.
-  // Where it is comes from the clock, not from where it was, so panels of
-  // one size on one computer show it in the same place at the same moment.
   // Reduced motion: no glide; it moves to a new place once an hour instead.
-  var x = 0, y = 0, ANGLE = 0.7;                                   // radians: never flat, never steep
+  var x = 0, y = 0, vx = 1, vy = 1, last = 0, movedHour = -1;
   function bounds() {
     return { w: Math.max(0, window.innerWidth - mark.offsetWidth - 40),
              h: Math.max(0, window.innerHeight - mark.offsetHeight - 40) };
   }
   function draw() { mark.style.transform = 'translate(' + (x + 20) + 'px,' + (y + 20) + 'px)'; }
-  function fold(u) { u %= 2; if (u < 0) u += 2; return u < 1 ? u : 2 - u; }   // there and back
-  function place() {
+  function place(random) {
     var b = bounds();
-    if (still.matches) {
-      var hr = Math.floor(now() / HOUR);
-      x = (hr * 0.6180339887 % 1) * b.w; y = (hr * 0.7548776662 % 1) * b.h;
-    } else {
-      var go = now() / 1000 * Math.min(window.innerWidth, window.innerHeight) / 60;   // px travelled
-      x = b.w ? fold(go * Math.cos(ANGLE) / b.w) * b.w : 0;
-      y = b.h ? fold(go * Math.sin(ANGLE) / b.h) * b.h : 0;
+    if (random) {
+      x = Math.random() * b.w; y = Math.random() * b.h;
+      var a = Math.PI / 6 + Math.random() * Math.PI / 6;           // never flat, never steep
+      vx = Math.cos(a) * (Math.random() < 0.5 ? -1 : 1);
+      vy = Math.sin(a) * (Math.random() < 0.5 ? -1 : 1);
     }
+    x = Math.min(Math.max(x, 0), b.w); y = Math.min(Math.max(y, 0), b.h);
     draw();
   }
-  function glide() {
-    if (!dim) return;
-    place();
-    if (still.matches) return setTimeout(glide, 60e3);
+  function glide(ts) {
+    if (!dim) { last = 0; return; }
+    if (still.matches) {
+      var hr = Math.floor(now() / HOUR);
+      if (hr !== movedHour) { movedHour = hr; place(true); }
+      last = 0;
+      return setTimeout(glide, 60e3);
+    }
+    if (ts && last) {
+      var b = bounds(), speed = Math.min(window.innerWidth, window.innerHeight) / 60;   // px per second
+      var dt = Math.min(ts - last, 250) / 1000;
+      x += vx * speed * dt; y += vy * speed * dt;
+      if (x <= 0 || x >= b.w) { vx = -vx; x = Math.min(Math.max(x, 0), b.w); }
+      if (y <= 0 || y >= b.h) { vy = -vy; y = Math.min(Math.max(y, 0), b.h); }
+      draw();
+    }
+    last = ts || 0;
     requestAnimationFrame(glide);
   }
 
@@ -234,13 +244,14 @@
       window.addEventListener(type, woke, { capture: true, passive: true });
     });
     window.addEventListener('fcpm:awake', judge);
-    window.addEventListener('resize', function () { if (dim) place(); });
+    window.addEventListener('resize', function () { if (dim) place(false); });
     new MutationObserver(judge).observe(html, { attributes: true, attributeFilter: ['class'] });
     judge();
     setInterval(function () {
-      for (var i = 0; i < tallies.length; i++) { tick(tallies[i]); walk(tallies[i]); }
+      for (var i = 0; i < tallies.length; i++) tick(tallies[i]);
       judge();
     }, 1000);
+    setInterval(function () { for (var i = 0; i < tallies.length; i++) walk(tallies[i]); }, STEP);
   }
 
   // wake(): what a touch does, without a touch: the hour starts again and the

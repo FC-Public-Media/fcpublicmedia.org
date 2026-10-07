@@ -32,10 +32,11 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /depot/            what is on the studio drive, for the third panel
     GET /depot/now         the drive's index, as JSON. The page polls it
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
+    GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
-    GET /revision          what a screen polls: <commit>-<kiosk revision>
+    GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
 
 THE BOUNCE. Content is read per request. Code is loaded once, so `serve`
 watches the commit its worktree has checked out and exits with 75 when it
@@ -94,13 +95,14 @@ NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
 TYPES = {".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".txt": "text/plain; charset=utf-8",
          ".json": "application/json",
-         ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
+         ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+         ".webmanifest": "application/manifest+json"}
 
 
 # ------------------------------------------------------------------- sources --
-def git(*args):
+def git(*args, where=None):
     try:
-        out = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True,
+        out = subprocess.run(["git", "-C", str(where or ROOT), *args], capture_output=True,
                              text=True, timeout=60, creationflags=NO_WINDOW)
         return out.stdout.strip() if out.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
@@ -126,7 +128,39 @@ def revision():
         kiosk = str(welcome().get("revision", "?"))
     except Exception:
         kiosk = "unreadable"
-    return "%s-%s" % (git("rev-parse", "--short", "HEAD") or "nogit", kiosk)
+    rev = "%s-%s" % (git("rev-parse", "--short", "HEAD") or "nogit", kiosk)
+    code = ti89_path("code")
+    if code and (code / ".git").exists():       # the runner moves on its own merges too
+        rev += "-" + (git("rev-parse", "--short", "HEAD", where=code) or "nogit")
+    return rev
+
+
+# THE TI-89 (Autumn, 2026-10-06): the calculator runner, FC-Public-Media/ti-89,
+# booting her own TI-89's ROM on our own 68000. The door serves it from its
+# mirror in ref/, which the puller fast-forwards like bin/refs pull, so a
+# merge reaches the panel within five minutes. The ROM is TI's code, kept here
+# as gear: it goes to this box's own browsers and to nothing else.
+def ti89_path(key):
+    v = (node().get("ti89") or {}).get(key)
+    return pathlib.Path(os.path.expandvars(str(v))).expanduser() if v else None
+
+
+def ti89_pull():
+    """Fast-forward the runner's mirror. Never forced: a mirror that has
+    diverged or has changes is someone's business, and is left alone."""
+    code = ti89_path("code")
+    if not code or not (code / ".git").exists():
+        return
+    if git("status", "--porcelain", where=code) != "":
+        return log("ti-89: mirror has changes, not pulling")
+    before = git("rev-parse", "--short", "HEAD", where=code)
+    if git("fetch", "--quiet", "origin", where=code) is None:
+        return log("ti-89: fetch failed")
+    if git("merge", "--ff-only", "--quiet", "origin/main", where=code) is None:
+        return log("ti-89: mirror cannot fast-forward to origin/main; left as it is")
+    after = git("rev-parse", "--short", "HEAD", where=code)
+    if after != before:
+        log("ti-89: mirror %s -> %s" % (before, after))
 
 
 # -------------------------------------------------------------- the schedule --
@@ -1752,6 +1786,7 @@ WALL_JS = """<script>
   // with it and picks up where it was.
   function frame(now) {
     var dim = window.FCPMDim && window.FCPMDim.isDim && window.FCPMDim.isDim();
+    document.body.classList.toggle('stilled', !!dim);
     if (held || taken || dim) { if (!stopped) stopped = now; return requestAnimationFrame(frame); }
     if (stopped) { t0 += now - stopped; stopped = 0; }
     var t = now - t0;
@@ -1864,10 +1899,34 @@ def turn_modules():
             and (str(m.get("url", "")).startswith("/") or m.get("page") in WALL_PAGES)]
 
 
+# The turn's own head (Autumn, 2026-10-06): our name in the wordmark's face on
+# the yellow, not check-in's code and clock. And while the dim layer stops the
+# turn, the line shows it, and the pause button is pressed in: solid yellow,
+# like the lit module's button, not a pause glyph waiting to be pushed.
+TURN_CSS = """%s
+.super h1.name { font-family:"Source Serif 4", Georgia, serif; font-size:6vh; font-weight:780; letter-spacing:-.02em; }
+.stilled .timer { height:.9vh; }
+.stilled .timer i { background:var(--signal); }
+.stilled #hold { background:var(--signal); }
+.stilled #hold .pause { fill:var(--ink); }"""
+
+
+def turn_font():
+    """The wordmark's face (site/assets/fonts), inlined, read every time."""
+    try:
+        data = (ROOT / "site" / "assets" / "fonts" / "source-serif-4.woff2").read_bytes()
+    except OSError:
+        return ""
+    return ('@font-face { font-family:"Source Serif 4"; font-weight:200 900; '
+            'src:url(data:font/woff2;base64,%s) format("woff2"); }' % base64.b64encode(data).decode())
+
+
 def turn_file(name):
     mods = turn_modules()
     if name == "index.html":
-        shell = wall_shell(node().get("turn") or {}, mods)
+        cfg = node().get("turn") or {}
+        shell = wall_shell(cfg, mods, head="<h1 class=name>%s</h1>" % e(cfg.get("name", "Fort Collins Public Media")),
+                           css=TURN_CSS % turn_font())
         i = shell.rfind("</body>")
         return shell[:i] + ASIDE_HTML + shell[i:]
     for m in mods:
@@ -1876,19 +1935,22 @@ def turn_file(name):
     return None
 
 
-def wall_shell(cfg, mods):
+def wall_shell(cfg, mods, head=None, css=""):
     every, rotate = int(cfg.get("every", 60)), int(cfg.get("rotate", 45))
     ci = (node().get("wording") or {}).get("checkin") or {}
     ww = (node().get("wording") or {}).get("wall") or {}
     rail = "".join('<button type=button data-m="%s">%s</button>' % (
         html.escape(m["name"], quote=True), e(m.get("label", m["name"]))) for m in mods)
-    body = """<div class=top><header class=super>%s<div><h1>%s</h1><p class=sub>%s</p></div></header>
+    if head is None:
+        head = "%s<div><h1>%s</h1><p class=sub>%s</p></div>" % (
+            checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))))
+    body = """<div class=top><header class=super>%s</header>
 <div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
 <main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
 <footer class=bar>
   <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" data-state=run title="Pause for a minute and a half; press again to keep it paused"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text><path class=play d="M14.5 11 L25.5 18 L14.5 25 Z" /></svg></button></nav>
 </footer>
-%s%s""" % (checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))),
+%s%s""" % (head,
            e(ww.get("brand", "FCPM")), rail, e(cfg.get("pause", "Pause")),
            class_js(),
            WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
@@ -1896,7 +1958,7 @@ def wall_shell(cfg, mods):
            .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
            .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
                                     "play": cfg.get("play", "Play")})))
-    return page("Studio wall", body, WALL_CSS + CLASS_CSS)
+    return page("Studio wall", body, WALL_CSS + CLASS_CSS + css)
 
 
 def wall_target():
@@ -2031,6 +2093,21 @@ class Door(BaseHTTPRequestHandler):
             if route == "/turn" or route.startswith("/turn/"):
                 body = turn_file(tail or "index.html")
                 return self.reply(200, body) if body else self.file(None)
+            if route == "/ti-89":
+                self.send_response(301)
+                self.send_header("Location", "/ti-89/")
+                self.end_headers()
+                return
+            if route.startswith("/ti-89/"):
+                rest = route[len("/ti-89/"):]
+                if rest == "local/rom":
+                    if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                        return self.reply(403, "", TYPES[".txt"])
+                    rom = ti89_path("rom")
+                    return self.reply(200, rom.read_bytes(), "application/octet-stream") \
+                        if rom and rom.is_file() else self.file(None)
+                code = ti89_path("code")
+                return self.file(inside(code, rest or "index.html") if code else None)
             if route in ("/idle", "/idle/"):
                 return self.file(ROOT / "brand" / "idle" / "index.html")
             head, _, rest = route.strip("/").partition("/")
@@ -2160,6 +2237,10 @@ def supervise():
                 pull_once()
             except Exception as exc:
                 log("pull: %r" % exc)
+            try:
+                ti89_pull()
+            except Exception as exc:
+                log("ti-89: %r" % exc)
             time.sleep(PULL_EVERY)
     threading.Thread(target=puller, daemon=True).start()
     threading.Thread(target=raise_screens, daemon=True).start()
@@ -2343,8 +2424,8 @@ SILENT = 120     # seconds a screen's page may go without polling before it is r
 ASIDE_FOR = 600
 ASIDE = STATE / "aside"
 
-ASIDE_HTML = """<button type=button id=fcpm-aside hidden>
-<svg viewBox="0 0 24 24" aria-hidden=true><rect x=4 y=17 width=16 height=3 /></svg>Minimize</button>
+ASIDE_HTML = """<button type=button id=fcpm-aside hidden aria-label=Minimize title=Minimize>
+<svg viewBox="0 0 24 24" aria-hidden=true><rect x=4 y=17 width=16 height=3 /></svg></button>
 <style>#fcpm-aside { position:fixed; top:2.5vh; right:2.5vw; z-index:2147483000; display:flex; align-items:center;
   gap:1.2vh; padding:1.6vh 3vh; border:0; border-radius:1vh; background:var(--signal); color:var(--ink);
   font:750 3.4vh/1 system-ui, sans-serif; cursor:pointer; box-shadow:0 .6vh 3vh rgba(0,0,0,.5); }
@@ -2465,6 +2546,18 @@ def screens(launch=False, reset=False, say=print):
                 s["name"], s["display"], min(ears["heard"].get(s["name"], ears["up"]), ears["up"])))
             if launch:
                 close_profile({hit["pid"]})
+                launch_screen(exe, s, screen_url(s))
+                say("         relaunched %s" % screen_url(s))
+            continue
+        # Its own browser is there, but on the page it was launched with, and
+        # node.yml has since moved it (left went to /turn/ and stayed on
+        # /preview/ all night, 2026-10-05). A page's reload keeps its address,
+        # so only a relaunch brings the new one.
+        if hit and not reset and screen_url(s).lower() not in lines.get(hit["pid"], ""):
+            bad += 1
+            say("moved    %-8s %-9s node.yml has it at %s now" % (s["name"], s["display"], s["url"]))
+            if launch:
+                close_profile({win["pid"] for win in own})
                 launch_screen(exe, s, screen_url(s))
                 say("         relaunched %s" % screen_url(s))
             continue
