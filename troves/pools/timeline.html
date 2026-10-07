@@ -70,6 +70,12 @@
   /* the window: a stretch, at full width, that plays */
   #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: none; height: 24vh; min-height: 170px;
           flex-direction: column; background: rgba(9,11,16,.97); border-top: 1px solid rgba(255,255,255,.12); padding: 8px 18px 12px; }
+  /* the scroll bar: the show's own bar, thicker when the pointer is on it */
+  #scroll { position: relative; flex: none; height: 6px; margin: 5px 0 0; border-radius: 3px; cursor: pointer; touch-action: none;
+            background: color-mix(in srgb, currentColor 18%, transparent); transition: height .12s; }
+  #scroll:hover, body.panning #scroll { height: 12px; }
+  #scroll .thumb { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: currentColor; opacity: .85; cursor: grab; }
+  #scroll.full .thumb { opacity: .45; cursor: default; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
      touch edge to edge still read as separate. The one playing is shown by its
@@ -198,6 +204,7 @@
 <main id="main"></main>
 <div id="dock">
   <div id="win"></div>
+  <div id="scroll"><div class="thumb"></div></div>
   <div id="ctl"></div>
 </div>
 <div id="tip" role="tooltip"></div>
@@ -713,7 +720,66 @@
     var rt = el('div'); rt.id = 'reachlbl'; winEl.appendChild(rt);
     showReach();
     waves();
+    drawScroll();
   }
+
+  // --- the scroll bar: the show's own bar, under the window ------------------
+  // The track is the group the window is in (the one it overlaps most), or
+  // everything there is outside a group: that is what scrolling moves within.
+  // The thumb is the part the window shows, in the group's colour. Drag it to
+  // pan inside the group's span; click the track to go there; the wheel pans.
+  var scrollEl = document.getElementById('scroll'), thumbEl = scrollEl.querySelector('.thumb');
+  function scope() {
+    var best = null, most = 0;
+    groups.forEach(function (g) {
+      if (!(g.show || g.name)) return;
+      var o = Math.min(g.end, win.b) - Math.max(g.start, win.a);
+      if (o > most) { most = o; best = g; }
+    });
+    if (best) return {a: best.start, b: best.end, g: best};
+    var X = extent();
+    return {a: X.a, b: X.b, g: null};
+  }
+  function drawScroll() {
+    if (!win) return;
+    var G = scope(), W = scrollEl.clientWidth, span = G.b - G.a || 1;
+    var x0 = Math.max(0, (win.a - G.a) / span * W), x1 = Math.min(W, (win.b - G.a) / span * W);
+    if (x1 - x0 < 18) { var c = (x0 + x1) / 2; x0 = Math.max(0, c - 9); x1 = Math.min(W, x0 + 18); }
+    var colr = G.g ? gcolor(G.g) : '#c9d1dc';
+    scrollEl.style.color = colr;
+    thumbEl.style.left = x0 + 'px'; thumbEl.style.width = Math.max(18, x1 - x0) + 'px';
+    scrollEl.title = (G.g ? gname(G.g) : 'everything') + ': ' + hm(G.a) + '\u2013' + hm(G.b) + ' \u00b7 drag to scroll, click to go there';
+    scrollEl.classList.toggle('full', x0 <= 0 && x1 >= W);
+  }
+  function scrollTo(a) {   // the window's start, kept inside the group's span; its width stays
+    var G = scope(), w = win.b - win.a;
+    if (w < G.b - G.a) a = Math.max(G.a, Math.min(G.b - w, a)); else a = win.a;
+    setView(a, a + w, true);
+  }
+  scrollEl.addEventListener('pointerdown', function (e) {
+    if (!win || e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    var G = scope(), W = scrollEl.clientWidth, r = scrollEl.getBoundingClientRect(), per = (G.b - G.a) / W;
+    remember();   // Backspace returns to where this began
+    if (e.target !== thumbEl) {   // the track: go there, the window centred on it
+      scrollTo(G.a + (e.clientX - r.left) * per - (win.b - win.a) / 2);
+    }
+    var x = e.clientX, a0 = win.a;
+    scrollEl.setPointerCapture(e.pointerId);
+    document.body.classList.add('panning');
+    function move(ev) { var dx = ev.clientX - x; soon(function () { scrollTo(a0 + dx * per); }); }
+    function up() {
+      scrollEl.removeEventListener('pointermove', move); scrollEl.removeEventListener('pointerup', up);
+      document.body.classList.remove('panning'); drawCtl();
+    }
+    scrollEl.addEventListener('pointermove', move); scrollEl.addEventListener('pointerup', up);
+  });
+  scrollEl.addEventListener('wheel', function (e) {
+    if (!win) return;
+    e.preventDefault();
+    var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * (e.deltaMode ? 40 : 1);
+    scrollTo(win.a + d / scrollEl.clientWidth * (scope().b - scope().a) * .5);
+  }, {passive: false});
 
   // Grid spacing for a span of seconds: about eight labelled lines across,
   // finer unlabelled ones between.
