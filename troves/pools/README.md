@@ -86,6 +86,8 @@ them.
 It runs only while its window is open. `fcpm pools` starts a small server on
 `127.0.0.1:8091`, opens Edge onto it, and stops when that window closes.
 Running it a second time just opens another window onto the first.
+`fcpm pools timeline` is the same, opened at the nights' timeline; the desktop's
+*Pools timeline* shortcut runs it.
 
 ## The pools
 

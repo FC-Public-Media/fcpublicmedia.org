@@ -74,7 +74,7 @@ fcpm drobo [status|connect|header|list OUT]   the Drobo, over iSCSI (CHAP)
 fcpm share [status|install]   the drop shares: enhance (E:, TO ENHANCE)
 fcpm camera [console|presets|apply NAME|state]   the USB camera
 fcpm ti89 [probe|version|screen OUT.png|rom OUT.rom] [--port COM1]   a TI-89 on a GraphLink
-fcpm pools [key|sample|sample clear]   the storage pools, as a page (key: the depot's password)
+fcpm pools [timeline|key|sample|sample clear]   the storage pools, as a page (timeline: opened at the nights; key: the depot's password)
 fcpm help                 this
 EOF
  ;;
