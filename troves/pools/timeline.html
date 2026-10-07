@@ -85,6 +85,28 @@
   #win .grp.bar.full .thumb { background: rgba(7,9,13,.45); cursor: pointer; }
   /* on the bar, the reach's count sits on its own dark ground, so it reads over the colour or the slot */
   #reachlbl.onbar { background: rgba(7,9,13,.82); padding: 0 4px; border-radius: 2px; text-shadow: none; }
+  /* the control panel: the right third of the dock, for a transcription region's own words */
+  #dock.side { height: 36vh; }
+  #dock.side #win { margin-right: 34%; }   /* the bar keeps the full width; the panel stands above it */
+  #side { display: none; position: absolute; top: 8px; right: 18px; bottom: 52px; width: calc(34% - 30px);
+          flex-direction: column; gap: 6px; font-size: 12px; }
+  #dock.side #side { display: flex; }
+  #side .sh { display: flex; align-items: baseline; gap: 8px; color: var(--ink); }
+  #side .sh b { font-weight: 500; }
+  #side .sh small { color: var(--dim); flex: 1; }
+  #side .sh button { font: inherit; color: var(--dim); background: none; border: none; cursor: pointer; padding: 0 4px; }
+  #side .sh button:hover { color: var(--ink); }
+  #side textarea { flex: 1; min-height: 70px; font: 13px/1.45 "Segoe UI", system-ui, sans-serif; color: var(--ink);
+                   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; padding: 8px;
+                   resize: none; user-select: text; -webkit-user-select: text; }
+  #side textarea:focus { outline: none; border-color: rgba(143,176,255,.7); }
+  #side .saved { color: var(--dim); font-size: 11px; min-height: 14px; }
+  #side .eng { max-height: 42%; overflow: auto; border-top: 1px solid var(--faint); padding-top: 6px; color: #aeb7c4; line-height: 1.45; }
+  #side .eng b { color: var(--ink); font-weight: 500; }
+  #side .eng .score { color: var(--dim); margin-left: 6px; }
+  #side .eng p { margin: 3px 0 8px; user-select: text; -webkit-user-select: text; }
+  #side .none { color: var(--dim); }
+  #side button.mk { font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
      touch edge to edge still read as separate. The one playing is shown by its
@@ -152,9 +174,10 @@
                         animation: flowdots 1.1s linear infinite; }
   @keyframes flowdots { from { background-position: 0 50%; } to { background-position: 14px 50%; } }
   /* what was heard: a line of text where it was said, along the top of the waveform */
-  #win .heard { position: absolute; top: 18px; height: 15px; z-index: 3; overflow: hidden; white-space: nowrap; text-overflow: clip;
-                font-size: 10px; line-height: 15px; padding: 0 3px; color: #e8edf4; background: rgba(12,15,21,.72);
-                border-left: 1px solid rgba(255,255,255,.5); border-radius: 0 2px 2px 0; cursor: default; }
+  #win .heard { position: absolute; bottom: 11px; height: 13px; z-index: 3; overflow: hidden; white-space: nowrap; text-overflow: clip;
+                font-size: 9.5px; line-height: 13px; padding: 0 3px; color: #e8edf4; background: rgba(12,15,21,.78);
+                border-left: 1px solid rgba(255,255,255,.5); border-radius: 0 2px 2px 0; cursor: pointer; }
+  #win .heard:hover { background: rgba(30,36,48,.95); }
   #win .heard.unsure { color: rgba(232,237,244,.55); }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
@@ -218,6 +241,7 @@
   <span id="strong" title="strong voice: a peak over about -9 dBFS crosses this dashed line">&minus;9</span>
   <div id="win"></div>
   <div id="ctl"></div>
+  <div id="side"></div>
 </div>
 <div id="tip" role="tooltip"></div>
 <script>
@@ -533,7 +557,7 @@
     if (g.show) d.style.background = gcolor(g);
     d.title = gname(g) + (g.show ? '' : ' (not yet a show)') + ' · ' + hm(g.start) + '–' + hm(g.end);
     d.onpointerdown = function (e) { e.stopPropagation(); };
-    d.onclick = function () { openView(g.start, g.end); };
+    d.onclick = function () { openView(g.start, g.end); if (g.transcribe) openSide(g); };
     // A mark for removal (or what was removed) is an omission: its hatched line says it, unlabelled, so it never
     // fights the show's own name. Named groups, and marks for transcription (their state is the point), keep a label.
     if (first && (g.show || g.name || !(g.remove || g.removed))) {
@@ -542,7 +566,7 @@
       if (tx) n.dataset.tx = tx.says;
       n.title = (tx ? tx.says + ' ' + String.fromCharCode(183) + ' ' : '') + 'open this group';
       n.onpointerdown = function (e) { e.stopPropagation(); };
-      n.onclick = function () { openView(g.start, g.end); };
+      n.onclick = function () { openView(g.start, g.end); if (g.transcribe) openSide(g); };
       n.style.left = ((Math.max(g.start, span0) - span0) / span * w) + 'px';
       L.appendChild(n);
     }
@@ -729,7 +753,9 @@
     said(v.a, v.b).forEach(function (s) {
       var d = place(el('div', 'heard', s.text), s.t, s.t + s.d, 3);
       if (s.conf != null && s.conf < .35) d.classList.add('unsure');
-      d.title = hms(s.t) + ' \u00b7 ' + s.text + (s.conf != null ? ' (confidence ' + Math.round(s.conf * 100) + '%)' : '');
+      d.title = hms(s.t) + ' \u00b7 ' + s.text + (s.conf != null ? ' (confidence ' + Math.round(s.conf * 100) + '%)' : '') + ' \u00b7 click: its region\u2019s words';
+      d.onpointerdown = function (e) { e.stopPropagation(); };   // its own click: not a click in the window (that redraws it away)
+      d.onclick = function () { openSide(regionAt(s.t + s.d / 2) || {start: s.t, end: s.t + s.d, path: s.path, loose: true}); };
       winEl.appendChild(d);
     });
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
@@ -1219,7 +1245,7 @@
   function engines() { var e = {}; heard.forEach(function (j) { e[j.engine] = 1; }); return Object.keys(e).join(', '); }
   function loadHeard() {
     return fetch('/transcripts', {cache: 'no-store'}).then(function (r) { return r.json(); })
-      .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } if (running()) setTimeout(loadHeard, 2500); })
+      .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } drawScores(); if (running()) setTimeout(loadHeard, 2500); })
       .catch(function () {});
   }
   // The manifest: what this window did, by hash. The page says each recording's
@@ -1280,8 +1306,112 @@
     if (t >= SEL.a && t <= SEL.b) { var z = SEL; setView(z.a, z.b); }
   });
 
+  // --- the control panel: a transcription region's own words ---------------
+  // What you know is said in a region you marked for transcription, typed as
+  // well as you can: its control. It belongs to that region alone (nothing is
+  // merged between regions), saved as you type. Beside it, what each engine
+  // heard there, and once there are words on both sides, how far each is off:
+  // words wrong, missed and invented, against yours.
+  var SIDE = null;
+  function regionAt(t) { return groups.filter(function (g) { return g.transcribe && t >= g.start && t <= g.end; })[0] || null; }
+  function openSide(g) {
+    SIDE = {start: g.start, end: g.end, path: g.path, loose: !!g.loose};
+    dock.classList.add('side');
+    document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
+    drawSide(); drawWin(); drawCtl();
+  }
+  function closeSide() {
+    SIDE = null; dock.classList.remove('side');
+    document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
+    drawWin(); drawCtl();
+  }
+  function heardBy(a, b) {   // engine -> what it heard in [a, b], newest hearing of each recording, in order
+    var latest = {}, by = {};
+    heard.forEach(function (j) { (j.segments || []).forEach(function (s) { latest[j.engine + '|' + s.path] = j.id; }); });
+    heard.forEach(function (j) {
+      (j.segments || []).forEach(function (s) {
+        if (latest[j.engine + '|' + s.path] === j.id && s.t + s.d > a && s.t < b) (by[j.engine] = by[j.engine] || []).push(s);
+      });
+    });
+    Object.keys(by).forEach(function (e) { by[e].sort(function (x, y) { return x.t - y.t; }); });
+    return by;
+  }
+  function words(t) { return (t || '').toLowerCase().replace(/[\u2019']/g, "'").replace(/[^a-z0-9'\s]/g, ' ').split(/\s+/).filter(Boolean); }
+  function score(ref, hyp) {   // word error rate, with its parts: substituted, missed (deleted), invented (inserted)
+    var R = words(ref), H = words(hyp), n = R.length, m = H.length, D = [];
+    for (var i = 0; i <= n; i++) { D.push(new Array(m + 1)); D[i][0] = i; }
+    for (var j = 0; j <= m; j++) D[0][j] = j;
+    for (i = 1; i <= n; i++) for (j = 1; j <= m; j++)
+      D[i][j] = Math.min(D[i - 1][j] + 1, D[i][j - 1] + 1, D[i - 1][j - 1] + (R[i - 1] === H[j - 1] ? 0 : 1));
+    var sub = 0, del = 0, ins = 0; i = n; j = m;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && D[i][j] === D[i - 1][j - 1] + (R[i - 1] === H[j - 1] ? 0 : 1)) { if (R[i - 1] !== H[j - 1]) sub++; i--; j--; }
+      else if (i > 0 && D[i][j] === D[i - 1][j] + 1) { del++; i--; }
+      else { ins++; j--; }
+    }
+    return {n: n, sub: sub, del: del, ins: ins, wer: n ? (sub + del + ins) / n : 0};
+  }
+  var sideSave = 0;
+  function drawSide() {
+    var side = document.getElementById('side');
+    side.textContent = '';
+    if (!SIDE) return;
+    var g = groups.filter(function (x) { return x.transcribe && Math.abs(x.start - SIDE.start) < .01 && Math.abs(x.end - SIDE.end) < .01; })[0];
+    var show = groups.filter(function (x) { return (x.show || x.name) && x.end > SIDE.start && x.start < SIDE.end; })[0];
+    var sh = el('div', 'sh'), close = el('button', null, '\u00d7');
+    sh.appendChild(el('b', null, g ? 'control' : 'heard here'));
+    sh.appendChild(el('small', null, hm(SIDE.start) + '\u2013' + hm(SIDE.end) + (show ? ' \u00b7 ' + gname(show) : '')));
+    close.title = 'close (the words are kept)'; close.onclick = closeSide; sh.appendChild(close);
+    side.appendChild(sh);
+    if (g) {
+      var ta = el('textarea'); ta.value = g.control ? g.control.text : '';
+      ta.placeholder = 'what is said here, as well as you know it: the control the engines are scored against';
+      var said = el('div', 'saved', g.control ? 'kept ' + g.control.at.slice(11, 16) : '');
+      ta.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Escape') { ta.blur(); } };   // typing is not a shortcut
+      ta.oninput = function () {
+        said.textContent = 'not kept yet';
+        clearTimeout(sideSave);
+        sideSave = setTimeout(function () {
+          post('/control', {start: g.start, end: g.end, text: ta.value})
+            .then(function (r) { return r.json(); })
+            .then(function (d) { groups = d.groups; said.textContent = 'kept'; drawScores(); })
+            .catch(function () { said.textContent = 'could not keep it: is fcpm pools running?'; });
+        }, 700);
+      };
+      side.appendChild(ta); side.appendChild(said);
+    } else {
+      var mk = el('button', 'mk', 'mark this for transcription, to give it words of your own');
+      mk.onclick = function () {
+        post('/group', {start: SIDE.start, end: SIDE.end, transcribe: true}).then(function (r) { return r.json(); })
+          .then(function (d) { groups = d.groups || d; SIDE.loose = false; drawSide(); drawWin(); paintLanes(); });
+      };
+      side.appendChild(mk);
+    }
+    var eng = el('div', 'eng'); eng.id = 'eng'; side.appendChild(eng);
+    drawScores();
+  }
+  function drawScores() {
+    var eng = document.getElementById('eng');
+    if (!eng || !SIDE) return;
+    eng.textContent = '';
+    var by = heardBy(SIDE.start, SIDE.end), names = Object.keys(by);
+    var g = groups.filter(function (x) { return x.transcribe && Math.abs(x.start - SIDE.start) < .01 && Math.abs(x.end - SIDE.end) < .01; })[0];
+    var mine = g && g.control ? g.control.text : '';
+    if (!names.length) { eng.appendChild(el('div', 'none', 'nothing heard here yet: send it from the speech button')); return; }
+    names.sort().forEach(function (e) {
+      var text = by[e].map(function (s) { return s.text; }).join(' ');
+      var head = el('div'); head.appendChild(el('b', null, e));
+      if (words(mine).length) {
+        var sc = score(mine, text);
+        head.appendChild(el('span', 'score', Math.round(sc.wer * 100) + '% off \u00b7 ' + sc.sub + ' wrong, ' + sc.del + ' missed, ' + sc.ins + ' invented, of ' + sc.n + ' words'));
+      }
+      eng.appendChild(head); eng.appendChild(el('p', null, text));
+    });
+  }
+
   function closeWindow() {
     stop(); win = null; views = []; P.t = null; P.cur = null; SEL = null;
+    if (SIDE) { SIDE = null; dock.classList.remove('side'); }
     dock.style.display = 'none'; document.documentElement.style.setProperty('--dock', '0px');
     document.getElementById('hint').textContent = 'drag along a night to look closer';
     paintLanes();

@@ -548,7 +548,7 @@ def manifest(cfg, body):
         if any(s["t"] + s["d"] > a and s["t"] < b for s in r.get("segments") or []):
             heard.append({"job": r["id"], "engine": r.get("engine"), "phrases": len(r.get("segments") or []),
                           "failed": len(r.get("errors") or []), "sha256": sha256_of(str(f))})
-    gs = [{k: g.get(k) for k in ("show", "name", "start", "end", "remove", "removed", "transcribe", "events")}
+    gs = [{k: g.get(k) for k in ("show", "name", "start", "end", "remove", "removed", "transcribe", "events", "control")}
           for g in groups() if g["end"] > a and g["start"] < b]
     m = {"made": datetime.now().astimezone().isoformat(timespec="seconds"), "machine": profile(),
          "window": {"start": a, "end": b,
@@ -777,6 +777,19 @@ def wav_of(path):
     return _wavs[path]
 
 
+def set_control(body):
+    """A transcription region's control: what its marker knows is said in it,
+    kept on that region alone, never merged with another's."""
+    start, end, text = float(body["start"]), float(body["end"]), str(body.get("text") or "")
+    gs = groups()
+    g = next((g for g in gs if g.get("transcribe") and abs(g["start"] - start) < .01 and abs(g["end"] - end) < .01), None)
+    if not g:
+        raise ValueError("no transcription region there")
+    g["control"] = {"text": text, "at": datetime.now().astimezone().isoformat(timespec="seconds")}
+    save_groups(gs)
+    return gs
+
+
 def reveal(paths):
     """Explorer at each folder, with the given files selected (all of them, not
     just one: SHOpenFolderAndSelectItems, which /select cannot do)."""
@@ -891,6 +904,12 @@ def serve(cfg):
                 pass   # the player moved on
 
         def do_POST(self):
+            if self.path == "/control":
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                    return self.send(200, json.dumps({"groups": set_control(body)}).encode(), "application/json")
+                except (ValueError, KeyError, TypeError) as e:
+                    return self.send(400, str(e).encode(), "text/plain")
             if self.path == "/reveal":
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
