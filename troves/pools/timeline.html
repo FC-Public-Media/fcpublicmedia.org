@@ -93,6 +93,7 @@
               border-left: 1px solid rgba(255,255,255,.12); border-right: 1px solid rgba(255,255,255,.12); pointer-events: none; overflow: hidden; }
   #win .cut .len { font-size: 9px; color: var(--dim); writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-variant-numeric: tabular-nums; }
   #win .cut .dots { font-size: 9px; letter-spacing: 1px; color: #8a8d94; writing-mode: vertical-rl; white-space: nowrap; }
+  #win .cut .dots.rm { color: #f07a6e; }
   #ctl .scale { color: var(--dim); font-size: 11px; }
   #win .grp { bottom: 4px; }
   #ctl { display: flex; align-items: center; gap: 12px; margin-top: 9px; white-space: nowrap; }
@@ -109,6 +110,24 @@
   #ctl .gap { flex: 1; }
   #ctl .keys { color: var(--dim); font-size: 11px; }
   #ctl .err { color: #f0a050; }
+  /* the pre-processing strip: glyph toggles, pressed in when on, and the stop slider */
+  #ctl .strip { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; border-left: 1px solid rgba(255,255,255,.08); border-right: 1px solid rgba(255,255,255,.08); }
+  #ctl .ico.tog { width: 30px; color: rgba(201,209,220,.38); border-color: transparent; }
+  #ctl .ico.tog.on { color: var(--ink); background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); box-shadow: inset 0 1px 3px rgba(0,0,0,.6); }
+  #ctl .stops { display: inline-flex; align-items: center; height: 30px; padding: 0 10px 0 8px; cursor: pointer; }
+  #ctl .stops .track { position: relative; width: 58px; height: 2px; background: rgba(255,255,255,.18); border-radius: 1px; touch-action: none; }
+  #ctl .stops .stop { position: absolute; top: -5px; width: 12px; height: 12px; margin-left: -6px; }
+  #ctl .stops .stop::after { content: ''; position: absolute; left: 5px; top: 1px; width: 2px; height: 10px; background: rgba(255,255,255,.35); border-radius: 1px; }
+  #ctl .stops .stop.on::after { background: transparent; }
+  #ctl .stops .knob { position: absolute; top: -8px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #c9d1dc; color: #0b0e14;
+                      font-size: 9px; font-weight: 600; line-height: 18px; text-align: center; pointer-events: none; font-variant-numeric: tabular-nums; }
+  /* the readout, in the selection's look */
+  #ctl .chip { font-variant-numeric: tabular-nums; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+  #ctl .chip.clock { color: #fff; box-shadow: inset 2px 0 0 #fff; background: rgba(255,255,255,.05); min-width: 78px; }
+  #ctl .chip.range { color: var(--ink); background: rgba(255,255,255,.13); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.35); }
+  #ctl .badge { display: inline-flex; align-items: center; gap: 3px; color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #ctl .badge svg { opacity: .8; }
+  #ctl .badge.keys { width: 18px; height: 18px; justify-content: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; cursor: help; }
   #ctl label.opt { color: var(--dim); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   #ctl label.opt input { accent-color: #8fb0ff; margin: 0; }
   #ctl select.under { font: inherit; font-size: 12px; color: var(--ink); background: #10141c; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; padding: 1px 2px; }
@@ -146,11 +165,16 @@
 
   // Proofing settings, kept between visits: amplify the waveform, and skip
   // clips shorter than `under` seconds when playing or placing the playhead.
-  var S = {amp: true, skip: true, under: 6, squeeze: true};
+  var S = {amp: true, skip: true, under: 6, squeeze: true, silence: true};
   try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
   function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
   // A short clip is passed over, unless someone insisted on it (P.forced).
-  function skipped(x) { return S.skip && x !== P.forced && x.f.duration != null && x.f.duration < S.under; }
+  function short(x) { return S.skip && x !== P.forced && x.f.duration != null && x.f.duration < S.under; }
+  // Marked for removal: with "silence marked" on it is passed over too, and
+  // counts as cut, before anything is moved.
+  function inRemoval(x) { return groups.some(function (g) { return g.remove && x.end > g.start && x.start < g.end; }); }
+  function silenced(x) { return S.silence && x !== P.forced && inRemoval(x); }
+  function skipped(x) { return short(x) || silenced(x); }
   P.audio.preload = 'auto';
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -186,6 +210,55 @@
     muted: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>' +
            '<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
   };
+  ICONS.amp = '<path d="M2 12h2.5l2-5 3 11 3-14 3 12 2-7 1.5 3H22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>';
+  ICONS.squeeze = '<rect x="2.5" y="5" width="5" height="14" rx="1" fill="currentColor"/><rect x="16.5" y="5" width="5" height="14" rx="1" fill="currentColor"/>' +
+                  '<circle cx="9.8" cy="12" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="14.2" cy="12" r="1.1" fill="currentColor"/>';
+  ICONS.silence = '<path d="M3 19.5h18" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2"/><path d="M8 4.5l8 8M16 4.5l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+  ICONS.dot = '<circle cx="12" cy="12" r="3.2" fill="currentColor"/>';
+  ICONS.files = '<rect x="4" y="5" width="3" height="14" rx="1" fill="currentColor"/><rect x="9" y="8" width="3" height="11" rx="1" fill="currentColor"/><rect x="14" y="4" width="3" height="15" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="9" rx="1" fill="currentColor"/>';
+  ICONS.grid = '<path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8v8M15.5 8v8" stroke="currentColor" stroke-width=".9" opacity=".6"/>';
+
+  // Skip short clips: a short, tightly ticked slider. Only its stops matter
+  // (off, 3, 6, 10 s), each clickable; the space between them shows only their
+  // relative size (square root), not to scale.
+  var STOPS = [0, 3, 6, 10];
+  function stops() {
+    var wrap = el('span', 'stops'), track = el('span', 'track'), cur = S.skip ? S.under : 0;
+    wrap.title = 'Skip clips under ' + (cur ? cur + ' s' : 'nothing: off') + '. Ctrl-click, right-click or hold in the window to play one anyway';
+    wrap.appendChild(track);
+    function pos(v) { return v ? Math.sqrt(v) / Math.sqrt(STOPS[STOPS.length - 1]) : 0; }
+    function set(v) { S.skip = v > 0; if (v) S.under = v; keepS(); drawWin(); drawCtl(); }
+    STOPS.forEach(function (v) {
+      var t = el('span', 'stop' + (v === cur ? ' on' : '')); t.style.left = (pos(v) * 100) + '%';
+      t.title = v ? 'skip clips under ' + v + ' s' : 'skip nothing';
+      t.onclick = function (e) { e.stopPropagation(); set(v); };
+      track.appendChild(t);
+    });
+    var knob = el('span', 'knob', cur ? String(cur) : '0'); knob.style.left = (pos(cur) * 100) + '%';
+    track.appendChild(knob);
+    track.onpointerdown = function (e) {   // drag along it: it jumps from stop to stop
+      var r = track.getBoundingClientRect();
+      function near(ev) {
+        var f = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), best = 0;
+        STOPS.forEach(function (v) { if (Math.abs(pos(v) - f) < Math.abs(pos(best) - f)) best = v; });
+        return best;
+      }
+      var v0 = near(e);
+      function move(ev) { var v = near(ev); if (v !== v0) { v0 = v; set(v); } }
+      function up() { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); }
+      document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+      set(v0); e.preventDefault();
+    };
+    return wrap;
+  }
+  function brief(sec) {   // a duration as few characters as it can be: 45s, 13m, 2h05
+    sec = Math.round(sec);
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.round(sec / 60) + 'm';
+    var m = Math.round(sec / 60);
+    return Math.floor(m / 60) + 'h' + (m % 60 < 10 ? '0' : '') + (m % 60);
+  }
+
   function icon(name, label) {
     var b = el('button', 'ico');
     b.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">' + ICONS[name] + '</svg>';
@@ -493,7 +566,9 @@
           c.title = clockish(s.t1 - s.t0).slice(1) + ' cut, ' + hms(s.t0) + ' to ' + hms(s.t1) +
                     (s.skips.length ? ', including ' + s.skips.length + ' short ' + (s.skips.length === 1 ? 'clip' : 'clips') : '');
           if (s.x1 - s.x0 >= 14) c.appendChild(el('span', 'len', clockish(s.t1 - s.t0)));
-          if (s.skips.length) c.appendChild(el('span', 'dots', s.skips.length <= 6 ? new Array(s.skips.length + 1).join('•') : '•×' + s.skips.length));
+          var nq = s.skips.filter(silenced).length, ns = s.skips.length - nq;
+          function marks(ch, n, cls) { if (n) c.appendChild(el('span', cls, n <= 6 ? new Array(n + 1).join(ch) : ch + n)); }
+          marks('•', ns, 'dots'); marks('×', nq, 'dots rm');
           winEl.appendChild(c);
           return;
         }
@@ -612,34 +687,40 @@
     if (!P.muted) mute.classList.add('on');
     mute.onclick = function () { setMuted(!P.muted); };
     ctl.appendChild(play); ctl.appendChild(mute);
-    function check(label, on, change) {
-      var l = el('label', 'opt'), cb = el('input'); cb.type = 'checkbox'; cb.checked = on;
-      cb.onchange = function () { change(cb.checked); keepS(); cb.blur(); drawWin(); drawCtl(); };   // blur: Space goes back to playing
-      l.appendChild(cb); l.appendChild(document.createTextNode(' ' + label)); return l;
+
+    // The pre-processing, as glyphs: what is drawn, what is cut, what is
+    // passed over. The same settings say what a job sends on to Audition.
+    var strip = el('span', 'strip');
+    function tog(name, on, label, change) {
+      var b = icon(name, label + (on ? ' (on)' : ' (off)'));
+      b.classList.add('tog'); if (on) b.classList.add('on'); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.onclick = function () { change(!on); keepS(); b.blur(); drawWin(); drawCtl(); };
+      strip.appendChild(b);
     }
-    ctl.appendChild(check('amplify', S.amp, function (v) { S.amp = v; })).title = 'draw loudness in decibels, so quiet talk shows; off: plain amplitude';
-    ctl.appendChild(check('compress gaps', S.squeeze, function (v) { S.squeeze = v; })).title = 'squeeze every stretch with no recording (and every skipped clip) into a short cut that says how long it was';
-    var sk = check('skip clips under', S.skip, function (v) { S.skip = v; });
-    var under = el('select', 'under');
-    [3, 6, 10].forEach(function (n) { var o = el('option', null, n + ' s'); o.value = n; if (S.under === n) o.selected = true; under.appendChild(o); });
-    under.onchange = function () { S.under = +under.value; keepS(); under.blur(); drawWin(); drawCtl(); };
-    under.onkeydown = function (e) { e.stopPropagation(); };
-    sk.appendChild(under);
-    sk.title = 'playing and clicking pass over short clips; ctrl-click, right-click or hold to play one anyway';
-    ctl.appendChild(sk);
-    ctl.appendChild(el('span', 'clock', P.t != null ? hms(P.t) : '')).id = 'clock';
+    tog('amp', S.amp, 'Amplify: loudness in decibels, so quiet talk shows', function (v) { S.amp = v; });
+    tog('squeeze', S.squeeze, 'Compress gaps: long gaps become short cuts that say how long they were', function (v) { S.squeeze = v; });
+    tog('silence', S.silence, 'Silence what is marked for removal: passed over and cut', function (v) { S.silence = v; });
+    strip.appendChild(stops());
+    ctl.appendChild(strip);
+
+    // The readout, in the selection's own look: where the playhead is, the
+    // stretch selected, and what it holds, as badges (words in the tooltips).
+    var clk = el('span', 'chip clock', P.t != null ? hms(P.t) : '--:--:--'); clk.id = 'clock'; clk.title = 'the playhead';
+    ctl.appendChild(clk);
     if (P.err) ctl.appendChild(el('span', 'err', P.err));
-    var sum = el('span', 'sum');
-    sum.appendChild(el('b', null, wd(win.a) + ' ' + hm(win.a) + ' → ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b)));
-    sum.appendChild(document.createTextNode(' · ' + hours(sound) + ' sound · ' + hit.length + ' files'));
-    ctl.appendChild(sum);
-    var vv = view(), gg = grid(vv.b - vv.a);
+    var rg = el('span', 'chip range', wd(win.a) + ' ' + hm(win.a) + ' – ' + (wd(win.b) !== wd(win.a) ? wd(win.b) + ' ' : '') + hm(win.b));
+    rg.title = 'the window: ' + hms(win.a) + ' to ' + hms(win.b);
+    ctl.appendChild(rg);
     if (!M) layout();
-    if (M.linear) ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a) + ' across · lines every ' + every(gg.major) + ', fine every ' + every(gg.minor)));
-    else {
-      var cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0), sk = M.cut.reduce(function (n, s) { return n + s.skips.length; }, 0);
-      ctl.appendChild(el('span', 'scale', dur(vv.b - vv.a - cutT) + ' shown · ' + M.cut.length + ' cuts, ' + dur(cutT) + (sk ? ', ' + sk + ' short clips' : '')));
-    }
+    var vv = view(), cutT = M.cut.reduce(function (n, s) { return n + (s.t1 - s.t0); }, 0);
+    var inWin = within(win.a, win.b), nShort = inWin.filter(function (x) { return short(x) && !silenced(x); }).length, nSil = inWin.filter(silenced).length;
+    function badge(name, text, label) { var b = el('span', 'badge'); b.title = label; b.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">' + ICONS[name] + '</svg>'; b.appendChild(el('span', null, text)); ctl.appendChild(b); }
+    badge('sound', brief(sound), hours(sound) + ' of sound in the window');
+    if (!M.linear) badge('squeeze', String(M.cut.length), M.cut.length + ' cuts, ' + dur(cutT) + ' of no recording squeezed out; ' + dur(vv.b - vv.a - cutT) + ' shown');
+    else { var gg = grid(vv.b - vv.a); badge('grid', every(gg.major).replace(' ', ''), 'plain time: lines every ' + every(gg.major) + ', fine every ' + every(gg.minor)); }
+    if (nShort) badge('dot', String(nShort), nShort + ' clips under ' + S.under + ' s passed over');
+    if (nSil) badge('silence', String(nSil), nSil + ' clips marked for removal, silenced');
+    badge('files', String(hit.length), hit.length + ' recordings in the window');
     ctl.appendChild(el('span', 'gap'));
     var over = groups.filter(function (g) { return g.end > win.a && g.start < win.b; })[0];
     // One list, however many names there come to be: the shows on record, the
@@ -685,7 +766,9 @@
       ctl.replaceChild(f, pick); f.focus(); f.select();
     }
     if (over) { var u = el('button', null, 'Ungroup'); u.onclick = function () { save({}, hit, sound); }; ctl.appendChild(u); }
-    ctl.appendChild(el('span', 'keys', (views.length ? 'backspace: previous view · ' : '') + 'wheel: zoom · esc: close'));
+    var keys = el('span', 'badge keys', '?');
+    keys.title = 'drag: look closer \u00b7 drag an edge: adjust \u00b7 wheel: zoom \u00b7 backspace: previous view \u00b7 esc: close \u00b7 space: play \u00b7 m: sound \u00b7 ctrl-click, right-click or hold: play exactly here';
+    ctl.appendChild(keys);
   }
 
   // Every change of view is remembered, so Backspace can always go back one:
