@@ -77,5 +77,26 @@ gear:
     updates: bay
     restart-tier: none
 
+  - gear: audition
+    for: the enhance suite, run unattended through the engine's panel (below).
+      Members' recordings in, enhanced or stemmed takes out (.enhance-engine)
+    at: "%ProgramFiles%\\Adobe\\Adobe Audition 2026\\Adobe Audition.exe"
+    vendor: Adobe Inc., Creative Cloud
+    provisioner: hand         # Creative Cloud, FCPM's seat; it updates itself
+    updates: creative-cloud
+
+  - gear: audition-panel
+    for: the enhance engine's way into Audition (enhance/gear/audition/). Read
+      where it sits, in the engine's mirror, through a junction; so it changes
+      by merge and a reformat loses nothing git does not have
+    at: "%APPDATA%\\Adobe\\CEP\\extensions\\org.fcpublicmedia.enhance"
+    from: "%USERPROFILE%\\code\\refs\\enhance\\gear\\audition\\org.fcpublicmedia.enhance"
+    vendor: FC Public Media (FC-Public-Media/enhance)
+    signer: none; CEP loads it under PlayerDebugMode (HKCU CSXS.12), which
+      `fcpm audition install` turns on and `remove` turns off
+    provisioner: fcpm audition install
+    updates: bin/refs pull
+    restart-tier: audition
+
 # PROPOSED, NOT WANTED YET: ffmpeg, for transcoding digitization masters. It
 # waits on the capture decision (Autumn, HDCP testing, and a home for masters).
