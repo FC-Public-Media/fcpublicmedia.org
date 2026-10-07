@@ -49,9 +49,15 @@
   .grp.tmp { background: repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 10px); }
   .grpname.tmp { font-style: italic; }
   /* an edge of the window, to drag: a wide grip around a thin bright bar */
-  .hdl { position: absolute; top: 0; bottom: 0; width: 14px; margin-left: -7px; cursor: ew-resize; z-index: 4; touch-action: none; }
-  .hdl::after { content: ''; position: absolute; left: 6px; top: 12%; bottom: 12%; width: 2px; border-radius: 2px; background: #fff; opacity: .75; }
-  .hdl:hover::after { opacity: 1; left: 5px; width: 4px; }
+  /* an edge's handle sits just outside the edge it holds (the start's to the left, the end's to the right),
+     so what lies right at the edge (a cut, a skipped clip) stays readable; red, like the record light */
+  .hdl { position: absolute; top: 0; bottom: 0; width: 14px; cursor: ew-resize; z-index: 4; touch-action: none; }
+  .hdl[data-edge="a"] { margin-left: -14px; }
+  .hdl[data-edge="b"] { margin-left: 0; }
+  .hdl::after { content: ''; position: absolute; top: 12%; bottom: 12%; width: 3px; border-radius: 2px; background: #ff3b30; opacity: .85; }
+  .hdl[data-edge="a"]::after { right: 2px; }
+  .hdl[data-edge="b"]::after { left: 2px; }
+  .hdl:hover::after { opacity: 1; width: 4px; }
   #win .out { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.5); pointer-events: none; z-index: 1; }
   #ctl button.tmp { font-style: italic; }
   #ctl select.pick { font: inherit; color: var(--ink); background: #10141c; border: 1px solid rgba(255,255,255,.2);
