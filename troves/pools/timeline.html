@@ -111,7 +111,8 @@
   #win .lbl .nm { color: rgba(201,209,220,.18); }
   /* the reach: from the playhead out to the cursor */
   #reach { position: absolute; height: 4px; z-index: 4; pointer-events: none; display: none; }
-  #reachlbl { position: absolute; z-index: 4; pointer-events: none; display: none; font-size: 11px; color: #fff; white-space: pre;
+  #strong { position: absolute; left: 3px; display: none; font-size: 9px; line-height: 12px; color: var(--dim); cursor: help; }
+  #reachlbl { position: absolute; z-index: 6; pointer-events: none; display: none; font-size: 10px; line-height: 13px; color: #fff; white-space: pre;
               font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000, 0 0 2px #000; }
   /* the grid, over the recordings: major lines labelled top and bottom, minor between */
   #win .g { position: absolute; top: 0; bottom: 0; width: 1px; pointer-events: none; z-index: 1; }
@@ -211,6 +212,7 @@
 </header>
 <main id="main"></main>
 <div id="dock">
+  <span id="strong" title="strong voice: a peak over about -9 dBFS crosses this dashed line">&minus;9</span>
   <div id="win"></div>
   <div id="ctl"></div>
 </div>
@@ -974,8 +976,9 @@
     runs(clips.filter(function (k) { return !k.off; })).forEach(function (r) { trace(r, colourOf(r), false); });
     c.globalAlpha = .45; c.strokeStyle = '#fff'; c.setLineDash([4, 5]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(0, lineY + .5); c.lineTo(w, lineY + .5); c.stroke();
-    c.setLineDash([]); c.globalAlpha = .55; c.fillStyle = '#c9d1dc'; c.font = '10px Segoe UI, sans-serif';
-    c.fillText('strong voice · peaks over about -9 dBFS', 6, lineY - 4);
+    c.setLineDash([]);
+    var tag = document.getElementById('strong');   // its label lives in the gutter, left of the window, level with it
+    if (tag) { tag.style.top = (winEl.offsetTop + 22 + lineY - 6) + 'px'; tag.style.display = 'block'; }
     drawNow();
     ask();
   }
@@ -1416,9 +1419,11 @@
     var rl = document.getElementById('reach'), rt = document.getElementById('reachlbl');
     if (!rl || !rt) return;
     if (!hover || !win || !M) { rl.style.display = rt.style.display = 'none'; return; }
-    var cx = hover.x, tc = xt(cx), mid = winEl.clientHeight / 2;
+    // in the strip between the waveform's floor (22 px up) and the show's bar (the bottom 9): clear of the
+    // waveform and of the clips' own particulars printed above the floor
+    var cx = hover.x, tc = xt(cx), mid = winEl.clientHeight - 15;
     rt.textContent = (P.t != null ? signed(ahead(P.t, tc)) + '  ' : '') + hms(tc);
-    rt.style.display = 'block'; rt.style.top = (mid - 20) + 'px';
+    rt.style.display = 'block'; rt.style.top = (mid - 7) + 'px';
     var wl = winEl.clientWidth, right = cx < wl - 120;
     rt.style.left = right ? (cx + 8) + 'px' : 'auto'; rt.style.right = right ? 'auto' : (wl - cx + 8) + 'px';
     if (P.t == null) { rl.style.display = 'none'; return; }
