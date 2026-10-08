@@ -1356,19 +1356,38 @@
     return by;
   }
   function words(t) { return (t || '').toLowerCase().replace(/[\u2019']/g, "'").replace(/[^a-z0-9'\s]/g, ' ').split(/\s+/).filter(Boolean); }
-  function score(ref, hyp) {   // word error rate, with its parts: substituted, missed (deleted), invented (inserted)
-    var R = words(ref), H = words(hyp), n = R.length, m = H.length, D = [];
+  // Word error rate, with its parts: substituted, missed (deleted), invented
+  // (inserted). A control need not cover its whole region: each passage of it
+  // (passages part at a blank line) is scored against the stretch of what the
+  // engine heard that it best fits, in order. What the engine heard outside
+  // every passage is not counted against it, only reported (out).
+  function score(ref, hyp) {
+    var H = words(hyp), from = 0, t = {n: 0, sub: 0, del: 0, ins: 0, out: 0};
+    (ref || '').split(/\n\s*\n/).forEach(function (p) {
+      var R = words(p);
+      if (!R.length) return;
+      var f = fit(R, H.slice(from));
+      t.n += R.length; t.sub += f.sub; t.del += f.del; t.ins += f.ins; t.out += f.a; from += f.b;
+    });
+    t.out += H.length - from;
+    t.wer = t.n ? (t.sub + t.del + t.ins) / t.n : 0;
+    return t;
+  }
+  function fit(R, H) {   // R aligned within H: free to start and end anywhere in H. a, b: the stretch of H it took
+    var n = R.length, m = H.length, D = [];
     for (var i = 0; i <= n; i++) { D.push(new Array(m + 1)); D[i][0] = i; }
-    for (var j = 0; j <= m; j++) D[0][j] = j;
+    for (var j = 0; j <= m; j++) D[0][j] = 0;
     for (i = 1; i <= n; i++) for (j = 1; j <= m; j++)
       D[i][j] = Math.min(D[i - 1][j] + 1, D[i][j - 1] + 1, D[i - 1][j - 1] + (R[i - 1] === H[j - 1] ? 0 : 1));
-    var sub = 0, del = 0, ins = 0; i = n; j = m;
-    while (i > 0 || j > 0) {
-      if (i > 0 && j > 0 && D[i][j] === D[i - 1][j - 1] + (R[i - 1] === H[j - 1] ? 0 : 1)) { if (R[i - 1] !== H[j - 1]) sub++; i--; j--; }
-      else if (i > 0 && D[i][j] === D[i - 1][j] + 1) { del++; i--; }
+    var b = 0;
+    for (j = 1; j <= m; j++) if (D[n][j] < D[n][b]) b = j;
+    var sub = 0, del = 0, ins = 0; i = n; j = b;
+    while (i > 0) {
+      if (j > 0 && D[i][j] === D[i - 1][j - 1] + (R[i - 1] === H[j - 1] ? 0 : 1)) { if (R[i - 1] !== H[j - 1]) sub++; i--; j--; }
+      else if (D[i][j] === D[i - 1][j] + 1) { del++; i--; }
       else { ins++; j--; }
     }
-    return {n: n, sub: sub, del: del, ins: ins, wer: n ? (sub + del + ins) / n : 0};
+    return {sub: sub, del: del, ins: ins, a: j, b: b};
   }
   var sideSave = 0;
   function drawSide() {
@@ -1422,7 +1441,8 @@
       var head = el('div'); head.appendChild(el('b', null, e));
       if (words(mine).length) {
         var sc = score(mine, text);
-        head.appendChild(el('span', 'score', Math.round(sc.wer * 100) + '% off \u00b7 ' + sc.sub + ' wrong, ' + sc.del + ' missed, ' + sc.ins + ' invented, of ' + sc.n + ' words'));
+        head.appendChild(el('span', 'score', Math.round(sc.wer * 100) + '% off \u00b7 ' + sc.sub + ' wrong, ' + sc.del + ' missed, ' + sc.ins + ' invented, of ' + sc.n + ' words' +
+                                              (sc.out ? ' · ' + sc.out + ' heard outside the control' : '')));
       }
       eng.appendChild(head); eng.appendChild(el('p', null, text));
     });
