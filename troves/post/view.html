@@ -103,7 +103,7 @@ function draw(st) {
     const lab = document.createElement("div"); lab.className = "label";
     lab.innerHTML = `<b></b><small></small>`;
     lab.querySelector("b").textContent = t.out || t.id;
-    lab.querySelector("small").textContent = t.error ? t.error : `${t.show || ""} · ${t.id.split(".").pop()}`;
+    lab.querySelector("small").textContent = t.error ? t.error : [t.for && t.for.crew, t.show, t.id.split(".").pop()].filter(Boolean).join(" · ");
     if (t.error) lab.querySelector("small").className = "err";
     lab.onclick = () => post("/open", {take: t.id});
     row.append(lab);

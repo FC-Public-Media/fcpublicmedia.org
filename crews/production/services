@@ -13,6 +13,7 @@
 
 pools           keep        troves/pools
 episodes        every 5m    troves/pools
+post            keep        troves/post
 screen          every 1m    troves/kiosk-screen
 
 # Held off (Autumn, 2026-10-07: no Claude at startup). Uncomment to keep it.

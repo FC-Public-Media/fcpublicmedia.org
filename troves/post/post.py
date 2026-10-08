@@ -32,7 +32,17 @@ def config():
     cfg = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
     cfg["root"] = Path(os.path.expandvars(os.path.expanduser(cfg["root"])))
     cfg["doors"] = Path(os.path.expandvars(os.path.expanduser(cfg.get("doors") or cfg["root"].parent / "DOORS")))
-    cfg["steps"] = cfg.get("steps") or {}
+    # The steps are the crews', on whichever machine wears them (crews/<crew>/
+    # post.yml): a machine that wears two does both's. The first crew is whose a
+    # release is when it doesn't say. A machine's own (or a test root's) go over them.
+    crews = cfg.get("crews") or ([cfg["crew"]] if cfg.get("crew") else [])
+    cfg["crews"], cfg["crew"] = list(crews), (crews[0] if crews else None)
+    steps = {}
+    for c in reversed(cfg["crews"]):
+        f = REPO / "crews" / str(c) / "post.yml"
+        if f.is_file():
+            steps.update((yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("steps") or {})
+    cfg["steps"] = {**steps, **(cfg.get("steps") or {})}
     return cfg
 
 
@@ -136,7 +146,7 @@ def state(cfg):
     for take in takes(cfg):
         try:
             r = route_of(take)
-            rows.append({"id": take.name, "show": r.get("show"), "out": r.get("out"),
+            rows.append({"id": take.name, "show": r.get("show"), "out": r.get("out"), "for": r.get("for") or {},
                          "admitted": r.get("admitted"), "cells": cells(cfg, take, r, t)})
         except (OSError, ValueError, KeyError) as e:
             rows.append({"id": take.name, "error": str(e), "cells": []})
@@ -179,7 +189,11 @@ def admit(cfg, doc):
         source.append({"name": p.name, "from": str(p), "bytes": p.stat().st_size, "sha256": sha256(p),
                        **{k: c[k] for k in ("start", "end") if c.get(k) is not None}})
     out = re.sub(r"[^A-Za-z0-9._-]+", "-", str(doc.get("out") or "take")).strip("-.") or "take"
-    route = {"out": out, "show": doc.get("show"), "steps": steps, "source": source,
+    # Whose take it is: the crew (and its recipe) the release was made for. The
+    # same recordings released for two crews are two takes, side by side.
+    who = doc.get("for") or {"crew": cfg.get("crew")}
+    who = {"crew": who} if isinstance(who, str) else {k: str(v) for k, v in who.items() if v}
+    route = {"out": out, "show": doc.get("show"), "for": who, "steps": steps, "source": source,
              "settings": doc.get("settings") or {}}
     digest = hashlib.sha256(json.dumps(route, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     tid = f"{out}.{digest[:8]}"

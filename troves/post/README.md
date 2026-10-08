@@ -86,27 +86,55 @@ anything, because the take's folder is the record.
 
 ## Steps
 
-What each step is, on this machine, is the machine's `post.yml`: a command
-(run with `{in}`, `{out}`, `{take}`, `{python}`) or a door, and a lease. A step this
-machine doesn't declare is left for a worker that does, drawn as waiting for
-one. Which steps a take goes through is its show's pipeline (pools README, *A
-show's pipeline*), copied into `route.json` when it is admitted, so a take
-goes through what it was released with even if the show changes later.
+**The steps are the crew's; the partition is the hardware's.** What each step
+is, is the crew's `post.yml` (`crews/<crew>/post.yml`): a command (run with
+`{in}`, `{out}`, `{take}`, `{python}`) or a door, and a lease. Any machine
+that wears production does production's steps; one that wears two crews does
+both's. Where the post root and the doors are is the machine's own `post.yml`
+(`machines/<profile>/post.yml`), which also names the crews it wears until the
+hardware record says so (`crews:`; the first is whose a release is when it
+doesn't say). A step the crew doesn't declare is left for a worker that does,
+drawn as waiting for one. Which steps a take goes through is its show's
+pipeline (pools README, *A show's pipeline*), copied into `route.json` when it
+is admitted, so a take goes through what it was released with even if the show
+changes later.
 
-## Admission
+## Admission: the seam
 
-`fcpm post admit CONFIG` takes what releasing an episode renders (the show,
-its out name, its pipeline, its recordings) and makes the take: its folder,
-`route.json`, and `0-source\` with the recordings hashed (hard-linked when they
-are already on the same volume, copied otherwise). Admitting the same release
-twice finds the same folder: the id is the route's own hash.
+**Admission is the only way in, and post doesn't care who comes through it.**
+Production fills it from the pools page's release. Digitization's recipe can
+fill the same intake from capture's ledger. Neither writes into a take's
+folder directly, so a crew that only supplies, one that only works, and one
+that does both all keep the same contract.
 
-The episode supervisor (`troves/pools/episodes.py`) is what will admit a
-released episode, rather than running its steps from the groups file itself.
+`fcpm post admit CONFIG` takes a release (the show, its out name, its
+pipeline, its recordings, and `for:` the crew and recipe it is for) and makes
+the take: its folder, `route.json`, and `0-source\` with the recordings hashed
+(hard-linked when they are already on the same volume, copied otherwise).
+A release that says no `for:` is the admitting machine's crew's. Admitting the
+same release twice finds the same folder: the id is the route's own hash. The
+same recordings released for two crews are two takes, side by side, and the
+page says whose each is.
+
+```yaml
+out: artfcally-s1e3
+show: artfcally
+for: {crew: digitization, recipe: capture}
+pipeline: {steps: [enhance, {transcribe: {engine: whisper}}]}
+clips: [{path: 'E:/TO ENHANCE/2026-10-06 1906 Session.wav'}]
+```
+
+Production's episode supervisor (`troves/pools/episodes.py`) admits each
+released episode, and records the take on the episode's group.
+
+**As a residency** (`residency.yml`): post wants the `post` and `doors` places,
+and serves `post` (the page, a listener on 8093) and `post-run` (every ready
+step, then exit). Production orders `post`; `post-run` is on the menu for a
+crew that wants it on a schedule rather than by the button.
 
 ## The page
 
-`fcpm post` serves it on `127.0.0.1:8093` while its window is open. One row per
+`fcpm post` opens it on `127.0.0.1:8093` (production keeps it served). One row per
 take, one column per step, in route order, as the table above draws them.
 Dark and dense, like the pools page; no prose. A row's mark opens its folder. A
 failed cell shows its `failed.json`, and retries. **Run here** runs every ready

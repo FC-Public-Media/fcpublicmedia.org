@@ -1,0 +1,38 @@
+# residency.yml -- what the post trove offers a crew that holds it.
+#
+# A MENU, NOT A STARTUP SCRIPT. Nothing here runs because it is written down;
+# a crew orders from it (crews/<crew>/services). {python} is the
+# crew's Python (uv, 3.12, with pyyaml); paths are from the repository's root.
+#
+# The seam: admission is the only way in. Whoever releases a take (the pools
+# page for production; capture's ledger for digitization) writes a release and
+# admits it; post doesn't care who. The steps a machine does are its crew's
+# (crews/<crew>/post.yml); where the partition is, the hardware's
+# (machines/<profile>/post.yml).
+
+resident: post
+
+wants:
+  - label: post
+    holds: "a folder per take: its route, its source, one folder per step done; progress is only these files"
+    lifecycle: until-delivered
+    disposition: private
+  - label: doors
+    holds: "a step's input handed to a person or a folder-watching tool, and what comes back"
+    lifecycle: transient
+    disposition: private
+
+serves:
+  - service: post
+    for: "the page: every take's route, what's done, held, at a door or failed; runs what's ready here when asked"
+    kind: listener
+    start: "{python} troves/post/post.py view"
+    env: {POST_NO_OPEN: "1"}         # served without a window; `fcpm post` opens one onto it
+    alive: {port: 8093}
+    required-for: [post]
+
+  - service: post-run
+    for: "every ready step this machine's crew does, then exit; the page's ▶ without the page"
+    kind: periodic
+    start: "{python} troves/post/post.py run"
+    required-for: []                 # nothing waits on it: the page's ▶ and `fcpm post run` do the same
