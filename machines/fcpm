@@ -51,13 +51,13 @@ case "$cmd" in
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/pools.py" "$@" ;;
   crew)
-    # The machine's crew (machines/crews/): what its one supervisor keeps, asked
+    # The machine's crew (crews/): what its one supervisor keeps, asked
     # live. `serve` is what the crew's service runs; in a window, it tries it.
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     case "${1:-status}" in
-      status|install|uninstall) ps1 "$REPO/machines/crews/crew.ps1" "${1:-status}" ;;   # the task, and what it keeps; install is an administrator's
+      status|install|uninstall) ps1 "$REPO/crews/crew.ps1" "${1:-status}" ;;   # the task, and what it keeps; install is an administrator's
       episodes) shift; exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/episodes.py" "${@:-status}" ;;
-      *)        exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/machines/crews/crew.py" "$@" ;;
+      *)        exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/crews/crew.py" "$@" ;;
     esac ;;
   camera)
     # uv brings its own Python; a window opened before uv was installed may not

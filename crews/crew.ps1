@@ -18,7 +18,7 @@
 # a pass a minute (`crew.py desktop`, from code/bin/pool.ps1).
 #
 # install and uninstall need an administrator: run from a plain shell they ask
-# Windows for one, and act for the user who asked. Doc: machines/crews/.
+# Windows for one, and act for the user who asked. Doc: crews/.
 #
 # ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
@@ -29,7 +29,7 @@ param([Parameter(Position = 0)][string]$Verb = "status",
       [string]$Repo = "")
 
 $ErrorActionPreference = "Stop"
-if (-not $Repo) { $Repo = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path }
+if (-not $Repo) { $Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path }
 if (-not $Uv) {
     $Uv = @((Get-Command uv -ErrorAction SilentlyContinue).Source,
             (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),

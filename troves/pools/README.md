@@ -173,7 +173,7 @@ when the supervisor gets to it. Held back again, it is left alone again; what
 was already done stays done. Each is an event on the group.
 
 **What release hands it to: `episodes.py`.** The production crew runs `tick`
-every few minutes (`machines/crews/production/services`). Each released
+every few minutes (`crews/production/services`). Each released
 episode goes through its pipeline in order: its ejected config's if releasing
 wrote one, else the show's, read fresh. `transcribe` runs as a job here; a
 step that cannot run on this machine yet (Audition's) waits, and the steps

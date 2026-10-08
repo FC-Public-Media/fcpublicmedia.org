@@ -89,10 +89,10 @@ function EnsureServer {
 function Screens {
     # The production crew's desktop lines (the rolling TV), a pass a minute:
     # its supervisor starts with the computer and has no desktop to put them
-    # on (machines/crews/crew.ps1), so this task, in the signed-in session, is
+    # on (crews/crew.ps1), so this task, in the signed-in session, is
     # its desktop half. Until the crew's supervisor is in the mirror, the
     # screen trove directly, as before.
-    $crew = Join-Path $Root "refs\fcpublicmedia.org\machines\crews\crew.py"
+    $crew = Join-Path $Root "refs\fcpublicmedia.org\crews\crew.py"
     $uv = @((Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),
             (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe")) |
           Where-Object { Test-Path $_ } | Select-Object -First 1

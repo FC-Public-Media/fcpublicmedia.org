@@ -6,7 +6,7 @@
     crew.py check  [CREW]      status, failing if a kept line is down (the after-boot test)
     crew.py log NAME [CREW]    the end of one line's log
 
-A crew (machines/crews/README.md) orders from menus: its `services` file names,
+A crew (crews/README.md) orders from menus: its `services` file names,
 line by line, a service some residency serves (`residency.yml`, `serves:`).
 This runs those lines and nothing else. A `keep` line is kept up, coming back
 after 5s, doubling to 5m, the wait reset once it has stayed up 10m. An `every`
@@ -38,8 +38,8 @@ from pathlib import Path
 
 import yaml
 
-HERE = Path(__file__).resolve().parent            # machines/crews
-REPO = HERE.parent.parent
+HERE = Path(__file__).resolve().parent            # crews/
+REPO = HERE.parent
 CODE = REPO.parent.parent                         # ~/code: refs/ and work/ beside each other
 PROFILE = "editing-bay-1"                         # where this machine keeps its state (one profile per machine)
 STATE = Path(os.environ.get("LOCALAPPDATA", Path.home())) / PROFILE / "crew"
@@ -333,7 +333,7 @@ def main():
         return tail(a[2] if len(a) > 2 else "production", a[1])
     crew = a[1] if len(a) > 1 else "production"
     if not (HERE / crew / "services").exists():
-        sys.exit(f"crew: no crew {crew} (machines/crews/{crew}/services)")
+        sys.exit(f"crew: no crew {crew} (crews/{crew}/services)")
     if verb == "serve":
         return serve(crew)
     if verb == "desktop":

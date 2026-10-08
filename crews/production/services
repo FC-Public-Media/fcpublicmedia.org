@@ -1,4 +1,4 @@
-# What production runs. machines/crews/crew.py runs every line, and the crew's
+# What production runs. crews/crew.py runs every line, and the crew's
 # one service runs it. Change this file and the supervisor follows within
 # seconds: a new line starts, a removed (or commented) line stops being kept.
 # Nothing here that is not on a menu: each line names a residency's service.
@@ -16,4 +16,4 @@ episodes        every 5m    troves/pools
 screen          every 1m    troves/kiosk-screen
 
 # Held off (Autumn, 2026-10-07: no Claude at startup). Uncomment to keep it.
-# remote-control  keep        machines/crews/production
+# remote-control  keep        crews/production

@@ -4,7 +4,7 @@
     episodes.py status    each released episode, and where its steps stand
 
 Release hands an episode on, and this is what it is handed to (the production
-crew runs `tick` every few minutes: machines/crews/production/services). A held
+crew runs `tick` every few minutes: crews/production/services). A held
 episode is left alone. A released one goes through its show's pipeline, step
 by step, in order: the pipeline in its ejected config if releasing wrote one
 (what was released is what runs), else the show's, read fresh.
