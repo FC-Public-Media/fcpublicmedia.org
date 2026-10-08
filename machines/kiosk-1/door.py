@@ -1537,6 +1537,21 @@ body.light .tabs button:not([aria-current=true]):not(.recent)::before { backgrou
 .tabs button[aria-current=true]::before { background:var(--signal); box-shadow:none; }
 """
 
+# THE KEYS (Autumn, 2026-10-07): for a panel with a keyboard and no mouse,
+# 1-9 pick the first nine pages in the order of their buttons, and the
+# letters spill over: a is the tenth, b the eleventh. Crude on purpose, the
+# 80% case. The turn and the wall add space, which keeps the page showing.
+KEYED_JS = """
+  function keyed(ev) {
+    var t = ev.target, k = ev.key || '';
+    if (ev.ctrlKey || ev.altKey || ev.metaKey || ev.defaultPrevented || k.length !== 1) return -1;
+    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName || ''))) return -1;
+    k = k.toLowerCase();
+    if (k >= '1' && k <= '9') return k.charCodeAt(0) - 49;
+    if (k >= 'a' && k <= 'z') return 9 + k.charCodeAt(0) - 97;
+    return -1;
+  }"""
+
 CLASSMODE_JS = """<script>
 (function () {
   var tabs = document.querySelectorAll('.tabs button'), arts = document.querySelectorAll('main article'),
@@ -1566,6 +1581,11 @@ CLASSMODE_JS = """<script>
     try { history.replaceState(null, '', location.search + '#' + (cur + 1)); } catch (e) {}
   }
   tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
+@KEYED@
+  document.addEventListener('keydown', function (ev) {
+    var i = keyed(ev);
+    if (i >= 0 && i < tabs.length) { ev.preventDefault(); show(i); }
+  });
   // The arrows step one section, stop at the ends (no wrapping round), and
   // take at most one step per quarter second, however fast they are pressed.
   function step(d) {
@@ -1633,7 +1653,7 @@ def class_mode_page(path):
 </div></div><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
         checkin_mark(inline=True), e(card.get("title")), e(card.get("presenter")),
         e(hours_label(span) if span else card.get("hours")), pills, arts,
-        e(card.get("label", "Class")), html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@HOURS@", json.dumps(list(span) if span else None)))
+        e(card.get("label", "Class")), html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@KEYED@", KEYED_JS).replace("@HOURS@", json.dumps(list(span) if span else None)))
     return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
 
 
@@ -1772,6 +1792,10 @@ WALL_JS = """<script>
     f.title = m.label; f.src = (m.src || m.name + '.html') + qs;
     f.addEventListener('load', function () {
       f.classList.add('shown');
+      try {                                           // the keys work with the page focused, too
+        f.contentWindow.addEventListener('keydown', key);
+        f.contentWindow.addEventListener('keyup', key);
+      } catch (e) {}
       Array.prototype.forEach.call(stage.querySelectorAll('iframe'), function (o) {
         if (o !== f) setTimeout(function () { o.remove(); }, 700);
       });
@@ -1853,6 +1877,30 @@ WALL_JS = """<script>
   }
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
   hold.addEventListener('click', press);
+  // The keys: a number or letter picks a module (KEYED_JS), and space keeps
+  // what is showing for good, straight to the play glyph; space again lets
+  // it turn. On a focused button too, so space never also clicks it.
+@KEYED@
+  function stay() {
+    if (!held) setHold(true);
+    if (!pinned) { pinned = true; return label(); }
+    setHold(false);
+  }
+  function key(ev) {
+    if (taken) return;
+    if (ev.key === ' ' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.defaultPrevented) {
+      ev.preventDefault();
+      if (ev.type === 'keydown' && !ev.repeat) stay();
+      return;
+    }
+    if (ev.type !== 'keydown') return;
+    var i = keyed(ev);
+    if (i < 0 || i >= M.length) return;
+    ev.preventDefault();
+    if (i !== cur) show(i);
+  }
+  document.addEventListener('keydown', key);
+  document.addEventListener('keyup', key);
   document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
   setInterval(function () {
     if (held && !pinned && Date.now() - held >= HOLD_FOR * 1000) setHold(false);
@@ -1953,7 +2001,7 @@ def wall_shell(cfg, mods, head=None, css=""):
 %s%s""" % (head,
            e(ww.get("brand", "FCPM")), rail, e(cfg.get("pause", "Pause")),
            class_js(),
-           WALL_JS.replace("%%", "%").replace("@MODS@", json.dumps(
+           WALL_JS.replace("%%", "%").replace("@KEYED@", KEYED_JS).replace("@MODS@", json.dumps(
                [{"name": m["name"], "label": m.get("label", m["name"]), "src": m.get("url")} for m in mods]))
            .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
            .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
