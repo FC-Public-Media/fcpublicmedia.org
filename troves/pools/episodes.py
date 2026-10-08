@@ -129,11 +129,11 @@ def tick():
 
 def status():
     d = get("/groups")
-    for g in d["groups"]:
-        if not g.get("show"):
-            continue
-        if not g.get("released"):
-            continue
+    out = [g for g in d["groups"] if g.get("show") and g.get("released")]
+    held = sum(1 for g in d["groups"] if g.get("show") and not g.get("released"))
+    if not out:
+        print(f"no episode is released ({held} held): release one from its episode panel, in transcript time")
+    for g in out:
         steps, _, how = pipeline(g, d["shows"])
         print(f"{g['show']}  released {g['released'][:16]}  ({how})")
         for st in steps:

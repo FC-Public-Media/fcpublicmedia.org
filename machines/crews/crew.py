@@ -49,8 +49,11 @@ def uv():
     found = shutil.which("uv")
     if found:
         return found
-    w = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uv.exe"
-    return str(w)
+    for w in ("Microsoft/WinGet/Links/uv.exe", "Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uv.exe"):
+        w = Path(os.environ.get("LOCALAPPDATA", "")) / w
+        if w.exists():
+            return str(w)
+    return "uv"
 
 
 def say(msg, name="crew"):
