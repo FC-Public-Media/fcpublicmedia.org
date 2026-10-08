@@ -208,6 +208,9 @@ wording:
     sub: |-                  # our name, large, where people look; "Fort Collins" together
       Fort Collins
       Public Media
+  camera:                    # over the check-in words while the camera is armed (door.py, THE CAMERA). Placeholder words
+    head: Show your code
+    sub: "The camera is on: {s} s"   # {s} is the seconds left
   wall:                      # the roller: the check-in head stays, the words are its own
     sub: |-                  # one line each, title case, as Autumn wrote it (2026-09-26)
       Don’t Just View It.
