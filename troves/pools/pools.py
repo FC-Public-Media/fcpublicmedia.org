@@ -13,6 +13,7 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
+CODE = REPO.parent.parent   # ~/code: refs/ and work/ beside each other
 PORT = 8091
 AUDIO = {".wav", ".aif", ".aiff", ".mp3", ".m4a", ".flac", ".caf", ".ogg"}
 SYSTEM = {"System Volume Information"}   # and anything starting "$" or ".": Windows' and macOS's own
@@ -712,14 +713,134 @@ def current(cfg):
         return _last["data"]
 
 
-def shows():
-    """The shows FCPM keeps a record of (site/_shows/*.md): slug and title."""
+def shows(cfg=None):
+    """The shows FCPM keeps a record of (site/_shows/*.md): slug and title, and
+    with the machine's config, each show's pipeline (see pipeline())."""
     out = []
     for f in sorted((REPO / "site" / "_shows").glob("*.md")):
         head = f.read_text(encoding="utf-8").split("---")
         meta = yaml.safe_load(head[1]) if len(head) > 2 else {}
-        out.append({"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem)})
+        s = {"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem), "repository": meta.get("repository")}
+        if cfg is not None:
+            s["pipeline"] = pipeline(cfg, meta.get("pipeline"))
+        out.append(s)
     return out
+
+
+# --- a show's pipeline: one for every episode, managed or ejected --------------
+# What is done to a show's recordings (enhance, loudness, transcribe, ...) is
+# the show's, not the episode's: every episode goes through the same steps, and
+# only what goes in and comes out differs (its recordings, its metadata). The
+# show's record in the site (site/_shows/<slug>.md `pipeline:`) is managed: the
+# site's factory owns it and can change it under us, so by default nothing is
+# written from it (eject: false) and every run reads it fresh. A show without
+# one gets this machine's barest default (pools.yml `pipeline:`). eject: true
+# renders the show's pipeline with an episode's metadata and edit list into one
+# config of its own, the ejected copy automation can run from as it stands.
+
+def pipeline(cfg, mine=None):
+    base = dict(cfg.get("pipeline") or {})
+    own = mine if isinstance(mine, dict) else None
+    p = {**base, **(own or {})}
+    return {"from": "show" if own else "machine" if base else "none",
+            "eject": bool(p.get("eject", False)), "steps": list(p.get("steps") or [])}
+
+
+EPISODE = ("title", "season", "number", "people", "summary")   # what an episode says of itself; the rest is derived
+
+
+def show_group(gs, start, end):
+    return next((g for g in gs if g.get("show") and abs(g["start"] - start) < .01 and abs(g["end"] - end) < .01), None)
+
+
+def set_episode(body):
+    """An episode's own details, kept on its show's group (on this computer:
+    who was in it is nobody else's business until it is published)."""
+    gs = groups()
+    g = show_group(gs, float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    ep = body.get("episode") or {}
+    g["episode"] = {k: " ".join(str(ep.get(k) or "").split())[:200] if k != "summary" else str(ep.get(k) or "")[:4000]
+                    for k in EPISODE if ep.get(k)}
+    g["episode"]["at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    save_groups(gs)
+    return gs
+
+
+def release(cfg, body):
+    """An episode is held until it is released: the supervisor (whatever runs
+    the show's pipeline) leaves a held episode alone, and gets to a released one
+    in its own time. Releasing an ejected show's episode renders its config then,
+    so what runs is what was released. Held back again, it is left alone again."""
+    gs = groups()
+    g = show_group(gs, float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    at, on = datetime.now().astimezone().isoformat(timespec="seconds"), bool(body.get("released"))
+    ev = {"phase": "release" if on else "hold", "at": at}
+    if on:
+        g["released"] = at
+    else:
+        g.pop("released", None)
+    g.setdefault("events", []).append(ev)
+    save_groups(gs)
+    written = None
+    if on:
+        written = render(cfg, body, write=True)["written"]
+        if written:
+            ev["config"] = written
+            save_groups(gs)
+    return {"groups": gs, "written": written}
+
+
+def out_name(g):
+    """What an episode's outputs are called: the show, then season and number
+    when it has them, else the night it was recorded."""
+    ep = g.get("episode") or {}
+    if ep.get("number"):
+        return f"{g['show']}-" + (f"s{ep['season']}" if ep.get("season") else "") + f"e{ep['number']}"
+    return f"{g['show']}-" + datetime.fromtimestamp(g["start"]).strftime("%Y%m%d")
+
+
+def render(cfg, body, write=False):
+    """The show's pipeline with one episode's metadata and edit list: what
+    automation would run. Written out only on release (write), and only when
+    the pipeline is ejected; otherwise shown, not kept."""
+    g = show_group(groups(), float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    show = next((s for s in shows(cfg) if s["slug"] == g["show"]), None)
+    if not show:
+        raise ValueError("no such show")
+    p = show["pipeline"]
+    name = out_name(g)
+    doc = {"show": g["show"], "episode": {k: v for k, v in (g.get("episode") or {}).items() if k != "at"},
+           "out": name, "recorded": {"start": datetime.fromtimestamp(g["start"]).astimezone().isoformat(timespec="seconds"),
+                                     "end": datetime.fromtimestamp(g["end"]).astimezone().isoformat(timespec="seconds")},
+           "pipeline": {"from": p["from"], "steps": p["steps"]},
+           "settings": body.get("settings") or {},
+           "clips": [{"path": c.get("path"), "start": c.get("start"), "end": c.get("end")} for c in body.get("clips") or []]}
+    if not (p["eject"] and write):
+        return {"written": None, "config": doc}
+    # Ejected, it goes to the show's own repository (private: an episode names
+    # people), into the checkout kept for it beside the others: work/<repo>@ejected,
+    # made with `bin/refs work <repo> ejected`. Committed there; pushed by a person.
+    repo = (show.get("repository") or "").split("/")[-1]
+    if not repo:
+        raise ValueError(f"{show['title']} names no repository to eject into (site/_shows/{g['show']}.md repository:)")
+    d = CODE / "work" / f"{repo}@ejected"
+    if not (d / ".git").exists():
+        raise ValueError(f"no checkout of {repo} to eject into: bin/refs work {repo} ejected")
+    f = d / "episodes" / f"{name}.yml"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8", newline="\n")
+    rel = f.relative_to(d).as_posix()
+    git = ["git", "-C", str(d)]
+    subprocess.run(git + ["add", rel], check=True, capture_output=True)
+    if subprocess.run(git + ["diff", "--cached", "--quiet"]).returncode:   # something changed: commit it
+        subprocess.run(git + ["commit", "-q", "-m", f"episodes: {name}, as released"], check=True, capture_output=True)
+    return {"written": str(f), "config": doc}
 
 
 # A group is a stretch of the timeline someone has said belongs to one show.
@@ -778,11 +899,16 @@ def group(body):
         raise ValueError("empty stretch")
     if show and show not in [s["slug"] for s in shows()]:
         raise ValueError("no such show")
-    gs = [g for g in groups() if g["end"] <= start or g["start"] >= end or not (g.get("show") or g.get("name"))]   # marks stay
+    old = groups()
+    ep = next((g.get("episode") for g in old if show and g.get("show") == show and g.get("episode")
+               and g["end"] > start and g["start"] < end), None)
+    gs = [g for g in old if g["end"] <= start or g["start"] >= end or not (g.get("show") or g.get("name"))]   # marks stay
     if show or name:
         gs.append({"show": show or None, "name": None if show else name, "start": start, "end": end,
                    "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
                    "at": datetime.now().astimezone().isoformat(timespec="seconds")})
+        if ep:
+            gs[-1]["episode"] = ep
     save_groups(gs)
     return gs
 
@@ -942,7 +1068,7 @@ def serve(cfg, page=""):
             elif self.path == "/transcripts":
                 self.send(200, json.dumps(transcripts()).encode(), "application/json")
             elif self.path == "/groups":
-                self.send(200, json.dumps({"shows": shows(), "groups": groups()}).encode(), "application/json")
+                self.send(200, json.dumps({"shows": shows(cfg), "groups": groups()}).encode(), "application/json")
             elif self.path.startswith("/peaks?"):
                 path = urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("p", [""])[0]
                 if not path or not os.path.isfile(path) or not known_path(current(cfg), path):
@@ -993,6 +1119,14 @@ def serve(cfg, page=""):
                     return self.send(200, json.dumps({"groups": set_control(body)}).encode(), "application/json")
                 except (ValueError, KeyError, TypeError) as e:
                     return self.send(400, str(e).encode(), "text/plain")
+            if self.path in ("/episode", "/render", "/release"):
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                    out = {"groups": set_episode(body)} if self.path == "/episode" else \
+                        release(cfg, body) if self.path == "/release" else render(cfg, body)
+                    return self.send(200, json.dumps(out).encode(), "application/json")
+                except (ValueError, KeyError, TypeError, OSError) as e:
+                    return self.send(400, str(e).encode(), "text/plain")
             if self.path == "/reveal":
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
@@ -1024,7 +1158,7 @@ def serve(cfg, page=""):
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if self.path == "/group":
-                    return self.send(200, json.dumps({"shows": shows(), "groups": group(body)}).encode(), "application/json")
+                    return self.send(200, json.dumps({"shows": shows(cfg), "groups": group(body)}).encode(), "application/json")
                 path = str(body.get("path", ""))
             except (ValueError, AttributeError, KeyError, TypeError) as e:
                 return self.send(400, str(e).encode(), "text/plain")

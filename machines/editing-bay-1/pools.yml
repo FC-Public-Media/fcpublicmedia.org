@@ -52,3 +52,15 @@ transcribe:
   whisper:
     python: '%LOCALAPPDATA%\editing-bay-1\whisper\venv\Scripts\python.exe'
     models: '%LOCALAPPDATA%\editing-bay-1\whisper\models'
+
+# A show's pipeline: what every episode of it goes through. A show's own lives
+# in its record (site/_shows/<slug>.md `pipeline:`), managed by the site; a
+# show without one gets this, the barest default. eject: false writes nothing
+# (every run reads the managed pipeline fresh); true renders the pipeline with
+# an episode's metadata and edit list into a config of its own when the episode
+# is released, committed to the show's own repository (private: episodes name
+# people), in its checkout work/<repo>@ejected.
+pipeline:
+  eject: false
+  steps:
+    - transcribe: {engine: whisper}
