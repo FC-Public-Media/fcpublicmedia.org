@@ -767,6 +767,32 @@ def set_episode(body):
     return gs
 
 
+def release(cfg, body):
+    """An episode is held until it is released: the supervisor (whatever runs
+    the show's pipeline) leaves a held episode alone, and gets to a released one
+    in its own time. Releasing an ejected show's episode renders its config then,
+    so what runs is what was released. Held back again, it is left alone again."""
+    gs = groups()
+    g = show_group(gs, float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    at, on = datetime.now().astimezone().isoformat(timespec="seconds"), bool(body.get("released"))
+    ev = {"phase": "release" if on else "hold", "at": at}
+    if on:
+        g["released"] = at
+    else:
+        g.pop("released", None)
+    g.setdefault("events", []).append(ev)
+    save_groups(gs)
+    written = None
+    if on:
+        written = render(cfg, body)["written"]
+        if written:
+            ev["config"] = written
+            save_groups(gs)
+    return {"groups": gs, "written": written}
+
+
 def out_name(g):
     """What an episode's outputs are called: the show, then season and number
     when it has them, else the night it was recorded."""
@@ -1079,10 +1105,11 @@ def serve(cfg, page=""):
                     return self.send(200, json.dumps({"groups": set_control(body)}).encode(), "application/json")
                 except (ValueError, KeyError, TypeError) as e:
                     return self.send(400, str(e).encode(), "text/plain")
-            if self.path in ("/episode", "/render"):
+            if self.path in ("/episode", "/render", "/release"):
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
-                    out = {"groups": set_episode(body)} if self.path == "/episode" else render(cfg, body)
+                    out = {"groups": set_episode(body)} if self.path == "/episode" else \
+                        release(cfg, body) if self.path == "/release" else render(cfg, body)
                     return self.send(200, json.dumps(out).encode(), "application/json")
                 except (ValueError, KeyError, TypeError, OSError) as e:
                     return self.send(400, str(e).encode(), "text/plain")

@@ -161,6 +161,14 @@ into a config of its own (`ejected\<show>\<out>.yml` beside the groups, or
 `pipeline: eject_to:`), the copy automation can run from as it stands.
 Audition's steps are named, not run, until its panel proves out.
 
+**An episode is held until it is released.** Not "published": releasing
+hands it to the supervisor (whatever runs the show's pipeline), which gets to
+it in its own time; a held episode it leaves alone. The episode's mark says
+which (◇ held, ◆ released). Releasing an ejected show's episode renders its
+config then, so what runs is what was released; a managed one is read fresh
+when the supervisor gets to it. Held back again, it is left alone again; what
+was already done stays done. Each is an event on the group.
+
 ## The manifest
 
 The manifest button in the window's strip writes down what the window did, so

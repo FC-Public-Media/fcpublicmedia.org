@@ -125,6 +125,10 @@
   .txp.ep .ej.on { color: #ffd27a; border-color: #ffd27a; }
   .txp.ep ol { margin: 0; padding-left: 20px; color: #aeb7c4; }
   .txp.ep ol b { font-weight: 500; color: var(--ink); margin-right: 8px; }
+  .txp.ep .rel { display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--faint); padding-top: 8px; color: var(--dim); }
+  .txp.ep .rel button { font: inherit; font-weight: 600; color: #07090d; background: var(--c); border: none; border-radius: 4px; padding: 5px 14px; cursor: pointer; }
+  .txp.ep .rel.on button { color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.3); font-weight: 400; }
+  .txp.ep .rel.on span { color: var(--c); }
   /* in the header: the regions' marks, to bring transcript time back; in it, the way out */
   #txbar { display: inline-flex; gap: 2px; }
   #txbar button { font: 14px/1 "Segoe UI Symbol", "Segoe UI", sans-serif; background: none; border: 1px solid transparent; border-radius: 3px;
@@ -1391,8 +1395,9 @@
       away.title = 'put the transcripts away: the nights (t)'; away.onclick = closeTx; txBar.appendChild(away);
     } else {
       if (sg) {
-        var em = el('button', 'mk', '\u25c6'); em.style.color = gcolor(sg);
-        em.title = 'the episode (t): ' + title(sg.show) + ', ' + hm(sg.start) + '\u2013' + hm(sg.end);
+        var em = el('button', 'mk', sg.released ? '\u25c6' : '\u25c7'); em.style.color = gcolor(sg);
+        em.title = 'the episode (t): ' + title(sg.show) + ', ' + hm(sg.start) + '\u2013' + hm(sg.end) +
+                   (sg.released ? ' \u00b7 released ' + sg.released.slice(5, 16).replace('T', ' ') : ' \u00b7 held');
         em.onclick = function () { openTx({start: sg.start, end: sg.end, episode: true}); }; txBar.appendChild(em);
       }
       rs.forEach(function (g) {
@@ -1442,7 +1447,7 @@
     p.style.setProperty('--c', gcolor(g));
     var ep = {}; for (var k in (g.episode || {})) ep[k] = g.episode[k];
     var sh = el('div', 'sh');
-    sh.appendChild(el('span', 'st', '◆'));
+    sh.appendChild(el('span', 'st', g.released ? '◆' : '◇'));
     sh.appendChild(el('b', null, title(g.show)));
     sh.appendChild(el('small', null, dayname(g.start) + ' · ' + hm(g.start) + '–' + hm(g.end) + (g.sound ? ' · ' + hours(g.sound) + ' sound' : '')));
     sh.title = 'click: the window goes to the whole episode';
@@ -1513,6 +1518,24 @@
     };
     pb.appendChild(rd); pb.appendChild(res);
     p.appendChild(pb);
+    var rl = el('div', 'rel' + (g.released ? ' on' : ''));
+    var rb = el('button', 'release', g.released ? 'hold back' : 'release');
+    var rs = el('span', null, g.released ? 'released ' + g.released.slice(5, 16).replace('T', ' ') : 'held');
+    rs.title = g.released ? 'the supervisor will get to it: it runs the show\u2019s pipeline on released episodes, in its own time'
+                          : 'the supervisor leaves it alone until it is released';
+    rb.title = g.released ? 'hold it back: the supervisor leaves it alone again (what it already did stays done)'
+                          : 'release it: the supervisor will get to it' + (pl && pl.eject ? ', from the config rendered now' : ', reading the show\u2019s pipeline fresh');
+    rb.onclick = function () {
+      clearTimeout(epSave);
+      post('/episode', {start: g.start, end: g.end, episode: ep})   // what it says now goes with it
+        .then(function () { return post('/release', {start: g.start, end: g.end, released: !g.released, settings: S,
+          clips: within(g.start, g.end).filter(function (x) { return !skipped(x); }).map(function (x) { return {path: x.f.path, start: x.start, end: x.end}; })}); })
+        .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t); }); return r.json(); })
+        .then(function (d) { groups = d.groups; TX.key = ''; drawTx(); if (d.written) res.textContent = 'written: ' + d.written; })
+        .catch(function (e) { rs.textContent = 'could not: ' + (e.message || 'is fcpm pools running?'); });
+    };
+    rl.appendChild(rb); rl.appendChild(rs);
+    p.appendChild(rl);
     return p;
   }
   var txSave = {};
