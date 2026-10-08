@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post</title>
+<style>
+  :root { --bg: #07090d; --ink: #c9d1dc; --dim: #6b7584; --faint: rgba(255,255,255,.07); --cell: 34px;
+          --done: #3ec28f; --ready: #c9d1dc; --held: #e0a63a; --door: #4fb3d9; --stale: #b07cf0; --failed: #ef5b5b; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: radial-gradient(ellipse at 20% -10%, #14203a 0%, transparent 55%),
+                     radial-gradient(ellipse at 90% 110%, #1d1430 0%, transparent 50%), var(--bg);
+         background-attachment: fixed; color: var(--ink); font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+         display: flex; flex-direction: column; }
+  header { flex: none; padding: 14px 18px 18px; display: flex; gap: 8px 22px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  header .meta { color: var(--dim); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--dim); }
+  .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
+  button { background: transparent; color: var(--ink); border: 1px solid rgba(255,255,255,.25); border-radius: 3px;
+           font: inherit; padding: 2px 10px; cursor: pointer; }
+  button:hover { border-color: #fff; }
+  button.on { border-color: var(--held); color: var(--held); animation: pulse 1.2s ease-in-out infinite; }
+  main { flex: 1; min-height: 0; overflow: auto; }
+  .row { display: flex; align-items: center; border-top: 1px solid var(--faint); padding: 10px 18px; gap: 14px; }
+  .label { flex: 0 0 220px; cursor: pointer; overflow: hidden; }
+  .label b { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .label small { color: var(--dim); }
+  .label:hover b { text-decoration: underline; }
+  .route { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: flex-start; }
+  .cell { width: calc(var(--cell) * 2.4); display: flex; flex-direction: column; gap: 3px; cursor: pointer; }
+  .cell small { color: var(--dim); font-size: 10px; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sq { height: var(--cell); border-radius: 3px; border: 1px solid rgba(255,255,255,.12); position: relative; }
+  .cell:hover .sq { outline: 2px solid #fff; outline-offset: 2px; }
+  .done .sq    { background: var(--done); }
+  .ready .sq   { border: 2px solid var(--ready); }
+  .ready.here .sq { border-style: solid; box-shadow: inset 0 0 0 3px rgba(201,209,220,.15); }
+  .ready:not(.here) .sq { border-style: dashed; }
+  .held .sq    { background: linear-gradient(90deg, var(--held) 50%, transparent 50%); border-color: var(--held); animation: pulse 1.6s ease-in-out infinite; }
+  .door .sq    { background: linear-gradient(90deg, var(--door) 50%, transparent 50%); border-color: var(--door); }
+  .stale .sq   { border: 2px dotted var(--stale); }
+  .failed .sq  { background: var(--failed); }
+  .failed .sq::after { content: "!"; position: absolute; inset: 0; display: grid; place-items: center; color: #07090d; font-weight: 700; }
+  .waiting .sq { background: var(--faint); border-color: transparent; }
+  .missing .sq { border: 2px dashed var(--failed); }
+  .arrow { color: var(--dim); align-self: center; margin-top: -14px; }
+  .err { color: var(--failed); }
+  #why { position: fixed; right: 18px; bottom: 18px; width: min(560px, 90vw); max-height: 60vh; overflow: auto;
+         background: #0d1118; border: 1px solid var(--failed); border-radius: 4px; padding: 12px 14px; display: none; }
+  #why pre { white-space: pre-wrap; font: 11px/1.4 Consolas, monospace; color: var(--dim); margin: 8px 0; }
+  #why .bar { display: flex; gap: 8px; justify-content: flex-end; }
+  .empty { color: var(--dim); padding: 40px 18px; }
+  @keyframes pulse { 50% { opacity: .55; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Post</h1>
+  <span class="meta" id="meta"></span>
+  <span class="legend">
+    <span><i style="background:var(--done)"></i>■</span>
+    <span><i style="border:2px solid var(--ready)"></i>□</span>
+    <span><i style="background:var(--held)"></i>◐</span>
+    <span><i style="background:var(--door)"></i>◑</span>
+    <span><i style="border:2px dotted var(--stale)"></i>◌</span>
+    <span><i style="background:var(--failed)"></i>!</span>
+    <span><i style="background:var(--faint)"></i>·</span>
+  </span>
+  <button id="run" title="every ready step this machine does, then stop">▶ here</button>
+</header>
+<main id="main"></main>
+<div id="why"><b id="whyhead"></b><pre id="whybody"></pre>
+  <div class="bar"><button id="retry">↻</button><button id="whyclose">×</button></div></div>
+<script>
+const $ = s => document.querySelector(s);
+const post = (p, b) => fetch(p, {method: "POST", body: JSON.stringify(b || {})});
+let last = null, open = null;
+
+function left(until) {
+  const s = until - Date.now() / 1000;
+  if (s <= 0) return "0";
+  return s > 86400 ? `${(s / 86400).toFixed(1)}d` : s > 3600 ? `${(s / 3600).toFixed(1)}h` : `${Math.ceil(s / 60)}m`;
+}
+
+function title(c) {
+  if (c.state === "held" || c.state === "door") return `${c.step} · ${c.host} · ${left(c.until)}`;
+  if (c.state === "stale") return `${c.step} · ${c.host} · lease out`;
+  if (c.state === "ready") return `${c.step} · ${c.here ? "here" : "no worker here"}`;
+  if (c.state === "done" && c.files != null) return `${c.step} · ${c.files}`;
+  return c.step;
+}
+
+function draw(st) {
+  last = st;
+  $("#meta").textContent = `${st.root} · ${st.host} · ${st.here.join(" ") || "—"}`;
+  $("#run").classList.toggle("on", !!st.running);
+  const m = $("#main");
+  m.replaceChildren();
+  if (!st.takes.length) { m.innerHTML = `<div class="empty">∅</div>`; return; }
+  for (const t of st.takes) {
+    const row = document.createElement("div"); row.className = "row";
+    const lab = document.createElement("div"); lab.className = "label";
+    lab.innerHTML = `<b></b><small></small>`;
+    lab.querySelector("b").textContent = t.out || t.id;
+    lab.querySelector("small").textContent = t.error ? t.error : `${t.show || ""} · ${t.id.split(".").pop()}`;
+    if (t.error) lab.querySelector("small").className = "err";
+    lab.onclick = () => post("/open", {take: t.id});
+    row.append(lab);
+    const route = document.createElement("div"); route.className = "route";
+    t.cells.forEach((c, i) => {
+      if (i) { const a = document.createElement("span"); a.className = "arrow"; a.textContent = "›"; route.append(a); }
+      const el = document.createElement("div");
+      el.className = `cell ${c.state}${c.here ? " here" : ""}`;
+      el.title = title(c);
+      el.innerHTML = `<small></small><div class="sq"></div>`;
+      el.querySelector("small").textContent = c.n ? `${c.n} ${c.step}` : c.step;
+      el.onclick = () => c.state === "failed" ? why(t, c) : post("/open", {take: t.id, n: c.n});
+      route.append(el);
+    });
+    row.append(route);
+    m.append(row);
+  }
+}
+
+function why(t, c) {
+  open = {take: t.id, n: c.n};
+  $("#whyhead").textContent = `${t.out || t.id} · ${c.n} ${c.step} · ${c.failed.host || ""} · ${c.failed.at || ""}`;
+  const f = c.failed;
+  $("#whybody").textContent = [f.run ? (Array.isArray(f.run) ? f.run.join(" ") : f.run) : "",
+    f.exit != null ? `exit ${f.exit}` : "", f.error || "", ...(f.log || [])].filter(Boolean).join("\n");
+  $("#why").style.display = "block";
+}
+$("#whyclose").onclick = () => { $("#why").style.display = "none"; open = null; };
+$("#retry").onclick = async () => { if (open) await post("/retry", open); $("#whyclose").onclick(); tick(); };
+$("#run").onclick = async () => { await post("/run"); tick(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#whyclose").onclick(); });
+
+async function tick() {
+  try { draw(await (await fetch("/state")).json()); } catch (e) { $("#meta").textContent = "—"; }
+}
+tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>
