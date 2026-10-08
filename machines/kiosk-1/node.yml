@@ -163,7 +163,7 @@ turn:
   modules:
     - {name: cameras, label: Cameras, url: /preview/}
     - {name: files, label: Files, url: /depot/}
-    - {name: ti-89, label: TI-89, url: '/ti-89/?wake&rom=/ti-89/local/rom'}   # Autumn's TI-89, running (ti89: below)
+    - {name: ti-89, label: TI-89, url: '/ti-89/?show'}   # the show, our own 68000 from the clock; Autumn's own AMS is '/ti-89/?wake&rom=/ti-89/local/rom' (ti89: below)
 
 # ---------------------------------------------------------------------------
 # THE TI-89: Autumn's TI-89 running in a browser, its own ROM on our own
