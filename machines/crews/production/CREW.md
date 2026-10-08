@@ -127,6 +127,31 @@ It is built for someone who walked into the studio, not for us:
 - **Kiosk-like.** It works the same on the roller TV, a phone or laptop on the
   studio LAN, and the desk.
 
+## Later: the welcome, and a space of your own (a hook, not a plan)
+
+Autumn, 2026-10-07. Why production starts with the computer, before anyone
+signs in. Nothing is built for this, and nobody gains anything from it yet;
+it is the hook to think with.
+
+- **The problem.** Everyone at a bay uses the same Windows account and the
+  same browser profiles, so being signed out is something you have to
+  remember. Staff may get Microsoft 365 sign-in, each in their own space, one
+  day. Guests will not have that.
+- **The scrappy equivalent.** A welcome before sign-in offers a check-in code,
+  like the studio's other QR codes, but for saying who you are. Identifying
+  yourself is the grant: from then, on this machine, for this sitting,
+  production knows who is here.
+- **What it could give.** A space bound to you whether or not you sign in to
+  any browser: your page at the door (your nights, your episodes), a browser
+  profile that is yours rather than the bay's. Put away when the sitting ends.
+- **What Windows allows.** Before sign-in, only the lock screen shows, and no
+  program draws on it. A lock-screen picture with a fresh code (the
+  machine-wide setting is meant for business editions, and this is Home), a
+  welcome account that signs itself in, or the code somewhere else (the
+  rolling TV): each is an experiment, not a decision.
+- **What it leans on.** The member's pass (`/check-in/`, `docs/identity.md`),
+  and a phone that can reach the door: the guest Wi-Fi cannot reach the LAN.
+
 ## Open, for Autumn
 
 - **The first workflow** to build the page around. The proposal's guess:
