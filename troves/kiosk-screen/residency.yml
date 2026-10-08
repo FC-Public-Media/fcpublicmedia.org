@@ -1,0 +1,13 @@
+# residency.yml -- what screen keeping offers a crew that holds it.
+# A menu, not a startup script: see troves/pools/residency.yml.
+
+resident: kiosk-screen
+
+serves:
+  - service: screen
+    for: "a studio page kept on a screen this host finds plugged in (the rolling TV)"
+    kind: periodic
+    desktop: true                    # Edge on a monitor: only with someone's desktop to put it on
+    start: "powershell -NoProfile -ExecutionPolicy Bypass -File troves/kiosk-screen/screen.ps1 keep roller-tv"
+    env: {FCPM_BY: "production"}
+    required-for: [roller-tv]

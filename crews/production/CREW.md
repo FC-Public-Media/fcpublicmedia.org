@@ -1,6 +1,11 @@
 # production: the crew, its one service, and the page at its door
 
-**Status: proposal, 2026-10-07, for Autumn's redline.** Nothing here is built.
+**Status, 2026-10-07: built; installed by `fcpm crew install`.** Its menus
+(`residency.yml` in `troves/pools`, `troves/kiosk-screen` and here), its order
+(`services`), the supervisor (`../crew.py`), its task (`../crew.ps1`), the
+episode supervisor (`troves/pools/episodes.py`) and `fcpm crew` are in. It
+starts with the computer (Autumn, 2026-10-07: a welcome screen before anyone
+signs in is the experiment it makes room for). The door is next.
 Production is a crew (`../README.md`): the recordings after they land, and
 the door where members meet them. Editing bay 1 (`EDIT2`) is the first to put
 it on. Like station-node's one service on its Mac: one supervisor, installed
@@ -62,8 +67,16 @@ What any machine wearing production owes, so a peer can step in beside it:
   firewall prompting per interpreter). Its children get no console (the pool's
   headless-console lesson, `pool-server-no-console`): output goes to files
   under `%LOCALAPPDATA%\editing-bay-1\`.
-- **The pool task folds into it.** Today's per-minute pool (the Remote Control
-  server, held off; the roller screen) become two of its lines. One task, not two.
+- **The pool task is its desktop half.** A task started with the computer has
+  no desktop (Windows keeps session 0 apart), so it cannot put the rolling TV's
+  page on a screen. The pool's every-minute task, in the signed-in session,
+  runs the crew's `desktop` lines from the same order (`crew.py desktop`). One
+  crew, one order, one supervisor program; two tasks only because Windows
+  keeps desktops apart.
+- **As whom.** This machine's user, with no stored password (S4U): the local
+  disks and the Drobo, not network shares or Credential Manager secrets. The
+  depot is out of reach from this bay anyway; when it is not, a stored
+  credential is the change.
 
 ## What it runs: residencies, then the order
 
@@ -84,7 +97,7 @@ First lines it would carry:
 |---|---|---|---|
 | `door` | this crew | keep | the page below, on the LAN |
 | `pools` | `troves/pools` | keep | the timeline, served without its window having to be open; the door links to it |
-| `episodes` | `troves/pools` | every 5m | the supervisor of released episodes: runs each one's show pipeline (whisper now; Audition's steps once its panel proves out). Held episodes are left alone |
+| `episodes` | `troves/pools` | every 5m | the supervisor of released episodes: admits each to post as a take (`troves/post`), whose workers take its steps (whisper now; Audition's steps once its panel proves out). Held episodes are left alone |
 | `screen` | `troves/kiosk-screen` | every 1m | the roller TV's page, as the pool keeps it today |
 | `remote-control` | this crew | keep, off | the root's Remote Control server, held off as Autumn set it (2026-10-07) |
 
@@ -114,13 +127,35 @@ It is built for someone who walked into the studio, not for us:
 - **Kiosk-like.** It works the same on the roller TV, a phone or laptop on the
   studio LAN, and the desk.
 
+## Later: the welcome, and a space of your own (a hook, not a plan)
+
+Autumn, 2026-10-07. Why production starts with the computer, before anyone
+signs in. Nothing is built for this, and nobody gains anything from it yet;
+it is the hook to think with.
+
+- **The problem.** Everyone at a bay uses the same Windows account and the
+  same browser profiles, so being signed out is something you have to
+  remember. Staff may get Microsoft 365 sign-in, each in their own space, one
+  day. Guests will not have that.
+- **The scrappy equivalent.** A welcome before sign-in offers a check-in code,
+  like the studio's other QR codes, but for saying who you are. Identifying
+  yourself is the grant: from then, on this machine, for this sitting,
+  production knows who is here.
+- **What it could give.** A space bound to you whether or not you sign in to
+  any browser: your page at the door (your nights, your episodes), a browser
+  profile that is yours rather than the bay's. Put away when the sitting ends.
+- **What Windows allows.** Before sign-in, only the lock screen shows, and no
+  program draws on it. A lock-screen picture with a fresh code (the
+  machine-wide setting is meant for business editions, and this is Home), a
+  welcome account that signs itself in, or the code somewhere else (the
+  rolling TV): each is an experiment, not a decision.
+- **What it leans on.** The member's pass (`/check-in/`, `docs/identity.md`),
+  and a phone that can reach the door: the guest Wi-Fi cannot reach the LAN.
+
 ## Open, for Autumn
 
 - **The first workflow** to build the page around. The proposal's guess:
   *I recorded tonight* (find the night, name it for a show, release the
   episode), since every piece of it exists on the timeline already.
-- **Which account it runs as** at startup with nobody signed in: this user
-  with a stored credential (it can then reach the depot's shares), or without
-  one (local disk and the Drobo only).
 - **Whether the pools page moves under the door** (`/pools/`) or keeps its own
   port and window. The proposal: under the door, so there is one address.
