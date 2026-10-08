@@ -20,7 +20,7 @@ serves:
     required-for: [timeline, episodes, release]
 
   - service: episodes
-    for: "the supervisor of released episodes: runs what of each one's show pipeline can run; a held episode is left alone"
+    for: "the supervisor of released episodes: admits each to post as a take (troves/post); a held episode is left alone"
     kind: periodic
     start: "{python} troves/pools/episodes.py tick"
     needs: [pools]                   # it asks the pools server, the one writer of the groups

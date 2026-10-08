@@ -1,33 +1,38 @@
-"""episodes.py -- the supervisor of released episodes.
+"""episodes.py -- the supervisor of released episodes: it admits them to post.
 
-    episodes.py tick      one pass: what each released episode's pipeline can do next
-    episodes.py status    each released episode, and where its steps stand
+    episodes.py tick      one pass: admit each released episode not yet admitted
+    episodes.py status    each released episode, and its take in post
 
 Release hands an episode on, and this is what it is handed to (the production
-crew runs `tick` every few minutes: crews/production/services). A held
-episode is left alone. A released one goes through its show's pipeline, step
-by step, in order: the pipeline in its ejected config if releasing wrote one
-(what was released is what runs), else the show's, read fresh.
+crew runs `tick` every few minutes: crews/production/services). A held episode
+is left alone. A released one is admitted to post (troves/post/README.md,
+*Admission*): what releasing rendered (its show, out name, pipeline and
+recordings) becomes a take, a folder on E:\\POST that carries its whole route.
+From there the pools page is no longer the one talking about it; post's
+workers take its steps, and the disk is the record of how far it got.
 
-A step that cannot run here yet waits, and the steps after it wait behind it:
-the order is the show's, and transcribing unenhanced sound because enhancing
-is not ready would be a different pipeline. So far only `transcribe` (whisper)
-runs. Audition's steps wait for its panel (enhance gear/audition). A show that
-wants its transcripts first can say so, by putting the step first.
+What is admitted is the ejected config if releasing wrote one (what was
+released is what runs), else what the pools server renders now: the show's
+pipeline, read fresh, and the episode's recordings less what is marked for
+removal. Admitting the same release twice finds the same take, so a pass that
+is interrupted is simply run again.
 
-Everything goes through the pools server (POOLS, the one writer of the groups):
-the episode is read from it, the transcription is sent to it as a job, and each
-step's progress comes back to it as an event on the episode (/supervised).
-One job at a time, as the engine wants. Nothing is remembered here.
+The pools server stays the one writer of the groups: the episode is read from
+it, and its admission comes back to it as an event on the episode (/supervised,
+step `admit`). Nothing is remembered here.
 """
 import json
 import os
+import re
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
 
 POOLS = os.environ.get("POOLS_URL", "http://127.0.0.1:8091")
-RUNS = {"transcribe"}   # the steps this machine can do; the rest wait
+HERE = Path(__file__).resolve().parent
+POST = HERE.parent / "post" / "post.py"
+STAGE = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "editing-bay-1" / "crew" / "admit"
 
 
 def get(path):
@@ -41,90 +46,67 @@ def post(path, body):
         return json.load(r)
 
 
-def say(msg):
-    print(msg, flush=True)
+def admitted(g):
+    """The take this release was admitted as, if it was."""
+    evs = [e for e in g.get("events") or [] if e.get("phase") == "supervised" and e.get("step") == "admit"
+           and e.get("release") == g.get("released") and e.get("state") == "done"]
+    return evs[-1].get("job") if evs else None
 
 
-def pipeline(g, shows):
-    """The steps a released episode goes through, and the clips, if the
-    release fixed them: its ejected config's, else the show's own, fresh."""
+def ejected(g):
     rel = [e for e in g.get("events") or [] if e.get("phase") == "release" and e.get("at") == g.get("released")]
     cfg = rel[-1].get("config") if rel else None
-    if cfg and Path(cfg).exists():
-        import yaml
-        doc = yaml.safe_load(Path(cfg).read_text(encoding="utf-8")) or {}
-        return (doc.get("pipeline") or {}).get("steps") or [], doc.get("clips"), "ejected"
-    s = next((s for s in shows if s["slug"] == g["show"]), None)
-    return ((s or {}).get("pipeline") or {}).get("steps") or [], None, "managed"
-
-
-def where(g, step):
-    """The step's last event for this release: (state, event), or (None, None)."""
-    evs = [e for e in g.get("events") or [] if e.get("phase") == "supervised"
-           and e.get("step") == step and e.get("release") == g.get("released")]
-    return (evs[-1]["state"], evs[-1]) if evs else (None, None)
+    return Path(cfg) if cfg and Path(cfg).exists() else None
 
 
 def clips_of(g, groups):
     """What plays in the episode: its recordings, less what is marked for removal."""
-    now = get("/now")
     out = []
-    for pool in now.get("pools") or []:
+    for pool in get("/now").get("pools") or []:
         for row in pool.get("rows") or []:
             for f in row.get("files") or []:
-                mid = (f["start"] + f["end"]) / 2
-                if not g["start"] <= mid <= g["end"]:
+                if not g["start"] <= (f["start"] + f["end"]) / 2 <= g["end"]:
                     continue
                 if any(r.get("remove") and r["start"] < f["end"] and r["end"] > f["start"] for r in groups):
                     continue
-                out.append({"path": f["path"], "start": f["start"], "end": f["end"], "name": f.get("name")})
+                out.append({"path": f["path"], "start": f["start"], "end": f["end"]})
     return sorted(out, key=lambda c: c["start"])
+
+
+def admit(config):
+    """post.py admit CONFIG, with this Python (pyyaml is in it). The take's folder, or why not."""
+    r = subprocess.run([sys.executable, str(POST), "admit", str(config)], capture_output=True, text=True, encoding="utf-8")
+    m = re.search(r"admitted: (.+)$", r.stdout.strip())
+    if r.returncode or not m:
+        raise RuntimeError((r.stderr or r.stdout).strip().splitlines()[-1] if (r.stderr or r.stdout).strip() else f"exit {r.returncode}")
+    return Path(m.group(1).strip()).name
 
 
 def tick():
     d = get("/groups")
-    groups, shows = d["groups"], d["shows"]
-    jobs = {j["id"]: j for j in get("/transcripts")}
-    busy = any(j.get("state") == "running" for j in jobs.values())
+    groups = d["groups"]
     for g in groups:
-        if not (g.get("show") and g.get("released")):
-            continue   # held: left alone
-        steps, fixed, how = pipeline(g, shows)
-        name = f"{g['show']} {g.get('released', '')[:16]}"
-        for st in steps:
-            step = next(iter(st)) if isinstance(st, dict) else str(st)
-            state, ev = where(g, step)
-            if state == "done":
-                continue
-            if step not in RUNS:
-                say(f"{name}: {step} waits ({(st.get(step) or {}).get('by', 'nothing here') if isinstance(st, dict) else 'nothing here'} cannot run it yet); the steps after it wait too")
-                break
-            if state == "sent":
-                j = jobs.get(ev.get("job"))
-                if j and j.get("state") == "running":
-                    say(f"{name}: {step} being heard ({j.get('done')}/{j.get('total')})")
-                    break
-                bad = len((j or {}).get("errors") or [])
-                post("/supervised", {"start": g["start"], "end": g["end"], "step": step, "release": g["released"],
-                                     "state": "done", "job": ev.get("job"), "why": f"{bad} recordings could not be heard" if bad else ""})
-                say(f"{name}: {step} done ({ev.get('job')})")
-                continue
-            if busy:
-                say(f"{name}: {step} waits for the engine (another job is running)")
-                break
-            clips = fixed or clips_of(g, groups)
-            if not clips:
-                post("/supervised", {"start": g["start"], "end": g["end"], "step": step, "release": g["released"],
-                                     "state": "failed", "why": "nothing plays in it"})
-                say(f"{name}: {step} failed: nothing plays in it")
-                break
-            r = post("/transcribe", {"a": g["start"], "b": g["end"], "marks": [{"start": g["start"], "end": g["end"]}],
-                                     "clips": clips, "settings": {"by": "episodes", "pipeline": how}})
-            post("/supervised", {"start": g["start"], "end": g["end"], "step": step, "release": g["released"],
-                                 "state": "sent", "job": r["id"]})
-            say(f"{name}: {step} sent ({r['id']}, {len(clips)} recordings, {how})")
-            busy = True
-            break
+        if not (g.get("show") and g.get("released")) or admitted(g):
+            continue   # held, or already in post
+        name = f"{g['show']} released {g['released'][:16]}"
+        config = ejected(g)
+        if not config:
+            clips = clips_of(g, groups)
+            doc = post("/render", {"start": g["start"], "end": g["end"], "clips": clips,
+                                   "settings": {"by": "episodes"}})["config"]
+            STAGE.mkdir(parents=True, exist_ok=True)
+            config = STAGE / f"{doc['out']}.{re.sub(r'[^0-9]', '', g['released'])[:14]}.json"
+            config.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+        try:
+            take = admit(config)
+        except RuntimeError as e:
+            post("/supervised", {"start": g["start"], "end": g["end"], "step": "admit", "release": g["released"],
+                                 "state": "failed", "why": str(e)})
+            print(f"{name}: not admitted: {e}", flush=True)
+            continue
+        post("/supervised", {"start": g["start"], "end": g["end"], "step": "admit", "release": g["released"],
+                             "state": "done", "job": take})
+        print(f"{name}: admitted to post as {take}", flush=True)
 
 
 def status():
@@ -134,12 +116,8 @@ def status():
     if not out:
         print(f"no episode is released ({held} held): release one from its episode panel, in transcript time")
     for g in out:
-        steps, _, how = pipeline(g, d["shows"])
-        print(f"{g['show']}  released {g['released'][:16]}  ({how})")
-        for st in steps:
-            step = next(iter(st)) if isinstance(st, dict) else str(st)
-            state, ev = where(g, step)
-            print(f"  {step:12} {state or ('waiting' if step not in RUNS else 'not yet')}")
+        take = admitted(g)
+        print(f"{g['show']}  released {g['released'][:16]}  " + (f"in post as {take} (fcpm post)" if take else "not admitted yet"))
 
 
 if __name__ == "__main__":

@@ -97,7 +97,7 @@ First lines it would carry:
 |---|---|---|---|
 | `door` | this crew | keep | the page below, on the LAN |
 | `pools` | `troves/pools` | keep | the timeline, served without its window having to be open; the door links to it |
-| `episodes` | `troves/pools` | every 5m | the supervisor of released episodes: runs each one's show pipeline (whisper now; Audition's steps once its panel proves out). Held episodes are left alone |
+| `episodes` | `troves/pools` | every 5m | the supervisor of released episodes: admits each to post as a take (`troves/post`), whose workers take its steps (whisper now; Audition's steps once its panel proves out). Held episodes are left alone |
 | `screen` | `troves/kiosk-screen` | every 1m | the roller TV's page, as the pool keeps it today |
 | `remote-control` | this crew | keep, off | the root's Remote Control server, held off as Autumn set it (2026-10-07) |
 
