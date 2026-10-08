@@ -1784,11 +1784,18 @@ WALL_JS = """<script>
       buttons = document.querySelectorAll('nav button[data-m]'),
       still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches,
       EXIT = still ? 0 : 1100, GAP = 500, FILL = Math.max(1000, EVERY * 1000 - EXIT - GAP),
-      cur = 0, held = 0, taken = false, t0 = 0, stopped = 0;
+      cur = 0, held = 0, taken = false, t0 = 0, stopped = 0, up = null, left = {};
   function find(name) { for (var i = 0; i < M.length; i++) if (M[i].name === name) return i; return 0; }
+  // Away and straight back (Autumn, 2026-10-07): a module left less than
+  // 2.5 s ago and shown again gets {type: 'fcpm:next'} once it has loaded,
+  // a nudge to its next part. A page with parts of its own (the TI-89's
+  // show: its next block) steps on; any other page never hears it.
   function show(i) {
     cur = (i + M.length) %% M.length;
-    var m = M[cur], f = document.createElement('iframe');
+    var m = M[cur], f = document.createElement('iframe'), now = Date.now();
+    if (up && up !== m.name) left[up] = now;
+    var nudge = up !== m.name && now - (left[m.name] || 0) < 2500;
+    up = m.name;
     f.title = m.label; f.src = (m.src || m.name + '.html') + qs;
     f.addEventListener('load', function () {
       f.classList.add('shown');
@@ -1796,6 +1803,7 @@ WALL_JS = """<script>
         f.contentWindow.addEventListener('keydown', key);
         f.contentWindow.addEventListener('keyup', key);
       } catch (e) {}
+      if (nudge) try { f.contentWindow.postMessage({type: 'fcpm:next'}, '*'); } catch (e) {}
       Array.prototype.forEach.call(stage.querySelectorAll('iframe'), function (o) {
         if (o !== f) setTimeout(function () { o.remove(); }, 700);
       });
