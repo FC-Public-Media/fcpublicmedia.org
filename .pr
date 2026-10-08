@@ -9,5 +9,7 @@ only; drafted by station-node, which is the digitization crew today.
 - [x] linked from troves/README.md and docs/README.md
 - [ ] Autumn reads the shape
 - [x] the Drobo partition is ours by configuration, hosted by editing bay 1: their part is to attach and share it
-- [ ] FCPM reacts: is "attach and share" all they want to be asked?
+- [x] a crew of roles with plural members: capture (station-node, macOS), tank host and screen (editing bay 1, Windows)
+- [x] members answer, not asked: station-node's capture verbs are written
+- [ ] editing bay 1 writes its answers: tank host and screen
 - [ ] .pr back to main's before merge
