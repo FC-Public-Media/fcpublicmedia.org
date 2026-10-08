@@ -30,8 +30,9 @@ that is station-node.
 ## What the pack names
 
 Each row says how the pack stands to it. **Plays**: the pack drives it.
-**Uses**: gear the pack runs its own copy of. **Relies on**: something a
-neighbour runs, which the pack needs and does not run.
+**Uses**: gear the pack runs its own copy of. **Hosted**: ours by configuration,
+attached by a neighbour. **Relies on**: a neighbour's, which the pack needs and
+does not run.
 
 | what | role | how | where its facts live |
 |---|---|---|---|
@@ -40,8 +41,8 @@ neighbour runs, which the pack needs and does not run.
 | AJA HELO | input and outlet: the hardware encoder; records and streams | plays | [`aja-helo`](https://github.com/FC-Public-Media/aja-helo) |
 | Integra DTR-6.3 | monitor: the room-sized one | plays | no trove yet |
 | roller TV | outlet: a screen on a stand | plays, through editing bay 1 | [`../kiosk-screen/`](../kiosk-screen/), [`../../instruments/`](../../instruments/README.md) |
-| the enhance queue | outlet: where captures land for production | relies on | [`../pools/`](../pools/README.md) |
-| the Drobo B810i | the disk under the enhance queue, attached and shared by editing bay 1 | relies on | [`drobo`](https://github.com/FC-Public-Media/drobo) |
+| the Drobo B810i, its 1 TB partition | the tank: where every capture lands, shared as `enhance` | hosted, by editing bay 1 | [`drobo`](https://github.com/FC-Public-Media/drobo) |
+| the enhance queue | outlet: production's watch over the tank | relies on | [`../pools/`](../pools/README.md) |
 | Audio Hijack | gear: the recorder on macOS | uses | [`../recorder/`](../recorder/README.md) |
 | OBS | gear: the recorder on Windows, and more | uses, its own copy | [`../recorder/`](../recorder/README.md) |
 
@@ -57,17 +58,30 @@ rules already say, so a pack that uses OBS never touches anyone else's. The ATEM
 may go the same way: one device, with configurations instanced per use. Not
 designed yet.
 
+### Hosted: ours, attached by someone else
+
+The Drobo's 1 TB partition is this pack's, emphatically: the configuration is
+built on it. It could have been attached by the digitization machine; it is
+attached by editing bay 1 instead, because the Drobo speaks iSCSI to one
+initiator and the data path stays on Windows.
+
+So the host's part is one verb: **attach the partition and share it.** What the
+partition is for, what lands on it and in what shape, is declared here, not
+there. The host is not asked to understand digitization, only to keep the share
+up.
+
+What the pack can do from its side is **ask, never assume**: before handing on,
+check that the share answers and takes a write. A failed check is not something
+digitization can fix. It holds the capture and says so (see *The spool*).
+
 ### Relies on: what someone else runs
 
-The Drobo is run by editing bay 1, partly as a favour to digitization. The pack
-cannot run it and should not try. What it can do is **name the neighbour and ask,
-never assume**: before handing on, check that the enhance share answers and takes
-a write. A failed check is not something digitization can fix. It holds the
-capture and says so (see *The spool*).
+The enhance queue is production's: what they do with a capture once it has
+landed on the tank. The pack only meets it at the contract below.
 
-Whether that check becomes a handshake between stations, one supervisor asking
-another whether it is up, is open. It is where a pack starts needing to know its
-neighbours.
+Whether the share check becomes a handshake between stations, one supervisor
+asking another whether it is up, is open. It is where a pack starts needing to
+know its neighbours.
 
 ## The contract with the depot
 
@@ -115,6 +129,6 @@ local disk.
 ## Open
 
 - The Integra DTR-6.3 has no trove.
-- The cross-station check for what the pack relies on.
+- The cross-station check for what the pack has hosted elsewhere.
 - Instanced configurations for gear that several crews use (ATEM, OBS).
 - The capture metadata in the contract.

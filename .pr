@@ -8,5 +8,6 @@ only; drafted by station-node, which is the digitization crew today.
 - [x] the depot contract, the spool, the four things a host must give
 - [x] linked from troves/README.md and docs/README.md
 - [ ] Autumn reads the shape
-- [ ] FCPM reacts: does "relies on" name the Drobo the way they run it?
+- [x] the Drobo partition is ours by configuration, hosted by editing bay 1: their part is to attach and share it
+- [ ] FCPM reacts: is "attach and share" all they want to be asked?
 - [ ] .pr back to main's before merge
