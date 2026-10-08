@@ -1,0 +1,27 @@
+# residency.yml -- what the pools trove offers a crew that holds it.
+#
+# A MENU, NOT A STARTUP SCRIPT (station-node's rule, kept). Nothing here runs
+# because it is written down; a crew orders from it (machines/crews/<crew>/
+# services) and its supervisor runs what was ordered. Status is asked live:
+# `alive:` says how (a port that answers, a process that is there).
+#
+# {python} is the crew's Python (uv, 3.12, with pyyaml), and paths are from
+# the repository's root.
+
+resident: pools
+
+serves:
+  - service: pools
+    for: "the timeline and the squares: the nights, the windows, transcript time, the episodes"
+    kind: listener
+    start: "{python} troves/pools/pools.py timeline"
+    env: {POOLS_NO_OPEN: "1"}        # served without a window; `fcpm pools` opens one onto it
+    alive: {port: 8091}
+    required-for: [timeline, episodes, release]
+
+  - service: episodes
+    for: "the supervisor of released episodes: runs what of each one's show pipeline can run; a held episode is left alone"
+    kind: periodic
+    start: "{python} troves/pools/episodes.py tick"
+    needs: [pools]                   # it asks the pools server, the one writer of the groups
+    required-for: [release]

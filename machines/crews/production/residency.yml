@@ -1,0 +1,12 @@
+# residency.yml -- what the production crew itself offers, beside its troves'.
+# A menu, not a startup script: see troves/pools/residency.yml.
+
+resident: production
+
+serves:
+  - service: remote-control
+    for: "the root's Remote Control server: sessions start from zero at claude.ai or the phone; it opens and names none"
+    kind: listener
+    start: "{home}/.local/bin/claude.exe remote-control --no-create-session-in-dir"
+    cwd: "{code}"
+    alive: {process: "claude.exe.*\sremote-control(\s|$)"}
