@@ -1796,7 +1796,10 @@ WALL_JS = """<script>
     if (up && up !== m.name) left[up] = now;
     var nudge = up !== m.name && now - (left[m.name] || 0) < 2500;
     up = m.name;
-    f.title = m.label; f.src = (m.src || m.name + '.html') + qs;
+    // The panel's own query (?screen=left) rides along, joined with '&' to a
+    // url that has one already: '/ti-89/?show?screen=left' has no 'show'.
+    var src = m.src || m.name + '.html';
+    f.title = m.label; f.src = src + (qs && src.indexOf('?') >= 0 ? '&' + qs.slice(1) : qs);
     f.addEventListener('load', function () {
       f.classList.add('shown');
       try {                                           // the keys work with the page focused, too
