@@ -712,14 +712,95 @@ def current(cfg):
         return _last["data"]
 
 
-def shows():
-    """The shows FCPM keeps a record of (site/_shows/*.md): slug and title."""
+def shows(cfg=None):
+    """The shows FCPM keeps a record of (site/_shows/*.md): slug and title, and
+    with the machine's config, each show's pipeline (see pipeline())."""
     out = []
     for f in sorted((REPO / "site" / "_shows").glob("*.md")):
         head = f.read_text(encoding="utf-8").split("---")
         meta = yaml.safe_load(head[1]) if len(head) > 2 else {}
-        out.append({"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem)})
+        s = {"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem)}
+        if cfg is not None:
+            s["pipeline"] = pipeline(cfg, meta.get("pipeline"))
+        out.append(s)
     return out
+
+
+# --- a show's pipeline: one for every episode, managed or ejected --------------
+# What is done to a show's recordings (enhance, loudness, transcribe, ...) is
+# the show's, not the episode's: every episode goes through the same steps, and
+# only what goes in and comes out differs (its recordings, its metadata). The
+# show's record in the site (site/_shows/<slug>.md `pipeline:`) is managed: the
+# site's factory owns it and can change it under us, so by default nothing is
+# written from it (eject: false) and every run reads it fresh. A show without
+# one gets this machine's barest default (pools.yml `pipeline:`). eject: true
+# renders the show's pipeline with an episode's metadata and edit list into one
+# config of its own, the ejected copy automation can run from as it stands.
+
+def pipeline(cfg, mine=None):
+    base = dict(cfg.get("pipeline") or {})
+    own = mine if isinstance(mine, dict) else None
+    p = {**base, **(own or {})}
+    return {"from": "show" if own else "machine" if base else "none",
+            "eject": bool(p.get("eject", False)), "steps": list(p.get("steps") or [])}
+
+
+EPISODE = ("title", "season", "number", "people", "summary")   # what an episode says of itself; the rest is derived
+
+
+def show_group(gs, start, end):
+    return next((g for g in gs if g.get("show") and abs(g["start"] - start) < .01 and abs(g["end"] - end) < .01), None)
+
+
+def set_episode(body):
+    """An episode's own details, kept on its show's group (on this computer:
+    who was in it is nobody else's business until it is published)."""
+    gs = groups()
+    g = show_group(gs, float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    ep = body.get("episode") or {}
+    g["episode"] = {k: " ".join(str(ep.get(k) or "").split())[:200] if k != "summary" else str(ep.get(k) or "")[:4000]
+                    for k in EPISODE if ep.get(k)}
+    g["episode"]["at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    save_groups(gs)
+    return gs
+
+
+def out_name(g):
+    """What an episode's outputs are called: the show, then season and number
+    when it has them, else the night it was recorded."""
+    ep = g.get("episode") or {}
+    if ep.get("number"):
+        return f"{g['show']}-" + (f"s{ep['season']}" if ep.get("season") else "") + f"e{ep['number']}"
+    return f"{g['show']}-" + datetime.fromtimestamp(g["start"]).strftime("%Y%m%d")
+
+
+def render(cfg, body):
+    """The show's pipeline with one episode's metadata and edit list: what
+    automation would run. Written out only when the pipeline is ejected."""
+    g = show_group(groups(), float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    show = next((s for s in shows(cfg) if s["slug"] == g["show"]), None)
+    if not show:
+        raise ValueError("no such show")
+    p = show["pipeline"]
+    name = out_name(g)
+    doc = {"show": g["show"], "episode": {k: v for k, v in (g.get("episode") or {}).items() if k != "at"},
+           "out": name, "recorded": {"start": datetime.fromtimestamp(g["start"]).astimezone().isoformat(timespec="seconds"),
+                                     "end": datetime.fromtimestamp(g["end"]).astimezone().isoformat(timespec="seconds")},
+           "pipeline": {"from": p["from"], "steps": p["steps"]},
+           "settings": body.get("settings") or {},
+           "clips": [{"path": c.get("path"), "start": c.get("start"), "end": c.get("end")} for c in body.get("clips") or []]}
+    if not p["eject"]:
+        return {"written": None, "config": doc}
+    d = Path(os.path.expandvars(str((cfg.get("pipeline") or {}).get("eject_to") or ""))) if (cfg.get("pipeline") or {}).get("eject_to") \
+        else groups_file().with_name("ejected")
+    f = d / g["show"] / f"{name}.yml"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    return {"written": str(f), "config": doc}
 
 
 # A group is a stretch of the timeline someone has said belongs to one show.
@@ -778,11 +859,16 @@ def group(body):
         raise ValueError("empty stretch")
     if show and show not in [s["slug"] for s in shows()]:
         raise ValueError("no such show")
-    gs = [g for g in groups() if g["end"] <= start or g["start"] >= end or not (g.get("show") or g.get("name"))]   # marks stay
+    old = groups()
+    ep = next((g.get("episode") for g in old if show and g.get("show") == show and g.get("episode")
+               and g["end"] > start and g["start"] < end), None)
+    gs = [g for g in old if g["end"] <= start or g["start"] >= end or not (g.get("show") or g.get("name"))]   # marks stay
     if show or name:
         gs.append({"show": show or None, "name": None if show else name, "start": start, "end": end,
                    "files": int(body.get("files") or 0), "sound": float(body.get("sound") or 0),
                    "at": datetime.now().astimezone().isoformat(timespec="seconds")})
+        if ep:
+            gs[-1]["episode"] = ep
     save_groups(gs)
     return gs
 
@@ -942,7 +1028,7 @@ def serve(cfg, page=""):
             elif self.path == "/transcripts":
                 self.send(200, json.dumps(transcripts()).encode(), "application/json")
             elif self.path == "/groups":
-                self.send(200, json.dumps({"shows": shows(), "groups": groups()}).encode(), "application/json")
+                self.send(200, json.dumps({"shows": shows(cfg), "groups": groups()}).encode(), "application/json")
             elif self.path.startswith("/peaks?"):
                 path = urllib.parse.parse_qs(self.path.split("?", 1)[1]).get("p", [""])[0]
                 if not path or not os.path.isfile(path) or not known_path(current(cfg), path):
@@ -993,6 +1079,13 @@ def serve(cfg, page=""):
                     return self.send(200, json.dumps({"groups": set_control(body)}).encode(), "application/json")
                 except (ValueError, KeyError, TypeError) as e:
                     return self.send(400, str(e).encode(), "text/plain")
+            if self.path in ("/episode", "/render"):
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                    out = {"groups": set_episode(body)} if self.path == "/episode" else render(cfg, body)
+                    return self.send(200, json.dumps(out).encode(), "application/json")
+                except (ValueError, KeyError, TypeError, OSError) as e:
+                    return self.send(400, str(e).encode(), "text/plain")
             if self.path == "/reveal":
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
@@ -1024,7 +1117,7 @@ def serve(cfg, page=""):
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if self.path == "/group":
-                    return self.send(200, json.dumps({"shows": shows(), "groups": group(body)}).encode(), "application/json")
+                    return self.send(200, json.dumps({"shows": shows(cfg), "groups": group(body)}).encode(), "application/json")
                 path = str(body.get("path", ""))
             except (ValueError, AttributeError, KeyError, TypeError) as e:
                 return self.send(400, str(e).encode(), "text/plain")

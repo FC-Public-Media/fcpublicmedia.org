@@ -134,6 +134,33 @@ recognizer, nothing installed, and rough on a room of people. It proves the
 leg; a real engine (Whisper on the bay's RTX 4080, Audition's own, or Audio
 Hijack's Transcribe on station-node) arrives the bay's way before it is named.
 
+## Transcript time and the episode (Autumn, 2026-10-07)
+
+The window is the show block. Its transcription regions, and its episode, are
+looked at in **transcript time**: the nights give way to one panel each, side
+by side, for what the window shows and nothing else. A new window brings its
+own; nothing from another is left up. Put away (the header's arrow, `t`, or
+Esc) they all go at once, to marks in the header that bring them all back.
+One or the other, never both.
+
+- **A region's panel:** its control (what you know is said in it, typed as you
+  like, kept as you type) and what each engine heard there, scored against it.
+- **The episode's panel**, first, once the window is in a show's group (or
+  `episode…` in the list): its own details (title, season, episode, who is in
+  it, what it is about), kept on the group on this computer; what its outputs
+  are called (`<show>-s0e3`, or the night recorded); and the show's pipeline.
+
+**A show's pipeline is the show's, not the episode's.** Every episode goes
+through the same steps; only what goes in and comes out differs. It lives in
+the show's record (`site/_shows/<slug>.md` `pipeline:`), managed by the site;
+a show without one gets the machine's barest default (`pools.yml`
+`pipeline:`). `eject: false` (the default) writes nothing: every run reads
+the managed pipeline fresh, and render only shows what it would make.
+`eject: true` renders the pipeline with an episode's details and edit list
+into a config of its own (`ejected\<show>\<out>.yml` beside the groups, or
+`pipeline: eject_to:`), the copy automation can run from as it stands.
+Audition's steps are named, not run, until its panel proves out.
+
 ## The manifest
 
 The manifest button in the window's strip writes down what the window did, so

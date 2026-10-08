@@ -20,6 +20,18 @@ match:
 
 producer: Discovery Written
 local: yes
+
+# What every episode goes through, in order: the same steps for each, with
+# each episode's own recordings and metadata in and out. Managed here (the
+# site's record): eject: true would render it, per episode, into a config
+# automation runs from. Audition's steps wait on its panel proving out
+# (enhance gear/audition); until then they are the plan, not run.
+pipeline:
+  eject: false
+  steps:
+    - enhance: {by: audition, effect: Enhance Speech}
+    - loudness: {by: audition, effect: Match Loudness, target: -16 LUFS}
+    - transcribe: {engine: whisper}
 ---
 
 A show by Autumn Valenta, made in the open at the studio. Season zero.
