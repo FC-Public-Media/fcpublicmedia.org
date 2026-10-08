@@ -1,11 +1,11 @@
 """whisper.py -- the pools page's Whisper engine (faster-whisper, large-v3).
 
-    python whisper.py LIST.json MODELS_DIR       one JSON line per recording, as each is heard
+    python whisper.py LIST.json MODELS_DIR       one JSON line per WAV, as each is heard
 
 LIST.json is a list of 16 kHz mono 16-bit WAV paths, the job's recordings in
-order. The model is loaded once for the whole job. For each recording, a line:
+order. The model is loaded once for the whole job. For each WAV, a line:
 {"i": n, "segments": [{"at", "len", "text", "conf", "no_speech", "logp", "cr"}]}
-or {"i": n, "error": "..."}. `at` is seconds from the recording's start.
+or {"i": n, "error": "..."}. `at` is seconds from the WAV's start (pools.py joins recordings into each WAV and maps it back).
 
 Held back from inventing: it hears only what a voice-activity filter passes
 (no silence or hum reaches it), and it is not fed its own previous words
