@@ -1,10 +1,25 @@
-# production's one service, and the page at its door
+# production: the crew, its one service, and the page at its door
 
 **Status: proposal, 2026-10-07, for Autumn's redline.** Nothing here is built.
-Production (editing bay 1, `EDIT2`) takes on what station-node's one service
-does for its Mac: one supervisor, installed and always ready, running what the
-residencies it holds offer and what has been ordered from them. Its face is a
-page on the studio's LAN, built as a member's way in, not as a console.
+Production is a crew (`../README.md`): the recordings after they land, and
+the door where members meet them. Editing bay 1 (`EDIT2`) is the first to put
+it on. Like station-node's one service on its Mac: one supervisor, installed
+and always ready, running what the residencies offer and what production has
+ordered from them. Its face is a page on the studio's LAN, built as a
+member's way in, not as a console.
+
+## The contract
+
+What any machine wearing production owes, so a peer can step in beside it:
+
+- **It looks after** the pools, their transcription, the episodes and their
+  release, and the door.
+- **It serves** the lines in `services` below, each from a residency's menu,
+  each where its contract says (the door on 8080, the pools under it).
+- **It stays in the building.** LAN only, nothing to Cloudflare, no grants to
+  anyone outside. `fcpm` tends it.
+- **It says what is true.** Status is asked live; nothing it shows was written
+  down at start.
 
 ## What Autumn asked for
 
@@ -36,7 +51,7 @@ page on the studio's LAN, built as a member's way in, not as a console.
 
 ## The service
 
-- **One scheduled task, "production"**, triggered **at startup**, run whether
+- **One scheduled task, named for the crews it wears ("production")**, triggered **at startup**, run whether
   anyone is signed in or not, hidden, with no window. A startup task is not a
   logon item: it is not in Startup apps and costs nobody's sign-in. It also
   answers kiosk's gotcha that a power cut leaves its door down until someone
@@ -57,7 +72,7 @@ page on the studio's LAN, built as a member's way in, not as a console.
    storage and serves nothing yet). Each `serves:` entry says what it is for,
    its kind (`listener`, `periodic`), how it starts, and what stops working
    without it.
-2. **The order.** `machines/editing-bay-1/services`: one line per item ordered
+2. **The order.** `services`, beside this file: one line per item production orders
    from the menu, in station-node's shape (`name when command`), and nothing
    that is not on a menu. Editing it is how a line starts or stops; the
    supervisor follows within seconds. There is no `enabled:` anywhere else to
@@ -67,11 +82,11 @@ First lines it would carry:
 
 | line | from | kind | what it is |
 |---|---|---|---|
-| `door` | this profile | keep | the page below, on the LAN |
+| `door` | this crew | keep | the page below, on the LAN |
 | `pools` | `troves/pools` | keep | the timeline, served without its window having to be open; the door links to it |
 | `episodes` | `troves/pools` | every 5m | the supervisor of released episodes: runs each one's show pipeline (whisper now; Audition's steps once its panel proves out). Held episodes are left alone |
 | `screen` | `troves/kiosk-screen` | every 1m | the roller TV's page, as the pool keeps it today |
-| `remote-control` | this profile | keep, off | the root's Remote Control server, held off as Autumn set it (2026-10-07) |
+| `remote-control` | this crew | keep, off | the root's Remote Control server, held off as Autumn set it (2026-10-07) |
 
 ## The door: the page at production
 
@@ -101,8 +116,6 @@ It is built for someone who walked into the studio, not for us:
 
 ## Open, for Autumn
 
-- **The service's and the page's name.** "production" is what she calls this
-  root; station-node's is "Station Node". Is the door's page "production"?
 - **The first workflow** to build the page around. The proposal's guess:
   *I recorded tonight* (find the night, name it for a show, release the
   episode), since every piece of it exists on the timeline already.

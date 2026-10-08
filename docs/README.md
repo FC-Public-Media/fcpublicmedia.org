@@ -69,7 +69,7 @@ to go looking ([`../AGENTS.md`](../AGENTS.md), *Documentation is gathered*).
 | [`../machines/kiosk-1/code/AGENTS.md`](../machines/kiosk-1/code/AGENTS.md) | kiosk's root instructions, which its `~/code/CLAUDE.md` points at, and every name it answers to |
 | [`../machines/editing-bay-1/PROFILE.md`](../machines/editing-bay-1/PROFILE.md) | production: setting it up from nothing |
 | [`../machines/editing-bay-1/code/AGENTS.md`](../machines/editing-bay-1/code/AGENTS.md) | production's root instructions, which its `~/code/CLAUDE.md` points at |
-| [`../machines/editing-bay-1/SERVICE.md`](../machines/editing-bay-1/SERVICE.md) | production's one service, and the LAN page at its door (proposal) |
+| [`../machines/crews/README.md`](../machines/crews/README.md) | **crews**, responsibilities a machine puts on: [production](../machines/crews/production/CREW.md), its one service and its door (proposal) |
 | [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md) | editing bay 2, not yet asked its name |
 | [`RUNNABLES.md`](RUNNABLES.md) | what a session may run without asking |
 | [`KIOSK.md`](KIOSK.md) | the kiosk screen: what it says, which this repository owns |
