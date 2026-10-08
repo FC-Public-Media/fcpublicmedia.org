@@ -51,7 +51,7 @@ What any machine wearing production owes, so a peer can step in beside it:
 
 ## The service
 
-- **One scheduled task, named for the crews it wears ("production")**, triggered **at startup**, run whether
+- **One scheduled task, named for the crew ("production")**, triggered **at startup**, run whether
   anyone is signed in or not, hidden, with no window. A startup task is not a
   logon item: it is not in Startup apps and costs nobody's sign-in. It also
   answers kiosk's gotcha that a power cut leaves its door down until someone
