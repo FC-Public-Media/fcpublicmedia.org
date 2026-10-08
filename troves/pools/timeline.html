@@ -85,28 +85,35 @@
   #win .grp.bar.full .thumb { opacity: .75; cursor: pointer; }
   /* on the bar, the reach's count sits on its own dark ground, so it reads over the colour or the slot */
   #reachlbl.onbar { background: rgba(7,9,13,.82); padding: 0 4px; border-radius: 2px; text-shadow: none; }
-  /* the control panel: the right third of the dock, for a transcription region's own words */
-  #dock.side { height: 36vh; }
-  #dock.side #win { margin-right: 34%; }   /* the bar keeps the full width; the panel stands above it */
-  #side { display: none; position: absolute; top: 8px; right: 18px; bottom: 52px; width: calc(34% - 30px);
-          flex-direction: column; gap: 6px; font-size: 12px; }
-  #dock.side #side { display: flex; }
-  #side .sh { display: flex; align-items: baseline; gap: 8px; color: var(--ink); }
-  #side .sh b { font-weight: 500; }
-  #side .sh small { color: var(--dim); flex: 1; }
-  #side .sh button { font: inherit; color: var(--dim); background: none; border: none; cursor: pointer; padding: 0 4px; }
-  #side .sh button:hover { color: var(--ink); }
-  #side textarea { flex: 1; min-height: 70px; font: 13px/1.45 "Segoe UI", system-ui, sans-serif; color: var(--ink);
-                   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; padding: 8px;
-                   resize: none; user-select: text; -webkit-user-select: text; }
-  #side textarea:focus { outline: none; border-color: rgba(143,176,255,.7); }
-  #side .saved { color: var(--dim); font-size: 11px; min-height: 14px; }
-  #side .eng { max-height: 42%; overflow: auto; border-top: 1px solid var(--faint); padding-top: 6px; color: #aeb7c4; line-height: 1.45; }
-  #side .eng b { color: var(--ink); font-weight: 500; }
-  #side .eng .score { color: var(--dim); margin-left: 6px; }
-  #side .eng p { margin: 3px 0 8px; user-select: text; -webkit-user-select: text; }
-  #side .none { color: var(--dim); }
-  #side button.mk { font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  /* transcript time: the window's transcription regions, side by side, where the nights were */
+  #tx { display: none; flex: 1; min-height: 0; gap: 10px; padding: 4px 18px calc(var(--dock) + 14px); }
+  body.txtime main { display: none; }
+  body.txtime #tx { display: flex; }
+  .txp { --c: #c9d1dc; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px;
+         border-top: 3px solid var(--c); background: rgba(255,255,255,.025); border-radius: 3px; padding: 8px 10px 10px; }
+  .txp.lit { background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+  .txp .sh { display: flex; align-items: baseline; gap: 8px; color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; }
+  .txp .sh:hover b { text-decoration: underline; }
+  .txp .sh b { font-weight: 500; }
+  .txp .sh small { color: var(--dim); overflow: hidden; text-overflow: clip; }
+  .txp .st { color: var(--c); min-width: 1em; }
+  .txp textarea { flex: 1 1 50%; min-height: 70px; font: 13px/1.45 "Segoe UI", system-ui, sans-serif; color: var(--ink);
+                  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; padding: 8px;
+                  resize: none; user-select: text; -webkit-user-select: text; }
+  .txp textarea:focus { outline: none; border-color: rgba(143,176,255,.7); }
+  .txp .saved { color: var(--dim); font-size: 11px; min-height: 14px; }
+  .txp .eng { flex: 1 1 40%; min-height: 0; overflow: auto; border-top: 1px solid var(--faint); padding-top: 6px; color: #aeb7c4; line-height: 1.45; }
+  .txp .eng b { color: var(--ink); font-weight: 500; }
+  .txp .eng .score { color: var(--dim); margin-left: 6px; }
+  .txp .eng p { margin: 3px 0 8px; user-select: text; -webkit-user-select: text; }
+  .txp .none { color: var(--dim); }
+  .txp button.mark { align-self: flex-start; font: inherit; color: var(--ink); background: none; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  /* in the header: the regions' marks, to bring transcript time back; in it, the way out */
+  #txbar { display: inline-flex; gap: 2px; }
+  #txbar button { font: 14px/1 "Segoe UI Symbol", "Segoe UI", sans-serif; background: none; border: 1px solid transparent; border-radius: 3px;
+                  color: var(--dim); padding: 1px 4px; cursor: pointer; }
+  #txbar button:hover { border-color: rgba(255,255,255,.25); }
+  #txbar button.away { color: var(--ink); border-color: rgba(255,255,255,.25); }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
   /* Neighbours alternate in tone and each starts at a dark seam, so clips that
      touch edge to edge still read as separate. The one playing is shown by its
@@ -246,14 +253,15 @@
   <h1>Timeline</h1>
   <a href="/">squares</a>
   <span class="meta" id="meta">looking…</span>
+  <span id="txbar"></span>
   <span class="hint" id="hint">drag along a night to look closer</span>
 </header>
 <main id="main"></main>
+<div id="tx"></div>
 <div id="dock">
   <span id="strong" title="strong voice: a peak over about -9 dBFS crosses this dashed line">&minus;9</span>
   <div id="win"></div>
   <div id="ctl"></div>
-  <div id="side"></div>
 </div>
 <div id="tip" role="tooltip"></div>
 <script>
@@ -569,7 +577,7 @@
     if (g.show) d.style.background = gcolor(g);
     d.title = gname(g) + (g.show ? '' : ' (not yet a show)') + ' · ' + hm(g.start) + '–' + hm(g.end);
     d.onpointerdown = function (e) { e.stopPropagation(); };
-    d.onclick = function () { openView(g.start, g.end); if (g.transcribe) openSide(g); };
+    d.onclick = function () { openView(g.start, g.end); if (g.transcribe) openTx(g); };
     // A mark for removal (or what was removed) is an omission: its hatched line says it, unlabelled, so it never
     // fights the show's own name. Named groups, and marks for transcription (their state is the point), keep a label.
     if (first && (g.show || g.name || !(g.remove || g.removed))) {
@@ -578,7 +586,7 @@
       if (tx) n.dataset.tx = tx.says;
       n.title = (tx ? tx.says + ' ' + String.fromCharCode(183) + ' ' : '') + 'open this group';
       n.onpointerdown = function (e) { e.stopPropagation(); };
-      n.onclick = function () { openView(g.start, g.end); if (g.transcribe) openSide(g); };
+      n.onclick = function () { openView(g.start, g.end); if (g.transcribe) openTx(g); };
       n.style.left = ((Math.max(g.start, span0) - span0) / span * w) + 'px';
       L.appendChild(n);
     }
@@ -768,7 +776,7 @@
       if (s.conf != null && s.conf < .35) d.classList.add('unsure');
       d.title = hms(s.t) + ' \u00b7 ' + s.text + (s.conf != null ? ' (confidence ' + Math.round(s.conf * 100) + '%)' : '') + ' \u00b7 click: its region\u2019s words';
       d.onpointerdown = function (e) { e.stopPropagation(); };   // its own click: not a click in the window (that redraws it away)
-      d.onclick = function () { openSide(regionAt(s.t + s.d / 2) || {start: s.t, end: s.t + s.d, path: s.path, loose: true}); };
+      d.onclick = function () { openTx(regionAt(s.t + s.d / 2) || {start: s.t, end: s.t + s.d, path: s.path, loose: true}); };
       winEl.appendChild(d);
     });
     if (P.t != null) { var ph = el('div', 'ph'); ph.style.left = tx(P.t) + 'px'; winEl.appendChild(ph); ph.id = 'ph'; }
@@ -1179,13 +1187,13 @@
         saves++;
         return post('/group', {start: tgt.a, end: tgt.b, transcribe: pick.value === 'tx', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
-          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); });
+          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); drawTx(); });
       }
       if (pick.value === 'rm' || pick.value === 'keep') {
         saves++;
         return post('/group', {start: tgt.a, end: tgt.b, remove: pick.value === 'rm', files: hit.length, sound: sound})
           .then(function (r) { return r.json(); })
-          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); });
+          .then(function (gs) { groups = gs.groups || gs; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); drawTx(); });
       }
       if (pick.value !== '') save(opts[+pick.value], hit, sound);
     };
@@ -1222,7 +1230,7 @@
     dock.style.display = 'flex';
     document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
     document.getElementById('hint').textContent = 'drag to select · double-click it (or z) to look closer · wheel zooms, sideways or shift pans · click to place the playhead';
-    drawWin(); drawCtl(); paintLanes();
+    drawWin(); drawCtl(); paintLanes(); drawTx();
   }
 
   // A dragged stretch, snapped to the recordings it covers.
@@ -1264,7 +1272,7 @@
   function engines() { var e = {}; heard.forEach(function (j) { e[j.engine] = 1; }); return Object.keys(e).join(', '); }
   function loadHeard() {
     return fetch('/transcripts', {cache: 'no-store'}).then(function (r) { return r.json(); })
-      .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } drawScores(); if (running()) setTimeout(loadHeard, 2500); })
+      .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } drawTx(); drawScores(); if (running()) setTimeout(loadHeard, 2500); })
       .catch(function () {});
   }
   // The manifest: what this window did, by hash. The page says each recording's
@@ -1325,24 +1333,103 @@
     if (t >= SEL.a && t <= SEL.b) { var z = SEL; setView(z.a, z.b); }
   });
 
-  // --- the control panel: a transcription region's own words ---------------
-  // What you know is said in a region you marked for transcription, typed as
-  // well as you can: its control. It belongs to that region alone (nothing is
-  // merged between regions), saved as you type. Beside it, what each engine
-  // heard there, and once there are words on both sides, how far each is off:
-  // words wrong, missed and invented, against yours.
-  var SIDE = null;
+  // --- transcript time: the regions' own words, in place of the nights ----
+  // Every region marked for transcription that the window shows gets a panel,
+  // side by side where the nights were: its control (what you know is said in
+  // it, typed as well as you can, kept as you type, never merged with
+  // another's) and what each engine heard there, scored against yours. Only
+  // the window's regions: a region you are not looking at has no panel. Put
+  // away, they all go at once, to marks in the header that bring them all
+  // back; the nights are underneath. One or the other, never both.
+  var TX = {open: false, key: '', loose: null, at: null};
   function regionAt(t) { return groups.filter(function (g) { return g.transcribe && t >= g.start && t <= g.end; })[0] || null; }
-  function openSide(g) {
-    SIDE = {start: g.start, end: g.end, path: g.path, loose: !!g.loose};
-    dock.classList.add('side');
-    document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
-    drawSide(); drawWin(); drawCtl();
+  function regionsHere() {
+    if (!win) return [];
+    return groups.filter(function (g) { return g.transcribe && !g.remove && g.end > win.a && g.start < win.b; })
+                 .sort(function (x, y) { return x.start - y.start; });
   }
-  function closeSide() {
-    SIDE = null; dock.classList.remove('side');
-    document.documentElement.style.setProperty('--dock', dock.offsetHeight + 'px');
-    drawWin(); drawCtl();
+  function sameRegion(g, a, b) { return Math.abs(g.start - a) < .01 && Math.abs(g.end - b) < .01; }
+  function showOver(a, b) { return groups.filter(function (s) { return (s.show || s.name) && s.end > a && s.start < b; })[0] || null; }
+  function openTx(g) {   // transcript time, with g's panel lit (a loose stretch, heard outside any region, gets one of its own)
+    TX.loose = g && g.loose ? g : null;
+    TX.at = g ? {start: g.start, end: g.end} : null;
+    TX.open = true; TX.key = ''; drawTx();
+  }
+  function closeTx() { TX.open = false; TX.loose = null; TX.at = null; TX.key = ''; drawTx(); }
+  function toggleTx() { if (TX.open) closeTx(); else if (regionsHere().length) openTx(null); }
+  var txEl = document.getElementById('tx'), txBar = document.getElementById('txbar');
+  function drawTx() {
+    var rs = regionsHere(), list = rs.slice();
+    if (TX.loose && TX.loose.end > (win ? win.a : 0) && TX.loose.start < (win ? win.b : 0)) list.push(TX.loose);
+    else TX.loose = null;
+    if (TX.open && !list.length) TX.open = false;   // nothing of the window's to show: the nights
+    document.body.classList.toggle('txtime', TX.open);
+    // the header: put away (in transcript time), or one mark per region to bring them all back
+    txBar.textContent = '';
+    if (TX.open) {
+      var away = el('button', 'away', '↓');
+      away.title = 'put the transcripts away: the nights (t)'; away.onclick = closeTx; txBar.appendChild(away);
+    } else rs.forEach(function (g) {
+      var st = txState(g), m = el('button', 'mk', st ? st.glyph : '○');
+      m.style.color = gcolor(showOver(g.start, g.end) || g);
+      m.title = 'transcripts (t): ' + hm(g.start) + '–' + hm(g.end) + (st ? ' · ' + st.says : '');
+      m.onclick = function () { openTx(g); }; txBar.appendChild(m);
+    });
+    if (!TX.open) { txEl.textContent = ''; TX.key = ''; return; }
+    var key = list.map(function (g) { return g.start + ':' + g.end; }).join('|');
+    if (key !== TX.key) {   // the panels are only rebuilt when the regions change: typing is never interrupted
+      TX.key = key; txEl.textContent = '';
+      list.forEach(function (g) { txEl.appendChild(panel(g)); });
+      var built = true;
+    }
+    Array.prototype.forEach.call(txEl.children, function (p) {
+      p.classList.toggle('lit', !!TX.at && sameRegion(p.region, TX.at.start, TX.at.end));
+      var g = groups.filter(function (x) { return x.transcribe && sameRegion(x, p.region.start, p.region.end); })[0];
+      var st = g && txState(g), s = p.querySelector('.st');
+      s.textContent = st ? st.glyph : ''; s.title = st ? st.says : '';
+    });
+    if (built) drawScores();
+  }
+  var txSave = {};
+  function panel(r) {
+    var p = el('section', 'txp'); p.region = {start: r.start, end: r.end};
+    var g = r.loose ? null : r, show = showOver(r.start, r.end);
+    if (show) p.style.setProperty('--c', gcolor(show));
+    var sh = el('div', 'sh');
+    sh.appendChild(el('span', 'st'));
+    sh.appendChild(el('b', null, hm(r.start) + '–' + hm(r.end)));
+    sh.appendChild(el('small', null, (show ? gname(show) + ' · ' : g ? '' : 'heard here · ') + hours(r.end - r.start)));
+    sh.title = 'click: the window goes to this region';
+    sh.onclick = function () { openView(r.start, r.end); };
+    p.appendChild(sh);
+    if (g) {
+      var ta = el('textarea'); ta.value = g.control ? g.control.text : '';
+      ta.placeholder = 'what is said here, as well as you know it';
+      ta.title = 'the control: the engines are scored against it';
+      var said = el('div', 'saved', g.control ? 'kept ' + g.control.at.slice(11, 16) : '');
+      ta.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Escape') ta.blur(); };   // typing is not a shortcut
+      ta.oninput = function () {
+        said.textContent = 'not kept yet';
+        var k = g.start + ':' + g.end; clearTimeout(txSave[k]);
+        txSave[k] = setTimeout(function () {
+          post('/control', {start: g.start, end: g.end, text: ta.value})
+            .then(function (q) { return q.json(); })
+            .then(function (d) { groups = d.groups; said.textContent = 'kept'; drawScores(); })
+            .catch(function () { said.textContent = 'could not keep it: is fcpm pools running?'; });
+        }, 700);
+      };
+      p.appendChild(ta); p.appendChild(said);
+    } else {
+      var mk = el('button', 'mark', 'mark for transcription');
+      mk.title = 'make this stretch a transcription region, to give it words of your own';
+      mk.onclick = function () {
+        post('/group', {start: r.start, end: r.end, transcribe: true}).then(function (q) { return q.json(); })
+          .then(function (d) { groups = d.groups || d; TX.loose = null; TX.key = ''; drawTx(); drawWin(); paintLanes(); });
+      };
+      p.appendChild(mk);
+    }
+    p.appendChild(el('div', 'eng'));
+    return p;
   }
   function heardBy(a, b) {   // engine -> what it heard in [a, b], newest hearing of each recording, in order
     var latest = {}, by = {};
@@ -1384,71 +1471,33 @@
     out += j;
     return {n: n, sub: sub, del: del, ins: ins, out: out, wer: n ? (sub + del + ins) / n : 0};
   }
-  var sideSave = 0;
-  function drawSide() {
-    var side = document.getElementById('side');
-    side.textContent = '';
-    if (!SIDE) return;
-    var g = groups.filter(function (x) { return x.transcribe && Math.abs(x.start - SIDE.start) < .01 && Math.abs(x.end - SIDE.end) < .01; })[0];
-    var show = groups.filter(function (x) { return (x.show || x.name) && x.end > SIDE.start && x.start < SIDE.end; })[0];
-    var sh = el('div', 'sh'), close = el('button', null, '\u00d7');
-    sh.appendChild(el('b', null, g ? 'control' : 'heard here'));
-    sh.appendChild(el('small', null, hm(SIDE.start) + '\u2013' + hm(SIDE.end) + (show ? ' \u00b7 ' + gname(show) : '')));
-    close.title = 'close (the words are kept)'; close.onclick = closeSide; sh.appendChild(close);
-    side.appendChild(sh);
-    if (g) {
-      var ta = el('textarea'); ta.value = g.control ? g.control.text : '';
-      ta.placeholder = 'what is said here, as well as you know it: the control the engines are scored against';
-      var said = el('div', 'saved', g.control ? 'kept ' + g.control.at.slice(11, 16) : '');
-      ta.onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Escape') { ta.blur(); } };   // typing is not a shortcut
-      ta.oninput = function () {
-        said.textContent = 'not kept yet';
-        clearTimeout(sideSave);
-        sideSave = setTimeout(function () {
-          post('/control', {start: g.start, end: g.end, text: ta.value})
-            .then(function (r) { return r.json(); })
-            .then(function (d) { groups = d.groups; said.textContent = 'kept'; drawScores(); })
-            .catch(function () { said.textContent = 'could not keep it: is fcpm pools running?'; });
-        }, 700);
-      };
-      side.appendChild(ta); side.appendChild(said);
-    } else {
-      var mk = el('button', 'mk', 'mark this for transcription, to give it words of your own');
-      mk.onclick = function () {
-        post('/group', {start: SIDE.start, end: SIDE.end, transcribe: true}).then(function (r) { return r.json(); })
-          .then(function (d) { groups = d.groups || d; SIDE.loose = false; drawSide(); drawWin(); paintLanes(); });
-      };
-      side.appendChild(mk);
-    }
-    var eng = el('div', 'eng'); eng.id = 'eng'; side.appendChild(eng);
-    drawScores();
-  }
   function drawScores() {
-    var eng = document.getElementById('eng');
-    if (!eng || !SIDE) return;
-    eng.textContent = '';
-    var by = heardBy(SIDE.start, SIDE.end), names = Object.keys(by);
-    var g = groups.filter(function (x) { return x.transcribe && Math.abs(x.start - SIDE.start) < .01 && Math.abs(x.end - SIDE.end) < .01; })[0];
-    var mine = g && g.control ? g.control.text : '';
-    if (!names.length) { eng.appendChild(el('div', 'none', 'nothing heard here yet: send it from the speech button')); return; }
-    names.sort().forEach(function (e) {
-      var text = by[e].map(function (s) { return s.text; }).join(' ');
-      var head = el('div'); head.appendChild(el('b', null, e));
-      if (words(mine).length) {
-        var sc = score(mine, text);
-        head.appendChild(el('span', 'score', Math.round(sc.wer * 100) + '% off \u00b7 ' + sc.sub + ' wrong, ' + sc.del + ' missed, ' + sc.ins + ' invented, of ' + sc.n + ' words' +
-                                              (sc.out ? ' · ' + sc.out + ' heard outside the control' : '')));
-      }
-      eng.appendChild(head); eng.appendChild(el('p', null, text));
+    if (!TX.open) return;
+    Array.prototype.forEach.call(txEl.children, function (p) {
+      var eng = p.querySelector('.eng'), r = p.region;
+      eng.textContent = '';
+      var by = heardBy(r.start, r.end), names = Object.keys(by);
+      var g = groups.filter(function (x) { return x.transcribe && sameRegion(x, r.start, r.end); })[0];
+      var mine = g && g.control ? g.control.text : '';
+      if (!names.length) { eng.appendChild(el('div', 'none', 'nothing heard here yet: send it from the speech button')); return; }
+      names.sort().forEach(function (e) {
+        var text = by[e].map(function (s) { return s.text; }).join(' ');
+        var head = el('div'); head.appendChild(el('b', null, e));
+        if (words(mine).length) {
+          var sc = score(mine, text);
+          head.appendChild(el('span', 'score', Math.round(sc.wer * 100) + '% off · ' + sc.sub + ' wrong, ' + sc.del + ' missed, ' + sc.ins + ' invented, of ' + sc.n + ' words' +
+                                                (sc.out ? ' · ' + sc.out + ' heard outside the control' : '')));
+        }
+        eng.appendChild(head); eng.appendChild(el('p', null, text));
+      });
     });
   }
 
   function closeWindow() {
     stop(); win = null; views = []; P.t = null; P.cur = null; SEL = null;
-    if (SIDE) { SIDE = null; dock.classList.remove('side'); }
     dock.style.display = 'none'; document.documentElement.style.setProperty('--dock', '0px');
     document.getElementById('hint').textContent = 'drag along a night to look closer';
-    paintLanes();
+    paintLanes(); drawTx();
   }
 
   function back() {   // the previous view; Esc is what closes
@@ -1462,7 +1511,7 @@
     var t = SEL || win;
     post('/group', {start: t.a, end: t.b, show: as.show || '', name: as.name || '', files: hit.length, sound: sound})
       .then(function (r) { return r.json(); })
-      .then(function (d) { shows = d.shows; groups = d.groups; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); });
+      .then(function (d) { shows = d.shows; groups = d.groups; SEL = null; drawWin(); drawCtl(); paintLanes(); marked(); drawTx(); });
   }
 
   // --- the player: the window's recordings in order, gaps skipped --------
@@ -1772,7 +1821,8 @@
     if (e.key === ' ' && win) { e.preventDefault(); toggle(); }
     else if ((e.key === 'm' || e.key === 'M') && win) setMuted(!P.muted);
     else if (e.key === 'Backspace' && win) { e.preventDefault(); back(); }
-    else if (e.key === 'Escape') { if (SEL) { SEL = null; drawWin(); drawCtl(); } else closeWindow(); }
+    else if (e.key === 'Escape') { if (SEL) { SEL = null; drawWin(); drawCtl(); } else if (TX.open) closeTx(); else closeWindow(); }
+    else if ((e.key === 't' || e.key === 'T') && win) toggleTx();
     else if ((e.key === 'z' || e.key === 'Z') && SEL) { var z = SEL; setView(z.a, z.b); }
   });
 
@@ -1797,6 +1847,7 @@
         var s = files.length + ':' + (files.length ? files[files.length - 1].end : 0) + ':' + innerWidth + ':' + known + ':' + ghosts.length;
         if (s !== sig) { sig = s; drawLanes(); } else paintLanes();
         if (win) { drawWin(); if (!P.playing) drawCtl(); }
+        drawTx();
       })
       .catch(function () { document.getElementById('meta').textContent = 'the window that showed this has closed'; });
   }
