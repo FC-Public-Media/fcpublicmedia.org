@@ -394,6 +394,7 @@ def recycled(base):
 # (jobs/<id>.result.json) fills in as each recording is heard. The engine is
 # the machine's choice (pools.yml `transcribe: engine:`); engines/ holds them.
 
+PIECE = 20 * 60   # seconds of joined recordings Whisper hears at a time
 ENGINES = {"windows-speech": HERE / "engines" / "windows-speech.ps1",   # one recording per run, PowerShell
            "whisper": HERE / "engines" / "whisper.py"}                   # a whole job per run, its own venv (pools.yml)
 _jobs_lock = threading.Lock()
@@ -457,21 +458,37 @@ def transcribe(cfg, body):
 
     def run_whisper():
         # The whole job in one run of the engine: the model loads once. A line comes back
-        # per recording as it is heard; the result fills in as they do.
+        # per WAV (a piece of joined recordings) as it is heard; the result fills in as they do.
         work = jobs_dir() / jid
         work.mkdir(exist_ok=True)
-        wavs = []
-        for i, c in enumerate(clips):
-            w = work / f"{i}.wav"
+        # The recordings joined end to end, with no gaps, as the window plays them:
+        # Whisper hears one continuous take, and a word cut in two by a recording's
+        # end is heard whole. Joined in pieces of up to PIECE seconds (a line comes
+        # back per piece); each piece keeps where in it each recording begins.
+        pieces, pcm, at = [], bytearray(), []
+
+        def close():
+            if not at:
+                return
+            w = work / f"{len(pieces)}.wav"
+            w.write_bytes(struct.pack("<4sI4s4sIHHIIHH4sI", b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ", 16, 1, 1,
+                                      16000, 32000, 2, 16, b"data", len(pcm)) + bytes(pcm))
+            pieces.append({"wav": str(w), "at": list(at)})
+            pcm.clear(); at.clear()
+
+        for k, c in enumerate(clips):
             try:
-                w.write_bytes(mono16k(c["path"]))
+                raw = mono16k(c["path"])[44:]
             except (OSError, ValueError, struct.error) as e:
                 result.setdefault("errors", []).append({"path": c["path"], "why": f"could not be read: {e}"})
-                w = None
-            wavs.append(str(w) if w else None)
-        todo = [(i, w) for i, w in enumerate(wavs) if w]
-        (work / "list.json").write_text(json.dumps([w for _, w in todo]), encoding="utf-8")
-        result["done"] = len(clips) - len(todo)
+                result["done"] += 1
+                continue
+            if at and (len(pcm) + len(raw)) / 32000 > PIECE:
+                close()
+            at.append((len(pcm) / 32000, k, len(raw) / 32000))
+            pcm.extend(raw)
+        close()
+        (work / "list.json").write_text(json.dumps([p["wav"] for p in pieces]), encoding="utf-8")
         save()
         with _engine_lock:
             proc = subprocess.Popen([py, "-I", str(ENGINES["whisper"]), str(work / "list.json"), models],
@@ -482,26 +499,32 @@ def transcribe(cfg, body):
                     r = json.loads(line)
                 except ValueError:
                     continue
-                k = todo[r["i"]][0]
-                c = clips[k]
-                seen.add(k)
+                piece = pieces[r["i"]]
+                seen.add(r["i"])
                 if r.get("error"):
-                    result.setdefault("errors", []).append({"path": c["path"], "why": r["error"]})
+                    for _, k, _ in piece["at"]:
+                        result.setdefault("errors", []).append({"path": clips[k]["path"], "why": r["error"]})
                 for s in r.get("segments") or []:
-                    if s.get("text"):
-                        result["segments"].append({"t": float(c["start"]) + float(s["at"]), "d": float(s["len"]),
-                                                   "text": s["text"], "conf": s.get("conf"), "path": c["path"],
-                                                   "no_speech": s.get("no_speech"), "logp": s.get("logp"), "cr": s.get("cr")})
-                result.setdefault("heard", []).append(c["path"])   # heard, whether or not anything was said
-                result["done"] += 1
+                    if not s.get("text"):
+                        continue
+                    # back to the recording it began in, and the moment in it
+                    off, k, _ = [a for a in piece["at"] if a[0] <= float(s["at"]) + 1e-6][-1]
+                    c = clips[k]
+                    result["segments"].append({"t": float(c["start"]) + float(s["at"]) - off, "d": float(s["len"]),
+                                               "text": s["text"], "conf": s.get("conf"), "path": c["path"],
+                                               "no_speech": s.get("no_speech"), "logp": s.get("logp"), "cr": s.get("cr")})
+                for _, k, _ in piece["at"]:
+                    result.setdefault("heard", []).append(clips[k]["path"])   # heard, whether or not anything was said
+                result["done"] += len(piece["at"])
                 save()
             err = proc.stderr.read()
             proc.wait()
-            for k, _ in todo:
-                if k not in seen:
+            for i, piece in enumerate(pieces):
+                if i not in seen:
                     why = (err.strip().splitlines() or ["the engine stopped"])[-1][:200]
-                    result.setdefault("errors", []).append({"path": clips[k]["path"], "why": why})
-                    result["done"] += 1
+                    for _, k, _ in piece["at"]:
+                        result.setdefault("errors", []).append({"path": clips[k]["path"], "why": why})
+                    result["done"] += len(piece["at"])
         shutil.rmtree(work, ignore_errors=True)
         result["state"] = "done"
         save()
