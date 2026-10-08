@@ -1,0 +1,16 @@
+# The post partition production works, for `fcpm post`. Doc: troves/post/README.md.
+# A take is a folder under root; doors are where tools that only take folders
+# (or a person's hands) are handed a step's input and leave its result.
+
+root: "E:/POST"              # the 1 TB LUN, iSCSI (fcpm drobo), shared as `enhance` (fcpm share)
+doors: "E:/DOORS"
+
+# The steps this machine does. A step a take's route names and this doesn't is
+# left for a worker that does it. door: true hands the input out at
+# doors/<step>/out and waits days for doors/<step>/back; run: is a command,
+# with {in}, {out}, {take} and {step.KEY}. lease: how long a worker holds a
+# step without renewing before anyone may take it back.
+steps:
+  enhance:                   # Adobe Podcast, by hand: drag out, download back
+    door: true
+    lease: 7d

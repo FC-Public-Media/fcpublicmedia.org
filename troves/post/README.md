@@ -87,7 +87,7 @@ anything, because the take's folder is the record.
 ## Steps
 
 What each step is, on this machine, is the machine's `post.yml`: a command
-(run with `{in}`, `{out}`, `{take}`) or a door, and a lease. A step this
+(run with `{in}`, `{out}`, `{take}`, `{python}`) or a door, and a lease. A step this
 machine doesn't declare is left for a worker that does, drawn as waiting for
 one. Which steps a take goes through is its show's pipeline (pools README, *A
 show's pipeline*), copied into `route.json` when it is admitted, so a take
