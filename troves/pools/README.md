@@ -172,6 +172,17 @@ config then, so what runs is what was released; a managed one is read fresh
 when the supervisor gets to it. Held back again, it is left alone again; what
 was already done stays done. Each is an event on the group.
 
+**What release hands it to: `episodes.py`.** The production crew runs `tick`
+every few minutes (`machines/crews/production/services`). Each released
+episode goes through its pipeline in order: its ejected config's if releasing
+wrote one, else the show's, read fresh. `transcribe` runs as a job here; a
+step that cannot run on this machine yet (Audition's) waits, and the steps
+after it wait behind it, because the order is the show's. A show that wants
+its transcripts first says so by putting that step first. Each step's progress
+is an event on the episode (`/supervised`), sent through this server, which
+stays the one writer of the groups. `fcpm crew episodes` says where each
+released episode stands.
+
 ## The manifest
 
 The manifest button in the window's strip writes down what the window did, so

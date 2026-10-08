@@ -1,6 +1,11 @@
 # production: the crew, its one service, and the page at its door
 
-**Status: proposal, 2026-10-07, for Autumn's redline.** Nothing here is built.
+**Status, 2026-10-07: the supervisor is built, not installed.** Its menus
+(`residency.yml` in `troves/pools`, `troves/kiosk-screen` and here), its order
+(`services`), the supervisor (`../crew.py`), the episode supervisor
+(`troves/pools/episodes.py`) and `fcpm crew` are in. Nothing runs it yet: the
+install (the task, and whether it starts with the machine or at sign-in) and
+the door are next, each its own change.
 Production is a crew (`../README.md`): the recordings after they land, and
 the door where members meet them. Editing bay 1 (`EDIT2`) is the first to put
 it on. Like station-node's one service on its Mac: one supervisor, installed
