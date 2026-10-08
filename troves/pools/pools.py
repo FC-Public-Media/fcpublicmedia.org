@@ -794,6 +794,24 @@ def release(cfg, body):
     return {"groups": gs, "written": written}
 
 
+def supervised(body):
+    """What the episode supervisor (episodes.py) did with a released episode's
+    step: kept as an event on the episode, the way a person's acts are. It
+    writes nothing else; this server stays the one writer of the groups."""
+    gs = groups()
+    g = show_group(gs, float(body["start"]), float(body["end"]))
+    if not g:
+        raise ValueError("no show's group there")
+    ev = {"phase": "supervised", "step": str(body["step"]), "release": str(body.get("release") or ""),
+          "state": str(body["state"]), "at": datetime.now().astimezone().isoformat(timespec="seconds")}
+    for k in ("job", "why"):
+        if body.get(k):
+            ev[k] = str(body[k])[:300]
+    g.setdefault("events", []).append(ev)
+    save_groups(gs)
+    return {"event": ev}
+
+
 def out_name(g):
     """What an episode's outputs are called: the show, then season and number
     when it has them, else the night it was recorded."""
@@ -1119,11 +1137,12 @@ def serve(cfg, page=""):
                     return self.send(200, json.dumps({"groups": set_control(body)}).encode(), "application/json")
                 except (ValueError, KeyError, TypeError) as e:
                     return self.send(400, str(e).encode(), "text/plain")
-            if self.path in ("/episode", "/render", "/release"):
+            if self.path in ("/episode", "/render", "/release", "/supervised"):
                 try:
                     body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                     out = {"groups": set_episode(body)} if self.path == "/episode" else \
-                        release(cfg, body) if self.path == "/release" else render(cfg, body)
+                        release(cfg, body) if self.path == "/release" else \
+                        supervised(body) if self.path == "/supervised" else render(cfg, body)
                     return self.send(200, json.dumps(out).encode(), "application/json")
                 except (ValueError, KeyError, TypeError, OSError) as e:
                     return self.send(400, str(e).encode(), "text/plain")
