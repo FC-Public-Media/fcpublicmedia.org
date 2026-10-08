@@ -87,6 +87,20 @@ function EnsureServer {
 }
 
 function Screens {
+    # The production crew's desktop lines (the rolling TV), a pass a minute:
+    # its supervisor starts with the computer and has no desktop to put them
+    # on (machines/crews/crew.ps1), so this task, in the signed-in session, is
+    # its desktop half. Until the crew's supervisor is in the mirror, the
+    # screen trove directly, as before.
+    $crew = Join-Path $Root "refs\fcpublicmedia.org\machines\crews\crew.py"
+    $uv = @((Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),
+            (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe")) |
+          Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ((Test-Path $crew) -and $uv) {
+        & $uv run --no-project --python 3.12 --with pyyaml $crew desktop production 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { Say "crew: desktop pass failed ($LASTEXITCODE)" }
+        return
+    }
     # The screens this bay drives, kept each pass by their trove, from the
     # mirror (the admitted code). A child process: the trove's strict mode and
     # types stay out of the pool. It logs to its own screen.log.

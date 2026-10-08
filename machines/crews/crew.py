@@ -1,6 +1,7 @@
 """crew.py -- a crew's one supervisor: run what the crew ordered, and say what is up.
 
     crew.py serve  [CREW]      BECOME the supervisor (what the crew's one service runs)
+    crew.py desktop [CREW]     one pass of its desktop lines (what the sign-in task runs)
     crew.py status [CREW]      each line: what it is, and whether it is up, asked now
     crew.py check  [CREW]      status, failing if a kept line is down (the after-boot test)
     crew.py log NAME [CREW]    the end of one line's log
@@ -271,6 +272,30 @@ def serve(crew):
         time.sleep(2)
 
 
+def desktop(crew):
+    """One pass of the crew's desktop lines, in someone's session: what the
+    supervisor started with the machine cannot do, having no desktop (Windows
+    keeps session 0 apart). The sign-in task runs this every minute; a line is
+    run when its interval has passed since it last wrote its log."""
+    if not has_desktop():
+        sys.exit("crew: no desktop here to put anything on")
+    lines, bad = order(crew)
+    for line in lines:
+        svc, (kind, every) = line["svc"], line["when"]
+        if not svc.get("desktop"):
+            continue
+        log = STATE / f"{line['name']}.log"
+        if kind == "every" and log.exists() and time.time() - log.stat().st_mtime < seconds(every) - 5:
+            continue
+        try:
+            p = start(line)
+            p.wait(timeout=120)
+            if p.returncode:
+                say(f"{line['name']}: ran (desktop pass), and failed ({p.returncode})")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            say(f"{line['name']}: desktop pass: {e}")
+
+
 def status(crew, strict=False):
     lines, bad = order(crew)
     sup = supervising(crew)
@@ -311,6 +336,8 @@ def main():
         sys.exit(f"crew: no crew {crew} (machines/crews/{crew}/services)")
     if verb == "serve":
         return serve(crew)
+    if verb == "desktop":
+        return desktop(crew)
     if verb in ("status", "check"):
         return status(crew, strict=verb == "check")
     sys.exit(__doc__.split("\n\n")[1])

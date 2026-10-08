@@ -1,11 +1,11 @@
 # production: the crew, its one service, and the page at its door
 
-**Status, 2026-10-07: the supervisor is built, not installed.** Its menus
+**Status, 2026-10-07: built; installed by `fcpm crew install`.** Its menus
 (`residency.yml` in `troves/pools`, `troves/kiosk-screen` and here), its order
-(`services`), the supervisor (`../crew.py`), the episode supervisor
-(`troves/pools/episodes.py`) and `fcpm crew` are in. Nothing runs it yet: the
-install (the task, and whether it starts with the machine or at sign-in) and
-the door are next, each its own change.
+(`services`), the supervisor (`../crew.py`), its task (`../crew.ps1`), the
+episode supervisor (`troves/pools/episodes.py`) and `fcpm crew` are in. It
+starts with the computer (Autumn, 2026-10-07: a welcome screen before anyone
+signs in is the experiment it makes room for). The door is next.
 Production is a crew (`../README.md`): the recordings after they land, and
 the door where members meet them. Editing bay 1 (`EDIT2`) is the first to put
 it on. Like station-node's one service on its Mac: one supervisor, installed
@@ -67,8 +67,16 @@ What any machine wearing production owes, so a peer can step in beside it:
   firewall prompting per interpreter). Its children get no console (the pool's
   headless-console lesson, `pool-server-no-console`): output goes to files
   under `%LOCALAPPDATA%\editing-bay-1\`.
-- **The pool task folds into it.** Today's per-minute pool (the Remote Control
-  server, held off; the roller screen) become two of its lines. One task, not two.
+- **The pool task is its desktop half.** A task started with the computer has
+  no desktop (Windows keeps session 0 apart), so it cannot put the rolling TV's
+  page on a screen. The pool's every-minute task, in the signed-in session,
+  runs the crew's `desktop` lines from the same order (`crew.py desktop`). One
+  crew, one order, one supervisor program; two tasks only because Windows
+  keeps desktops apart.
+- **As whom.** This machine's user, with no stored password (S4U): the local
+  disks and the Drobo, not network shares or Credential Manager secrets. The
+  depot is out of reach from this bay anyway; when it is not, a stored
+  credential is the change.
 
 ## What it runs: residencies, then the order
 
@@ -124,8 +132,5 @@ It is built for someone who walked into the studio, not for us:
 - **The first workflow** to build the page around. The proposal's guess:
   *I recorded tonight* (find the night, name it for a show, release the
   episode), since every piece of it exists on the timeline already.
-- **Which account it runs as** at startup with nobody signed in: this user
-  with a stored credential (it can then reach the depot's shares), or without
-  one (local disk and the Drobo only).
 - **Whether the pools page moves under the door** (`/pools/`) or keeps its own
   port and window. The proposal: under the door, so there is one address.
