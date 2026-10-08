@@ -157,8 +157,11 @@ a show without one gets the machine's barest default (`pools.yml`
 `pipeline:`). `eject: false` (the default) writes nothing: every run reads
 the managed pipeline fresh, and render only shows what it would make.
 `eject: true` renders the pipeline with an episode's details and edit list
-into a config of its own (`ejected\<show>\<out>.yml` beside the groups, or
-`pipeline: eject_to:`), the copy automation can run from as it stands.
+into a config of its own when the episode is released: `episodes/<out>.yml` in
+the show's own repository (its record's `repository:`; private, since an
+episode names people), committed in the checkout kept for it,
+`work/<repo>@ejected` (`bin/refs work <repo> ejected`), and pushed by a
+person. The copy automation can run from as it stands; render only shows it.
 Audition's steps are named, not run, until its panel proves out.
 
 **An episode is held until it is released.** Not "published": releasing

@@ -13,6 +13,7 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
+CODE = REPO.parent.parent   # ~/code: refs/ and work/ beside each other
 PORT = 8091
 AUDIO = {".wav", ".aif", ".aiff", ".mp3", ".m4a", ".flac", ".caf", ".ogg"}
 SYSTEM = {"System Volume Information"}   # and anything starting "$" or ".": Windows' and macOS's own
@@ -719,7 +720,7 @@ def shows(cfg=None):
     for f in sorted((REPO / "site" / "_shows").glob("*.md")):
         head = f.read_text(encoding="utf-8").split("---")
         meta = yaml.safe_load(head[1]) if len(head) > 2 else {}
-        s = {"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem)}
+        s = {"slug": meta.get("slug", f.stem), "title": meta.get("title", f.stem), "repository": meta.get("repository")}
         if cfg is not None:
             s["pipeline"] = pipeline(cfg, meta.get("pipeline"))
         out.append(s)
@@ -786,7 +787,7 @@ def release(cfg, body):
     save_groups(gs)
     written = None
     if on:
-        written = render(cfg, body)["written"]
+        written = render(cfg, body, write=True)["written"]
         if written:
             ev["config"] = written
             save_groups(gs)
@@ -802,9 +803,10 @@ def out_name(g):
     return f"{g['show']}-" + datetime.fromtimestamp(g["start"]).strftime("%Y%m%d")
 
 
-def render(cfg, body):
+def render(cfg, body, write=False):
     """The show's pipeline with one episode's metadata and edit list: what
-    automation would run. Written out only when the pipeline is ejected."""
+    automation would run. Written out only on release (write), and only when
+    the pipeline is ejected; otherwise shown, not kept."""
     g = show_group(groups(), float(body["start"]), float(body["end"]))
     if not g:
         raise ValueError("no show's group there")
@@ -819,13 +821,25 @@ def render(cfg, body):
            "pipeline": {"from": p["from"], "steps": p["steps"]},
            "settings": body.get("settings") or {},
            "clips": [{"path": c.get("path"), "start": c.get("start"), "end": c.get("end")} for c in body.get("clips") or []]}
-    if not p["eject"]:
+    if not (p["eject"] and write):
         return {"written": None, "config": doc}
-    d = Path(os.path.expandvars(str((cfg.get("pipeline") or {}).get("eject_to") or ""))) if (cfg.get("pipeline") or {}).get("eject_to") \
-        else groups_file().with_name("ejected")
-    f = d / g["show"] / f"{name}.yml"
+    # Ejected, it goes to the show's own repository (private: an episode names
+    # people), into the checkout kept for it beside the others: work/<repo>@ejected,
+    # made with `bin/refs work <repo> ejected`. Committed there; pushed by a person.
+    repo = (show.get("repository") or "").split("/")[-1]
+    if not repo:
+        raise ValueError(f"{show['title']} names no repository to eject into (site/_shows/{g['show']}.md repository:)")
+    d = CODE / "work" / f"{repo}@ejected"
+    if not (d / ".git").exists():
+        raise ValueError(f"no checkout of {repo} to eject into: bin/refs work {repo} ejected")
+    f = d / "episodes" / f"{name}.yml"
     f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    f.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8", newline="\n")
+    rel = f.relative_to(d).as_posix()
+    git = ["git", "-C", str(d)]
+    subprocess.run(git + ["add", rel], check=True, capture_output=True)
+    if subprocess.run(git + ["diff", "--cached", "--quiet"]).returncode:   # something changed: commit it
+        subprocess.run(git + ["commit", "-q", "-m", f"episodes: {name}, as released"], check=True, capture_output=True)
     return {"written": str(f), "config": doc}
 
 

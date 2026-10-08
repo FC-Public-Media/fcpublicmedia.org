@@ -1501,9 +1501,9 @@
     });
     if (!ol.children.length) ol.appendChild(el('li', 'none', 'no steps'));
     pb.appendChild(ol);
-    var rd = el('button', 'mark', pl && pl.eject ? 'render' : 'render (dry)');
-    rd.title = pl && pl.eject ? 'write this episode’s config: the show’s pipeline, its details, and the edit list of what plays'
-                              : 'managed: shows what would be rendered, writes nothing';
+    var rd = el('button', 'mark', 'render (dry)');
+    rd.title = 'what releasing would hand on: the show’s pipeline, this episode’s details, and the edit list of what plays. Writes nothing' +
+               (pl && pl.eject ? ' (releasing writes it to the show’s repository)' : '');
     var res = el('div', 'saved');
     rd.onclick = function () {
       var clips = within(g.start, g.end).filter(function (x) { return !skipped(x); })
