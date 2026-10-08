@@ -1,12 +1,12 @@
-The EdgeRouter X trove: three donated routers made dumb switches
+The digitization pack: the troves that stream and record the studio, named in one place
 
-troves/edgerouter-x: one config (switch.cfg) that makes any EdgeRouter X a
-five-port gigabit switch with no routing, NAT, DHCP server or cloud, and the
-recipe to prepare each unit from a factory reset.
+troves/digitization: a pack (a trove whose gear is other troves). Reference
+only; drafted by station-node, which is the digitization crew today.
 
-- [x] unit 1 reset and read (EdgeOS v2.0.9-hotfix.2, factory config)
-- [x] switch.cfg drafted: all ports in switch0, DHCP management, UNMS off
-- [x] login password generated into Credential Manager (fcpm-edgerouter-x:ubnt), not in any file
-- [x] Autumn approved switch.cfg; units 1, 2 and 3 prepared (both phases, confirmed by link-local)
-- [x] EdgeOS v3 (unit 2) refuses a password without a symbol: shared password rotated to one with a symbol
-- [ ] the three join the studio network (DHCP; reservations if fixed numbers wanted)
+- [x] inputs -> toolchain -> outlets; the depot is the edge with production
+- [x] the roster: plays / uses / relies on (RØDECaster, ATEM, HELO, Integra, roller TV, enhance, Drobo, Audio Hijack, OBS)
+- [x] the depot contract, the spool, the four things a host must give
+- [x] linked from troves/README.md and docs/README.md
+- [ ] Autumn reads the shape
+- [ ] FCPM reacts: does "relies on" name the Drobo the way they run it?
+- [ ] .pr back to main's before merge

@@ -75,6 +75,7 @@ files.
 | [`ki-pro/`](ki-pro/) | an AJA Ki Pro: ProRes recorder and player, read over the LAN | Studio Ki Pro, the TriCaster's backup recorder, read from editing bay 1 |
 | [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | retired 2026-10-06: it won't join any network here. Kept for its notes |
 | [`ptz/`](ptz/) | PTZ cameras on the studio network: presets operators trigger, and behind-the-scenes capture | concept, waiting on the donated cameras |
+| [`digitization/`](digitization/) | a pack, not a trove: the troves that stream and record the studio, and how they chain | drafted by station-node 2026-10-07, for reference |
 
 ## Troves in their own repositories
 
