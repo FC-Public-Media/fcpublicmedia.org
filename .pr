@@ -1,12 +1,13 @@
-The digitization pack: the troves that stream and record the studio, named in one place
+digitization: the crew's contract, as it is split up today
 
-troves/digitization: a pack (a trove whose gear is other troves). Reference
-only; drafted by station-node, which is the digitization crew today.
+crews/digitization/CREW.md, in the shape #238 sets up. Drafted by station-node,
+which wears digitization today. Waits on #238 (crews/ at the top level).
 
 - [x] inputs -> toolchain -> outlets; the depot is the edge with production
 - [x] the roster: plays / uses / relies on (RØDECaster, ATEM, HELO, Integra, roller TV, enhance, Drobo, Audio Hijack, OBS)
 - [x] the depot contract, the spool, the four things a host must give
-- [x] linked from troves/README.md and docs/README.md
+- [x] moved from troves/digitization to crews/digitization/CREW.md
+- [ ] after #238 lands: rebase, link CREW.md from crews/README.md's table
 - [ ] Autumn reads the shape
 - [x] the Drobo partition is ours by configuration, hosted by editing bay 1: their part is to attach and share it
 - [x] a crew of roles with plural members: capture (station-node, macOS), tank host and screen (editing bay 1, Windows)

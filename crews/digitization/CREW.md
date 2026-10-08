@@ -1,13 +1,13 @@
-# The digitization pack
+# digitization: the crew that streams and records the studio
 
-**If your machines stream and record the studio, this is what they are made
-of.** A pack is a trove whose gear is other troves: it names them, splits the
-work into roles, and says who fills each role today. It carries none of the
-troves.
+**The contract for digitization, the way it is split up today.** It names the
+troves it plays, splits the work into roles, and says which machine fills each
+role. It carries none of the troves. Crews are explained in
+[`../README.md`](../README.md).
 
-Status: draft, for reference. This is the working configuration, written down by
-station-node and kept here because most of what it names is FCPM's, and because
-one of its members is an FCPM machine. Nothing reads this directory yet.
+Status: draft, written by station-node, which wears this crew today. It lives
+here because most of what it names is FCPM's, and because one of its members is
+an FCPM machine. There is no `services` order yet.
 
 ## What digitization is
 
@@ -52,9 +52,9 @@ the tank. Digitization meets it at the contract and nowhere else.
 | AJA HELO | input and outlet: the hardware encoder; records and streams | capture | [`aja-helo`](https://github.com/FC-Public-Media/aja-helo) |
 | Integra DTR-6.3 | monitor: the room-sized one | capture | no trove yet |
 | the Drobo B810i, its 1 TB partition | the tank: where every capture lands | tank host | [`drobo`](https://github.com/FC-Public-Media/drobo) |
-| roller TV | outlet: a screen on a stand | screen | [`../kiosk-screen/`](../kiosk-screen/), [`../../instruments/`](../../instruments/README.md) |
-| Audio Hijack | gear: the recorder on macOS | capture | [`../recorder/`](../recorder/README.md) |
-| OBS | gear: the recorder on Windows, and more | any, its own copy | [`../recorder/`](../recorder/README.md) |
+| roller TV | outlet: a screen on a stand | screen | [`troves/kiosk-screen`](../../troves/kiosk-screen/), [`instruments`](../../instruments/README.md) |
+| Audio Hijack | gear: the recorder on macOS | capture | [`troves/recorder`](../../troves/recorder/README.md) |
+| OBS | gear: the recorder on Windows, and more | any, its own copy | [`troves/recorder`](../../troves/recorder/README.md) |
 
 Coming, not named yet: the VCR; a multichannel interface, so the podcast studio
 can leave as separate channels as well as the merged pair; the rack compressors
