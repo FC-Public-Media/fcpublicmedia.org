@@ -1,12 +1,18 @@
-The EdgeRouter X trove: three donated routers made dumb switches
+digitization: the crew's contract, as it is split up today
 
-troves/edgerouter-x: one config (switch.cfg) that makes any EdgeRouter X a
-five-port gigabit switch with no routing, NAT, DHCP server or cloud, and the
-recipe to prepare each unit from a factory reset.
+crews/digitization/CREW.md, in the shape #238 sets up. Drafted by station-node,
+which wears digitization today. 
 
-- [x] unit 1 reset and read (EdgeOS v2.0.9-hotfix.2, factory config)
-- [x] switch.cfg drafted: all ports in switch0, DHCP management, UNMS off
-- [x] login password generated into Credential Manager (fcpm-edgerouter-x:ubnt), not in any file
-- [x] Autumn approved switch.cfg; units 1, 2 and 3 prepared (both phases, confirmed by link-local)
-- [x] EdgeOS v3 (unit 2) refuses a password without a symbol: shared password rotated to one with a symbol
-- [ ] the three join the studio network (DHCP; reservations if fixed numbers wanted)
+- [x] inputs -> toolchain -> outlets; the depot is the edge with production
+- [x] the roster: plays / uses / relies on (RØDECaster, ATEM, HELO, Integra, roller TV, enhance, Drobo, Audio Hijack, OBS)
+- [x] the depot contract, the spool, the four things a host must give
+- [x] moved from troves/digitization to crews/digitization/CREW.md
+- [x] rebased on #238; linked from crews/README.md's table
+- [x] the pools read every disk in place: capture shares its scratch and grants production read
+- [x] the Debian member (machines/digitization), multitrack, never in place, the silence-split question
+- [ ] Autumn reads the shape
+- [x] the Drobo partition is ours by configuration, hosted by editing bay 1: their part is to attach and share it
+- [x] a crew of roles with plural members: capture (station-node, macOS), tank host and screen (editing bay 1, Windows)
+- [x] members answer, not asked: station-node's capture verbs are written
+- [ ] editing bay 1 writes its answers: tank host and screen
+- [ ] .pr back to main's before merge

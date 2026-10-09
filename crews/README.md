@@ -58,7 +58,7 @@ there is none, and production is where there first is one.
 |---|---|---|
 | [`production`](production/CREW.md) | the recordings after they land: pools, transcription, episodes and their release, the door at the bay | editing bay 1 (`EDIT2`) |
 | `kiosk` | the media node: the door at the front, the screens, check-in. Its profile is `../machines/kiosk-1/` today | kiosk-1 (`200-FCPANEDIT2`) |
-| `digitization` | capture: arming, presence, the ledger, the recorders, the tank. Its contract arrives from station-node as `digitization/CREW.md` | station-node; editing bay 1 is a member (it hosts the tank, the Drobo's 1 TB partition shared as `enhance`, and drives the rolling TV) |
+| `digitization` | capture: arming, presence, the ledger, the recorders, the tank. Its contract: [`digitization/CREW.md`](digitization/CREW.md) | station-node; editing bay 1 is a member (it hosts the tank, the Drobo's 1 TB partition shared as `enhance`, and drives the rolling TV) |
 
 ## Why this way
 
