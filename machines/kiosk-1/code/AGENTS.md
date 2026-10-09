@@ -74,12 +74,12 @@ before trusting anyone's guess, including your own.
 - `bin/refs pull` and `bin/refs status` keep the mirrors current. A pull
   brings this file with it.
 - `door.py startup` checks the logon task, `door.py screens` checks the
-  panels, `door.py sessions` checks the `startup` seat, and `door.py` alone
+  panels, `door.py sessions` lists the Claude sessions, and `door.py` alone
   checks the door. The log is `%LOCALAPPDATA%\media-node\door.log`.
-- **The seat, not yet the server.** Production keeps a `production` Remote
-  Control server and no session. This box still keeps one background session,
-  `startup`, through `door.py supervise` (PR #184). Moving to a `kiosk` server
-  is this profile's change to make (site repo `machines/README.md`).
+- **No seat** (Autumn, 2026-10-09). The door no longer keeps a `startup`
+  session. Sessions arrive through the root's Remote Control server, as on
+  production (site repo `machines/README.md`). Having the door keep that
+  server running is still this profile's change to make.
 - **The weekly pull is the gate, and sessions here run it** (Autumn,
   2026-10-05). This box has no keyboard or mouse. It is out of people's reach,
   and its ports are not for playing with; people meet it only through its

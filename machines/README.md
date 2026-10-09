@@ -362,8 +362,8 @@ server stays up for the next one.
 - Editing bay 1 does this in `code/bin/pool.ps1`. Each minute's pass starts
   the server if none is running, and leaves alone one started by hand in a
   terminal.
-- Kiosk-1 is moving its door to the same server with no session (its own
-  change).
+- Kiosk-1's door keeps no session (2026-10-09). Having the door keep the
+  server running too is still its own change to make.
 
 ## What is not decided
 

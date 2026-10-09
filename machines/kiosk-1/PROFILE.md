@@ -170,16 +170,12 @@ instance per panel with a profile folder of its own under
 `%LOCALAPPDATA%\media-node\screens\`. The door opens any missing panel when
 it starts, and `door.py screens --launch` does the same by hand.
 
-One Claude session comes back the same way, and only one. Every pass,
-`supervise` makes sure a background session named `startup` is running, rooted
-at `~/code` with Remote Control on, so the node is reachable from a phone
-whether or not anybody is at this desk. `door.py sessions` says whether it is
-up and prints its id, which `claude attach <id>` opens in a terminal (the name
-is for finding it; attach takes the id). `door.py sessions
-off|on` stops and resumes the node starting it; a session already running is
-never stopped by either.
+No Claude session comes back that way. Sessions arrive through the root's
+Remote Control server (`machines/README.md`), and the door starts none of its
+own. `door.py sessions` lists what is running, with ids that
+`claude attach <id>` opens in a terminal.
 
-Every pass also writes down what `claude agents --json` lists, into
+Every pass writes down what `claude agents --json` lists, into
 `%LOCALAPPDATA%\media-node\sessions.json`, so no session ids go in the repo.
 That snapshot is a record and nothing else: `door.py sessions` prints it, and
 nothing is resumed from it. It is stamped against the sign-in rather than the
@@ -198,6 +194,13 @@ cannot keep; one seat it starts itself, every pass, is one it can. Station-node
 turned its own revival off for a different reason — a revived session could
 take a grant meant for a new one. This node has no grants, so that doesn't
 apply here yet.
+
+**Why none** (Autumn, 2026-10-09). The `startup` seat ran outside the Remote
+Control server, so it never showed in the device lists, and it raced Claude's
+own updates. An update restarts the background daemon, the seat drops out of
+`claude agents` while the daemon resumes it, and the pass started a second
+`startup` (13:32 that day, on 2.1.296). The seat is gone, and so is
+`door.py sessions off|on`.
 
 **The weekly gate** (Autumn, 2026-10-05). A kiosk has no keyboard or mouse
 attached and sits out of people's reach. Nobody plays with its ports, and

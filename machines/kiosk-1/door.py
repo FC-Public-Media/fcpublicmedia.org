@@ -6,7 +6,7 @@
     door.py startup            what starts the door at logon, and does it point here
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
-    door.py sessions [off|on]  the one session this node keeps, and what else is running
+    door.py sessions           what Claude sessions are running, and what ran at the last pass
     door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
     door.py tell [mint|register]       our Tell's signer, and listing it with our Atlas
     door.py camera [arm [SECS]|off]    arm the camera for a code (THE CAMERA), stop it, or ask
@@ -61,9 +61,8 @@ It starts `supervise` at logon and again every five minutes, and a start
 while one is already running is ignored. That is launchd's KeepAlive, with
 five minutes of slack. `supervise` also holds a named mutex, so a second copy
 started some other way leaves at once instead of fighting over 8080. Once the
-door answers, `supervise` brings up any screen in node.yml that is missing,
-and makes sure the one Claude session this node keeps for itself is running in
-the background, where Remote Control reaches it (see "sessions" below).
+door answers, `supervise` brings up any screen in node.yml that is missing.
+It starts no Claude session (see "sessions" below).
 
 What it cannot do is log on. After a power cut the box waits at the sign-in
 screen until someone signs in, and signing in automatically needs an
@@ -2939,12 +2938,18 @@ def screens(launch=False, reset=False, say=print):
 
 
 # ------------------------------------------------------------------ sessions --
-# ONE SESSION IS KEPT, AND IT IS NOT ANYBODY'S WORK. `supervise` makes sure a
-# background session named `startup` is running, rooted at ~/code with Remote
-# Control on, so the node is reachable whether or not somebody is at the
-# console. Every pass, not only after a sign-in.
+# NO SESSION IS KEPT (Autumn, 2026-10-09). Sessions arrive through the root's
+# Remote Control server (machines/README.md, "how its sessions arrive"), and
+# the door starts none of its own.
 #
-# What this replaced, and why (2026-10-03): the node used to write down every
+# The `startup` seat this replaced: from 2026-10-03, every pass started a
+# background session named `startup` if none was listed. It ran outside the
+# server, so it never showed in the device lists, and it raced Claude's own
+# updates: an update restarts the background daemon, the seat drops out of
+# `claude agents` for a moment, and the pass started a second `startup` while
+# the daemon was resuming the first (2026-10-09, 13:32, on 2.1.296).
+#
+# What the seat replaced, and why (2026-10-03): the node used to write down every
 # session it saw and resume each one at the first pass after a sign-in. That
 # restored the desktop, but only at a sign-in. Three sessions revived on
 # 10-01 died later in that same sign-in; revival had already fired, and the
@@ -2958,8 +2963,6 @@ def screens(launch=False, reset=False, say=print):
 # ids stay here, in LOCALAPPDATA, never in the repo.
 SESSIONS = STATE / "sessions.json"
 CLAUDE = shutil.which("claude") or str(pathlib.Path.home() / ".local" / "bin" / "claude.exe")
-STARTUP_NAME = "startup"
-STARTUP_CWD = pathlib.Path.home() / "code"      # AGENTS.md: sessions start here
 
 
 def claude(*args, cwd=None):
@@ -3056,52 +3059,13 @@ def snapshot_sessions():
         return log("sessions: could not list them; keeping the last snapshot")
     book = read_sessions()
     book.pop("pins", None)          # revival is gone; the key was its, not the snapshot's
+    book.pop("startup", None)       # so is the seat, and its off switch
     book.update(taken=time.time(), sessions=live)
     write_sessions(book)
 
 
-def startup_off():
-    return bool((read_sessions().get("startup") or {}).get("off"))
-
-
-def ensure_startup_session(say=log):
-    """Start the kept session if it is not running. Every pass: a seat that
-    only refills at a sign-in is the hole this replaced (see above).
-
-    Matched BY NAME, not by directory. Editing bay 1's `bin/pool.ps1`
-    (machines/editing-bay-1/) counts any session standing in the root, so the
-    person at the console fills the seat; here the seat is its own, because
-    what it is for is being reachable after everybody goes home.
-
-    No first message. `--bg` with nothing to do starts idle and reachable
-    (2026-10-03, both ways tried on this box), so the seat costs no turn and
-    sits waiting. pool.ps1 passes its name as a prompt; that is not needed.
-    """
-    if startup_off():
-        return 0
-    live = running_sessions()
-    if live is None:
-        say("sessions: could not list them; leaving %s alone" % STARTUP_NAME)
-        return 1
-    if any(s.get("name") == STARTUP_NAME for s in live):
-        return 0
-    cwd = str(STARTUP_CWD) if STARTUP_CWD.is_dir() else None
-    code, out = claude("--bg", "--name", STARTUP_NAME, "--remote-control", cwd=cwd)
-    last = out.splitlines()[-1] if out else ""
-    say("sessions: %s %s in %s%s" % ("started" if code == 0 else "could not start",
-                                     STARTUP_NAME, cwd or "the door's directory",
-                                     "" if code == 0 else ": " + last))
-    return 0 if code == 0 else 1
-
-
 def keep_sessions():
-    # The seat first, so the snapshot taken after it records the session it
-    # just started rather than reporting the node empty for five minutes.
     while True:
-        try:
-            ensure_startup_session()
-        except Exception as exc:
-            log("sessions: startup %r" % exc)
         try:
             snapshot_sessions()
         except Exception as exc:
@@ -3110,16 +3074,8 @@ def keep_sessions():
 
 
 def sessions(argv):
-    """door.py sessions        the kept session, and what else is running
-    door.py sessions off   stop starting it; what is running is left alone
-    door.py sessions on    keep it again, from the next pass"""
+    """door.py sessions        what is running, and what ran at the last pass"""
     book = read_sessions()
-    if len(argv) == 1 and argv[0] in ("off", "on"):
-        book["startup"] = {"off": argv[0] == "off"}
-        write_sessions(book)
-        print("%s  %s" % (STARTUP_NAME, "off: nothing starts it. Already running, it stays"
-                          if argv[0] == "off" else "on: the next supervise pass starts it"))
-        return 0
     if argv:
         print(sessions.__doc__)
         return 2
@@ -3132,17 +3088,9 @@ def sessions(argv):
     print("snapshot  %s%s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(taken)) if taken else "never",
                               "  (before this sign-in: what it lists is gone)"
                               if taken and taken < signed_in_at() else ""))
-    kept = [s for s in live or [] if s.get("name") == STARTUP_NAME]
-    print("%-9s %s" % (STARTUP_NAME,
-                       "off, by `door.py sessions off`" if startup_off() else
-                       "unknown: could not list sessions" if live is None else
-                       "running (%s)" % kept[0]["id"][:8] if kept else
-                       "missing: the next supervise pass starts it"))
     rows = {s["id"]: s for s in book.get("sessions") or []}
     rows.update({s["id"]: s for s in live or []})
     for sid, s in rows.items():
-        if s.get("name") == STARTUP_NAME:
-            continue
         state = "running" if sid in live_ids else ("unknown" if live is None else "stopped")
         print("%-9s %-11s %s  %s" % (state, s.get("kind") or "", sid[:8], s.get("name") or ""))
     return 0
