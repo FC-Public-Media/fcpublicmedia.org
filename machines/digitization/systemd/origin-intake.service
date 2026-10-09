@@ -1,0 +1,9 @@
+# GitHub's main -> FCPM's origin. Run by origin-intake.timer; see ../origin-intake.
+[Unit]
+Description=FCPM origin: take GitHub's main into /srv/origin
+ConditionPathIsMountPoint=/srv/origin
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.local/bin/origin-intake
+TimeoutStartSec=300

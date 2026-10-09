@@ -1,0 +1,10 @@
+# Every minute. Periodic until GitHub can call us (a webhook) instead.
+[Unit]
+Description=FCPM origin: check GitHub's main every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+
+[Install]
+WantedBy=timers.target

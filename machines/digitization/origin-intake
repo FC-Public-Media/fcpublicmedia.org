@@ -1,0 +1,174 @@
+#!/usr/bin/python3
+"""origin-intake: GitHub's main -> FCPM's origin, by itself, every minute.
+
+    origin-intake            check every repo once, take what moved
+    origin-intake --status   print the last state, change nothing
+
+The origin is bare repos at /srv/origin/<owner>/<repo>, each with one remote,
+`github`. Only main is tracked: a merge on GitHub is the moment we pay attention.
+Other branches are not fetched.
+
+One GraphQL query reads every repo's main. Only repos whose main moved are fetched,
+into github/main. Then, for origin's own main:
+
+    same as github/main              nothing to do
+    behind it                        fast-forward
+    ahead of it                      leave it (a station fast-forwarded in; publishing is separate)
+    both moved                       merge in memory; clean -> our own merge commit,
+                                     conflict -> recorded, main untouched
+
+Nothing is forced and nothing is deleted. A failure in one repo is recorded and
+the next repo goes on: this must never make us crap the bed.
+
+State for a page to read: /srv/origin/.intake/state.json, and every action
+appended to /srv/origin/.intake/actions.ndjson.
+
+System python, stdlib only, plus git and gh (gh holds the GitHub login).
+"""
+import datetime
+import fcntl
+import json
+import os
+import subprocess
+import sys
+
+ORIGIN = os.environ.get("FCPM_ORIGIN", "/srv/origin")
+STATE_DIR = os.path.join(ORIGIN, ".intake")
+STATE = os.path.join(STATE_DIR, "state.json")
+ACTIONS = os.path.join(STATE_DIR, "actions.ndjson")
+CRED = ["-c", "credential.helper=!gh auth git-credential"]
+WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@digitization.local"]
+
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def git(repo, *args, check=True, timeout=120):
+    return subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True,
+                          check=check, timeout=timeout)
+
+
+def ref(repo, name):
+    r = git(repo, "rev-parse", "--verify", "-q", name, check=False)
+    return r.stdout.strip() or None
+
+
+def is_ancestor(repo, a, b):
+    return git(repo, "merge-base", "--is-ancestor", a, b, check=False).returncode == 0
+
+
+def repos():
+    """owner/repo for every bare repo with a github remote."""
+    out = []
+    for owner in sorted(os.listdir(ORIGIN)):
+        d = os.path.join(ORIGIN, owner)
+        if owner.startswith(".") or owner == "lost+found" or not os.path.isdir(d):
+            continue
+        for name in sorted(os.listdir(d)):
+            p = os.path.join(d, name)
+            if os.path.isfile(os.path.join(p, "HEAD")) and \
+               git(p, "config", "remote.github.url", check=False).stdout.strip():
+                out.append(owner + "/" + name)
+    return out
+
+
+def github_mains(names):
+    """{owner/repo: sha of GitHub's main}, in one query. Missing on any error."""
+    parts = []
+    for i, full in enumerate(names):
+        owner, name = full.split("/", 1)
+        parts.append('r%d: repository(owner: %s, name: %s) { ref(qualifiedName: "refs/heads/main") '
+                     '{ target { oid } } }' % (i, json.dumps(owner), json.dumps(name)))
+    q = "query { %s }" % " ".join(parts)
+    r = subprocess.run(["gh", "api", "graphql", "-f", "query=" + q],
+                       capture_output=True, text=True, timeout=60)
+    data = json.loads(r.stdout or "{}").get("data") or {}
+    out = {}
+    for i, full in enumerate(names):
+        node = data.get("r%d" % i) or {}
+        oid = ((node.get("ref") or {}).get("target") or {}).get("oid")
+        if oid:
+            out[full] = oid
+    return out
+
+
+def take(full, theirs_remote):
+    """Bring one repo's origin main up to date with GitHub's. Returns its row."""
+    p = os.path.join(ORIGIN, full)
+    row = {"repo": full}
+    if ref(p, "refs/heads/github/main") != theirs_remote:
+        git(p, *CRED, "fetch", "-q", "github", "+refs/heads/main:refs/heads/github/main", timeout=180)
+        row["fetched"] = True
+    theirs = ref(p, "refs/heads/github/main")
+    ours = ref(p, "refs/heads/main")
+    row.update(github=theirs, main=ours)
+
+    if ours is None:
+        git(p, "update-ref", "refs/heads/main", theirs, "")
+        row.update(state="seeded", main=theirs, did="main created from github/main")
+    elif ours == theirs:
+        row["state"] = "even"
+    elif is_ancestor(p, ours, theirs):
+        git(p, "update-ref", "refs/heads/main", theirs, ours)
+        row.update(state="even", main=theirs, did="fast-forwarded to github/main")
+    elif is_ancestor(p, theirs, ours):
+        row["state"] = "ahead"          # ours has what GitHub has, and more
+    else:
+        m = git(p, "merge-tree", "--write-tree", "--name-only", ours, theirs, check=False)
+        if m.returncode == 0:
+            tree = m.stdout.split("\n", 1)[0].strip()
+            msg = "Merge GitHub's main into origin's main"
+            commit = git(p, *WHO, "commit-tree", tree, "-p", ours, "-p", theirs, "-m", msg).stdout.strip()
+            git(p, "update-ref", "refs/heads/main", commit, ours)
+            row.update(state="ahead", main=commit, did="merged github/main cleanly")
+        else:
+            # after the tree: the conflicted paths, a blank line, then git's messages
+            files = m.stdout.split("\n\n", 1)[0].splitlines()[1:]
+            row.update(state="conflict", conflicts=files[:50],
+                       did="github/main does not merge clean; main left alone")
+    return row
+
+
+def main():
+    os.makedirs(STATE_DIR, exist_ok=True)
+    if "--status" in sys.argv:
+        print(open(STATE).read() if os.path.exists(STATE) else "no state yet")
+        return 0
+    with open(os.path.join(STATE_DIR, "lock"), "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return 0                    # the last run is still going
+        names = repos()
+        try:
+            remote = github_mains(names)
+        except Exception as e:          # offline, GitHub down: say so, change nothing
+            remote, offline = {}, repr(e)
+        else:
+            offline = None if remote else "GitHub did not answer"
+        rows = []
+        for full in names:
+            if full not in remote:
+                rows.append({"repo": full, "state": "unchecked", "main": ref(os.path.join(ORIGIN, full), "refs/heads/main")})
+                continue
+            try:
+                row = take(full, remote[full])
+            except Exception as e:
+                row = {"repo": full, "state": "error", "error": str(e)[-500:]}
+            rows.append(row)
+        stamp = now()
+        with open(ACTIONS, "a") as log:
+            for row in rows:
+                if row.get("did") or row["state"] == "error":
+                    log.write(json.dumps({"at": stamp, **row}) + "\n")
+        tmp = STATE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump({"checked": stamp, "github": "unreachable: " + offline if offline else "ok",
+                       "repos": rows}, f, indent=1)
+        os.replace(tmp, STATE)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
