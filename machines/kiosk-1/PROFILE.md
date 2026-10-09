@@ -175,6 +175,18 @@ Remote Control server (`machines/README.md`), and the door starts none of its
 own. `door.py sessions` lists what is running, with ids that
 `claude attach <id>` opens in a terminal.
 
+The server itself the door does keep, every minute: `claude remote-control
+--no-create-session-in-dir` at `~/code`, as production's `pool.ps1` does, with
+its output in `%LOCALAPPDATA%\media-node\server.*`. Claude updates itself
+under it. The daemon restarts for an update and the server doesn't (it sat on
+2.1.292 through three updates, 10-07 to 10-09). So a server older than the
+installed `claude.exe` is bounced, sessions and all, once it has been calm for
+15 minutes: no transcript written and no task running under it (Autumn,
+2026-10-09: sessions don't close, so waiting for them would never end). Each
+change in what holds a bounce is logged as `server: ... held: ...` in
+`door.log`, and that is how to learn what actually blocks one.
+`door.py server` shows the same thing now.
+
 Every pass writes down what `claude agents --json` lists, into
 `%LOCALAPPDATA%\media-node\sessions.json`, so no session ids go in the repo.
 That snapshot is a record and nothing else: `door.py sessions` prints it, and
