@@ -1,6 +1,6 @@
 # Seat · node
 
-`advocate/node` · last spoke **2026-10-07** · 5 session(s) · 6 draft · 0 ready
+`advocate/node` · last spoke **2026-10-09** · 6 session(s) · 6 draft · 0 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -113,9 +113,9 @@ Shape, never a client. Ladder as in `STATUS.md`. Nothing here is promoted anywhe
   board's decisions elsewhere; this seat cannot read it from here. What is needed is that the
   decision, once made, is written somewhere inside this repository so the seat can cite it.
 
-## Last session note — 2026-10-07
+## Last session note — 2026-10-09
 
-### 2026-10-07
+### 2026-10-09
 
 Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
