@@ -5,9 +5,10 @@ troves it plays, splits the work into roles, and says which machine fills each
 role. It carries none of the troves. Crews are explained in
 [`../README.md`](../README.md).
 
-Status: draft, written by station-node, which wears this crew today. It lives
-here because most of what it names is FCPM's, and because one of its members is
-an FCPM machine. There is no `services` order yet.
+Status: draft, written by station-node, which wears this crew today and means to
+vacate it for [`../../machines/digitization/`](../../machines/digitization/PROFILE.md).
+It lives here because most of what it names is FCPM's, and because its members
+are FCPM machines. There is no `services` order yet.
 
 ## What digitization is
 
@@ -36,12 +37,19 @@ meets the contract can fill it, on any platform.
 
 | role | fixed: the contract | free | filled today by |
 |---|---|---|---|
-| **capture** | arms the inputs, records them, and hands each finished capture to the tank in the depot's shape | the recorder, the platform, the timer | station-node (macOS) |
-| **tank host** | keeps the tank attached and shared as `enhance`: capture writes, production reads | which machine is the initiator; how the share is served | editing bay 1 (Windows) |
+| **capture** | arms the inputs, records them, and hands each finished capture to the tank in the depot's shape. Anywhere a capture rests on the way, it is shared, and production is granted read | the recorder, the platform, the timer, the scratch disk | station-node (macOS); `digitization` (Debian), templating |
+| **tank host** | keeps the tank attached and shared as `enhance`: capture is granted write, production read and write | which machine is the initiator; how the share is served | editing bay 1 (Windows) |
 | **screen** | puts an outlet on the roller TV | how it is driven | editing bay 1 (Windows) |
 
-Outside the crew, and relied on: **the enhance queue**, production's watch over
-the tank. Digitization meets it at the contract and nowhere else.
+Outside the crew, and relied on: **production's pools**, the view production
+shepherds the pipeline through. It runs on production's machine and reads every
+disk where a capture rests, in place. Nothing is moved somewhere else to be seen
+better, so every such disk is served to it, with a grant, by whoever holds it.
+
+| disk | held by | served as | granted |
+|---|---|---|---|
+| the tank | tank host | SMB `enhance` | capture: write; production: read, write |
+| capture's scratch | capture | SMB, name not chosen | production: read |
 
 ## What the pack names
 
@@ -91,6 +99,15 @@ questions: what is actually running.
 | hold, and say so | not built yet |
 | the timer | launchd |
 
+### capture: `digitization`, Debian (templating)
+
+A Dell OptiPlex 9020M, live-booted from a USB stick, with no internal drive yet
+(whether one is on hand is being found out). Its profile is
+[`../../machines/digitization/`](../../machines/digitization/PROFILE.md). No
+Audio Hijack on Linux, so every verb above needs an answer here; none is written
+yet. Its scratch for now would be the Buffalo attached to it: a stopgap, because
+that array is degraded and still holds what is waiting to move to the Drobo.
+
 ### tank host and screen: editing bay 1, Windows
 
 For editing bay 1 to write. What station-node knows from outside: the Drobo's
@@ -102,17 +119,22 @@ Drobo, and how it drives the roller TV.
 ## The contract with the depot
 
 Not ours to reshape; the depot's, written down here so both crews read the same
-words.
+words. The tank is a working surface, not a mailbox: captures land and stay, and
+what production does to them (nominations, suppressions, cuts, the gap-free
+renders sent to processing, transcripts) is written beside them and fetchable.
 
 - One folder per capture session: `<instrument>-YYYY-MM-DD-HHMMSS/`.
-- The files as recorded, modified times kept.
+- The files as recorded, modified times kept. **Never changed in place**: an
+  improvement is a new file beside the original.
 - `SHA256SUMS` written **last**. A folder without it is not finished, and
   whoever watches the queue waits.
-- What each capture should also say, so a timeline can use it later: which
-  input, when it started, and where the session broke. Cheap at capture time,
-  hard to recover afterwards. Not done yet.
+- What each capture should also say, because the pools place it on a timeline
+  and cut inside it: which input, when its sound started, and where the session
+  broke. Cheap at capture time, hard to recover afterwards. Not done yet. Audio
+  Hijack's file names give when the *silence* began, not the sound, and the
+  rule fails across a power cut (the RØDECaster trove measured both).
 
-## The spool
+## The scratch
 
 The capture member records to a local disk, never straight to the tank: a
 network stall during a write that runs for an hour is a broken file, and no
@@ -124,7 +146,9 @@ recorder retries it. So the local disk is a buffer, not a home:
 4. if the tank is not there, the file waits, the catch retries on the next
    timer, and anything held longer than a few minutes is reported.
 
-Holding is what happens when something is wrong, not the normal state. Before
+Holding is what happens when something is wrong, not the normal state. While a
+capture is held it is still in view: the scratch is one of the disks the pools
+read, as a stage of its own. Before
 handing on, capture asks whether the tank answers and takes a write; it never
 assumes. A failed check is not something capture can fix: it holds, and says so.
 
@@ -143,14 +167,30 @@ Everything else is the pack's. What the pack cannot carry, by role:
    wants a machine of its own, not a bay's last free port.
 4. **A timer.** One recurring job, to catch what was held.
 
+5. **A share of its scratch**, and the grant that lets production read it.
+
 **tank host**: the initiator, the share, and the accounts that may use it.
 
 Not declared, because any machine has them: a system Python, a scheduler, a
 local disk.
 
+## The RØDECaster's channels
+
+Stereo by default. With **Settings → Outputs → Multitrack → USB** on the device,
+USB 1 carries 16 channels, of which four are mics, one per combo input; the rest
+are the mix, Bluetooth, the pads and the USB returns. USB 1 only: USB 2 runs at
+12 Mb/s and carries a stereo pair. Not yet tried here. More than four separate
+voices still needs a separate interface.
+
 ## Open
 
-- Editing bay 1's answers, above.
+- Editing bay 1's answers, above, and the Debian member's.
+- An internal drive for the Debian member, so the scratch is not the Buffalo.
+- **Whether capture should keep splitting on silence.** If the pools can cut
+  inside a file and suppress what lies between, one continuous recording per
+  session keeps the timing whole and leaves what is kept to the people
+  shepherding it. Splitting decides that at recording time, for good.
+  Production's to answer, as their cut tools arrive.
 - The Integra DTR-6.3 has no trove.
 - Whether capture's check on the tank becomes a handshake between members, one
   supervisor asking another whether it is up.
