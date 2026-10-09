@@ -9,6 +9,7 @@
     door.py sessions [off|on]  the one session this node keeps, and what else is running
     door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
     door.py tell [mint|register]       our Tell's signer, and listing it with our Atlas
+    door.py camera [arm [SECS]|off]    arm the camera for a code (THE CAMERA), stop it, or ask
     door.py                    is the door up
 
 Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
@@ -34,6 +35,9 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
     GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
+    GET /camera            the camera: armed, seconds left, what it last heard (THE CAMERA). The desk polls it
+    POST /camera/arm?for=N, /camera/disarm   arm or stop the camera; this box only (door.py camera)
+    GET /camera/eye        the page the camera runs, in a headless Edge; it POSTs /camera/read
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
@@ -95,7 +99,8 @@ NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
 TYPES = {".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".txt": "text/plain; charset=utf-8",
          ".json": "application/json",
-         ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+         ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+         ".css": "text/css; charset=utf-8",
          ".webmanifest": "application/manifest+json"}
 
 
@@ -194,7 +199,8 @@ AWAKE_LEAD = datetime.timedelta(minutes=60)
 def awake_windows(now=None, days=7):
     """When the screens are awake (docs/SCREENS-DIM.md, Autumn 2026-09-27):
     each host shift in the rota and each class, from an hour before it starts
-    to its end, merged, for the next week. Bookings are not a source: one is
+    to its end, merged, for the next week, and the lights while somebody has
+    them on (THE CAMERA). Bookings are not a source: one is
     always inside host hours, since the host is who lets a member in. As
     [start, end] pairs of epoch milliseconds, for the pages' own clocks."""
     now = now or datetime.datetime.now()
@@ -207,6 +213,9 @@ def awake_windows(now=None, days=7):
             continue
         if now - AWAKE_LEAD < e and b < now + datetime.timedelta(days=days):
             spans.append((b, e))
+    lit = lights_until()                    # somebody here off hours said so (THE CAMERA)
+    if lit:
+        spans.append((now, datetime.datetime.fromtimestamp(lit)))
     merged = []
     for b, e in sorted((b - AWAKE_LEAD, e) for b, e in spans):
         if merged and b <= merged[-1][1]:
@@ -643,6 +652,180 @@ def kiosk_now():
     return {"on": on_now(), "map": stations(), "awake": awake_windows()}
 
 
+# -------------------------------------------------------------------- camera --
+# THE CAMERA (Autumn, 2026-10-08): a webcam on this box reads a code held up
+# to it, a wizard's reply serialized as a QR. It is armed and tripped. Armed,
+# the camera runs and its light is on, and the desk's check-in half says so;
+# nothing watches otherwise, so a code nobody expected cannot trip anything.
+# It is armed by a tap on the desk's button (the panel takes touch), or by
+# `door.py camera arm` from a session.
+# A read trips it: the desk shows what was heard, and the camera stops.
+#
+# The camera runs in a headless Edge the door starts, on /camera/eye, which
+# reads frames with anecdote.channel's own decoder (site/assets/js/qr-decode.mjs)
+# and posts what it read here. Video only: no frame is kept, and Windows
+# refuses this account the microphone (GOTCHAS.log, camera).
+#
+# The first reply it knows is the lights (wizard kiosk+lights, drafted
+# 2026-10-08; the code is made at /lights/ on the site): somebody here off
+# host hours keeps the screens awake until a time, or lets them go. A lights
+# window is one more source in awake_windows(). sig null is the control case,
+# taken for lights only, since lights can do no harm. A passkey signature is
+# refused until it is checked against the members' devices.
+CAMERA_ARM_FOR = 120          # seconds armed, unless asked for longer
+CAMERA_SAY_FOR = 20           # seconds the desk shows what was heard
+REPLY_FRESH = 12 * 3600       # a reply's `issued` must be this recent
+LIGHTS = STATE / "lights.json"
+HEARD = STATE / "camera-heard.json"
+_camera = {"until": 0.0, "proc": None, "said": None, "at": 0.0}
+_camera_lock = threading.Lock()
+
+
+def lights_until():
+    """When the lights go off, epoch seconds, or 0."""
+    try:
+        until = float(json.loads(LIGHTS.read_text(encoding="utf-8")).get("until") or 0)
+    except (OSError, ValueError, AttributeError):
+        return 0
+    return until if until > time.time() else 0
+
+
+def camera_running():
+    p = _camera["proc"]
+    return p is not None and p.poll() is None
+
+
+def camera_arm(secs=CAMERA_ARM_FOR):
+    """Arm for `secs`: start the camera if it isn't running."""
+    with _camera_lock:
+        _camera["until"] = time.time() + max(10, min(int(secs), 3600))
+        _camera["said"] = None
+        if camera_running():
+            return
+        args = [BROWSERS["msedge"], "--headless=new", "--no-first-run",
+                "--user-data-dir=%s" % (STATE / "camera"),
+                "--use-fake-ui-for-media-stream",          # the page asks for video, and gets it unasked
+                "http://127.0.0.1:%d/camera/eye" % PORT]
+        _camera["proc"] = subprocess.Popen(args, creationflags=NO_WINDOW)
+    log("camera: armed for %ds" % secs)
+
+
+def camera_disarm(why="disarmed"):
+    with _camera_lock:
+        _camera["until"] = 0
+        p, _camera["proc"] = _camera["proc"], None
+    if p is not None and p.poll() is None:
+        # The whole tree: Edge's renderer is what holds the camera.
+        subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True,
+                       creationflags=NO_WINDOW)
+        log("camera: %s" % why)
+
+
+def watch_camera():
+    """Disarm when the time is up, and after a crash, so the light never stays
+    on for nothing."""
+    while True:
+        time.sleep(1)
+        if _camera["proc"] is not None and (time.time() > _camera["until"] or not camera_running()):
+            camera_disarm("timed out" if camera_running() else "stopped by itself")
+
+
+def heard_nonces():
+    try:
+        heard = json.loads(HEARD.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        heard = {}
+    cutoff = time.time() - REPLY_FRESH - 3600       # older replies are refused anyway
+    return {k: v for k, v in heard.items() if isinstance(v, (int, float)) and v > cutoff}
+
+
+def judge_reply(text):
+    """What a code says, as (kind, words, reply). kind: "ok", "seen", "no", or
+    "other" for a code that is not a reply this box knows."""
+    try:
+        r = json.loads(text)
+    except ValueError:
+        return "other", "That code isn't one for the kiosk", None
+    if not isinstance(r, dict) or r.get("schema") != "fcpm.reply/v0" or r.get("wizard") != "wizard:kiosk+lights":
+        return "other", "That code isn't one for the kiosk", None
+    now = time.time()
+    try:
+        issued = datetime.datetime.fromisoformat(str(r.get("issued"))).timestamp()
+    except ValueError:
+        return "no", "Not taken: it has no time it was made", r
+    if not (-300 < now - issued < REPLY_FRESH):
+        return "no", "Not taken: that code is too old. Make a fresh one", r
+    nonce = r.get("nonce")
+    if not isinstance(nonce, str) or len(nonce) < 16:
+        return "no", "Not taken: it has no nonce", r
+    if r.get("sig") is not None:
+        return "no", "Not taken: signatures aren't checked here yet", r
+    if r.get("lights") == "on":
+        try:
+            until = datetime.datetime.fromisoformat(str(r.get("until"))).timestamp()
+        except ValueError:
+            return "no", "Not taken: lights on needs an until time", r
+        if until <= now:
+            return "no", "Not taken: that time has passed", r
+    elif r.get("lights") != "off":
+        return "no", "Not taken: lights are on or off", r
+    heard = heard_nonces()
+    if nonce in heard:
+        return "seen", "Already heard. Make a fresh code", r
+    heard[nonce] = issued
+    HEARD.write_text(json.dumps(heard), encoding="utf-8")
+    if r["lights"] == "off":
+        LIGHTS.unlink(missing_ok=True)
+        return "ok", "Lights off", r
+    LIGHTS.write_text(json.dumps({"until": until, "issued": issued, "nonce": nonce}), encoding="utf-8")
+    now_dt = datetime.datetime.now()
+    return "ok", "Lights on until %s" % when(datetime.datetime.fromtimestamp(until), now_dt), r
+
+
+def camera_read(text):
+    """The eye read a code. A reply trips the camera; anything else is said,
+    and the camera keeps looking."""
+    kind, words, _ = judge_reply(text)
+    with _camera_lock:
+        if _camera["proc"] is None:
+            return                                   # not armed: nobody asked
+        _camera["said"], _camera["at"] = {"kind": kind, "words": words}, time.time()
+    log("camera: read %d bytes: %s" % (len(text), words))
+    if kind != "other":
+        camera_disarm("tripped")
+
+
+CAMERA_EYE = """<!doctype html><meta charset=utf-8><title>camera</title>
+<video id=v muted playsinline></video><canvas id=c></canvas>
+<script type=module>
+import { decodeImage } from "/camera/qr-decode.mjs";
+const v = document.getElementById("v"), c = document.getElementById("c"),
+      g = c.getContext("2d", { willReadFrequently: true });
+const s = await navigator.mediaDevices.getUserMedia({ audio: false,
+  video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
+v.srcObject = s; await v.play();
+let last = "";
+async function look() {
+  c.width = v.videoWidth; c.height = v.videoHeight; g.drawImage(v, 0, 0);
+  const r = decodeImage(g.getImageData(0, 0, c.width, c.height));
+  if (r && r.text !== last) {
+    last = r.text;
+    await fetch("/camera/read", { method: "POST", body: r.text }).catch(() => {});
+  }
+  setTimeout(look, 250);
+}
+look();
+</script>"""
+
+
+def camera_state():
+    now = time.time()
+    said = _camera["said"] if now - _camera["at"] < CAMERA_SAY_FOR else None
+    armed = _camera["proc"] is not None
+    return {"armed": armed, "left": max(0, int(_camera["until"] - now)) if armed else 0,
+            "said": said, "awake": awake_windows()}
+
+
 # --------------------------------------------------------------------- pages --
 POLL = """<script>
 (function () {
@@ -935,6 +1118,8 @@ def kiosk_page(wall=False, map_only=False):
   %s
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
   <div class="words class" id=class hidden></div>
+  <div class=camera id=camera hidden><h1></h1><p class=sub></p></div>
+  <button type=button class=arm id=camera-arm hidden></button>
 </section>
 <section class="half map">
   <div class=stations id=stations></div>
@@ -949,8 +1134,10 @@ def kiosk_page(wall=False, map_only=False):
         body = body[body.index('<section class="half map">'):]
         return page(w.get("place", "Welcome"), body, KIOSK_CSS + MAP_ONLY_CSS)
     if not wall:
-        body += class_js() + DESK_CLASS_JS + ASIDE_HTML
-    return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS)
+        cam = words.get("camera") or {}
+        body += class_js() + DESK_CLASS_JS + CAMERA_JS % json.dumps(
+            {"head": cam.get("head", ""), "sub": cam.get("sub", ""), "arm": cam.get("arm", "")}) + ASIDE_HTML
+    return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS + CAMERA_CSS)
 
 
 # On the wall the map is a module in a frame about half the desk's height,
@@ -989,9 +1176,58 @@ DESK_CLASS_JS = """<script>
     var s = K.pick();
     if (s) K.card(box, s);
     box.hidden = !s; words.hidden = !!s;
-    document.documentElement.classList.toggle('fcpm-awake', !!s);
+    document.documentElement.classList.toggle('fcpm-awake', !!s || !!window.FCPMCameraUp);
   }
   draw(); setInterval(draw, 15000);
+})();
+</script>"""
+
+
+# The camera on the desk (THE CAMERA): armed, the check-in half says it is
+# looking; tripped, it says what it heard, then goes back to check-in. Laid
+# over the check-in words, at their place and size, so it never moves the code.
+CAMERA_CSS = """
+.checkin .camera { position:absolute; top:50%; translate:0 -50%;
+  left:calc(33.333% + 15vh + 3vw); right:4vw; background:var(--slate); }
+.checkin .camera h1 { white-space:normal; }          /* longer than "Check in"; it wraps */
+.checkin .camera.ok h1 { color:var(--signal); }
+.checkin .camera.no h1, .checkin .camera.other h1 { font-size:min(3.6vh, 6vw); }
+/* The panel takes touch: a tap arms the camera (Autumn, 2026-10-08). */
+.checkin .arm { position:absolute; left:calc(33.333% + 15vh + 3vw); bottom:5vh;
+  padding:1.2vh 2.6vh; border:.25vh solid var(--signal); border-radius:99px; background:none;
+  color:var(--signal); font-family:inherit; font-weight:650; font-size:2.2vh; line-height:1; cursor:pointer; }
+.checkin .arm[hidden] { display:none; }
+"""
+
+CAMERA_JS = """<script>
+(function () {
+  var W = %s, box = document.getElementById('camera'), arm = document.getElementById('camera-arm'),
+      head = box.querySelector('h1'), sub = box.querySelector('.sub'), was = '';
+  arm.textContent = W.arm;
+  arm.addEventListener('click', function () {
+    arm.hidden = true;
+    fetch('/camera/arm', {method: 'POST'}).then(tick, tick);
+  });
+  function draw(d) {
+    var s = d.said, show = d.armed || !!s, K = window.FCPMClass;
+    box.hidden = !show; arm.hidden = show || !W.arm;
+    // Awake while it looks and while it speaks; the class card's own hold
+    // (DESK_CLASS_JS) is kept when the camera lets go.
+    window.FCPMCameraUp = show;
+    document.documentElement.classList.toggle('fcpm-awake', show || !!(K && K.pick && K.pick()));
+    if (!show) return;
+    box.className = 'camera ' + (s ? s.kind : 'armed');
+    head.textContent = s ? s.words : W.head;
+    sub.textContent = d.armed ? W.sub.replace('{s}', d.left) : '';
+    var now = s ? s.words : '';
+    if (now !== was && s && s.kind === 'ok') window.fcpmAwake(d.awake);
+    was = now;
+  }
+  function tick() {
+    fetch('/camera', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(draw).catch(function () {});
+  }
+  tick(); setInterval(tick, 1500);
 })();
 </script>"""
 
@@ -2097,13 +2333,27 @@ class Door(BaseHTTPRequestHandler):
         self.do_GET()
 
     def do_POST(self):
+        route = self.path.split("?", 1)[0]
+        here = self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
         # Only the panels themselves step aside: they are on this computer.
-        if self.path.split("?", 1)[0] == "/aside" and self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+        if route == "/aside" and here:
             try:
                 step_aside()
             except Exception as exc:
                 log("aside: %r" % exc)
             return self.reply(204, "", TYPES[".txt"])
+        # The camera answers to this computer only: its eye, and a session's verb.
+        if route == "/camera/read" and here:
+            n = min(int(self.headers.get("Content-Length") or 0), 8192)
+            camera_read(self.rfile.read(n).decode("utf-8", "replace"))
+            return self.reply(204, "", TYPES[".txt"])
+        if route == "/camera/arm" and here:
+            m = re.search(r"[?&]for=(\d+)", self.path)
+            camera_arm(int(m.group(1)) if m else CAMERA_ARM_FOR)
+            return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+        if route == "/camera/disarm" and here:
+            camera_disarm()
+            return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
         return self.reply(404, "", TYPES[".txt"])
 
     def do_GET(self):
@@ -2140,6 +2390,12 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, json.dumps(depot_now()), TYPES[".json"])
             if route == "/kiosk/now":
                 return self.reply(200, json.dumps(kiosk_now()), TYPES[".json"])
+            if route == "/camera":
+                return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+            if route == "/camera/eye":
+                return self.reply(200, CAMERA_EYE)
+            if route in ("/camera/qr-decode.mjs", "/camera/qr-encode.mjs"):
+                return self.file(ROOT / "site" / "assets" / "js" / tail)
             if route.startswith("/kiosk/wifi/") and tail.isdigit():
                 svg = wifi_svg(int(tail))
                 return self.reply(200, svg, TYPES[".svg"]) if svg else self.file(None)
@@ -2223,6 +2479,7 @@ def serve():
     threading.Thread(target=watch_commit, args=(server,), daemon=True).start()
     threading.Thread(target=watch_depot, daemon=True).start()
     threading.Thread(target=watch_wall, daemon=True).start()
+    threading.Thread(target=watch_camera, daemon=True).start()
     log("door up on [::]:%d from %s at %s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD")))
     server.serve_forever()
     server.server_close()
@@ -2544,6 +2801,32 @@ def screen_url(s):
     loaded through one that went away sat broken, asking nothing (2026-09-26,
     -28). ?screen= lets the page say which screen it is."""
     return "http://127.0.0.1:%d%s%sscreen=%s" % (PORT, s["url"], "&" if "?" in s["url"] else "?", s["name"])
+
+
+def camera(argv):
+    """door.py camera [arm [SECONDS] | off]: ask the running door to arm the
+    camera (two minutes unless told), to stop it, or what it is doing."""
+    import urllib.request
+    verb = argv[0] if argv else ""
+    path = {"arm": "/camera/arm", "off": "/camera/disarm"}.get(verb, "/camera")
+    if verb == "arm" and len(argv) > 1 and argv[1].isdigit():
+        path += "?for=" + argv[1]
+    try:
+        req = urllib.request.Request("http://127.0.0.1:%d%s" % (PORT, path),
+                                     data=b"" if verb in ("arm", "off") else None)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            d = json.loads(r.read().decode())
+    except Exception as exc:
+        print("the door did not answer: %s" % exc)
+        return 1
+    said = d.get("said") or {}
+    print("armed, %ds left" % d["left"] if d["armed"] else "not armed")
+    if said:
+        print("heard: %s" % said.get("words"))
+    lit = lights_until()
+    print("lights on until %s" % when(datetime.datetime.fromtimestamp(lit), datetime.datetime.now())
+          if lit else "lights: off (the schedule decides)")
+    return 0
 
 
 def heard():
@@ -3446,6 +3729,8 @@ if __name__ == "__main__":
         sys.exit(dropbox(sys.argv[2:]))
     if verb == "tell":
         sys.exit(tell(sys.argv[2:]))
+    if verb == "camera":
+        sys.exit(camera(sys.argv[2:]))
     if verb == "wifi-password" and len(sys.argv) > 2:
         sys.exit(wifi_password(sys.argv[2]))
     sys.exit({"serve": serve, "supervise": supervise, "status": status}.get(verb, status)())
