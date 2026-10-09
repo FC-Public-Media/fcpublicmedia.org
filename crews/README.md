@@ -70,3 +70,41 @@ there is none, and production is where there first is one.
 - **FCPM is a canonical, dedicated place.** Station-node is built to be reached
   from several places because it is a person's own; here a crew's profile is
   the studio's, and its services stay in the building.
+
+## What the supervisor assumes today (from editing bay 1, 2026-10-08)
+
+`crew.py` and `crew.ps1` were written and proved on one Windows machine. The
+model above (crews, residencies, the order, status asked live) is not tied to
+it; this code is. Written down for the first crew host that is not editing
+bay 1, which is `../machines/digitization/` (Debian).
+
+**Windows only, with what Linux would use instead:**
+
+| in `crew.py` / `crew.ps1` | on Windows | on Linux |
+|---|---|---|
+| the one service | a scheduled task at the computer's start, S4U (`crew.ps1`) | a systemd unit, `WantedBy=multi-user.target` |
+| one supervisor per crew | a named mutex (`single`, `supervising`) | a lock file held with `fcntl.flock` |
+| has a desktop | session id is not 0 (`has_desktop`) | a display in the environment (`DISPLAY` / `WAYLAND_DISPLAY`); a system unit has none |
+| children with no window | `CREATE_NO_WINDOW`, `CREATE_NEW_PROCESS_GROUP` | `start_new_session=True` |
+| stopping a line and its children | `taskkill /T /F` | kill the process group |
+| `alive: {process: ...}` | `Get-CimInstance Win32_Process` via PowerShell | `/proc/*/cmdline` |
+| uv | winget's links, then its package folder | `uv` on PATH |
+
+**Tied to editing bay 1, a bug anywhere else:** `crew.py` keeps its logs
+under `%LOCALAPPDATA%\editing-bay-1\crew\` (`PROFILE`, hard-coded), and
+`troves/pools/episodes.py` stages admissions under the same name. Both should
+take the machine's profile (`machines/sync`) instead.
+
+**Learned while proving it:**
+
+- **A task started with the computer has no desktop** (session 0). Lines that
+  need one are marked `desktop: true` and run from the signed-in session
+  (editing bay 1's pool task: `crew.py desktop`). A Linux system unit is the
+  same: no display, so the same split applies.
+- **Running with no stored password reaches no network shares** and no
+  stored secrets (S4U). The local disks and the Drobo are fine.
+- **An `alive: {process: ...}` pattern can match the shell that launched a
+  test**, when the pattern's text is in that shell's command line. Keep the
+  patterns specific (`remote-control`'s is), and test from a script file.
+- **Not yet proved: the install itself.** It needs an administrator, and
+  had not been run when this was written.
