@@ -657,6 +657,8 @@ def kiosk_now():
 # to it, a wizard's reply serialized as a QR. It is armed and tripped. Armed,
 # the camera runs and its light is on, and the desk's check-in half says so;
 # nothing watches otherwise, so a code nobody expected cannot trip anything.
+# It is armed by a tap on the desk's button (the panel takes touch), or by
+# `door.py camera arm` from a session.
 # A read trips it: the desk shows what was heard, and the camera stops.
 #
 # The camera runs in a headless Edge the door starts, on /camera/eye, which
@@ -1117,6 +1119,7 @@ def kiosk_page(wall=False, map_only=False):
   <div class=words><h1>%s</h1><p class=sub>%s</p></div>
   <div class="words class" id=class hidden></div>
   <div class=camera id=camera hidden><h1></h1><p class=sub></p></div>
+  <button type=button class=arm id=camera-arm hidden></button>
 </section>
 <section class="half map">
   <div class=stations id=stations></div>
@@ -1133,7 +1136,7 @@ def kiosk_page(wall=False, map_only=False):
     if not wall:
         cam = words.get("camera") or {}
         body += class_js() + DESK_CLASS_JS + CAMERA_JS % json.dumps(
-            {"head": cam.get("head", ""), "sub": cam.get("sub", "")}) + ASIDE_HTML
+            {"head": cam.get("head", ""), "sub": cam.get("sub", ""), "arm": cam.get("arm", "")}) + ASIDE_HTML
     return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS + CAMERA_CSS)
 
 
@@ -1189,15 +1192,25 @@ CAMERA_CSS = """
 .checkin .camera h1 { white-space:normal; }          /* longer than "Check in"; it wraps */
 .checkin .camera.ok h1 { color:var(--signal); }
 .checkin .camera.no h1, .checkin .camera.other h1 { font-size:min(3.6vh, 6vw); }
+/* The panel takes touch: a tap arms the camera (Autumn, 2026-10-08). */
+.checkin .arm { position:absolute; left:calc(33.333% + 15vh + 3vw); bottom:5vh;
+  padding:1.2vh 2.6vh; border:.25vh solid var(--signal); border-radius:99px; background:none;
+  color:var(--signal); font-family:inherit; font-weight:650; font-size:2.2vh; line-height:1; cursor:pointer; }
+.checkin .arm[hidden] { display:none; }
 """
 
 CAMERA_JS = """<script>
 (function () {
-  var W = %s, box = document.getElementById('camera'),
+  var W = %s, box = document.getElementById('camera'), arm = document.getElementById('camera-arm'),
       head = box.querySelector('h1'), sub = box.querySelector('.sub'), was = '';
+  arm.textContent = W.arm;
+  arm.addEventListener('click', function () {
+    arm.hidden = true;
+    fetch('/camera/arm', {method: 'POST'}).then(tick, tick);
+  });
   function draw(d) {
     var s = d.said, show = d.armed || !!s, K = window.FCPMClass;
-    box.hidden = !show;
+    box.hidden = !show; arm.hidden = show || !W.arm;
     // Awake while it looks and while it speaks; the class card's own hold
     // (DESK_CLASS_JS) is kept when the camera lets go.
     window.FCPMCameraUp = show;
