@@ -78,8 +78,9 @@ before trusting anyone's guess, including your own.
   checks the door. The log is `%LOCALAPPDATA%\media-node\door.log`.
 - **No seat** (Autumn, 2026-10-09). The door no longer keeps a `startup`
   session. Sessions arrive through the root's Remote Control server, as on
-  production (site repo `machines/README.md`). Having the door keep that
-  server running is still this profile's change to make.
+  production (site repo `machines/README.md`). The door keeps that server up,
+  and bounces it onto a new Claude after 15 calm minutes. `door.py server`
+  says whether it is current and what holds the bounce.
 - **The weekly pull is the gate, and sessions here run it** (Autumn,
   2026-10-05). This box has no keyboard or mouse. It is out of people's reach,
   and its ports are not for playing with; people meet it only through its

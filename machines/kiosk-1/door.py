@@ -7,6 +7,7 @@
     door.py startup --xml      the logon task this checkout implies, to stdout
     door.py startup --install  register that task, and retire the Startup shortcut
     door.py sessions           what Claude sessions are running, and what ran at the last pass
+    door.py server             the root's Remote Control server: up, current, and what holds a bounce
     door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
     door.py tell [mint|register]       our Tell's signer, and listing it with our Atlas
     door.py camera [arm [SECS]|off]    arm the camera for a code (THE CAMERA), stop it, or ask
@@ -62,7 +63,8 @@ while one is already running is ignored. That is launchd's KeepAlive, with
 five minutes of slack. `supervise` also holds a named mutex, so a second copy
 started some other way leaves at once instead of fighting over 8080. Once the
 door answers, `supervise` brings up any screen in node.yml that is missing.
-It starts no Claude session (see "sessions" below).
+It starts no Claude session, but it keeps the root's Remote Control server up,
+and on the installed Claude (see "server" below).
 
 What it cannot do is log on. After a power cut the box waits at the sign-in
 screen until someone signs in, and signing in automatically needs an
@@ -2560,6 +2562,7 @@ def supervise():
     threading.Thread(target=puller, daemon=True).start()
     threading.Thread(target=raise_screens, daemon=True).start()
     threading.Thread(target=keep_sessions, daemon=True).start()
+    threading.Thread(target=keep_server, daemon=True).start()
     threading.Thread(target=keep_helo_clock, daemon=True).start()
     threading.Thread(target=keep_dropbox, daemon=True).start()
     while True:
@@ -3093,6 +3096,235 @@ def sessions(argv):
     for sid, s in rows.items():
         state = "running" if sid in live_ids else ("unknown" if live is None else "stopped")
         print("%-9s %-11s %s  %s" % (state, s.get("kind") or "", sid[:8], s.get("name") or ""))
+    return 0
+
+
+# -------------------------------------------------------------------- server --
+# THE ROOT'S SERVER, KEPT AND KEPT CURRENT (Autumn, 2026-10-09). The door keeps
+# `claude remote-control --no-create-session-in-dir` running at ~/code, as
+# production's bin/pool.ps1 does: a server, no session of its own and no name
+# (machines/README.md, "how its sessions arrive"). Every minute, a missing
+# server is started.
+#
+# Claude updates itself under us. The installer swaps claude.exe; the daemon
+# restarts for it, the server does not (it sat on 2.1.292 through three
+# updates, 10-07 to 10-09). So a server older than the installed claude.exe
+# is bounced, sessions and all, once things under it have been CALM for 15
+# minutes: no transcript written in that time, and no task running (no
+# process under the server but Claude's own). Sessions don't close, so waiting
+# for them to would wait forever; calm is the bar. What holds a bounce is
+# logged whenever it changes, so the log says what actually blocks one.
+#
+# A server killed without signing off holds ~/code for a few minutes, and
+# starts are refused until it lets go ("already served"). The next minute
+# tries again.
+SERVER_EVERY = 60
+CALM_FOR = 15 * 60
+ROOT_CWD = pathlib.Path.home() / "code"         # AGENTS.md: sessions start here
+TRANSCRIPTS = pathlib.Path.home() / ".claude" / "projects"
+OURS = {"claude.exe", "conhost.exe"}            # under a server, these are not a task
+
+
+def processes():
+    """{pid: (parent pid, exe name)} for every process, from a Toolhelp snapshot."""
+    from ctypes import wintypes as W
+    k = ctypes.windll.kernel32
+
+    class ENTRY(ctypes.Structure):          # PROCESSENTRY32W
+        _fields_ = [("dwSize", W.DWORD), ("cntUsage", W.DWORD), ("th32ProcessID", W.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_void_p), ("th32ModuleID", W.DWORD),
+                    ("cntThreads", W.DWORD), ("th32ParentProcessID", W.DWORD),
+                    ("pcPriClassBase", ctypes.c_long), ("dwFlags", W.DWORD), ("szExeFile", W.WCHAR * 260)]
+    k.CreateToolhelp32Snapshot.restype = W.HANDLE
+    snap = k.CreateToolhelp32Snapshot(0x2, 0)                   # TH32CS_SNAPPROCESS
+    if not snap or snap == W.HANDLE(-1).value:
+        return {}
+    found, e = {}, ENTRY()
+    e.dwSize = ctypes.sizeof(ENTRY)
+    try:
+        ok = k.Process32FirstW(W.HANDLE(snap), ctypes.byref(e))
+        while ok:
+            found[e.th32ProcessID] = (e.th32ParentProcessID, e.szExeFile.lower())
+            ok = k.Process32NextW(W.HANDLE(snap), ctypes.byref(e))
+    finally:
+        k.CloseHandle(W.HANDLE(snap))
+    return found
+
+
+def started_at(pid):
+    """When a process started, as Unix time, or None."""
+    from ctypes import wintypes as W
+    k = ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    h = k.OpenProcess(0x1000, False, pid)                       # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return None
+    try:
+        t = [ctypes.c_ulonglong() for _ in range(4)]
+        if not k.GetProcessTimes(W.HANDLE(h), *[ctypes.byref(x) for x in t]):
+            return None
+        return t[0].value / 1e7 - 11644473600                   # FILETIME, 1601 UTC -> Unix
+    finally:
+        k.CloseHandle(W.HANDLE(h))
+
+
+def under(pid, procs):
+    """Every process below pid. Windows reuses pids, so a child must have
+    started after its parent to count as one."""
+    kids, out, todo = {}, [], [pid]
+    for p, (pp, _) in procs.items():
+        kids.setdefault(pp, []).append(p)
+    while todo:
+        parent = todo.pop()
+        born = started_at(parent) or 0
+        for c in kids.get(parent, []):
+            if c not in out and c != pid and (started_at(c) or born) >= born:
+                out.append(c)
+                todo.append(c)
+    return out
+
+
+def servers(procs):
+    """claude.exe processes running the `remote-control` subcommand. Not the
+    --remote-control flag, which a single session carries."""
+    return [pid for pid, (_, exe) in procs.items() if exe == "claude.exe"
+            and re.search(r"(^|\s)remote-control(\s|$)", command_line(pid))]
+
+
+def holds(pid, procs):
+    """What keeps the server at pid from a bounce right now: a list of short
+    reasons, empty when it has been calm for CALM_FOR."""
+    below = under(pid, procs)
+    why = ["running %s (%d)" % (procs[c][1], c) for c in below if procs[c][1] not in OURS]
+    # Sessions outside the server (a background job, a terminal) are not its
+    # to wait on: their transcripts don't count.
+    code, out = claude("agents", "--json")
+    rows = []
+    if code == 0 and "[" in out:
+        try:
+            rows = json.loads(out[out.index("["):])
+        except ValueError:
+            rows = []
+    mine = set(below) | {pid}
+    elsewhere = {r.get("sessionId") for r in rows if r.get("pid") not in mine}
+    why += ["busy: %s" % (r.get("name") or r.get("sessionId", "")[:8])
+            for r in rows if r.get("pid") in mine and r.get("status") == "busy"]
+    now = time.time()
+    for f in TRANSCRIPTS.rglob("*.jsonl") if TRANSCRIPTS.is_dir() else []:
+        try:
+            age = now - f.stat().st_mtime
+        except OSError:
+            continue
+        if age >= CALM_FOR:
+            continue
+        # A transcript is <id>.jsonl, and a subagent's sits in <id>/subagents/.
+        sid = f.name.split(".")[0]
+        if {sid, f.parent.name, f.parent.parent.name} & elsewhere:
+            continue
+        why.append("written %d min ago: %s" % (age // 60, sid[:8]))
+    return why
+
+
+def start_server():
+    STATE.mkdir(parents=True, exist_ok=True)
+    none = STATE / "server.in"
+    none.touch()
+    cwd = str(ROOT_CWD) if ROOT_CWD.is_dir() else None
+    with open(none, "rb") as i, open(STATE / "server.out", "ab") as o, open(STATE / "server.err", "ab") as e:
+        p = subprocess.Popen([CLAUDE, "remote-control", "--no-create-session-in-dir",
+                              "--debug-file", str(STATE / "server.log")],
+                             cwd=cwd, stdin=i, stdout=o, stderr=e, close_fds=True,
+                             creationflags=NO_WINDOW | getattr(subprocess, "DETACHED_PROCESS", 0))
+    return p.pid
+
+
+def end_tree(pid, procs):
+    from ctypes import wintypes as W
+    k = ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    for p in list(reversed(under(pid, procs))) + [pid]:
+        h = k.OpenProcess(0x0001, False, p)                     # PROCESS_TERMINATE
+        if h:
+            k.TerminateProcess(W.HANDLE(h), 1)
+            k.CloseHandle(W.HANDLE(h))
+
+
+def installed():
+    """(mtime of claude.exe, its version), or (None, "")."""
+    try:
+        when = pathlib.Path(CLAUDE).stat().st_mtime
+    except OSError:
+        return None, ""
+    code, out = claude("--version")
+    return when, (out.split()[0] if code == 0 and out else "")
+
+
+def server_pass(state):
+    """One minute's look. state carries what was said last, so only changes
+    are logged."""
+    procs = processes()
+    up = servers(procs)
+    if not up:
+        if state.get("said") != "starting":
+            log("server: none up; starting the root's server")
+        state["said"] = "starting"
+        try:
+            pid = start_server()
+        except OSError as exc:
+            return log("server: could not start: %r" % exc)
+        time.sleep(5)
+        if pid in processes():
+            log("server: started in %s (pid %d)" % (ROOT_CWD, pid))
+            state["said"] = None
+        return
+    when, version = installed()
+    stale = [pid for pid in up if when and (started_at(pid) or when) < when]
+    if not stale:
+        if state.get("said"):
+            log("server: current%s" % (" (%s)" % version if version else ""))
+        state["said"] = None
+        return
+    for pid in stale:
+        why = holds(pid, procs)
+        if why:
+            line = "server: %d predates %s; held: %s" % (pid, version or "the installed claude", "; ".join(why))
+            if state.get("said") != line:
+                log(line)
+            state["said"] = line
+            continue
+        log("server: %d predates %s, calm for %d min: bouncing it" % (pid, version or "the installed claude",
+                                                                      CALM_FOR // 60))
+        end_tree(pid, procs)
+        state["said"] = "starting"
+
+
+def keep_server():
+    state = {}
+    while True:
+        try:
+            server_pass(state)
+        except Exception as exc:
+            log("server: %r" % exc)
+        time.sleep(SERVER_EVERY)
+
+
+def server_status():
+    """door.py server: what keep_server sees this minute."""
+    procs = processes()
+    up = servers(procs)
+    when, version = installed()
+    print("installed %s%s" % (version or "unknown",
+                              time.strftime("  (%Y-%m-%d %H:%M)", time.localtime(when)) if when else ""))
+    if not up:
+        print("server    none up: the door starts one within a minute")
+        return 1
+    for pid in up:
+        at = started_at(pid)
+        print("server    pid %d, started %s, %s" % (pid, time.strftime("%Y-%m-%d %H:%M", time.localtime(at))
+                                                   if at else "unknown",
+                                                   "current" if not when or not at or at >= when else "stale"))
+        why = holds(pid, procs)
+        print("calm      %s" % ("yes" if not why else "no: " + "; ".join(why)))
     return 0
 
 
@@ -3673,6 +3905,8 @@ if __name__ == "__main__":
         sys.exit(startup(sys.argv[2:]))
     if verb == "sessions":
         sys.exit(sessions(sys.argv[2:]))
+    if verb == "server":
+        sys.exit(server_status())
     if verb == "dropbox":
         sys.exit(dropbox(sys.argv[2:]))
     if verb == "tell":
