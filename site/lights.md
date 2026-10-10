@@ -5,14 +5,7 @@ theme_color: "#ffffff"
 sitemap: false
 ---
 
-{%- comment -%}
-  The lights reply: someone in the studio off host hours holds this up to the
-  kiosk's camera to say "I'm here, keep the screens awake until X". The kiosk
-  can't be reached from the LAN, so the code lives here, on the public site,
-  and carries nothing personal: on or off, until when, when it was made, and a
-  nonce the kiosk accepts once. A new nonce on every render or tap. Formed and
-  drawn by assets/js/lights.js; the kiosk's rules are there too.
-{%- endcomment -%}
+{%- comment -%} A code shown to the kiosk camera: keep screens awake until a time. See docs/kiosk.md. {%- endcomment -%}
 
 <style>
   .lights { position: fixed; inset: 0; display: flex; flex-direction: column; background: #fff; color: #111;

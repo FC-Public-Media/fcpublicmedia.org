@@ -1,27 +1,5 @@
-# Site navigation.
-#
-# `primary` is the header. `cta` is the one highlighted button. `footer` is
-# everything that does not earn a spot in the header. Reorder by editing this
-# file — no template changes required.
-#
-# THE HEADER IS SHORT ON PURPOSE
-# ------------------------------
-# It was seven items and a button, which is a list rather than a menu. Two
-# things shortened it without losing anywhere to go:
-#
-#   * Equipment and Studios were one idea — you reserve both — so they first
-#     became a grayed "Reserve" group over two links, and then stopped being
-#     two things at all. They are one page now, and the group went with them.
-#     _includes/header.html still knows how to render a group (`label` plus
-#     `items`), so bringing one back is a data edit.
-#   * Podcasts moved onto /watch/ entirely. It is watching, and a separate
-#     menu entry for it was asserting a distinction nobody makes.
-#
-# The names drifted towards verbs on the way. "Learn" rather than "Classes",
-# because what is taught there is about to be more than scheduled sessions;
-# "Join" rather than "Membership", because membership is what you get and
-# joining is what you do. Not carried further than that — Equipment and
-# Studios stay nouns, and the verb sits beside them instead.
+# Header (`primary`), the Donate button (`cta`) and the footer. A `label` with `items` makes a group.
+# See docs/site.md#data-files.
 
 primary:
   - title: Watch

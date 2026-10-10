@@ -6,27 +6,8 @@ title: Meet
 {%- assign now = site.time | date: "%s" -%}
 
 {%- comment -%}
-  ONE LIST FROM THREE FILES
-
-  Classes, board meetings, and everything else live in different data files
-  for good reasons, but a visitor should not have to know that. So they are
-  merged here into a single chronological list.
-
-  Liquid cannot build objects, so each source is flattened into a delimited
-  string, the strings are sorted, and each is split back apart to render. It
-  is a well-worn Jekyll idiom and it is the only awkward part of this page.
-
-  The sort key is epoch seconds via the `date` filter, which parses the
-  UTC offset properly — sorting the ISO strings directly would be right by
-  accident rather than on purpose, since two events on the same day always
-  share an offset but two events either side of a DST change do not.
-
-  Delimiter is "%%" because it does not occur in prose. A title containing it
-  would split wrongly; nothing else would.
-
-  Past events are dropped here rather than in the templates below, so the
-  "nothing coming up" state is genuinely about emptiness and not about a list
-  full of last spring.
+  Classes, board meetings and community events merged into one list: rows are "%%"-delimited
+  strings keyed by epoch seconds (DST-safe), sorted, split back. Past events are dropped here.
 {%- endcomment -%}
 
 {%- assign rows = "" | split: "" -%}
@@ -92,12 +73,6 @@ title: Meet
 
 {% else %}
 
-{%- comment -%}
-  Written to be true on a quiet month rather than to fill space. A small
-  organization with nothing scheduled is not a broken one, and a page that
-  implies otherwise is worse than a page that says so and offers the door.
-{%- endcomment -%}
-
 <p class="lede">Nothing on the calendar right now.</p>
 
 <p>
@@ -121,12 +96,7 @@ title: Meet
 
 <p class="lede">{{ com.blurb | strip_newlines | strip }}</p>
 
-{%- comment -%}
-  Channels with no url are skipped, so a platform still being argued about can
-  sit in the data file without appearing here. `primary` marks whichever one
-  someone should actually try first — see the note in _data/community.yml
-  about the chat platform being unsettled.
-{%- endcomment -%}
+{%- comment -%} Channels with no url are skipped; `primary` is the one to try first. {%- endcomment -%}
 
 {%- assign live = com.channels | where_exp: "c", "c.url != ''" -%}
 {%- assign primary = live | where: "primary", true | first -%}
@@ -168,31 +138,13 @@ title: Meet
 
 {% comment %} ------------------------------------------------ made by members {% endcomment %}
 
-{%- comment -%}
-  Read from _data/member_programs.json, which site/bin/sync-feeds.py builds from
-  the feeds listed in _data/feeds.yml. Nothing is fetched in the browser.
-
-  EVERY STRING BELOW WAS WRITTEN BY SOMEBODY ELSE. The sync already strips
-  markup and rejects any link that is not http(s); `| escape` here is the
-  second half of that, and removing it would put a member's blog getting
-  hijacked directly into our pages. Do not "tidy" it away.
-{%- endcomment -%}
+{%- comment -%} From _data/member_programs.json (sync-feeds.py). Strings are members': keep `| escape`. {%- endcomment -%}
 
 {%- assign made = site.data.member_programs -%}
 
 {%- comment -%}
-  SPLIT BY WHETHER IT HAS HAPPENED YET.
-
-  A member site marks a program `scheduled` with a future drop date, and that
-  date rides into the feed as the pubDate. Which means a submission arrives
-  here as an ordinary feed item that simply has not happened yet — no form, no
-  upload, nothing for anyone to process.
-
-  Without this split those items rendered under "Made by members", announcing
-  something as published on the day it was still being finished.
-
-  `plus: 0` forces integers. `now` above is a string, compared against other
-  strings; mixing the two raises rather than coercing, so this uses its own.
+  A future pubDate is a member's scheduled drop: listed under "Coming up", not "Made by members".
+  `plus: 0` makes integers; `now` above is a string, and mixing the two raises.
 {%- endcomment -%}
 {%- assign nowsec = site.time | date: "%s" | plus: 0 -%}
 {%- assign coming = "" | split: "" -%}
@@ -207,10 +159,7 @@ title: Meet
       {%- assign published = published | push: item -%}
     {%- endif -%}
   {%- else -%}
-    {%- comment -%}
-      No date at all. Undated is not the same as forthcoming, and guessing
-      that it is would put half a feed's back catalogue under "coming up".
-    {%- endcomment -%}
+    {%- comment -%} Undated counts as published, not forthcoming. {%- endcomment -%}
     {%- assign published = published | push: item -%}
   {%- endif -%}
 {%- endfor -%}
@@ -223,11 +172,7 @@ title: Meet
   Announced by members on their own channels, not yet out.
 </p>
 
-{%- comment -%}
-  Deliberately no artifact link here. The feed carries a pointer to the
-  finished file, and that is for us — a page announcing something is coming
-  has no business publishing where the master lives.
-{%- endcomment -%}
+{%- comment -%} No artifact link: the feed's pointer to the master file is not for publishing. {%- endcomment -%}
 <ul class="feed">
 {% for item in coming %}
   <li>
@@ -349,16 +294,6 @@ title: Meet
 
 {% comment %} --------------------------------------------------- the board {% endcomment %}
 
-{%- comment -%}
-  The board used to be its own page. It is a section here now: it is one of
-  the ways you meet this place, and a whole page for it was a page.
-
-  Its headings dropped a level on the way — h2 "The board", h3 for everything
-  under it. Its own "Coming up" list went entirely: those meetings are already
-  in "What's on" at the top of this page, and rendering the same three dates
-  twice on one page is the thing the merge above exists to stop.
-{%- endcomment -%}
-
 {%- assign gov = site.data.governance -%}
 {%- assign m = gov.meetings -%}
 {%- assign org = site.data.org -%}
@@ -425,12 +360,6 @@ touch</a> if there's something you'd like the board to consider.
 
 ### Minutes
 
-{%- comment -%}
-  Deliberately understated. Minutes being available is not the same as minutes
-  being published, and the difference is the whole reason this is a paragraph
-  rather than a feature.
-{%- endcomment -%}
-
 {% if gov.minutes.url and gov.minutes.url != "" %}
   <p>
     Minutes from past meetings are
@@ -451,20 +380,7 @@ touch</a> if there's something you'd like the board to consider.
 
 ### Who's on it
 
-{%- comment -%}
-  Office hours sit in the card rather than in a table of their own, which is
-  how Bryan asked for them: they belong to a person, and a visitor deciding
-  whether to drive over wants to know whose door they are knocking on.
-
-  Rendered before the bio on purpose. The bio is why you would want to meet
-  someone; the hours are how you actually can, and burying the actionable half
-  under two sentences of prose is the usual way that goes wrong.
-
-  `photo` has been documented in _data/board.yml since the file was written
-  and was never rendered anywhere — an optional field that silently does
-  nothing is worse than no field, because the first person to set it concludes
-  the site is broken.
-{%- endcomment -%}
+{%- comment -%} Office hours are per person and render before the bio. {%- endcomment -%}
 
 {% assign roster = site.data.board | where_exp: "p", "p.name" %}
 {% if roster.size > 0 %}

@@ -1,21 +1,5 @@
-// Filtering and sorting for the program archive.
-//
-// The full list is in the HTML already — this only hides and reorders rows.
-// With JavaScript off you get every program, which is the point of rendering
-// the archive statically in the first place. Both controls stay hidden until
-// this file runs, so neither ever appears as something that does nothing.
-//
-// SORTING HAS TO FLATTEN THE CATEGORIES
-//
-// The archive is grouped under category headings, which is the right default:
-// it is how someone browses. But the questions worth asking of airing data cut
-// straight across those groups — a program nobody has run in two years is
-// interesting whether it sits under "Public Affairs" or "Uncategorized".
-//
-// So any sort other than "Category" moves every row into one list and hides
-// the headings, and choosing "Category" again puts them back where they came
-// from. Rows remember their own origin rather than the code trying to
-// reconstruct it.
+// Filter and sort for the program archive; hides and reorders rows already in the HTML.
+// Any sort but "Category" flattens rows into one list. See docs/site.md.
 
 const panel = document.querySelector('[data-filter]');
 const input = document.getElementById('archive-filter');
@@ -25,12 +9,7 @@ const lists = Array.from(document.querySelectorAll('[data-archive]'));
 const rows = Array.from(document.querySelectorAll('[data-archive] li'));
 const headings = Array.from(document.querySelectorAll('h2[id]'));
 
-// Where each row started, so "Category" is a real return rather than an
-// approximation of one.
-//
-// Recorded as a position in a list rather than as "insert before that
-// element": the remembered sibling may itself have been moved by the time we
-// get to it, and restoring in the wrong order silently reorders the archive.
+// Each row's original list and index (not a sibling, which may itself have moved).
 const home = new Map();
 for (const list of lists) {
   Array.from(list.children).forEach((row, index) => home.set(row, { list, index }));
@@ -38,9 +17,7 @@ for (const list of lists) {
 
 const num = (row, name) => Number(row.dataset[name] || 0);
 
-// A program with no airings has no "last aired" date at all. For the
-// longest-since-aired sort that is the most extreme case, not a missing value,
-// so it sorts as if it aired at the beginning of time.
+// Never aired sorts as the oldest possible date.
 const lastAired = (row) => row.dataset.last || '0000-00-00';
 
 const ORDERS = {
@@ -59,9 +36,7 @@ function applySort() {
   const order = sorter ? sorter.value : 'category';
 
   if (order === 'category') {
-    // Rebuild each list from its own rows, in their original positions.
-    // Appending in index order cannot get this wrong the way inserting
-    // relative to a moving target can.
+    // Rebuild each list from its own rows, appended in original index order.
     for (const list of lists) {
       const mine = rows
         .filter((row) => home.get(row).list === list)

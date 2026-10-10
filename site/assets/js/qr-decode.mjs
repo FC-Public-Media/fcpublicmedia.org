@@ -1,5 +1,6 @@
 // Vendored from FCCN-ANTIBODY/anecdote.channel composer/qr-decode.mjs @ 048af64bebbdce7b8f92f69123a5f4afd736eaff,
 // unchanged below this header. The kiosk's camera reads with it (machines/kiosk-1/door.py, THE CAMERA).
+// See docs/site.md.
 // composer/qr-decode.mjs — "the bigger lens": a vendorless QR DECODER (docs/offline-transfer.md,
 // docs/anti-signature.md "acquire-by-doing"). The encoder (qr-encode.mjs) made us a sender; this makes any
 // browser a RECEIVER — BarcodeDetector is absent on iOS Safari and headless Linux (measured), so we bring

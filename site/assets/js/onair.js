@@ -1,11 +1,5 @@
-// "On now" and "up next" for the cable channel.
-//
-// Cablecast's API is public and sends Access-Control-Allow-Origin: *, so the
-// browser can read the schedule directly. No backend, no key, no build step.
-//
-// This is progressive enhancement: the markup it fills already says something
-// sensible, and if the request fails the block is removed rather than left
-// showing a spinner forever.
+// "On now" and "next" for the cable channel, read in the browser from Cablecast's public API.
+// See docs/site.md.
 
 const API = 'https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/v1';
 const CHANNEL = 1;
@@ -64,7 +58,7 @@ function escape(text) {
   return div.innerHTML;
 }
 
-// A failure here should leave no trace. The page is fine without it.
+// On any failure the block is removed.
 load().catch((error) => {
   console.warn('on-air schedule unavailable:', error.message);
   if (box) box.remove();
