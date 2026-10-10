@@ -64,8 +64,7 @@ nav { margin-left: auto; font-size: 0.9rem; } nav a { color: var(--muted); }
 <script>
 const $ = (id) => document.getElementById(id);
 const SHOW = [['wb', 'White balance'], ['iso', 'ISO'], ['shutter', 'Shutter'], ['nd', 'ND'], ['fps', 'Frame rate']];
-// A preset's settings as they're written in presets.yml, for the small line
-// under each button and for "which one is it on now".
+// A preset's settings as written in presets.yml, for the line under each button.
 const WRITE = { wb: (v) => v + ' K', iso: (v) => 'ISO ' + v, shutter: (v) => '1/' + v, nd: (v) => v ? 'ND ' + v : 'no ND',
                 fps: (v) => v + ' fps', tint: (v) => v ? 'tint ' + v : '', resolution: (v) => v };
 let presets = [], raw = {}, busy = false;
