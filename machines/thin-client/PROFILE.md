@@ -1,63 +1,80 @@
 # thin-client
 
-**Status: drafted 2026-10-09 from photos, not yet reformatted.** A donated HP
-thin client in the control rack, under the headphone amp and above the switcher.
-It boots HP ThinPro (Linux underneath) straight into one remote desktop
-connection its last owner left, and does nothing else. It is to be wiped and
-given a job here.
+**Status: profiled 2026-10-09 from its BIOS, not yet reformatted.** A donated
+HP t510 thin client in the control rack, under the headphone amp and above the
+switcher. It boots HP ThinPro (Linux underneath) straight into one remote
+desktop connection its last owner left, and does nothing else. It is to be
+wiped and given a job here.
 
 The folder name is a placeholder until Autumn names it (`names`).
 
 | | |
 |---|---|
-| model | most likely an **HP gt7725**, the ThinPro twin of the Windows gt7720. Confirm from ThinPro's System Information or the underside label |
-| CPU | AMD Turion X2 Ultra ZM-84, two 64-bit cores at 2.3 GHz. Family 11h: SSE3 and SSE4a, no SSSE3 or SSE4.1 |
-| graphics | AMD RS780G (Radeon HD 3200): DVI-I and DVI-D, two independent screens, up to 2560×1600 |
-| memory | two DDR2 SO-DIMM sockets (PC2-6400S), 2 GB as these shipped |
-| storage | a 1 GB flash module on the 44-pin IDE header, replaceable |
-| network | gigabit Ethernet (Broadcom BCM5787M). Not on the studio LAN on 2026-10-09: no HP hardware address answered on 10.209.1.0/24 |
+| model | **HP t510**, serial MXL2411TY7 (read from the BIOS) |
+| BIOS | AMI v02.67, system ROM 786R11 v1.03. **No administrator password**; setup opened without one |
+| CPU | VIA Eden X2 U4200, two 64-bit cores at 1.0 GHz. SSSE3 and SSE4.1, plus VIA's PadLock unit: a hardware random number generator, AES and SHA |
+| graphics | VIA Chrome9 HD on the VX900 chipset: DVI-I and DVI-D, 128 MB taken from memory |
+| memory | 2 GB DDR3 in one SO-DIMM socket (the BIOS shows 1920 MB once video takes its share). 4 GB modules are reported to work |
+| storage | a 1 GB flash module on the 44-pin IDE header (`PM-1GB ATA Flash`), replaceable. Two USB sockets inside the case, under the top cover |
+| network | gigabit Ethernet, Broadcom BCM57780, hardware address `9C:8E:99:E9:58:3B`. It can boot over the network (Broadcom MBA v12.2). Not on the studio LAN on 2026-10-09 |
 | other ports | serial, parallel, two PS/2, USB 2.0 front and back, mic and headphone |
-| power | 19 V on a 7.4 mm barrel. About 20 W idle, 40 W busy |
+| power | 19 V on a barrel plug. About 8 W idle and 19 W running |
 
-The specs are the family's, from [parkytowers' gt7725 page](https://parkytowers.me.uk/thin/hp/gt7725),
-until this unit's own System Information confirms them. The ports are from the
-photos.
+The model, serial, BIOS, memory, flash and hardware address are from the box.
+The rest is from [parkytowers' t510 page](https://www.parkytowers.me.uk/thin/hp/t510/).
+
+## As found in the BIOS
+
+- Boot order: a USB SD/MMC card reader first, then the 1 GB flash, then the
+  network. F12 at power-on gives a boot menu.
+- **Power on after a power failure: Off.** For a machine that has to come back
+  on its own, this needs to be On.
+- The clock keeps UTC, which is what Debian expects.
 
 ## Two screens
 
 The hardware drives both DVI ports at once. Showing only one screen is how
-ThinPro is set up, not a limit of the box.
+ThinPro is set up, not a limit of the box. Linux support for VIA's graphics is
+thin, though, so a text console is safe and a browser on each screen may not
+be.
 
 ## What it could be
 
-**Proposed: a screens box.** Debian 13, as on `../digitization`, with a
-browser in kiosk mode on each monitor showing studio pages, the way
-`../../troves/kiosk-screen` keeps the rolling TV from bay 1. It is already in
-the rack with two monitors on it, and it draws about 20 W. The CPU is fine for
-showing pages, and too slow for encoding or enhance work.
+**Autumn is leaning toward the origin** (2026-10-09): the front man. If only
+one of our machines had connectivity, this is the one we would want it to be.
+It isn't a strong machine, and that's part of the point: it isn't a juicy
+target, just one doing a job. It shouldn't be remote and unknowable either.
 
-- **Browser:** Firefox ESR has `--kiosk` and only needs SSE2. Whether current
-  Chromium still runs on a CPU without SSSE3 is to be tested, not assumed.
-- **Graphics:** the Radeon needs `firmware-amd-graphics` (non-free firmware,
-  which the Debian 13 installer offers).
+What that suggests:
+
+- **One job.** Minimal Debian with no desktop, and two ways in: SSH for
+  keyholders' fast-forwards (`../digitization/KEYHOLDERS`), and a read-only
+  page.
+- **A face.** One of its screens shows its own ledger: what it holds, when it
+  last heard from GitHub, the last fast-forwards and whose key made each, and
+  anything waiting. The same page is readable on the LAN with no login.
+- **Nothing worth stealing.** It reads from GitHub and never holds write access
+  there. After an outage, a session elsewhere publishes with its own login.
+  Every commit it holds also exists on the machine that pushed it, so a fresh
+  install and a clone rebuild it.
+- **Found by name.** A reserved address on the router and a `.local` name.
+
+Hosting an origin takes very little power: our repos come to a few hundred MB,
+and pushes are fast-forwards over the LAN. `../digitization/names` already says
+the origin is meant to move on under a new name. This box could be where it
+goes.
 
 ## Reformatting
 
-1. **Read it first.** Photograph System Information (model, serial, BIOS,
-   memory, flash size) and the label underneath, and fill in the table.
-2. **Storage.** 1 GB won't hold Debian with a browser. One of these:
-   - run live from a USB stick, as `../digitization` does, with nothing to buy;
-   - install to a USB stick or SSD that stays plugged in;
-   - swap the IDE flash module for a bigger one (8–32 GB).
-3. **Make the stick on the iMac.** Kiosk-1 and the bays can't write a raw
-   disk without an administrator.
-4. **Boot it.** HP's setup key is usually F10. A thin client from an
-   enterprise may have a BIOS password or USB boot turned off, and that would
-   be the first thing to stop us.
+1. **Storage.** 1 GB won't hold Debian comfortably. Either swap the IDE flash
+   module for a bigger one (8–32 GB), or install to a USB stick in one of the
+   sockets inside the case, where it can't get knocked out.
+2. **Make the installer stick on the iMac.** Kiosk-1 and the bays can't write
+   a raw disk without an administrator.
+3. **Boot it** with F12 and pick the stick. Nothing in the BIOS is locked.
+4. **In the BIOS,** set power-on after power failure to On.
 
 ## Not known yet
 
-- The exact model, serial, memory and flash size.
 - Where its network cable goes, since it isn't the studio LAN.
-- Whether the BIOS is locked.
 - What it is called (`names`).
