@@ -1,19 +1,4 @@
-// Writing to a member's repository.
-//
-// The credential comes from app-auth.js, one repository at a time, and this
-// file never sees where it came from. That is the point of the seam: the
-// question "what is allowed to write here" is answered in one place, by an App
-// installation, and not by whatever each call site happens to pass.
-//
-// WHY THE DEFAULT IS A BRANCH AND NOT THE MAIN LINE
-// -------------------------------------------------
-// A member editing their settings file can produce YAML that does not parse.
-// Committed straight to the default branch that takes their site down until
-// somebody notices. On a branch, the repository's own checks run first and the
-// merge only happens if it builds — so the worst case is an open pull request
-// and a message, instead of a broken site and a phone call.
-//
-// site/_data/settings.yml has the same argument written for the person reading it.
+// Reading and writing a member repository through the Contents API. See worker/README.md.
 
 import { contentHash as hashOf } from './intent.js';
 
@@ -56,18 +41,7 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
   }
 
   return {
-    /**
-     * Read a file, authenticated.
-     *
-     * Not raw.githubusercontent: that is served with cache headers measured in
-     * minutes, and this read is the first half of a read-modify-write. Getting
-     * a stale device list here would mean writing back a list with somebody
-     * else's change removed from it.
-     *
-     * Returns { ok: true, content, sha } — with `content: null` and `sha: ''`
-     * when there is no file yet, which is an ordinary first enrolment — or
-     * { ok: false, reason, detail }.
-     */
+    /** { ok: true, content, sha } (null and '' when absent) or { ok: false, reason, detail }. */
     async readFile({ repo, path }) {
       const issued = await credential(repo);
       if (!issued.ok) return { ok: false, reason: 'credential', detail: issued.detail };
@@ -84,20 +58,8 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
       return { ok: true, content: fromBase64(found.payload.content), sha: found.payload.sha };
     },
 
-    /**
-     * Put `content` at `path`, and return where it can be looked at.
-     *
-     * `sha` is the blob SHA the page read before editing. Sending it back is
-     * what makes GitHub refuse the write if somebody changed the file in
-     * between, rather than silently discarding their change. An empty string
-     * means the file did not exist, which is a legitimate first write.
-     *
-     * Returns { ok: true, mode, url } or { ok: false, reason, detail }.
-     */
+    /** Write `content` against the blob `sha` the page read ('' = new file); { ok, mode, url }. */
     async writeFile({ repo, path, content, sha, contentHash, message, mode = 'branch' }) {
-      // One token, minted for this repository and this write. If the App is
-      // not installed here, that is the answer — and it is the same answer as
-      // "this site was revoked", which is the point of revoking that way.
       const issued = await credential(repo);
       if (!issued.ok) return { ok: false, reason: 'credential', detail: issued.detail };
       const call = (path_, options) => callWith(issued.token, path_, options);
@@ -113,16 +75,7 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
           },
         });
 
-      /**
-       * A rejected SHA has two meanings and they need opposite answers.
-       *
-       * Somebody else changed the file: refuse, and tell the member so they
-       * can go and look. This edit already landed — a double tap, or a retry
-       * of a request whose answer never arrived: say it worked, because it
-       * did. Telling that member it failed is how you end up with two.
-       *
-       * Only the bytes can tell them apart, so go and read them.
-       */
+      // A rejected SHA is either a real conflict or this same edit landed already; the bytes decide.
       const alreadyThere = async (branch) => {
         const query = branch ? `?ref=${encodeURIComponent(branch)}` : '';
         const existing = await call(`/repos/${repo}/contents/${encodeURI(path)}${query}`);
@@ -166,16 +119,12 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
         method: 'POST',
         body: { ref: `refs/heads/${branch}`, sha: head.payload.object.sha },
       });
-      // 422 is "already exists", which is what a retry of the same edit looks
-      // like. The branch name is derived from the content, so the one sitting
-      // there is this edit and not somebody else's.
+      // 422: the content-named branch exists, so it holds this same edit (a retry).
       if (!created.ok && created.status !== 422) {
         return { ok: false, reason: 'github', detail: `Could not open a branch (${created.status}).` };
       }
 
-      // The branch was forked from the default one, so the SHA the member read
-      // is still the right SHA here — unless this edit is already on it, which
-      // is exactly what a retry looks like.
+      // Forked from the default branch, so the member's SHA still applies unless this is a retry.
       let repeated = false;
       const written = await put(branch);
       if (conflicted(written.status)) {
@@ -193,9 +142,7 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
       });
       if (pull.ok) return { ok: true, mode, url: pull.payload.html_url, repeated };
 
-      // Also 422 when one is already open for this branch — the same retry
-      // case as above. Find it rather than reporting a failure for something
-      // that has already happened.
+      // 422 again on a retry: find the pull request already open.
       if (pull.status === 422) {
         const owner = repo.split('/')[0];
         const open = await call(
@@ -205,8 +152,7 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
         if (existing) return { ok: true, mode, url: existing.html_url, repeated };
       }
 
-      // The file IS written; only the pull request is missing. Saying so beats
-      // reporting a failure the member would respond to by editing again.
+      // The file is written; only the pull request is missing.
       return {
         ok: true,
         mode,

@@ -1,13 +1,4 @@
-// Email claims, checked across the seam.
-//
-// site/bin/mint-claim.py signs with openssl. site/assets/js/claims.js verifies with
-// WebCrypto. Those are two different implementations of the same standard,
-// joined by a hand-written DER conversion, and the failure mode is a token
-// that looks perfect and verifies nowhere.
-//
-// So these tests mint real tokens with the real script and verify them in a
-// real browser. Nothing is stubbed in the middle, because the middle is the
-// part that can be wrong.
+// Claims minted by the real mint-claim.py (openssl) and verified by claims.js in a real browser.
 
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
@@ -79,9 +70,7 @@ test.describe('claim verification', () => {
   });
 
   test('the address is lower-cased at minting, not at reading', async ({ page }) => {
-    // Two people typing the same address differently must not become two
-    // records. Normalising once, at the source, is what makes the token itself
-    // the canonical form.
+    // Normalised at minting, so the token is the canonical form.
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'Someone@Example.COM']));
 
     const result = await verify(page, token, [publicKey]);
@@ -119,10 +108,7 @@ test.describe('claim verification', () => {
   });
 
   test('an expired claim is reported as expired, not as a forgery', async ({ page }) => {
-    // The distinction is the whole reason expiry is checked after the
-    // signature: one means "ask for a new link", the other means "something is
-    // wrong". Telling someone their genuine link was tampered with sends them
-    // to the wrong place.
+    // Expired and forged need different advice.
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'someone@example.com', '--days', '1']));
 
     const result = await verify(page, token, [publicKey], Date.now() + 2 * 86400 * 1000);
@@ -133,8 +119,7 @@ test.describe('claim verification', () => {
   });
 
   test('a claim still verifies after a key rotation adds a newer key', async ({ page }) => {
-    // Links already sitting in inboxes have to keep working, which is the only
-    // reason the config holds a list instead of a key.
+    // Links in inboxes keep working across a key rotation.
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'someone@example.com']));
 
     const result = await verify(page, token, [otherKey, publicKey]);
@@ -150,8 +135,7 @@ test.describe('claim verification', () => {
   });
 
   test('no configured keys means nothing verifies', async ({ page }) => {
-    // The shipped state. A site with no keys must reject rather than wave
-    // things through.
+    // The shipped state: no keys rejects everything.
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'someone@example.com']));
 
     const result = await verify(page, token, []);
@@ -185,8 +169,7 @@ test.describe('redeeming a claim on the page', () => {
   });
 
   test('the token is taken out of the address bar', async ({ page }) => {
-    // It is stored by now, and a URL still carrying it is one someone might
-    // paste into a group chat, handing their address to everyone in it.
+    // Stored by now, so it must leave the URL.
     await withKey(page);
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'member@example.com']));
 
@@ -213,8 +196,7 @@ test.describe('redeeming a claim on the page', () => {
     await page.goto('/check-in/#claim=v1.bogus.bogus');
 
     await expect(page.locator('#claim-status')).toBeVisible();
-    // Still able to type an address by hand — a broken link must not be a
-    // dead end.
+    // A broken link still leaves the typed-address field.
     await expect(page.locator('#profile-email')).toBeVisible();
   });
 
@@ -249,8 +231,7 @@ test.describe('redeeming a claim on the page', () => {
 
 test.describe('email without a claim', () => {
   test('the typed-address field is what a visitor sees by default', async ({ page }) => {
-    // No keys are configured on the shipped site, so this is the state
-    // everyone is actually in. It must not read as an error.
+    // Everyone's state on the shipped site; it must not read as an error.
     await page.goto('/check-in/');
 
     await expect(page.locator('.pass [data-claim="none"]')).toBeVisible();
@@ -268,8 +249,7 @@ test.describe('email without a claim', () => {
   });
 
   test('a typed address is recorded, and recorded as unconfirmed', async ({ page }) => {
-    // The distinction has to survive into the history, or the record claims
-    // more than it knows.
+    // Confirmed versus typed survives into the history.
     await page.clock.setFixedTime(new Date('2026-08-03T18:00:00Z'));
     await page.context().grantPermissions(['geolocation']);
     await page.context().setGeolocation({ latitude: 40.5849119, longitude: -105.0735292 });

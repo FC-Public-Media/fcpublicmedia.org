@@ -70,11 +70,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <p class="eyebrow">Signed in</p>
   <h2 id="editing-site"></h2>
 
-  {%- comment -%}
-    The file is shown whole, comments and all, because those comments are the
-    only documentation a member has for what these settings do. A form would
-    strip them on the first save. See _data/settings.yml.
-  {%- endcomment -%}
+  {%- comment -%} The file is edited whole so its comments survive a save. See _data/settings.yml. {%- endcomment -%}
   <p>
     This is your <code id="editing-path"></code>, exactly as it is on your
     site. The lines starting with <code>#</code> are notes explaining what each
@@ -111,11 +107,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <p class="lede" id="saved-detail"></p>
   <p class="hero-actions">
     <button class="btn" data-action="reload" type="button">Keep editing</button>
-    {%- comment -%}
-      Where the change went. On the default branch mode that is a pull request
-      with the checks running on it — worth being able to look at, because "we
-      are checking it" is easier to believe when you can see the thing.
-    {%- endcomment -%}
+    {%- comment -%} Links to where the change went: by default, a pull request. {%- endcomment -%}
     <a class="btn" id="saved-link" href="#" hidden>See the change</a>
   </p>
 </div>

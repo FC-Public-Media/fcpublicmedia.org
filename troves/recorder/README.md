@@ -1,153 +1,30 @@
 # The recorder trove
 
-**If you have something that produces recordings a node has to catch, this is
-the gear that records it.** A capture deck, a multiviewer, the RØDECaster:
-hardware played through a recorder, whose files are caught and handed on.
+The gear that records whatever makes files a node catches (a capture deck, the RØDECaster). macOS:
+Audio Hijack, station-node's. Windows: the staff copy, a second, portable OBS beside the members'
+one, whose websocket confirms start and stop and returns each file's path. No instrument is attached.
 
-Status: draft. Nothing reads this directory yet, and no instrument is attached
-to editing bay 1 yet. What is here is the recorder itself, brought aboard ahead
-of the hardware, so that the first capture is not also the first install.
+## The staff copy
 
-## What a recorder has to answer
+It lives in `%LOCALAPPDATA%\<profile>\troves\recorder\obs\` with `obs_portable_mode.txt`, runs
+`--multi --portable` as profile and scene collection **FCPM Recorder** (its title bar says so) and
+records to `troves\recorder\recordings\`. Websocket 4456; its password is in Credential Manager
+(`fcpm-recorder:obs-websocket`) and in OBS's own `config.json`. The bay asserts
+`EnableAutoUpdates=false` after each install. The one grant, placed at the desk: obs-websocket cannot
+pick its address, so a firewall rule blocks inbound for this `obs64.exe` (loopback is not filtered).
 
-Station-node's `docs/instruments.md`, *Controlling it*, measured Audio Hijack
-against four rows and then said: *"A digitization kiosk on Windows has none. It
-will need a recorder that answers the same four rows."* These are those rows,
-with the three that digitization adds:
-
-| row | macOS: Audio Hijack | Windows: OBS, portable |
-|---|---|---|
-| **start / stop** | a `.ahcommand` file, one-way; success is read back from the disk | obs-websocket `StartRecord` / `StopRecord`, which answer |
-| **is it recording** | a file open under `from:` | `GetRecordStatus` |
-| **a file finished** | `fileDidEnd`, not wired | the `RecordStateChanged` event, which carries the file's path |
-| **what the feed carries** | the RØDECaster App, by hand | the scene collection and profile, which are files this trove can carry |
-| **split on silence** | built in: *Start new file* at -60 dB / 2 s | not built in. Advanced Scene Switcher can start and stop on an audio level; it would be a second payload, because a portable OBS does not load plugins installed for the system copy |
-| **many tracks, one file** | no | up to six audio tracks in MKV |
-| **lossless video** | no | FFV1 in MKV through the custom FFmpeg output; NVENC for proxies |
-
-The macOS column is station-node's, and it stays there. This trove cites it so
-that the two answers can be read side by side; it does not carry Audio Hijack.
-
-## The Windows answer: an OBS nobody sits down to
-
-The bays are production machines. Editing bay 1 already has an OBS that people
-use, installed by winget into `Program Files`, with somebody's show in
-`%APPDATA%\obs-studio`: profiles, scene collections, and a websocket on 4455
-with a password. **None of that is ours, and this trove never writes to it.** The
-procedure's `confirm` lists that folder, names and sizes and times but never
-contents, before and after it runs, to show it was left alone.
-
-So the recorder is a second, separate OBS:
-
-- **Portable.** Unzipped to `%LOCALAPPDATA%\<profile>\troves\recorder\obs\` with
-  `obs_portable_mode.txt` beside `bin\`. OBS then keeps every setting under its
-  own `config\` folder. Checked against 32.1.1's `obs64.exe`, which looks for
-  that file and for `portable_mode.txt`.
-- **`--multi`**, so it runs while a person has the system OBS open, and neither
-  one asks the other to close.
-- **Its own profile and scene collection**, named `fcpm-recorder`, launched with
-  `--profile` and `--collection`, and carried by this trove as templates.
-- **Its own websocket port, `4456`, and its own password**, kept in Credential
-  Manager under `fcpm-recorder:obs-websocket`, never in a file here.
-- **No self-update.** `EnableAutoUpdates=false` in its `global.ini`, asserted
-  by the bay after every install, so the bay stays the only way a version
-  arrives. Ablative's first payload went around its bay by a different road;
-  this closes the one road OBS itself offers.
-- **No admin to install.** Everything lands in a folder this user owns.
-  Station-node's gear page calls that the strongest argument there is for a
-  node owning an install path.
-
-### The one grant: inbound, refused
-
-obs-websocket has no setting for which address it listens on: its config holds
-`server_enabled`, `server_port` and `server_password`, and nothing else (read
-from 32.1.1's `obs-websocket.dll`). So the first time the recorder's websocket
-listens, Windows Firewall asks whether `obs64.exe` may accept connections.
-
-**The answer is no, and it is placed in advance.** Windows Firewall does not
-filter loopback, so a block rule for this one executable leaves the recorder
-reachable from this machine and from nowhere else. That is exactly what a
-recorder wants: the node that arms it runs here. The rule needs an
-administrator, so it is placed at the desk as part of install, the way
-station-node's `LAUNCH.md` says grants are placed: before the job runs, never
-during.
-
-## Never
-
-What the members already call OBS on editing bay 1, and what the staff copy
-therefore never touches. Measured 2026-09-26 by code-e3, read-only and by name
-only; nothing of theirs was opened.
-
-| theirs | so the staff copy |
-|---|---|
-| **OBS Virtual Camera**, registered system-wide | never starts the virtual camera. `obs.ps1` has no verb for it. From the staff copy it would drive the members' device |
-| **"OBS Studio.lnk"** in the Start menu and on the Public desktop | never gets a shortcut named OBS. A person looking for OBS finds theirs |
-| **the websocket on 4455**, which a member's Streamer.bot also talks to | never uses 4455. Ours is 4456, and `start` refuses if anything already listens there |
-| **`HKLM\SOFTWARE\OBS Studio`** | never read or written. The portable copy made no registry key of its own |
-| **`obs64`**, the process name | is also theirs, so ours is never stopped by name. `stop` closes only the process id `start` wrote down, and only if it runs from this trove's prefix |
-| **`%USERPROFILE%\Videos`**, where the members' OBS records by default | never records there. `prepare` points both output modes at the trove's own `recordings` folder; `start` and `record start` refuse if the path is anywhere else |
-
-And one thing that is ours to set, so the two can be told apart at a glance:
-the staff copy's profile and scene collection are both named **FCPM Recorder**,
-and OBS puts that in its title bar. `obs.ps1 prepare` names them.
-
-## Playing it
-
-`obs.ps1` is what an issued task calls. It reaches the staff copy only through
-its own websocket, obs-websocket v5 on `127.0.0.1:4456`, and nothing else:
-
-| verb | does |
-|---|---|
-| `status` | whether ours is installed, prepared, granted, running and recording, and where to. Changes nothing |
-| `prepare` | names the profile and scene collection, points recordings at the trove's own `recordings` folder, and turns the websocket on at 4456 with a generated password, kept in Credential Manager under `fcpm-recorder:obs-websocket` |
-| `start` | launches it with `--multi --portable` and its named profile, once the inbound-block rule is in place and 4456 is free, and writes down its process id |
-| `record start` | `StartRecord`, then reads `GetRecordStatus` to see that it took |
-| `record stop` | `StopRecord`, and prints the finished file's path: the *file finished* row above |
-| `stop` | stops recording if it is, then closes that process id |
-| `grant` | places the one grant, the inbound block below. A person runs it at the desk as `fcpm recorder grant`; it asks Windows for an administrator itself, so nobody pastes a command or picks a window |
-
-OBS keeps the websocket password in its own `config.json` too, in plain text,
-inside the staff copy's folder. That is how obs-websocket stores it; the copy in
-Credential Manager is the one this trove reads.
-
-## Schematics are the trove's; a crew wears a reference
-
-Autumn, 2026-09-25, relayed by station-node's digitization session: the
-recorder is *"configured in our crew with obs session schematics of our
-making"*, and the schematics live here.
-
-- **A schematic is trove content.** An OBS profile and scene collection, or an
-  Audio Hijack session where that is the recorder, written for one kind of
-  capture. They go in `schematics/<name>/` when the first one is written.
-- **A crew wears its slice, not the template.** What a crew carries is the
-  configuration it would deploy: which schematic, for which instrument, on this
-  host.
-- **A crew names what it wants, not where it is:** by name, class or category.
-  For example `recorder, class multiplex-capture, schematic quad-1080`. A path
-  would tie the crew to this repository's layout; a name survives the trove
-  moving to its own repository.
-- **A crew plans around a trove only where a repository offers it.** Where the
-  trove is absent, the crew goes without that service rather than failing, the
-  same way it goes without an instrument that is not plugged in.
+It never starts the virtual camera, has a shortcut named OBS, uses 4455 (the members' OBS and their
+Streamer.bot), touches `HKLM\SOFTWARE\OBS Studio` or `%APPDATA%\obs-studio`, stops `obs64` by name,
+or records to `%USERPROFILE%\Videos`.
 
 ## Files
 
-| | |
-|---|---|
-| `gear.yml` | the recorder as gear: what it is, where it comes from, who may replace it |
-| `bay/obs-portable.ps1` | the procedure that brings it aboard. `check` changes nothing |
-| `obs.ps1` | the runtime verbs an issued task calls. `status` changes nothing |
+- `gear.yml`: the recorder as gear.
+- `bay/obs-portable.ps1`: `check` (changes nothing), `receive`, `verify`, `stage` (core binaries must
+  be signed by OBS Project), `install`, `confirm` (shows `%APPDATA%\obs-studio` untouched). The
+  host's records are in `machines/editing-bay-1/bay/`.
+- `obs.ps1` (`fcpm recorder`): `status`, `prepare`, `start` (only the binary the bay recorded, with
+  the grant in place and 4456 free), `record start|stop` (stop prints the file), `stop` (only the
+  process id `start` wrote), `grant` (asks Windows for an administrator itself).
 
-A payload record is the host's, not the trove's: it says what arrived on one
-machine on one day. Editing bay 1's live in `machines/editing-bay-1/bay/`.
-
-## Open
-
-- **Whether OBS is the recorder for digitization at all** waits on the capture
-  hardware, which waits on HDCP. Bringing OBS aboard first is cheap and changes
-  nothing that is anybody else's.
-- **Silence**, as above. The design digitization described is *armed, then
-  catch what arrives while the signal is not flat*, and OBS does not split on
-  silence by itself.
-- **The first schematic** is not written. It depends on
-  what is plugged in.
+A crew asks for a recorder by name and schematic, not by path, and goes without it when absent.

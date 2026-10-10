@@ -1,13 +1,6 @@
-# check.ps1 -- what editing bay 1 needs that files cannot say. Changes nothing.
-#
-# Run by `machines/sync` status on this profile, or alone:
-#   powershell -NoProfile -File machines\editing-bay-1\check.ps1
-#
-# One line per fact, "ok" or "WANTED" and what would make it so. The WANTED
-# lines are the Day 0 list (PROFILE.md) for whatever is still missing.
-#
-# Windows PowerShell 5.1, no modules. ASCII only: 5.1 reads a BOM-less script
-# as ANSI.
+# check.ps1 -- what editing bay 1 needs that files cannot say: "ok" or "WANTED" per fact. Changes nothing.
+# Run by `fcpm check` or `machines/sync`. See PROFILE.md.
+# ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
 $ErrorActionPreference = "Continue"
 $Here = $PSScriptRoot
@@ -36,10 +29,7 @@ foreach ($e in $entries) {
 $dev = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense
 Say ($dev -eq 1) "Developer Mode (symlinks without elevation)" "Settings > System > For developers"
 Say ((git config --global core.autocrlf) -eq "false") "git core.autocrlf false for this user (checkouts arrive LF)" "git config --global core.autocrlf false"
-# Reported, not judged. Public is the intended posture (Autumn, 2026-09-26):
-# the network is managed and isolated, what matters is what we do inside, and
-# Windows making a new Public profile for each new gateway is it healing, not
-# drifting.
+# Reported, not judged: Public is the intended category.
 Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { "note    network $($_.InterfaceAlias) is $($_.NetworkCategory)" }
 
 # The pool, and what a background session needs before it can start.
@@ -56,10 +46,7 @@ if (Test-Path $cj) {
 }
 Say $trusted "~/code trusted for Claude Code (the root's server needs it)" "open claude in ~/code once and accept"
 
-# Where this bay reaches, and what it cannot yet.
-# Its SMB port, for 800 ms, as troves/kiosk-screen's DepotAnswers asks.
-# Test-NetConnection waited out the full TCP timeout (21 s, measured
-# 2026-10-09) behind a progress box, twice a watcher visit.
+# The depot's SMB port for 800 ms, as kiosk-screen asks; Test-NetConnection waits out a 21 s timeout.
 $depot = $false
 $t = New-Object Net.Sockets.TcpClient
 try {

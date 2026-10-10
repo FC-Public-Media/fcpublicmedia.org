@@ -1,16 +1,5 @@
-// Tests for things hosted by someone else: the Cablecast player, show pages,
-// and thumbnails.
-//
-// These need network access and will fail if Cablecast is down, which is why
-// they are separated from smoke.spec.js. Skip them with:
-//
-//     npx playwright test --grep-invert @external
-//
-// Why these exist at all: Cablecast's viewer is a single-page app. Requesting
-// a show that does not exist still returns HTTP 200 and a full HTML shell —
-// verified with /internetchannel/show/999999. So checking status codes proves
-// nothing about whether a link works. The only way to know is to render the
-// page and look for the player.
+// @external: Cablecast player, show pages, thumbnails, footer links; needs the network.
+// Cablecast returns 200 for missing shows, so pages are rendered and checked. See docs/site.md.
 
 const { test, expect } = require('@playwright/test');
 
@@ -21,8 +10,6 @@ test.describe('embeds @external', () => {
   test('the live player embed mounts a video element @external', async ({ page }) => {
     await page.goto(LIVE_EMBED, { waitUntil: 'domcontentloaded' });
 
-    // The player is injected by the SPA, so wait for the element rather than
-    // trusting the response.
     await expect(page.locator('video')).toBeAttached({ timeout: 30_000 });
   });
 
@@ -33,8 +20,6 @@ test.describe('embeds @external', () => {
     await expect(frame).toHaveCount(1);
     await expect(frame).toHaveAttribute('src', LIVE_EMBED);
 
-    // Confirm the iframe actually produced a document rather than a blocked
-    // or errored frame.
     const content = page.frameLocator('iframe[src*="watch-live-embed"]');
     await expect(content.locator('body')).toBeAttached({ timeout: 30_000 });
   });
@@ -47,15 +32,12 @@ test.describe('embeds @external', () => {
     );
     expect(hrefs.length, 'no show links found in the archive').toBeGreaterThan(0);
 
-    // A sample, not all 1,060 — enough to catch a wrong URL shape, which is
-    // the failure mode that matters. A per-show data problem is Cablecast's
-    // to fix, not this site's.
+    // First, middle and last: enough to catch a wrong URL shape.
     const sample = [hrefs[0], hrefs[Math.floor(hrefs.length / 2)], hrefs[hrefs.length - 1]];
 
     for (const href of sample) {
       await page.goto(href, { waitUntil: 'domcontentloaded' });
-      // The SPA renders something show-shaped: a heading or a player. If the
-      // URL pattern were wrong we would get the shell and nothing else.
+      // A wrong URL renders only the SPA shell, with no heading or player.
       await expect(
         page.locator('video, h1, .show-title').first(),
         `${href} did not render a show`
@@ -95,8 +77,7 @@ test.describe('outbound links @external', () => {
           failOnStatusCode: false,
           timeout: 20_000,
         });
-        // 403 and 429 are what social networks return to automated clients;
-        // they mean "we saw you", not "this link is wrong".
+        // 403/405/429 are how social networks answer automated clients, not broken links.
         if (response.status() >= 400 && ![403, 405, 429].includes(response.status())) {
           broken.push(`${href} -> ${response.status()}`);
         }

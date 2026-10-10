@@ -48,9 +48,7 @@
   .grpname:hover { text-decoration: underline; }
   .grp.tmp { background: repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 10px); }
   .grpname.tmp { font-style: italic; }
-  /* an edge of the window, to drag: a wide grip around a thin bright bar */
-  /* an edge's handle sits just outside the edge it holds (the start's to the left, the end's to the right),
-     so what lies right at the edge (a cut, a skipped clip) stays readable; red, like the record light */
+  /* an edge's handle: a wide grip just outside the edge it holds, so what lies at the edge stays readable */
   .hdl { position: absolute; top: 0; bottom: 0; width: 14px; cursor: ew-resize; z-index: 4; touch-action: none; }
   .hdl[data-edge="a"] { margin-left: -14px; }
   .hdl[data-edge="b"] { margin-left: 0; }
@@ -136,17 +134,11 @@
   #txbar button:hover { border-color: rgba(255,255,255,.25); }
   #txbar button.away { color: var(--ink); border-color: rgba(255,255,255,.25); }
   #win { position: relative; flex: 1; min-height: 0; border-radius: 3px; background: rgba(255,255,255,.025); overflow: hidden; }
-  /* Neighbours alternate in tone and each starts at a dark seam, so clips that
-     touch edge to edge still read as separate. The one playing is shown by its
-     waveform alone: nothing jumps but the playhead. */
   /* in the window a recording's body is only a faint field (and its seam); the waveform is the picture */
   #win .f { top: 22px; bottom: 22px; opacity: .04; }
-  /* skipped: out of play, at any size. A grey hatch over the whole body, so even
-     a clip whose waveform is a sliver reads as disabled */
+  /* skipped: a grey hatch over the whole body, so even a sliver reads as out of play */
   #win .f.skip { opacity: .5; background: repeating-linear-gradient(135deg, #8a8d94 0 2px, #2c2f35 2px 6px) !important; }
-  /* a ghost: a recording that was here and is not now */
-  /* a ghost is an absence: it darkens what is under it (many darken more), with
-     only a faint dark-red edge, so removed stretches read as holes, not as light */
+  /* a ghost, a recording that was here and is not now: it darkens what is under it, a hole, not light */
   .ghost { position: absolute; top: 9px; bottom: 11px; min-width: 1px; border-radius: 1px;
            background: rgba(0,0,0,.42); box-shadow: inset 0 0 0 1px rgba(150,60,60,.22); mix-blend-mode: multiply; }
   #win .ghost { top: 22px; bottom: 22px; }
@@ -185,7 +177,6 @@
   #win .cut .dots.rm { color: #f07a6e; }
   /* a clip's state, where its waveform is not: loading flows gently backwards; unreadable and unplayable lie still */
   #win .state { position: absolute; bottom: 24px; height: 4px; z-index: 1; pointer-events: auto; border-radius: 2px; }
-  /* loading is the peaks, not here yet: a flat dotted line at talk height, where the trace will be, flowing back */
   /* the selection in the window: what the list acts on */
   #win .sel.pick { background: rgba(143,176,255,.16); box-shadow: inset 0 1px 0 rgba(143,176,255,.7), inset 0 -1px 0 rgba(143,176,255,.7),
                    inset 1px 0 0 rgba(143,176,255,.9), inset -1px 0 0 rgba(143,176,255,.9); z-index: 3; }
@@ -199,8 +190,7 @@
                         animation: flowback 2.2s linear infinite; opacity: .8; }
   #win .state.unreadable, #win .state.unplayable { background: repeating-linear-gradient(90deg, rgba(220,110,100,.75) 0 2px, transparent 2px 6px); }
   @keyframes flowback { from { background-position: 0 50%; } to { background-position: -9px 50%; } }
-  /* the clip playing: a record light in motion. Red always, whatever the show's colour: round dots marching forward,
-     only once its sound is coming (see .waiting below) */
+  /* the clip playing: red dots marching forward, a record light, once its sound is coming (.waiting below) */
   #win .state.playing { pointer-events: none; opacity: 1; height: 8px; bottom: 22px; z-index: 9;   /* over everything in the window */
                         background: radial-gradient(circle, #ff3b30 2.6px, rgba(255,59,48,.35) 3.2px, transparent 3.6px) 0 50% / 14px 8px repeat-x;
                         animation: flowdots 1.1s linear infinite; }
@@ -287,10 +277,7 @@
 <div id="tip" role="tooltip"></div>
 <script>
 (function () {
-  // Nights, from the day's seam to the next (pools.yml view: day_starts_at, 9 here), each recording where it ran. Dragging along time,
-  // the way text is selected, sets a window: that stretch at full width in the
-  // dock, where it plays (silently until sound is turned on) and where a
-  // narrower drag looks closer still. A window can be given to a show.
+  // Nights from the day's seam (view: day_starts_at); a drag along them opens a window, docked. See troves/pools/README.md.
   var main = document.getElementById('main'), dock = document.getElementById('dock'),
       winEl = document.getElementById('win'), ctl = document.getElementById('ctl'), tip = document.getElementById('tip');
   var COLORS = ['#e0a63a', '#3ec28f', '#b07cf0', '#4fb3d9', '#d96b9b', '#5b8def'];
@@ -300,8 +287,7 @@
   var P = {t: null, playing: false, muted: true, cur: null, audio: new Audio(), raf: 0, err: '', forced: null,
            bad: {}, tried: null, fails: 0};   // bad: path -> why it would not play
 
-  // Proofing settings, kept between visits: amplify the waveform, and skip
-  // clips shorter than `under` seconds when playing or placing the playhead.
+  // Proofing settings, kept between visits in localStorage.
   var S = {amp: true, skip: true, under: 6, squeeze: true, silence: false, follow: true, muted: false, v: 2};
   try { var kept = JSON.parse(localStorage.getItem('pools.timeline') || '{}'); for (var k in kept) S[k] = kept[k]; } catch (e) {}
   if (S.v !== 2) { S.silence = false; S.v = 2; }   // removals are staged in view now; hearing without them is a preview you choose
@@ -309,8 +295,7 @@
   function keepS() { try { localStorage.setItem('pools.timeline', JSON.stringify(S)); } catch (e) {} }
   // A short clip is passed over, unless someone insisted on it (P.forced).
   function short(x) { return S.skip && x !== P.forced && x.f.duration != null && x.f.duration < S.under; }
-  // Marked for removal: with "silence marked" on it is passed over too, and
-  // counts as cut, before anything is moved.
+  // Marked for removal: with "silence marked" on, passed over and counted as cut before anything moves.
   function inRemoval(x) { return groups.some(function (g) { return g.remove && x.end > g.start && x.start < g.end; }); }
   function silenced(x) { return S.silence && x !== P.forced && inRemoval(x); }
   function skipped(x) { return short(x) || silenced(x); }
@@ -323,15 +308,13 @@
   function wd(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 'short'}); }
   function hours(s) { return s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h'; }
   function dur(s) { return s == null ? 'length unknown' : s < 60 ? s.toFixed(s < 10 ? 1 : 0) + ' s' : hours(s); }
-  // A lane runs from the day's seam to the next: an hour the studio is quiet,
-  // so no session is cut in two and no debris sits at a lane's far end.
+  // A lane runs seam to seam, an hour the studio is quiet, so no session is cut in two.
   var SEAM = 9;
   function dayStart(t) { var d = new Date(t * 1000); d.setHours(SEAM, 0, 0, 0); if (d.getTime() / 1000 > t) d.setDate(d.getDate() - 1); return d.getTime() / 1000; }
   function next(o) { var d = new Date(o * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; }
   function color(slug) { var i = shows.map(function (s) { return s.slug; }).indexOf(slug); return COLORS[(i < 0 ? 0 : i) % COLORS.length]; }
   function title(slug) { var s = shows.filter(function (s) { return s.slug === slug; })[0]; return s ? s.title : slug; }
-  // A group belongs to a show, or carries a provisional name until someone
-  // knows what it is ("unknown 1"). Provisional ones are drawn dashed.
+  // A group belongs to a show, or carries a provisional name ("unknown 1"), drawn dashed.
   function gname(g) { return g.show ? title(g.show) : g.name ? g.name : g.remove ? 'to remove' : g.removed ? 'removed' : g.transcribe ? 'to transcribe' : 'unnamed'; }
   function ncolor(name) { var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return COLORS[(shows.length + h) % COLORS.length]; }
   function gcolor(g) { return g.show ? color(g.show) : g.name ? ncolor(g.name) : g.transcribe && !g.remove ? '#c9d1dc' : '#e0574f'; }
@@ -349,8 +332,7 @@
     var seen = {};
     return groups.filter(function (g) { return !g.show && g.name && !seen[g.name] && (seen[g.name] = 1); }).map(function (g) { return g.name; });
   }
-  // Icons, drawn in the page's own ink: a button is its icon; its name is in
-  // the tooltip and for screen readers.
+  // Icons in the page's ink: a button is its icon; its name is the tooltip and aria-label.
   var ICONS = {
     play:  '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
     pause: '<rect x="6" y="4.5" width="4" height="15" rx="1" fill="currentColor"/><rect x="14" y="4.5" width="4" height="15" rx="1" fill="currentColor"/>',
@@ -376,9 +358,7 @@
   ICONS.files = '<rect x="4" y="5" width="3" height="14" rx="1" fill="currentColor"/><rect x="9" y="8" width="3" height="11" rx="1" fill="currentColor"/><rect x="14" y="4" width="3" height="15" rx="1" fill="currentColor"/><rect x="19" y="10" width="2" height="9" rx="1" fill="currentColor"/>';
   ICONS.grid = '<path d="M5 4v16M12 4v16M19 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 8v8M15.5 8v8" stroke="currentColor" stroke-width=".9" opacity=".6"/>';
 
-  // Skip short clips: a short, tightly ticked slider. Only its stops matter
-  // (off, 3, 6, 10 s), each clickable; the space between them shows only their
-  // relative size (square root), not to scale.
+  // Skip short clips: a slider of clickable stops, spaced by square root, not to scale.
   var STOPS = [0, 3, 6, 10];
   function stops() {
     var wrap = el('span', 'stops'), track = el('span', 'track'), cur = S.skip ? S.under : 0;
@@ -458,18 +438,14 @@
       return {start: r.start, end: Math.max(r.end, r.start + 1), r: r};
     });
     ghosts.forEach(function (g) { var o = dayStart(g.start); lane[o] = lane[o] || []; });
-    // keep each night's drawn track across reloads: a repaint between redraws
-    // must find the lane it painted before
+    // keep each night's drawn track across reloads, so a repaint between redraws finds its lane
     var old = {};
     lanes.forEach(function (L) { old[L.origin] = L; });
     lanes = Object.keys(lane).map(Number).sort(function (a, b) { return a - b; })
       .map(function (o) { return {origin: o, end: next(o), files: lane[o], track: old[o] && old[o].track, w: old[o] && old[o].w}; });
   }
 
-  // On the nights a bar stands as tall as the recording is loud, from the
-  // bottom of its lane, like a meter: a room's background is a stub, people
-  // talking fill it. Average level (RMS), -72 dBFS to -24 dBFS. Not measured
-  // yet: full height, faint.
+  // On the nights a bar is as tall as its average level, -72 to -24 dBFS; not measured yet: full and faint.
   var LOW = -72, HIGH = -24;
   function meter(d, x) {
     var lv = x.f.level;
@@ -479,8 +455,7 @@
     return d;
   }
 
-  // What is marked for removal, and the one way to act on it: moved aside into
-  // the pool's .removed/<date>/ folder, never deleted. Asks first.
+  // What is marked for removal, and the button that moves it into .removed/<date>/, after asking.
   function marked() {
     var ms = groups.filter(function (g) { return g.remove; });
     var hit = files.filter(function (x) { return ms.some(function (g) { return x.end > g.start && x.start < g.end; }); });
@@ -578,8 +553,7 @@
     paintLanes();
   }
 
-  // A stretch [a, b] painted on every lane it crosses, the way a text
-  // selection runs to the end of a line and on from the start of the next.
+  // A stretch [a, b] painted on every lane it crosses, as a text selection wraps.
   function spans(a, b, make) {
     var n = 0;
     lanes.forEach(function (L) {
@@ -599,8 +573,7 @@
     d.title = gname(g) + (g.show ? '' : ' (not yet a show)') + ' · ' + hm(g.start) + '–' + hm(g.end);
     d.onpointerdown = function (e) { e.stopPropagation(); };
     d.onclick = function () { openView(g.start, g.end); if (g.transcribe) openTx(g); };
-    // A mark for removal (or what was removed) is an omission: its hatched line says it, unlabelled, so it never
-    // fights the show's own name. Named groups, and marks for transcription (their state is the point), keep a label.
+    // Removal marks go unlabelled, so they never fight a show's name; named groups and transcription marks keep one.
     if (first && (g.show || g.name || !(g.remove || g.removed))) {
       var tx = txState(g);
       var n = el('div', 'grpname' + (g.show ? '' : ' tmp') + (g.remove ? ' rm' : '') + (gone ? ' gone' : ''), (g.remove ? '✕ ' : '') + gname(g) + (tx ? '  ' + tx.glyph : '')); n.style.color = gone ? '#7a4a4a' : gcolor(g);
@@ -647,17 +620,13 @@
     return {a: win.a - pad, b: win.b + pad};
   }
 
-  // --- the window's layout: time to pixels ---------------------------------
-  // With "compress gaps" on, every stretch with no recording (and every clip
-  // the skip passes over) becomes a narrow cut that says how much time it
-  // holds, and the recordings share the width. Off, it is plain time.
+  // --- the window's layout: time to pixels; compressed, gaps become narrow labelled cuts -----
   var M = null, CUT = 34, EDGE = 12;
   function layout() {
     var v = view(), w = winEl.clientWidth;
     var keep = within(v.a, v.b).filter(function (x) { return !skipped(x); });
     if (!S.squeeze || !keep.length) return (M = {segs: [{t0: v.a, t1: v.b, x0: 0, x1: w}], w: w, linear: true, cut: []});
-    // A pause is part of the talk; only a gap that is long for this zoom is cut:
-    // at least 20 s, and at least 1/120 of what the window spans.
+    // A pause is part of the talk: only a gap of 20 s and 1/120 of the window is cut.
     var merge = Math.max(20, (v.b - v.a) / 120), runs = [];
     keep.forEach(function (x) {
       var s = Math.max(x.start, v.a), e = Math.min(x.end, v.b), r = runs[runs.length - 1];
@@ -807,13 +776,7 @@
     waves();
   }
 
-  // --- the scroll bar is the show's own line ---------------------------------
-  // The group the window is in (the one it overlaps most) draws its line along
-  // the bottom of the window, as far as it is in view. That line is its scroll
-  // bar: however much of the screen it spans, it stands for the whole group
-  // (parallax: zoomed in, the full width is the whole show), and the window's
-  // part of it is lit. Drag to scroll within the group; click to go there;
-  // double-click for the whole group again; the wheel over it scrolls.
+  // --- the scroll bar: the line of the group the window is most in stands for the whole group ----
   function scope() {
     var best = null, most = 0;
     groups.forEach(function (g) {
@@ -872,8 +835,7 @@
     }, {passive: false});
   }
 
-  // Grid spacing for a span of seconds: about eight labelled lines across,
-  // finer unlabelled ones between.
+  // Grid spacing for a span: about eight labelled lines across, finer ones between.
   var GRID = [[1, .25], [2, .5], [5, 1], [10, 2], [15, 5], [30, 5], [60, 15], [120, 30], [300, 60], [600, 120],
               [900, 300], [1800, 300], [3600, 900], [7200, 1800], [10800, 3600], [21600, 3600]];
   function grid(span) {
@@ -882,17 +844,7 @@
   }
   function every(s) { return s < 60 ? s + ' s' : s < 3600 ? s / 60 + ' min' : s / 3600 + ' h'; }
 
-  // Waveforms: each recording's envelope, from the server, traced as a path
-  // along its peaks in the group's (show's) colour, the area beneath it the same
-  // colour, dim, falling away to the background: binned every BIN pixels (the
-  // loudest moment in the bin) and eased with its neighbours (1-2-1), never
-  // averaged further. Clips that touch on screen make one path, so a run of
-  // them is not notched at every seam.
-  // Amplify draws it in decibels, FLOOR to the top, so talk sits in a steady
-  // band and quiet speech shows; off, it is plain amplitude. A peak over STRONG
-  // (about -9 dBFS) crosses the dashed line and is drawn bright. The two
-  // channels lie one over the other, translucent: where they differ, one pokes
-  // past the other. Asked for as recordings come on screen; kept once had.
+  // Waveforms: peaks binned every BIN px, eased 1-2-1, one path per run; amplify draws dB from FLOOR.
   var env = {}, asking = 0, wanted = [];
   var STRONG = .35, SKIPPED = '#7d8087', BIN = 3, FLOOR = -54;
   function level(pk) {   // 0..1 up the window
@@ -905,10 +857,7 @@
     sm.forEach(function (y, i) { c.lineTo(x0 + (i + .5) * bw, base - y * H); });
     c.lineTo(x1, base - sm[sm.length - 1] * H); c.lineTo(x1, base); c.closePath();
   }
-  // How near 1x the window is: 1x is about four and a half minutes of recording
-  // across the screen, where you can watch it chunk along. The traced line says
-  // it: solid at 1x; zoomed out, its dashes shorten toward dots; zoomed in,
-  // the gaps between them open.
+  // 1x is about 4½ minutes across: the line is solid there, dotted further out, gapped further in.
   var ONE_X = 270;
   function zoom() {
     if (!M) layout();
@@ -922,10 +871,7 @@
     return [14, Math.min(16, 3 + 9 * (1 / z - 1))];
   }
 
-  // The clip playing: its traced line's own dashes march forward along its
-  // peaks, a marquee, in its colour, on a layer of its own redrawn each frame,
-  // so nothing else on the timeline moves. (Near 1x, where the line is solid,
-  // the playing clip still gets dashes, to have something to march.)
+  // The clip playing: its line's dashes march, on a layer of its own redrawn each frame, so nothing else moves.
   var NOW = null;
   function drawNow(ms) {
     var cv = document.getElementById('wavenow');
@@ -1045,9 +991,7 @@
         c.restore();
       }
     }
-    // What is not drawn yet says so: a clip still loading flows, gently, backwards;
-    // one that could not be read lies still and dotted; one that would not play is
-    // marked the same. Nothing missing passes for silence.
+    // What is not drawn yet says so (loading, unreadable, unplayable): nothing missing passes for silence.
     Array.prototype.forEach.call(winEl.querySelectorAll('.state.loading, .state.unreadable, .state.unplayable'), function (n) { n.remove(); });
     clips.forEach(function (k) {
       var f = env[k.x.f.path], bad = P.bad[k.x.f.path];
@@ -1090,8 +1034,7 @@
     mute.onclick = function () { setMuted(!P.muted); };
     ctl.appendChild(play); ctl.appendChild(mute);
 
-    // The pre-processing, as glyphs: what is drawn, what is cut, what is
-    // passed over. The same settings say what a job sends on to Audition.
+    // The pre-processing toggles, as glyphs: the same settings shape what a job sends.
     var strip = el('span', 'strip');
     function tog(name, on, label, change) {
       var b = icon(name, label + (on ? ' (on)' : ' (off)'));
@@ -1116,8 +1059,7 @@
     strip.appendChild(mf);
     ctl.appendChild(strip);
 
-    // The readout, in the selection's own look: where the playhead is, the
-    // stretch selected, and what it holds, as badges (words in the tooltips).
+    // The readout: playhead, stretch and what it holds, as badges with words in their tooltips.
     var clk = el('span', 'chip clock', P.t != null ? hms(P.t) : '--:--:--'); clk.id = 'clock'; clk.title = 'the playhead';
     ctl.appendChild(clk);
     if (P.err) ctl.appendChild(el('span', 'err', P.err));
@@ -1149,9 +1091,7 @@
     ctl.appendChild(el('span', 'gap'));
     var tgt = SEL || win;   // what the list acts on: the selection if there is one, else the window
     var over = groups.filter(function (g) { return (g.show || g.name) && g.end > tgt.a && g.start < tgt.b; })[0];
-    // The span: the slice of the group you are in that the window shows. Under
-    // it the group as a track, the window's part lit; beside it, when the window
-    // has wandered from the group, a reset back to the group's own span.
+    // The span: the window's slice of its group, lit on a track, and a reset to the group's own span.
     var span = el('span', 'span');
     if (SEL) {
       var sc = el('span', 'chip picked', hm(SEL.a) + ' \u2013 ' + hm(SEL.b));
@@ -1177,8 +1117,7 @@
       }
     }
     ctl.appendChild(span);
-    // One list, however many names there come to be: the shows on record, the
-    // provisional names in use, and a new name. Choosing groups the window.
+    // One list: the shows on record, the provisional names in use, a new name, and the marks.
     var pick = el('select', 'pick'), opts = [];
     pick.setAttribute('aria-label', 'group this window as');
     function opt(label, value, parent) { var o = el('option', null, label); o.value = value; (parent || pick).appendChild(o); return o; }
@@ -1240,8 +1179,7 @@
     ctl.appendChild(keys);
   }
 
-  // Every change of view is remembered, so Backspace can always go back one:
-  // a drag, an edge moved, a burst of wheel, a group opened.
+  // Every change of view is remembered, so Backspace can always go back one.
   function remember() { if (win) { views.push({a: win.a, b: win.b}); if (views.length > 100) views.shift(); } }
 
   // Exactly [a, b]: what the edges and the wheel set.
@@ -1275,8 +1213,7 @@
   // --- transcription: the window out as a job, the transcript back ---------
   var heard = [];   // every job's result, from the server
   function running() { return heard.filter(function (j) { return j.state === 'running'; })[0] || null; }
-  // A recording heard more than once shows its newest hearing only: jobs come
-  // back in the order they were made, so the last to hear a recording wins.
+  // A recording heard more than once shows its newest hearing only (jobs come back in order).
   function said(a, b) {
     var latest = {}, out = [];
     heard.forEach(function (j) { (j.segments || []).forEach(function (s) { latest[s.path] = j.id; }); });
@@ -1298,8 +1235,7 @@
       .then(function (d) { heard = d || []; if (win) { drawWin(); drawCtl(); } drawTx(); drawScores(); if (running()) setTimeout(loadHeard, 2500); })
       .catch(function () {});
   }
-  // The manifest: what this window did, by hash. The page says each recording's
-  // part, as the player sees it; the server hashes them and the whole.
+  // The manifest: the page says each recording's part; the server hashes them and the whole.
   var lastManifest = null;
   function writeManifest() {
     if (!M) layout();
@@ -1311,8 +1247,7 @@
     post('/manifest', {a: win.a, b: win.b, settings: S, items: items, cuts: cuts})
       .then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error(t); return t; }); })
       .then(function (text) {
-        // the download is the server's text exactly: re-serialising it here would change
-        // how numbers are written (300.0 becomes 300) and so the hash it carries
+        // download the server's text as is: re-serialising writes 300.0 as 300 and breaks the hash
         var m = JSON.parse(text);
         lastManifest = m; drawCtl();
         var a = document.createElement('a');
@@ -1333,9 +1268,7 @@
       .map(function (g) { return {start: Math.max(g.start, win.a), end: Math.min(g.end, win.b)}; });
   }
   function sendTranscription() {
-    // Only what is marked for transcription goes, and only what plays of it:
-    // the edit list, after skips, silences and cuts. Sending it is an event,
-    // kept on each marked group with what went and what came back.
+    // Only what is marked and plays goes: the edit list after skips, silences and cuts.
     var marks = marksHere();
     if (!marks.length) { P.err = 'nothing here is marked for transcription'; drawCtl(); return; }
     var clips = within(win.a, win.b).filter(function (x) {
@@ -1356,14 +1289,7 @@
     if (t >= SEL.a && t <= SEL.b) { var z = SEL; setView(z.a, z.b); }
   });
 
-  // --- transcript time: the regions' own words, in place of the nights ----
-  // Every region marked for transcription that the window shows gets a panel,
-  // side by side where the nights were: its control (what you know is said in
-  // it, typed as well as you can, kept as you type, never merged with
-  // another's) and what each engine heard there, scored against yours. Only
-  // the window's regions: a region you are not looking at has no panel. Put
-  // away, they all go at once, to marks in the header that bring them all
-  // back; the nights are underneath. One or the other, never both.
+  // --- transcript time: a panel per region in the window, in place of the nights; never both ----
   var TX = {open: false, key: '', loose: null, at: null};
   function regionAt(t) { return groups.filter(function (g) { return g.transcribe && t >= g.start && t <= g.end; })[0] || null; }
   function regionsHere() {
@@ -1423,9 +1349,7 @@
     });
     if (built) drawScores();
   }
-  // The episode: the window's show block. Its own details (what goes in and
-  // comes out with it), kept on the show's group as you type; under them what
-  // is derived, and the show's pipeline, the same for every episode of it.
+  // The episode panel: its details kept as you type, its out name, and the show's pipeline.
   var epSave = 0;
   function showHere() {   // the show's group the window is in: the one it overlaps most
     if (!win) return null;
@@ -1591,12 +1515,7 @@
     return by;
   }
   function words(t) { return (t || '').toLowerCase().replace(/[\u2019']/g, "'").replace(/[^a-z0-9'\s]/g, ' ').split(/\s+/).filter(Boolean); }
-  // Word error rate, with its parts: substituted, missed (deleted), invented
-  // (inserted). A control need not cover its whole region, nor every recording
-  // in it: it is fitted to what the engine heard, free to begin and end
-  // anywhere, and to pass over any run of more than SKIP words the control does
-  // not have (recordings it left out). What it passes over is not counted
-  // against the engine, only reported (out).
+  // Word error rate; the control is fitted anywhere in what was heard, and runs it lacks are reported (out), not counted.
   var SKIP = 4;
   function score(ref, hyp) {
     var R = words(ref), H = words(hyp), n = R.length, m = H.length, D = [], A = [];
@@ -1670,8 +1589,7 @@
     return hit.filter(function (x) { return x.end > t && !skipped(x); })[0] || null;
   }
 
-  // Seek to t. Insisting (ctrl-click, right-click, a long press) lands exactly
-  // there, on that clip, short or not, for as long as it plays.
+  // Seek to t. Insisting (force) lands exactly there, on that clip, skipped or not.
   function seek(t, quiet, force) {
     var x;
     if (force) { x = within(win.a, win.b).filter(function (y) { return y.end > t; })[0] || null; P.forced = x; }
@@ -1716,8 +1634,7 @@
     if (P.playing && n) { P.t = n.start; start(n, 0); } else stop();
   };
   P.audio.onerror = function () {
-    // Try once more (the server may only be restarting), then mark the clip and go
-    // on; after three in a row, stop and say so, rather than fall through to the end.
+    // Retry once, then mark the clip and go on; after three failures in a row, stop and say so.
     var cur = P.cur, a = P.audio;
     if (!P.playing || !cur) return;
     if (P.tried !== cur) { P.tried = cur; a.dataset.src = ''; setTimeout(function () { if (P.playing && P.cur === cur) start(cur, Math.max(0, P.t - cur.start)); }, 1500); return; }
@@ -1744,8 +1661,7 @@
     else ct.style.left = Math.min(x1 + 3, wl - tw) + 'px';             // too narrow: just past it
   }
 
-  // Playing, but its sound is not coming: asked for and not here yet, seeking,
-  // or run dry of what has arrived. The clock is not moving, and says so.
+  // Playing, but its sound is not coming (loading, seeking, or run dry): the clock says so.
   function waiting() {
     var a = P.audio;
     return P.playing && (a.paused || a.seeking || a.readyState < 3);
@@ -1805,10 +1721,7 @@
     if (!P.playing) toggle();
   }
 
-  // The reach: a line out from the middle of the playhead to the cursor,
-  // thick at the playhead and tapering to the cursor, and at its end how far
-  // the cursor is in playing time (cuts and skipped clips do not count), with
-  // the clock time there. While playing, it counts down.
+  // The reach: a tapering line from the playhead to the cursor, labelled with playing time to it.
   var hover = null, onBar = false;
   function ahead(a, b) {   // seconds of playing from a to b (negative if b is behind)
     var lo = Math.min(a, b), hi = Math.max(a, b), n = 0;
@@ -1823,8 +1736,7 @@
     var rl = document.getElementById('reach'), rt = document.getElementById('reachlbl');
     if (!rl || !rt) return;
     if (!hover || !win || !M) { rl.style.display = rt.style.display = 'none'; return; }
-    // in the strip between the waveform's floor (22 px up) and the show's bar (the bottom 9): clear of the
-    // waveform and of the clips' own particulars printed above the floor
+    // in the strip between the waveform's floor (22 px up) and the show's bar (the bottom 9)
     var cx = hover.x, tc = xt(cx), mid = onBar ? winEl.clientHeight - 7.5 : winEl.clientHeight - 15;   // on the bar: in it
     rt.classList.toggle('onbar', !!onBar);
     rt.textContent = (P.t != null ? signed(ahead(P.t, tc)) + '  ' : '') + hms(tc);
@@ -1848,10 +1760,7 @@
     return xt(Math.min(Math.max(e.clientX - r.left, 0), r.width));
   }
 
-  // Dragging: along the nights (a new window, snapped to its recordings),
-  // inside the window (a closer look, exactly where you drag), or an edge's
-  // handle (that edge alone, exactly, on either). The window holds still under
-  // an edge being dragged in it; it rescales when you let go.
+  // Dragging: on the nights, in the window, or an edge's handle (the window rescales on release).
   var redraw = 0;
   function soon(fn) { if (!redraw) redraw = requestAnimationFrame(function () { redraw = 0; fn(); }); }
 
@@ -1942,8 +1851,7 @@
     tr.style.cursor = t > win.a && t < win.b ? 'grab' : '';
   });
 
-  // The wheel zooms the window about the pointer: down is out, up is in. One
-  // burst of turning is one step back for Backspace.
+  // The wheel zooms about the pointer; one burst of turning is one step back for Backspace.
   var wheeling = 0;
   winEl.addEventListener('wheel', function (e) {
     if (!win) return;

@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for sync-feeds.py.
-
-Two things here are worth real coverage. One is sanitizing: every string this
-script emits was written by somebody else and ends up in our HTML, so the
-stripping has to hold. The other is resilience — a member's host having a bad
-morning must not empty the page or fail the build.
+"""Tests for sync-feeds.py: sanitizing untrusted feed text, and surviving bad feeds.
 
     python3 site/bin/test_sync_feeds.py
 """
@@ -59,9 +54,7 @@ ATOM = """<?xml version="1.0"?>
 </feed>
 """
 
-# What YouTube actually sends: no atom:summary at all, and the description
-# tucked inside media:group. Reading only atom:summary left every YouTube
-# entry with no text.
+# What YouTube sends: no atom:summary, the description inside media:group.
 YOUTUBE = """<?xml version="1.0"?>
 <feed xmlns="http://www.w3.org/2005/Atom"
       xmlns:media="http://search.yahoo.com/mrss/">
@@ -84,9 +77,7 @@ class Sanitizing(unittest.TestCase):
         self.assertEqual(feeds.clean("<p>Hello <b>there</b></p>", 100), "Hello there")
 
     def test_strips_markup_that_arrives_encoded(self):
-        # The case that matters: a feed that escaped its HTML, so the tags are
-        # invisible to a single pass. Decoding first and stripping after is
-        # what makes this work, and the second pass catches the rest.
+        # Escaped HTML hides its tags from a pass that does not decode first.
         dirty = "&lt;script&gt;alert(1)&lt;/script&gt;"
         self.assertNotIn("<script", feeds.clean(dirty, 100))
         self.assertNotIn("</script", feeds.clean(dirty, 100))
@@ -144,30 +135,24 @@ class Parsing(unittest.TestCase):
         items = feeds.parse_feed(RSS.encode())
         self.assertEqual(items[0]["title"], "Episode One")
         self.assertEqual(items[0]["summary"], "About something.")
-        # The file and a picture of the file are different things and live in
-        # different fields. Only one of them belongs in an <img>.
+        # The file and its thumbnail live in different fields.
         self.assertEqual(items[0]["enclosure"]["url"], "https://example.com/1.mp3")
         self.assertEqual(items[0]["enclosure"]["type"], "audio/mpeg")
         self.assertEqual(items[0]["image"], "")
 
     def test_reads_atom_and_prefers_the_alternate_link(self):
-        # A self link points back at the feed, which would send every visitor
-        # to an XML document.
+        # A self link points back at the feed.
         items = feeds.parse_feed(ATOM.encode())
         self.assertEqual(items[0]["link"], "https://example.com/watch")
         self.assertEqual(items[0]["image"], "https://example.com/thumb.jpg")
 
     def test_reads_a_youtube_description(self):
-        # YouTube omits atom:summary entirely, so reading only that left every
-        # entry on the page with a title and nothing else.
         items = feeds.parse_feed(YOUTUBE.encode())
         self.assertEqual(items[0]["summary"], "What the video is about.")
         self.assertEqual(items[0]["image"], "https://i.ytimg.com/vi/abc/hqdefault.jpg")
 
     def test_a_thumbnail_is_never_mistaken_for_a_file(self):
-        # The distinction that matters for submissions: a feed entry says a
-        # program exists, and the enclosure says where the actual file is.
-        # A thumbnail in that slot would make an image look like a master.
+        # A thumbnail in the enclosure slot would make an image look like a master.
         items = feeds.parse_feed(YOUTUBE.encode())
         self.assertEqual(items[0]["enclosure"], {})
 
@@ -217,8 +202,7 @@ class Collecting(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_one_broken_feed_does_not_stop_the_others(self):
-        # The whole point. A member's host being down is not a reason for
-        # everyone else's programs to vanish.
+        # One host down must not take the other feeds with it.
         def fetcher(url):
             if "broken" in url:
                 raise OSError("connection refused")
@@ -260,8 +244,7 @@ class Collecting(unittest.TestCase):
         self.assertEqual(len(items), 1)
 
     def test_newest_first_with_undated_items_last(self):
-        # An undated item is not necessarily a new one, and sorting it to the
-        # top would push real news down.
+        # Undated is not necessarily new.
         mixed = b"""<?xml version="1.0"?><rss version="2.0"><channel>
         <item><title>Undated</title><link>https://example.com/u</link></item>
         <item><title>Older</title><link>https://example.com/o</link>
@@ -276,8 +259,7 @@ class Collecting(unittest.TestCase):
         self.assertEqual([i["title"] for i in items], ["Newer", "Older", "Undated"])
 
     def test_carries_the_source_through_to_each_item(self):
-        # Merged feeds lose their context otherwise, and "who made this" is
-        # most of the point of showing it.
+        # Merged feeds must still say who made each item.
         items, _ = feeds.collect(
             [{"name": "A Show", "url": "u", "kind": "podcast", "owner": "Jane"}],
             {"per_source": 10, "total": 10, "months": 18}, NOW, lambda url: RSS.encode(),
@@ -288,10 +270,7 @@ class Collecting(unittest.TestCase):
 
 
 class Retrying(unittest.TestCase):
-    """YouTube's feed endpoint returns spurious 404s and 500s for channels
-    that plainly exist, varying by time of day. Observed live: four
-    consecutive attempts against a real channel returning 404, 404, 500, 404.
-    """
+    """YouTube's feed endpoint returns spurious 404s and 500s for live channels."""
 
     def http_error(self, code, headers=None):
         return urllib.error.HTTPError(
@@ -317,9 +296,7 @@ class Retrying(unittest.TestCase):
         self.assertEqual(opener.state["calls"], 3)
 
     def test_retries_a_404(self):
-        # Not the obvious choice — a 404 usually means the URL is wrong. But
-        # YouTube returns them spuriously, and retrying a genuinely dead URL
-        # only costs time, since the failure is still reported afterwards.
+        # A dead URL only costs time; the failure is still reported afterwards.
         opener = self.flaky(2, code=404)
         self.assertEqual(feeds.fetch("u", opener, lambda s: None), RSS.encode())
 
@@ -369,13 +346,7 @@ class Retrying(unittest.TestCase):
 
 
 class CarryingForward(unittest.TestCase):
-    """A failed fetch must not delete what that source published last time.
-
-    This matters more than the retrying does. Without it, a transient 500 at
-    sync time produces a data file missing that member's programs, and the
-    workflow commits it as the new truth — so an outage nobody noticed silently
-    removes someone's work from the site.
-    """
+    """A failed fetch must not delete what that source published last time."""
 
     def previous(self, count=3, published="2026-07-01T12:00:00+00:00"):
         return {
@@ -408,9 +379,7 @@ class CarryingForward(unittest.TestCase):
         self.assertEqual(errors[0]["carried"], 3)
 
     def test_keeps_them_byte_identical(self):
-        # Not marked as stale, deliberately. A marker would make the file
-        # differ during an outage and differ again on recovery, producing
-        # commits that record nothing a visitor could see.
+        # Unmarked, so an outage and its recovery produce no commit.
         before = self.previous()["A Show"]
         items, _ = feeds.collect(
             [{"name": "A Show", "url": "u"}],
@@ -420,8 +389,7 @@ class CarryingForward(unittest.TestCase):
         self.assertEqual(items, before)
 
     def test_carried_items_still_respect_the_date_window(self):
-        # Otherwise a source that fails forever keeps its items past the
-        # cutoff indefinitely, and the window stops meaning anything.
+        # Otherwise a source that always fails keeps its items past the cutoff.
         items, _ = feeds.collect(
             [{"name": "A Show", "url": "u"}],
             {"per_source": 10, "total": 10, "months": 18},
@@ -471,10 +439,7 @@ class CarryingForward(unittest.TestCase):
 
 
 class NotRewriting(unittest.TestCase):
-    """The output carries a timestamp, so writing it unconditionally makes it
-    differ on every run — and the workflow commits whatever differs. That is a
-    commit every morning recording that a feed was checked.
-    """
+    """The output carries a timestamp, so rewriting unchanged items would commit every run."""
 
     def run_twice(self, tmp, fetcher):
         config = os.path.join(tmp, "feeds.yml")
@@ -499,8 +464,7 @@ class NotRewriting(unittest.TestCase):
         self.assertEqual(first, second, "the file was rewritten with nothing new")
 
     def test_a_failed_fetch_that_carries_everything_leaves_it_alone(self):
-        # The outage case. Carrying the previous items forward reproduces the
-        # previous result exactly, so there is nothing to commit.
+        # Carrying everything forward reproduces the previous file exactly.
         with tempfile.TemporaryDirectory() as tmp:
             config = os.path.join(tmp, "feeds.yml")
             out = os.path.join(tmp, "out.json")
@@ -555,8 +519,7 @@ class NotRewriting(unittest.TestCase):
 
 class Output(unittest.TestCase):
     def test_writes_a_file_even_with_no_feeds(self):
-        # The build reads this file unconditionally. A missing one would be a
-        # broken site rather than an empty section.
+        # The build reads this file unconditionally.
         with tempfile.TemporaryDirectory() as tmp:
             config = os.path.join(tmp, "feeds.yml")
             out = os.path.join(tmp, "out.json")
@@ -571,12 +534,7 @@ class Output(unittest.TestCase):
             self.assertIn("generated", payload)
 
     def test_every_feed_failing_with_nothing_kept_is_an_error(self):
-        # One host down is weather. All of them down, with no previous run to
-        # fall back on, usually means the parser broke — and that should not
-        # pass quietly.
-        #
-        # fetch is replaced rather than pointed at a dead port, so the test
-        # does not spend the real backoff sleeping.
+        # All down with nothing kept usually means the parser broke. fetch is stubbed to skip backoff.
         with tempfile.TemporaryDirectory() as tmp:
             config = os.path.join(tmp, "feeds.yml")
             out = os.path.join(tmp, "out.json")
@@ -591,8 +549,7 @@ class Output(unittest.TestCase):
                 feeds.fetch = original
 
     def test_every_feed_failing_is_fine_when_the_last_run_carries(self):
-        # A transient outage that costs nothing should not turn a daily job
-        # red. The site still has the programs; there is nothing to look at.
+        # Nothing was lost, so the daily job stays green.
         with tempfile.TemporaryDirectory() as tmp:
             config = os.path.join(tmp, "feeds.yml")
             out = os.path.join(tmp, "out.json")
@@ -614,13 +571,7 @@ class Output(unittest.TestCase):
 
 
 class TemplateGuard(unittest.TestCase):
-    """The other half of the sanitizing lives in Liquid. Keep it there.
-
-    Stripping in this script and escaping in the template are belt and braces
-    on purpose, and the template half is the one somebody could plausibly
-    delete while tidying up — it looks redundant right until a member's blog
-    gets hijacked.
-    """
+    """The template's escaping is the other half of the sanitizing. Keep both."""
 
     def test_member_program_fields_are_escaped_in_the_template(self):
         page = (HERE.parent / "meet.md").read_text(encoding="utf-8")

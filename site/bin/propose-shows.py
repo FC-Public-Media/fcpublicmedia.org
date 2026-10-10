@@ -1,41 +1,8 @@
 #!/usr/bin/env python3
 """Propose a `site/_shows/` entry for anything in the catalog that looks like a series.
 
-WHY A CONFIG AND NOT A RULE
----------------------------
-Cablecast titles are episode titles, not show titles, and no rule reads them
-correctly. Grouping on the first two words splits Paltrocast into three shows
-(`paltrocast cast`, `paltrocast stars`, `paltrocast the`) and splits Parker St.
-in two on a full stop. Splitting on " - " misses "Beware Theater Frankenstein's
-Daughter", which has no separator at all. And "Democracy Now" is 249 episodes
-that share one title exactly.
-
-So the catalog cannot tell us what a show is. A person has to, once — and after
-that the config remembers. This script's job is to make that once as cheap as
-possible: it finds the clusters, writes a starter file, and leaves the naming
-to somebody who knows the difference.
-
-WHAT IT GETS RIGHT AND WHAT IT DOES NOT
----------------------------------------
-Clustering on the FIRST word and naming from the longest common word prefix
-handles the two failures above — every Paltrocast episode starts with
-"paltrocast", and normalising punctuation away merges "Parker St." with
-"Parker St". That is why those are the rules rather than something cleverer.
-
-It still gets names wrong in ways only a person can see. "Stages Ep. 1" and
-"Stages Ep. 2" share the prefix "stages ep", so the proposed name comes out as
-"Stages Ep" — right cluster, silly name. That is the expected case, not a bug
-to fix here: the proposal is a starting point for an edit, and a script that
-tried to be clever about it would be wrong in less obvious ways.
-
-THE FLOW THIS IS BUILT FOR
---------------------------
-One pull request per show. Not one pull request with thirty files — each show
-has to be independently mergeable, because Paltrocast being right should not
-wait on Parker St. being argued about. And the steady state, once the backlog
-is done, is a new series appearing and producing exactly one pull request.
-
-Merging it is what makes the show real. Editing it first is expected.
+Cablecast titles are episode titles, so no rule can say what a show is: this
+finds the clusters and a person names them. See docs/programming.md.
 """
 
 import argparse
@@ -48,13 +15,10 @@ import sys
 DEFAULT_CATALOG = "site/_data/cablecast.json"
 DEFAULT_SHOWS = "site/_shows"
 
-# Below this it is a one-off, not a series. Three is deliberately low: a show
-# that has aired three times is a show, and a proposal nobody wants is closed
-# in one click, while a series that never gets proposed stays invisible.
+# Fewest titles that make a series.
 MIN_EPISODES = 3
 
-# First words that group nothing useful. "The" collects thirty-one unrelated
-# programmes whose only shared property is English.
+# First words that group unrelated titles.
 STOPWORDS = {
     "the", "a", "an", "and", "of", "in", "on", "at", "to", "for", "with",
     "my", "our", "your", "this", "that", "it", "is", "new", "part", "episode",
@@ -65,12 +29,7 @@ TRAILING = {"ep", "eps", "episode", "episodes", "part", "pt", "vol", "volume", "
 
 
 def normalize(text):
-    """Lower case, and punctuation reduced to spaces.
-
-    This is the line that merges "Parker St." with "Parker St", which two
-    separate groups in the archive is exactly the kind of thing nobody notices
-    and everybody finds mildly wrong.
-    """
+    """Lower case, punctuation to spaces: "Parker St." and "Parker St" are one."""
     return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
 
 
@@ -98,12 +57,7 @@ def title_case(text):
 
 
 def read_front_matter(path):
-    """The few fields we need, without a YAML parser.
-
-    Deliberately shallow: slug, and the two match lists. Anything else in the
-    file is somebody else's business, and a full parse would make this script
-    care about fields it has no opinion about.
-    """
+    """slug and the two match lists, read without a YAML parser."""
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---"):
         return {}
@@ -166,11 +120,7 @@ def claimed_by(item, known):
 # ---------------------------------------------------------------- clusters
 
 
-# A prefix has to be shared by most of the cluster, not all of it. One
-# unrelated title beginning with the same word — "Under Pressure Rehearsal"
-# next to forty-nine "Under the Marquee" episodes — would otherwise drag the
-# shared prefix down to "under", which is both a useless name and a match rule
-# greedy enough to swallow somebody else's show.
+# Share of a cluster that must agree on each prefix word, so one stray title cannot shorten it.
 COVERAGE = 0.8
 
 
@@ -190,8 +140,7 @@ def common_prefix(items, coverage=COVERAGE):
         split = [w for w in split if len(w) > index and w[index] == word]
         needed = max(2, int(len(split) * coverage)) if len(split) > 2 else len(split)
 
-    # "Stages Ep. 1" and "Stages Ep. 2" share "stages ep", which is a cluster
-    # named after its own numbering. Drop the scaffolding, keep the name.
+    # Drop trailing episode scaffolding: "stages ep" becomes "stages".
     while len(out) > 1 and out[-1] in TRAILING:
         out.pop()
     return out
@@ -217,10 +166,7 @@ def propose(catalog, known, minimum=MIN_EPISODES):
         name_words = common_prefix(items) or [head]
         prefix = " ".join(name_words)
 
-        # Count and describe only what the proposed rule will actually claim.
-        # Reporting the whole first-word cluster would promise episodes the
-        # merged config then fails to gather, and the show page would come up
-        # short with nothing to explain why.
+        # Count only what the proposed prefix will claim once merged.
         items = [i for i in items if normalize(i.get("title")).startswith(prefix)]
         if len(items) < minimum:
             continue
@@ -242,11 +188,7 @@ def propose(catalog, known, minimum=MIN_EPISODES):
             {
                 "slug": slug,
                 "name": name,
-                # The whole common prefix, not the first word that clustered
-                # them: "under" would claim anything beginning with it, and a
-                # match rule that is too greedy is worse than one too narrow —
-                # a narrow one shows up as a missing episode, a greedy one
-                # quietly swallows somebody else's show.
+                # The whole prefix, not the first word: a greedy rule swallows other shows.
                 "prefix": prefix,
                 "producer": producer,
                 "episodes": len(items),
@@ -257,8 +199,7 @@ def propose(catalog, known, minimum=MIN_EPISODES):
             }
         )
 
-    # Most episodes first: the big ones are the ones worth naming correctly,
-    # and they are the ones somebody will recognise on sight.
+    # Most episodes first.
     proposals.sort(key=lambda p: -p["episodes"])
     return proposals
 
@@ -314,12 +255,7 @@ catalog_last: {proposal['last']}
 
 
 def body(proposal):
-    """The pull request description.
-
-    Here rather than in the workflow because it was a heredoc inside a YAML
-    block scalar inside a shell loop, which is three levels of quoting and one
-    of them was already wrong. Text belongs with the thing that knows it.
-    """
+    """The pull request description."""
     samples = "\n".join(f"- {title}" for title in proposal["samples"])
 
     return f"""**{proposal['episodes']} episodes** in the archive look like one series, and there is no entry

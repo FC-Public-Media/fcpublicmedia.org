@@ -3,28 +3,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fort Collins Public Media</title>
 
-<!--
-  The idle screen. Open it, press F11 (or ⌃⌘F), leave it.
-
-  It is not a screensaver and deliberately not built as one. A .saver bundle
-  is macOS-only, a .scr is Windows-only, both need signing or a warning
-  dialog, and neither can be changed without walking to the machine. This is
-  one file that any browser on the panel will show full screen, which means
-  the thing on the wall is the thing in the repository.
-
-  It is also the shape the panel by the door eventually needs anyway — the
-  guest network, a check-in prompt, what is on air. Those are somebody's live
-  errand, so this ships as the brand and a marked slot rather than as a guess
-  at their content. See "THE SLOT" below.
-
-  No build step, no dependencies, no network. It has to come up on a machine
-  that has been off for a month and may not have joined the wifi yet.
--->
+<!-- The idle screen: open it full screen and leave it. No build, no network. brand/README.md. -->
 
 <style>
-  /* The brand sheet, the subset this screen uses. Same values as :root in
-     site/assets/css/site.css — copied rather than linked, because this file has to
-     work from a USB stick with no server behind it. */
+  /* site/assets/css/site.css's :root values, copied: this works from a USB stick with no server. */
   :root {
     --ink:    #121417;
     --slate:  #232830;
@@ -32,10 +14,7 @@
     --signal: #ffc61a;
     --soft:   #9ba3ad;
 
-    /* One dwell for the whole screen. The mark steps, the clock ticks, and
-       nothing else moves. Four seconds is slow enough to read as a tally
-       light rather than as a loading spinner. */
-    --step: 4s;
+    --step: 4s;   /* one dwell: slow enough to read as a tally light, not a spinner */
   }
 
   * { box-sizing: border-box; margin: 0; }
@@ -45,17 +24,11 @@
     background: var(--ink);
     color: var(--paper);
     font-family: Archivo, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    /* A panel left on overnight burns whatever does not move. Everything here
-       is either large and low-contrast or it steps. */
     overflow: hidden;
     cursor: none;
   }
 
-  /* Sized in vmin throughout, so the same file is correct on a panel turned
-     portrait and one that has not been turned yet. */
-  /* Three rows: empty, the brand, and a footer that hugs the bottom edge.
-     The brand sits on the optical centre rather than the geometric one, which
-     on a portrait panel means a little above halfway. */
+  /* vmin throughout, for portrait or landscape. The brand sits on the optical centre. */
   .screen {
     height: 100%;
     display: grid;
@@ -75,14 +48,7 @@
     gap: 3vmin;
   }
 
-  /* --- The mark ---------------------------------------------------------- */
-
-  /* dim.css and dim.js draw it: three squares in a column with a rule
-     behind them, the same set the wallpapers draw, the lit one walking, and a
-     clock split across the three (hours, seconds, minutes). The same mark is
-     what every studio screen shows when it falls to dim, so there is one of
-     it (docs/SCREENS-DIM.md). Linked, not inlined, and still no network: the
-     two files sit beside this one, in the same folder, on the same stick. */
+  /* The mark is drawn by dim.css and dim.js beside this file, the same one every screen dims to. */
 
   /* --- The type ---------------------------------------------------------- */
 
@@ -107,13 +73,7 @@
     color: var(--soft);
   }
 
-  /* --- THE SLOT ---------------------------------------------------------- */
-
-  /* Live content lands here: the guest network, a check-in prompt, what is on
-     air. Empty it collapses and the screen is just the brand, which is the
-     correct thing for a panel with nothing to say. Fill it by writing into
-     #slot — from a fetch, from a query string, from a build. Keep it to one
-     idea; this is read from across a room by somebody walking past. */
+  /* --- THE SLOT: one idea of live content; empty, it collapses ----------- */
   .slot:empty { display: none; }
   .slot {
     text-align: center;
@@ -123,12 +83,6 @@
     color: var(--soft);
   }
   .slot strong { color: var(--paper); font-weight: 600; }
-
-  /* Motion is a vestibular trigger and this panel is in a room people sit in.
-     Nothing here slides or spins even by default — it steps — and when the
-     machine says no motion, the mark (dim.css) simply stops on the middle
-     square. The stylesheet makes the same promise; see the note above
-     @keyframes in site/assets/css/site.css. */
 </style>
 <link rel="stylesheet" href="dim.css">
 <script src="dim.js"></script>
@@ -158,28 +112,20 @@
   if (window.FCPMDim) window.FCPMDim.tally(document.getElementById('tally'));
 
   function tick() {
-    // No seconds. A wall clock with a seconds hand invites people to watch it,
-    // and a panel nobody watches is the entire goal.
+    // No seconds: a panel nobody watches is the goal.
     clock.textContent = new Date().toLocaleTimeString([], {
       hour: 'numeric', minute: '2-digit'
     });
   }
 
-  // The slot, filled the cheapest way there is: ?say=... on the URL. That is
-  // enough for "Back at 2pm" or a network name taped to the panel by whoever
-  // is standing there, with no server and nothing to deploy. Anything
-  // recurring should write into #slot properly instead.
-  //
-  // textContent, not innerHTML. The string comes off a URL, and a kiosk is
-  // exactly the machine where somebody eventually types one in.
+  // ?say=... fills the slot; textContent, never innerHTML, since it comes off a URL.
   var say = new URLSearchParams(location.search).get('say');
   if (say) document.getElementById('slot').textContent = say;
 
   tick();
   setInterval(tick, 15000);
 
-  // A panel that has been on for a week drifts: setInterval falls behind while
-  // a laptop lid is shut, and the clock comes back wrong. Re-read it on wake.
+  // setInterval falls behind while asleep: re-read the clock on wake.
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) tick();
   });

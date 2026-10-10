@@ -3,12 +3,7 @@ title: About
 lede: Who we are and what the place is for.
 ---
 
-{%- comment -%}
-  Kept on one line on purpose. Wrapped, `{{ site.data.org.founded }}` expands
-  to "2004." at the start of a line, and Markdown reads that as an ordered
-  list marker — which split this sentence in half and turned the legal line
-  into item 1.
-{%- endcomment -%}
+{%- comment -%} One line: wrapped, "2004." starts a line and Markdown makes it a list. {%- endcomment -%}
 Fort Collins Public Media has been a community media resource since {{ site.data.org.founded }}. {{ site.data.org.legal }}
 
 <p class="transaction transaction-todo">

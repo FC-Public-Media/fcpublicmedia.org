@@ -1,9 +1,4 @@
-// Class mode on the homepage.
-//
-// The homepage has no job here beyond decorating the panel that already holds
-// the QR and the check-in link. It does not encode the class into anything —
-// the link is the same permanent /check-in/ either way, and that page works
-// out for itself that a class is on. One source of truth, in classes.js.
+// Class mode on the homepage: decorates the check-in panel. See docs/programming.md.
 
 import { readConfig, pickSession, clockTime, watch } from './classes.js';
 
@@ -43,10 +38,7 @@ function paint(session) {
 
   el('[data-class-late]').hidden = session.phase !== 'late';
 
-  // Deliberately not "?reason=Class". The check-in page reaches the same
-  // conclusion from the same data, so putting it in the URL would create a
-  // second place for the answer to live — and a link that could be shared
-  // hours later still claiming a class is on.
+  // No ?reason=Class: check-in decides from the same data, and a shared link outlives the class.
   el('[data-class-join]').textContent = session.running
     ? "I'm here for the class"
     : 'Check in for this class';

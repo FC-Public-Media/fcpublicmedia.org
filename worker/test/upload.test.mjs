@@ -1,13 +1,4 @@
-// Signing permission to upload.
-//
-// The first test here is the important one and it is a known-answer test: the
-// worked example from AWS's own documentation for presigned URLs, signature
-// and all. A round trip against ourselves would prove this file agrees with
-// itself, which was never in doubt; what is in doubt is whether it agrees with
-// S3, and only somebody else's answer can settle that.
-//
-// Every other SigV4 bug produces a signature that is perfectly well-formed and
-// rejected, with the service replying only that it does not match.
+// SigV4 and /upload. The first test is a known-answer test against AWS's own presigned-URL example.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -38,10 +29,7 @@ test('it agrees with the worked example in the AWS documentation', async () => {
 });
 
 test('the signature is scoped to a day, a region and a service', async () => {
-  // The point of the HMAC chain. A signature lifted out of one URL is useless
-  // tomorrow, and useless against another region — so the parts of the scope
-  // have to actually reach the derivation rather than only the credential
-  // string that is displayed.
+  // The scope must reach the key derivation, not only the displayed credential string.
   const base = {
     method: 'PUT',
     url: 'https://account.r2.cloudflarestorage.com/media/a.mp4',
@@ -61,9 +49,6 @@ test('the signature is scoped to a day, a region and a service', async () => {
 });
 
 test('an already-encoded path is not encoded a second time', async () => {
-  // The bug this is here for turns %20 into %2520 — a signature over a path
-  // nobody will ever request, and a service that answers only that the
-  // signature does not match.
   const path = '/media/show/take%20one%2B.mp4';
   const url = await presign({
     method: 'PUT',
@@ -78,10 +63,7 @@ test('an already-encoded path is not encoded a second time', async () => {
 });
 
 test('the path signed is the path handed back', async () => {
-  // Structural rather than careful: the canonical request and the returned URL
-  // are built from the same string, so no amount of encoding subtlety can make
-  // them disagree. Changing the path changes the signature, which is what says
-  // the path really is inside it.
+  // Changing the path changes the signature, so the path is inside it.
   const sign = (path) =>
     presign({
       method: 'PUT',
@@ -133,8 +115,6 @@ test('a big file is split and a small one is not', async () => {
 });
 
 test('an enormous file grows its parts rather than its part count', async () => {
-  // S3 allows ten thousand parts. Handing back that many URLs would be a
-  // response measured in megabytes.
   const huge = planUpload(500 * 1024 ** 3);
   assert.ok(huge.parts <= 1000, `${huge.parts} parts`);
   assert.ok(huge.parts * huge.partSize >= 500 * 1024 ** 3);
@@ -161,9 +141,7 @@ function fakeR2({ fail = false } = {}) {
 const CREDENTIALS = { accessKeyId: 'k', secretAccessKey: 's' };
 
 test('the upload id is real, and every part URL is signed with it', async () => {
-  // The bug this is here for: signing parts against a placeholder and
-  // substituting the id afterwards. The query string is inside the signature,
-  // so that produces URLs that are well-formed and refused.
+  // Parts signed against a placeholder id would be well-formed and refused.
   const r2 = fakeR2();
   const granted = await grantUpload({
     key: 'janes-show/2026/big-abc12345.mp4',
@@ -325,9 +303,7 @@ test('a device that may not publish gets no upload', async () => {
 });
 
 test('a file over the cap is refused before anybody is asked to approve it', async () => {
-  // Refused at the challenge, so the passkey prompt never appears. Being asked
-  // to authorize something and only then told it was too big is a worse
-  // sequence than being told first.
+  // Refused at the challenge, before any passkey prompt.
   const { ask } = await setUp({ maxBytes: 2 * 1024 ** 3 });
 
   const { response, body } = await ask('enormous.mp4', 6 * 1024 ** 3);

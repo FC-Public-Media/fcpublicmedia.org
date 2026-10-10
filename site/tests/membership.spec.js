@@ -1,14 +1,4 @@
-// Membership: the rules, and finding your own nonprofit.
-//
-// The feedback behind this page is that the pricing is hard to understand —
-// and it is the rules that are hard, not the amounts. So the first tests here
-// are about whether the rules are actually stated, which is the kind of thing
-// that quietly rots when somebody rearranges a page.
-//
-// The rest are about the lookup, whose whole job is to stop being a gate. Most
-// of what can go wrong with it — no matches, a failed download, no JavaScript
-// — has to leave somebody a way through, because plenty of real organizations
-// are legitimately not on the IRS list.
+// /membership/: the rules are stated, and the nonprofit lookup always leaves a way through.
 
 const { test, expect } = require('@playwright/test');
 
@@ -37,9 +27,7 @@ async function withList(page, { status = 200, body = ORGS } = {}) {
 
 test.describe('the rules', () => {
   test('says the year starts when you join, not in January', async ({ page }) => {
-    // The old site said both "January 1 – December 31" and "one year from
-    // sign-up". This is the one that is true, and saying it is the whole point
-    // of the section.
+    // One year from sign-up, not the calendar year.
     await page.goto('/membership/');
 
     const rules = page.locator('h2', { hasText: 'How it works' }).locator('+ ul');
@@ -48,8 +36,7 @@ test.describe('the rules', () => {
   });
 
   test('says the two things that no longer exist', async ({ page }) => {
-    // Both were real rules people remember. Leaving them unstated is how
-    // somebody ends up arguing about a half-year price at the front desk.
+    // Retired rules people remember are stated as gone.
     await page.goto('/membership/');
 
     const rules = page.locator('h2', { hasText: 'How it works' }).locator('+ ul');
@@ -58,8 +45,7 @@ test.describe('the rules', () => {
   });
 
   test('the nonprofit rate is on every tier, not hidden in a paragraph', async ({ page }) => {
-    // "Some of our people know that nonprofits pay half" is the failure being
-    // fixed: a discount only the informed got.
+    // The nonprofit rate is on the page for everyone.
     await page.goto('/membership/');
 
     const cards = page.locator('.grid-4 .card');
@@ -92,8 +78,7 @@ test.describe('finding your organization', () => {
   });
 
   test('words in any order still find it', async ({ page }) => {
-    // Nobody types the first two words of an organization's name. They type
-    // the two they remember.
+    // Any remembered words, in any order.
     await withList(page);
     await page.goto('/membership/');
 
@@ -129,9 +114,7 @@ test.describe('finding your organization', () => {
   });
 
   test('no match is not a refusal', async ({ page }) => {
-    // The list is Larimer County 501(c)(3)s. A new organization, a chapter, or
-    // one under a fiscal sponsor is legitimately absent, and being told "no"
-    // would be the lookup doing harm.
+    // Legitimate organizations can be absent; "not listed" is never a no.
     await withList(page);
     await page.goto('/membership/');
 
@@ -160,8 +143,7 @@ test.describe('finding your organization', () => {
   });
 
   test('with no JavaScript the search box is not offered at all', async ({ browser }) => {
-    // A search box that does nothing when typed into is worse than no search
-    // box. The contact route is plain HTML and survives.
+    // No dead search box; the plain-HTML contact route survives.
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto('/membership/');
@@ -175,8 +157,7 @@ test.describe('finding your organization', () => {
 
 test.describe('the synced list', () => {
   test('is real, and shaped the way the page expects', async ({ page }) => {
-    // Against the committed file rather than a stub: the sync script and this
-    // page agree on a format, and nothing else would notice them diverging.
+    // Against the committed file, so the sync script's format is checked too.
     const response = await page.request.get('/assets/nonprofits.json');
     expect(response.status()).toBe(200);
 

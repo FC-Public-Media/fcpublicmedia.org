@@ -1,31 +1,5 @@
-// Creating a passkey and getting the public half out of it.
-//
-// VOCABULARY, because it took a while to get straight
-// ---------------------------------------------------
-//   passkey        a WebAuthn credential. The private half never leaves the
-//                  phone's secure hardware, and iCloud Keychain / Google
-//                  Password Manager sync and back it up. That is why it
-//                  survives the browser clearing site storage, which a key we
-//                  generated ourselves would not.
-//   credential ID  an opaque handle for one passkey. Stored next to the
-//                  public key.
-//   relying party  the domain the passkey belongs to. A passkey made here
-//                  works on this domain and nowhere else — which is why the
-//                  editing UI has to live on our domain rather than on the
-//                  member's published site.
-//   user handle    an opaque per-person ID baked into the credential, so a
-//                  browser can offer the right passkey without anyone typing
-//                  a username.
-//
-// WHAT THIS FILE DOES NOT DO
-// --------------------------
-// It does not authenticate anybody. Registration below generates its own
-// challenge, which is fine here because the thing being trusted is the signed
-// link that got the visitor to this page, not the ceremony.
-//
-// When the authentication side gets built, its challenge MUST come from the
-// broker. A self-generated challenge there would let anyone replay a captured
-// assertion. Do not copy the pattern below into that flow.
+// Creating passkeys and signing in with them. See docs/identity.md#passkeys-and-devices.
+// Only a broker-issued challenge proves anything; a self-generated one is wayfinding.
 
 const B64 = {
   encode(bytes) {
@@ -38,25 +12,7 @@ const B64 = {
 export const supported = () =>
   Boolean(window.PublicKeyCredential && navigator.credentials?.create);
 
-// The user handle is the only thing a sign-in gives back about who signed in
-// — not the email, not the display name, just these bytes. So whatever a later
-// page needs to know has to be *in* here.
-//
-// This was originally a SHA-256 of "email|repo", which was unreadable by
-// design and therefore useless: /upload/ needs to know which member site the
-// passkey belongs to, and a hash cannot be turned back into one. So the site
-// is carried in the clear and the person is carried as a short digest:
-//
-//     v1|owner/repository|a1b2c3d4
-//
-// The digest keeps two people on the same site from colliding. That matters
-// more than it looks: an authenticator treats a repeated user handle as the
-// same account and REPLACES the existing credential, so a shared handle would
-// mean the second person to register silently evicted the first.
-//
-// Nothing secret is in here. It names a public repository, and it is stored on
-// the visitor's own device where it may show up in their password manager —
-// which is arguably a feature, since it says what the passkey is for.
+// User handle v1|owner/repository|<digest>: site in clear, per-person digest so nobody is evicted.
 const HANDLE_VERSION = 'v1';
 const HANDLE_LIMIT = 64; // WebAuthn's ceiling for user.id
 
@@ -74,12 +30,7 @@ async function encodeHandle(email, repo) {
   return bytes;
 }
 
-/**
- * Read a handle back. Returns { repo, person } or null.
- *
- * Never throws on rubbish: the bytes come from an authenticator and could be
- * from an older format, a different site, or nothing we recognise.
- */
+/** Read a handle back: { repo, person }, or null for anything unrecognised. */
 export function decodeHandle(bytes) {
   if (!bytes) return null;
   let text;
@@ -96,13 +47,7 @@ export function decodeHandle(bytes) {
   return { repo: parts[1], person: parts[2] };
 }
 
-/**
- * Run the registration ceremony and return the record to hand over.
- *
- * Resolves to { ok: true, device } or { ok: false, reason, detail }. Never
- * throws: someone dismissing the system passkey sheet is an ordinary thing to
- * do, not an exception.
- */
+/** Register a passkey: { ok: true, device } or { ok: false, reason, detail }; never throws. */
 export async function createPasskey({ email, repo, label, rpId, issuer }) {
   if (!supported()) return { ok: false, reason: 'unsupported' };
 
@@ -111,10 +56,7 @@ export async function createPasskey({ email, repo, label, rpId, issuer }) {
 
   const challenge = crypto.getRandomValues(new Uint8Array(32));
 
-  // rp.id is omitted unless configured. Left out, the browser uses the
-  // origin's own domain, which is right in development and on a preview
-  // deployment; setting it to a domain the page is not served from throws a
-  // SecurityError rather than failing softly.
+  // Unset rp.id means the serving domain; a domain the page is not on throws SecurityError.
   const rp = { name: issuer || 'Fort Collins Public Media' };
   if (rpId) rp.id = rpId;
 
@@ -135,13 +77,11 @@ export async function createPasskey({ email, repo, label, rpId, issuer }) {
           { type: 'public-key', alg: -257 },
         ],
         authenticatorSelection: {
-          // Discoverable, so signing in later needs nothing typed and we do
-          // not have to ship a list of credential IDs to the sign-in page.
+          // Discoverable: sign-in needs no username and no list of credential IDs.
           residentKey: 'required',
           userVerification: 'preferred',
         },
-        // We are not checking which hardware made this, so asking for proof of
-        // it would only add a privacy prompt on some platforms for nothing.
+        // No attestation: nothing checks the hardware.
         attestation: 'none',
         timeout: 120000,
       },
@@ -155,9 +95,7 @@ export async function createPasskey({ email, repo, label, rpId, issuer }) {
 
   const response = credential.response;
 
-  // getPublicKey() hands back SPKI DER directly. The alternative is decoding
-  // COSE out of the attestation object by hand, which is a lot of code to
-  // maintain for browsers that are now several years old.
+  // getPublicKey() returns SPKI DER, so no COSE decoding.
   const spki = response.getPublicKey?.();
   if (!spki) {
     return { ok: false, reason: 'no-public-key' };
@@ -177,20 +115,11 @@ export async function createPasskey({ email, repo, label, rpId, issuer }) {
   };
 }
 
-/**
- * Ask the broker for a challenge to sign, bound to one specific thing.
- *
- * The intent goes up before the passkey prompt does, so what comes back is
- * good for that and nothing else. See worker/src/intent.js for why the
- * challenge is not just a nonce.
- *
- * Resolves to { ok: true, challenge, intent } or { ok: false, detail }.
- */
+/** Ask the broker for a challenge bound to `intent`: { ok, challenge, intent } or { ok: false }. */
 async function requestChallenge(brokerUrl, intent) {
   let response;
   try {
-    // brokerUrl is a base — the worker answers /challenge and /verify under
-    // it — so this joins rather than replacing any path it carries.
+    // brokerUrl is a base URL; join, do not replace its path.
     response = await fetch(`${brokerUrl.replace(/\/+$/, '')}/challenge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -207,30 +136,7 @@ async function requestChallenge(brokerUrl, intent) {
   return { ok: true, challenge: body.challenge, intent: body.intent };
 }
 
-/**
- * Sign in with an existing passkey, and find out which member site it is for.
- *
- * WHAT THIS PROVES, AND TO WHOM
- * -----------------------------
- * With no broker configured, the challenge is generated right here. To the
- * person holding the device that is still worth something — it says they hold
- * a passkey this site issued, and which site it belongs to, which is enough to
- * show them the right form. To us it proves NOTHING: a captured assertion
- * could be replayed, and the code doing the checking is code the visitor
- * controls. `verified` comes back false to say so, and nothing is written
- * anywhere as a result.
- *
- * With a broker, the challenge comes from there, bound to `intent`, and the
- * assertion goes back for the broker to check against the public key recorded
- * in the member's repository. `verified` is true and the result carries the
- * broker's answer rather than this page's guess.
- *
- * The two paths use the same ceremony. Do not let the first one's success be
- * read as evidence about the second.
- *
- * Resolves to { ok: true, repo, person, credentialId, verified, assertion }
- * or { ok: false, reason, detail }.
- */
+/** Sign in and learn the site; `verified` is true only with a broker-issued challenge. */
 export async function signIn({ rpId, brokerUrl, intent, credentialId } = {}) {
   if (!window.PublicKeyCredential || !navigator.credentials?.get) {
     return { ok: false, reason: 'unsupported' };
@@ -248,23 +154,14 @@ export async function signIn({ rpId, brokerUrl, intent, credentialId } = {}) {
     challenge: challenge
       ? Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
       : crypto.getRandomValues(new Uint8Array(32)),
-    // The broker requires verification for anything that changes a site, so
-    // asking for it here means the prompt happens once rather than the write
-    // being refused after the fact.
+    // The broker requires user verification for any change, so ask for it up front.
     userVerification: brokerUrl ? 'required' : 'preferred',
     timeout: 120000,
-    // No allowCredentials by default, deliberately. The passkeys are
-    // discoverable, so the browser offers whatever it holds for this domain
-    // and nobody has to type a username — which also means this page ships no
-    // list of who exists.
+    // No allowCredentials by default: discoverable passkeys, and no list of who exists.
   };
   if (rpId) request.rpId = rpId;
 
-  // The exception is proving possession of one specific passkey, which is what
-  // enrolment needs: a device that was made a second ago is being registered,
-  // and an assertion from some OTHER passkey on the same phone would prove the
-  // wrong thing. Pinning it also means the browser does not offer a choice
-  // nobody wants to make.
+  // Enrolment pins the just-made passkey so no other one on the phone can answer.
   if (credentialId) {
     request.allowCredentials = [
       {
@@ -289,8 +186,7 @@ export async function signIn({ rpId, brokerUrl, intent, credentialId } = {}) {
 
   const handle = decodeHandle(assertion.response?.userHandle);
   if (!handle) {
-    // A real passkey for this domain that carries nothing we can read. Most
-    // likely registered before the handle format changed.
+    // A passkey with an unreadable handle, likely from an older format.
     return { ok: false, reason: 'unreadable' };
   }
 
@@ -300,8 +196,7 @@ export async function signIn({ rpId, brokerUrl, intent, credentialId } = {}) {
     person: handle.person,
     credentialId: B64.encode(assertion.rawId),
     verified: Boolean(brokerUrl),
-    // What the broker needs to check the signature itself. Kept in the shape
-    // its endpoints take, so no page has to know the field names.
+    // In the shape the broker's endpoints take.
     assertion: {
       credential_id: B64.encode(assertion.rawId),
       authenticator_data: B64.encode(assertion.response.authenticatorData),

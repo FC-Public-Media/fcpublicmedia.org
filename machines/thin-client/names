@@ -1,9 +1,5 @@
-# What this machine is called, declared. Same rules as ../kiosk-1/names:
-# intent, not a mirror. `../binding` asks the machine and reports a mismatch.
-#
-# UNFILLED ON PURPOSE. The box still runs HP ThinPro, and its name is Autumn's
-# to give. When it runs Debian, set the name with `sudo hostnamectl hostname`
-# and put the answer below. Check it on the machine with `hostname`.
+# What this machine should answer to; `../binding` asks it. Unfilled until it runs Debian and is
+# named (`sudo hostnamectl hostname`); check with `hostname`. See docs/station.md.
 
 # platform   key        value
 # linux      Hostname

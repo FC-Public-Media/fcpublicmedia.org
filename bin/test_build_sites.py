@@ -3,14 +3,7 @@
 
     python3 bin/test_build_sites.py
 
-The interesting assertions are about ISOLATION and the EXIT POLICY, because
-those are the two things the cadence promise actually rests on: one member's
-broken data file must not stop the other sites building, and must not make this
-repository report itself broken.
-
-Everything except the last test injects a fake runner, so the suite is fast and
-does not need Ruby. The last test really builds `site/` and `site-template/`
-and skips itself if bundler is not there.
+All but the last test use a fake runner; it really builds, and skips without bundler.
 """
 
 import importlib.util
@@ -110,14 +103,10 @@ class ManifestTests(unittest.TestCase):
 
 
 class DeliveryTests(unittest.TestCase):
-    """The switch: how a host deploys a site. docs/deploying.md, "The switch"."""
+    """The switch: how a host deploys a site. docs/members.md#sitesyml."""
 
     def test_our_own_site_is_delivered_as_source_from_site(self):
-        """The self-sufficiency guarantee. As long as this holds, a plain git
-        build on any Cloudflare account, rooted at site/, publishes exactly
-        what is live, with no station-node and no media node in the loop.
-        Changing it is a decision, and the Cloudflare root directory has to
-        move in the same act."""
+        """A plain git build rooted at site/ publishes what is live, needing no machine of ours."""
         by_path = {e.path: e for e in bs.load_manifest()}
         site = by_path["site"]
         self.assertEqual(site.domain, "www.fcpublicmedia.org")
@@ -131,9 +120,7 @@ class DeliveryTests(unittest.TestCase):
             self.assertTrue((root / needed).is_file(), f"site/{needed} is missing")
 
     def test_every_intermediate_delivery_has_a_servable_root(self):
-        """Switching to `intermediate` is only safe if the folder is there to
-        serve, with its manifest and its own host config. Otherwise the switch
-        points a host at nothing."""
+        """An `intermediate` delivery must point a host at a folder that is there to serve."""
         for e in bs.load_manifest():
             if e.deliver != "intermediate":
                 continue
@@ -221,8 +208,7 @@ class BuildOutcomeTests(unittest.TestCase):
         self.assertIn("Liquid Exception", detail)
 
     def test_success_with_no_index_is_a_failure(self):
-        """A zero exit and an empty directory is the dangerous case: deploying
-        it replaces a working site with nothing and reports success."""
+        """A zero exit with no index would replace a working site with nothing."""
         core_at(self.tmp)
         member_at(self.tmp, "t")
         status, detail = bs.build(
@@ -272,13 +258,11 @@ class CompositionTests(unittest.TestCase):
         self.assertEqual(collisions, ["_layouts/default.html"])
 
     def test_a_collision_never_silently_prefers_ours(self):
-        """The one unforgivable behaviour: building a site that is not the one
-        the member wrote, without saying so."""
+        """Never build a site that is not the one the member wrote, without saying so."""
         member = member_at(self.tmp, "m",
                            extra={"_layouts/default.html": "MINE"})
         bs.compose(self.core, member, self.dest)
-        # Core's copy is what got staged, which is exactly why the collision is
-        # returned and the caller must refuse to build on it.
+        # Core's copy is staged, which is why the caller must refuse to build on it.
         self.assertEqual((self.dest / "_layouts" / "default.html").read_text(),
                          "{{ content }}")
 
@@ -316,8 +300,7 @@ class ExitPolicyTests(unittest.TestCase):
         self.assertTrue(bs.is_fatal(tenant, "failed", strict=True))
 
     def test_strict_does_not_make_an_unhydrated_tenant_fatal(self):
-        """Not being checked out is not a failure at any strictness — the list
-        is expected to be mostly unhydrated."""
+        """Not being checked out is never a failure; the list is mostly unhydrated."""
         tenant = bs.Entry(path="t", role="tenant")
         self.assertFalse(bs.is_fatal(tenant, "absent", strict=True))
 
@@ -328,8 +311,7 @@ class ExitPolicyTests(unittest.TestCase):
             self.assertTrue(bs.is_fatal(entry, "absent"))
 
     def test_divergence_is_news_for_a_tenant_and_a_bug_for_us(self):
-        """A member who has taken the markup somewhere of their own is not a
-        defect in this repository. Our own scaffold doing it is."""
+        """A member who took the markup elsewhere is not our defect; our scaffold doing it is."""
         self.assertFalse(bs.is_fatal(bs.Entry(path="t", role="tenant"), "diverged"))
         self.assertTrue(bs.is_fatal(bs.Entry(path="p", role="scaffold"), "diverged"))
 
@@ -351,8 +333,7 @@ class IsolationTests(unittest.TestCase):
         attempted = []
 
         def runner(cmd, **kwargs):
-            # --source is a staging directory now, so identify the site by the
-            # destination, which still sits beside the site's own source.
+            # --source is a staging directory; the destination sits beside the site.
             dest = pathlib.Path(cmd[cmd.index("--destination") + 1])
             name = dest.parent.name
             attempted.append(name)
@@ -441,8 +422,7 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(bs.prune(set(), self.tmp, "site/nope"), [])
 
     def test_the_listing_has_no_timestamp(self):
-        """A payload carrying the time it ran commits a file every cadence to
-        record that it looked. sync-feeds.py learned this already."""
+        """A timestamp would commit the file every run just to say it looked."""
         target = bs.write_listing({"b", "a"}, self.tmp, self.root)
         first = target.read_bytes()
         second_target = bs.write_listing({"a", "b"}, self.tmp, self.root)
@@ -459,9 +439,7 @@ class PublishTests(unittest.TestCase):
 
 class PublishPolicyTests(unittest.TestCase):
     def test_only_tenants_are_published_by_us(self):
-        """`site` is published by the host's own git build, and the scaffold
-        must never reach the public — it would put "Your Show" on the live
-        site."""
+        """`site` is published by the host's git build; the scaffold never reaches the public."""
         self.assertTrue(bs.Entry(path="p", role="tenant").publishes)
         self.assertFalse(bs.Entry(path="p", role="site").publishes)
         self.assertFalse(bs.Entry(path="p", role="scaffold").publishes)
@@ -486,13 +464,7 @@ class PublishPolicyTests(unittest.TestCase):
 
 
 class EndToEndPublishTests(unittest.TestCase):
-    """main() over a synthetic repository, with the build faked out.
-
-    The one this class exists for is `--only` not pruning. Everything else here
-    is reachable from the unit tests; that behaviour is only reachable from
-    main(), and getting it wrong takes every member's site off the internet at
-    once.
-    """
+    """main() over a synthetic repository, with the build faked; mainly for `--only` not pruning."""
 
     def setUp(self):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
@@ -551,8 +523,7 @@ class EndToEndPublishTests(unittest.TestCase):
                          "--only must not take beta down")
 
     def test_a_failed_tenant_keeps_what_it_published_last_time(self):
-        """The cadence promises new work appears, not that old work vanishes
-        the first morning somebody's data file will not parse."""
+        """A data file that will not parse does not take old work down."""
         bs.main(["--publish"])
 
         def failing(cmd, **kwargs):

@@ -1,22 +1,6 @@
-// Shared class-window logic.
-//
-// Two pages ask the same question — "is a class happening right now?" — and
-// they must never disagree. The homepage uses it to decorate the check-in
-// panel; the check-in page uses it to preload itself for a class arrival.
-//
-// So the answer lives here, once, and both import it. The QR on the door
-// carries no class information at all: it is a permanent link to /check-in/,
-// and the page works out the rest. Nothing to reprint, nothing to rotate,
-// nothing that can be stale in someone's pocket.
-//
-// Windows:
-//
-//   soon   the leadMinutes before the start — visible on the way in
-//   late   the first lateMinutes after it starts — still worth walking in
-//   now    running, past the point of joining late
-//
-// `late` is a sub-case of the class being on, not a separate phase of the
-// day; both mean "the class is happening".
+// Class-window logic shared by the homepage and the check-in page, so they never disagree.
+// Windows: soon (leadMinutes before), late (first lateMinutes), now (the rest of the class).
+// See docs/programming.md.
 
 export function readConfig(elementId = 'class-config') {
   const source = document.getElementById(elementId);
@@ -57,16 +41,14 @@ export function pickSession(config, now = Date.now()) {
   return null;
 }
 
-// Stable identity for a session, so an RSVP can be matched back to it without
-// depending on array order or on a field the calendar may not provide.
+// Stable key for an RSVP, independent of array order.
 export const sessionKey = (session) => `${session.starts}|${session.title}`;
 
 export function clockTime(ms) {
   return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-// Re-evaluate on a timer, but only while the tab is visible. Both callers want
-// exactly this, and both would otherwise get it slightly wrong.
+// Re-evaluate on a timer while the tab is visible.
 export function watch(render, intervalMs = 60000) {
   let timer = null;
 

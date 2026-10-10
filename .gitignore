@@ -22,7 +22,5 @@ test-results/
 *-key.pem
 __pycache__/
 
-# The Wi-Fi QR encodes the guest password in decodable form. Generated
-# locally by site/bin/make-wifi-qr.py and printed; never committed. See the
-# header of site/_data/wifi.yml.
+# Carries the guest Wi-Fi password; made locally by site/bin/make-wifi-qr.py. See docs/site.md.
 site/assets/img/wifi-qr.svg

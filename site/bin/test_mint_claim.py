@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for mint-claim.py.
-
-The part worth testing is the DER-to-raw signature conversion. Everything else
-is openssl doing its job, but that conversion is hand-written, and getting it
-wrong produces a token that looks perfectly fine and fails to verify in a
-browser — the exact failure that is miserable to diagnose from a phone.
+"""Tests for mint-claim.py, chiefly the hand-written DER-to-raw conversion.
 
     python3 site/bin/test_mint_claim.py
-
-Run alongside the browser-side check in site/tests/claims.spec.js, which verifies
-the same tokens through WebCrypto itself.
 """
 
 import base64
@@ -41,9 +33,7 @@ class DerToRaw(unittest.TestCase):
         self.assertEqual(raw[32:], b"\x00" * 31 + b"\x02")
 
     def test_strips_the_sign_byte_openssl_adds(self):
-        # A 32-byte value whose top bit is set gets a leading zero in DER, so
-        # the INTEGER is 33 bytes. Keeping that byte would push r into 33 bytes
-        # and shift s by one — a signature that verifies nowhere.
+        # DER adds a leading zero when the top bit is set; keeping it shifts s by one.
         value = b"\xff" + b"\x11" * 31
         der = bytes([0x30, 0x46, 0x02, 0x21, 0x00]) + value + bytes([0x02, 0x21, 0x00]) + value
         raw = mint.der_to_raw(der)

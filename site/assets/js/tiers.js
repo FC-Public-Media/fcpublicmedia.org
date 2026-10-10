@@ -1,10 +1,4 @@
-// The membership tiles. Choosing one is plain HTML (a radio button over each
-// tile, see membership.md); this only adds the Continue line under them and
-// keeps the choice in the address, so /membership/?tier=creator arrives with
-// Creator already chosen and a reload keeps it.
-//
-// The address is REPLACED, never pushed: choosing a tier is not a place, and
-// Back should leave the page rather than step back through the tiers.
+// Membership tiles: adds Continue and keeps ?tier= in the address (replaced, never pushed).
 
 const radios = [...document.querySelectorAll('.tiers input[name="tier"]')];
 const next = document.getElementById('tier-next');

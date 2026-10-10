@@ -4,23 +4,7 @@ layout: null
 sitemap: false
 ---
 {%- comment -%}
-  Azure Static Web Apps configuration.
-
-  The redirect list is generated from _data/redirects.yml, the same file that
-  produces Cloudflare's _redirects, so moving between hosts cannot leave one
-  of them stale. Everything else here is Azure-specific and hand-written.
-
-  Harmless on Cloudflare Pages, which ignores it.
-
-  NO AUTH HERE ANY MORE. This file used to carry Entra ID sign-in, a
-  `/members/*` role gate and a `rolesSource` pointing at an Azure Function in
-  `api/`. That function is deleted: FCPM's identity is passkeys through the
-  broker in `worker/`, not a second sign-in belonging to a host we do not
-  deploy to. Config describing a login that does not exist is worse than no
-  config, because it reads as a working feature.
-
-  What is left is redirects, headers and the 404 fallback, which is all this
-  file was ever doing for the site that is actually published.
+  Azure Static Web Apps config; routes come from _data/redirects.yml. No auth. See docs/site.md.
 {%- endcomment -%}
 {
   "trailingSlash": "always",
