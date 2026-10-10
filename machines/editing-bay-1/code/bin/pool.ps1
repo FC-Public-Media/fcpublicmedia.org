@@ -45,6 +45,10 @@ $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "editing-bay-1 pool"
 $CalmMin = 15
+# `fcpm dev on` (Autumn, 2026-10-09): follow GitHub, so a merge reaches this
+# bay by itself. Shared with machines/fcpm, which flips it.
+$Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
+$PullMin = 5
 
 function Say([string]$m) {
     New-Item -ItemType Directory -Force $State | Out-Null
@@ -222,6 +226,22 @@ function Screens {
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
+function Follow {
+    # With dev on, pull the mirrors every $PullMin minutes (bin/refs pull:
+    # fast-forward only, a dirty mirror or one off main is skipped), so
+    # Current places what was merged without anyone pulling. Off, the weekly
+    # task and people pull, as before.
+    if (-not (Test-Path $Dev)) { return }
+    $stamp = Join-Path $State "pulled"
+    $last = Get-Item $stamp -ErrorAction SilentlyContinue
+    if ($last -and $last.LastWriteTime -gt (Get-Date).AddMinutes(-$PullMin)) { return }
+    Set-Content -Path $stamp -Value (Get-Date -Format s)
+    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+    foreach ($l in @(& $bash (Join-Path $Root "bin\refs") pull 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
+        Say ("dev: " + ($l -replace '\s+', ' '))
+    }
+}
+
 function Current {
     # Keep this machine on what the mirror holds, a pass a minute. The mirror
     # only ever holds main (bin/refs fast-forwards it), so whatever pulled it,
@@ -272,7 +292,7 @@ function StopAll {
 }
 
 switch ($Verb) {
-    "pass" { Current; EnsureServer; Screens }
+    "pass" { Follow; Current; EnsureServer; Screens }
     "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopAll }
     "on" { Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer }
     "install" {
@@ -294,6 +314,8 @@ switch ($Verb) {
     "status" {
         $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         Write-Output ("task      {0}" -f $(if ($task) { $task.State } else { "not installed" }))
+        $pulled = "$(Get-Content (Join-Path $State "pulled") -ErrorAction SilentlyContinue)".Trim()
+        Write-Output ("dev       {0}" -f $(if (Test-Path $Dev) { "on: pulls GitHub every $PullMin min" + $(if ($pulled) { ", last $pulled" } else { "" }) } else { "off: the weekly pull only" }))
         $srv = @(Servers)
         Write-Output ("server    {0}{1}" -f $(if ($srv.Count) { "up (pid " + (($srv | ForEach-Object { $_.ProcessId }) -join ", ") + ")" } else { "down" }),
             $(if (Test-Path $Off) { "  (off: the pool will not start it)" } else { "" }))

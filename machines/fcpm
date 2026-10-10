@@ -33,6 +33,16 @@ case "$cmd" in
     elif [ -f "$HERE/$p/check.sh" ]; then sh "$HERE/$p/check.sh"
     else echo "fcpm: $p carries no check"; fi ;;
   refs)      exec "$CODE/bin/refs" "$@" ;;
+  dev)
+    # On: the pool pulls GitHub every 5 minutes and places what merged
+    # (Autumn, 2026-10-09). Off: the weekly pull and people, as before.
+    f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
+    case "${1:-status}" in
+      on)  mkdir -p "$(dirname "$f")" && : > "$f" && echo "dev: on. The pool pulls GitHub every 5 minutes and places what merged" ;;
+      off) rm -f "$f" && echo "dev: off. The weekly pull only" ;;
+      status) [ -f "$f" ] && echo "dev: on" || echo "dev: off" ;;
+      *) echo "fcpm dev [status|on|off]" >&2; exit 2 ;;
+    esac ;;
   pool)
     [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
     ps1 "$CODE/bin/pool.ps1" "$@" ;;
@@ -78,6 +88,7 @@ fcpm check                what files cannot say: gear, settings, the pool
 fcpm weekly               bring in the latest, once a week (the task runs it)
 fcpm refs [pull|status|work R B|done R B]   the mirrors, and worktrees
 fcpm pool [status|pass|off|on|install]      the root's server
+fcpm dev [status|on|off]  on: merges on GitHub reach this machine by themselves, within 5 min
 fcpm runnables [...]      the census, compile, prove (bin/runnables)
 fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
 fcpm screen [status|on|off|reset|class|wall]   the rolling TV

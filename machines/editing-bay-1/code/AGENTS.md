@@ -138,6 +138,11 @@ until it runs something that has to be rebased under it.
   crew's supervisor if `crews/` or `troves/` moved under it. Any pull counts:
   a session's, the weekly task's, the watcher's. `pool.log` says
   `current: <commit> placed`.
+- **`fcpm dev on`: GitHub reaches the bay by itself** (Autumn, 2026-10-09).
+  With it on, each pass pulls the mirrors every 5 minutes (`bin/refs pull`,
+  fast-forward only), and the step above places what merged. Nobody pulls.
+  `fcpm dev off` leaves the weekly task and people to pull. `fcpm pool` shows
+  it and the last pull, and `pool.log` says `dev: ... UPDATED` for each.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1
   pool` at logon and every minute, with no window.
