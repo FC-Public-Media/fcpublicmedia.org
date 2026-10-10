@@ -234,29 +234,5 @@ Surveyed 2026-10-05 for the standing order in [`../AGENTS.md`](../AGENTS.md),
 in its mirror the way production's does. Kiosk's mirror folder is `ref/`,
 production's is `refs/`, and `watch` reads either.
 
-**55 of 186 code and config files open with 25 or more comment lines.** These
-are the longest headers. Each shrinks to five lines when its file is next
-touched, and the rest moves to a doc:
-
-| header lines | file | moves to |
-|---|---|---|
-| 72 | `site/bin/reprice-subscriptions.py` | `docs/payments.md` |
-| 71 | `bin/build-sites.py` | `docs/TENANCY.md` |
-| 67 | `machines/gear.yml` | `docs/machines/README.md`, *Crew and gear* |
-| 63 | `machines/kiosk-1/door.py` | `docs/machines/kiosk-1/PROFILE.md` |
-| 60 | `bin/build-kiosk.py` | `docs/KIOSK.md` |
-| 58 | `machines/crew.yml` | `docs/machines/README.md`, *Crew and gear* |
-| 58 | `site/bin/sync-calendar.py` | `docs/programming.md` |
-| 55 | `site/bin/sync-feeds.py` | `docs/programming.md` |
-| 53 | `site/_data/hosts.yml` | `docs/RESERVE-DESIGN.md` |
-| 52 | `site/_data/authorize.yml` | `docs/identity.md` |
-| 52 | `sites.yml` | `docs/TENANCY.md` |
-| 51 | `site/bin/build-prices.py` | `docs/payments.md` |
-| 45 | `site/bin/test_no_secrets.py` | `docs/running-it.md` |
-| 43 | `kiosk/content.yml` | `docs/KIOSK.md` |
-| 42 | `machines/binding` | `docs/machines/README.md` |
-| 41 | `site/_data/feeds.yml` | `docs/programming.md` |
-| 40 | `machines/RUNNABLES` | `docs/RUNNABLES.md` |
-
-To re-run the count, take each tracked file that isn't Markdown or an asset.
-Skip a `#!` line, then count the comment lines before the first line of code.
+**Done 2026-10-09.** Every comment block longer than one line is in
+[`inline/`](inline/), and the file keeps a one-line reference to it.

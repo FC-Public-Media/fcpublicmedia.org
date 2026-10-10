@@ -22,18 +22,16 @@ to keep in agreement. See `docs/deploying.md`.
 Autumn, 2026-10-05: agents could not find what they needed, because it was
 spread through the opening comments of hundreds of files.
 
-- **Every document is reachable from [`docs/README.md`](docs/README.md).** A
-  doc may live beside what it describes, such as a profile's `PROFILE.md` or a
-  trove's `README.md`, but the index links to it. A doc the index does not
-  link to is not finished.
+- **Every document lives under `docs/` and is reachable from
+  [`docs/README.md`](docs/README.md).** The exceptions are files a tool reads
+  in place: agent instructions (`AGENTS.md`, `CLAUDE.md`), the one-line
+  `PROFILE.md` markers `machines/binding` looks for, and what ships to member
+  sites (`site-template/`, `member-site-core/`).
 - **A machine's root instructions live in its profile, in this repository.**
   The machine's own `~/code/CLAUDE.md` just points at that path in its mirror
   (`@refs/fcpublicmedia.org/machines/<profile>/code/AGENTS.md`). A root keeps
   no notes of its own that the repository does not hold.
-- **No bulky header comments.** A file says what it is in at most five lines,
-  and names the doc that explains it. Rationale, history, usage tables and
-  "why not X" go in that doc. A comment on a line that would surprise a reader
-  is still welcome.
-- **Existing long headers shrink when their file is next touched.** The
-  explanation moves to the doc, and nothing is lost. This is not a sweep.
-  `docs/OPEN.md` lists the worst of them.
+- **A comment is one line.** Anything longer goes in
+  `docs/inline/<path>.md` under a numbered heading, and the file keeps one
+  line in its place: `see docs/inline/<path>.md#<n>`. Usage text a script
+  prints is output, not a comment.
