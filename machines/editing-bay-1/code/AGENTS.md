@@ -130,9 +130,14 @@ until it runs something that has to be rebased under it.
   `fcpm` (the watcher: what is going on, and a short menu), `fcpm check`, `fcpm refs ...`, `fcpm pool ...`,
   `fcpm runnables ...`, `fcpm screen ...`, `fcpm help`. When handing Autumn a step, hand her an
   `fcpm` verb, never a path, an interpreter or a choice of window. A step that
-  needs one is a gap in `fcpm` to fill. `fcpm install` is hers, never a
-  session's.
+  needs one is a gap in `fcpm` to fill.
 - `bin/refs pull` and `bin/refs status` keep the mirrors current.
+- **Staying current is the pool's job, not an install** (Autumn, 2026-10-09).
+  Each pass, when the mirror has moved, places what it carries
+  (`machines/sync install`: this script, settings, PATH), and restarts the
+  crew's supervisor if `crews/` or `troves/` moved under it. Any pull counts:
+  a session's, the weekly task's, the watcher's. `pool.log` says
+  `current: <commit> placed`.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1
   pool` at logon and every minute, with no window.
@@ -150,8 +155,9 @@ until it runs something that has to be rebased under it.
   - Nothing is revived, and no seat session is kept. That was tried twice,
     and it was not what Autumn asked for. A session that closes stays closed.
   - `fcpm pool` shows the task, the server and the sessions running.
-    `fcpm pool off|on` stops or resumes the pool starting and bouncing the
-    server, and off never stops a running one. `uninstall` removes the task.
+    `fcpm pool off` stops the pool's server (its sessions end with it) and
+    keeps it off; `on` starts it again. A server started by hand is left to
+    its terminal. `uninstall` removes the task.
   - The server needs `~/code` trusted first. It is.
   - Each pass also keeps the rolling TV's page up
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
@@ -161,9 +167,8 @@ until it runs something that has to be rebased under it.
     `fcpm screen class|wall` switches between class mode and the wall.
     That Edge and the server are all that run between passes.
   - `fcpm screen`'s `kept` line says when the pool last kept the screen,
-    from a heartbeat. If it says NO, the pool running here is out of date:
-    a change to `code/bin/pool.ps1` does nothing until `fcpm install`, and
-    a change to the task's timing needs `fcpm pool install` as well.
+    from a heartbeat. If it says NO, the pool is not running: a change to
+    the task's timing needs `fcpm pool install`.
 - Peers over Remote Control: `kiosk` (media-node) and `digitization`
   (station-node). They appear in the session list only while this session has
   Remote Control on.
