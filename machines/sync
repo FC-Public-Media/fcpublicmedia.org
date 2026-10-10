@@ -117,7 +117,10 @@ if [ "$cmd" = status ]; then
   n=$(sed -e 's/#.*$//' "$P/MANIFEST" | awk '$1 == "clone" { print $2 }' | while read -r l; do
       sed -e 's/#.*$//' "$P/$l" | grep -c . ; done | awk '{ s += $1 } END { print s + 0 }')
   echo "mirrors  $n listed"
-  if [ -f "$P/check.ps1" ] && command -v powershell >/dev/null 2>&1; then
+  # SYNC_CHECK=0: the watcher, which wants only what differs (Autumn,
+  # 2026-10-09: bare fcpm runs no check). `fcpm check` runs it.
+  if [ "${SYNC_CHECK:-1}" = 0 ]; then :
+  elif [ -f "$P/check.ps1" ] && command -v powershell >/dev/null 2>&1; then
     echo; powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$P/check.ps1" 2>/dev/null || echo "$P/check.ps1")" || rc=1
   elif [ -f "$P/check.sh" ]; then
     echo; sh "$P/check.sh" || rc=1
