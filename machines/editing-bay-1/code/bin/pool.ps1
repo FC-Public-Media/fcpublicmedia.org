@@ -5,8 +5,8 @@
 #                                    bounce a stale server of ours, start the root's
 #                                    server if it is not up, keep the roller's screen
 #                                    (troves/kiosk-screen). What the logon task runs
-#   bin\pool.ps1 off|on              stop the pool's server and stop starting it, or
-#                                    start again. One started by hand is left to its terminal
+#   bin\pool.ps1 off|on             end every Remote Control server here and keep
+#                                    it off, or start again. off is authoritative
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
 # The root is ~/code. The pool keeps one thing up there, `claude remote-control
@@ -255,24 +255,25 @@ function Current {
     }
 }
 
-function StopOurs {
-    # `off`: the pool's own server stops too, with its sessions. One started
-    # by hand in a terminal is that terminal's to close.
+function StopAll {
+    # `off` is authoritative (Autumn, 2026-10-09): every Remote Control server
+    # on this box ends, the pool's or one started by hand, with its sessions.
+    # Then it looks again, and says by pid whatever is still up.
     $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
-    foreach ($srv in @(Servers | Where-Object { Ours $_ })) {
+    foreach ($srv in @(Servers)) {
         $tree = @(Below $srv.ProcessId $all)
         [array]::Reverse($tree)
         foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
         Say ("server: {0} stopped" -f $srv.ProcessId)
     }
-    foreach ($srv in @(Servers | Where-Object { -not (Ours $_) })) {
-        Say ("server: {0} was started by hand, in a terminal; close that one there" -f $srv.ProcessId)
-    }
+    $left = @(Servers)
+    if ($left.Count) { Say ("server: STILL UP: pid {0}" -f (($left | ForEach-Object { $_.ProcessId }) -join ", ")); exit 1 }
+    Say "server: down"
 }
 
 switch ($Verb) {
     "pass" { Current; EnsureServer; Screens }
-    "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopOurs }
+    "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopAll }
     "on" { Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer }
     "install" {
         $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
