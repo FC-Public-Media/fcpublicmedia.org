@@ -1,28 +1,6 @@
 #!/usr/bin/env python3
-"""What the wallpaper generator is not allowed to get wrong.
-
-Two of these are real rules and the rest are arithmetic.
-
-The real ones:
-
-1. THE TILT IS NEGATIVE. A square leaning counterclockwise reads as a
-   clipboard clip lifting at its top edge. Leaning the other way it reads as
-   rolling forward, which is the O in the Roblox wordmark. There are already
-   copies of our mark in the wild leaning the wrong way —
-   site/assets/img/icon-inverted.svg exists to say so. A wallpaper is worse than a
-   favicon here, because it is a file somebody downloads once and then looks
-   at every day for a year without ever opening this repository again.
-
-2. YELLOW IS A SURFACE, NEVER A COLOUR. The same rule site/bin/test_tokens.py
-   enforces on the stylesheet, enforced again on the thing the stylesheet does
-   not reach. Yellow type is 1.4:1 on paper: not a near miss, invisible.
-   The band design is where this would go wrong, because it is the one with a
-   light field.
-
-The arithmetic ones are here because every measurement is a fraction of a
-canvas that is expected to change — a new panel is a command-line argument,
-and the failure mode of a bad fraction is a mark half off the screen at one
-size and fine at the one the author happened to test.
+"""What the wallpaper generator must not get wrong: the tilt is negative, yellow is never type,
+and every fraction keeps the marks on the canvas at any size. See brand/README.md.
 """
 
 import math
@@ -38,8 +16,7 @@ import importlib
 
 wp = importlib.import_module("make-wallpaper")
 
-# Portrait as mounted, landscape as shipped, a square, a 4K panel, and one
-# absurdly small — the fractions should not care.
+# Portrait, landscape, square, 4K and tiny: the fractions should not care.
 SIZES = [(1050, 1680), (1680, 1050), (1000, 1000), (2160, 3840), (320, 480)]
 
 
@@ -87,9 +64,7 @@ class YellowIsASurface(unittest.TestCase):
                 )
 
     def test_the_light_design_keeps_its_mark_on_the_dark_band(self):
-        """band is the only design with a paper field. The plate reaches
-        11.7:1 on ink and 1.4:1 on paper, so where the mark sits is the whole
-        design, not a placement preference."""
+        """The yellow mark is 11.7:1 on ink and 1.4:1 on paper, so on band it stays on the ink."""
         w, h = 1050, 1680
         band_h = h * 0.30
         for angle, cx, cy, side, fill in marks(wp.render("band", w, h, True)):
@@ -101,8 +76,7 @@ class YellowIsASurface(unittest.TestCase):
 
 class Geometry(unittest.TestCase):
     def test_marks_stay_on_the_canvas(self):
-        """A rotated square is wider than its side. cos+sin of the tilt is the
-        factor, and forgetting it is how a mark ends up clipped at one size."""
+        """A rotated square reaches side * (cos + sin) / 2 from its centre."""
         for name in wp.DESIGNS:
             for w, h in SIZES:
                 for angle, cx, cy, side, _ in marks(wp.render(name, w, h, True)):
@@ -123,9 +97,7 @@ class Geometry(unittest.TestCase):
                     self.assertLess(y, h, f"{name} {w}x{h}")
 
     def test_the_whole_canvas_is_painted(self):
-        """No design may leave the default transparent ground showing — a
-        wallpaper with an alpha channel renders as whatever the desktop's own
-        background colour happens to be, which is nobody's decision."""
+        """No transparent ground: it would show the desktop's own background colour."""
         for name in wp.DESIGNS:
             for w, h in SIZES:
                 root = ET.fromstring(wp.render(name, w, h, True))
@@ -136,9 +108,7 @@ class Geometry(unittest.TestCase):
 
 class TheSet(unittest.TestCase):
     def test_the_three_panels_differ(self):
-        """The point of the tally set is that three monitors do not look like
-        a tiling accident. If the renders ever come out identical the set has
-        silently become one wallpaper printed three times."""
+        """Three identical renders would be one wallpaper printed three times."""
         rendered = {
             name: wp.render(name, 1050, 1680, True)
             for name in ("tally-1", "tally-2", "tally-3")
