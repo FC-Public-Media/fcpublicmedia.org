@@ -47,5 +47,5 @@ mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
 path      -                      .local/bin
 
 # What sessions here may run without asking: this profile's GRANTS, compiled.
-# Placed by `fcpm install`, which a person runs; never by a session.
+# Placed by `fcpm install`, and by the pool each time the mirror moves.
 settings  editing-bay-1          code/.claude/settings.json

@@ -1,11 +1,12 @@
 # pool.ps1 -- keep this bay's root reachable, with nothing open until asked.
 #
 #   bin\pool.ps1 status              is the root's server up and current, and what sessions run
-#   bin\pool.ps1 pass                one pass: bounce a stale server of ours, start the
-#                                    root's server if it is not up, keep the roller's
-#                                    screen (troves/kiosk-screen). What the logon task runs
-#   bin\pool.ps1 off|on              stop starting (and bouncing) the server, or start
-#                                    again. Off, a running server is never stopped
+#   bin\pool.ps1 pass                one pass: place what the mirror moved to (Current),
+#                                    bounce a stale server of ours, start the root's
+#                                    server if it is not up, keep the roller's screen
+#                                    (troves/kiosk-screen). What the logon task runs
+#   bin\pool.ps1 off|on              stop the pool's server and stop starting it, or
+#                                    start again. One started by hand is left to its terminal
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
 # The root is ~/code. The pool keeps one thing up there, `claude remote-control
@@ -221,9 +222,57 @@ function Screens {
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
+function Current {
+    # Keep this machine on what the mirror holds, a pass a minute. The mirror
+    # only ever holds main (bin/refs fast-forwards it), so whatever pulled it,
+    # a session, the weekly task or the watcher, what was merged is placed by
+    # the next pass: the carried files (this script among them, which the
+    # pass after runs), the compiled settings, PATH (machines/sync install).
+    # And the crew's supervisor, when its code moved under it, is restarted on
+    # the new code. Nobody runs an install to catch up (Autumn, 2026-10-09).
+    $mirror = Join-Path $Root "refs\fcpublicmedia.org"
+    $head = (& git -C $mirror rev-parse HEAD 2>$null | Out-String).Trim()
+    if (-not $head) { return }
+    $f = Join-Path $State "placed"
+    $was = "$(Get-Content $f -ErrorAction SilentlyContinue)".Trim()
+    if ($head -eq $was) { return }
+    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+    $out = @(& $bash (Join-Path $mirror "machines\sync") install 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -notmatch '^profile ' })
+    if ($LASTEXITCODE -ne 0) { SayOnce ("current: placing {0} failed: {1}" -f $head.Substring(0, 7), ($out -join "; ")); return }
+    Say ("current: {0} placed{1}" -f $head.Substring(0, 7), $(if ($out.Count) { ": " + ($out -join "; ") } else { "" }))
+    Set-Content -Path $f -Value $head
+    # The supervisor runs crews/ from the mirror in place, and reads its
+    # order again on its own; its code it does not. Ended, its task starts it
+    # again on what is there now.
+    if (-not $was) { return }
+    & git -C $mirror diff --quiet $was $head -- crews troves 2>$null
+    if ($LASTEXITCODE -ne 1) { return }
+    foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'crew\.py"?\s+serve' })) {
+        Say ("current: the crew's supervisor ({0}) runs older code: restarting it" -f $p.ProcessId)
+        & taskkill /T /F /PID $p.ProcessId 2>&1 | Out-Null
+        try { Start-ScheduledTask -TaskName "production" -ErrorAction Stop }
+        catch { Say ("current: could not start 'production' again: {0}" -f $_) }
+    }
+}
+
+function StopOurs {
+    # `off`: the pool's own server stops too, with its sessions. One started
+    # by hand in a terminal is that terminal's to close.
+    $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+    foreach ($srv in @(Servers | Where-Object { Ours $_ })) {
+        $tree = @(Below $srv.ProcessId $all)
+        [array]::Reverse($tree)
+        foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
+        Say ("server: {0} stopped" -f $srv.ProcessId)
+    }
+    foreach ($srv in @(Servers | Where-Object { -not (Ours $_) })) {
+        Say ("server: {0} was started by hand, in a terminal; close that one there" -f $srv.ProcessId)
+    }
+}
+
 switch ($Verb) {
-    "pass" { EnsureServer; Screens }
-    "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value "" ; Say "server: off (a running one is left alone)" }
+    "pass" { Current; EnsureServer; Screens }
+    "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopOurs }
     "on" { Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer }
     "install" {
         $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
