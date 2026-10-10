@@ -10,14 +10,7 @@ permalink: /watch/archive/
 {{ cc.total }} programs on record, {{ cc.watchable }} of them watchable online.
 {{ cc.local_total }} were produced locally.
 
-{%- comment -%}
-  Airing history, joined from _data/airings.json on the Cablecast show id.
-  Cablecast already records every run, so none of this is tracked here — it is
-  read from the system that does the broadcasting.
-
-  The interesting number is the one nobody asks for: how much of the
-  catalogue never runs.
-{%- endcomment -%}
+{%- comment -%} Airing history from _data/airings.json, joined on the Cablecast show id. {%- endcomment -%}
 {% if air and air.totals.distinct > 0 %}
 <p class="lede">
   In the last year, <b>{{ air.totals.slots }}</b> airings covered
@@ -50,12 +43,7 @@ permalink: /watch/archive/
   <label for="archive-filter">Filter</label>
   <input type="search" id="archive-filter" placeholder="Title, producer, or category" autocomplete="off">
 
-  {%- comment -%}
-    Sorting by anything other than category has to flatten the groups — a
-    program that has not aired in two years is interesting regardless of which
-    heading it happens to live under. archive-filter.js moves the rows into
-    one list and puts them back when "Category" is chosen again.
-  {%- endcomment -%}
+  {%- comment -%} Any sort but Category flattens the groups; archive-filter.js restores them. {%- endcomment -%}
   <label for="archive-sort">Sort</label>
   <select id="archive-sort">
     <option value="category">Category</option>
@@ -79,11 +67,7 @@ permalink: /watch/archive/
 
   <ul class="rows rows-archive" data-archive>
     {% for show in group.items %}
-      {%- comment -%}
-        The id has to be stringified before it will index the JSON object —
-        Liquid will not match an integer against a string key, and the lookup
-        silently returns nothing rather than complaining.
-      {%- endcomment -%}
+      {%- comment -%} Stringify the id: an integer silently fails to index the JSON object. {%- endcomment -%}
       {%- assign key = show.id | append: "" -%}
       {%- assign a = air.shows[key] -%}
       <li data-search="{{ show.title | downcase | escape }} {{ show.producer | downcase | escape }} {{ label | downcase }}"
