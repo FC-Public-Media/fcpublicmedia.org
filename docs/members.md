@@ -134,7 +134,7 @@ The canonical list of every site this node knows about.
   the host serves `_intermediates/<domain>/`, which must hold
   `INTERMEDIATE.yml`, `wrangler.jsonc` and `_site`, and the entry must name a
   `domain`. `--deploy-root DOMAIN` prints the delivery and the root directory a
-  host should be set to. See [`INTERMEDIATES.md`](INTERMEDIATES.md) and
+  host should be set to. See [`station.md`](station.md#intermediates) and
   [`site.md`](site.md#deploy).
 - Listed today: `site` (`www.fcpublicmedia.org`, `deliver: source`) and
   `site-template` (`scaffold`). There are no tenants, and

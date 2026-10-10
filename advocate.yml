@@ -106,7 +106,7 @@ advocates:
       - id: G1
         says: No page asserts a date, a price or an availability that is out of date.
       - id: G2
-        says: Every internal link resolves, including anchors, and REDIRECTS.md reports nothing unaccounted for.
+        says: Every internal link resolves, including anchors, and site/bin/redirect-report.py reports nothing unaccounted for.
     out-of-scope:
       - Inventing a class, a date, a price, a biography or an availability. Those belong to the board.
       - Fixing the deliberate debts listed in docs/advocate.md. They were decided, with reasons.
@@ -141,7 +141,7 @@ advocates:
           source is a guess.
       - id: G2
         says: >
-          NODE.md stays true: what is at the root and what is in `site/`, what
+          docs/site.md#layout stays true: what is at the root and what is in `site/`, what
           `site/_data` may reach into and what it may not, and what a second
           site in the cluster would need. Mounting is still its own pull request
           by whoever owns it.

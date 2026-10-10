@@ -8,7 +8,7 @@ Station-node uses the same model, so a crew can move between machines on either 
 |---|---|---|
 | troves | a discipline's gear | [`troves/`](../troves/README.md) |
 | crews | the work | `crews/<crew>/`: `CREW.md` (contract), `services` (order), its own `residency.yml`, `post.yml` |
-| machines | the hardware | [`machines/<name>/`](../machines/README.md), which says the crews it wears (`wears`) |
+| machines | the hardware | [`machines/<name>/`](../docs/station.md#profiles), which says the crews it wears (`wears`) |
 
 [`machines/crew.yml`](../machines/crew.yml) is separate: which agents can be mustered on an FCPM machine.
 

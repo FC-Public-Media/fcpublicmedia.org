@@ -169,7 +169,7 @@ def main():
             "This is deliberately NOT the same key the site uses. That one is "
             "named PUBLIC_ because the public causes it to be used, so it is "
             "scoped to writing a Checkout Session and cannot read or change a "
-            "subscription. See the README section on keys.",
+            "subscription. See docs/payments.md#keys.",
             file=sys.stderr,
         )
         return 2

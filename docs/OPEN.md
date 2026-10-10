@@ -1,262 +1,186 @@
 # Open
 
-Things that are true right now and will not announce themselves. Written
-2026-09-19, at the end of a long structural session, for whoever arrives next.
+Everything not built, not decided, or known wrong. One line each; the file named is where it lands.
+Plans that once had their own docs are here in a few lines; git history has the long versions.
 
-**Not a TODO list.** A TODO is something somebody chose to do later. Everything
-here looks finished, looks healthy, or looks like somebody else's job.
+## Broken now
 
-Each item says how to check it, because a claim a reader cannot verify is a
-rumour and this file will rot.
+- `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
+- `crews/crew.ps1` looks for `machines\crews\`; `fcpm crew status|install|uninstall` stop at "no crew". crews/crew.ps1
+- `crews/production/residency.yml` does not parse in PyYAML (`\s` in a double-quoted string). crews/production/residency.yml
+- `machines/editing-bay-1/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
+- `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
+- `cablecast.json` `fetched` is always null: the workflow never sets `SYNC_STAMP`. .github/workflows/sync-cablecast.yml
+- Expired `featured.yml` items stay live: the weekly sync dispatches `deploy.yml`, which builds Azure only. .github/workflows/sync-cablecast.yml
+- Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
+- `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
+- `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
+- `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/editing-bay-1/bay/runnables.proven
+- `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
+- `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
+- Page copy: `/contact/` cites a deleted `/api`; `/donate/` says it is not in the nav, and it is. site/contact.md, site/donate.md
+- Unused: `_includes/community.html`, `countdown.html`, `checkin-card.html`; `watch.yml` `live_url`, `live_provider`, `categories`.
+- `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
+- `crew.py`, `crew.ps1` and `episodes.py` hard-code the `editing-bay-1` profile instead of the machine's.
+- `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
+- `door.py`'s route table omits `/preview/`, `/helo/*`, `/input`, `/heard`, `/wall/`; nothing calls `m365-token.ps1`.
+- kiosk-1's `code/AGENTS.md` names `docs/CAPTURE.md`, which is not in this repository.
+- `member-site-core/feed.xml` names `script/sync-feeds.py`; `site-template/` points at a README that does not exist.
+- `machines/crew.yml` says there is no supervisor or pool; editing bay 1 runs both.
 
-## Pins that are stale and will stay quiet about it
+## Pins and watching
 
-| | |
-|---|---|
-| `.advocate-engine` | **5 commits behind `origin/main`**, pinned at `4635cfc1`. Reported four times during that session and never bumped, because advancing a pin is its own pull request by whoever owns it |
-| the node library's pin for `FCPM/fcpublicmedia.org` | `71047780`, which **predates #69 through #93.** Nothing breaks, because `station-thaw` checks out the project's own `main` rather than the pin — which is precisely why it will stay stale |
+- `.advocate-engine` is 5 commits behind `origin/main` (pinned 4635cfc1); bumping it is its owner's PR.
+- station-node's library pin for this repository is 508 commits behind `main`; harmless while station-thaw checks out `main`.
+- `origin/library` has no PR and no owner. Cloudflare builds every branch, so it must stay buildable until that stops.
+- After any change of publisher, a legacy Wix URL must 301 to `/reserve/` with no `x-wix-request-id`; nobody owns the check. site/_redirects
+- Anything running wrangler on a payload needs `site/wrangler.jsonc` beside it.
+- Something moving into `site/` gets an assertion in `site/bin/test_nothing_internal_is_published.py`, not an `exclude:`.
+- How long `/README.md` was public before #81 is unknown.
+- The Slack invite in `community.yml` expires every 30 days; nothing regenerates it. Slack or Teams is unsettled.
+- 2026-11-01: set `org.equipment_email` to equipment@fcpublicmedia.org. site/_data/org.yml
+- Every class in `classes.yml` is past and `calendar.json` is empty; `/meet/` and "Coming up" render empty.
 
-Neither appears in `git status`. A superproject reads as clean when every gitlink
-matches **what was committed**, which is a statement about the commit and not
-about the world. To check:
+## Site content
 
-```sh
-pin=$(git ls-tree HEAD .advocate-engine | awk '{print $3}')
-git -C .advocate-engine rev-list --count "$pin"..origin/main
-```
+- Missing copy: `/donate` (amounts, recurring, the case, the processor), `/bulletin-board`, the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, `/teach` application questions, an `/about/` history (render `org.mission`).
+- Membership tier benefits, nonprofit production pricing and drop-in prices (`TODO`, and whether members attend free) await the board.
+- Financials (EIN, 990, annual report) are a board decision; published ones go in `governance.yml` `documents`.
+- Retired Wix shows redirect to `/podcasts/`; Wix `/equipment` has no redirect or decision. site/_data/redirects.yml
+- A real logo: CSS called the mark a placeholder; brand/README.md documents a plate.
+- Board roster is empty, so office hours cannot appear. site/_data/board.yml
+- Photos waiting on files: mission band, each space, top of `/reserve/`, a class in progress, board headshots.
+- Ask: one picture of instruction, or one per instructor (no `instructor` field). site/_data/classes.yml
+- Someone has to enter community events as a standing job. site/_data/community.yml
+- `page` layout prints no `<h1>`; accessibility audits flag it. site/_layouts/page.html
+- Check `/watch/` renders `## Podcasts` as a heading (a trimming Liquid comment precedes it). site/watch.md
 
-## `origin/library` has no owner watching it
+## Board review
 
-An orphan branch: `PLACE`, `library/README.md`, and three empty category folders
-— `trade/`, `city/`, `voices/`. Plus the smallest thing that builds.
+- BLOCKING: the Equipment Terms and Conditions that shipped copy names do not exist. site/reserve.md
+- Confirm the card is kept for late fees and incidentals, not as collateral. site/reserve.md
+- "Check out production equipment" reads as self-serve; the page says equipment is arranged by email. site/_data/facilities.yml
+- A video or slideshow of the spaces where the floor plan was; waits on footage. site/reserve.md
 
-It has no pull request, so `auto-delete-on-merge` will never touch it, and
-nothing else will notice it either.
+## Deploy and domain
 
-**It carries site machinery on purpose**, and that is worth re-reading rather
-than tidying away: **Cloudflare builds every branch here.** The non-production
-branch deploy command is set, so a branch with nothing to build does not sit
-quietly — it goes red, stays red, and teaches everyone to ignore a red light.
+- Ruby 3.2.2 is end of life; 3.3 or 3.4 is a one-line change. site/.ruby-version
+- The live Worker is in a personal Cloudflare account, not FCPM's; moving it and making `new` a Custom Domain is undecided.
+- Nameservers to Cloudflare (apex kept on Wix by pointing), then the www and apex cutover: not scheduled. docs/site.md#domain-and-dns
+- Member subdomains need the zone on Cloudflare, a wildcard and a hostname-to-folder Worker (one Worker with `run_worker_first`, or a second). site/wrangler.jsonc
+- Member builds set no `baseurl`, so `/member-sites/<name>/` on www breaks.
+- Org secrets `CLOUDFLARE_PAGES_*` and `CLOUDFLARE_ACCOUNT_ID` are unused here.
+- Rule out two Cloudflare projects building this repository; check whether the "damaged repository" failure is the advocate pin under a shallow clone.
+- `_headers` sends no HSTS; `staticwebapp.config.json` does.
+- Build-less deploys, and Workers relaying registration, class sign-up and reservations to Microsoft 365: planned.
+- Whether Cloudflare stops building at all (the station builds instead) is direction, not done.
 
-That is a live constraint on the library-as-branch design, and the petition filed
-upstream from `station-node` does not name it. `PLACE` lets a *build* exit 0 and
-report what it skipped, but **the build command lives in a dashboard and never
-reads it.** A place-branch on a host that builds every branch has to be
-buildable, or the host has to be told which branches to skip.
+## Programming and classes
 
-> **This constraint is expected to evaporate, and has not yet.** Reported
-> 2026-09-24, relayed from Autumn via the station-node session rather than said
-> here, so treat it as direction and not as done: *"I don't want Cloudflare
-> building anything. Cloudflare is not going to build a single damn thing. And
-> it's because we are going to, as station node, go ahead and run their build."*
->
-> If Cloudflare stops being a build environment, there is no branch build, no
-> `wrangler versions upload`, and no red light to teach anybody to ignore — so
-> the paragraph above stops constraining the library-as-branch design at all.
->
-> **Do not design against its absence yet.** Nothing has been disconnected, the
-> dashboard still holds the branch deploy command, and this entry is the only
-> place the two facts sit next to each other. Whoever performs that disconnect
-> should strike the paragraph above in the same change, because a constraint that
-> has quietly stopped being true is worse than one that was never written down.
+- Cablecast hygiene: 461 programs uncategorized, 746 without VOD, none captioned, filename debris in titles; `LOCAL_PREFIXES` is a guess. site/bin/sync-cablecast.py
+- The calendar source is undecided: a published ICS (what `sync-calendar.py` does; no workflow runs it) or Microsoft Graph (scope `Calendars.Read` with an access policy; workload identity, not a secret).
+- `sync-calendar.py` ignores `STATUS`, so cancelled events show.
+- Check-ins and RSVPs stay on the visitor's phone until retention and access rules exist; the paper log stays. Flagging a check-in without a booking needs the calendar.
+- Cloudflare Access for verified email at check-in: free to 50 users, then about $7 per user per month.
+- Retired podcasts: own entries or one archive listing. site/podcasts.md
+- The artificially pipeline's Audition steps wait on its panel proving out. site/_shows/artificially.md
+- Class mode: grade the lit hour pill; take class and presenter from the calendar; an admin or teacher view; an attendant recipe.
+- Instruments: nothing reads `instruments/` yet; which panels a shared host sets aside; swapping two pages in one action; macOS and Linux drivers; whether an instrument can be a sink (with station-node).
+- A view of what the roller TV shows when it faces away; bay OBS is not ours to change.
 
-## A seat's own finding, never actioned
+## Members
 
-`advocate.yml`, the `truthfulness` seat, line 127 — in its own constituency text:
+- Ejection owes the core as a commit to the member's repository; no tool writes it. bin/build-sites.py
+- A generated tier (a site from show data for shows without a repository): how `sites.yml` names it, never confusable with `scaffold`.
+- `_shows/` and `_podcasts/` as one collection moves live URLs.
+- `/meet/` to render `member_sites.json` once it has entries; nothing reports stale tenant pins.
+- Undecided: which observation a tenant may switch off; per-tenant build days; staying listed while private (a GitHub App reading the feed); runner mode on bay machines.
+- Members are not told that a feed taken down reads as an outage; withdrawal is an act on FCPM's list.
+- `member-site-core/` is a provisional name; proposed as an engine. Is anecdote.channel only the default hosting namespace?
+- The member-facing README for a member repository is Autumn's to write. site-template/
+- Hosting: nothing deploys tenants. Default is Autumn's Cloudflare under anecdote.channel, FCPM's once a member buys a domain; the deployer chooses the account per tenant and cannot fire twice.
+- Intermediates (decided, not built): members send signed built HTML instead of being composed here; signing waits on a key ceremony (`identity.yml` `keys: []`); input outside parameters shows uninterpreted. docs/station.md#intermediates
+- Member shows: a passkey on `you.fcpublicmedia.org`, one `<show>.you.` per show, wizard steps as PRs replayed and never run, bookings with a nonce, recordings home as expiring passkey links, each stage proven by a test on the media node.
+- Holding a bubble: its README says who sent it, what it holds, where it goes, what it costs, what is final and how to leave; membership as You passkey, application, Stripe Checkout carrying only the application digest.
+- Library: move it from the `library` branch to `library/` on main; mount `.you-engine`; wizards in `wizards/<label>/`, shown on a studio screen as a QR bottle and returned as a passkey-signed PR; class materials sealed per session.
+- Directory: `_data/tells.yml` is empty (our Tell's registration is not merged); scope `fort-collins` vs the engines' `colorado`; the Tell's feed `url`; piles as member branches; the Atlas–Tell split.
+- Escalation 9605: the board's decisions on what public media offers under the library's categories.
 
-> right now every class in the calendar is in the past, so two surfaces render
-> empty and nothing complains
+## Payments and identity
 
-**Still unverified.** It is a content problem, content was deliberately out of
-scope for the structural work, and **the seat that would catch it does not run.**
-So the finding sits inside the document describing the mechanism that was
-supposed to find it. Check `site/_data/classes.yml` against today.
+- Payments are not switched on; what remains is the status table. docs/payments.md#before-charging
+- `/membership/` publishes "TODO" under three tiers (`tier.summary` renders unconditionally). site/_data/membership.yml
+- Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
+- `membership.note` (public copy) still describes Entra ID sign-in and a README section that is gone. site/_data/providers.yml
+- No provider for `tickets`, `donate` or `submit`; booking moves to Microsoft 365 (`booking.subdomain` unset). site/_data/providers.yml
+- Form posts have no receiver: an `/api` relay through Graph, or a hosted form service. site/_data/forms.yml
+- A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
+- The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
+- The membership record (email, paid-through date) is unbuilt: a SharePoint list written only by the payment webhook.
+- The claim signing key is not minted and its custody is undecided (`keys: []`, `CLAIM_KEYS` `[]`), so `/bind` refuses every enrolment. site/_data/identity.yml
+- `/upload/` posts to the broker's base URL, which has no such route. site/assets/js/upload.js
+- `write_mode` in `authorize.yml` is rendered but read by nothing. site/_data/authorize.yml
+- Upload destination: bucket, `R2_MAX_BYTES`, retention; Dropbox stays the fallback. site/_data/upload.yml
+- The broker has no rate limit on `/challenge`, and challenges are not strictly single-use (KV read-then-delete). worker/src/
+- Check-ins leaving the device (worker, GitHub App, private repo, SharePoint) is proposed; it waits on the board's retention, readers and privacy notice.
+- The pass is to hold several cards per device, and a check-in to record which.
+- Confirm the venue coordinates and the QR's final URL (`new.` vs `www`) before printing. site/_data/checkin.yml
+- `/reserve/` as a list of hosts booked by shift from one shared M365 calendar, through the Worker, working without JavaScript; open: how hosts are marked, the activity vocabulary, single-use claim links, what a host is called. site/_data/hosts.yml
 
-## How long `/README.md` was public was never established
+## Station and machines
 
-`site/README.md` is inside `source:`, so Jekyll copied it verbatim to
-`https://www.fcpublicmedia.org/README.md`. Closed by #81, which excluded it.
+- Which station services move from station-node to FCPM machines, and in what order.
+- Ablative: bring it, split its observation for both nodes, or re-home its concerns. Nothing filed.
+- `.library-engine`'s residency asks are unanswered; `.journal-engine` wanted at the root (its own PR); `.proofing-engine` wanted, not mounted.
+- What the library holds under `trade`, `city` and `voices` is the board's.
+- Front door: a passive landing page per machine on `.local` where a visitor makes a passkey and gets a grant.
+- Putting a profile on should be a signed commit; admission a passkey-signed request with KEYHOLDERS, not a merge.
+- Machines pull from a LAN origin (thin-client is the likely host) once they can reach it.
+- digitization: names not applied; SSH door and keys wait on passkeys; intake polls until a webhook.
+- editing-bay-2: names unfilled, and it may be the machine that is now kiosk-1.
+- editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
+- `code/bin/refs` has two copies that differ; it belongs where both machines read it.
+- Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
+- The pool restarts the `production` supervisor too. machines/editing-bay-1/code/bin/pool.ps1
+- The default `gear.yml` claude-code winget id is unconfirmed.
 
-**The duration is unknown and the obvious probe cannot settle it.** It 404s now,
-which is equally consistent with *rebuilt after #81* and with *not rebuilt since
-before the file was added*. Nothing sensitive was in it.
+## Crews and services
 
-Recorded because *we fixed it* and *we know what was exposed, and for how long*
-are different claims, and only the first one is true.
+- The crew install has never run to completion; it needs an administrator.
+- The supervisor is Windows-only; a Linux host needs a unit, a lock, display detection and process-group kill. crews/crew.py
+- Machines do not yet say which crews they `wear`; the `kiosk` crew has no folder; digitization has no `services` order.
+- Production's door is not built; its first workflow and whether `/pools/` moves under it are undecided. docs/services.md
+- The welcome before sign-in at the bays is an experiment. docs/services.md#workstation-sign-in
+- Digitization: bay 1's answers as tank host and screen; the Debian member has no capture verb or drive; capture splitting on silence vs one file per session; recording input and start time; a name for the scratch share; the Integra, VCR, multichannel interface and compressors; RØDECaster multitrack.
+- Instanced configurations for gear several crews use (ATEM, OBS).
+- Member scheduling: ask Cablecast about a draft `runStatus`, and how staff's tool creates shows. docs/services.md#member-scheduling
+- Depot volume identity (a marker per partition) is not built. docs/services.md#depot-index
+- Mailing a site's owner when a device is added: not built. worker/
+- `advocate.yml` puts the journal out of scope; the later decision wants it at the root. A seat naming what it reads (to wake on station-node) is proposed upstream.
+- Attendants: nothing wakes one on an `attendant` channel; recipes are followed by hand; the wall recipe is not in `site/tests/`, misses its reload, and says `page depot` where node.yml has `drive`.
+- `.contact-sheets-engine` deletes the previous sheet before montage runs; it has no library address.
 
-## `/check-in/` on a shared browser shows the last visitor to the next one
+## Kiosk
 
-Found 2026-09-23, while working out what a studio kiosk may display. **It is not
-a kiosk problem** — it is true of that page today, on any machine more than one
-person uses, and it is filed here rather than in the kiosk work for that reason.
+- Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `kiosk/content.yml`. kiosk/content.yml
+- The rota's `crew:` tags are Autumn's to give. kiosk/rota.yml
+- Bookings: Microsoft 365 calendars replace `bookings: sample`; Bookings is ruled out for intake; a second desk monitor for today's bookings waits on its API.
+- `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
+- Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.
+- The Dropbox queue is off (no app key, no staff folder). machines/kiosk-1/node.yml
+- Camera replies with a passkey signature are refused until devices can be checked; the HELO preview waits on an RTSP player. machines/kiosk-1/door.py
+- kiosk-1's third panel waits on a DVI adapter; editing bay 2's outward monitor has no show.
+- Asked of IT: automatic sign-in, inbound TCP 8080. `kiosk-1` is a placeholder name. machines/kiosk-1/PROFILE.md
 
-`site/assets/js/checkin.js` keeps the visit in `localStorage`, which is exactly
-right on a personal phone and is what the page promises: *"Your visits stay on
-your own phone."* The keys are at the top of the file — `fcpm.profile` holds
-**name, reason, note and email**, and `fcpm.checkins` holds up to
-`history_limit` past visits, currently 200.
+## Troves
 
-On one shared browser those accumulate into a single profile, and the form
-**prefills the previous visitor's name and email** for whoever sits down next.
-The page's promise is not merely weakened there, it is inverted: the one place
-the data was supposed never to go is another visitor's screen.
-
-The realistic case is not a kiosk. It is **a staffer opening `/check-in/` on the
-desk machine to help somebody who is struggling with it**, which is a helpful
-thing to do and leaves that person's details in the browser.
-
-To check, on any machine where somebody has checked in:
-
-```js
-JSON.parse(localStorage.getItem('fcpm.profile'))
-```
-
-Nothing is decided. Worth knowing that the page already has a clear-down —
-`dropStore` over all five keys, wired to a control on the page — so the cheap
-version may be prompting rather than building anything. Whether shared-machine
-use should be designed for at all is Autumn's call; the kiosk itself sidesteps it
-by showing a QR and never loading the page (see [`KIOSK.md`](KIOSK.md)).
-
-## `_redirects` is the one file no automated check can verify
-
-Found 2026-09-24, while station-node worked out whether it could publish this
-site. **Nothing is broken today.** This is written down because it becomes a
-silent failure the moment anything other than Cloudflare's git build publishes
-us, and the check that would catch it cannot be automated.
-
-`site/_redirects` is generated by Jekyll (it carries `layout: null` front matter)
-from `site/_data/redirects.yml`, and it is read by **the host**, not the browser.
-It is also the backbone of the Wix migration: [`REDIRECTS.md`](REDIRECTS.md) is
-generated from Wix's own sitemaps rather than a list anyone typed, which is what
-makes it a check rather than a claim.
-
-**A host that does not honour `_redirects` produces a site that looks perfect.**
-Every page renders, every internal link works, and every legacy Wix URL 404s. No
-build fails. Nothing goes red.
-
-And the obvious automated guard does not close it. Station-node's deploy shelf
-verifies a publish by fetching every uploaded file from the live URL and
-byte-comparing — and it carries, correctly:
-
-```python
-if rel in ("_headers", "_redirects"):
-    continue
-```
-
-Correct, because those two are not fetchable as content, so comparing them would
-always fail. The consequence is the thing to know: **the shelf can report "all
-files agree" while every inbound link from the old site is dead.** The one
-automated check in that pipeline is excluded from the one file whose failure is
-invisible.
-
-So it needs a person, once, after any change of publisher. **Write the check as
-an absence test**, not as a success test, and it stays correct no matter when or
-where it is run:
-
-```sh
-curl -sSD- -o /dev/null \
-  https://www.fcpublicmedia.org/service-page/equipment-checkout \
-  | grep -iE '^(HTTP/|x-wix-request-id)'
-```
-
-| `x-wix-request-id` | status | what it means |
-|---|---|---|
-| present | anything | **Wix answered.** Before cutover: expected, and says nothing about us. After cutover: the **DNS has not flipped** — a DNS problem, not a redirect problem |
-| absent | **301** → `/reserve/` | our origin, redirect layer working |
-| absent | **200** | **THE FAILURE.** Our origin answered and `_redirects` is not being applied |
-| absent | 404 | our origin, path not handled at all |
-
-**`REDIRECTS.md` is a record of where those addresses *will* go, not where they
-go now.** Measured 2026-09-24: `www.fcpublicmedia.org` is still Wix, and that URL
-returns **200** — Wix serving its own live page. Read as a success test, that 200
-says the redirects are broken. They are not; the DNS has not moved.
-
-Two reasons to key on `x-wix-request-id` specifically:
-
-- **`server:` discriminates nothing.** It is `cloudflare` on both origins — Wix
-  sits behind Cloudflare's CDN and the destination is Cloudflare — so it reads
-  identically before and after cutover. It is the header somebody writing this
-  check reaches for first, and it is a trap sitting next to the other one.
-- **It is Wix's own header, so it disappears the moment Wix stops answering.**
-  Present on a 200 and on a 404 alike (both measured), so it identifies the
-  *origin* independently of the status.
-
-The reason to test for absence rather than for a 301 is that **the dangerous case
-is the one that looks healthy.** Our origin returning 200 on a legacy path is a
-perfectly normal-looking response, and it is exactly the state that kills every
-inbound link from the old site.
-
-Any of the 46 rows marked *Redirected* works; this one is `REDIRECTS.md` line 81
-and `site/_data/redirects.yml` line 72. `server-timing: … dc;desc=fastly_cf` is a
-second Wix tell if redundancy is wanted.
-
-**Nobody owns that step yet**, which is the actual open item. It is not in a
-workflow, not in a runbook, and not in anyone's head but two agent transcripts
-until this paragraph. If the publisher changes, whoever changes it should hit a
-real legacy URL before calling it done.
-
-**And it now has a date.** Reported 2026-09-24, relayed from Autumn rather than
-said here: the DNS switch is being aimed at **the coming weekend**, with the
-cutover deliberately preceded by as much readiness work as possible. So this stops
-being a hazard filed for later. The check above is ready to run and takes one
-command; what it does not have is a name against it.
-
-Related, same area, also invisible: `site/wrangler.jsonc` exists only to stop
-wrangler auto-configuring — without it, wrangler decides this is a Node project
-and re-runs the build as `npx bundle exec jekyll build`, failing with *"could not
-determine executable to run"* **after** Jekyll has already succeeded. Anything
-that runs wrangler against a payload needs that file beside it, and the error it
-gives otherwise reads as a build fault and is not one.
-
-## The publish guard is the thing to extend, not the exclude list
-
-`site/bin/test_nothing_internal_is_published.py` is what stands between internal
-files and a public URL, and it has been wrong twice — both times because
-something new moved *into* `site/`:
-
-- a stray `.md`, which is how `site/README.md` reached the web. Now covered by a
-  general assertion: **`_site` contains no `.md` files at all**, since Jekyll
-  renders a page to `index.html` and a `.md` in the output can only be a verbatim
-  copy.
-- `wrangler.jsonc`, on the first build after the apparatus moved into `site/`.
-
-**When you move something into `site/`, assume it publishes until the guard says
-otherwise**, and add the assertion rather than another `exclude:` entry. An entry
-protects one file; an assertion protects the class.
-
-## Documentation hung at the leaves
-
-Surveyed 2026-10-05 for the standing order in [`../AGENTS.md`](../AGENTS.md),
-*Documentation is gathered*.
-
-**Kiosk's root instructions are now in this repository** (2026-10-05), at
-`machines/kiosk-1/code/AGENTS.md`, and its `~/code/CLAUDE.md` points at them
-in its mirror the way production's does. Kiosk's mirror folder is `ref/`,
-production's is `refs/`, and `watch` reads either.
-
-**55 of 186 code and config files open with 25 or more comment lines.** These
-are the longest headers. Each shrinks to five lines when its file is next
-touched, and the rest moves to a doc:
-
-| header lines | file | moves to |
-|---|---|---|
-| 72 | `site/bin/reprice-subscriptions.py` | `docs/payments.md` |
-| 71 | `bin/build-sites.py` | `docs/TENANCY.md` |
-| 67 | `machines/gear.yml` | `machines/README.md`, *Crew and gear* |
-| 63 | `machines/kiosk-1/door.py` | `machines/kiosk-1/PROFILE.md` |
-| 60 | `bin/build-kiosk.py` | `docs/KIOSK.md` |
-| 58 | `machines/crew.yml` | `machines/README.md`, *Crew and gear* |
-| 58 | `site/bin/sync-calendar.py` | `docs/programming.md` |
-| 55 | `site/bin/sync-feeds.py` | `docs/programming.md` |
-| 53 | `site/_data/hosts.yml` | `docs/RESERVE-DESIGN.md` |
-| 52 | `site/_data/authorize.yml` | `docs/identity.md` |
-| 52 | `sites.yml` | `docs/TENANCY.md` |
-| 51 | `site/bin/build-prices.py` | `docs/payments.md` |
-| 45 | `site/bin/test_no_secrets.py` | `docs/running-it.md` |
-| 43 | `kiosk/content.yml` | `docs/KIOSK.md` |
-| 42 | `machines/binding` | `machines/README.md` |
-| 41 | `site/_data/feeds.yml` | `docs/programming.md` |
-| 40 | `machines/RUNNABLES` | `docs/RUNNABLES.md` |
-
-To re-run the count, take each tracked file that isn't Markdown or an asset.
-Skip a `#!` line, then count the comment lines before the first line of code.
+- game-intake is not submoduled under station-node's `library/FCPM/`.
+- Pools: squares as units enhanced together; the Buffalo as a pool; one file saying which machine holds each pool; rows per host from bookings; promotion to a final timeline; groups written to a show's repository; Audition and other transcription engines.
+- Post: delivery and eviction from `E:` are not designed.
+- Recorder: OBS for digitization waits on capture hardware and HDCP; silence splitting needs another payload; the first schematic is unwritten.
+- TI-89: next `link.py` verbs; OS installs through TiLP; a screen instrument; later VMs from the ROM, a hub on the media node, a kiosk menu, a cordless relay.
+- Ki Pro: tape digitizing and a start/stop verb are a person's decision; trace DL32R 13/14 and its HDMI feed.
+- Camera: test the console attached, ATEM resets of USB presets, unnamed properties `D007`–`D00A`; presets are drafts.
+- EdgeRouter X: joining the studio network, a preparation script, firmware.
+- PTZ: read each camera on arrival; how a show holds one; the board's policy on behind-the-scenes recording and a 24-hour stream.
+- Nest Cam: which app still sets it up was never checked.

@@ -1454,7 +1454,7 @@ def drive_page():
 
 
 # ---------------------------------------------------------------- class mode --
-# CLASS MODE (instruments/roller-tv/class-mode.md). md_html knows headings, lists, paragraphs, bold.
+# CLASS MODE (instruments/README.md). md_html knows headings, lists, paragraphs, bold.
 def md_html(text):
     out, para, lst = [], [], None
 

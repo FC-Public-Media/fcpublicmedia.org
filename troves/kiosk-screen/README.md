@@ -13,7 +13,7 @@ Keeps a studio page on a screen this host finds plugged in: kiosk-1's screen kee
 
 Ours is the Edge whose command line names `%LOCALAPPDATA%\<profile>\troves\kiosk-screen\<instrument>\profile`; it is closed by WM_CLOSE, then by process id, never by name. No other screen: the TV is the building's.
 
-Verbs: `fcpm screen` (`status`: attached, our browser, the page, the last log lines), `off` (closed until `on`), `on`, `reset` (close and start again), `class` (class mode, `instruments/roller-tv/class-mode.md`; `class light` for light), `wall` (back).
+Verbs: `fcpm screen` (`status`: attached, our browser, the page, the last log lines), `off` (closed until `on`), `on`, `reset` (close and start again), `class` (class mode, `instruments/README.md`; `class light` for light), `wall` (back).
 
 State in `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`, `profile\`, `off`, `page`, `kept-pool` and `kept-hand` (heartbeats), `screen.log`.
 

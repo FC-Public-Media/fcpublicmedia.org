@@ -18,8 +18,8 @@
 [submodule ".atlas-engine"]
 	path = .atlas-engine
 	url = https://github.com/FCCN-ANTIBODY/atlas.anecdote.channel.git
-	# The directory; `atlas.yml` is who we are. See docs/DIRECTORY.md.
+	# The directory; `atlas.yml` is who we are. See docs/members.md#directory.
 [submodule ".tell-engine"]
 	path = .tell-engine
 	url = https://github.com/FCCN-ANTIBODY/tell.anecdote.channel.git
-	# The hub member data piles register to; `tell.yml`, signed by `keys/tell.fpr`. See docs/DIRECTORY.md.
+	# The hub member data piles register to; `tell.yml`, signed by `keys/tell.fpr`. See docs/members.md#directory.
