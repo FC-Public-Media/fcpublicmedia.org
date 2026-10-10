@@ -57,7 +57,15 @@ if (Test-Path $cj) {
 Say $trusted "~/code trusted for Claude Code (the root's server needs it)" "open claude in ~/code once and accept"
 
 # Where this bay reaches, and what it cannot yet.
-$depot = Test-NetConnection 10.209.1.1 -Port 445 -InformationLevel Quiet -WarningAction SilentlyContinue
+# Its SMB port, for 800 ms, as troves/kiosk-screen's DepotAnswers asks.
+# Test-NetConnection waited out the full TCP timeout (21 s, measured
+# 2026-10-09) behind a progress box, twice a watcher visit.
+$depot = $false
+$t = New-Object Net.Sockets.TcpClient
+try {
+    $ar = $t.BeginConnect("10.209.1.1", 445, $null, $null)
+    $depot = $ar.AsyncWaitHandle.WaitOne(800) -and $t.Connected
+} catch { } finally { $t.Close() }
 Say $depot "the depot (\\10.209.1.1)" "reachable only by opt-in Wi-Fi; Autumn is working on the subnet"
 
 if ($bad) { exit 1 } else { exit 0 }
