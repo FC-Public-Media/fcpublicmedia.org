@@ -5,8 +5,8 @@
 #                                    bounce a stale server of ours, start the root's
 #                                    server if it is not up, keep the roller's screen
 #                                    (troves/kiosk-screen). What the logon task runs
-#   bin\pool.ps1 off|on              stop the pool's server and stop starting it, or
-#                                    start again. One started by hand is left to its terminal
+#   bin\pool.ps1 off|on             end every Remote Control server here and keep
+#                                    it off, or start again. off is authoritative
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
 # The root is ~/code. The pool keeps one thing up there, `claude remote-control
@@ -45,6 +45,10 @@ $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "editing-bay-1 pool"
 $CalmMin = 15
+# `fcpm dev on` (Autumn, 2026-10-09): follow GitHub, so a merge reaches this
+# bay by itself. Shared with machines/fcpm, which flips it.
+$Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
+$PullMin = 5
 
 function Say([string]$m) {
     New-Item -ItemType Directory -Force $State | Out-Null
@@ -222,6 +226,22 @@ function Screens {
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
+function Follow {
+    # With dev on, pull the mirrors every $PullMin minutes (bin/refs pull:
+    # fast-forward only, a dirty mirror or one off main is skipped), so
+    # Current places what was merged without anyone pulling. Off, the weekly
+    # task and people pull, as before.
+    if (-not (Test-Path $Dev)) { return }
+    $stamp = Join-Path $State "pulled"
+    $last = Get-Item $stamp -ErrorAction SilentlyContinue
+    if ($last -and $last.LastWriteTime -gt (Get-Date).AddMinutes(-$PullMin)) { return }
+    Set-Content -Path $stamp -Value (Get-Date -Format s)
+    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+    foreach ($l in @(& $bash (Join-Path $Root "bin\refs") pull 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
+        Say ("dev: " + ($l -replace '\s+', ' '))
+    }
+}
+
 function Current {
     # Keep this machine on what the mirror holds, a pass a minute. The mirror
     # only ever holds main (bin/refs fast-forwards it), so whatever pulled it,
@@ -255,24 +275,25 @@ function Current {
     }
 }
 
-function StopOurs {
-    # `off`: the pool's own server stops too, with its sessions. One started
-    # by hand in a terminal is that terminal's to close.
+function StopAll {
+    # `off` is authoritative (Autumn, 2026-10-09): every Remote Control server
+    # on this box ends, the pool's or one started by hand, with its sessions.
+    # Then it looks again, and says by pid whatever is still up.
     $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
-    foreach ($srv in @(Servers | Where-Object { Ours $_ })) {
+    foreach ($srv in @(Servers)) {
         $tree = @(Below $srv.ProcessId $all)
         [array]::Reverse($tree)
         foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
         Say ("server: {0} stopped" -f $srv.ProcessId)
     }
-    foreach ($srv in @(Servers | Where-Object { -not (Ours $_) })) {
-        Say ("server: {0} was started by hand, in a terminal; close that one there" -f $srv.ProcessId)
-    }
+    $left = @(Servers)
+    if ($left.Count) { Say ("server: STILL UP: pid {0}" -f (($left | ForEach-Object { $_.ProcessId }) -join ", ")); exit 1 }
+    Say "server: down"
 }
 
 switch ($Verb) {
-    "pass" { Current; EnsureServer; Screens }
-    "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopOurs }
+    "pass" { Follow; Current; EnsureServer; Screens }
+    "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopAll }
     "on" { Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer }
     "install" {
         $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -293,6 +314,8 @@ switch ($Verb) {
     "status" {
         $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         Write-Output ("task      {0}" -f $(if ($task) { $task.State } else { "not installed" }))
+        $pulled = "$(Get-Content (Join-Path $State "pulled") -ErrorAction SilentlyContinue)".Trim()
+        Write-Output ("dev       {0}" -f $(if (Test-Path $Dev) { "on: pulls GitHub every $PullMin min" + $(if ($pulled) { ", last $pulled" } else { "" }) } else { "off: the weekly pull only" }))
         $srv = @(Servers)
         Write-Output ("server    {0}{1}" -f $(if ($srv.Count) { "up (pid " + (($srv | ForEach-Object { $_.ProcessId }) -join ", ") + ")" } else { "down" }),
             $(if (Test-Path $Off) { "  (off: the pool will not start it)" } else { "" }))

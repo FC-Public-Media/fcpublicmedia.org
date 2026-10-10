@@ -138,6 +138,11 @@ until it runs something that has to be rebased under it.
   crew's supervisor if `crews/` or `troves/` moved under it. Any pull counts:
   a session's, the weekly task's, the watcher's. `pool.log` says
   `current: <commit> placed`.
+- **`fcpm dev on`: GitHub reaches the bay by itself** (Autumn, 2026-10-09).
+  With it on, each pass pulls the mirrors every 5 minutes (`bin/refs pull`,
+  fast-forward only), and the step above places what merged. Nobody pulls.
+  `fcpm dev off` leaves the weekly task and people to pull. `fcpm pool` shows
+  it and the last pull, and `pool.log` says `dev: ... UPDATED` for each.
 - Clear merged worktrees out of `work/`.
 - **The pool** is `bin/pool.ps1`, run by the per-user task `editing-bay-1
   pool` at logon and every minute, with no window.
@@ -155,9 +160,10 @@ until it runs something that has to be rebased under it.
   - Nothing is revived, and no seat session is kept. That was tried twice,
     and it was not what Autumn asked for. A session that closes stays closed.
   - `fcpm pool` shows the task, the server and the sessions running.
-    `fcpm pool off` stops the pool's server (its sessions end with it) and
-    keeps it off; `on` starts it again. A server started by hand is left to
-    its terminal. `uninstall` removes the task.
+    `fcpm pool off` is authoritative (Autumn, 2026-10-09): it ends every
+    Remote Control server on this box, the pool's or one started by hand,
+    with their sessions, keeps it off, and says `down` or the pid still up.
+    `on` starts it again. `uninstall` removes the task.
   - The server needs `~/code` trusted first. It is.
   - Each pass also keeps the rolling TV's page up
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
