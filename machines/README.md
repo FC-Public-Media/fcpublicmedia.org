@@ -361,7 +361,8 @@ server stays up for the next one.
 
 - Editing bay 1 does this in `code/bin/pool.ps1`. Each minute's pass starts
   the server if none is running, and leaves alone one started by hand in a
-  terminal.
+  terminal. A server it started is bounced when signed out, at once, and onto
+  a new Claude once calm for 15 minutes, as kiosk-1 does (2026-10-09).
 - Kiosk-1's door keeps no session, and keeps the server (2026-10-09). It
   also bounces the server onto a new Claude once it has been calm for 15
   minutes (`machines/kiosk-1/PROFILE.md`).

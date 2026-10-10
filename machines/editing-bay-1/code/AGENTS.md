@@ -140,11 +140,18 @@ until it runs something that has to be rebased under it.
     is serving `~/code`, with no name. *Production* names the worktree
     (`work/fcpublicmedia.org@production`), never a session. A server started
     by hand in a terminal counts, and is left alone.
+  - **Claude updates are when the server goes bad** (2026-10-09). An update
+    swaps `claude.exe` under it and can revoke its sign-in, and it keeps
+    running with no session able to reach it. So the pool bounces a server
+    it started when the server is signed out (at once), and when it is older
+    than the installed `claude.exe` (once calm for 15 minutes, as kiosk-1's
+    door does). Its sessions end with it. `fcpm pool` says `current`, or why
+    it is stale and what holds the bounce. `pool.log` has each change.
   - Nothing is revived, and no seat session is kept. That was tried twice,
     and it was not what Autumn asked for. A session that closes stays closed.
   - `fcpm pool` shows the task, the server and the sessions running.
-    `fcpm pool off|on` stops or resumes the pool starting the server, and
-    never stops a running one. `uninstall` removes the task.
+    `fcpm pool off|on` stops or resumes the pool starting and bouncing the
+    server, and off never stops a running one. `uninstall` removes the task.
   - The server needs `~/code` trusted first. It is.
   - Each pass also keeps the rolling TV's page up
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,

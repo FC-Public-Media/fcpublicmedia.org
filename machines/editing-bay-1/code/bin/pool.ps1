@@ -1,11 +1,11 @@
 # pool.ps1 -- keep this bay's root reachable, with nothing open until asked.
 #
-#   bin\pool.ps1 status              is the root's server up, and what sessions run
-#   bin\pool.ps1 pass                one pass: start the root's server if it is not
-#                                    up, keep the roller's screen (troves/kiosk-screen).
-#                                    What the logon task runs
-#   bin\pool.ps1 off|on              stop starting the server, or start again. A
-#                                    server already running is never stopped
+#   bin\pool.ps1 status              is the root's server up and current, and what sessions run
+#   bin\pool.ps1 pass                one pass: bounce a stale server of ours, start the
+#                                    root's server if it is not up, keep the roller's
+#                                    screen (troves/kiosk-screen). What the logon task runs
+#   bin\pool.ps1 off|on              stop starting (and bouncing) the server, or start
+#                                    again. Off, a running server is never stopped
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
 # The root is ~/code. The pool keeps one thing up there, `claude remote-control
@@ -15,11 +15,19 @@
 #
 # Earlier pools revived every session after a logon, then kept one seat
 # session open. Both are gone: nothing is resumed and no session is started
-# here. Sessions that are running are listed, never stopped.
+# here. Sessions that are running are listed, and ended only with a stale
+# server (below).
 #
 # Every pass, not once per logon: a server that dies mid-day is back within a
 # minute. If one is already serving ~/code, a terminal one included, the pass
 # leaves it alone (a second would refuse anyway).
+#
+# Claude updates are when the server goes bad (2026-10-09). An update swaps
+# claude.exe under it, and can revoke its sign-in: it keeps running,
+# unregistered, and no session reaches it. So a server this pool started is
+# bounced when signed out, at once, and when older than the installed
+# claude.exe, once calm for 15 minutes, as kiosk-1's door does. Ending it ends
+# its sessions; nothing is revived after.
 #
 # ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
@@ -35,6 +43,7 @@ $Log = Join-Path $State "pool.log"
 $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "editing-bay-1 pool"
+$CalmMin = 15
 
 function Say([string]$m) {
     New-Item -ItemType Directory -Force $State | Out-Null
@@ -60,8 +69,105 @@ function Running {
     return @(@($rows | ForEach-Object { $_ }) | Where-Object { $_.sessionId })   # PS 5.1 hands back an array as one item
 }
 
+function Ours($srv) {
+    # A server this pool started: only its own write to our server.log. One
+    # started by hand in a terminal is left alone, stale or not.
+    $srv.CommandLine -match [regex]::Escape((Join-Path $State "server.log"))
+}
+
+function Below($procId, $all) {
+    # Every process under $procId. Windows reuses pids, so a child must have
+    # started after its parent to count as one.
+    $out = @(); $todo = @($all | Where-Object { $_.ProcessId -eq $procId })
+    for ($i = 0; $i -lt $todo.Count; $i++) {
+        $p = $todo[$i]
+        foreach ($c in @($all | Where-Object { $_.ParentProcessId -eq $p.ProcessId -and $_.CreationDate -ge $p.CreationDate })) {
+            if ($out.ProcessId -notcontains $c.ProcessId) { $out += $c; $todo += $c }
+        }
+    }
+    $out
+}
+
+function SignedOut($srv) {
+    # The server's sign-in was taken from it (a Claude update or a sign-in
+    # elsewhere revokes the token, 2026-10-09): it says so in server.log and
+    # stays running, unregistered, and no session can reach it.
+    $since = $srv.CreationDate.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
+    $hit = Get-Content (Join-Path $State "server.log") -Tail 2000 -ErrorAction SilentlyContinue |
+        Where-Object { $_ -match '^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\S* \[(ERROR|WARN)\] .*(Re-registration of \S+ rejected|Authentication failed \(401\))' -and
+                       [string]::CompareOrdinal($Matches[1], $since) -ge 0 } |
+        Select-Object -Last 1
+    [bool]$hit
+}
+
+function Holds($srv, $all) {
+    # What keeps a stale server from a bounce now: short reasons, none once it
+    # has been calm for $CalmMin minutes (kiosk-1's door, 2026-10-09: sessions
+    # don't close, so waiting for them would never end). Calm is no task
+    # running under it and no transcript of its sessions written lately.
+    $below = @(Below $srv.ProcessId $all)
+    $why = @($below | Where-Object { @("claude.exe", "conhost.exe") -notcontains $_.Name.ToLower() } |
+        ForEach-Object { "running {0} ({1})" -f $_.Name, $_.ProcessId })
+    $mine = @($below.ProcessId) + $srv.ProcessId
+    $rows = @(Running)
+    $why += @($rows | Where-Object { $mine -contains $_.pid -and $_.status -eq "busy" } |
+        ForEach-Object { "busy: {0}" -f $_.name })
+    # Sessions outside the server (a background job, a terminal) are not its
+    # to wait on: their transcripts don't count.
+    $elsewhere = @($rows | Where-Object { $mine -notcontains $_.pid } | ForEach-Object { $_.sessionId })
+    $cut = (Get-Date).AddMinutes(-$CalmMin)
+    $projects = Join-Path $HOME ".claude\projects"
+    foreach ($f in @(Get-ChildItem $projects -Recurse -Filter *.jsonl -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $cut })) {
+        # A transcript is <id>.jsonl, and a subagent's sits in <id>\subagents\.
+        $ids = @($f.BaseName, $f.Directory.Name, $f.Directory.Parent.Name)
+        if (@($ids | Where-Object { $elsewhere -contains $_ }).Count) { continue }
+        $why += "written {0} min ago: {1}" -f [int]((Get-Date) - $f.LastWriteTime).TotalMinutes, $f.BaseName.Substring(0, [Math]::Min(8, $f.BaseName.Length))
+    }
+    $why
+}
+
+function Stale($srv) {
+    # Why the server should be replaced, or $null. Signed out: at once, it
+    # serves nothing. Older than the installed claude.exe: Claude updated
+    # under it, the daemon follows and the server doesn't (it sat on 2.1.292
+    # through three updates, 10-07 to 10-09).
+    if (SignedOut $srv) { return "signed out" }
+    $exe = Get-Item $Claude -ErrorAction SilentlyContinue
+    if ($exe -and $srv.CreationDate -lt $exe.LastWriteTime) { return "predates the installed claude" }
+    $null
+}
+
+function SayOnce([string]$m) {
+    # Log a line only when it differs from the last one said this way, so a
+    # held bounce is logged when what holds it changes, not every minute.
+    $f = Join-Path $State "server.said"
+    if ("$(Get-Content $f -ErrorAction SilentlyContinue)" -ne $m) { Set-Content -Path $f -Value $m; if ($m) { Say $m } }
+}
+
+function Bounce {
+    # Replace a server of ours that went stale. Ending it ends its sessions.
+    # The next start may be refused for a few minutes ("already served"),
+    # and later passes try again.
+    $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+    foreach ($srv in @(Servers | Where-Object { Ours $_ })) {
+        $why = Stale $srv
+        if (-not $why) { SayOnce ""; continue }
+        if ($why -ne "signed out") {
+            $held = @(Holds $srv $all)
+            if ($held.Count) { SayOnce ("server: {0} {1}; held: {2}" -f $srv.ProcessId, $why, ($held -join "; ")); continue }
+            $why += ", calm for $CalmMin min"
+        }
+        SayOnce ""
+        Say ("server: {0} {1}: bouncing it" -f $srv.ProcessId, $why)
+        $tree = @(Below $srv.ProcessId $all)
+        [array]::Reverse($tree)
+        foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 function EnsureServer {
     if (Test-Path $Off) { return }
+    Bounce
     if (@(Servers).Count) { return }
     # Why the last one stopped, if it said. A server that ended without
     # signing off (a sign-out, a kill) still holds ~/code for a few minutes,
@@ -141,6 +247,15 @@ switch ($Verb) {
         $srv = @(Servers)
         Write-Output ("server    {0}{1}" -f $(if ($srv.Count) { "up (pid " + (($srv | ForEach-Object { $_.ProcessId }) -join ", ") + ")" } else { "down" }),
             $(if (Test-Path $Off) { "  (off: the pool will not start it)" } else { "" }))
+        $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+        foreach ($s in $srv) {
+            $why = Stale $s
+            $whose = $(if (Ours $s) { "" } else { ", started by hand: left alone" })
+            if (-not $why) { Write-Output ("          {0} current{1}" -f $s.ProcessId, $whose); continue }
+            $held = $(if ($why -eq "signed out" -or -not (Ours $s)) { @() } else { @(Holds $s $all) })
+            Write-Output ("          {0} {1}{2}{3}" -f $s.ProcessId, $why, $whose,
+                $(if ($held.Count) { "; held: " + ($held -join "; ") } elseif ($whose) { "" } else { "; the next pass bounces it" }))
+        }
         $live = Running
         if ($null -eq $live) { Write-Output "sessions  could not list them" }
         foreach ($s in @($live)) {
