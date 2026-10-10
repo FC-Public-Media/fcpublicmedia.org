@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# refs — keep ref/ current, and make changes in worktrees beside it.
+# refs — keep refs/ current, and make changes in worktrees beside it.
 #
-#   bin/refs pull              fetch every repo in ref/, fast-forward the clean ones
+#   bin/refs pull [REPO...]    fetch every repo in refs/ (or just those named),
+#                              fast-forward the clean ones
 #   bin/refs status            one line per repo: branch, behind/ahead, dirty
 #   bin/refs work REPO BRANCH  new worktree at work/REPO@BRANCH, cut from origin/main
 #   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
 #
-# ref/ is a mirror: it only ever fast-forwards, and nothing is committed there.
+# refs/ is a mirror: it only ever fast-forwards, and nothing is committed there.
 # A repo that is dirty, off its default branch, or diverged is reported and left
 # alone rather than forced. Submodules are NOT hydrated — this box is weighed,
 # and an engine is fetched only when someone asks for it.
@@ -57,7 +58,10 @@ pull_one() {
 }
 
 case "${1:-status}" in
-  pull)   each pull_one ;;
+  pull)   shift; if [ $# -gt 0 ]; then for r in "$@"; do
+             [ -e "$REF/$r/.git" ] || { echo "no such repo: $REF/$r" >&2; exit 1; }
+             pull_one "$REF/$r"; done
+           else each pull_one; fi ;;
   status) each line ;;
   work)
     repo=${2:?repo name}; branch=${3:?branch name}

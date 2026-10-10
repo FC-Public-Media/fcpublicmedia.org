@@ -155,7 +155,7 @@ echo
 case "$pick" in
   make) exec "$CODE/bin/refs" work "$REPO" "$called" ;;
   pull)
-    "$CODE/bin/refs" pull
+    "$CODE/bin/refs" pull "$REPO"
     catch_up && line ok "your working copy has the latest"
     if [ "$(cd "$HERE" && SYNC_CHECK=0 ./sync 2>&1 | grep -c '^differs')" -gt 0 ]; then
       ask "Install the updates on this computer now? [Y/n]"

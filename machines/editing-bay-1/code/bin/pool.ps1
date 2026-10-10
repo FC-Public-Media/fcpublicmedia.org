@@ -227,7 +227,8 @@ function Screens {
 }
 
 function Follow {
-    # With dev on, pull the mirrors every $PullMin minutes (bin/refs pull:
+    # With dev on, pull fcpublicmedia.org, the mirror this machine runs (not the
+    # reading ones, Autumn 2026-10-10), every $PullMin minutes (bin/refs pull:
     # fast-forward only, a dirty mirror or one off main is skipped), so
     # Current places what was merged without anyone pulling. Off, the weekly
     # task and people pull, as before.
@@ -237,7 +238,7 @@ function Follow {
     if ($last -and $last.LastWriteTime -gt (Get-Date).AddMinutes(-$PullMin)) { return }
     Set-Content -Path $stamp -Value (Get-Date -Format s)
     $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    foreach ($l in @(& $bash (Join-Path $Root "bin\refs") pull 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
+    foreach ($l in @(& $bash (Join-Path $Root "bin\refs") pull fcpublicmedia.org 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
         Say ("dev: " + ($l -replace '\s+', ' '))
     }
 }
