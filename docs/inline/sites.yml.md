@@ -1,0 +1,92 @@
+# `sites.yml`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `core: member-site-core`
+
+Every site this node knows about. THIS FILE IS THE CANONICAL LIST.
+
+Her words, 2026-09-17, about member sites arriving as submodules under the
+library's trade area:
+
+  "these are submodules that we might hydrate in something to build them, but
+   they don't all have to be there. But it is a canonical list, and it is
+   backed in by the repository."
+
+So: the gitlink is the pointer and this file is the policy. Git records where
+a site's repository is; this records what we do about it. Both are committed,
+which is what "backed in by the repository" buys — the list cannot drift from
+what was reviewed, and removing an entry is a reviewable act.
+
+WHY ONE LIST AND NOT THREE. A site we publish, a site somebody ejected, and a
+site that was never ours all appear here, because they are the same kind of
+thing: a pointer with a policy. Only `role` differs. Modelling them as three
+registries would need a fourth for the case that has no ejection event to key
+off — a producer who never started with us and just wants to be listed.
+
+ROLES
+
+  site      Ours. Built and published. A failure here is our failure and the
+            build reports non-zero.
+
+  scaffold  The shape a member site is cut from. Built on every run so it
+            cannot quietly rot, and never published. Also our failure.
+
+  tenant    A member's own repository, hydrated here to be built. Built and
+            published on the promised cadence — but a failure is REPORTED AND
+            NOT FATAL, because one member's unparseable data file must not
+            make every other member miss the promised day.
+
+  listed    Enumerated and nothing else. Ejected, gone private, or never ours
+            to begin with. Never built, never fetched. Delisting is removing
+            the entry, and that is the whole of it — see docs/TENANCY.md,
+            "We own nothing, and delisting is the whole withdrawal."
+
+A `tenant` whose directory is not on disk is NOT an error. An unhydrated
+gitlink is the normal resting state of this list; the builder says `absent`
+and moves on.
+
+COMPOSITION. `core` below is what FCPM supplies to a member site at build
+time — layouts, stylesheet, config, the feed. A `scaffold` or `tenant` is
+built by staging `core` and then the site's own files on top of it, so a
+member's repository holds only what is theirs. `site` does not compose; it is
+ours and it is whole.
+
+If a site carries a file that `core` also provides, the builder reports
+`diverged` rather than picking a winner. That collision is the eject signal —
+the member has taken the markup somewhere of their own — and silently
+discarding their version would be the one unforgivable behaviour here.
+
+## 2
+
+Above `publish_to: site/member-sites`
+
+Where built tenant sites are committed. It is INSIDE `site/` deliberately:
+the build root is `site/`, so a directory at the repository root is not
+copied into `_site` and would be served by nothing — with no error, because
+a root directory being unpublished is the behaviour
+site/bin/test_nothing_internal_is_published.py exists to guarantee. See
+docs/deploying.md, "Serving member sites off a wildcard subdomain."
+
+A site is published as its `name`, not its path: the name is the public
+address and the path is where we happen to check the repository out.
+
+REMOVING AN ENTRY FROM THE LIST BELOW TAKES THE SITE DOWN. `--publish` prunes
+published directories that are no longer listed, because otherwise delisting
+is something we say rather than something we do.
+
+## 3
+
+Above `deliver: source`
+
+THE SWITCH. `source`: any host builds `site/` with its own ordinary
+Jekyll build, which is how the Cloudflare git connection is set up
+today, and it needs nothing from station-node or the media node. It is
+the fallback, so that if every machine in the building went away, a
+plain git build on FCPM's own Cloudflare account still publishes the
+site. `intermediate`: the host builds nothing and serves
+_intermediates/www.fcpublicmedia.org/. Every host reads this line, and
+`bin/build-sites.py --deploy-root www.fcpublicmedia.org` prints the root
+directory it implies. docs/deploying.md, "The switch".

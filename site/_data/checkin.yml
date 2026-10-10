@@ -1,54 +1,33 @@
-# Check-in configuration.
-#
-# The check-in page records visits in the browser's own storage. There is no
-# server, no account on our side, and nothing is transmitted anywhere.
-#
-# READ THIS BEFORE RETIRING THE PAPER LOG
-# ---------------------------------------
-# Device-local history serves the visitor, not the organization. FCPM receives
-# nothing from a log that lives on someone's phone, and browsers delete this
-# storage — see README, "Check-in", for both limits and for what a server-side
-# copy would take.
+# see docs/inline/site/_data/checkin.yml.md#1
 
-# The URL the QR code points at. Regenerate the code after changing it:
-#   python3 site/bin/make-qr.py
+# see docs/inline/site/_data/checkin.yml.md#2
 url: https://new.fcpublicmedia.org/check-in/
 
 # --------------------------------------------------------------- location
 
-# Checking in requires being at the studio. The page asks for location once,
-# and if the visitor is not there yet it holds the check-in as pending and
-# finishes it by itself when they arrive.
+# see docs/inline/site/_data/checkin.yml.md#3
 location:
   required: true
 
   name: Carnegie Center for Creativity
   address: 200 Mathews Street, Fort Collins, CO 80524
 
-  # Geocoded from the address via OpenStreetMap Nominatim. Worth confirming by
-  # standing at the front door with a phone before this goes live — a few
-  # metres out is fine, a few hundred is not.
+  # see docs/inline/site/_data/checkin.yml.md#4
   latitude: 40.5849119
   longitude: -105.0735292
 
-  # How close counts as "here". 200m covers the building, the parking, and the
-  # street outside without reaching the next block.
+  # see docs/inline/site/_data/checkin.yml.md#5
   radius_m: 200
 
-  # Phone fixes are imprecise, especially indoors. A reading is accepted when
-  # distance - accuracy is inside the radius, but only up to this much slack,
-  # so a fix reporting ±3km cannot wave someone through from home.
+  # see docs/inline/site/_data/checkin.yml.md#6
   accuracy_slack_m: 100
 
-  # How often to re-check while the page is open and visible. Five minutes is
-  # frequent enough to notice an arrival and slow enough not to matter to a
-  # battery. Checks stop entirely when the tab is hidden.
+  # see docs/inline/site/_data/checkin.yml.md#7
   recheck_seconds: 300
 
 # --------------------------------------------------------------- the form
 
-# The paper log asks why someone is here. These prime the same question, and
-# can be preselected from the URL: /check-in/?reason=Class
+# see docs/inline/site/_data/checkin.yml.md#8
 reasons:
   - Studio or bay reservation
   - Equipment pickup or return
@@ -60,12 +39,7 @@ reasons:
 # --------------------------------------------------------------- identity
 
 identity:
-  # none    — check-ins are recorded without an identity. Works today.
-  # access  — Cloudflare Access protects /check-in/sign-in/ and the page reads
-  #           the verified identity from /cdn-cgi/access/get-identity.
-  #
-  # See README, "Check-in / Identity". Note the free Zero Trust plan covers 50
-  # seats, which may be fewer than FCPM has members.
+  # see docs/inline/site/_data/checkin.yml.md#9
   mode: none
 
   anonymous_note: >-

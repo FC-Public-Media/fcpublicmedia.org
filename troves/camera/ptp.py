@@ -1,21 +1,4 @@
-"""ptp.py -- a camera's USB control, through Windows Portable Devices.
-
-A camera that offers PTP over USB is bound by Windows' own MTP driver
-(WUDFWpdMtp). WPD lets a program send it raw PTP operations through the MTP
-extension commands, so nothing is installed, no driver is replaced and no
-administrator is needed. Measured on the Blackmagic Pocket Cinema Camera 6K Pro,
-firmware 7.5.1, 2026-09-28 (README.md, "What it answered").
-
-    cam = Camera.find("pocket")        # by the name Windows shows
-    cam.info()                          # firmware, model, operations, properties
-    cam.describe(0x500F)                # type, current, default, range or choices
-    cam.get(0x500F); cam.set(0x500F, 1000)
-    cam.record(True); cam.record(False)
-
-Needs comtypes: uv run --no-project --python 3.12 --with comtypes ...
-Windows only. One thread: COM objects are made and used on the thread that
-opened the camera.
-"""
+"""see docs/inline/troves/camera/ptp.py.md#1"""
 import ctypes
 import struct
 
@@ -44,8 +27,7 @@ _CONTEXT, _TOTAL, _TO_READ, _TO_WRITE, _DATA = _X(1006), _X(1007), _X(1008), _X(
 _WITH_READ, _WITH_WRITE, _READ, _WRITE, _END = 13, 14, 15, 16, 17
 
 def _kp(obj, meth, k):
-    """The property-key pointer type obj.meth expects. WPD's two type
-    libraries each declare their own, and comtypes will not mix them."""
+    """see docs/inline/troves/camera/ptp.py.md#2"""
     for cls in type(obj).__mro__:
         for spec in getattr(cls, "_methods_", ()):
             if spec.name == meth:
@@ -207,8 +189,7 @@ class Camera:
                 "extension": ext, "operations": ops, "properties": props}
 
     def describe(self, code):
-        """GetDevicePropDesc: type, writable, current, default, and a range or
-        a list of choices. Cached, except for the current value."""
+        """see docs/inline/troves/camera/ptp.py.md#3"""
         rc, b = self.op_read(0x1014, (code,))
         if rc != OK:
             raise PTPError("0x%04X: %s" % (code, RESPONSES.get(rc, hex(rc))))
@@ -223,8 +204,7 @@ class Camera:
             d["step"], o = _read(b, o, t)
         elif form == 2:
             n = struct.unpack_from("<H", b, o)[0]; o += 2
-            # The camera follows the u16 count with a u32 count of its own
-            # (measured: ISO 25/25, frame rates 8/8). Skip it when it's there.
+            # see docs/inline/troves/camera/ptp.py.md#4
             if o + 4 <= len(b) and struct.unpack_from("<I", b, o)[0] == n:
                 o += 4
             vals = []
@@ -250,8 +230,7 @@ class Camera:
             raise PTPError("0x%04X = %r: %s" % (code, value, RESPONSES.get(rc, hex(rc))))
 
     def record(self, on):
-        """Start or stop recording: InitiateOpenCapture / TerminateOpenCapture.
-        Community-documented for Blackmagic Pocket cameras (tal.org)."""
+        """see docs/inline/troves/camera/ptp.py.md#5"""
         rc = self.op(0x101C, (0, 0)) if on else self.op(0x1018, (0,))
         if rc != OK:
             raise PTPError("record %s: %s" % ("start" if on else "stop", RESPONSES.get(rc, hex(rc))))

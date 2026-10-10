@@ -1,0 +1,111 @@
+# `site/_data/upload.yml`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `# ------------------------------------------------------------------- signing in`
+
+Submitting an episode.
+
+A member signs in with the passkey they registered at /authorize/, describes
+the episode, and points at the finished file. Two things come out of that:
+
+  * an entry in their own site's _data/programs.yml, which puts it in their
+    feed — and a feed entry with a future date IS the submission, because
+    that is what /community/ reads
+  * a file somewhere we can reach
+
+WHY THIS LIVES ON OUR DOMAIN
+----------------------------
+Passkeys bind to a domain, and github.io is on the Public Suffix List — so a
+member site published at fcpublicmedia.github.io/their-name/ can never host
+this. The site is what gets published; the place you sign in is ours.
+
+WHAT IT DOES NOT DO YET
+-----------------------
+Nothing is written anywhere. There is no broker to commit to a repository
+and no destination to upload to, so the page collects everything, shows the
+member exactly what it produced, and tells them how to send it the way they
+already do.
+
+That is a real workflow for the first few episodes, not a placeholder — the
+hard parts (proving who you are, producing a well-formed entry, getting the
+date right) all happen. Only the delivery is manual.
+
+## 2
+
+Above `rp_id: ""`
+
+------------------------------------------------------------------- signing in
+
+The domain the passkey belongs to. Empty means "whatever domain this page is
+served from", which is right for previews and local builds. See
+_data/authorize.yml — this must match what registration used.
+
+## 3
+
+Above `url: ""`
+
+------------------------------------------------------------------- the broker
+
+When it exists: verifies the passkey assertion against the public keys in the
+member's repository, then commits the programs.yml entry. Empty is the
+shipped state.
+
+THE PAGE'S OWN SIGN-IN CHECK IS NOT SECURITY. It runs a passkey ceremony
+with a challenge it generated itself, which tells the member which site they
+are working on and tells us nothing. When this URL is set, the broker must
+issue the challenge and verify the signature itself.
+
+## 4
+
+Above `destination: ""`
+
+------------------------------------------------------------------ the file
+
+Where finished files should end up once there is somewhere to put them.
+Empty means the page asks for a path or a note instead of uploading, and
+tells the member to send it however they do today.
+
+Cablecast takes uploads in 5 MB chunks with no URL ingest, so whatever goes
+here eventually has to push bytes rather than hand over a link. Dropbox stays
+regardless — it is the right fallback and it is what members already use.
+
+THE BROKER SIDE OF THIS IS BUILT. worker/ — POST /upload signs a URL and the
+file goes from the browser straight to R2, split into presigned parts above
+4 GiB. Nothing is proxied at any size.
+
+What it binds to is different from a settings write, on purpose: the grant
+(this member, this site, this key, this size) rather than a hash of the
+content, because hashing six gigabytes in a browser would roughly double the
+wait to protect bytes the broker never sees. See worker/README.md.
+
+Setting this is still a decision and not just a value — a bucket, a size cap,
+and a retention rule. R2 is $0.015 per GB-month with 10 GB free and no egress
+charge, so one 6 GB episode a week is around $5/month after a year and $10
+after two, growing forever unless something deletes.
+
+## 5
+
+Above `fallback_note: >-`
+
+What to tell someone about the file while there is no destination. Written
+as an instruction because that is what it is.
+
+## 6
+
+Above `timezone: America/Denver`
+
+--------------------------------------------------------------- the schedule
+
+Times are written with Colorado's UTC offset regardless of where the member
+happens to be sitting, because a time without one is read as the reader's own
+zone. See the same rule in _data/classes.yml.
+
+## 7
+
+Above `default_time: "18:00"`
+
+Default time of day for a drop, when someone does not care. 6pm is when the
+evening block starts.

@@ -10,10 +10,7 @@
   {% include footer.html %}
   <script src="{{ '/assets/js/nav.js' | relative_url }}?v={{ site.time | date: '%s' }}" defer></script>
   <script src="{{ '/assets/js/theme.js' | relative_url }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
-  {%- comment -%}
-    Only loaded on pages that actually have an on-air slot, so the schedule
-    request is not made on pages that would throw the result away.
-  {%- endcomment -%}
+  {%- comment -%}see docs/inline/site/_layouts/default.html.md#1{%- endcomment -%}
   {% if content contains 'data-onair' %}
     <script src="{{ '/assets/js/onair.js' | relative_url }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
   {% endif %}

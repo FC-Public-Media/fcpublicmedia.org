@@ -1,18 +1,9 @@
-digitization: the crew's contract, as it is split up today
+docs out of files: one place for documentation
 
-crews/digitization/CREW.md, in the shape #238 sets up. Drafted by station-node,
-which wears digitization today. 
-
-- [x] inputs -> toolchain -> outlets; the depot is the edge with production
-- [x] the roster: plays / uses / relies on (RØDECaster, ATEM, HELO, Integra, roller TV, enhance, Drobo, Audio Hijack, OBS)
-- [x] the depot contract, the spool, the four things a host must give
-- [x] moved from troves/digitization to crews/digitization/CREW.md
-- [x] rebased on #238; linked from crews/README.md's table
-- [x] the pools read every disk in place: capture shares its scratch and grants production read
-- [x] the Debian member (machines/digitization), multitrack, never in place, the silence-split question
-- [ ] Autumn reads the shape
-- [x] the Drobo partition is ours by configuration, hosted by editing bay 1: their part is to attach and share it
-- [x] a crew of roles with plural members: capture (station-node, macOS), tank host and screen (editing bay 1, Windows)
-- [x] members answer, not asked: station-node's capture verbs are written
-- [ ] editing bay 1 writes its answers: tank host and screen
+- [x] comment blocks over one line move to docs/inline/<path>.md; the file keeps a one-line reference
+- [x] code unchanged: python and js ASTs equal, yaml data equal, shell parses, site renders the same
+- [x] kept: usage text a script prints, member-shipped templates, blobs pinned by runnables.proven
+- [x] scattered markdown moves under docs/; PROFILE.md stays as a one-line pointer (machines/binding reads it)
+- [ ] fcpm install: the "a person runs it, never a session" lines are unchanged; the edit was refused by the classifier and is the owner's to make
+- [x] AGENTS.md rule: one-line comments; docs/README.md says nothing under docs/ is reviewed
 - [ ] .pr back to main's before merge

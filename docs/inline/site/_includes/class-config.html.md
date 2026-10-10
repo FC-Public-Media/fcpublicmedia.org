@@ -1,0 +1,25 @@
+# `site/_includes/class-config.html`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `{%- assign cal = site.data.calendar -%}`
+
+The class schedule, baked into the page for assets/js/classes.js to read.
+
+Included by both the homepage card and the check-in page so there is one
+copy of this, not two that can drift.
+
+Source order:
+
+_data/calendar.json   written by site/bin/sync-calendar.py from the
+Microsoft 365 calendar. Wins when it has anything.
+_data/classes.yml     hand-maintained. The fallback, and what the site
+uses until a calendar source is configured.
+
+Both shapes carry the same fields. Times run through date_to_xmlschema
+either way, because Jekyll's YAML parser turns bare timestamps in
+classes.yml into Time objects that jsonify would otherwise render as
+"2026-08-11 18:00:00 -0600" — not ISO 8601, and parsed inconsistently by
+browsers.

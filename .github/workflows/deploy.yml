@@ -6,8 +6,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches: [main]
-  # Lets sync-cablecast.yml trigger a rebuild on weeks when the catalog did
-  # not change but a featured item needs to expire.
+  # see docs/inline/.github/workflows/deploy.yml.md#1
   workflow_dispatch:
 
 permissions:
@@ -19,8 +18,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
     name: Build and deploy
-    # Lifted to the job so the deploy steps below can test whether it is set.
-    # Secrets cannot be referenced directly in an `if:` expression.
+    # see docs/inline/.github/workflows/deploy.yml.md#2
     env:
       SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     steps:
@@ -28,30 +26,20 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          # Read from .ruby-version rather than pinned here. Cloudflare Pages
-          # reads that same file, so CI and the live build cannot drift onto
-          # different Ruby versions and start disagreeing about whether the
-          # site builds.
-          # `.ruby-version` is a magic literal to this action, not a path — it
-          # resolves it inside `working-directory`. Writing `site/.ruby-version`
-          # gets parsed as an engine name and fails with "Unknown engine".
+          # see docs/inline/.github/workflows/deploy.yml.md#3
           ruby-version: .ruby-version
           bundler-cache: true
           # The build root is `site/`; the version file and the Gemfile are there.
           working-directory: site
 
-      # The build runs unconditionally. It is the part worth checking on every
-      # pull request, and it does not need any credentials.
+      # see docs/inline/.github/workflows/deploy.yml.md#4
       - name: Build
         working-directory: site
         run: bundle exec jekyll build --trace
         env:
           JEKYLL_ENV: production
 
-      # Deployment is skipped until someone creates the Azure Static Web App
-      # and adds its token as a repository secret. Until then the build still
-      # gates every pull request, and CI stays green rather than failing on
-      # infrastructure that does not exist yet.
+      # see docs/inline/.github/workflows/deploy.yml.md#5
       - name: Deploy to Azure Static Web Apps
         if: env.SWA_TOKEN != ''
         uses: Azure/static-web-apps-deploy@v1

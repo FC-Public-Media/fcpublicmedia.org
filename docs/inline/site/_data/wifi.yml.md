@@ -1,0 +1,85 @@
+# `site/_data/wifi.yml`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `# ------------------------------------------------------------------ network`
+
+The guest Wi-Fi, and the poster that gets people onto it.
+
+Regenerate the code after changing anything here:
+  FCPM_WIFI_PASSWORD='…' python3 site/bin/make-wifi-qr.py
+
+THE PASSWORD IS NOT IN THIS FILE AND MUST NOT BE PUT IN IT
+----------------------------------------------------------
+This repository is public and the site it builds is public. A Wi-Fi QR
+encodes the password in plain, decodable form — a QR is not encryption, it
+is a font — so committing the generated SVG publishes the password just as
+surely as typing it here would. Both are therefore kept out: the password
+comes from the environment at generation time, and
+`assets/img/wifi-qr.svg` is gitignored.
+
+The distinction that matters is not "who could learn it" — anyone standing
+in the lobby can read the poster — it is *how far the lobby reaches*. On the
+wall, the password is available to people who are already in the building.
+On fcpublicmedia.org it is available to anyone, anywhere, forever, including
+in git history after it is removed. Those are different decisions and only
+the first one has been made.
+
+If FCPM decides publishing it is fine, that is a real decision and it is
+theirs. It is a small change — drop the gitignore line and commit the SVG —
+but it should be made deliberately, in a PR that says so, and not by
+somebody tidying up.
+
+## 2
+
+Above `ssid: FC Public Media Guest`
+
+Confirmed by Autumn, 2026-09-13: the guest network is ours and this is it.
+The laptop also remembers "FC Public WiFi", which is not this and is not
+what a guest should be handed.
+
+IT HAS DISAPPEARED BEFORE, AND THAT MATTERS MORE HERE THAN ELSEWHERE
+-------------------------------------------------------------------
+Autumn's words were "is/was ours — it went away for a bit". So this SSID
+is right, and it has also, at least once, simply not been there.
+
+A web page that points at a missing network is a nuisance for as long as
+the network is missing. A printed poster is a claim frozen on a wall: it
+keeps confidently naming a network that is not broadcasting, and the guest
+standing in front of it has no way to tell the difference between "the
+code is wrong" and "the network is down". They conclude the Wi-Fi is
+broken and stop trying.
+
+So: look at a phone and confirm the network is actually there before
+printing this, not just before changing this file. That is a different
+check from confirming the name, and it is the one that expires.
+
+## 3
+
+Above `security: wpa`
+
+wpa    — WPA/WPA2/WPA3 with a password. The normal case.
+open   — no password at all.
+wep    — ancient and broken; here only because the format has it.
+
+## 4
+
+Above `confirmed: true`
+
+The NAME is confirmed. This does not claim the network is currently up —
+see above. It gates the generator so nobody prints a guess.
+
+## 5
+
+Above `fallback: >-`
+
+Printed under the code. It exists because this network has gone missing
+before: without a line like this, a guest whose phone finds nothing has
+been told by a poster that it should have worked, and concludes the fault
+is theirs. Naming the possibility costs one line and saves that.
+
+Placeholder wording — replace it with however staff would actually say it,
+and with whoever a guest should actually ask. Do not leave it guessing at
+the building.

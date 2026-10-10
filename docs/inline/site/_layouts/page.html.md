@@ -1,0 +1,24 @@
+# `site/_layouts/page.html`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `<div class="wrap page-body">`
+
+No page-head. The heading here was the menu word a second time, and it cost
+240px of vertical space to say it — an <h1>Reserve</h1> under a menu whose
+Reserve is already underlined. The lede went with it: it was useful text,
+but it was always going to end up repeated in the first paragraph below it.
+
+The title still exists in <title>, which is what a tab, a bookmark, a search
+result and a shared link all read. What is gone is the on-page copy of it.
+
+Pages under this layout therefore have no <h1> and start at <h2>. That is
+deliberate, and site/tests/smoke.spec.js knows it — an accessibility audit will
+flag it, so it should be a decision on the record rather than a surprise.
+
+A page that genuinely needs a heading of its own can still say so: nothing
+stops a Markdown file opening with one, and _layouts/show.html and
+_layouts/podcast.html keep theirs, because a show's name is content rather
+than a label for where you are.

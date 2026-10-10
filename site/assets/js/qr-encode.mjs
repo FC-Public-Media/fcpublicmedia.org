@@ -1,17 +1,4 @@
-// Vendored from FCCN-ANTIBODY/anecdote.channel composer/qr-encode.mjs @ 6481e38bc7a5f44346be465b0091c3377b33552a,
-// unchanged below this header. The kiosk reads with the same project's qr-decode.mjs. Refresh by copying it again.
-// composer/qr-encode.mjs — "qr-enough": a vendorless byte-mode QR encoder (docs/offline-transfer.md). Just
-// enough of the QR spec to render a payload as a scannable code — versions 1–40, all four ECC levels
-// L/M/Q/H, byte mode (a signed poll URL runs ~800 B → a mid-teens version). The first hands-on carrier:
-// a poll QR is a PLAIN URL QR any phone decodes → opens the answer runtime. The spec tables and the
-// function-module map are exported — composer/qr-decode.mjs (the bigger lens) reads with the same charts
-// this file draws by.
-//
-// Correctness without a scanner in this env is guarded three ways: (1) a codeword-count INVARIANT on the
-// block tables (the typo-prone part) — asserted in the test; (2) format/version info via computed BCH and
-// Reed–Solomon via computed GF(256), so no hand-typed magic numbers; (3) a SELF-DECODE round-trip in the
-// test that reads the data back through inverse placement + unmask + de-interleave. Scanner interop is the
-// physical phone test.
+// see docs/inline/site/assets/js/qr-encode.mjs.md#1
 
 // ---- GF(256) for Reed–Solomon (primitive 0x11d) -----------------------------------------------------
 const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
@@ -21,17 +8,13 @@ export const _gf = { EXP, LOG, gfMul };   // exposed for the RS syndrome check i
 
 export function rsGen(ec) { let g = [1]; for (let i = 0; i < ec; i++) { const ng = new Array(g.length + 1).fill(0); for (let j = 0; j < g.length; j++) { ng[j] ^= gfMul(g[j], EXP[i]); ng[j + 1] ^= g[j]; } g = ng; } return g; }
 export function rsEncode(data, ec) {
-  // rsGen returns the generator constant-first (g[ec] = leading monic term). The LFSR remainder wants the
-  // non-leading coefficients highest-power-first, so drop the leading term and reverse.
+  // see docs/inline/site/assets/js/qr-encode.mjs.md#2
   const div = rsGen(ec).slice(0, ec).reverse(), res = new Array(ec).fill(0);
   for (const d of data) { const f = d ^ res[0]; res.shift(); res.push(0); if (f !== 0) for (let j = 0; j < ec; j++) res[j] ^= gfMul(div[j], f); }
   return res;
 }
 
-// ---- spec tables (versions 1–40, ECC levels L & M) --------------------------------------------------
-// Total codewords per version, and the block layout [ecPerBlock, [[blockCount, dataPerBlock], …]] and
-// alignment-pattern centre coordinates. Generated from the ISO 18004 tables (cross-checked against segno);
-// the codeword-count invariant in qr-encode.test.mjs guards against transcription errors.
+// see docs/inline/site/assets/js/qr-encode.mjs.md#3
 export const TOTAL_CW = [0, 26, 44, 70, 100, 134, 172, 196, 242, 292, 346, 404, 466, 532, 581, 655, 733, 815, 901, 991, 1085, 1156, 1258, 1364, 1474, 1588, 1706, 1828, 1921, 2051, 2185, 2323, 2465, 2611, 2761, 2876, 3034, 3196, 3362, 3532, 3706];
 export const BLOCKS = {
   L: {
@@ -186,8 +169,7 @@ function penalty(m) {
 
 function writeFormat(m, x, level, mask) {
   const bits = bchFormat((EC_BITS[level] << 3) | mask), s = x.size;
-  // The 15-bit format string is placed MSB-first: position i (0-based, in spec module order) carries
-  // bit (14 − i) of the value. (Verified against segno/zbar — see qr-encode.test.mjs notes.)
+  // see docs/inline/site/assets/js/qr-encode.mjs.md#4
   const B = (i) => (bits >> (14 - i)) & 1;
   // copy 1 (around the top-left finder)
   for (let i = 0; i <= 5; i++) m[8][i] = B(i);
@@ -200,8 +182,7 @@ function writeFormat(m, x, level, mask) {
 }
 function writeVersion(m, x, version) { if (version < 7) return; const bits = bchVersion(version), s = x.size; for (let i = 0; i < 18; i++) { const b = (bits >> i) & 1; const r = Math.floor(i / 3), c = i % 3; m[s - 11 + c][r] = b; m[r][s - 11 + c] = b; } }
 
-// The function-module map for a version — shared with the decoder (composer/qr-decode.mjs), which must
-// skip exactly the same cells when it reads the zigzag back.
+// see docs/inline/site/assets/js/qr-encode.mjs.md#5
 export function functionModules(version) { const x = newMatrix(17 + 4 * version); functionPatterns(x, version); return x; }
 
 // ---- public API -------------------------------------------------------------------------------------
@@ -212,11 +193,7 @@ export function chooseVersion(len, level = "M") {
   throw new Error(`qr-enough: ${len} bytes exceeds version 40 at level ${level} (use a shorter URL or a chunked carrier)`);
 }
 
-// Encode text into a QR. Returns { version, size, ecLevel, mask, modules } where modules[r][c] is 0/1.
-// `version` and `mask` are optional overrides (mask is normally chosen by penalty scoring; forcing it is for
-// reference comparison / tests).
-// Encode RAW BYTES — the real carrier (deflated bytes / a key / a signed token), which is not valid UTF-8
-// and so cannot go through encodeQR's text path. Byte mode carries any octet stream unchanged.
+// see docs/inline/site/assets/js/qr-encode.mjs.md#6
 export function encodeBytes(bytes, { ecLevel = "M", version, mask } = {}) {
   bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const v = version || chooseVersion(bytes.length, ecLevel);
@@ -233,12 +210,7 @@ export function encodeBytes(bytes, { ecLevel = "M", version, mask } = {}) {
 // Text is just a UTF-8 byte payload — the string path is a thin wrapper over the byte path.
 export function encodeQR(text, opts = {}) { return encodeBytes(new TextEncoder().encode(text), opts); }
 
-// SELF-DECODE (verification tool, not a general QR reader): reverse our own placement to recover the text —
-// unmask, read codewords in the same zigzag, de-interleave the data blocks, parse byte mode. It trusts the
-// EC codewords (a real scanner does Reed–Solomon); it proves the DATA path (placement/mask/interleave/mode).
-// self-decode to raw BYTES (the byte-carrier round-trip): reverse our own placement — unmask, read
-// codewords in the same zigzag, de-interleave, parse byte mode. Trusts the EC codewords (a real scanner
-// runs Reed–Solomon); proves the DATA path (placement / mask / interleave / mode).
+// see docs/inline/site/assets/js/qr-encode.mjs.md#7
 export function decodeBytesSelf(modules, version, ecLevel, mask) {
   const size = modules.length, x = newMatrix(size); functionPatterns(x, version);
   const maskFn = MASKS[mask], bits = [];

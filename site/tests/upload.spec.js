@@ -1,10 +1,4 @@
-// Submitting an episode.
-//
-// The test that matters here spans two pages: a passkey registered at
-// /authorize/ has to be signable-in at /upload/, and the site it belongs to
-// has to come back out. That is a real virtual-authenticator credential
-// crossing between them, because the whole mechanism is the user handle
-// surviving the round trip and nothing short of running it proves that.
+// see docs/inline/site/tests/upload.spec.js.md#1
 
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
@@ -17,9 +11,7 @@ const SITE_DIR = path.resolve(__dirname, '..');
 const SCRIPT = path.join(SITE_DIR, 'bin', 'mint-claim.py');
 const SITE = 'fcpublicmedia/janes-show';
 
-// Parses the page's output the way the member site's build would, and reports
-// the failure rather than raising, so a malformed entry produces a readable
-// assertion instead of a stack trace from a subprocess.
+// see docs/inline/site/tests/upload.spec.js.md#2
 const PARSE_ENTRY = `
 import sys, json, yaml
 try:
@@ -122,10 +114,7 @@ test.describe('arriving at /upload/', () => {
 
 test.describe('signing in with a registered passkey', () => {
   test('finds out which site the passkey belongs to', async ({ page }) => {
-    // The round trip. The user handle is the only thing an assertion returns
-    // about who signed in, so the site has to survive inside it — a hash, as
-    // this originally was, comes back unreadable and the page cannot tell
-    // whose site to submit to.
+    // see docs/inline/site/tests/upload.spec.js.md#3
     await withKey(page);
     await virtualAuthenticator(page);
     await register(page, 'jane@example.com', SITE);
@@ -138,9 +127,7 @@ test.describe('signing in with a registered passkey', () => {
   });
 
   test('two people on one site get separate credentials', async ({ page }) => {
-    // An authenticator treats a repeated user handle as the same account and
-    // REPLACES the credential, so a handle without a per-person part would
-    // mean the second person silently evicted the first.
+    // see docs/inline/site/tests/upload.spec.js.md#4
     await withKey(page);
     await virtualAuthenticator(page);
 
@@ -154,11 +141,7 @@ test.describe('signing in with a registered passkey', () => {
     expect(second.credential_id).not.toBe(first.credential_id);
   });
 
-  // A cancelled sign-in is not tested behaviourally, for the same reason it
-  // is not on /authorize/: headless Chromium with no authenticator HANGS on
-  // credentials.get() rather than rejecting, so the test would be measuring
-  // the harness. The property that matters — that every failure state offers
-  // a way onward — is asserted structurally above.
+  // see docs/inline/site/tests/upload.spec.js.md#5
 });
 
 test.describe('describing an episode', () => {
@@ -172,8 +155,7 @@ test.describe('describing an episode', () => {
   }
 
   test('writes the drop time with Colorado\'s offset, not the browser\'s', async ({ page }) => {
-    // A producer submitting from another zone must not schedule their own
-    // episode hours out. Everything on this site follows the same rule.
+    // see docs/inline/site/tests/upload.spec.js.md#6
     await signedIn(page);
 
     await page.locator('#ep-date').fill('2026-08-14');
@@ -184,8 +166,7 @@ test.describe('describing an episode', () => {
   });
 
   test('uses the winter offset for a winter date', async ({ page }) => {
-    // The offset is not a constant, and hardcoding one would be wrong for
-    // half the year — silently, since the timestamp still parses.
+    // see docs/inline/site/tests/upload.spec.js.md#7
     await signedIn(page);
 
     await page.locator('#ep-date').fill('2026-12-14');
@@ -218,10 +199,7 @@ test.describe('describing an episode', () => {
 
     const yaml = await page.locator('#entry-yaml').innerText();
 
-    // Not a substring check. The output is pasted into a real programs.yml,
-    // so what matters is that it PARSES and comes out the right shape —
-    // indentation, quoting and the folded summary all have to survive, and
-    // none of that is visible in a `toContain`.
+    // see docs/inline/site/tests/upload.spec.js.md#8
     const parsed = JSON.parse(
       execFileSync('python3', ['-c', PARSE_ENTRY], { input: yaml, encoding: 'utf8' })
     );
@@ -236,8 +214,7 @@ test.describe('describing an episode', () => {
   });
 
   test('says plainly that the file is not uploaded from here', async ({ page }) => {
-    // There is no destination configured, and pretending otherwise would
-    // leave someone believing they had sent a file they had not.
+    // see docs/inline/site/tests/upload.spec.js.md#9
     await signedIn(page);
 
     await expect(page.locator('[data-no-destination]')).toBeVisible();

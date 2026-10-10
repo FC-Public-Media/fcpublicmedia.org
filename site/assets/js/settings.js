@@ -1,24 +1,4 @@
-// Editing a member site's settings file.
-//
-// Same passkey as /upload/, different verb. The member signs in, the page
-// fetches their own _data/site.yml from their own repository, and they edit
-// the text.
-//
-// THE TEXT, NOT A FORM
-// --------------------
-// That file is mostly comments, and those comments are the only documentation
-// a member has for what the settings do. Parsing the YAML and re-serialising
-// it would strip every one of them on the first save. So the editor is a
-// textarea, what they see is the file, and what gets committed is what they
-// saw. See _data/settings.yml for the full argument.
-//
-// THE SHA IS NOT DECORATION
-// -------------------------
-// GitHub hands back the blob SHA with the file, and it goes back with the
-// edit. If somebody changed the file in between — the member on another
-// device, or us — GitHub refuses the write instead of silently discarding
-// their change. Losing that field turns a rare conflict into a rare, silent
-// data loss.
+// see docs/inline/site/assets/js/settings.js.md#1
 
 import { act, contentHash } from './broker.js';
 import { signIn } from './passkey.js';
@@ -44,13 +24,7 @@ function decodeBase64(value) {
   return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
 }
 
-/**
- * Fetch the file the member is actually running, not a copy of the template.
- *
- * The contents API returns the text and the SHA together, which is why it is
- * used here rather than raw.githubusercontent — one request, and the SHA is
- * needed for the write anyway.
- */
+// see docs/inline/site/assets/js/settings.js.md#2
 async function load() {
   show('loading');
 
@@ -65,9 +39,7 @@ async function load() {
       );
     }
     if (response.status === 403) {
-      // Unauthenticated API requests are capped per address, and a shared
-      // network can exhaust it. Worth naming, because "try again later"
-      // sounds like a brush-off when it is literally the fix.
+      // see docs/inline/site/assets/js/settings.js.md#3
       throw new Error(
         'GitHub is rate-limiting requests from this network. It clears within ' +
         'the hour — or edit the file directly on GitHub if you have an account.'
@@ -94,15 +66,7 @@ async function load() {
 
 /* ------------------------------------------------------------------ checks */
 
-/**
- * A smoke check, deliberately not a parser.
- *
- * There is no YAML parser in the browser here and adding one would be a
- * dependency for a page that already has a real validator behind it — the
- * workflow refuses to merge anything that does not parse. So this catches the
- * two mistakes people actually make, and says nothing about the rest rather
- * than implying it checked.
- */
+// see docs/inline/site/assets/js/settings.js.md#4
 function check() {
   const text = el('settings-text').value;
   const notes = [];
@@ -111,16 +75,13 @@ function check() {
     notes.push('The file is empty.');
   }
 
-  // Tabs are invalid for indentation in YAML, and an editor that helpfully
-  // inserted one leaves no visible trace.
+  // see docs/inline/site/assets/js/settings.js.md#5
   const tabLine = text.split('\n').findIndex((line) => /^\s*\t/.test(line));
   if (tabLine >= 0) {
     notes.push(`Line ${tabLine + 1} starts with a tab. This format needs spaces.`);
   }
 
-  // Losing a whole setting is usually an accident — a stray selection, a
-  // paste over the top. Reported rather than blocked, because removing one on
-  // purpose is legitimate.
+  // see docs/inline/site/assets/js/settings.js.md#6
   const topLevel = (body) =>
     new Set((body.match(/^[A-Za-z_][\w-]*(?=:)/gm) || []));
   const before = topLevel(original);
@@ -161,13 +122,7 @@ async function save() {
     return;
   }
 
-  // A SECOND PROMPT, ON PURPOSE
-  // ---------------------------
-  // Signing in was wayfinding — it told this page which site the passkey
-  // belongs to, and proved nothing to anybody else. This is the ceremony that
-  // counts, and it is bound to these exact bytes, this path and this SHA. The
-  // member is approving one specific edit, at the moment they make it, rather
-  // than having approved "editing" some minutes ago.
+  // see docs/inline/site/assets/js/settings.js.md#7
   el('settings-status').textContent = 'Confirming with your device…';
   const saved = await act({
     brokerUrl: config.brokerUrl,
@@ -206,8 +161,7 @@ async function save() {
     return;
   }
 
-  // What was saved is now what is there, so a second save should say nothing
-  // has changed rather than writing the same bytes again.
+  // see docs/inline/site/assets/js/settings.js.md#8
   original = text;
 
   el('saved-detail').textContent = saved.result.repeated

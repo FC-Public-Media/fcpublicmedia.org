@@ -1,0 +1,27 @@
+# `machines/digitization/KEYHOLDERS`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `# office      holder    passkey (public key or credential id)   since`
+
+KEYHOLDERS: who may prove themselves to this machine, by passkey, and who can be cut off.
+
+DRAFT, 2026-10-09. Slots only. No public key is recorded yet, because the
+infrastructure that issues and checks them is still being built in FCCN-ANTIBODY.
+
+What it is for (Autumn, 2026-10-09): this machine does not serve anyone's
+agent. What it does is let hosts that authenticated directly to it act, so FCPM holds
+the power of revocation. A board member presents a passkey; the machine checks
+the signature against what it knows that person's key should be, or challenges
+with it, or the other way round.
+
+A slot is an office held by a person, so it reads the same in
+site/_data/hosts.yml (`role:`). A filled slot carries the public half only:
+the private half never leaves the person's authenticator. Revoking means
+removing the line, by a merged PR, the same admission rule as GRANTS.
+The signed control branch and its passkey gesture replace the merge later.
+
+The SSH key titled "FCPM Digitization" on GitHub is the machine's own identity,
+not a keyholder. It does not belong here.

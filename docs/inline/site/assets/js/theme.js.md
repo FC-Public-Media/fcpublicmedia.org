@@ -1,0 +1,58 @@
+# `site/assets/js/theme.js`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `const STORE = 'theme';`
+
+Follow the system, or don't. That is the whole setting.
+
+LIGHT IS THE DEFAULT AND IT IS NOT A CHOICE ANYBODY HAS TO MAKE. The palette
+reads well in light and the dark scheme was called drab, so following the
+system by default was handing most visitors the weaker of the two without
+asking. Off means light. On means whatever their machine says, which for
+almost everybody who goes looking for this is dark.
+
+WHY NOT A THIRD "DARK" OPTION. It only differs from "follow" for somebody
+whose system is light but who wants a dark site anyway, and that is a small
+group who mostly own a dark system already. One toggle is a state you can
+read at a glance; three radios is a decision.
+
+IT IS NOT SHOWN TO ANYBODY IT CANNOT HELP.
+
+On a machine already set to light, matching the system means light, so the
+toggle would change nothing when pressed. Explaining that in a label is
+worse than not offering it: a control that visibly does nothing reads as
+broken, and the visitor is left wondering what they missed.
+
+So it appears when the system is dark — where it is the difference between
+light and dark, and reads simply as "make it dark", which is what almost
+everybody looking for it wants — or when somebody has already turned it on,
+so a setting is never invisible to the person who set it.
+
+The visibility is re-evaluated when the system flips, so somebody on a light
+laptop at noon finds the control there at sunset without reloading.
+
+STORAGE IS BEST-EFFORT AND NEVER MENTIONED. Reading localStorage THROWS when
+storage is blocked rather than returning null, and blocking it is a real
+setting real people turn on. Every access is wrapped; when it fails the
+choice lives in a variable for as long as the page does. That visitor gets a
+toggle that works and forgets on the next navigation, which is a smaller
+loss than being told about it. Nothing here ever asks anybody to change
+their settings.
+
+## 2
+
+Above `return pref === FIXED ? FIXED : FOLLOW;`
+
+Anything that is not an explicit `light` counts as following — including
+`dark` left over from the three-way this replaced.
+
+## 3
+
+Above `if (window.matchMedia) {`
+
+Somebody following their system who flips the laptop to dark at sunset
+should not have to reload — and somebody who could not see this control
+at noon should find it there once it means something.

@@ -1,9 +1,4 @@
-// The broker end to end: routing, challenges, device lookup, and what each
-// failure tells the page.
-//
-// Driven through Request and Response rather than by calling the handlers, so
-// the statuses and the CORS headers are covered too. A 500 that should have
-// been a 403 is a real bug — the page shows a different thing for each.
+// see docs/inline/worker/test/broker.test.mjs.md#1
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -127,8 +122,7 @@ test('a repository outside the configured owner is refused', async () => {
 });
 
 test('a workflow file is not a settings file', async () => {
-  // The escalation this exists to stop: a workflow runs with the
-  // repository's secrets, so writing one is using all of them.
+  // see docs/inline/worker/test/broker.test.mjs.md#2
   const service = broker({});
   const forbidden = ['.github/workflows/deploy.yml', '.auth/devices.json', '../elsewhere/x.yml'];
 
@@ -233,8 +227,7 @@ test('a revoked device is not on the list any more', async () => {
 });
 
 test('GitHub being down is a 503, not a rejection', async () => {
-  // A page that treats "GitHub had a bad minute" as "your device is not
-  // authorized" sends somebody off to register a passkey they already have.
+  // see docs/inline/worker/test/broker.test.mjs.md#3
   const credential = await makeCredential();
   const service = broker({ [REPO]: null });
 
@@ -250,8 +243,7 @@ test('being listed is not being allowed to publish', async () => {
   const credential = await makeCredential({ mayPublish: false });
   const service = broker({ [REPO]: { version: 1, devices: [credential.record] } });
 
-  // It can still prove it exists, which is what tells the member the
-  // difference between "we have never seen this phone" and "wait for us".
+  // see docs/inline/worker/test/broker.test.mjs.md#4
   const proof = await challengeFor(service, { action: 'verify', repo: REPO });
   const proving = await makeAssertion(credential, { challenge: proof, origin: ORIGIN, rpId: RP_ID });
   const proved = await service.fetch(post('/verify', { assertion: proving }));
@@ -319,10 +311,7 @@ test('the content that was declared goes through', async () => {
 });
 
 test('the repository comes from the challenge, not from the request', async () => {
-  // Both repositories are real and both devices are registered on their own
-  // site. The question is whether naming the other one in the request body
-  // can move the lookup — it must not, or a member of one site could spend
-  // their own signature against another.
+  // see docs/inline/worker/test/broker.test.mjs.md#5
   const jane = await makeCredential();
   const raj = await makeCredential();
   const other = 'fcpublicmedia/rajs-show';

@@ -1,0 +1,92 @@
+# `site/_data/settings.yml`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `# ------------------------------------------------------------------- signing in`
+
+Editing a member site's settings.
+
+A member signs in with the passkey they registered at /authorize/, and edits
+their site's settings file. Same credential as /upload/, different verb.
+
+THE FILE IS THE INTERFACE. NOT A FORM.
+--------------------------------------
+The obvious build is a form: fields for name, tagline, links, and a Save
+button. It is the wrong one, for a reason specific to this project.
+
+_data/site.yml in site-template is mostly COMMENTS. They explain what each
+setting does, why the defaults are what they are, and what breaks if you get
+one wrong. That commentary is the documentation — there is no manual
+elsewhere, on purpose.
+
+Round-tripping YAML through a parser and re-serialising it destroys every
+one of those comments, along with the ordering and the blank lines that make
+the file readable. A form would quietly strip the only documentation a member
+has, the first time they changed their tagline.
+
+So the editor edits TEXT. What the member sees is the file, comments and all,
+and what gets committed is exactly what they saw. The format is the point.
+
+The cost is that they can write invalid YAML. That is handled by refusing to
+commit it — see `write_mode` — rather than by taking the file away from them.
+
+## 2
+
+Above `rp_id: ""`
+
+------------------------------------------------------------------- signing in
+
+Must match what /authorize/ registered against. See _data/authorize.yml.
+
+## 3
+
+Above `path: _data/site.yml`
+
+------------------------------------------------------------------ the file
+
+Read straight from the member's own repository, so they are editing what is
+actually deployed rather than a copy that drifted. The GitHub contents API
+returns the text and the blob SHA in one call, and the SHA is what makes a
+safe write possible: send it back with the edit and GitHub refuses the commit
+if somebody changed the file in between, instead of silently clobbering them.
+
+Unauthenticated API requests are limited to 60 an hour per address. Fine for
+somebody editing their own settings; not fine if this ever polls.
+
+## 4
+
+Above `url: ""`
+
+------------------------------------------------------------------ the broker
+
+The BASE URL of the broker — it answers /challenge and /write beneath this.
+See worker/README.md.
+
+Empty is the shipped state. The page then shows the edited file for the
+member to send us, which is slow but loses nothing.
+
+Setting this changes what saving means. Signing in stays what it is now — a
+way for the page to learn which site the passkey belongs to, proving nothing
+to anybody — and saving becomes a SECOND prompt, bound to the exact bytes,
+path and SHA being written. The member approves one specific edit at the
+moment they make it, rather than having approved "editing" some minutes ago.
+
+## 5
+
+HOW AN EDIT REACHES THE SITE IS NOT SET HERE
+--------------------------------------------
+It is WRITE_MODE in worker/wrangler.jsonc, on purpose: "commit straight to
+the live branch" is not a member's decision to make, and anything the page
+sends is a member's decision by definition. The two options are:
+
+  branch  — commit to a branch and open a pull request, let the repository's
+            checks validate the YAML, and merge only if it parses. Invalid
+            settings never reach the live site.
+  direct  — straight to the default branch. One step fewer and one guard
+            fewer: a stray tab takes their site down until somebody notices.
+
+`branch` is the default. The whole reason the editor hands over raw text is
+that the text matters; the price of that is that it can be wrong, and that is
+where it gets caught.

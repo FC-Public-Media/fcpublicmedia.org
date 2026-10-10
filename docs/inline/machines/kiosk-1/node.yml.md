@@ -1,0 +1,204 @@
+# `machines/kiosk-1/node.yml`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `# ---------------------------------------------------------------------------`
+
+node.yml — what the media node shows, and on which screen.
+
+Read by door.py on every request, so an edit is live on the next poll.
+Facts stay where they already live: the guest SSID comes from
+site/_data/wifi.yml and the check-in URL from kiosk/welcome.yml.
+This file holds only what is specific to this machine and this layout.
+
+## 2
+
+Above `browser: msedge`
+
+---------------------------------------------------------------------------
+SCREENS. Observed 2026-09-23 as Autumn set them up by hand: Edge,
+Profile 1, one full-screen window per portrait panel. `door.py screens`
+checks that this is still true, and `door.py screens --launch` opens
+whatever is missing. The third panel goes here when its adapter turns up.
+
+## 3
+
+Above `networks:`
+
+---------------------------------------------------------------------------
+NETWORKS shown as Wi-Fi QR codes on the welcome screen.
+
+Passwords are NEVER here. Each one is read from Windows Credential Manager
+on this machine, under the target `fcpm-wifi:<ssid>`, with local-machine
+persistence so it survives logoff. Set it once at a terminal. The prompt
+does not echo, and asks twice:
+
+    %LOCALAPPDATA%\media-node\venv\Scripts\python.exe machines\kiosk-1\door.py wifi-password "FC Public Media Guest"
+
+(Not cmdkey: its parser rejects quoted targets with spaces in them.)
+
+The QR is built in memory when a screen asks for it and never written to
+disk, because a Wi-Fi QR is the password in a font (site/_data/wifi.yml).
+Until a password is set, the screen draws a marked empty slot.
+
+## 4
+
+Above `# ---------------------------------------------------------------------------`
+
+AirPlay needs no network of its own: the Apple TV joins the guest
+network, so guests find it in their AirPlay list (2026-09-25).
+
+## 5
+
+Above `facilities: [Video Studio, Podcast Studio, Editing Bays]`
+
+---------------------------------------------------------------------------
+STATIONS on the studio map: a logical map of what can be booked, not a
+floor plan. Each one has a square that lights when it is in use.
+
+Bookings are ranked across the whole map, because people come in one at a
+time. The single next appointment anywhere is the solid pill, and the one
+after it, wherever it is, is the outline pill. Anything else in the next
+seven days is soft grey, and nothing further out is shown. A station shows
+at most two. A station with nothing booked this week says who can help with
+it and when (kiosk/rota.yml, `crew:`) in soft text instead.
+
+`facilities` pulls from site/_data/facilities.yml. Rooms that
+`couples_with` each other are drawn as one group sharing one square, since
+booking either takes both. A facility with `stations: N` becomes N
+stations: "Editing Bays" becomes Editing Bay 1 and Editing Bay 2.
+Equipment Checkout is not here: it is arranged by email, not booked.
+
+## 6
+
+Above `preparing: true`
+
+Bay 3, back as the digitization station: VCR, Blu-ray, burned discs,
+made into files. This node orchestrates it. It is being prepared and
+cannot launch yet, so it takes no bookings and shows its note instead.
+
+## 7
+
+Above `bookings: sample`
+
+Where bookings come from. Only `sample` exists: the made-up week in
+bookings.sample.yml, whose bookings are all for "Sample", so the screen
+says so in every pill. The booking calendars (Microsoft 365, and possibly
+several) will replace it. The rota's footer will read from the same ones.
+
+## 8
+
+Above `# MICROSOFT 365: the app registration this box signs in as ("FC Public Media`
+
+Where classes come from. Unset, the classes panel in kiosk/welcome.yml
+(docs/KIOSK.md, "The class on now"). `sample` invents three, a day and more
+ahead, each titled "(sample)", so the upcoming list has something to show
+while the calendar is empty. Off: an empty list says so, honestly.
+classes: sample
+
+## 9
+
+Above `m365:`
+
+MICROSOFT 365: the app registration this box signs in as ("FC Public Media
+Booking"). Identifiers, not secrets. The secret is a certificate in this
+account's store (Cert:\CurrentUser\My), made on the box with a
+non-exportable key; Microsoft holds only its public half. m365-token.ps1
+turns these into an access token. The GitHub pipeline signs in to the same
+app with a federated credential, not with this certificate.
+
+## 10
+
+Above `dropbox:`
+
+---------------------------------------------------------------------------
+DEPOT: the studio drive, shown on /depot/. It is the router's Samba share,
+reached under the Windows credential saved for 10.209.1.1 (user FCPM),
+which Autumn set 2026-09-23. No password is here or anywhere in the repo.
+
+Eight partitions of about 3.8 GB each, listed by `net view` that day. Their
+names already sort into two kinds, and the grouping below is that:
+mailboxes for a station, and queues named for what happens next.
+
+Samba reports every partition as NTFS. Do not believe it: Samba says NTFS
+whatever is underneath, and Autumn could find no format but FAT that the
+router would mount at all (2026-09-23). So the FAT limits in
+docs/DESIGN-NOTES.md are real: no file over 4 GiB, nothing in the root.
+
+ROWS are the shares we know, laid out side by side. `files: false` shows a
+share's bar and a count, not its files: the bays are in the next room, so
+their contents are less in need of watching. The other partitions feel more
+remote, so their files are listed. A share the router offers that is not
+named here still appears, beneath its group's rows, in the group whose
+`match` prefix fits its name, or else in the first group.
+THE DROPBOX QUEUE: TO DROPBOX goes up to Dropbox and is then removed from
+the depot, an eviction, not a sync (door.py, "the Dropbox queue"). Off until
+`to` is set and the app is linked (door.py dropbox link). app_key is the
+app's public key from the Dropbox App Console: not a secret. The refresh
+token is in Credential Manager, never here.
+
+## 11
+
+Above `helo:`
+
+THE HELO, the studio's AJA H.264 recorder. The door keeps its clock (it
+forgets the time with the power); see door.py, "the HELO's clock". By its
+mDNS name, since the router hands out its address.
+
+## 12
+
+Above `turn:`
+
+---------------------------------------------------------------------------
+THE TURN: the wall's shell, on a panel of this box's own (door.py, "THE
+TURN"). Autumn, 2026-10-05: one of our panels should act like the roller,
+turning through the cameras and the files, with more to come (what we've
+aired recently, say). A module frames a live page by `url:`, or draws a wall
+page by `page:`. Add one here and the panel picks it up at its next reload.
+
+## 13
+
+Above `ti89:`
+
+---------------------------------------------------------------------------
+THE TI-89: Autumn's TI-89 running in a browser, its own ROM on our own
+68000 (FC-Public-Media/ti-89, 2026-10-06). The door serves the runner from
+its mirror and fast-forwards it with its own pulls, so a merge there reaches
+the turn within five minutes. The ROM is TI's code, kept here as gear: the
+door gives it to this box's own browsers only, and it is never published.
+
+## 14
+
+Above `wall:`
+
+---------------------------------------------------------------------------
+THE WALL: pages for screens elsewhere on the network, written to a share
+because nothing out there can reach this box's port (door.py, "THE WALL").
+The first is the studio's rolling TV, a ~50" set on its side. Point its
+browser, in kiosk mode, at:
+
+    file://10.209.1.1/DIGISTATION/.wall/index.html
+
+Modules show in the rail in this order; the first is where a fresh screen
+starts. `page` is one of the door's pages (kiosk, depot); `name` becomes the
+file name. Drop-off files are welcome here, guests' included (Autumn,
+2026-09-24). The Wi-Fi codes are not: the whole network can read a share.
+
+## 15
+
+Above `wording:`
+
+---------------------------------------------------------------------------
+WORDING. DRAFT. Autumn is doing the wording pass, and this block is a
+stand-in until then. "No apps. Free public tech." is hers. When the wording
+settles it belongs in kiosk/content.yml, where the rest of the kiosk's
+editorial half lives.
+
+## 16
+
+Above `"on": "Hosting:"`
+
+"on" is QUOTED on purpose: bare, YAML reads it as the boolean true, and
+the label went missing while the name still showed.

@@ -1,28 +1,4 @@
-# Fort Collins Public Media — site configuration
-#
-# Deliberately small. Everything Jekyll needs is in this file; there are no
-# plugins, no theme gem, and no build step beyond `jekyll build`. If you can
-# read YAML and HTML you can maintain this site.
-#
-# THE BUILD ROOT IS THIS DIRECTORY, AND THAT IS WHY THIS FILE IS IN IT.
-#
-# Cloudflare's "Path / root directory" is `site`, so every build — theirs, CI's,
-# and yours — runs from here. Jekyll looks for `_config.yml` in the directory it
-# is run from, which is this one, so there is no `--config` flag anywhere and no
-# `source:` line below: the source is simply where this file lives.
-#
-# The repository root is no longer part of the build at all. That is the point
-# of the move rather than a side effect — the root is for the station, and the
-# station is not the website. See ../docs/STATION.md.
-#
-# WHAT MOVED WITH IT. `Gemfile`, `.ruby-version` and `wrangler.jsonc` are here
-# for the same reason: each is read relative to the directory the build runs in.
-# `.ruby-version` in particular is read by Cloudflare's own image from the root
-# directory setting, so leaving it behind would silently move the host onto
-# their default Ruby.
-#
-# The output is `site/_site`, and Cloudflare's "Build output directory" field is
-# `_site` because that field is relative to the root directory too.
+# see docs/inline/site/_config.yml.md#1
 
 title: Fort Collins Public Media
 tagline: Gear, training, and studio space for Fort Collins storytellers.
@@ -37,20 +13,13 @@ baseurl: ""
 permalink: pretty
 markdown: kramdown
 
-# The only collection. Podcast pages are all the same shape, so they live in
-# site/_podcasts/ and share one layout instead of being eight near-identical pages.
+# see docs/inline/site/_config.yml.md#2
 collections:
   podcasts:
     output: true
     permalink: /podcasts/:name/
 
-  # One file per show, and the file IS the config: canonical name, how its
-  # episodes are recognised in the Cablecast catalog, and the prose that goes
-  # on its page. Cablecast titles are episode titles, so nothing else can say
-  # what a show is — see site/bin/propose-shows.py for why no rule works.
-  #
-  # Merging a proposal is what makes a show real. Everything unmatched stays a
-  # findable one-off rather than being forced into a group.
+  # see docs/inline/site/_config.yml.md#3
   shows:
     output: true
     permalink: /watch/:name/
@@ -74,73 +43,20 @@ defaults:
 sass:
   style: compressed
 
-# Jekyll skips source files that start with an underscore. These two are named
-# by their hosts — Cloudflare Pages looks for exactly /_redirects and
-# /_headers in the published output — so they have to be let back in.
+# see docs/inline/site/_config.yml.md#4
 include:
   - _redirects
   - _headers
 
-# TWO DIRECTORIES ARE EXCLUDED, AND NOTHING ELSE EVER SHOULD BE.
-#
-# `bin/` and `tests/` live inside the site because that is the context they
-# serve — the syncs write `_data/`, the browser tests drive the built pages —
-# but neither is content and neither may be published.
-#
-# THIS IS NOT THE OLD LIST COMING BACK. That list named eleven *documents*, one
-# line per file, and the failure mode was forgetting to add the twelfth: a `.md`
-# with no front matter is copied verbatim to a public URL, and MANIFEST,
-# REDIRECTS and RESERVE-DESIGN each reached one that way. REVIEW-NOTES.md was
-# the one that mattered — unratified board feedback, verbatim, one guessable URL
-# from anyone.
-#
-# These are two DIRECTORIES. Adding a script or a spec needs no edit here, so
-# there is nothing to forget. `site/bin/test_nothing_internal_is_published.py`
-# fails the build if either one reaches `_site` anyway, which is the difference
-# between a rule and a habit.
-#
-# Internal DOCUMENTS still live outside `source:` — at the repository root and
-# in `docs/` — where Jekyll cannot see them at all. Never put one in `site/`.
+# see docs/inline/site/_config.yml.md#5
 exclude:
   - bin
   - tests
 
-  # Moved in here when the build root became this directory, and each is read
-  # from the build root rather than from the repository root. They are apparatus,
-  # not content. `Gemfile`, `Gemfile.lock` and anything starting with a dot are
-  # already skipped by Jekyll's own defaults; this one is not.
+  # see docs/inline/site/_config.yml.md#6
   - wrangler.jsonc
 
-  # site/README.md is for whoever opens this directory on GitHub, which is where
-  # peers read a repository. It is not a page. Left in the build it is copied
-  # VERBATIM to https://www.fcpublicmedia.org/README.md — measured, it was —
-  # because a `.md` with no front matter is copied rather than rendered.
-  #
-  # It has to live here rather than at the root: GitHub renders a README when you
-  # browse into the directory holding it, and `site/` is the directory peers will
-  # browse into. So this is the one document entry on this list, and it is a fixed
-  # filename rather than a growing list.
-  #
-  # Any OTHER stray markdown is caught rather than listed:
-  # `site/bin/test_nothing_internal_is_published.py` fails the build on any `.md`
-  # in `_site` at all. A rendered page is `index.html`; a `.md` in the output can
-  # only be a verbatim copy, so the whole class is one assertion.
+  # see docs/inline/site/_config.yml.md#7
   - README.md
 
-# The history, kept because it is the reason for the rule above.
-#
-# There used to be a much longer list here, and it was a standing hazard. A `.md` file with
-# no front matter is copied verbatim rather than rendered, so any internal
-# document left off the list ended up fetchable at its own public URL —
-# MANIFEST.md, REDIRECTS.md and RESERVE-DESIGN.md all were, which is how it was
-# noticed. REVIEW-NOTES.md was the one that mattered: unratified board feedback,
-# quoted verbatim, one guessable URL away from the public.
-#
-# The list is gone because the failure it guarded against can no longer happen.
-# Internal documents live at the repository root, outside `source:`, so Jekyll
-# does not see them at all. Forgetting to add one to a list is no longer a way
-# to publish it; you would have to put it inside `site/` on purpose.
-#
-# So: a new internal document goes at the root. Do not move one into `site/`,
-# and do not reintroduce this list to make that safe — it was never reliably
-# safe, which is the whole reason for the move.
+# see docs/inline/site/_config.yml.md#8

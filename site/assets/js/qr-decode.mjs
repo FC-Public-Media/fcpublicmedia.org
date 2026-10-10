@@ -1,22 +1,4 @@
-// Vendored from FCCN-ANTIBODY/anecdote.channel composer/qr-decode.mjs @ 048af64bebbdce7b8f92f69123a5f4afd736eaff,
-// unchanged below this header. The kiosk's camera reads with it (machines/kiosk-1/door.py, THE CAMERA).
-// composer/qr-decode.mjs — "the bigger lens": a vendorless QR DECODER (docs/offline-transfer.md,
-// docs/anti-signature.md "acquire-by-doing"). The encoder (qr-encode.mjs) made us a sender; this makes any
-// browser a RECEIVER — BarcodeDetector is absent on iOS Safari and headless Linux (measured), so we bring
-// our own. It reads pixels (a camera frame, a screenshot, a rendered PNG) or a clean module matrix, and
-// returns the text — correcting real errors through Reed–Solomon, which is what lets a dented tile still
-// speak (and a too-dented one fail HONESTLY instead of lying).
-//
-// Two entry points:
-//   decodeMatrix(modules)            — a clean 0/1 grid → { text, version, ecLevel, mask, corrected }
-//   decodeImage({data,width,height}) — RGBA or grayscale pixels → locate + sample + decodeMatrix
-// The pixel path: grayscale → adaptive threshold (integral image) → finder-pattern scan (1:1:3:1:1 runs,
-// cross-checked) → perspective transform from the three finders (+ inferred fourth corner) → grid sample.
-// Mirrored codes (scanned through glass) are retried transposed. All four ECC levels, versions 1–40,
-// byte / alphanumeric / numeric modes (kanji is refused honestly).
-//
-// Shares the spec tables and the function-module map with the encoder — the decoder must skip exactly the
-// cells the encoder painted.
+// see docs/inline/site/assets/js/qr-decode.mjs.md#1
 
 import { TOTAL_CW, BLOCKS, ALIGN, EC_BITS, MASKS, functionModules } from "./qr-encode.mjs";
 
@@ -27,9 +9,7 @@ const mul = (a, b) => (a === 0 || b === 0 ? 0 : EXP[LOG[a] + LOG[b]]);
 const inv = (a) => EXP[255 - LOG[a]];
 const polyEval = (p, x) => { let y = p[0]; for (let i = 1; i < p.length; i++) y = mul(y, x) ^ p[i]; return y; };   // big-endian coeffs
 
-// ---- Reed–Solomon DECODE with error correction --------------------------------------------------------
-// `word` = [data…, ec…] exactly as the encoder emits (c[0] is the highest power). Corrects up to
-// floor(ec/2) byte errors IN PLACE. Returns { ok, corrected } — ok:false means uncorrectable (too dented).
+// see docs/inline/site/assets/js/qr-decode.mjs.md#2
 export function rsDecode(word, ec) {
   const n = word.length;
   const synd = [];                                       // S[j] = C(α^j), j = 0..ec-1
@@ -250,16 +230,13 @@ function findFinders(bin, w, h) {
       const cx2 = crossCheck(Math.round(cx), Math.round(cy), m, false);   // horizontal re-check at the refined y
       if (cx2 == null) continue;
       cx = cx2;
-      // merge with an existing candidate if close AND the module size agrees — without the size gate,
-      // data-pattern rows beside a finder drag the cluster off-center and inflate its m (a feedback loop:
-      // bigger m → wider merge radius → more pollution). Seen at scale 3; the gate closes it.
+      // see docs/inline/site/assets/js/qr-decode.mjs.md#3
       let merged = false;
       for (const c of cands) if (Math.abs(c.x - cx) < 3 * m && Math.abs(c.y - cy) < 3 * m && Math.abs(c.m - m) < 0.6 * Math.min(c.m, m)) { c.x = (c.x * c.hits + cx) / (c.hits + 1); c.y = (c.y * c.hits + cy) / (c.hits + 1); c.m = (c.m * c.hits + m) / (c.hits + 1); c.hits++; merged = true; break; }
       if (!merged) cands.push({ x: cx, y: cy, m, hits: 1 });
     }
   }
-  // refine each surviving cluster with a final cross-check pass — the exact center comes from walking
-  // the pattern, not from averaging merged rows (residual drift otherwise misaligns the whole grid)
+  // see docs/inline/site/assets/js/qr-decode.mjs.md#4
   const out = cands.filter((c) => c.hits >= 2);
   for (const c of out) {
     const cy2 = crossCheck(Math.round(c.x), Math.round(c.y), c.m, true);
@@ -286,8 +263,7 @@ function adjugate(t) {
           a13 * a32 - a12 * a33, a11 * a33 - a13 * a31, a12 * a31 - a11 * a32,
           a12 * a23 - a13 * a22, a13 * a21 - a11 * a23, a11 * a22 - a12 * a21];
 }
-// zxing's times() convention (column-major flat layout t[col*3+row]): out = b-then-a in APPLY order —
-// compose(A, B) applied to a point runs B first, then A. Hand-verified against known correspondences.
+// see docs/inline/site/assets/js/qr-decode.mjs.md#5
 function compose(a, b) {
   const o = new Array(9);
   for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { let s = 0; for (let k = 0; k < 3; k++) s += a[j * 3 + k] * b[k * 3 + i]; o[j * 3 + i] = s; }
@@ -299,16 +275,11 @@ function apply(t, u, v) { const d = t[6] * u + t[7] * v + t[8]; return [(t[0] * 
 // the lens innards, exposed for gap-hunting (tests probe each stage — observability on the probe)
 export const _lens = { toGray, binarize, findFinders, quadToQuad, apply };
 
-// Decode from pixels. `data` is RGBA (w*h*4) or grayscale (w*h). Returns decodeMatrix's result + geometry,
-// or null. Tries a couple of threshold biases and the mirrored orientation before giving up.
-// Under this many pixels per module the geometry estimate and the one-sample-per-
-// module read have no room to be wrong in, even when the code is perfectly intact.
+// see docs/inline/site/assets/js/qr-decode.mjs.md#6
 const RETRY_UNDER_PX = 8;    // located a code this small and failed → worth another look
 const TARGET_MODULE_PX = 10; // measured: 7px→72%, 8.8px→92%, 10.5px→99% on the same bits
 
-// Crop a region and blow it up nearest-neighbour. Adds NO information — it buys
-// spatial room. Cropping first keeps the cost proportional to the code, not the
-// frame, which is what makes this affordable on a phone at camera frame rates.
+// see docs/inline/site/assets/js/qr-decode.mjs.md#7
 function cropUp({ data, width, height }, box, n) {
   const chans = data.length / (width * height);
   const x0 = Math.max(0, box.x | 0), y0 = Math.max(0, box.y | 0);
@@ -331,8 +302,7 @@ export function decodeImage({ data, width, height }, opts = {}) {
     const bin = binarize(gray, width, height, frac);
     const finders = findFinders(bin, width, height);
     if (finders.length < 3) continue;
-    // choose the trio: strong candidates first (a real finder is seen on many rows — a data-region
-    // impostor on few), then score by geometry — a right angle between two equal legs
+    // see docs/inline/site/assets/js/qr-decode.mjs.md#8
     const maxHits = finders[0].hits;
     const strong = finders.filter((f) => f.hits * 3 >= maxHits);
     const pool = strong.length >= 3 ? strong : finders;
@@ -397,12 +367,7 @@ export function decodeImage({ data, width, height }, opts = {}) {
     if (r) return { ...r, dim, moduleSize: mSize, finders: { TL, TR, BL } };
     if (!weakest || mSize < weakest.mSize) weakest = { mSize, pts: [TL, TR, BL, Q4] };
   }
-  // We FOUND a code and could not read it, and its modules are only a couple of
-  // pixels across — the failure is scale, not damage. Blowing up nearest-neighbour
-  // gives the geometry and the sampler room without inventing detail: measured
-  // 0% → 99% on a loop that SMS had shrunk to 2.6 px/module, whose data OpenCV
-  // could read all along. Gated on finders having been located, so a frame with
-  // no code in it costs nothing extra — which matters at camera frame rates.
+  // see docs/inline/site/assets/js/qr-decode.mjs.md#9
   if (!opts.rescaled && weakest && weakest.mSize < RETRY_UNDER_PX) {
     const n = Math.min(6, Math.max(2, Math.round(TARGET_MODULE_PX / weakest.mSize)));
     const xs = weakest.pts.map((p) => p.x), ys = weakest.pts.map((p) => p.y);

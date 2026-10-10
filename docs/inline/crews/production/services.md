@@ -1,0 +1,25 @@
+# `crews/production/services`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `pools           keep        troves/pools`
+
+What production runs. crews/crew.py runs every line, and the crew's
+one service runs it. Change this file and the supervisor follows within
+seconds: a new line starts, a removed (or commented) line stops being kept.
+Nothing here that is not on a menu: each line names a residency's service.
+
+  name            when        from (the residency that serves it)
+
+keep      kept up; if it stops it comes back (5s, doubling to 5m; reset after 10m up)
+every Nm  runs every N minutes (or Nh), never two at once
+
+A `desktop` service (the screen) runs only while the supervisor has someone's
+desktop; started with the machine and nobody signed in, it waits.
+
+## 2
+
+Held off (Autumn, 2026-10-07: no Claude at startup). Uncomment to keep it.
+remote-control  keep        crews/production

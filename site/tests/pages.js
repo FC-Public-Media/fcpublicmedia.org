@@ -1,5 +1,4 @@
-// Every page the smoke tests visit. Add a page here and it is covered by all
-// of them at once.
+// see docs/inline/site/tests/pages.js.md#1
 
 const PAGES = [
   { path: '/', name: 'home' },
@@ -30,9 +29,7 @@ const PAGES = [
   { path: '/check-in/poster/', name: 'check-in-poster' },
 ];
 
-// Hosts we embed from. Requests to these are expected and are reported
-// separately from same-origin failures, because "Cablecast is down" and "we
-// shipped a broken link" need different responses.
+// see docs/inline/site/tests/pages.js.md#2
 const THIRD_PARTY = [
   'cablecast.tv',
   'youtube.com',
@@ -40,22 +37,13 @@ const THIRD_PARTY = [
   'instagram.com',
   'facebook.com',
   'conta.cc',
-  // Booqable's embed on /reserve/. It renders the products inline rather
-  // than in an iframe, but the script itself still comes from their asset
-  // host, and it does not load on a runner with no route to it. That is their
-  // availability, not our page being broken — which is the whole reason this
-  // list exists. Whether the mount points actually get hydrated is a question
-  // for the @external suite, where a third party being down is allowed to be
-  // a red mark rather than a build failure.
+  // see docs/inline/site/tests/pages.js.md#3
   'booqable.com',
 ];
 
 const isThirdParty = (url) => THIRD_PARTY.some((host) => url.includes(host));
 
-// Console output we know comes from an embedded player rather than our code.
-// Matched by text as a backstop, because not every console message carries a
-// usable source URL — an iframe error with an empty location would otherwise
-// be blamed on this site.
+// see docs/inline/site/tests/pages.js.md#4
 const THIRD_PARTY_CONSOLE = [
   'VIDEOJS:', // the Cablecast player
 ];

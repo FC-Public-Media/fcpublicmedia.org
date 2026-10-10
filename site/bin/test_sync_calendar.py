@@ -1,21 +1,12 @@
 #!/usr/bin/env python3
-"""Tests for the ICS parser.
-
-    python3 site/bin/test_sync_calendar.py
-
-Plain unittest, no dependencies. The parser is the one part of the calendar
-sync with real logic in it — line folding, three date formats, Windows zone
-names, escaped text — and every one of those is a thing that silently produces
-a wrong time rather than an error.
-"""
+"""see docs/inline/site/bin/test_sync_calendar.py.md#1"""
 
 import datetime as dt
 import importlib.util
 import os
 import unittest
 
-# The script is named with a hyphen, to match its siblings, which means it
-# cannot be imported by name. Load it by path instead of renaming it.
+# see docs/inline/site/bin/test_sync_calendar.py.md#2
 _spec = importlib.util.spec_from_file_location(
     "sync_calendar", os.path.join(os.path.dirname(__file__), "sync-calendar.py")
 )
@@ -30,8 +21,7 @@ def ics(*events):
 
 
 def vevent(**fields):
-    """Build a VEVENT. A value may be a (params, value) pair to emit
-    NAME;PARAM=x:value, which is how ICS carries TZID and VALUE=DATE."""
+    """see docs/inline/site/bin/test_sync_calendar.py.md#3"""
     lines = ["BEGIN:VEVENT"]
     for name, value in fields.items():
         if isinstance(value, tuple):

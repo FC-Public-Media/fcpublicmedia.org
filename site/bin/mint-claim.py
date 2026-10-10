@@ -1,33 +1,7 @@
 #!/usr/bin/env python3
 """Mint a signed email claim, and generate the key that signs them.
 
-A claim is a short token saying "Fort Collins Public Media asserts that this
-address was mailed a link on this date". It is signed with a private key held
-by whoever runs this script, and verified in the browser against the public
-half published in site/_data/identity.yml.
-
-    Generate a signing key (once):
-
-        python3 site/bin/mint-claim.py --new-key claim-key.pem
-
-    Mint a claim and get a link to email:
-
-        python3 site/bin/mint-claim.py --email someone@example.com
-
-Sending is deliberately not automated. At this size, pasting a link into an
-Outlook message is a smaller and more reliable thing than a mail API, a sender
-domain, and a set of credentials that can expire on a weekend. Automate it when
-the volume justifies it, not before.
-
-WHY OPENSSL RATHER THAN A PYTHON LIBRARY
-----------------------------------------
-Nothing else in site/bin/ needs anything installed, and that is worth keeping:
-the person who runs this in two years should not have to resolve a dependency
-first. openssl is already on macOS, on Linux, and on the GitHub Actions
-runners. The only part written by hand is the conversion from openssl's DER
-signature to the raw r||s pair WebCrypto expects, which is small, fixed, and
-covered by tests.
-"""
+see docs/inline/site/bin/mint-claim.py.md#1"""
 
 import argparse
 import base64
@@ -40,10 +14,7 @@ import time
 CURVE = "prime256v1"  # P-256, the curve WebCrypto implements everywhere
 VERSION = "v1"
 
-# A P-256 SubjectPublicKeyInfo is a fixed size, and the point is the tail of
-# it. Asserting the length is cheaper and harder to get wrong than walking the
-# structure, and a mismatch means something other than a P-256 key was handed
-# in — which should stop the run, not be worked around.
+# see docs/inline/site/bin/mint-claim.py.md#2
 SPKI_LEN = 91
 POINT_LEN = 65
 
@@ -69,15 +40,7 @@ def unb64u(text):
 
 
 def der_to_raw(der):
-    """Convert an ECDSA DER signature to the 64-byte r||s WebCrypto wants.
-
-    openssl emits SEQUENCE { INTEGER r, INTEGER s }, where each integer is
-    big-endian, minimally encoded, and carries a leading zero byte when its top
-    bit would otherwise read as negative. WebCrypto wants both values as fixed
-    32-byte fields. So: strip the padding openssl added, then re-pad to a fixed
-    width. The two paddings are for different reasons and are not the same
-    bytes.
-    """
+    """see docs/inline/site/bin/mint-claim.py.md#3"""
     if len(der) < 8 or der[0] != 0x30:
         raise MintError("signature is not a DER SEQUENCE")
 
@@ -148,8 +111,7 @@ def new_key(path):
 
     pem = openssl(["ecparam", "-name", CURVE, "-genkey", "-noout"])
 
-    # Owner-only from the moment it exists, rather than written wide and fixed
-    # afterwards.
+    # see docs/inline/site/bin/mint-claim.py.md#4
     handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(handle, "wb") as out:
         out.write(pem)
@@ -178,16 +140,7 @@ def sign(key_path, message):
 
 
 def build_claim(key_path, email, days, key_id, now=None, repo=None):
-    """Return the signed token for an address.
-
-    The signature covers the version and the payload together, so a token
-    cannot be replayed under a different format later.
-
-    With `repo`, the claim also names a member site, and the link points at
-    /authorize/ instead of /check-in/. The repository travels inside the
-    signature rather than as a separate URL parameter, so a forwarded link
-    cannot be edited to bind a device to somebody else's site.
-    """
+    """see docs/inline/site/bin/mint-claim.py.md#5"""
     email = email.strip().lower()
     if "@" not in email or email.startswith("@") or email.endswith("@"):
         raise MintError(f"{email!r} does not look like an email address")
@@ -264,12 +217,10 @@ def main(argv=None):
         args.key, args.email, args.days, key_id, repo=args.repo
     )
 
-    # A claim naming a repository is for binding a device to a member site; a
-    # bare one confirms an address. Same signature, same key, different door.
+    # see docs/inline/site/bin/mint-claim.py.md#6
     path = "/authorize/" if args.repo else "/check-in/"
 
-    # The token rides in the fragment, which browsers do not send to servers.
-    # It never appears in an access log, ours or Cloudflare's.
+    # see docs/inline/site/bin/mint-claim.py.md#7
     print(f"{args.site}{path}#claim={token}")
     print(file=sys.stderr)
     print(f"  for      {payload['email']}", file=sys.stderr)

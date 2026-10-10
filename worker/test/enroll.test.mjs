@@ -1,14 +1,4 @@
-// Binding devices, and approving them.
-//
-// The rule under test is the one in DESIGN-NOTES: enrolment and authority are
-// different things. A claim link can be forwarded, and that is survivable only
-// because forwarding it gets somebody LISTED and nothing more. If that ever
-// stops being true, the whole reason staff can leave the loop goes with it.
-//
-// The claims here are minted by site/bin/mint-claim.py — the real script, run as
-// a subprocess — rather than assembled by the test. The broker's claim
-// checking is worth nothing if it agrees with a fixture instead of with the
-// thing that actually issues links.
+// see docs/inline/worker/test/enroll.test.mjs.md#1
 
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
@@ -59,8 +49,7 @@ test('the first device to bind is trusted and the next one is not', async () => 
 });
 
 test('first means first that counts, not first in the file', async () => {
-  // A site whose only devices are listed-but-not-allowed has nobody who could
-  // approve anything, so the next to arrive is still the first that matters.
+  // see docs/inline/worker/test/enroll.test.mjs.md#2
   const listed = [{ credential_id: 'a'.repeat(20), public_key: 'k', may_publish: false }];
   assert.equal(anyPublisher(listed), false);
   assert.equal(addDevice(listed, { credential_id: 'b'.repeat(20), public_key: 'k' }).granted, true);
@@ -72,8 +61,7 @@ test('a revoked publisher does not keep counting as one', async () => {
 });
 
 test('the last device that can publish cannot revoke itself', async () => {
-  // Doing it would leave a site nobody can change, and the way back is staff
-  // editing the file by hand. Refusing is kinder than allowing.
+  // see docs/inline/worker/test/enroll.test.mjs.md#3
   const only = [{ credential_id: 'a'.repeat(20), may_publish: true }];
 
   const stranded = revokeDevice(only, 'a'.repeat(20));
@@ -170,8 +158,7 @@ test('the owner binds their own phone and can publish immediately', async () => 
 });
 
 test('a forwarded link gets a co-producer listed and nothing more', async () => {
-  // The link is the same link. Forwarding it is expected. What it buys is a
-  // device that cannot change anything until somebody says so.
+  // see docs/inline/worker/test/enroll.test.mjs.md#4
   const jane = await makeCredential();
   const raj = await makeCredential();
   const { bind, listed } = setUp();
@@ -272,9 +259,7 @@ test('no claim, no enrolment', async () => {
 /* --------------------------------------------------- proving the new key */
 
 test('you cannot enrol somebody else’s public key', async () => {
-  // Device lists are public, so anybody can read a key out of one. Binding it
-  // needs the private half, which is the point of signing the challenge with
-  // the key being registered.
+  // see docs/inline/worker/test/enroll.test.mjs.md#5
   const jane = await makeCredential();
   const impostor = await makeCredential();
   const { service, listed } = setUp();
@@ -348,9 +333,7 @@ test('an unconfigured claim list refuses every enrolment rather than half-checki
 /* ------------------------------------------------------------ the import */
 
 test('the browser’s claim verifier runs here unmodified', async () => {
-  // index.js imports site/assets/js/claims.js rather than keeping a second copy.
-  // The day somebody adds a top-level `window` to that file, this fails here
-  // instead of in production.
+  // see docs/inline/worker/test/enroll.test.mjs.md#6
   const claims = await import('../../site/assets/js/claims.js');
 
   assert.equal(typeof claims.verifyClaim, 'function');

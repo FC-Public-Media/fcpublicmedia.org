@@ -27,8 +27,7 @@ pools:
     capacity: 64 GB
     stage: landed
 
-# How the squares page draws. A presentation choice, not a ruling: debris is
-# not declared noise and a cluster is not declared a take.
+# see docs/inline/machines/editing-bay-1/pools.yml.md#1
 view:
   debris_seconds: 6     # under this, a recording is a chip in a pile
   cluster_minutes: 5    # more than this apart starts another heap
@@ -43,23 +42,14 @@ stages:
   to-dropbox:  {label: To Dropbox,   color: "#4fb3d9"}
   to-stem:     {label: To stem,      color: "#d96b9b"}
 
-# Transcription, from the timeline's window (experimental): the engine a job is
-# sent to (troves/pools/engines/). windows-speech is Windows' own dictation
-# recognizer: nothing installed, and rough. whisper came in the bay's way
-# (bay/faster-whisper-1.1.1.yml); its paths are single-quoted (backslashes).
+# see docs/inline/machines/editing-bay-1/pools.yml.md#2
 transcribe:
   engine: whisper           # faster-whisper, large-v3, on the RTX 4080 (bay/faster-whisper-1.1.1.yml)
   whisper:
     python: '%LOCALAPPDATA%\editing-bay-1\whisper\venv\Scripts\python.exe'
     models: '%LOCALAPPDATA%\editing-bay-1\whisper\models'
 
-# A show's pipeline: what every episode of it goes through. A show's own lives
-# in its record (site/_shows/<slug>.md `pipeline:`), managed by the site; a
-# show without one gets this, the barest default. eject: false writes nothing
-# (every run reads the managed pipeline fresh); true renders the pipeline with
-# an episode's metadata and edit list into a config of its own when the episode
-# is released, committed to the show's own repository (private: episodes name
-# people), in its checkout work/<repo>@ejected.
+# see docs/inline/machines/editing-bay-1/pools.yml.md#3
 pipeline:
   eject: false
   steps:

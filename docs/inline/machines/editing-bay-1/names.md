@@ -1,0 +1,18 @@
+# `machines/editing-bay-1/names`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `# platform   key             value`
+
+What this machine is called, declared — because the name is what `binding`
+matches on, and matching is how a checkout learns which profile it wears.
+
+THIS IS INTENT, NOT A MIRROR. The machine is asked; this file is what the
+answer is supposed to be. See `../binding`.
+
+Asked on the machine, 2026-09-26 (`$env:COMPUTERNAME`): EDIT2. The studio
+calls it bay 1. It was first written down here as a macOS bay; it is
+Windows 11 Home, and the earlier darwin line is gone rather than kept beside
+this one, because a profile answers for one machine.

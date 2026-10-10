@@ -1,0 +1,201 @@
+# `worker/wrangler.jsonc`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `{`
+
+The broker, deployed as its own Worker.
+
+Separate from the one at the repository root on purpose. That one has no
+`main` at all — it is static assets and nothing else, and adding a runtime
+to it would put executing code in front of every page on the site to serve
+two endpoints. This one has no assets and answers only those two.
+
+Deploy from this directory: `npx wrangler deploy` with the repository root's
+config out of the way.
+
+## 2
+
+Above `"RP_ID": "fcpublicmedia.org",`
+
+The domain the passkeys belong to. Must be exactly what /authorize/
+registered against — site/_data/authorize.yml rp_id — because it is hashed
+and compared against the hash inside the signed authenticator data.
+Wrong here means every genuine assertion is refused.
+
+Registrable domain, so one passkey covers www and any subdomain:
+"fcpublicmedia.org", not "www.fcpublicmedia.org".
+
+## 3
+
+Above `"ORIGINS": "https://www.fcpublicmedia.org,https://fcpublicmedia.org",`
+
+Origins allowed to ask for a challenge, and origins a ceremony may have
+happened at. Both checks matter and they are not the same check: the
+first is CORS, the second is the origin the browser recorded inside the
+signature. Comma-separated, exact — scheme, host, and port.
+
+## 4
+
+Above `"OWNER": "fcpublicmedia",`
+
+The broker will not touch a repository outside this owner. Empty means
+any, which is survivable while nothing is written and is not survivable
+afterwards.
+
+## 5
+
+Above `"CHALLENGE_TTL": "300",`
+
+Seconds a challenge is good for. Long enough to find your phone,
+short enough that an abandoned one is not sitting there.
+
+## 6
+
+Above `"WRITE_MODE": "branch",`
+
+Where a write lands. Read here rather than sent by the page, because
+"commit straight to the live branch" is not a member's decision to make
+and anything the page sends is a member's decision by definition.
+
+  branch  — commit to a branch and open a pull request, so the
+            repository's own checks see the change before it is live.
+            A settings file that does not parse becomes a message
+            instead of a broken site.
+  direct  — straight to the default branch.
+
+Device writes ignore this and are always direct: a grant sitting in an
+unmerged pull request grants nothing.
+
+## 7
+
+Above `"CLAIM_KEYS": "[]",`
+
+The public halves of the claim signing keys — the same list as
+site/_data/identity.yml, as JSON. Public by nature: they verify claims, they
+cannot mint them, which is why this is config and not a secret.
+
+Needed only by /bind. A claim is what authorises enrolling a device, and
+with no keys here every enrolment is refused rather than half-checked.
+
+  [{"id": "2026-08", "x": "…", "y": "…"}]
+
+## 8
+
+Above `"R2_ENDPOINT": "",`
+
+------------------------------------------------------------ uploads
+
+Where finished episodes go. The broker signs a URL and the browser sends
+the file straight there — nothing is proxied, at any size.
+
+R2_ENDPOINT is https://<account id>.r2.cloudflarestorage.com
+
+## 9
+
+Above `"R2_MAX_BYTES": "0",`
+
+Bytes. 0 means no cap, which is not a decision anybody has made — R2 is
+$0.015 per GB-month with 10 GB free and no egress charge, so one 6 GB
+episode a week is roughly $5/month after a year and $10 after two,
+growing forever unless something deletes. Set this alongside a retention
+rule rather than instead of one.
+
+## 10
+
+Above `"UPLOAD_TTL": "21600"`
+
+Seconds a signed upload URL is good for. Six hours, because the
+signature has to outlive the whole transfer and not just the request
+that asked for it — a member on domestic upstream moving six gigabytes
+is measured in hours.
+
+## 11
+
+Above `// ------------------------------------------------------- the KV namespace`
+
+THE CREDENTIAL IS A GITHUB APP, AND ITS SECRETS ARE NOT HERE
+
+    npx wrangler secret put GITHUB_APP_ID
+    npx wrangler secret put GITHUB_APP_KEY
+
+A personal access token belongs to a person. It outlives their interest in
+the project and dies with their account, so the day somebody leaves the
+board is the day member sites stop saving — and nobody will connect those
+two events. An App belongs to the organization.
+
+What is stored is a private key that signs requests FOR tokens. It is not
+itself a token, so it cannot be replayed against the API. Each token it
+buys lasts an hour and is narrowed at the moment of minting to one
+repository and two permissions. Revoking a site is uninstalling the App
+from it — no list to edit and no way to forget.
+
+Permissions: Contents (write), Pull requests (write), Metadata (read).
+Nothing else, and especially not Workflows: withholding it means GitHub
+refuses a write to .github/ no matter what this code does, which is what
+makes the path check in intent.js a second lock rather than the only one.
+
+See worker/src/app-auth.js for the setup, including the one openssl
+command GitHub's key format needs.
+
+GITHUB_TOKEN is still read as a stopgap for trying this out before an App
+exists, and the App wins whenever both are set.
+
+/challenge and /verify work without any of it. Only /write complains.
+
+R2's S3 credentials are secrets too:
+
+    npx wrangler secret put R2_ACCESS_KEY_ID
+    npx wrangler secret put R2_SECRET_ACCESS_KEY
+
+Scoped to the one bucket, object read and write. They never leave this
+Worker — what the browser gets is a signature over one method and one
+object, expiring in hours.
+
+TWO THINGS ON THE BUCKET ITSELF, WHICH ARE NOT CODE
+
+  * CORS must allow PUT, POST and DELETE from the origins above, and must
+    expose the ETag header. A multipart upload cannot be completed without
+    reading each part's ETag, and a cross-origin response hides it unless
+    the bucket says otherwise. Without this, uploads under the multipart
+    threshold work and larger ones fail at the last step.
+  * A lifecycle rule to abort incomplete multipart uploads, a few days
+    out. Somebody closes the tab halfway and the parts stay, billed, with
+    nothing pointing at them.
+
+## 12
+
+Above `"kv_namespaces": [`
+
+------------------------------------------------------- the KV namespace
+
+Challenges, and nothing else. They expire on their own, so this namespace
+needs no maintenance and holds nothing worth stealing — a challenge is
+only useful to somebody who already holds a registered passkey.
+
+NEVER LEAVE `id` AS AN EMPTY STRING. Delete the whole block instead.
+
+Wrangler validates this file before it runs ANY command, and rejects an
+entry whose `id` is `""`:
+
+    ✘ "kv_namespaces[0]" bindings should have a string "id" field
+
+A placeholder therefore does not describe work still to do — it locks the
+directory, and the first thing it refuses is `kv namespace create`, the
+command that would produce the missing value. That deadlock shipped here
+for a while and cost somebody an evening.
+
+Absent is safe: src/index.js reports a missing CHALLENGES binding as a
+configuration problem and the broker answers `unconfigured` rather than
+crashing, the same as every other unset thing in this file. So if this
+namespace ever has to be replaced, remove the block, create the new one,
+and put it back — do not blank the id in place.
+
+Created with:
+    cd worker && npx wrangler kv namespace create CHALLENGES
+
+THE ID IS NOT A SECRET. It names a namespace and grants nothing — reading
+the data still needs a token bound to the account. It is committed for the
+same reason the R2 bucket name would be: config, not a credential.

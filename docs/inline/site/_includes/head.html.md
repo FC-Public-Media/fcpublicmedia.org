@@ -1,0 +1,76 @@
+# `site/_includes/head.html`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+Above `<title>{% if page.title and page.title != "" %}{{ page.title }} — {{ site.title }}{% else %}{{ site.`
+
+`page.title` must be tested for emptiness, not just existence: an empty
+string is truthy in Liquid, so the homepage (title: "") rendered as
+" — Fort Collins Public Media" with a leading separator.
+
+## 2
+
+Above `<meta name="twitter:card" content="summary">`
+
+"summary", not "summary_large_image". The large card wants a wide picture
+and there is not one — the tag was declaring a format nothing could fill,
+so shares rendered with an empty box where the image should be. A square
+icon is exactly what the small card is for. If a real 1200x630 share image
+ever exists, this goes back to summary_large_image and og:image points at
+it instead.
+
+## 3
+
+Above `<link rel="icon" href="{{ '/assets/img/icon.svg' | relative_url }}" type="image/svg+xml">`
+
+The favicon is the masthead's own mark, drawn once in assets/img/icon.svg
+and rendered to PNG from that file rather than redrawn — so there is one
+picture of it, not three that can disagree.
+
+The SVG is first and modern browsers take it, which means one file answers
+every size from a 16px tab to a bookmark bar. The PNG is for iOS, which
+does not accept SVG for a home-screen icon.
+
+Declaring these also stops the browser guessing at /favicon.ico, which does
+not exist and would 404 on every page load.
+
+## 4
+
+Above `<link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}?v={{ site.time | date: '%s'`
+
+THE ?v IS WHY YOU CAN STOP LOOKING FOR A PURGE BUTTON.
+
+_headers gives /assets/* a one hour max-age, and these URLs never used to
+change — so a browser that had already fetched site.css kept the old one
+for an hour after a deploy. That is the BROWSER's copy, which no amount of
+purging at Cloudflare can reach. And there is no purge button for a
+pages.dev hostname anyway: purge is a zone feature, and pages.dev is
+Cloudflare's zone rather than ours.
+
+The build time changes the URL, so a deploy is the cache bust. HTML is
+already served must-revalidate, so the new HTML asks for the new URL
+immediately.
+
+Now that the URLs move, /assets/css/* and /assets/js/* could safely take a
+much longer max-age than an hour. Left alone deliberately — the images and
+fonts under /assets/ are NOT versioned, and getting the precedence between
+overlapping _headers rules wrong would cache a floor plan for a year.
+
+## 5
+
+Above `<script>`
+
+Inline and in the head, because anything else paints the wrong colours
+first and then corrects itself — a white flash on a page somebody asked to
+be dark, on every navigation.
+
+It only ever ADDS dark. Light is the default and needs no script, so with
+scripting off, storage blocked, or this failing outright, the page is the
+one the site wants anyway. Nothing here prompts anybody about any of it.
+
+The try/catch is not defensive padding: reading localStorage THROWS rather
+than returning null when storage is blocked, which is a real setting real
+people turn on, and an uncaught error here would stop the rest of the
+head.

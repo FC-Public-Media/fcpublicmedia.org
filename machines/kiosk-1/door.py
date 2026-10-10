@@ -1,75 +1,4 @@
-"""door — the one address the media node answers on.
-
-    door.py serve              become the door, on [::]:8080
-    door.py supervise          run `serve`, restart it when it exits, pull in the background
-    door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
-    door.py startup            what starts the door at logon, and does it point here
-    door.py startup --xml      the logon task this checkout implies, to stdout
-    door.py startup --install  register that task, and retire the Startup shortcut
-    door.py sessions           what Claude sessions are running, and what ran at the last pass
-    door.py server             the root's Remote Control server: up, current, and what holds a bounce
-    door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
-    door.py tell [mint|register]       our Tell's signer, and listing it with our Atlas
-    door.py camera [arm [SECS]|off]    arm the camera for a code (THE CAMERA), stop it, or ask
-    door.py                    is the door up
-
-Written 2026-09-23 on the studio kiosk (the predecessor of editing bay 2),
-after station-node's `bin/door`, whose rules it keeps:
-
-  * ONE PORT, AND IT DOES NOT MOVE. 8080 is what somebody guesses, and an
-    address that slides is not one anybody can bookmark. If 8080 is taken the
-    door refuses to start rather than picking another.
-  * NOT A WEB SERVER. There is no document root. Each surface below is named,
-    and a file is served only if it is under a directory named here or is a
-    QR image named by kiosk/welcome.yml.
-  * DUAL-STACK. The machine's name resolves to IPv6 first. A listener bound
-    only to IPv4 refuses a request made by name, and that looks exactly like
-    the door being down.
-
-    GET /                  the board: what this node shows
-    GET /kiosk/            the welcome screen
-    GET /kiosk/qr/<n>      the check-in QR for panel n, as welcome.yml names it
-    GET /kiosk/wifi/<n>    Wi-Fi QR n, built in memory. See node.yml
-    GET /kiosk/now         who is on, and the studio map, as JSON. The page polls it
-    GET /depot/            what is on the studio drive, for the third panel
-    GET /depot/now         the drive's index, as JSON. The page polls it
-    GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
-    GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
-    POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
-    GET /camera            the camera: armed, seconds left, what it last heard (THE CAMERA). The desk polls it
-    POST /camera/arm?for=N, /camera/disarm   arm or stop the camera; this box only (door.py camera)
-    GET /camera/eye        the page the camera runs, in a headless Edge; it POSTs /camera/read
-    GET /idle/             brand/idle/index.html (?say=... fills its slot)
-    GET /wallpaper/<file>  brand/wallpaper/
-    GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
-
-THE BOUNCE. Content is read per request. Code is loaded once, so `serve`
-watches the commit its worktree has checked out and exits with 75 when it
-moves. `supervise` starts it again. Every page polls /revision and reloads
-when it changes. `supervise` also fetches every five minutes and rebases
-this branch onto origin/main, so a merge upstream (a new rota, say) reaches
-the screens with nobody at the machine. If the rebase cannot finish cleanly
-it is aborted and logged, and the screens keep showing what they had.
-
-Runs from a fixed virtualenv (%LOCALAPPDATA%\\media-node\\venv, with pyyaml
-and qrcode). A stable interpreter path means Windows Firewall asks about it
-once. `uv run --with` built a fresh path each time, so it asked every time.
-
-AT LOGON, after station-node's `com.autumn.station-door.plist`: the door is
-the one job this node runs for itself, so it has a job of its own. Here that
-is a per-user scheduled task, "media-node door", which needs no administrator.
-It starts `supervise` at logon and again every five minutes, and a start
-while one is already running is ignored. That is launchd's KeepAlive, with
-five minutes of slack. `supervise` also holds a named mutex, so a second copy
-started some other way leaves at once instead of fighting over 8080. Once the
-door answers, `supervise` brings up any screen in node.yml that is missing.
-It starts no Claude session, but it keeps the root's Remote Control server up,
-and on the installed Claude (see "server" below).
-
-What it cannot do is log on. After a power cut the box waits at the sign-in
-screen until someone signs in, and signing in automatically needs an
-administrator (PROFILE.md, "Asked of IT").
-"""
+"""see docs/inline/machines/kiosk-1/door.py.md#1"""
 import base64
 import ctypes
 import datetime
@@ -141,19 +70,14 @@ def revision():
     return rev
 
 
-# THE TI-89 (Autumn, 2026-10-06): the calculator runner, FC-Public-Media/ti-89,
-# booting her own TI-89's ROM on our own 68000. The door serves it from its
-# mirror in ref/, which the puller fast-forwards like bin/refs pull, so a
-# merge reaches the panel within five minutes. The ROM is TI's code, kept here
-# as gear: it goes to this box's own browsers and to nothing else.
+# see docs/inline/machines/kiosk-1/door.py.md#2
 def ti89_path(key):
     v = (node().get("ti89") or {}).get(key)
     return pathlib.Path(os.path.expandvars(str(v))).expanduser() if v else None
 
 
 def ti89_pull():
-    """Fast-forward the runner's mirror. Never forced: a mirror that has
-    diverged or has changes is someone's business, and is left alone."""
+    """see docs/inline/machines/kiosk-1/door.py.md#3"""
     code = ti89_path("code")
     if not code or not (code / ".git").exists():
         return
@@ -174,8 +98,7 @@ DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
 def occurrences(entries, now, days_ahead=8):
-    """Weekly entries (days, from, to) as real spans that have not ended yet,
-    soonest first. Yesterday is included so a span past midnight still counts."""
+    """see docs/inline/machines/kiosk-1/door.py.md#4"""
     out = []
     for s in entries:
         days = [d.lower()[:3] for d in s.get("days") or []]
@@ -198,12 +121,7 @@ AWAKE_LEAD = datetime.timedelta(minutes=60)
 
 
 def awake_windows(now=None, days=7):
-    """When the screens are awake (docs/SCREENS-DIM.md, Autumn 2026-09-27):
-    each host shift in the rota and each class, from an hour before it starts
-    to its end, merged, for the next week, and the lights while somebody has
-    them on (THE CAMERA). Bookings are not a source: one is
-    always inside host hours, since the host is who lets a member in. As
-    [start, end] pairs of epoch milliseconds, for the pages' own clocks."""
+    """see docs/inline/machines/kiosk-1/door.py.md#5"""
     now = now or datetime.datetime.now()
     spans = [(b, e) for b, e, _ in occurrences(load(ROOT / "kiosk" / "rota.yml").get("shifts") or [], now, days + 1)]
     for c in class_config().get("sessions") or []:
@@ -234,10 +152,7 @@ def when(t, now):
 
 
 def on_now(now=None):
-    """Who is on now, and who is next, from the sources in order.
-
-    Only the default rota exists today. Calendars go in front of it when they
-    are chosen, and the rota keeps answering whenever they cannot."""
+    """see docs/inline/machines/kiosk-1/door.py.md#6"""
     now = now or datetime.datetime.now()
     spans = occurrences(load(ROOT / "kiosk" / "rota.yml").get("shifts") or [], now)
 
@@ -254,12 +169,7 @@ WEEK = datetime.timedelta(days=7)
 
 
 def helpers(activities, now):
-    """Who can help with these activities this week, and when they are next in.
-
-    From the rota: a person whose `crew:` tags meet the station's activities.
-    A person with no tags counts as a host, who can help with anything; that is
-    what being on the rota already says. Each person appears once, at their
-    next shift, soonest first, and three at most: a line, not a roster."""
+    """see docs/inline/machines/kiosk-1/door.py.md#7"""
     rota = load(ROOT / "kiosk" / "rota.yml")
     crew = rota.get("crew") or {}
     seen, out = set(), []
@@ -271,8 +181,7 @@ def helpers(activities, now):
             if person in seen or (tags and not tags & set(activities)):
                 continue
             seen.add(person)
-            # Non-breaking inside an entry: the line may wrap between people,
-            # never between a name and its time.
+            # see docs/inline/machines/kiosk-1/door.py.md#8
             out.append(("%s %s" % (person, "now" if begins <= now else when(begins, now))).replace(" ", " "))
             if len(out) == 3:
                 return out
@@ -280,14 +189,7 @@ def helpers(activities, now):
 
 
 def stations(now=None):
-    """The studio map: each group of stations, lit while in use.
-
-    Bookings are ranked across the WHOLE map, not per station. People come in
-    one at a time, so the single next appointment anywhere is the solid pill,
-    the one after it is the outline pill, and anything else inside the week is
-    soft. Nothing past a week is shown. A station with nothing booked this week
-    says who can help with it and when instead. Coupled rooms are one group,
-    because booking either one takes both."""
+    """see docs/inline/machines/kiosk-1/door.py.md#9"""
     now = now or datetime.datetime.now()
     cfg = node()
     wanted = cfg.get("facilities") or []
@@ -328,9 +230,7 @@ def stations(now=None):
         g["next"] = []
         upcoming += [(sp[0], g, sp[2]) for sp in spans if now < sp[0] <= now + WEEK]
 
-    # A booking may name who it is for. The sample week names nobody real, so
-    # its bookings are for "Sample", which is also how the screen says the map
-    # is not the real day.
+    # see docs/inline/machines/kiosk-1/door.py.md#10
     for rank, (begins, g, b) in enumerate(sorted(upcoming, key=lambda u: u[0])):
         if len(g["next"]) < 2:
             g["next"].append({"when": when(begins, now), "rank": min(rank, 2),
@@ -352,10 +252,7 @@ class CREDENTIAL(ctypes.Structure):
 
 
 def secret(target):
-    """A generic credential's password from Windows Credential Manager, or None.
-
-    `cmdkey /generic:<target> /pass` stores it as UTF-16. Only this Windows
-    user can read it back, and it is never written anywhere by this file."""
+    """see docs/inline/machines/kiosk-1/door.py.md#11"""
     if os.name != "nt":
         return None
     adv = ctypes.windll.advapi32
@@ -371,11 +268,7 @@ def secret(target):
 
 
 def set_secret(target, user, password):
-    """Store a generic credential that survives logoff (CRED_PERSIST_LOCAL_MACHINE).
-
-    Raises OSError if Windows refuses, for example when policy forbids
-    storing credentials. That is worth knowing loudly rather than finding out
-    at the next reboot."""
+    """see docs/inline/machines/kiosk-1/door.py.md#12"""
     blob = password.encode("utf-16-le")
     buf = (ctypes.c_ubyte * len(blob)).from_buffer_copy(blob)
     cred = CREDENTIAL(Type=1, TargetName=target, UserName=user, Persist=2,
@@ -415,10 +308,7 @@ def git_bash():
 
 
 def tell(args):
-    """door.py tell [mint|register]: our Tell's signer, and listing it with our Atlas.
-
-    The private half lives only in Credential Manager. `register` writes it to
-    a temporary file for the one signing call. See docs/DIRECTORY.md."""
+    """see docs/inline/machines/kiosk-1/door.py.md#13"""
     import tempfile
     keys, verb = ROOT / "keys", (args[0] if args else "status")
     held = secret(TELL_SIGNER)
@@ -480,8 +370,7 @@ def _wifi_module():
 
 
 def networks():
-    """The networks node.yml names, each resolved to ssid/security/label and
-    whether a password is set here. The password itself is not returned."""
+    """see docs/inline/machines/kiosk-1/door.py.md#14"""
     out = []
     for n in node().get("networks") or []:
         if n.get("from") == "wifi":
@@ -515,34 +404,7 @@ def wifi_svg(i):
     return buf.getvalue()
 
 
-# ----------------------------------------------------------------- the depot --
-# What is on the studio drive: the router's Samba share, eight partitions.
-# docs/DESIGN-NOTES.md, "Showing what is on the network drive", is the design
-# and this follows it:
-#
-#   * A browser cannot speak SMB. This process can, because Windows can, under
-#     the credential saved for the router. It walks the shares and the page
-#     renders the index.
-#   * Completeness cannot be observed, so a file's state is one of three:
-#       declared     its writer left `<name>.sha256` beside it. Trustworthy.
-#       arriving     it grew between two scans. Trustworthy in the negative.
-#       unwitnessed  present, not growing, nobody declared it. A guess, and
-#                    the name says so.
-#     The state is a name, never an ordinal. arriving -> unwitnessed is the
-#     moment the only signal was lost, not progress.
-#   * `growth_last_observed` is a frozen instant, written once when growth
-#     stops. Its absence means this file was never seen growing.
-#
-# KNOWN AND UNKNOWN SHARES. node.yml lays out the shares we know by name, in
-# rows. The router is also asked what it shares, every scan, so a partition
-# nobody has told this file about still appears: in the group whose `match`
-# prefix fits its name, listed plainly under that group's rows. Nothing on the
-# drive goes unseen for want of a config line.
-#
-# The index lives only in this process. It names people's files, so it is not
-# written to disk and never goes near the repository. A restart forgets the
-# growth history, which is the honest cost: everything reads `unwitnessed`
-# until it is seen again.
+# see docs/inline/machines/kiosk-1/door.py.md#15
 DEPOT_EVERY = 15
 _depot = {"at": None, "shares": [], "files": {}}
 _heard, _serving_since = {}, time.time()     # screen name -> when its page last polled; this serve's start
@@ -554,8 +416,7 @@ def share_root(server, share):
 
 
 def discover_shares(server):
-    """The disk shares the router offers, by asking it (`net view`). An empty
-    list if it cannot be asked, and then only the configured shares show."""
+    """see docs/inline/machines/kiosk-1/door.py.md#16"""
     try:
         out = subprocess.run(["net", "view", "\\\\" + server], capture_output=True, text=True,
                              timeout=20, creationflags=NO_WINDOW).stdout
@@ -602,8 +463,7 @@ def scan_depot(now=None, discovered=None):
             usage = shutil.disk_usage(root)
             entry.update(ok=True, total=usage.total, free=usage.free)
             for dirpath, dirnames, filenames in os.walk(root):
-                # Dot-directories are other machines' bookkeeping
-                # (.Spotlight-V100 is on every partition), not deliveries.
+                # see docs/inline/machines/kiosk-1/door.py.md#17
                 dirnames[:] = [d for d in dirnames if not d.startswith(".")]
                 for f in filenames:
                     if f.startswith(".") or f.endswith(".sha256"):
@@ -653,26 +513,7 @@ def kiosk_now():
     return {"on": on_now(), "map": stations(), "awake": awake_windows()}
 
 
-# -------------------------------------------------------------------- camera --
-# THE CAMERA (Autumn, 2026-10-08): a webcam on this box reads a code held up
-# to it, a wizard's reply serialized as a QR. It is armed and tripped. Armed,
-# the camera runs and its light is on, and the desk's check-in half says so;
-# nothing watches otherwise, so a code nobody expected cannot trip anything.
-# It is armed by a tap on the desk's button (the panel takes touch), or by
-# `door.py camera arm` from a session.
-# A read trips it: the desk shows what was heard, and the camera stops.
-#
-# The camera runs in a headless Edge the door starts, on /camera/eye, which
-# reads frames with anecdote.channel's own decoder (site/assets/js/qr-decode.mjs)
-# and posts what it read here. Video only: no frame is kept, and Windows
-# refuses this account the microphone (GOTCHAS.log, camera).
-#
-# The first reply it knows is the lights (wizard kiosk+lights, drafted
-# 2026-10-08; the code is made at /lights/ on the site): somebody here off
-# host hours keeps the screens awake until a time, or lets them go. A lights
-# window is one more source in awake_windows(). sig null is the control case,
-# taken for lights only, since lights can do no harm. A passkey signature is
-# refused until it is checked against the members' devices.
+# see docs/inline/machines/kiosk-1/door.py.md#18
 CAMERA_ARM_FOR = 120          # seconds armed, unless asked for longer
 CAMERA_SAY_FOR = 20           # seconds the desk shows what was heard
 REPLY_FRESH = 12 * 3600       # a reply's `issued` must be this recent
@@ -723,8 +564,7 @@ def camera_disarm(why="disarmed"):
 
 
 def watch_camera():
-    """Disarm when the time is up, and after a crash, so the light never stays
-    on for nothing."""
+    """see docs/inline/machines/kiosk-1/door.py.md#19"""
     while True:
         time.sleep(1)
         if _camera["proc"] is not None and (time.time() > _camera["until"] or not camera_running()):
@@ -741,8 +581,7 @@ def heard_nonces():
 
 
 def judge_reply(text):
-    """What a code says, as (kind, words, reply). kind: "ok", "seen", "no", or
-    "other" for a code that is not a reply this box knows."""
+    """see docs/inline/machines/kiosk-1/door.py.md#20"""
     try:
         r = json.loads(text)
     except ValueError:
@@ -784,8 +623,7 @@ def judge_reply(text):
 
 
 def camera_read(text):
-    """The eye read a code. A reply trips the camera; anything else is said,
-    and the camera keeps looking."""
+    """see docs/inline/machines/kiosk-1/door.py.md#21"""
     kind, words, _ = judge_reply(text)
     with _camera_lock:
         if _camera["proc"] is None:
@@ -881,11 +719,7 @@ def clock_mark(inner="", cls=""):
     return '<div class="mark clock%s">%s%s</div>' % (" " + cls if cls else "", inner, clock_hands())
 
 
-# Every page carries the awake windows as it was drawn, and a hook the pages'
-# own polling calls with fresh ones, for the dim layer (brand/idle/dim.js,
-# docs/SCREENS-DIM.md) to read: window.FCPM_AWAKE, and an fcpm:awake event.
-# A page that must not dim (held, or a class taking it over) sets the class
-# fcpm-awake on <html>.
+# see docs/inline/machines/kiosk-1/door.py.md#22
 AWAKE_JS = """<script>
 window.FCPM_AWAKE = %s;
 // One computer, one waking (Autumn, 2026-09-28): a mouse or key anywhere on
@@ -920,9 +754,7 @@ DIM = ROOT / "brand" / "idle"
 
 
 def dim_inline():
-    """The dim layer (brand/idle/dim.css and dim.js), inlined: the wall is read
-    over file://, where nothing else can be fetched. Read every time, so an
-    edit shows on the next page drawn. Empty if the files are missing."""
+    """see docs/inline/machines/kiosk-1/door.py.md#23"""
     try:
         return "<style>%s</style><script>%s</script>" % (
             (DIM / "dim.css").read_text(encoding="utf-8"), (DIM / "dim.js").read_text(encoding="utf-8"))
@@ -1079,8 +911,7 @@ def qr_image(n):
 
 
 def checkin_mark(inline=False):
-    """The check-in code on the mark, with the clock over it. Inline, the code
-    travels inside the page as data, for pages written to a share."""
+    """see docs/inline/machines/kiosk-1/door.py.md#24"""
     panels = welcome().get("panels") or []
     idx = next((i for i, p in enumerate(panels) if isinstance(p.get("qr"), dict)), None)
     if idx is None:
@@ -1096,11 +927,7 @@ def checkin_mark(inline=False):
 
 
 def kiosk_page(wall=False, map_only=False):
-    """The welcome screen. For the wall it carries its QR inside itself and no
-    Wi-Fi codes: a page on a share is readable by the whole network. The wall
-    draws check-in in its own header, so its studio module is the map alone
-    (map_only). On the desk, a class soon or on takes over the check-in words
-    (docs/KIOSK.md, "The class on now"); the code stays, for joining late."""
+    """see docs/inline/machines/kiosk-1/door.py.md#25"""
     w, n = welcome(), node()
     words = n.get("wording") or {}
     ci, mp, ft = words.get("checkin") or {}, words.get("map") or {}, words.get("footer") or {}
@@ -1141,8 +968,7 @@ def kiosk_page(wall=False, map_only=False):
     return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS + CAMERA_CSS)
 
 
-# On the wall the map is a module in a frame about half the desk's height,
-# read from across a room: set at the top, and roughly twice the desk's size.
+# see docs/inline/machines/kiosk-1/door.py.md#26
 MAP_ONLY_CSS = """
 body { grid-template-rows:1fr auto; }
 .stations { top:6vh; translate:none; left:7vw; right:7vw; gap:5vh; }
@@ -1184,9 +1010,7 @@ DESK_CLASS_JS = """<script>
 </script>"""
 
 
-# The camera on the desk (THE CAMERA): armed, the check-in half says it is
-# looking; tripped, it says what it heard, then goes back to check-in. Laid
-# over the check-in words, at their place and size, so it never moves the code.
+# see docs/inline/machines/kiosk-1/door.py.md#27
 CAMERA_CSS = """
 .checkin .camera { position:absolute; top:50%; translate:0 -50%;
   left:calc(33.333% + 15vh + 3vw); right:4vw; background:var(--slate); }
@@ -1378,12 +1202,7 @@ def depot_page():
     return page("Depot", body, DEPOT_CSS)
 
 
-# ------------------------------------------------------------------- classes --
-# THE CLASS ON NOW, and the ones coming up. The contract is docs/KIOSK.md, "The
-# class on now": build-kiosk.py puts the schedule in welcome.yml's classes
-# panel, and every renderer decides "now" from its own clock with pickSession
-# from site/assets/js/classes.js. The door copies that function out of the file
-# each time it draws a page, so the screens and the website cannot disagree.
+# see docs/inline/machines/kiosk-1/door.py.md#28
 CLASSES_JS = ROOT / "site" / "assets" / "js" / "classes.js"
 
 
@@ -1397,9 +1216,7 @@ def pick_session_js():
 
 
 def class_config(now=None):
-    """The classes panel's config, as pickSession takes it. Only what the
-    public calendar says: title, room, times, summary. `classes: sample` in
-    node.yml invents three, a day and more ahead, all marked as samples."""
+    """see docs/inline/machines/kiosk-1/door.py.md#29"""
     if node().get("classes") == "sample":
         base = (now or datetime.datetime.now()).astimezone()
 
@@ -1431,9 +1248,7 @@ def class_words():
             "hint_wall": w.get("hint_wall", "Check in with the code above.")}
 
 
-# The clock and the formatting every class view shares. `?at=<ISO time>` on a
-# page pretends it is that moment, so a takeover can be looked at before it
-# happens (and so an attendant can check one).
+# see docs/inline/machines/kiosk-1/door.py.md#30
 CLASS_JS = """<script>
 (function () {
   var C = @CONFIG@, W = @WORDS@;
@@ -1535,9 +1350,7 @@ def classes_page():
     return page(w["head"], body, CLASSES_CSS)
 
 
-# The wall's Files: not the desk's panel (no clock header, no gateway strip)
-# but a module like Classes: a yellow heading, a line of text, and the
-# partitions down the page, each with its free space and a bar.
+# see docs/inline/machines/kiosk-1/door.py.md#31
 DRIVE_CSS = """
 html, body { height:100%; overflow:hidden; }
 main { padding:6vh 7vw; }
@@ -1600,14 +1413,7 @@ def drive_page():
     return page(words.get("head", "Files"), body, DRIVE_CSS)
 
 
-# ---------------------------------------------------------------- class mode --
-# CLASS MODE on the roller: a teacher's supporting materials while their class
-# is on (instruments/roller-tv/class-mode.md). A demo for now, written beside
-# the wall as class.html and never in its rotation. A class is a folder:
-# class.yml (title, presenter, hours) and one folder per kind of material,
-# named by its noun, holding one file per section in name order. Markdown or
-# plain text, shown as given: the converter below knows headings, lists,
-# paragraphs and bold, and nothing else.
+# see docs/inline/machines/kiosk-1/door.py.md#32
 def md_html(text):
     out, para, lst = [], [], None
 
@@ -1774,10 +1580,7 @@ body.light .tabs button:not([aria-current=true]):not(.recent)::before { backgrou
 .tabs button[aria-current=true]::before { background:var(--signal); box-shadow:none; }
 """
 
-# THE KEYS (Autumn, 2026-10-07): for a panel with a keyboard and no mouse,
-# 1-9 pick the first nine pages in the order of their buttons, and the
-# letters spill over: a is the tenth, b the eleventh. Crude on purpose, the
-# 80% case. The turn and the wall add space, which keeps the page showing.
+# see docs/inline/machines/kiosk-1/door.py.md#33
 KEYED_JS = """
   function keyed(ev) {
     var t = ev.target, k = ev.key || '';
@@ -1894,32 +1697,7 @@ def class_mode_page(path):
     return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
 
 
-# ---------------------------------------------------------------------- wall --
-# THE WALL: pages for screens elsewhere on the network, the studio's rolling
-# TV first. Nothing on the network can reach this box's port (Windows calls the
-# network Public, and blocks this interpreter inbound; both need an
-# administrator). So the door does not wait to be asked. It builds the pages
-# here, where the credentials and the drive are, and writes them to a share
-# every screen can already open. Privileged in construction, ungated in
-# rendering: what lands there is plain HTML that fetches nothing.
-#
-# The shell is the check-in page's header, turned over into the colour plan
-# of icon-inverted.svg, over a stage that moves through the modules by itself
-# (Autumn, 2026-09-26: "rotate on its own while keeping the checkin version of
-# the header block"). Each turn loads a fresh frame, named for its module, and
-# drops the old one, so a frame never gathers history for Back to walk into.
-# Hold stops the turning for a reader (WCAG 2.2.1), and lets go by itself
-# after a minute and a half, since nobody stands at this screen to let go
-# of it. Pressed again, it holds until somebody presses play.
-# A class soon or on takes the stage over (docs/KIOSK.md, "The class on
-# now").
-#
-# THE TURN is only implied (Autumn, 2026-09-26): a red bar under the header's
-# edge, parallel to it, a fifth of the width, that fills from the right on an
-# easing that is quick and then slow. Full, it gets the record button's knob
-# and takes off, back along its own streak and off the edge, and the next
-# module comes in as it goes. Then the bar creeps up again, knobless. Red,
-# because the brand's on-air red is for what is live. The only motion here.
+# see docs/inline/machines/kiosk-1/door.py.md#34
 WALL_PAGES = {
     "kiosk": (lambda: kiosk_page(wall=True, map_only=True), "/kiosk/now", kiosk_now),
     "depot": (depot_page, "/depot/now", depot_now),
@@ -2185,20 +1963,14 @@ def wall_files():
     return files
 
 
-# THE TURN: the wall's shell on one of this box's own panels (Autumn,
-# 2026-10-05: "act like" the roller). Its modules are the door's live pages,
-# so nothing is snapshotted: `url:` frames a page as it is served, and `page:`
-# is a wall page drawn live. node.yml `turn:`; the panel's url is /turn/.
+# see docs/inline/machines/kiosk-1/door.py.md#35
 def turn_modules():
     return [m for m in (node().get("turn") or {}).get("modules") or []
             if re.fullmatch(r"[a-z0-9-]+", str(m.get("name", "")))
             and (str(m.get("url", "")).startswith("/") or m.get("page") in WALL_PAGES)]
 
 
-# The turn's own head (Autumn, 2026-10-06): our name in the wordmark's face on
-# the yellow, not check-in's code and clock. And while the dim layer stops the
-# turn, the line shows it, and the pause button is pressed in: solid yellow,
-# like the lit module's button, not a pause glyph waiting to be pushed.
+# see docs/inline/machines/kiosk-1/door.py.md#36
 TURN_CSS = """%s
 .super h1.name { font-family:"Source Serif 4", Georgia, serif; font-size:6vh; font-weight:780; letter-spacing:-.02em; }
 .stilled .timer { height:.9vh; }
@@ -2265,9 +2037,7 @@ def wall_target():
 
 
 def write_wall():
-    """Write the wall to its share, each file whole or not at all. Returns
-    what went wrong, or None. Files the wall no longer has are removed: the
-    folder is this node's to keep tidy."""
+    """see docs/inline/machines/kiosk-1/door.py.md#37"""
     target = wall_target()
     if target is None:
         return "no wall share in node.yml"
@@ -2488,11 +2258,7 @@ def serve():
 
 
 def pull_once():
-    """Fetch, and rebase this branch onto origin/main if main moved.
-
-    A dirty worktree or a rebase already in progress is left alone: somebody
-    is working here. A rebase that stops on a conflict is aborted, so the
-    worktree is never left half-applied under a running door."""
+    """see docs/inline/machines/kiosk-1/door.py.md#38"""
     if git("status", "--porcelain") != "":
         return log("pull: worktree has changes, not rebasing")
     if (ROOT / ".git").is_file():
@@ -2511,9 +2277,7 @@ def pull_once():
 
 
 def supervise():
-    # Held for this process's life, released by Windows when it goes. The
-    # logon task starts supervise every five minutes; this is what makes a
-    # start that finds one already running a no-op.
+    # see docs/inline/machines/kiosk-1/door.py.md#39
     k = ctypes.WinDLL("kernel32", use_last_error=True)
     k.CreateMutexW.restype = ctypes.c_void_p
     k.CloseHandle.argtypes = [ctypes.c_void_p]
@@ -2524,10 +2288,7 @@ def supervise():
     me = pathlib.Path(__file__).read_bytes()
 
     def raise_screens():
-        # Kept, every half minute, once the door answers: a screen that is
-        # missing or astray (the monitors dropped out and Windows piled the
-        # panels onto one) is put back, in its own browser. Only the lines
-        # that change are logged.
+        # see docs/inline/machines/kiosk-1/door.py.md#40
         for _ in range(60):
             if door_answers():
                 break
@@ -2568,11 +2329,7 @@ def supervise():
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
         if code == BOUNCE and pathlib.Path(__file__).read_bytes() != me:
-            # supervise's own code moved too. Restarting only `serve` would
-            # leave this process on the old code for the rest of the sign-in
-            # (2026-09-25: session revival merged mid-day, and the supervise
-            # started at 00:41 never took a snapshot). Hand over: let go of
-            # the mutex, start a fresh supervise, and leave.
+            # see docs/inline/machines/kiosk-1/door.py.md#41
             log("supervise: my code changed; starting a fresh one")
             k.CloseHandle(mutex)
             subprocess.Popen([sys.executable, "-X", "utf8", __file__, "supervise"], close_fds=True,
@@ -2583,8 +2340,7 @@ def supervise():
 
 # ------------------------------------------------------------------- screens --
 def browser_windows(exe):
-    """Visible top-level windows of a browser: title, rect, and whether it has
-    a caption bar (full-screen windows do not)."""
+    """see docs/inline/machines/kiosk-1/door.py.md#42"""
     u = ctypes.windll.user32
     try:
         u.SetProcessDPIAware()
@@ -2632,12 +2388,7 @@ BROWSERS = {"msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge
 
 
 def launch_screen(exe, s, url):
-    """One browser instance per screen, in kiosk mode, with a profile folder of
-    its own. The separate profile is what makes it work: a plain --new-window
-    is handed to whatever browser is already open, which restores its last
-    session and ignores --start-fullscreen (2026-09-24, after a reboot left four
-    half-sized windows). Kiosk mode is InPrivate, so a public screen keeps
-    nothing between starts."""
+    """see docs/inline/machines/kiosk-1/door.py.md#43"""
     x, y, w, h = s["rect"]
     args = [BROWSERS[exe], "--user-data-dir=%s" % (STATE / "screens" / s["name"]),
             "--no-first-run", "--kiosk", url,
@@ -2713,8 +2464,7 @@ def raise_window(hwnd):
 
 
 def close_profile(pids, wait=10):
-    """Close a screen's own browser: ask each of its windows to close, then, if
-    it will not go, end it. Only processes the door launched for that screen."""
+    """see docs/inline/machines/kiosk-1/door.py.md#44"""
     from ctypes import wintypes as W
     u, k = ctypes.windll.user32, ctypes.windll.kernel32
     k.OpenProcess.restype = W.HANDLE
@@ -2734,11 +2484,7 @@ def close_profile(pids, wait=10):
 SILENT = 120     # seconds a screen's page may go without polling before it is relaunched
 
 
-# STEPPING ASIDE (Autumn, 2026-10-05): a mouse moving on a screen means
-# somebody is at the desk, and the screens kept raising themselves over their
-# window every half minute. The page's Minimize button posts /aside. The
-# screens are minimized and left alone until this computer has had no mouse
-# or keyboard for ASIDE_FOR; then they come back by themselves.
+# see docs/inline/machines/kiosk-1/door.py.md#45
 ASIDE_FOR = 600
 ASIDE = STATE / "aside"
 
@@ -2769,8 +2515,7 @@ ASIDE_HTML = """<button type=button id=fcpm-aside hidden aria-label=Minimize tit
 
 
 def aside():
-    """True while the screens are stepped aside for somebody at the desk.
-    Ends, and says so, once nobody has touched this computer for ASIDE_FOR."""
+    """see docs/inline/machines/kiosk-1/door.py.md#46"""
     if not ASIDE.exists():
         return False
     idle = idle_seconds()
@@ -2798,16 +2543,12 @@ def step_aside():
 
 
 def screen_url(s):
-    """Loopback, not this machine's name: the name resolves to a shifting set
-    of IPv6 addresses, some of them temporary ones Windows rotates, and a page
-    loaded through one that went away sat broken, asking nothing (2026-09-26,
-    -28). ?screen= lets the page say which screen it is."""
+    """see docs/inline/machines/kiosk-1/door.py.md#47"""
     return "http://127.0.0.1:%d%s%sscreen=%s" % (PORT, s["url"], "&" if "?" in s["url"] else "?", s["name"])
 
 
 def camera(argv):
-    """door.py camera [arm [SECONDS] | off]: ask the running door to arm the
-    camera (two minutes unless told), to stop it, or what it is doing."""
+    """see docs/inline/machines/kiosk-1/door.py.md#48"""
     import urllib.request
     verb = argv[0] if argv else ""
     path = {"arm": "/camera/arm", "off": "/camera/disarm"}.get(verb, "/camera")
@@ -2832,8 +2573,7 @@ def camera(argv):
 
 
 def heard():
-    """{"up": seconds the door has served, "heard": {screen: seconds since its
-    page last polled}}, or None if the door cannot be asked."""
+    """see docs/inline/machines/kiosk-1/door.py.md#49"""
     import urllib.request
     try:
         with urllib.request.urlopen("http://127.0.0.1:%d/heard" % PORT, timeout=5) as r:
@@ -2843,19 +2583,7 @@ def heard():
 
 
 def screens(launch=False, reset=False, say=print):
-    """Each screen wants its own browser (the profile the door launches for
-    it), full-screen at its rect. Anything else covering that rect does not
-    count: a browser somebody opened by hand is not the screen.
-
-    With launch (supervise does this every half minute), a screen that is
-    missing is launched, and one whose own browser is on the wrong monitor or
-    not full-screen is closed and launched again in place. That is the way
-    back after the monitors drop out: Windows piles the kiosk windows onto one
-    monitor, and neither Task View nor the window menu can move a full-screen
-    window back across (Autumn, 2026-09-26). The door can: it closes its own
-    and starts them where they belong. Nothing is launched while a screen's
-    monitor is missing, or it would only land on the wrong one again. reset
-    closes and relaunches every screen, wherever it is."""
+    """see docs/inline/machines/kiosk-1/door.py.md#50"""
     if reset and ASIDE.exists():
         ASIDE.unlink()
     elif aside():
@@ -2879,9 +2607,7 @@ def screens(launch=False, reset=False, say=print):
         hit = next((win for win in own if win["fullscreen"]
                     and abs(win["rect"][0] - x) <= 8 and abs(win["rect"][1] - y) <= 8
                     and abs(win["rect"][2] - w) <= 16 and abs(win["rect"][3] - h) <= 16), None)
-        # Its own browser is there, but its page has stopped asking the door
-        # anything: the page is stuck (broken pictures, empty map). Whatever
-        # the cause, a fresh launch mends it.
+        # see docs/inline/machines/kiosk-1/door.py.md#51
         quiet = (hit and ears and ears["up"] > SILENT and
                  ears["heard"].get(s["name"], SILENT + 1) > SILENT)
         if quiet and not reset:
@@ -2893,10 +2619,7 @@ def screens(launch=False, reset=False, say=print):
                 launch_screen(exe, s, screen_url(s))
                 say("         relaunched %s" % screen_url(s))
             continue
-        # Its own browser is there, but on the page it was launched with, and
-        # node.yml has since moved it (left went to /turn/ and stayed on
-        # /preview/ all night, 2026-10-05). A page's reload keeps its address,
-        # so only a relaunch brings the new one.
+        # see docs/inline/machines/kiosk-1/door.py.md#52
         if hit and not reset and screen_url(s).lower() not in lines.get(hit["pid"], ""):
             bad += 1
             say("moved    %-8s %-9s node.yml has it at %s now" % (s["name"], s["display"], s["url"]))
@@ -2908,9 +2631,7 @@ def screens(launch=False, reset=False, say=print):
         if hit and not reset:
             top = top_pid(x + w // 2, y + h // 2)
             if top is not None and top != hit["pid"]:
-                # Its own browser is there, but something else covers it (a
-                # browser opened by hand, while the screens were astray).
-                # Bring ours to the front; never close somebody else's.
+                # see docs/inline/machines/kiosk-1/door.py.md#53
                 bad += 1
                 say("covered  %-8s %-9s by another window" % (s["name"], s["display"]))
                 if launch:
@@ -2940,30 +2661,7 @@ def screens(launch=False, reset=False, say=print):
     return 1 if bad and not (launch or reset) else 0
 
 
-# ------------------------------------------------------------------ sessions --
-# NO SESSION IS KEPT (Autumn, 2026-10-09). Sessions arrive through the root's
-# Remote Control server (machines/README.md, "how its sessions arrive"), and
-# the door starts none of its own.
-#
-# The `startup` seat this replaced: from 2026-10-03, every pass started a
-# background session named `startup` if none was listed. It ran outside the
-# server, so it never showed in the device lists, and it raced Claude's own
-# updates: an update restarts the background daemon, the seat drops out of
-# `claude agents` for a moment, and the pass started a second `startup` while
-# the daemon was resuming the first (2026-10-09, 13:32, on 2.1.296).
-#
-# What the seat replaced, and why (2026-10-03): the node used to write down every
-# session it saw and resume each one at the first pass after a sign-in. That
-# restored the desktop, but only at a sign-in. Three sessions revived on
-# 10-01 died later in that same sign-in; revival had already fired, and the
-# five-minute snapshot faithfully recorded them gone, so by the time anybody
-# looked the ids were out of the book and nothing could bring them back. Two
-# days down. A pool of N is a promise about other people's sessions, which
-# this node cannot keep; one seat it starts itself is a promise it can.
-#
-# The snapshot stays, and is now only a record: `door.py sessions` reads it to
-# say what was running at the last pass. Nothing is resumed from it. Session
-# ids stay here, in LOCALAPPDATA, never in the repo.
+# see docs/inline/machines/kiosk-1/door.py.md#54
 SESSIONS = STATE / "sessions.json"
 CLAUDE = shutil.which("claude") or str(pathlib.Path.home() / ".local" / "bin" / "claude.exe")
 
@@ -2978,8 +2676,7 @@ def claude(*args, cwd=None):
 
 
 def running_sessions():
-    """What `claude agents --json` lists as live, interactive and background.
-    None if it could not be asked, which is not the same as nothing running."""
+    """see docs/inline/machines/kiosk-1/door.py.md#55"""
     code, out = claude("agents", "--json")
     if code != 0:
         return None
@@ -2998,11 +2695,7 @@ def booted_at():
 
 
 def signed_in_at():
-    """When this user's sign-in began, from LSA. Sessions die with the sign-in,
-    not the boot, and the boot can't be trusted: with Fast Startup on (the
-    default; it is on here) Shut down hibernates the kernel, so the uptime
-    runs on across a power-off while every session is gone. Falls back to
-    the boot if LSA won't say."""
+    """see docs/inline/machines/kiosk-1/door.py.md#56"""
     from ctypes import wintypes as W
 
     class LUID(ctypes.Structure):
@@ -3085,9 +2778,7 @@ def sessions(argv):
     live = running_sessions()
     live_ids = {s["id"] for s in live or []}
     taken = book.get("taken") or 0
-    # The sign-in, not the boot: Fast Startup carries the uptime across a Shut
-    # down while every session dies with the session. A snapshot older than it
-    # lists sessions that are gone, and nothing resumes them.
+    # see docs/inline/machines/kiosk-1/door.py.md#57
     print("snapshot  %s%s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(taken)) if taken else "never",
                               "  (before this sign-in: what it lists is gone)"
                               if taken and taken < signed_in_at() else ""))
@@ -3099,25 +2790,7 @@ def sessions(argv):
     return 0
 
 
-# -------------------------------------------------------------------- server --
-# THE ROOT'S SERVER, KEPT AND KEPT CURRENT (Autumn, 2026-10-09). The door keeps
-# `claude remote-control --no-create-session-in-dir` running at ~/code, as
-# production's bin/pool.ps1 does: a server, no session of its own and no name
-# (machines/README.md, "how its sessions arrive"). Every minute, a missing
-# server is started.
-#
-# Claude updates itself under us. The installer swaps claude.exe; the daemon
-# restarts for it, the server does not (it sat on 2.1.292 through three
-# updates, 10-07 to 10-09). So a server older than the installed claude.exe
-# is bounced, sessions and all, once things under it have been CALM for 15
-# minutes: no transcript written in that time, and no task running (no
-# process under the server but Claude's own). Sessions don't close, so waiting
-# for them to would wait forever; calm is the bar. What holds a bounce is
-# logged whenever it changes, so the log says what actually blocks one.
-#
-# A server killed without signing off holds ~/code for a few minutes, and
-# starts are refused until it lets go ("already served"). The next minute
-# tries again.
+# see docs/inline/machines/kiosk-1/door.py.md#58
 SERVER_EVERY = 60
 CALM_FOR = 15 * 60
 ROOT_CWD = pathlib.Path.home() / "code"         # AGENTS.md: sessions start here
@@ -3169,8 +2842,7 @@ def started_at(pid):
 
 
 def under(pid, procs):
-    """Every process below pid. Windows reuses pids, so a child must have
-    started after its parent to count as one."""
+    """see docs/inline/machines/kiosk-1/door.py.md#59"""
     kids, out, todo = {}, [], [pid]
     for p, (pp, _) in procs.items():
         kids.setdefault(pp, []).append(p)
@@ -3185,19 +2857,16 @@ def under(pid, procs):
 
 
 def servers(procs):
-    """claude.exe processes running the `remote-control` subcommand. Not the
-    --remote-control flag, which a single session carries."""
+    """see docs/inline/machines/kiosk-1/door.py.md#60"""
     return [pid for pid, (_, exe) in procs.items() if exe == "claude.exe"
             and re.search(r"(^|\s)remote-control(\s|$)", command_line(pid))]
 
 
 def holds(pid, procs):
-    """What keeps the server at pid from a bounce right now: a list of short
-    reasons, empty when it has been calm for CALM_FOR."""
+    """see docs/inline/machines/kiosk-1/door.py.md#61"""
     below = under(pid, procs)
     why = ["running %s (%d)" % (procs[c][1], c) for c in below if procs[c][1] not in OURS]
-    # Sessions outside the server (a background job, a terminal) are not its
-    # to wait on: their transcripts don't count.
+    # see docs/inline/machines/kiosk-1/door.py.md#62
     code, out = claude("agents", "--json")
     rows = []
     if code == 0 and "[" in out:
@@ -3260,8 +2929,7 @@ def installed():
 
 
 def server_pass(state):
-    """One minute's look. state carries what was said last, so only changes
-    are logged."""
+    """see docs/inline/machines/kiosk-1/door.py.md#63"""
     procs = processes()
     up = servers(procs)
     if not up:
@@ -3352,15 +3020,7 @@ def status():
     return 1
 
 
-# ---------------------------------------------------------------------- helo --
-# THE HELO's CLOCK. The AJA HELO (the studio's H.264 recorder) forgets the time
-# whenever it loses power and wakes up in 2000, and its time source is Manual:
-# its NTP server is a name it cannot resolve. So the door keeps it, from this
-# machine's clock, which Windows keeps: once a minute it reads the HELO's
-# /clock, and if it is more than 90 seconds out, sets it on the next minute
-# through the same call AJA's own page makes (eParamID_DateSet, "mm/dd/yyyy
-# HH:MM", the box's own zone). Never while it is recording. Read-only
-# otherwise. Device facts: FC-Public-Media/aja-helo (Autumn, 2026-09-28).
+# see docs/inline/machines/kiosk-1/door.py.md#64
 HELO_DRIFT = 90
 
 
@@ -3372,9 +3032,7 @@ _helo_addr = {"name": None, "ip": None, "at": 0}
 
 
 def helo_addr(fresh=False):
-    """The HELO's address, looked up by its mDNS name and kept for ten minutes:
-    resolving the .local name costs about a second each time, and the preview
-    asks once a second."""
+    """see docs/inline/machines/kiosk-1/door.py.md#65"""
     name = helo_host()
     if fresh or _helo_addr["name"] != name or time.time() - _helo_addr["at"] > 600:
         _helo_addr.update(name=name, ip=socket.getaddrinfo(name, 80, socket.AF_INET)[0][4][0], at=time.time())
@@ -3414,8 +3072,7 @@ def helo_recording():
 
 
 def helo_set_clock():
-    """Set the HELO's date and time to this machine's, on a minute boundary
-    (the call takes minutes, not seconds)."""
+    """see docs/inline/machines/kiosk-1/door.py.md#66"""
     import urllib.request, urllib.parse
     while datetime.datetime.now().second != 0:
         time.sleep(0.2)
@@ -3429,8 +3086,7 @@ def helo_set_clock():
 
 
 def helo_state():
-    """What the preview says beside the picture: the format it detects, and
-    whether it streams or records. None if the HELO cannot be asked."""
+    """see docs/inline/machines/kiosk-1/door.py.md#67"""
     if not helo_host():
         return None
     out = {}
@@ -3446,9 +3102,7 @@ def helo_state():
 
 
 def helo_feed():
-    """The HELO's own preview: a 240x135 JPEG of what it receives, about one a
-    second on AJA's page. With no input it is the TEST PATTERN (its fallback),
-    so the page says "no signal" from the detected format instead."""
+    """see docs/inline/machines/kiosk-1/door.py.md#68"""
     return helo_fetch("/wall/videofeed.jpg", timeout=3)
 
 
@@ -3498,9 +3152,7 @@ PREVIEW_JS = """<script>
 
 
 def preview_page():
-    """The studio's cameras, as the HELO sees them: the ATEM's multiview
-    through its HDMI, once a second. The Files panel's place for now (Autumn,
-    2026-09-28); the full picture waits for a player that can take its RTSP."""
+    """see docs/inline/machines/kiosk-1/door.py.md#69"""
     words = (node().get("wording") or {}).get("preview") or {}
     w = {"gone": words.get("gone", "The recorder is not answering"),
          "nosignal": words.get("nosignal", "No signal"), "on": words.get("on", "On"), "off": words.get("off", "Off")}
@@ -3540,20 +3192,7 @@ def keep_helo_clock():
         time.sleep(60)
 
 
-# ------------------------------------------------------------------- dropbox --
-# THE DROPBOX QUEUE: TO DROPBOX is a hand-off out. Whatever lands there goes up
-# to Dropbox, at the same path under one folder (the one staff already use),
-# and is then removed from the depot. Nothing is kept here: it is an eviction,
-# not a sync (Autumn, 2026-09-29). No desktop client: this box has no
-# administrator, and a sync client keeps copies. The door talks to Dropbox's
-# API instead, as an app Autumn approved once (door.py dropbox link), holding
-# only a refresh token, in Credential Manager.
-#
-# A file goes only when it has stopped changing (the same size and mtime two
-# passes running, and two minutes old), and it is removed only when Dropbox
-# says it holds the same bytes: its content_hash matches ours. A file already
-# there with other content is left alone and logged. Mac leftovers are
-# skipped. Names are kept as they are: no rules of ours.
+# see docs/inline/machines/kiosk-1/door.py.md#70
 DROPBOX_API, DROPBOX_CONTENT = "https://api.dropboxapi.com", "https://content.dropboxapi.com"
 DROPBOX_SECRET = "fcpm-dropbox:refresh"
 DROPBOX_CHUNK = 8 * 1024 * 1024
@@ -3566,8 +3205,7 @@ def dropbox_cfg():
 
 
 def dropbox_hash(path):
-    """Dropbox's content_hash: SHA-256 of each 4 MB block, then SHA-256 of
-    those digests together."""
+    """see docs/inline/machines/kiosk-1/door.py.md#71"""
     import hashlib
     outer = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -3580,8 +3218,7 @@ def dropbox_hash(path):
 
 
 def dropbox_post(url, body=None, arg=None, data=None, token=True, form=None):
-    """One call. JSON in (body) or bytes in (data, with arg in the header);
-    JSON out, or (status, error JSON) on a 409."""
+    """see docs/inline/machines/kiosk-1/door.py.md#72"""
     import urllib.request, urllib.parse, urllib.error
     headers = {}
     if token:
@@ -3630,8 +3267,7 @@ def dropbox_meta(path):
 
 
 def dropbox_upload(local, remote):
-    """Upload whole, or in 8 MB pieces past 150 MB. Returns Dropbox's metadata,
-    or {"error_409": ...} when something else is already at that path."""
+    """see docs/inline/machines/kiosk-1/door.py.md#73"""
     size = os.path.getsize(local)
     commit = {"path": remote, "mode": "add", "autorename": False, "mute": True}
     with open(local, "rb") as fh:
@@ -3789,12 +3425,7 @@ def whoami():
 
 
 def task_xml(here=HERE):
-    """The logon task, with this checkout's paths resolved now.
-
-    Generated rather than written, like station-node's `bin/door plist`, so a
-    moved worktree is one command and not an edit. The fixed venv's pythonw:
-    one interpreter path, so the firewall asks once, and no console window.
-    `-X utf8` stands in for PYTHONUTF8, which a task action cannot set."""
+    """see docs/inline/machines/kiosk-1/door.py.md#74"""
     esc = html.escape
     user = esc(whoami())
     return """<?xml version="1.0" encoding="UTF-16"?>
@@ -3846,8 +3477,7 @@ def task_xml(here=HERE):
 
 
 def installed_task():
-    """The registered task's XML, or None. Asked of Task Scheduler every time,
-    never remembered."""
+    """see docs/inline/machines/kiosk-1/door.py.md#75"""
     out = subprocess.run(["schtasks", "/Query", "/TN", TASK, "/XML"],
                          capture_output=True, text=True, creationflags=NO_WINDOW)
     return out.stdout if out.returncode == 0 else None
@@ -3869,8 +3499,7 @@ def startup(argv):
             return 1
         print("registered  task %r -> %s" % (TASK, HERE / "door.py"))
         if SHORTCUT.exists():
-            # Two things starting supervise at logon is two pullers; the
-            # task alone is the startup now.
+            # see docs/inline/machines/kiosk-1/door.py.md#76
             SHORTCUT.unlink()
             print("removed     the Startup shortcut, which the task replaces")
         print("\nA door already running from before keeps running. The task will not")

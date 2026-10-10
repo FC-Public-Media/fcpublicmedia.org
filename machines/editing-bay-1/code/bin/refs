@@ -11,8 +11,7 @@
 # A repo that is dirty, off its default branch, or diverged is reported and left
 # alone rather than forced. Submodules are NOT hydrated — this box is weighed,
 # and an engine is fetched only when someone asks for it.
-#
-# Git Bash only; no python/ruby/node on this machine.
+# see docs/inline/machines/editing-bay-1/code/bin/refs.md#1
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

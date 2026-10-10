@@ -1,13 +1,4 @@
-// Editing a member site's settings.
-//
-// The claim this page makes is that editing raw text preserves the comments
-// that document the settings, where a form would strip them. That claim is
-// worth testing, because it is the entire reason the page is a textarea and
-// the pull to "just make it a form" will be constant.
-//
-// GitHub is stubbed rather than called. The tests are about what the page
-// does with a response, and hitting a rate-limited public API from CI to
-// learn that would be both slow and flaky.
+// see docs/inline/site/tests/settings.spec.js.md#1
 
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
@@ -21,9 +12,7 @@ const SITE_DIR = path.resolve(__dirname, '..');
 const SCRIPT = path.join(SITE_DIR, 'bin', 'mint-claim.py');
 const SITE = 'fcpublicmedia/janes-show';
 
-// A settings file shaped like the real one: mostly commentary, with the
-// values scattered through it. If an editor cannot round-trip this, it cannot
-// round-trip the thing members actually have.
+// see docs/inline/site/tests/settings.spec.js.md#2
 const SETTINGS = `# Everything a member can change about their site.
 #
 # WHY ONE FILE
@@ -111,16 +100,7 @@ const BROKER = 'https://broker.test';
 const b64u = (buffer) => buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const hashOf = (text) => b64u(crypto.createHash('sha256').update(text, 'utf8').digest());
 
-/**
- * Point the page at a broker, and stand in for it.
- *
- * The signature cannot be checked here — there is no private key on this side
- * of the virtual authenticator — but the thing worth checking can be: that the
- * page signed the challenge THIS stub issued rather than one of its own. That
- * is the entire difference between the broker mattering and not.
- *
- * Returns the record of what the page asked for and what it sent back.
- */
+// see docs/inline/site/tests/settings.spec.js.md#3
 async function withBroker(page, { write } = {}) {
   const seen = { challenges: [], writes: [] };
 
@@ -158,8 +138,7 @@ async function withBroker(page, { write } = {}) {
       return;
     }
 
-    // Read the challenge back out of the signed client data, which is the
-    // only copy the page could not have swapped.
+    // see docs/inline/site/tests/settings.spec.js.md#4
     const clientData = JSON.parse(
       Buffer.from(body.assertion.client_data_json, 'base64url').toString('utf8')
     );
@@ -172,16 +151,7 @@ async function withBroker(page, { write } = {}) {
   return seen;
 }
 
-/**
- * Sign in and, unless a load failure is being tested, wait for the editor to
- * actually hold the file.
- *
- * Without that wait this races: inputValue() on a not-yet-populated textarea
- * returns an empty string rather than waiting, so a test that reads the file
- * and edits it would fill in nothing and then be told nothing had changed.
- * It passed in isolation and failed under parallel load, which is the worst
- * way for a test to be wrong.
- */
+// see docs/inline/site/tests/settings.spec.js.md#5
 async function signedIn(page, options) {
   await withKey(page);
   await virtualAuthenticator(page);
@@ -225,9 +195,7 @@ test.describe('arriving at /settings/', () => {
   });
 
   test('a rate-limited GitHub says what to do about it', async ({ page }) => {
-    // Unauthenticated requests are capped per address and a shared network
-    // can exhaust it. "Try again later" is the actual fix here, so saying it
-    // plainly is not a brush-off.
+    // see docs/inline/site/tests/settings.spec.js.md#6
     await signedIn(page, { status: 403 });
 
     await expect(page.locator('[data-state="load-failed"]')).toBeVisible();
@@ -243,8 +211,7 @@ test.describe('arriving at /settings/', () => {
 
 test.describe('editing', () => {
   test('loads the file whole, comments and all', async ({ page }) => {
-    // The whole argument for a textarea over a form. Those comments are the
-    // only documentation a member has for what these settings do.
+    // see docs/inline/site/tests/settings.spec.js.md#7
     await signedIn(page);
 
     await expect(page.locator('[data-state="editing"]')).toBeVisible();
@@ -256,9 +223,7 @@ test.describe('editing', () => {
   });
 
   test('an edit keeps every comment that was there', async ({ page }) => {
-    // A form would round-trip through a parser and strip all of these on the
-    // first save. This is the regression that would be invisible until a
-    // member needed the documentation and it had gone.
+    // see docs/inline/site/tests/settings.spec.js.md#8
     await signedIn(page);
 
     const text = await page.locator('#settings-text').inputValue();
@@ -286,8 +251,7 @@ test.describe('editing', () => {
   });
 
   test('warns when a setting has disappeared but does not block it', async ({ page }) => {
-    // Deleting one on purpose is legitimate; deleting one by pasting over the
-    // top is not, and only the member can tell which happened.
+    // see docs/inline/site/tests/settings.spec.js.md#9
     await signedIn(page);
 
     await page.locator('#settings-text').fill('name: A Show\n');
@@ -331,9 +295,7 @@ test.describe('saving through the broker', () => {
   const edited = SETTINGS.replace('Your Show', 'Jane Live');
 
   test('it signs the challenge the broker issued, not one of its own', async ({ page }) => {
-    // The whole point of the broker. A page that generates its own challenge
-    // proves nothing to anybody, and the difference is invisible from the
-    // outside — both flows show the same prompt and both succeed.
+    // see docs/inline/site/tests/settings.spec.js.md#10
     const seen = await withBroker(page);
     await signedIn(page);
 
@@ -348,9 +310,7 @@ test.describe('saving through the broker', () => {
   });
 
   test('what it declares up front is what it sends back', async ({ page }) => {
-    // The binding only works if the hash declared before the prompt describes
-    // the bytes sent after it. Nothing else in the system notices if these
-    // two drift apart — the broker would simply start refusing every save.
+    // see docs/inline/site/tests/settings.spec.js.md#11
     const seen = await withBroker(page);
     await signedIn(page);
 
@@ -430,9 +390,7 @@ test.describe('saving through the broker', () => {
     await page.locator('#settings-text').fill(edited);
     await page.locator('#settings-save').click();
 
-    // The edit survives as something the member can send us by hand. This is
-    // the state the page was in before the broker existed, which is exactly
-    // why it is worth keeping.
+    // see docs/inline/site/tests/settings.spec.js.md#12
     await expect(page.locator('[data-state="manual"]')).toBeVisible();
     await expect(page.locator('#settings-output')).toContainText('Jane Live');
     await expect(page.locator('#email-settings')).toHaveAttribute('href', /^mailto:/);

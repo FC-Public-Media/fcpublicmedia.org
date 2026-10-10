@@ -1,0 +1,9 @@
+# `_data/tells.yml`
+
+Moved out of the file. Unreviewed.
+
+## 1
+
+The Tells our Atlas lists. A Tell joins by a signed PR on tell/<scope>/<id>
+that appends its entry below; merging it is the consent. Comments only until
+then, so `.tell-engine/bin/register` can append. See docs/DIRECTORY.md.

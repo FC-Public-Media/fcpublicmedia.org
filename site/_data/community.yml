@@ -1,94 +1,15 @@
-# The community: what's coming up, and where people talk between visits.
-#
-# Replaces the old _data/connect.yml, which held only the channels. The two
-# belong together — "when can I turn up" and "where is everyone" are the same
-# question asked twice.
-#
-# WHERE EVENTS COME FROM
-# ----------------------
-# The page merges three sources into one chronological list, so nobody has to
-# know which of them a thing lives in:
-#
-#   _data/classes.yml       class sessions
-#   _data/governance.yml    board meetings
-#   this file, `events`     everything else
-#
-# Add a screening, a work night, or a members' meeting here. Anything that is
-# already a class or a board meeting should NOT be repeated — it will show up
-# on its own.
-#
-# TIMES MUST CARRY AN OFFSET, the same rule as _data/classes.yml:
-# "2026-09-15T18:30:00-06:00", not "2026-09-15 18:30". Colorado is -06:00 in
-# summer and -07:00 in winter, and a time without one is read as the visitor's
-# own zone — wrong for anyone travelling, and silently wrong.
+# see docs/inline/site/_data/community.yml.md#1
 
 heading: Find the rest of us
 blurb: >-
   The studio is the easy part. The harder part is knowing who else is making
   something, and that happens between visits.
 
-# --------------------------------------------------------------- what's on
-#
-# Each entry needs `title` and `starts`. Optional: `ends`, `where`, `note`,
-# `url` (a link for more detail — leave it off and the entry is plain text,
-# which is fine), and `kind`.
-#
-# `kind` IS THE LABEL SHOWN BESIDE THE EVENT, and it is free text, not an
-# enum. Classes render as "Class" and board meetings as "Board meeting"
-# because those come from their own files; anything here defaults to "Event"
-# if you leave it off. Write what the thing actually is.
-#
-# THIS IS THE EVENTS CALENDAR. The board president asked in September 2026 for
-# a calendar covering classes, meetups, and outside video events — Comic Con
-# was his example — and this page is where it goes rather than the homepage.
-# The homepage keeps showing the class that is running right now, which has
-# earned its place for check-in and visibility; a whole list is a reason to
-# come to /meet/, not a reason to lengthen the front page.
-#
-# So the three kinds he named map like this:
-#
-#   Classes             _data/classes.yml, already merged in
-#   Meetups             here, kind: Meetup
-#   Video events        here, kind: Video event
-#
-# Nothing new had to be built for that. What was missing was somebody adding
-# the entries, which is a standing job rather than a one-off.
-#
-# Empty is an honest state and the page says so plainly rather than showing a
-# grid of nothing. A short list is not a problem; a list that pretends to be
-# longer than it is would be.
+# see docs/inline/site/_data/community.yml.md#2
 events: []
-# - title: Members' work night
-#   kind: Meetup
-#   starts: "2026-09-04T18:00:00-06:00"
-#   ends: "2026-09-04T21:00:00-06:00"
-#   where: Studio A
-#   note: Bring whatever you're editing. No agenda.
-#
-# - title: Fort Collins Comic Con
-#   kind: Video event
-#   starts: "2026-10-17T10:00:00-06:00"
-#   where: Drake Centre
-#   url: https://example.org/
-#   note: We're shooting it. Come and help.
+# see docs/inline/site/_data/community.yml.md#3
 
-# ------------------------------------------------------------ where we talk
-#
-# An entry with no url is skipped entirely, so a platform under discussion can
-# sit here without appearing on the site.
-#
-# ON THE CHAT PLATFORM, WHICH IS UNSETTLED
-# ----------------------------------------
-# Slack is what exists today. Teams keeps coming up because the org is on
-# M365 and it is already paid for. Both are heavier than a place this size
-# needs, and the honest read is that neither is load-bearing: the newsletter
-# reaches more people more reliably than either, and costs nothing to keep.
-#
-# So this list is deliberately not ranked by how modern a thing is. Mark
-# whichever one people should actually try first with `primary: true` and the
-# page leads with it. Switching platforms is then a two-line edit here, not a
-# hunt through pages — and if the chat platform lapses entirely, deleting its
-# entry leaves a page that still works.
+# see docs/inline/site/_data/community.yml.md#4
 channels:
   - name: On-site
     detail: Studio check-in and reservations.

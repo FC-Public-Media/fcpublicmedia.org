@@ -1,10 +1,4 @@
-// Binding a device to a member site.
-//
-// The passkey ceremony runs against a CDP virtual authenticator, so these are
-// real WebAuthn calls producing a real credential — not a stub. That matters
-// because the part most likely to be wrong is getting the public key back out
-// in a form something else can verify, and a mock would happily return
-// whatever shape the test expected.
+// see docs/inline/site/tests/authorize.spec.js.md#1
 
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
@@ -51,11 +45,7 @@ async function withKey(page) {
   });
 }
 
-/**
- * Attach a virtual authenticator so credentials.create() resolves.
- *
- * Chromium only, which is what this suite runs.
- */
+// see docs/inline/site/tests/authorize.spec.js.md#2
 async function virtualAuthenticator(page) {
   const session = await page.context().newCDPSession(page);
   await session.send('WebAuthn.enable');
@@ -96,8 +86,7 @@ test.describe('arriving at /authorize/', () => {
   });
 
   test('the token is taken out of the address bar', async ({ page }) => {
-    // It is a capability — anyone who opens it can bind a device — so it must
-    // not survive in a URL someone might paste into a group chat.
+    // see docs/inline/site/tests/authorize.spec.js.md#3
     await withKey(page);
     const token = linkFor('member@example.com', 'fcpublicmedia/janes-show');
 
@@ -108,9 +97,7 @@ test.describe('arriving at /authorize/', () => {
   });
 
   test('a check-in claim is refused rather than half-honoured', async ({ page }) => {
-    // A claim with no repository proves an email but names no site. Running
-    // the ceremony anyway would leave someone holding a passkey that
-    // authorizes nothing.
+    // see docs/inline/site/tests/authorize.spec.js.md#4
     await withKey(page);
     const token = tokenFrom(mint(['--key', keyPath, '--email', 'member@example.com']));
 
@@ -134,9 +121,7 @@ test.describe('arriving at /authorize/', () => {
   });
 
   test('the repository cannot be re-aimed by editing the link', async ({ page }) => {
-    // The whole reason the repo travels inside the signature: the link is
-    // meant to be forwarded, and a forwarded link must not be editable into
-    // one that binds a device to somebody else's site.
+    // see docs/inline/site/tests/authorize.spec.js.md#5
     await withKey(page);
     const token = linkFor('member@example.com', 'fcpublicmedia/janes-show');
     const [version, body, signature] = token.split('.');
@@ -164,9 +149,7 @@ test.describe('arriving at /authorize/', () => {
 
 test.describe('making the passkey', () => {
   test('produces a device record with a usable public key', async ({ page }) => {
-    // The assertion that matters: the public key comes back as SPKI that
-    // WebCrypto will import. If this passes, whatever verifies a signature
-    // later can read the same bytes.
+    // see docs/inline/site/tests/authorize.spec.js.md#6
     await withKey(page);
     await virtualAuthenticator(page);
 
@@ -204,10 +187,7 @@ test.describe('making the passkey', () => {
   });
 
   test('the record carries no email address', async ({ page }) => {
-    // It goes into a repository that may be public, and a second person on
-    // the same site should not have their address published by being added
-    // to it. The claim already proved the address; the passkey carries it
-    // forward without restating it.
+    // see docs/inline/site/tests/authorize.spec.js.md#7
     await withKey(page);
     await virtualAuthenticator(page);
 
@@ -220,8 +200,7 @@ test.describe('making the passkey', () => {
   });
 
   test('an unnamed device still gets a label', async ({ page }) => {
-    // Blank names in a list everyone else can see are how you end up unable
-    // to tell which device to revoke.
+    // see docs/inline/site/tests/authorize.spec.js.md#8
     await withKey(page);
     await virtualAuthenticator(page);
 
@@ -234,8 +213,7 @@ test.describe('making the passkey', () => {
   });
 
   test('two devices on one site produce two distinct records', async ({ page }) => {
-    // The multi-device and two-people cases are the same code path, and both
-    // have to yield separate credentials rather than replacing each other.
+    // see docs/inline/site/tests/authorize.spec.js.md#9
     await withKey(page);
     await virtualAuthenticator(page);
 
@@ -244,10 +222,7 @@ test.describe('making the passkey', () => {
       ['member@example.com', 'phone'],
       ['second@example.com', 'laptop'],
     ]) {
-      // A full load between the two. Going straight from one claim URL to the
-      // next would change only the fragment, which the page now handles via
-      // hashchange — but that is a different code path and is not what is
-      // under test here.
+      // see docs/inline/site/tests/authorize.spec.js.md#10
       await page.goto('/authorize/');
       await page.goto(`/authorize/#claim=${linkFor(email, 'fcpublicmedia/janes-show')}`);
       await expect(page.locator('[data-state="ready"]')).toBeVisible();
@@ -261,11 +236,7 @@ test.describe('making the passkey', () => {
   });
 
   test('a browser without passkeys is told so, not left waiting', async ({ page }) => {
-    // The one ceremony failure that can be triggered honestly here. A
-    // user-dismissed system sheet cannot: headless Chromium with no
-    // authenticator hangs rather than rejecting, so a test for it would be
-    // testing the harness. The dead-end property that case shares is covered
-    // structurally below.
+    // see docs/inline/site/tests/authorize.spec.js.md#11
     await withKey(page);
     await page.addInitScript(() => {
       delete window.PublicKeyCredential;
@@ -280,9 +251,7 @@ test.describe('making the passkey', () => {
   });
 
   test('no failure state is a dead end', async ({ page }) => {
-    // Whichever way the ceremony fails, the person holding the phone needs
-    // something to do next. Asserted over the markup rather than by driving
-    // each failure, because some of them cannot be driven from here.
+    // see docs/inline/site/tests/authorize.spec.js.md#12
     await page.goto('/authorize/');
 
     for (const state of ['cancelled', 'error', 'unsupported', 'bad-link', 'no-link']) {
@@ -300,9 +269,7 @@ test.describe('making the passkey', () => {
 
 test.describe('a second link in the same tab', () => {
   test('re-reads it instead of showing the first one still', async ({ page }) => {
-    // Only the fragment changes, which is not a navigation. Without a
-    // hashchange listener the page sits there naming the wrong site, which is
-    // the worst possible way to be wrong on this particular page.
+    // see docs/inline/site/tests/authorize.spec.js.md#13
     await withKey(page);
 
     await page.goto(`/authorize/#claim=${linkFor('member@example.com', 'fcpublicmedia/janes-show')}`);
@@ -318,8 +285,7 @@ test.describe('a second link in the same tab', () => {
 
 test.describe('without a broker configured', () => {
   test('shows the record to hand over rather than pretending it was sent', async ({ page }) => {
-    // The shipped state. The passkey is real; only the delivery is manual,
-    // and for the first few member sites that is a genuine workflow.
+    // see docs/inline/site/tests/authorize.spec.js.md#14
     await withKey(page);
     await virtualAuthenticator(page);
 

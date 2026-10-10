@@ -1,16 +1,4 @@
-# instrument.yml — the studio's rolling TV. See ../README.md.
-#
-# AN INSTRUMENT WE DO NOT OWN. The TV is the building's. It is lent to the
-# studio, and it can be taken away without our being able to bring it back
-# (Autumn, 2026-09-25). Nothing here may assume it stays: a driver that finds
-# no matching screen shows nothing and says so, and does not take another
-# screen instead.
-#
-# PRESENCE IS DISCOVERED. A driver asks the display stack, every time, for a
-# monitor answering to `match:`. Never the display number: on editing bay 1,
-# Settings calls this "monitor 1" and Win32 calls it \\.\DISPLAY3.
-#
-# Unread by any tool yet.
+# see docs/inline/instruments/roller-tv/instrument.yml.md#1
 
 version: 1
 
@@ -21,26 +9,17 @@ for: >
   opening. Seen from the studio floor; from the control room it is often
   facing away.
 
-# What the display reports about itself, over EDID. Read on editing bay 1
-# 2026-09-25 with WmiMonitorID, which needed no administrator. Matched on
-# maker + product code (../README.md, "How a screen is matched"); `model` is
-# the readable name. The serial is a filler value, 16843009 (0x01010101), and
-# the port is not matched, so a cable moved to another port keeps the show.
+# see docs/inline/instruments/roller-tv/instrument.yml.md#2
 match:
   manufacturer: VIZ
   product: VIZ1006
   model: M551d-A2R
-  # EDID gives 2013 and 160x90 cm. The year is plausible. The size is not a
-  # 55" panel, which is why size is not used to match.
+  # see docs/inline/instruments/roller-tv/instrument.yml.md#3
 
-# As seen on editing bay 1, 2026-09-25: portrait, 720x1280 logical, most
-# likely 1080x1920 at 150% scaling. Where it sits on the desktop is the
-# host's business and is not recorded; a driver reads it off the match.
+# see docs/inline/instruments/roller-tv/instrument.yml.md#4
 orientation: portrait
 
-# Nobody touches it. It is out of reach behind the control room glass, and it
-# is not a touch screen. A pointer can reach it from the driving host, so a
-# show may still have controls, sized for a mouse.
+# see docs/inline/instruments/roller-tv/instrument.yml.md#5
 input: pointer
 
 # WHERE IT PLAYS IS A PLACEMENT. Whoever finds it plugged in may drive it.
@@ -49,10 +28,7 @@ placement:
   driven-by: editing-bay-1   # machines/editing-bay-1; it answers to EDIT2
   since: 2026-09-25
 
-# How it is played, on a Windows host: through Edge, in kiosk mode, with a
-# profile of its own that no person uses. Nothing else on the host is touched.
-# The bays are production machines that other people use every week; their
-# browsers, OBS and display settings are not ours.
+# see docs/inline/instruments/roller-tv/instrument.yml.md#6
 played-through: msedge
 
 show: show.yml

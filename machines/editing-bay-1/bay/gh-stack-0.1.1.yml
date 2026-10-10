@@ -1,5 +1,4 @@
-# A payload the bay has taken in. One file per arrival; the file is the record.
-# See ../../BAY.md. Run by hand, each step in the run log.
+# see docs/inline/machines/editing-bay-1/bay/gh-stack-0.1.1.yml.md#1
 
 payload: gh-stack
 version: 0.1.1
@@ -17,8 +16,7 @@ verified:
   sha256: 578a6e983dd3bf371baa52fbdb7e52cebe16c0107506408316a15a9e75d4da51
   # matches the digest GitHub's release API reports for the asset
   authenticode: NotSigned
-  # The first payload to come in on a build attestation instead (../../BAY.md,
-  # accepted by Autumn 2026-09-26). `gh attestation verify --repo github/gh-stack`:
+  # see docs/inline/machines/editing-bay-1/bay/gh-stack-0.1.1.yml.md#2
   attestation:
     signer: https://github.com/github/gh-stack/.github/workflows/release.yml@refs/tags/v0.1.1
     source: github/gh-stack @ refs/tags/v0.1.1, commit 2bd699a544a09cb5c45a013d03416e0894b0454e

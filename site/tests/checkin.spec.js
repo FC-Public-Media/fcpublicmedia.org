@@ -1,9 +1,4 @@
-// The check-in page is the one part of this site with real client-side state
-// and real conditional behaviour, so it gets real tests.
-//
-// Geolocation is mocked through Playwright's context permissions and
-// setGeolocation, which is the only way to exercise "you are not here yet"
-// without standing in a car park.
+// see docs/inline/site/tests/checkin.spec.js.md#1
 
 const { test, expect } = require('@playwright/test');
 
@@ -11,8 +6,7 @@ const PATH = '/check-in/';
 
 // Carnegie Center for Creativity, from site/_data/checkin.yml.
 const STUDIO = { latitude: 40.5849119, longitude: -105.0735292 };
-// Old Town Square, roughly 700m away — outside the 200m radius, close enough
-// to be a realistic "on my way" position.
+// see docs/inline/site/tests/checkin.spec.js.md#2
 const NEARBY = { latitude: 40.5892, longitude: -105.0768 };
 // Denver.
 const FAR = { latitude: 39.7392, longitude: -104.9903 };
@@ -165,8 +159,7 @@ test.describe('check-in', () => {
 
   test('the phone is named without anyone typing', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
-    // Whatever kind of device the test runs as, it gets a word for it, and
-    // that word is kept as the phone's name.
+    // see docs/inline/site/tests/checkin.spec.js.md#3
     await expect(page.locator('#device-label')).not.toHaveValue('');
     const named = await page.locator('#device-label').inputValue();
     await page.reload();
@@ -337,8 +330,7 @@ test.describe('check-in', () => {
   test('nothing is sent anywhere when checking in', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
 
-    // The promise of this page is that the visit stays on the device. If a
-    // future change starts posting somewhere, this fails.
+    // see docs/inline/site/tests/checkin.spec.js.md#4
     const outbound = [];
     page.on('request', (request) => {
       const url = request.url();
@@ -358,16 +350,12 @@ test.describe('check-in entry points', () => {
   test('the homepage offers one tap to check in', async ({ page }) => {
     await page.goto('/');
 
-    // The QR *is* the check-in affordance on the homepage now — the code for
-    // whoever is being shown the phone, the link for whoever is holding it.
-    // There is no separate card with a button beside it, because that was the
-    // same errand offered twice.
+    // see docs/inline/site/tests/checkin.spec.js.md#5
     const link = page.locator('a.hero-qr');
     await expect(link).toBeVisible();
     await expect(link).toHaveAttribute('href', /\/check-in\/$/);
 
-    // In the hero, so it is above the fold rather than scrolled to. That is
-    // the point of it being there and worth failing over.
+    // see docs/inline/site/tests/checkin.spec.js.md#6
     const box = await link.boundingBox();
     expect(box, 'the QR has no box').not.toBeNull();
     expect(box.y, 'the QR is below the fold').toBeLessThan(page.viewportSize().height);
@@ -393,10 +381,7 @@ test.describe('check-in entry points', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// The check-in page runs the same class logic the homepage does, from the same
-// data. The QR on the door is a permanent link here; everything about a class
-// is worked out on arrival rather than encoded in what someone scanned.
+// see docs/inline/site/tests/checkin.spec.js.md#7
 
 const CLASS_START = Date.parse('2026-08-12T00:00:00Z');
 const classAt = (minutes) => new Date(CLASS_START + minutes * 60000);
@@ -442,10 +427,7 @@ test.describe('check-in during a class', () => {
     await page.goto(`${PATH}?reason=${encodeURIComponent('Equipment pickup or return')}`);
     await expect(page.locator('#class-banner-root')).toBeHidden();
 
-    // The class window opens while they are still on the page. fastForward
-    // rather than setFixedTime: the latter moves the clock but never fires
-    // the interval, so nothing would re-render and the test would be
-    // asserting against a page that never updated.
+    // see docs/inline/site/tests/checkin.spec.js.md#8
     await page.clock.fastForward('02:20:00');
 
     await expect(page.locator('#class-banner-root')).toBeVisible();

@@ -1,7 +1,4 @@
-# post.py — what happens to a take after it is released: a folder per take on
-# the post partition, its route written once, its progress nothing but files.
-#   post.py [view|status|run|admit CONFIG|retry TAKE N|sample|sample clear]
-# Doc: troves/post/README.md. Config: machines/<profile>/post.yml.
+# see docs/inline/troves/post/post.py.md#1
 
 import functools, hashlib, json, os, re, shutil, socket, subprocess, sys, threading, time
 from datetime import datetime
@@ -32,9 +29,7 @@ def config():
     cfg = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
     cfg["root"] = Path(os.path.expandvars(os.path.expanduser(cfg["root"])))
     cfg["doors"] = Path(os.path.expandvars(os.path.expanduser(cfg.get("doors") or cfg["root"].parent / "DOORS")))
-    # The steps are the crews', on whichever machine wears them (crews/<crew>/
-    # post.yml): a machine that wears two does both's. The first crew is whose a
-    # release is when it doesn't say. A machine's own (or a test root's) go over them.
+    # see docs/inline/troves/post/post.py.md#2
     crews = cfg.get("crews") or ([cfg["crew"]] if cfg.get("crew") else [])
     cfg["crews"], cfg["crew"] = list(crews), (crews[0] if crews else None)
     steps = {}
@@ -106,8 +101,7 @@ def read_claim(f):
 
 
 def cells(cfg, take, route=None, t=None):
-    """Each step of the take, as the disk says it is. The first step without an
-    output folder is the take's next; nothing is stored to say so."""
+    """see docs/inline/troves/post/post.py.md#3"""
     route = route or route_of(take)
     t = t or time.time()
     out, blocked = [], False
@@ -156,8 +150,7 @@ def state(cfg):
 # --- admission: a released episode becomes a take -----------------------------
 
 def steps_of(pipeline):
-    """A pipeline's steps as the route keeps them: [{step, ...params}]. The
-    pools page writes them as `- transcribe: {engine: whisper}` or `- enhance`."""
+    """see docs/inline/troves/post/post.py.md#4"""
     out = []
     for item in pipeline or []:
         if isinstance(item, str):
@@ -174,9 +167,7 @@ def steps_of(pipeline):
 
 
 def admit(cfg, doc):
-    """Make the take: its folder, route.json, and 0-source with the recordings,
-    hashed. Built hidden and renamed when whole. The id is the out name and the
-    route's own hash, so the same release admitted twice finds the same take."""
+    """see docs/inline/troves/post/post.py.md#5"""
     steps = steps_of((doc.get("pipeline") or {}).get("steps"))
     clips = [c for c in doc.get("clips") or [] if c.get("path")]
     if not clips:
@@ -189,8 +180,7 @@ def admit(cfg, doc):
         source.append({"name": p.name, "from": str(p), "bytes": p.stat().st_size, "sha256": sha256(p),
                        **{k: c[k] for k in ("start", "end") if c.get(k) is not None}})
     out = re.sub(r"[^A-Za-z0-9._-]+", "-", str(doc.get("out") or "take")).strip("-.") or "take"
-    # Whose take it is: the crew (and its recipe) the release was made for. The
-    # same recordings released for two crews are two takes, side by side.
+    # see docs/inline/troves/post/post.py.md#6
     who = doc.get("for") or {"crew": cfg.get("crew")}
     who = {"crew": who} if isinstance(who, str) else {k: str(v) for k, v in who.items() if v}
     route = {"out": out, "show": doc.get("show"), "for": who, "steps": steps, "source": source,
@@ -293,9 +283,7 @@ def retry(cfg, tid, n):
 # --- running a step: a command, or a door -------------------------------------
 
 def run_command(cfg, take, n, s, spec, route):
-    """A command step: {in} is the step before's folder, {out} the hidden
-    partial it writes into, {take} the take's folder, {step.KEY} the route's
-    settings for it. Its output goes to a hidden log beside the claim."""
+    """see docs/inline/troves/post/post.py.md#7"""
     lease = seconds(spec.get("lease", "30m"))
     partial = take / f".{step_name(n, s)}.partial"
     shutil.rmtree(partial, ignore_errors=True)
@@ -335,8 +323,7 @@ def door_dirs(cfg, s):
 
 
 def open_door(cfg, take, n, s, route):
-    """A door step: the step's input goes out, named so what comes back can't
-    be mistaken, and the claim waits (a person, or a tool that watches folders)."""
+    """see docs/inline/troves/post/post.py.md#8"""
     out, back = door_dirs(cfg, s)
     out.mkdir(parents=True, exist_ok=True)
     back.mkdir(parents=True, exist_ok=True)
@@ -350,8 +337,7 @@ def open_door(cfg, take, n, s, route):
 
 
 def collect(cfg):
-    """What has come back through a door: when every piece a take sent out is
-    back, it is the step's output, and the door's copies go."""
+    """see docs/inline/troves/post/post.py.md#9"""
     done = []
     for take in takes(cfg):
         route = route_of(take)
@@ -385,8 +371,7 @@ def collect(cfg):
 
 
 def run(cfg, only=None, say=print):
-    """Every ready step this machine can do, until none is left; then exit.
-    Doors are opened and not waited on. Nothing runs unless someone asks."""
+    """see docs/inline/troves/post/post.py.md#10"""
     for line in collect(cfg):
         say(f"back through the door: {line}")
     tried = set()

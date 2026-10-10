@@ -1,5 +1,4 @@
-# A payload the bay has taken in. One file per arrival; the file is the record.
-# See ../../BAY.md. Run by hand by a code session, 2026-10-07, step by step.
+# see docs/inline/machines/editing-bay-1/bay/faster-whisper-1.1.1.yml.md#1
 
 payload: faster-whisper
 version: 1.1.1
@@ -28,8 +27,7 @@ model:
   repo: Systran/faster-whisper-large-v3
   revision: edaa852ec7e145841d8ffdb056a99866b5f0a478
   model.bin sha256: 69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1
-  # matches the file's name in the Hugging Face store, which is its content
-  # hash (LFS). Only as good as the TLS that fetched it.
+  # see docs/inline/machines/editing-bay-1/bay/faster-whisper-1.1.1.yml.md#2
   size: 2.9 GB
 
 install-to: "%LOCALAPPDATA%\\editing-bay-1\\whisper"   # venv\ and models\

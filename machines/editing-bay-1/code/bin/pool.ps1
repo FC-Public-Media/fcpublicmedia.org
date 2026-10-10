@@ -8,35 +8,12 @@
 #   bin\pool.ps1 off|on             end every Remote Control server here and keep
 #                                    it off, or start again. off is authoritative
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
-#
-# The root is ~/code. The pool keeps one thing up there, `claude remote-control
-# --no-create-session-in-dir`: a server, not a session. It opens none and
-# names none, and every session starts from zero at claude.ai or the phone
-# (Autumn, 2026-10-06). `production` names the worktree, not a session.
-#
-# Earlier pools revived every session after a logon, then kept one seat
-# session open. Both are gone: nothing is resumed and no session is started
-# here. Sessions that are running are listed, and ended only with a stale
-# server (below).
-#
-# Every pass, not once per logon: a server that dies mid-day is back within a
-# minute. If one is already serving ~/code, a terminal one included, the pass
-# leaves it alone (a second would refuse anyway).
-#
-# Claude updates are when the server goes bad (2026-10-09). An update swaps
-# claude.exe under it, and can revoke its sign-in: it keeps running,
-# unregistered, and no session reaches it. So a server this pool started is
-# bounced when signed out, at once, and when older than the installed
-# claude.exe, once calm for 15 minutes, as kiosk-1's door does. Ending it ends
-# its sessions; nothing is revived after.
-#
-# ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
+# see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#1
 
 param([Parameter(Position = 0)][string]$Verb = "status",
       [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$Rest)
 
-# Not "Stop": under 5.1 that turns any line claude.exe writes to stderr into a
-# terminating error, and a call that went fine reads as a failure.
+# see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#2
 $ErrorActionPreference = "Continue"
 $Root = Split-Path -Parent $PSScriptRoot
 $State = Join-Path $env:LOCALAPPDATA "editing-bay-1"
@@ -45,8 +22,7 @@ $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "editing-bay-1 pool"
 $CalmMin = 15
-# `fcpm dev on` (Autumn, 2026-10-09): follow GitHub, so a merge reaches this
-# bay by itself. Shared with machines/fcpm, which flips it.
+# see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#3
 $Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
 $PullMin = 5
 
@@ -58,8 +34,7 @@ function Say([string]$m) {
 }
 
 function Servers {
-    # claude.exe processes running the `remote-control` subcommand. Not the
-    # --remote-control flag, which a single session carries.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#4
     @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" -ErrorAction SilentlyContinue |
       Where-Object { $_.CommandLine -match '(^|\s)remote-control(\s|$)' })
 }
@@ -75,14 +50,12 @@ function Running {
 }
 
 function Ours($srv) {
-    # A server this pool started: only its own write to our server.log. One
-    # started by hand in a terminal is left alone, stale or not.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#5
     $srv.CommandLine -match [regex]::Escape((Join-Path $State "server.log"))
 }
 
 function Below($procId, $all) {
-    # Every process under $procId. Windows reuses pids, so a child must have
-    # started after its parent to count as one.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#6
     $out = @(); $todo = @($all | Where-Object { $_.ProcessId -eq $procId })
     for ($i = 0; $i -lt $todo.Count; $i++) {
         $p = $todo[$i]
@@ -94,9 +67,7 @@ function Below($procId, $all) {
 }
 
 function SignedOut($srv) {
-    # The server's sign-in was taken from it (a Claude update or a sign-in
-    # elsewhere revokes the token, 2026-10-09): it says so in server.log and
-    # stays running, unregistered, and no session can reach it.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#7
     $since = $srv.CreationDate.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
     $hit = Get-Content (Join-Path $State "server.log") -Tail 2000 -ErrorAction SilentlyContinue |
         Where-Object { $_ -match '^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\S* \[(ERROR|WARN)\] .*(Re-registration of \S+ rejected|Authentication failed \(401\))' -and
@@ -106,10 +77,7 @@ function SignedOut($srv) {
 }
 
 function Holds($srv, $all) {
-    # What keeps a stale server from a bounce now: short reasons, none once it
-    # has been calm for $CalmMin minutes (kiosk-1's door, 2026-10-09: sessions
-    # don't close, so waiting for them would never end). Calm is no task
-    # running under it and no transcript of its sessions written lately.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#8
     $below = @(Below $srv.ProcessId $all)
     $why = @($below | Where-Object { @("claude.exe", "conhost.exe") -notcontains $_.Name.ToLower() } |
         ForEach-Object { "running {0} ({1})" -f $_.Name, $_.ProcessId })
@@ -117,8 +85,7 @@ function Holds($srv, $all) {
     $rows = @(Running)
     $why += @($rows | Where-Object { $mine -contains $_.pid -and $_.status -eq "busy" } |
         ForEach-Object { "busy: {0}" -f $_.name })
-    # Sessions outside the server (a background job, a terminal) are not its
-    # to wait on: their transcripts don't count.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#9
     $elsewhere = @($rows | Where-Object { $mine -notcontains $_.pid } | ForEach-Object { $_.sessionId })
     $cut = (Get-Date).AddMinutes(-$CalmMin)
     $projects = Join-Path $HOME ".claude\projects"
@@ -132,10 +99,7 @@ function Holds($srv, $all) {
 }
 
 function Stale($srv) {
-    # Why the server should be replaced, or $null. Signed out: at once, it
-    # serves nothing. Older than the installed claude.exe: Claude updated
-    # under it, the daemon follows and the server doesn't (it sat on 2.1.292
-    # through three updates, 10-07 to 10-09).
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#10
     if (SignedOut $srv) { return "signed out" }
     $exe = Get-Item $Claude -ErrorAction SilentlyContinue
     if ($exe -and $srv.CreationDate -lt $exe.LastWriteTime) { return "predates the installed claude" }
@@ -143,16 +107,13 @@ function Stale($srv) {
 }
 
 function SayOnce([string]$m) {
-    # Log a line only when it differs from the last one said this way, so a
-    # held bounce is logged when what holds it changes, not every minute.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#11
     $f = Join-Path $State "server.said"
     if ("$(Get-Content $f -ErrorAction SilentlyContinue)" -ne $m) { Set-Content -Path $f -Value $m; if ($m) { Say $m } }
 }
 
 function Bounce {
-    # Replace a server of ours that went stale. Ending it ends its sessions.
-    # The next start may be refused for a few minutes ("already served"),
-    # and later passes try again.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#12
     $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
     foreach ($srv in @(Servers | Where-Object { Ours $_ })) {
         $why = Stale $srv
@@ -174,19 +135,11 @@ function EnsureServer {
     if (Test-Path $Off) { return }
     Bounce
     if (@(Servers).Count) { return }
-    # Why the last one stopped, if it said. A server that ended without
-    # signing off (a sign-out, a kill) still holds ~/code for a few minutes,
-    # and each start until then is refused: "already served by a terminal
-    # `claude remote-control`". That is the churn after a sign-in. This pass
-    # tries again, as every pass does.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#13
     $err = Join-Path $State "server.err"
     $why = Get-Content $err -ErrorAction SilentlyContinue | Where-Object { $_ -match '^Error:' } | Select-Object -Last 1
     if ($why) { Say ("the last server stopped: {0}" -f $why) }
-    # No console: input from an empty file, output to server.out and
-    # server.err. It outlives this pass, as the roller's Edge does. Under
-    # conhost --headless a refused server left in about a second with nothing
-    # said anywhere, and at the 2026-10-06 sign-in a cmd.exe under one failed
-    # to start (0xc0000142, a popup on the desktop).
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#14
     $a = "remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
     $none = Join-Path $State "server.in"
     if (-not (Test-Path $none)) { New-Item -ItemType File $none | Out-Null }
@@ -198,11 +151,7 @@ function EnsureServer {
 }
 
 function Screens {
-    # The production crew's desktop lines (the rolling TV), a pass a minute:
-    # its supervisor starts with the computer and has no desktop to put them
-    # on (crews/crew.ps1), so this task, in the signed-in session, is
-    # its desktop half. Until the crew's supervisor is in the mirror, the
-    # screen trove directly, as before.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#15
     $crew = Join-Path $Root "refs\fcpublicmedia.org\crews\crew.py"
     $uv = @((Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),
             (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe")) |
@@ -212,14 +161,11 @@ function Screens {
         if ($LASTEXITCODE -ne 0) { Say "crew: desktop pass failed ($LASTEXITCODE)" }
         return
     }
-    # The screens this bay drives, kept each pass by their trove, from the
-    # mirror (the admitted code). A child process: the trove's strict mode and
-    # types stay out of the pool. It logs to its own screen.log.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#16
     $s = Join-Path $Root "refs\fcpublicmedia.org\troves\kiosk-screen\screen.ps1"
     if (-not (Test-Path $s)) { return }
     $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-    # FCPM_BY, not -By: the mirror's copy may predate the flag, and must still
-    # keep the screen (screen.ps1's param block).
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#17
     $env:FCPM_BY = 'pool'
     try { & $ps -NoProfile -ExecutionPolicy Bypass -File $s keep roller-tv 2>&1 | Out-Null }
     finally { Remove-Item Env:FCPM_BY -ErrorAction SilentlyContinue }
@@ -227,11 +173,7 @@ function Screens {
 }
 
 function Follow {
-    # With dev on, pull fcpublicmedia.org, the mirror this machine runs (not the
-    # reading ones, Autumn 2026-10-10), every $PullMin minutes (bin/refs pull:
-    # fast-forward only, a dirty mirror or one off main is skipped), so
-    # Current places what was merged without anyone pulling. Off, the weekly
-    # task and people pull, as before.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#18
     if (-not (Test-Path $Dev)) { return }
     $stamp = Join-Path $State "pulled"
     $last = Get-Item $stamp -ErrorAction SilentlyContinue
@@ -244,13 +186,7 @@ function Follow {
 }
 
 function Current {
-    # Keep this machine on what the mirror holds, a pass a minute. The mirror
-    # only ever holds main (bin/refs fast-forwards it), so whatever pulled it,
-    # a session, the weekly task or the watcher, what was merged is placed by
-    # the next pass: the carried files (this script among them, which the
-    # pass after runs), the compiled settings, PATH (machines/sync install).
-    # And the crew's supervisor, when its code moved under it, is restarted on
-    # the new code. Nobody runs an install to catch up (Autumn, 2026-10-09).
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#19
     $mirror = Join-Path $Root "refs\fcpublicmedia.org"
     $head = (& git -C $mirror rev-parse HEAD 2>$null | Out-String).Trim()
     if (-not $head) { return }
@@ -262,9 +198,7 @@ function Current {
     if ($LASTEXITCODE -ne 0) { SayOnce ("current: placing {0} failed: {1}" -f $head.Substring(0, 7), ($out -join "; ")); return }
     Say ("current: {0} placed{1}" -f $head.Substring(0, 7), $(if ($out.Count) { ": " + ($out -join "; ") } else { "" }))
     Set-Content -Path $f -Value $head
-    # The supervisor runs crews/ from the mirror in place, and reads its
-    # order again on its own; its code it does not. Ended, its task starts it
-    # again on what is there now.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#20
     if (-not $was) { return }
     & git -C $mirror diff --quiet $was $head -- crews troves 2>$null
     if ($LASTEXITCODE -ne 1) { return }
@@ -277,9 +211,7 @@ function Current {
 }
 
 function StopAll {
-    # `off` is authoritative (Autumn, 2026-10-09): every Remote Control server
-    # on this box ends, the pool's or one started by hand, with its sessions.
-    # Then it looks again, and says by pid whatever is still up.
+    # see docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md#21
     $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
     foreach ($srv in @(Servers)) {
         $tree = @(Below $srv.ProcessId $all)

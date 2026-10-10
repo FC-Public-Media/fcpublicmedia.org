@@ -1,15 +1,6 @@
 name: Sync Cablecast catalog and airings
 
-# Two jobs in one, both on the same weekly tick:
-#
-#   1. Refresh site/_data/cablecast.json from the station's Cablecast catalog, so
-#      new programs appear in the archive without anyone doing anything.
-#   2. Rebuild the site even when nothing changed, so date-windowed entries in
-#      site/_data/featured.yml actually expire. A feature that ended on Tuesday
-#      should not still be on the homepage on Friday just because nobody
-#      pushed a commit.
-#
-# Monday morning, and on demand from the Actions tab.
+# see docs/inline/.github/workflows/sync-cablecast.yml.md#1
 
 on:
   schedule:
@@ -28,9 +19,7 @@ jobs:
       - name: Fetch the catalog
         run: python3 site/bin/sync-cablecast.py
 
-      # The airing history, from the same source on the same tick. It is a
-      # join on the show ids the step above just fetched, so running them apart
-      # would let the archive show counts for programs it no longer lists.
+      # see docs/inline/.github/workflows/sync-cablecast.yml.md#2
       - name: Fetch the airing history
         run: python3 site/bin/sync-schedule.py
 
@@ -55,8 +44,7 @@ jobs:
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      # A push from the step above triggers deploy.yml on its own. This only
-      # fires when nothing changed, so expiring features still get published.
+      # see docs/inline/.github/workflows/sync-cablecast.yml.md#3
       - name: Rebuild anyway so expired features drop off
         if: steps.commit.outputs.changed == 'false'
         run: gh workflow run deploy.yml --ref main

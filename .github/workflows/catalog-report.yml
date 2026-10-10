@@ -1,30 +1,10 @@
 name: Catalog report
 
-# Once a month, line the Cablecast catalog up against itself and say what looks
-# wrong. Nothing it finds can be fixed here — the records live in Cablecast,
-# and the next sync picks up whatever gets changed there.
-#
-# WHY MONTHLY WHEN WE RELEASE WEEKLY
-# ----------------------------------
-# Because it should almost always say nothing. These are data-entry mistakes in
-# a fifteen-year-old catalog: a typo, a miscredit, one record entered twice.
-# They arrive at the rate somebody makes them, which is not weekly, and a
-# report that turns up every seven days carrying the same list is a report
-# nobody opens by March.
-#
-# QUIET MEANS QUIET
-# -----------------
-# One issue, reused. Findings update it; no findings closes it. A month with
-# nothing wrong produces no notification at all — not an issue saying "all
-# clear", which is the same noise in a friendlier voice.
-#
-# The first run will not be quiet, and that is the point of building it: there
-# is a backlog nobody could see until the archive was grouped by show.
+# see docs/inline/.github/workflows/catalog-report.yml.md#1
 
 on:
   schedule:
-    # The 12th, a few days after the show proposals, so a month's worth of
-    # catalog housekeeping arrives together rather than scattered.
+    # see docs/inline/.github/workflows/catalog-report.yml.md#2
     - cron: "0 16 12 * *"
   workflow_dispatch:
 
@@ -47,8 +27,7 @@ jobs:
           python3 site/bin/catalog-report.py --out /tmp/report.md > /dev/null
           echo "count=$(python3 site/bin/catalog-report.py --count-only)" >> "$GITHUB_ENV"
 
-      # Visible whether or not an issue gets opened, so a run that found
-      # nothing still leaves a record of having looked.
+      # see docs/inline/.github/workflows/catalog-report.yml.md#3
       - name: Put it in the run summary
         run: cat /tmp/report.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -64,8 +43,7 @@ jobs:
 
           if [ "$count" -eq 0 ]; then
             if [ -n "$existing" ]; then
-              # Everything that was reported has been dealt with. Say so where
-              # the work was tracked, then get out of the way.
+              # see docs/inline/.github/workflows/catalog-report.yml.md#4
               gh issue comment "$existing" --body \
                 "Everything previously listed here is now clean. Closing — it'll reopen if anything else turns up."
               gh issue close "$existing"
@@ -77,8 +55,7 @@ jobs:
           fi
 
           if [ -n "$existing" ]; then
-            # Edited rather than commented on. A monthly comment thread on a
-            # list that has not changed is how an issue becomes unreadable.
+            # see docs/inline/.github/workflows/catalog-report.yml.md#5
             gh issue edit "$existing" --body-file /tmp/report.md
             echo "Updated #$existing with $count finding(s)."
           else
