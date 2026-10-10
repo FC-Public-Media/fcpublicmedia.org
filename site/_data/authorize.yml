@@ -1,91 +1,13 @@
-# Binding a device to a member site.
-#
-# THE FLOW
-# --------
-# A member gets a link by email, opens it on the phone they want to use, and
-# makes a passkey. The public half of that passkey is what authorizes the
-# device to change their site's settings later.
-#
-# The link is a signed claim naming the repository — see site/bin/mint-claim.py
-# --repo. The repository travels inside the signature, so a forwarded link
-# cannot be edited to point at somebody else's site.
-#
-# FORWARDING IS ALLOWED, ON PURPOSE — BUT ONLY FOR BINDING
-# --------------------------------------------------------
-# Someone can forward the email to a co-producer and they can bind their own
-# phone. That is wanted: a site with two people running it should not need two
-# separate invitations from us.
-#
-# It also means the link is a capability rather than a proof of identity. You
-# cannot have both.
-#
-# THAT IS ONLY ACCEPTABLE BECAUSE BINDING A DEVICE DOES NOTHING BY ITSELF.
-# A claim gets a device LISTED. Whether a listed device may publish is a
-# separate property of the record in .auth/devices.json, and it must stay
-# separate — the day forwarding a link confers the power to publish is the day
-# this design has an attack built into it. See DESIGN-NOTES.md, "Removing the
-# weekly approval".
-#
-# So the controls are not prevention, they are:
-#
-#   * short expiry — mint these with a small --days
-#   * every bound device is visible to every other one, with its label
-#   * any bound device can remove another
-#   * the intended rule when the broker exists: the FIRST device to bind is
-#     trusted, and every device after that is co-signed by an existing one
-#
-# All but the first need the broker below. Until it exists, binding is a
-# manual step and this page tells the visitor to send us the record.
+# /authorize/ and /devices/: binding a passkey to a member site from a signed claim link.
+# A claim only gets a device listed; publishing is separate. See docs/identity.md#authorize.
 
-# ------------------------------------------------------------------- relying
-#
-# The domain the passkey belongs to. Passkeys are bound to a domain, and
-# github.io is on the Public Suffix List — so a member site published at
-# fcpublicmedia.github.io/their-name/ can NEVER host this page. It has to be
-# on ours.
-#
-# Leave this empty and the browser uses whatever domain the page is served
-# from, which is right for previews and local builds. Set it to the
-# registrable domain — "fcpublicmedia.org", not "www.fcpublicmedia.org" — so
-# one passkey works across www and any subdomain.
-#
-# Setting it to a domain this page is NOT served from throws a SecurityError.
+# Registrable domain; empty uses the serving domain (previews). Must equal the broker's RP_ID.
 rp_id: ""
 
-# ------------------------------------------------------------------- broker
-#
-# A small service that verifies the claim, then writes the device record into
-# the member's repository using a GitHub App installation token. It exists so
-# the browser never holds a credential that can write to a repository — a repo
-# write can add a workflow, and a workflow runs with the repository's secrets.
-#
-# BUILT. See worker/ — /bind is exactly this. The App is real there, the
-# installation token is minted per write and narrowed to one repository, and
-# the Workflows permission is deliberately never requested, so the second half
-# of the sentence above is enforced by GitHub and not only by our code.
-#
-# What /bind does with a forwarded link is what the note below describes: the
-# device is listed and may not publish. The exception is the first device on a
-# site, which is trusted because there is nobody to approve it and nobody to
-# protect it from. Everything after that is approved by an existing device,
-# from its own phone, with staff nowhere in it.
-#
-# Empty is the shipped state. The page then completes the passkey and shows
-# the record for someone to hand over, which is a real workflow for the first
-# few members and needs nothing running.
+# Broker base URL. Empty (shipped): the page shows the device record for the member to send in.
 url: ""
 
-# Where the broker writes. Kept in the member's own repository rather than in
-# a database, so the grants travel with the repo when it is handed over, and
-# die with it when it is deleted. Nothing orphaned anywhere.
 devices_path: .auth/devices.json
 
-# How the broker commits: "commit" writes straight to the default branch;
-# "pull_request" opens one instead.
-#
-# The tradeoff is who is kept waiting. A pull request gives staff a review
-# step and a tidy audit trail, but the member standing there with a new phone
-# is not authorized until somebody merges it — which turns "bind this device"
-# into "wait for us". Direct commit is the default because the signed link was
-# already the approval.
+# Rendered into the page config but read by nothing; the broker writes device lists directly.
 write_mode: commit

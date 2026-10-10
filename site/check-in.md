@@ -9,12 +9,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
 {%- assign loc = ci.location -%}
 {%- assign cl = site.data.classes -%}
 
-{%- comment -%}
-  The same schedule the homepage gets. Both pages run the same function over
-  it (assets/js/classes.js), so they cannot disagree about whether a class is
-  on — and the QR on the door stays a permanent link to this page, carrying no
-  class information that could go stale in someone's pocket.
-{%- endcomment -%}
+{%- comment -%} The homepage's schedule, read by the same assets/js/classes.js. {%- endcomment -%}
 {% include class-config.html %}
 
 {%- assign id = site.data.identity -%}
@@ -22,10 +17,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
 <script type="application/json" id="checkin-config">
 {
   "identityMode": {{ ci.identity.mode | jsonify }},
-  {%- comment -%}
-    Public halves only. These are safe to serve to everyone — that is the
-    point of them. See _data/identity.yml.
-  {%- endcomment -%}
+  {%- comment -%} Public halves only, from _data/identity.yml. {%- endcomment -%}
   "identity": {
     "issuer": {{ id.issuer | jsonify }},
     "keys": [
@@ -58,31 +50,11 @@ lede: One tap when you get here. Your visits stay on your own phone.
 </noscript>
 
 
-{%- comment -%}
-  THE PASS. Autumn, 2026-09-26: this is the page a member sees most, on their
-  own phone. It is their pass, it has their name on it, and it does not scroll.
-  So it is three views of one screen each, switched by the address's #:
-
-    (none)    the pass: who you are, and checking in
-    #visits   your visits, as a list
-    #device   this phone: its identifier, and keeping or forgetting the list
-
-  No explanatory text. The reason for a visit is not asked for: it comes from
-  the code that was scanned (/check-in/?reason=Class) or from a class being
-  on, and the pass shows it.
-{%- endcomment -%}
+{%- comment -%} Three one-screen views by #: (none) the pass, #visits, #device. See docs/identity.md#check-in. {%- endcomment -%}
 
 {% comment %} ------------------------------------------------------ the pass {% endcomment %}
 
-{%- comment -%}
-  THE CARD, AND THE FOLD. Autumn, 2026-09-26: it should read like their
-  business card, a member's, with their name as its header beside the mark.
-  And everything they might type into stays above the halfway fold, so a
-  keyboard coming up covers nothing they need: the card, then Check in as a
-  band at the card's own -8deg, cut off at both sides, with only the black
-  between them. What sits lower (the states, a class, the way to Visits and
-  This phone) is what nobody reaches for with a keyboard up.
-{%- endcomment -%}
+{%- comment -%} Everything typed into stays above the halfway fold, clear of the keyboard. {%- endcomment -%}
 
 <section class="pass-view pass" data-view="pass" aria-label="Your pass">
 

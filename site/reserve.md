@@ -42,29 +42,7 @@ and Conditions.
 
 {% include booqable.html %}
 
-{%- comment -%}
-  THE FLOOR PLAN LIVES AT THE BOTTOM, ON PURPOSE.
-
-  It opened this page until September 2026. The board president's review moved
-  it: he likes having it here, but "I don't think it needs to be at the top. I
-  think a video/slideshow of the space will be a better selling point. The
-  floor plan might be better at the bottom as extra information."
-
-  He is right about what it is. A plan answers "which room is which" — a
-  question you have after you are interested, not before. The slot it vacated
-  is where photography of the spaces goes when it exists; until then the page
-  opens on the offer rather than on a diagram.
-
-  The wrapper that used to hold this went with it. `.reserve-intro` was a
-  two-column grid whose only job was standing the plan beside the
-  introduction; with the plan down here it would have reserved a 17rem column
-  for nothing and squeezed the text into what was left.
-
-  The plan is named for the building, not for us — CONTROL ROOM, STUDIO,
-  OFFICE. `plan_label` in _data/facilities.yml carries that mapping and the
-  caption spends one line on it, because somebody reading the page and the
-  plan together will otherwise wonder which room is which.
-{%- endcomment -%}
+{%- comment -%} Floor plan at the bottom, per the board president's review; `plan_label` maps its room names. {%- endcomment -%}
 <figure class="floor-plan">
   <img src="{{ '/assets/img/floor-plan.png' | relative_url }}"
        alt="Floor plan. The video studio is the large room at the centre, with
@@ -72,12 +50,7 @@ and Conditions.
             off the corner."
        width="381" height="381" loading="lazy" decoding="async">
   <figcaption>
-    {%- comment -%}
-      Filtered before the loop, not tested inside it. Testing inside meant
-      forloop.last was the last facility rather than the last labelled one, so
-      the trailing comma landed on a room that had one and the sentence ended
-      ", .".
-    {%- endcomment -%}
+    {%- comment -%} Filtered before the loop so forloop.last is the last labelled room. {%- endcomment -%}
     {%- assign labelled = site.data.facilities | where_exp: "s", "s.plan_label" -%}
     The plan uses the building's labels:
     {% for space in labelled %}<b>{{ space.plan_label | downcase }}</b> is the {{ space.name | downcase }}{% unless forloop.last %}, {% endunless %}{% endfor %}.

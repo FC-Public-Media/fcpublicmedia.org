@@ -1,9 +1,4 @@
-// The verification, checked against real signatures.
-//
-// Half of these are about the signature encoding and half are about the things
-// a signature does not say. Both halves matter: a bug in the first makes
-// genuine members fail at random, and a bug in the second makes the whole
-// thing decorative.
+// verifyAssertion against real signatures: the DER encoding, and what a signature does not cover.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -49,10 +44,7 @@ test('a scalar with the top bit set survives the padding byte DER adds', () => {
 });
 
 test('a short scalar is padded back out to its full width', () => {
-  // r is 1, which DER encodes in a single byte. Handed to WebCrypto unpadded
-  // it would be read as the first byte of a 32-byte number and verify
-  // against nothing. This is the failure that shows up in roughly one
-  // signature in a hundred and thirty and gets blamed on the phone.
+  // r is 1, one DER byte; unpadded it verifies against nothing.
   const raw = new Uint8Array(64);
   raw[31] = 1;
   raw.set(crypto.getRandomValues(new Uint8Array(32)), 32);
@@ -87,9 +79,7 @@ test('a genuine assertion verifies', async () => {
 });
 
 test('fifty signatures in a row all verify', async () => {
-  // ECDSA picks a fresh nonce every time, so the encoded length of r and s
-  // varies. One run proves nothing about the padding; fifty walks into the
-  // short-scalar case often enough to matter.
+  // Fresh nonces vary r and s lengths; fifty runs reach the short-scalar case.
   const credential = await makeCredential();
 
   for (let i = 0; i < 50; i += 1) {
@@ -127,8 +117,7 @@ test('a signature from another key does not verify', async () => {
     origin: ORIGIN,
     rpId: RP_ID,
   });
-  // The impostor claims to be the registered credential. Only the recorded
-  // public key gets a say in whether that is true.
+  // The impostor claims the registered credential ID.
   assertion.credential_id = credential.credentialId;
 
   const result = await check(assertion, credential);

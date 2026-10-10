@@ -1,22 +1,14 @@
 name: Sync the nonprofit list
 
-# The IRS publishes its exempt organizations file monthly, so this runs
-# monthly. A list that never refreshes cannot find an organization registered
-# since it was built — and the people most likely to be missing are exactly the
-# ones a new discount is meant to bring in.
-#
-# Monthly rather than daily because the source only changes monthly. Running it
-# more often would download 150 MB to write the same file.
+# Monthly refresh of site/assets/nonprofits.json, as the IRS file changes monthly. See docs/payments.md.
 
 on:
   schedule:
-    # The 5th, because the IRS posts early in the month and the exact day
-    # moves. Nothing depends on it landing on a particular date.
+    # The 5th: the IRS posts early in the month on no fixed day.
     - cron: "0 13 5 * *"
   workflow_dispatch:
 
-  # Changing which ZIP codes count is a change to who can find themselves, and
-  # it should take effect without waiting a month for the schedule.
+  # A ZIP change takes effect without waiting for the schedule.
   push:
     paths:
       - "site/bin/sync-nonprofits.py"
@@ -35,11 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Streams the file and retries a dropped connection — 150 MB over one
-      # connection fails often enough that a single attempt is not a plan. It
-      # refuses to write an empty result rather than replacing a good list with
-      # nothing, so a layout change upstream fails the step instead of quietly
-      # emptying the picker.
+      # Retries dropped downloads; fails rather than writing an empty list.
       - name: Read the IRS master file
         run: python3 site/bin/sync-nonprofits.py
 

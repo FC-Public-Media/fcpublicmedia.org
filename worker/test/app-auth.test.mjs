@@ -1,9 +1,4 @@
-// Being a GitHub App.
-//
-// The JWT is signed with a real RSA key and verified against its public half,
-// because a broker that assembled the claims wrongly would look exactly like
-// one that got them right — until the first real request, at which point the
-// only symptom is "401 Bad credentials" and no indication of which field.
+// The broker as a GitHub App; the JWT is signed with a real RSA key and verified. See worker/README.md.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -86,8 +81,7 @@ test('the broker signs a JWT GitHub would accept', async () => {
 });
 
 test('a PKCS#1 key says exactly which command fixes it', async () => {
-  // What GitHub's download button hands you. WebCrypto's own error is
-  // "Invalid keyData", which tells nobody anything.
+  // What GitHub's download button hands you.
   const { save } = await setUp({
     privateKey: '-----BEGIN RSA PRIVATE KEY-----\nMIIEow==\n-----END RSA PRIVATE KEY-----\n',
   });
@@ -102,8 +96,6 @@ test('a PKCS#1 key says exactly which command fixes it', async () => {
 /* ------------------------------------------------------------ minted tokens */
 
 test('a token is minted for one repository and two permissions', async () => {
-  // An installation may span every member site. What comes out of it here
-  // never does.
   const { save } = await setUp();
 
   await save();
@@ -125,8 +117,7 @@ test('the token is reused rather than minted per request', async () => {
 });
 
 test('a site the app is not installed on is refused, and says why', async () => {
-  // The same answer as "this site was revoked", which is the point of
-  // revoking by uninstalling.
+  // Uninstalling is how a site is revoked, so this is also the revoked answer.
   const { hub, save } = await setUp({ installed: [] });
 
   const { response, body } = await save();
@@ -140,8 +131,6 @@ test('a site the app is not installed on is refused, and says why', async () => 
 /* -------------------------------------------------------------- precedence */
 
 test('the app wins when a personal token is also lying around', async () => {
-  // A token left behind from an afternoon of trying this out must not quietly
-  // remain the thing in use.
   const { save } = await setUp({ token: 'ghp_leftover' });
   const before = app.minted.length;
 

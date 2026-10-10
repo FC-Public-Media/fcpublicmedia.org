@@ -32,20 +32,13 @@ lede: Set up the phone or laptop you'll use to manage your site.
 
 {% comment %} ------------------------------------------------------- states {% endcomment %}
 
-{%- comment -%}
-  Every state is a sibling panel toggled by authorize.js, the same pattern as
-  the check-in page. Nothing is hidden behind a reload.
-{%- endcomment -%}
+{%- comment -%} Each state is a sibling panel toggled by authorize.js. {%- endcomment -%}
 
 <div class="state" data-state="checking" hidden>
   <p class="lede">Checking your link&hellip;</p>
 </div>
 
-{%- comment -%}
-  Landing here with no link at all is the most likely wrong turn — someone
-  finds the page in a footer or a search result. It should explain itself
-  rather than look broken.
-{%- endcomment -%}
+{%- comment -%} Arrived with no link, from a footer or a search. {%- endcomment -%}
 <div class="state" data-state="no-link" hidden>
   <h2>You'll need the link we emailed you</h2>
   <p>
@@ -133,9 +126,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-{%- comment -%}
-  Sent — the broker took it. This is the state that does not exist yet.
-{%- endcomment -%}
+{%- comment -%} Sent: the broker took it. {%- endcomment -%}
 <div class="state" data-state="done" hidden>
   <p class="eyebrow">Done</p>
   <h2>This device is set up</h2>
@@ -146,13 +137,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-{%- comment -%}
-  No broker configured, which is the shipped state. The passkey is real and
-  already made; what is missing is only the delivery. Showing the record and
-  asking someone to send it is a genuine workflow for the first few members
-  rather than a placeholder — so it is written as an instruction, not an
-  apology.
-{%- endcomment -%}
+{%- comment -%} No broker (shipped): the passkey exists; the member sends the record in. {%- endcomment -%}
 <div class="state" data-state="manual" hidden>
   <p class="eyebrow">Almost there</p>
   <h2>Send us this and you're done</h2>

@@ -1,18 +1,5 @@
-// Approving a co-producer's phone from your own.
-//
-// This is the page that makes the whole passkey design worth operating. The
-// point was never nicer sign-in; it was moving approval from per-submission to
-// per-device, once. Without somewhere to do that approving, adding a
-// co-producer still means asking staff — which is exactly the loop being left.
-//
-// WHAT SIGNING IN HERE DOES AND DOES NOT DO
-// -----------------------------------------
-// The sign-in is wayfinding, the same as everywhere else on this site: it
-// tells the page which site the passkey belongs to so it can show the right
-// list. It proves nothing to us. Each individual approval is its own ceremony,
-// bound by the broker to that one device and that one change — so what the
-// member is agreeing to is "let Raj's phone publish", at the moment they mean
-// it, rather than "I am signed in" some minutes earlier.
+// /devices/: approve or remove a site's devices, one broker ceremony per change. See docs/identity.md.
+// Signing in only finds the site.
 
 import { act } from './broker.js';
 import { signIn } from './passkey.js';
@@ -34,13 +21,7 @@ const active = () => devices.filter((device) => device.revoked !== true);
 
 /* -------------------------------------------------------------------- read */
 
-/**
- * Read the list the same way anybody else can: it is a public file.
- *
- * Nothing here is secret — public keys and the labels people gave their own
- * devices. Reading it without the broker means this page still shows something
- * useful when there is no broker configured at all.
- */
+/** Read the public device list directly, so the page works with no broker configured. */
 async function load() {
   show('loading');
 
@@ -123,16 +104,12 @@ function render() {
 
   el('allowed-list').replaceChildren(
     ...allowed.map((device) =>
-      // The last one that can publish cannot be removed — the broker refuses
-      // it, because a site nobody can change needs staff with a text editor to
-      // rescue. Not offering the button is kinder than offering it and failing.
+      // The broker refuses to remove the last publisher, so no button is offered.
       row(device, allowed.length > 1 ? [['Remove', 'device.revoke']] : [])
     )
   );
 
-  // Deliberately NOT the status line. Every change redraws this list, and
-  // writing here would wipe the confirmation of what the member just did —
-  // replacing "Done." with a note about removal, which reads like a refusal.
+  // Not the status line, which a redraw would overwrite.
   el('allowed-note').textContent =
     allowed.length === 1
       ? 'The only device that can publish here, so it cannot be removed — approve another one first.'
@@ -156,13 +133,7 @@ function offerManually(action, device) {
   show('manual');
 }
 
-/**
- * Approve or remove one device.
- *
- * A ceremony per change, on purpose. Approving a device is the single act that
- * replaces every future weekly approval, so it is worth the member confirming
- * that specific thing rather than it riding on a sign-in from minutes ago.
- */
+/** Approve or remove one device, with its own passkey ceremony. */
 async function decide(action, device) {
   if (!config.brokerUrl) {
     offerManually(action, device);
@@ -189,8 +160,7 @@ async function decide(action, device) {
       return;
     }
     if (done.reason === 'listed') {
-      // The broker refusing on its own rules — already approved, or the last
-      // publisher. Its wording is better than anything guessable from here.
+      // The broker's own refusal wording.
       el('devices-status').textContent = done.detail;
       await load();
       return;

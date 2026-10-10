@@ -1,22 +1,5 @@
-// Verifying an email claim in the browser.
-//
-// A claim is minted by site/bin/mint-claim.py and arrives as a link:
-//
-//     /check-in/#claim=v1.<payload>.<signature>
-//
-// The payload is JSON — an address, when it was issued, when it lapses, and
-// which key signed it. The signature is ECDSA P-256 over "v1.<payload>",
-// checked here against the public keys published in _data/identity.yml.
-//
-// WHAT THE CHECK IS FOR
-// ---------------------
-// Not security. Someone determined to lie to this page can edit it; it is
-// their browser. The check is here so a person whose link was mangled by an
-// email client finds out immediately instead of believing they are verified.
-//
-// The security lives in the token, which is kept whole. Anything that later
-// wants to trust the address — staff, a form, a Worker — re-verifies the
-// signature itself rather than believing a flag someone else's device set.
+// Verifies a v1.<payload>.<signature> email claim; also imported by the broker, so no DOM globals.
+// In the browser this catches mangled links; trust lives in the whole token. See docs/identity.md.
 
 const VERSION = 'v1';
 
@@ -37,13 +20,7 @@ function importKey({ x, y }) {
   );
 }
 
-/**
- * Check a token against the configured keys.
- *
- * Resolves to the payload when the signature holds and the claim is current,
- * or to a reason it did not. Never throws and never rejects: a malformed
- * string arriving from a URL is an ordinary event, not an exception.
- */
+/** Check a token against the keys: { ok, payload } or { ok: false, reason }; never rejects. */
 export async function verifyClaim(token, keys, now = Date.now()) {
   if (typeof token !== 'string') return { ok: false, reason: 'missing' };
 
@@ -67,9 +44,7 @@ export async function verifyClaim(token, keys, now = Date.now()) {
 
   if (!crypto?.subtle) return { ok: false, reason: 'unsupported' };
 
-  // A key id narrows which key to try, but is a hint rather than a rule — a
-  // claim minted before a rotation still verifies against whichever published
-  // key actually signed it.
+  // `kid` is a hint: a claim still verifies against whichever published key signed it.
   const ordered = payload.kid
     ? [...keys].sort((a, b) => (b.id === payload.kid) - (a.id === payload.kid))
     : keys;
@@ -91,17 +66,13 @@ export async function verifyClaim(token, keys, now = Date.now()) {
         break;
       }
     } catch (error) {
-      // A key we cannot import is a configuration problem, not this visitor's
-      // problem. Try the rest.
+      // A key that will not import is a configuration problem; try the rest.
     }
   }
 
   if (!verified) return { ok: false, reason: 'signature' };
 
-  // Expiry is checked after the signature, so an expired-but-genuine claim can
-  // be reported as expired rather than as a forgery. The two need different
-  // advice: one means "ask us for a new link", the other means "something is
-  // wrong with this link".
+  // After the signature, so a genuine expired claim is reported as expired, not forged.
   if (payload.exp * 1000 <= now) {
     return { ok: false, reason: 'expired', payload };
   }
@@ -116,12 +87,7 @@ export function claimFromLocation(location = window.location) {
   return new URLSearchParams(hash).get('claim');
 }
 
-/**
- * Remove the claim from the address bar once it has been dealt with.
- *
- * It is already stored; leaving it visible invites someone to share the URL,
- * which would hand their address to whoever they sent it to.
- */
+/** Remove the stored claim from the address bar, so a shared URL does not carry it. */
 export function clearClaimFromLocation() {
   const { pathname, search } = window.location;
   window.history.replaceState(null, '', pathname + search);
