@@ -32,7 +32,14 @@ case "$cmd" in
     if [ -f "$HERE/$p/check.ps1" ]; then ps1 "$HERE/$p/check.ps1"
     elif [ -f "$HERE/$p/check.sh" ]; then sh "$HERE/$p/check.sh"
     else echo "fcpm: $p carries no check"; fi ;;
-  refs)      exec "$CODE/bin/refs" "$@" ;;
+  pull)
+    # Bring in what merged and put it in place: the mirrors, then the copies
+    # run from ~/code (sync install). One verb, nothing left half done
+    # (Autumn, 2026-10-10). The pool does the same by itself with `fcpm dev on`.
+    # Only this repo: fcpm runs from it, and the other mirrors are reading
+    # (Autumn, 2026-10-10). The reading mirrors are the weekly task's chore.
+    "$CODE/bin/refs" pull "$(basename "$REPO")" || exit
+    exec "$HERE/sync" install ;;
   dev)
     # On: the pool pulls GitHub every 5 minutes and places what merged
     # (Autumn, 2026-10-09). Off: the weekly pull and people, as before.
@@ -83,10 +90,10 @@ case "$cmd" in
   help|-h|--help) cat <<'EOF'
 fcpm                      the watcher: what is going on here, and a short menu
 fcpm status               which profile, and what differs from what it carries
+fcpm pull                 bring in what merged on GitHub, and put it in place
 fcpm install              put the profile on, and the weekly pull. A person runs this
 fcpm check                what files cannot say: gear, settings, the pool
 fcpm weekly               bring in the latest, once a week (the task runs it)
-fcpm refs [pull|status|work R B|done R B]   the mirrors, and worktrees
 fcpm pool [status|pass|off|on|install]      the root's server
 fcpm dev [status|on|off]  on: merges on GitHub reach this machine by themselves, within 5 min
 fcpm runnables [...]      the census, compile, prove (bin/runnables)

@@ -83,8 +83,12 @@ else line NEEDS "GitHub is not signed in. Someone at the desk runs: gh auth logi
 behind=0
 if git -C "$MIRROR" fetch -q origin 2>/dev/null; then
   mb=$(git -C "$MIRROR" rev-list --count HEAD..origin/main)
-  line ok "upstream is $(git -C "$MIRROR" remote get-url origin)"
-  [ "$mb" -gt 0 ] && { line behind "this machine's copy is $mb change(s) behind"; behind=$mb; }
+  # The mirror is what this machine runs: fcpm itself, and the source of the
+  # copies sync places. Named, so nobody has to know refs/ is it (Autumn,
+  # 2026-10-10).
+  at="$(git -C "$MIRROR" log -1 --format="%h, %cr" 2>/dev/null)"
+  if [ "$mb" -gt 0 ]; then line behind "the mirror (~/code/refs/$REPO, what this machine runs) is $mb change(s) behind GitHub: fcpm pull"; behind=$mb
+  else line ok "the mirror (~/code/refs/$REPO, what this machine runs) has everything merged on GitHub ($at)"; fi
 else
   line NEEDS "cannot reach upstream ($(git -C "$MIRROR" remote get-url origin 2>/dev/null)). Network?"
 fi
@@ -108,8 +112,8 @@ else
 fi
 
 differs=$(printf '%s\n' "$SYNC" | grep -c '^differs')
-if [ "$differs" -gt 0 ]; then line update "$differs file(s) on this computer are out of date: Install the updates"
-else line ok "this computer is up to date with the repository"; fi
+if [ "$differs" -gt 0 ]; then line update "$differs file(s) placed from the mirror are out of date: fcpm pull"
+else line ok "what is placed from the mirror matches it"; fi
 
 if [ -f "$CODE/bin/pool.ps1" ]; then
   s=$(ps1 "$CODE/bin/pool.ps1" status 2>/dev/null | tr -d '\r' | awk '$1 == "server" { $1 = ""; print; exit }')
@@ -151,7 +155,7 @@ echo
 case "$pick" in
   make) exec "$CODE/bin/refs" work "$REPO" "$called" ;;
   pull)
-    "$CODE/bin/refs" pull
+    "$CODE/bin/refs" pull "$REPO"
     catch_up && line ok "your working copy has the latest"
     if [ "$(cd "$HERE" && SYNC_CHECK=0 ./sync 2>&1 | grep -c '^differs')" -gt 0 ]; then
       ask "Install the updates on this computer now? [Y/n]"
