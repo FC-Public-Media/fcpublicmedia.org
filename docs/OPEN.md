@@ -242,10 +242,10 @@ touched, and the rest moves to a doc:
 |---|---|---|
 | 72 | `site/bin/reprice-subscriptions.py` | `docs/payments.md` |
 | 71 | `bin/build-sites.py` | `docs/TENANCY.md` |
-| 67 | `machines/gear.yml` | `machines/README.md`, *Crew and gear* |
-| 63 | `machines/kiosk-1/door.py` | `machines/kiosk-1/PROFILE.md` |
+| 67 | `machines/gear.yml` | `docs/machines/README.md`, *Crew and gear* |
+| 63 | `machines/kiosk-1/door.py` | `docs/machines/kiosk-1/PROFILE.md` |
 | 60 | `bin/build-kiosk.py` | `docs/KIOSK.md` |
-| 58 | `machines/crew.yml` | `machines/README.md`, *Crew and gear* |
+| 58 | `machines/crew.yml` | `docs/machines/README.md`, *Crew and gear* |
 | 58 | `site/bin/sync-calendar.py` | `docs/programming.md` |
 | 55 | `site/bin/sync-feeds.py` | `docs/programming.md` |
 | 53 | `site/_data/hosts.yml` | `docs/RESERVE-DESIGN.md` |
@@ -254,7 +254,7 @@ touched, and the rest moves to a doc:
 | 51 | `site/bin/build-prices.py` | `docs/payments.md` |
 | 45 | `site/bin/test_no_secrets.py` | `docs/running-it.md` |
 | 43 | `kiosk/content.yml` | `docs/KIOSK.md` |
-| 42 | `machines/binding` | `machines/README.md` |
+| 42 | `machines/binding` | `docs/machines/README.md` |
 | 41 | `site/_data/feeds.yml` | `docs/programming.md` |
 | 40 | `machines/RUNNABLES` | `docs/RUNNABLES.md` |
 

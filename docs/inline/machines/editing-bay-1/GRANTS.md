@@ -18,7 +18,7 @@ software they use is theirs: their OBS in Program Files with its settings in
 %APPDATA%\obs-studio, its virtual camera, its shortcuts, and whatever talks
 to it (a member's Streamer.bot does). The recorder trove's OBS is a second,
 portable copy for staff and attendant tasks, prepared so that a person can
-use it too, and it goes nowhere else (../../troves/recorder/README.md).
+use it too, and it goes nowhere else (docs/troves/recorder/README.md).
 
 ## 2
 

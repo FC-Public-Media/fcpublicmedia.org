@@ -30,7 +30,7 @@ Autumn, 2026-10-06:
 ## Rules this trove adds
 
 - **The TriCaster wins.** The TriCaster Flex is operated by people, and under
-  *A trove never touches gear a person operates* (`../README.md`), so are the
+  *A trove never touches gear a person operates* (`docs/troves/README.md`), so are the
   cameras whenever it is driving them. One controller at a time: while a show
   holds a camera, this trove reads its position and does not move it. How a
   show says it holds one is the first thing to settle with the TriCaster in

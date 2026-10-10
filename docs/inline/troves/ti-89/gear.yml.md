@@ -6,7 +6,7 @@ Moved out of the file. Unreviewed.
 
 Above `version: 1`
 
-gear.yml — the TI-89 trove's gear. See README.md.
+gear.yml — the TI-89 trove's gear. See docs/troves/ti-89/README.md.
 
 The same fields as ../recorder/gear.yml. PRESENCE IS NOT DECLARED HERE: whether
 a calculator, a cable or any of this is on a host is found, never written.

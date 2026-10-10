@@ -700,7 +700,7 @@ html,body { margin:0; background:var(--ink); color:var(--paper);
   font:18px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; }
 a { color:inherit; }
 /* THE MARK: the brand square, and a shape any page here may reuse. Signal
-   yellow, hard edges, leaning -8deg: counterclockwise, always (brand/README.md,
+   yellow, hard edges, leaning -8deg: counterclockwise, always (docs/brand/README.md,
    "The tilt"). Unlit it is slate, as in brand/idle. */
 .mark { background:var(--signal); rotate:-8deg; }
 .mark.unlit { background:var(--slate); }
@@ -1723,7 +1723,7 @@ body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
 /* The superheader: check-in with the colours inverted. A plane of signal at
    the brand's tilt, cropped off left, right and top, so its one edge is the
    divider at the bottom, rising to the right: -8deg, counterclockwise
-   (brand/README.md, "The tilt"). 14.05vw is the rise, tan 8deg of the width. */
+   (docs/brand/README.md, "The tilt"). 14.05vw is the rise, tan 8deg of the width. */
 .top { position:relative; }
 .super { background:var(--signal); color:var(--ink); display:flex; align-items:center; gap:6vw;
   clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%);
@@ -3522,7 +3522,7 @@ def startup(argv):
         print("shortcut  %s still exists%s" % (SHORTCUT.name, "; --install removes it" if xml else ""))
     rev = door_answers()
     print("door      %s" % ("up, revision " + rev if rev else "not answering"))
-    print("logon     manual. Signing in automatically needs an administrator (PROFILE.md)")
+    print("logon     manual. Signing in automatically needs an administrator (docs/machines/kiosk-1/PROFILE.md)")
     return 1 if bad else 0
 
 

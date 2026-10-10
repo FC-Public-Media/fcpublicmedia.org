@@ -70,7 +70,7 @@ deferred.
 - **Drawing it:** the wall shell in `machines/kiosk-1/door.py`. It is written
   to `DIGISTATION\.wall` and shown on the roller by editing bay 1 (see
   `show.yml` and `instrument.yml` here).
-- **Checking it:** `attendant/wall.md`, the attendant recipe. Class mode will
+- **Checking it:** `docs/attendant/wall.md`, the attendant recipe. Class mode will
   need its own steps, and its buttons must be findable by role and name like
   the wall's.
 

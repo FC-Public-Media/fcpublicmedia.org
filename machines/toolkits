@@ -1,7 +1,7 @@
 # see docs/inline/machines/toolkits.md#1
 
 # language   tool        arrives by
-ruby         bundler     # unestablished — see `machines/kiosk-1/PROFILE.md`
+ruby         bundler     # unestablished — see `docs/machines/kiosk-1/PROFILE.md`
 python       python3     # unestablished; the winget id is probably Python.Python.3.x
 node         npm         # kiosk-1: the nodejs.org LTS zip, sha256-checked against SHASUMS256.txt, in
                          # see docs/inline/machines/toolkits.md#2

@@ -7,7 +7,7 @@ studio, a `*-node` holding like the media node (the kiosk, `200-FCPANEDIT2`)
 and synced with it. **Autumn calls this root `production`**: what goes on
 when agents run here. The sticker says editing bay 1, and Windows answers to
 `EDIT2`. That is not bay 2: the kiosk, once editing bay 2, is `200-FCPANEDIT2`,
-and Autumn calls it `kiosk` (site repo `machines/README.md`, *What a machine is
+and Autumn calls it `kiosk` (site repo `docs/machines/README.md`, *What a machine is
 called*). Sessions start here. Windows 11 Home, user `fcpub`. It is the strongest machine in the
 studio (i7-13700KF, 24 threads, 32 GB, RTX 4080, 2 TB on `D:`), so it takes
 heavy work when media-node or station-node grants it. No grants have been

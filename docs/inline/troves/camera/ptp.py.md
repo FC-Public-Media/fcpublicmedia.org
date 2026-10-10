@@ -12,7 +12,7 @@ A camera that offers PTP over USB is bound by Windows' own MTP driver
 (WUDFWpdMtp). WPD lets a program send it raw PTP operations through the MTP
 extension commands, so nothing is installed, no driver is replaced and no
 administrator is needed. Measured on the Blackmagic Pocket Cinema Camera 6K Pro,
-firmware 7.5.1, 2026-09-28 (README.md, "What it answered").
+firmware 7.5.1, 2026-09-28 (docs/troves/camera/README.md, "What it answered").
 
     cam = Camera.find("pocket")        # by the name Windows shows
     cam.info()                          # firmware, model, operations, properties

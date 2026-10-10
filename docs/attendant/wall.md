@@ -125,7 +125,7 @@ module's first entry.
 
 The three bugs the previous wall had (the frame always called "Module", an
 unannounced reload every minute, and Back desyncing the rail from the frame)
-are gone with #138, and gone from [`BUGS.md`](BUGS.md).
+are gone with #138, and gone from [`docs/attendant/BUGS.md`](BUGS.md).
 
 ## As a test
 

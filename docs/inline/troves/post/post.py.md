@@ -9,7 +9,7 @@ Above `import functools, hashlib, json, os, re, shutil, socket, subprocess, sys,
 post.py — what happens to a take after it is released: a folder per take on
 the post partition, its route written once, its progress nothing but files.
   post.py [view|status|run|admit CONFIG|retry TAKE N|sample|sample clear]
-Doc: troves/post/README.md. Config: machines/<profile>/post.yml.
+Doc: docs/troves/post/README.md. Config: machines/<profile>/post.yml.
 
 ## 2
 

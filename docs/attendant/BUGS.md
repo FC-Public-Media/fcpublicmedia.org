@@ -1,7 +1,7 @@
 # Bugs found by following recipes
 
 A step that failed because the page does not offer what the recipe says it
-does. See [`README.md`](README.md) for what goes here and what does not.
+does. See [`docs/attendant/README.md`](README.md) for what goes here and what does not.
 
 Each entry: the recipe and step, what the page did, why it matters to a
 person, where in the code, and whether it was **seen** (followed on the real

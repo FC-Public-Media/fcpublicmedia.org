@@ -35,7 +35,7 @@ and a crew can move between machines on either side.
 
 The difference is only in what a person sees. Station-node's page on 8080 is a
 record for whoever tends the station. Production's door is for members: a way
-in, not a console (`production/CREW.md`).
+in, not a console (`docs/crews/production/CREW.md`).
 
 ## What a crew is here
 
@@ -47,7 +47,7 @@ in, not a console (`production/CREW.md`).
 | **its supervisor** | each crew a machine wears has its own supervisor there, one service named for the crew (`production` on editing bay 1), running that crew's order. Never one service per line |
 | **peers** | if another computer has to step in, it can put the same crew on and offer the same services beside the first. The contract is what makes them interchangeable: same services, same addresses on their own hosts, same behaviour |
 
-[`../machines/crew.yml`](../machines/crew.yml) stays what it is: who can be
+[`../machines/crew.yml`](../../machines/crew.yml) stays what it is: who can be
 mustered on an FCPM machine at all (agents, and how). A named crew is the
 next step that file was waiting for: it says `supervisor:` is absent because
 there is none, and production is where there first is one.
@@ -58,7 +58,7 @@ there is none, and production is where there first is one.
 |---|---|---|
 | [`production`](production/CREW.md) | the recordings after they land: pools, transcription, episodes and their release, the door at the bay | editing bay 1 (`EDIT2`) |
 | `kiosk` | the media node: the door at the front, the screens, check-in. Its profile is `../machines/kiosk-1/` today | kiosk-1 (`200-FCPANEDIT2`) |
-| `digitization` | capture: arming, presence, the ledger, the recorders, the tank. Its contract: [`digitization/CREW.md`](digitization/CREW.md) | station-node; editing bay 1 is a member (it hosts the tank, the Drobo's 1 TB partition shared as `enhance`, and drives the rolling TV) |
+| `digitization` | capture: arming, presence, the ledger, the recorders, the tank. Its contract: [`docs/crews/digitization/CREW.md`](digitization/CREW.md) | station-node; editing bay 1 is a member (it hosts the tank, the Drobo's 1 TB partition shared as `enhance`, and drives the rolling TV) |
 
 ## Why this way
 

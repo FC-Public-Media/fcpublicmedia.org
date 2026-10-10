@@ -31,7 +31,7 @@ Needs comtypes and pyyaml:
 
 Above `PROPS = {`
 
-What each property is, as far as it has been measured (README.md). Units say
+What each property is, as far as it has been measured (docs/troves/camera/README.md). Units say
 how to show and enter it: "x100" is stored times 100, "fixed16" is
 Blackmagic's 5.11 fixed point (value times 2048), "1/x" a shutter speed.
 

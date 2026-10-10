@@ -6,7 +6,7 @@ Moved out of the file. Unreviewed.
 
 Above `version: 1`
 
-gear.yml — the recorder trove's gear. See README.md.
+gear.yml — the recorder trove's gear. See docs/troves/recorder/README.md.
 
 The same fields as ../../machines/gear.yml, which are station-node's. What is
 different is the provisioner: this gear is not winget's, it is the bay's.
@@ -29,4 +29,4 @@ except the bay.
 Above `at: troves\recorder\obs`
 
 %LOCALAPPDATA%\<profile>\troves\recorder\obs\ — the prefix says whose code
-this is (../README.md, Rules).
+this is (docs/troves/README.md, Rules).

@@ -10,7 +10,7 @@ pools.py — scan this machine's storage pools and show them as a page on
 127.0.0.1, for as long as the window that ran it stays open: squares at /,
 the timeline at /timeline, where stretches of it are grouped into shows.
   pools.py [view|scan|key|sample|sample clear|groups]
-Doc: troves/pools/README.md. Config: machines/<profile>/pools.yml.
+Doc: docs/troves/pools/README.md. Config: machines/<profile>/pools.yml.
 
 ## 2
 

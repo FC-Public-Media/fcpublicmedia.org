@@ -8,7 +8,7 @@ Above `import json`
 
 Release hands an episode on, and this is what it is handed to (the production
 crew runs `tick` every few minutes: crews/production/services). A held episode
-is left alone. A released one is admitted to post (troves/post/README.md,
+is left alone. A released one is admitted to post (docs/troves/post/README.md,
 *Admission*): what releasing rendered (its show, out name, pipeline and
 recordings) becomes a take, a folder on E:\POST that carries its whole route.
 From there the pools page is no longer the one talking about it; post's

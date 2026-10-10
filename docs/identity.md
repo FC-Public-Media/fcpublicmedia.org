@@ -467,7 +467,7 @@ year and $10 after two, growing forever unless something deletes. `R2_MAX_BYTES`
 defaults to no cap, which should be set alongside a retention rule rather than
 instead of one.
 
-`worker/README.md` has the endpoint shapes, the configuration, the token
+`docs/worker/README.md` has the endpoint shapes, the configuration, the token
 scoping, and an honest account of what is not built. Tests are `npm test` in
 that directory; they need nothing installed and run on every push.
 

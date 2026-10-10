@@ -8,7 +8,7 @@ Above `set -u`
 
 fcpm — the crew's one switch on an FCPM machine: every verb a person runs
 here, by name, the same in cmd and PowerShell. Alone, it is the watcher
-(./watch). Verbs: `fcpm help`. Doc: machines/README.md, "The crew's one switch".
+(./watch). Verbs: `fcpm help`. Doc: docs/machines/README.md, "The crew's one switch".
 
 ## 2
 

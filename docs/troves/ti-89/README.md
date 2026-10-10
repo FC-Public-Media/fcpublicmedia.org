@@ -103,7 +103,7 @@ one verb at a time as we need one.
 
 What the cable can carry, and the scenarios it opens (calculator VMs, a pad
 for multiplayer, piloting the kiosk, an IDE), are in
-[`SCENARIOS.md`](SCENARIOS.md).
+[`docs/troves/ti-89/SCENARIOS.md`](SCENARIOS.md).
 
 - **Files**: list folders, back up variables, and send a program. These are the
   next verbs for `link.py`, in the same protocol.

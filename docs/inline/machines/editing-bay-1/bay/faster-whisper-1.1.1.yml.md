@@ -7,7 +7,7 @@ Moved out of the file. Unreviewed.
 Above `payload: faster-whisper`
 
 A payload the bay has taken in. One file per arrival; the file is the record.
-See ../../BAY.md. Run by hand by a code session, 2026-10-07, step by step.
+See docs/machines/BAY.md. Run by hand by a code session, 2026-10-07, step by step.
 
 ## 2
 

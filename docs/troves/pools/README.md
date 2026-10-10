@@ -175,7 +175,7 @@ was already done stays done. Each is an event on the group.
 **What release hands it to: `episodes.py`, which admits it to post.** The
 production crew runs `tick` every few minutes (`crews/production/services`).
 Each released episode not yet admitted is admitted to post
-(`../post/README.md`, *Admission*): its ejected config if releasing wrote one,
+(`docs/troves/post/README.md`, *Admission*): its ejected config if releasing wrote one,
 else what this server renders now (the show's pipeline, read fresh, and the
 recordings less what is marked for removal). From there it is a take on
 `E:\POST`, post's workers take its steps, and the disk is the record; this page

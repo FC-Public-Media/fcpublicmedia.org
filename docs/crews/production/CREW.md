@@ -6,7 +6,7 @@
 episode supervisor (`troves/pools/episodes.py`) and `fcpm crew` are in. It
 starts with the computer (Autumn, 2026-10-07: a welcome screen before anyone
 signs in is the experiment it makes room for). The door is next.
-Production is a crew (`../README.md`): the recordings after they land, and
+Production is a crew (`docs/crews/README.md`): the recordings after they land, and
 the door where members meet them. Editing bay 1 (`EDIT2`) is the first to put
 it on. Like station-node's one service on its Mac: one supervisor, installed
 and always ready, running what the residencies offer and what production has

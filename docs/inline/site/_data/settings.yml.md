@@ -62,7 +62,7 @@ Above `url: ""`
 ------------------------------------------------------------------ the broker
 
 The BASE URL of the broker — it answers /challenge and /write beneath this.
-See worker/README.md.
+See docs/worker/README.md.
 
 Empty is the shipped state. The page then shows the edited file for the
 member to send us, which is slow but loses nothing.

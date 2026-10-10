@@ -7,7 +7,7 @@ Moved out of the file. Unreviewed.
 Above `version: 1`
 
 show.yml — what the rolling TV shows. This is the page, treated as config.
-See ../README.md.
+See docs/instruments/README.md.
 
 DRAFT. Nothing reads it yet. Today the TV's page is the wall, which the
 media node's door builds from the `wall:` block in

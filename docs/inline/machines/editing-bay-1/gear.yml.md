@@ -19,7 +19,7 @@ is a machine-wide installer that raises an elevation prompt, the vendor's
 portable archive comes through the bay instead: gh and Node are.
 What the bay brings arrives the bay's way (receive,
 verify against the vendor's digest and Authenticode, stage, install, confirm:
-../BAY.md), into ~/.local/bin or this profile's folder in
+docs/machines/BAY.md), into ~/.local/bin or this profile's folder in
 %LOCALAPPDATA%, and each arrival leaves a record in ./bay/.
 
 NOT OURS, AND LISTED SO NOBODY TAKES IT FOR OURS: the OBS in Program Files

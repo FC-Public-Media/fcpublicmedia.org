@@ -307,7 +307,7 @@ EXPECT
     out="$ROOT/machines/$p/bay/runnables.proven"
     mkdir -p "$(dirname "$out")"
     [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
-      "# Written by \`bin/runnables prove\`. docs/RUNNABLES.md, machines/BAY.md." \
+      "# Written by \`bin/runnables prove\`. docs/RUNNABLES.md, docs/machines/BAY.md." \
       "#" "# holder  blob  date  ran  by" > "$out"
     printf '%s %s %s ran:%s%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
       "${exercised:+ exercised:$exercised}" "${deps:+ deps:$deps}" "$by" >> "$out"

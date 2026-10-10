@@ -45,7 +45,7 @@ runs between passes except Edge itself.
 | `fcpm screen off` | close it and keep it closed, pass after pass |
 | `fcpm screen on` | keep it again, starting now |
 | `fcpm screen reset` | close it and start it again |
-| `fcpm screen class` | class mode instead of the wall (`class.html`, `../../instruments/roller-tv/class-mode.md`), held pass after pass. `class light` for the light version |
+| `fcpm screen class` | class mode instead of the wall (`class.html`, `docs/instruments/roller-tv/class-mode.md`), held pass after pass. `class light` for the light version |
 | `fcpm screen wall` | back to the wall |
 
 Under `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`

@@ -18,10 +18,10 @@ screen.ps1 class  [light|dark]   show class mode instead of the wall, until wall
 INSTRUMENT is a folder in ../../instruments/ (default roller-tv). Its
 instrument.yml `match:` says what the screen reports about itself over EDID;
 the screen is looked up by that, every time, never by display number
-(../../instruments/README.md).
+(docs/instruments/README.md).
 
 What goes on it is the wall, or class mode while a person has asked for it
-(../../instruments/roller-tv/class-mode.md: the teacher's materials, written
+(docs/instruments/roller-tv/class-mode.md: the teacher's materials, written
 as class.html beside the wall, with no turning). Either way, the depot's copy, which kiosk-1 writes, when the
 depot answers; otherwise the wall rendered here from this checkout's door.py
 (render.py, under uv). It is played the way door.py's launch_screen plays a

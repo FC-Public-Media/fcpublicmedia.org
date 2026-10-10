@@ -12,7 +12,7 @@ Run by `machines/sync` status on this profile, or alone:
   powershell -NoProfile -File machines\editing-bay-1\check.ps1
 
 One line per fact, "ok" or "WANTED" and what would make it so. The WANTED
-lines are the Day 0 list (PROFILE.md) for whatever is still missing.
+lines are the Day 0 list (docs/machines/editing-bay-1/PROFILE.md) for whatever is still missing.
 
 Windows PowerShell 5.1, no modules. ASCII only: 5.1 reads a BOM-less script
 as ANSI.

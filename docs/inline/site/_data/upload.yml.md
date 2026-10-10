@@ -79,7 +79,7 @@ file goes from the browser straight to R2, split into presigned parts above
 What it binds to is different from a settings write, on purpose: the grant
 (this member, this site, this key, this size) rather than a hash of the
 content, because hashing six gigabytes in a browser would roughly double the
-wait to protect bytes the broker never sees. See worker/README.md.
+wait to protect bytes the broker never sees. See docs/worker/README.md.
 
 Setting this is still a decision and not just a value — a bucket, a size cap,
 and a retention rule. R2 is $0.015 per GB-month with 10 GB free and no egress

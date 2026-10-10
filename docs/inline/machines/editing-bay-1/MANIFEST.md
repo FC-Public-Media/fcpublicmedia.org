@@ -28,7 +28,7 @@ clone     a list of repository URLs, one per line; `sync install` clones any
 
 NOT HERE, AND WHY:
 - fcpublicmedia.org itself. It is how these bytes arrive, so it is cloned
-  by hand on Day 0 (PROFILE.md).
+  by hand on Day 0 (docs/machines/editing-bay-1/PROFILE.md).
 - station-node's mirror. It is read here, and it is somebody's own
   repository; it is cloned by hand, and not named in a public file.
 - Session state, memory and the pool's snapshot. They are in

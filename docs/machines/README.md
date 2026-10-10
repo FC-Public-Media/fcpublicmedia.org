@@ -142,9 +142,9 @@ inside one:
 
 | | |
 |---|---|
-| [`crew.yml`](crew.yml) | who can be started on an FCPM machine, and how |
-| [`gear.yml`](gear.yml) | what the crew stands on, and who may replace it |
-| [`toolkits`](toolkits) | which tool a language's work is done with |
+| [`crew.yml`](../../machines/crew.yml) | who can be started on an FCPM machine, and how |
+| [`gear.yml`](../../machines/gear.yml) | what the crew stands on, and who may replace it |
+| [`toolkits`](../../machines/toolkits) | which tool a language's work is done with |
 
 They are the **default**, which means: what an FCPM machine is, absent a
 profile saying otherwise. Today that default is Windows and winget, because
@@ -171,10 +171,10 @@ The words are station-node's and the line between them is worth stating once:
 
 | | | |
 |---|---|---|
-| **crew** | who is here to do the work | [`crew.yml`](crew.yml) |
-| **gear** | what the crew stands on — software somebody put there on purpose | [`gear.yml`](gear.yml) |
-| **a toolkit** | which tool a language's work is done with | [`toolkits`](toolkits) |
-| **an advocate** | *why* an agent runs here and what it may conclude | [`../advocate.yml`](../advocate.yml) |
+| **crew** | who is here to do the work | [`crew.yml`](../../machines/crew.yml) |
+| **gear** | what the crew stands on — software somebody put there on purpose | [`gear.yml`](../../machines/gear.yml) |
+| **a toolkit** | which tool a language's work is done with | [`toolkits`](../../machines/toolkits) |
+| **an advocate** | *why* an agent runs here and what it may conclude | [`../advocate.yml`](../../advocate.yml) |
 
 The last row is the one to be careful about, because it is the row that would
 otherwise become a second list of the same agents. `advocate.yml` says why a
@@ -211,7 +211,7 @@ station-node's `config/toolkits` is four lines of `<language> <tool>`, and it
 can be, because acquisition is somebody else's file — brew, asdf, a version
 manager. On Windows the tool and its arrival are one act, which is what Autumn
 meant by *"toolchain as a file is no longer like that simple over in the
-station node."* So [`toolkits`](toolkits) carries a third column for how a tool
+station node."* So [`toolkits`](../../machines/toolkits) carries a third column for how a tool
 arrives, and every row of it is currently unfilled, which is the true state.
 
 ### What is not implemented, deliberately
@@ -279,7 +279,7 @@ interpreter or a choice of shell is a gap in `fcpm`, not something to type.**
   `bin/station`, the node as one switch.
 - **Verbs are for people. A task names the tool itself.** A session's
   permission to run something without asking goes to the tool, through the
-  command a crew's `GRANTS` names (`../docs/RUNNABLES.md`), because that is
+  command a crew's `GRANTS` names (`docs/RUNNABLES.md`), because that is
   what a proof pins. An edit to `obs.ps1` revokes its grant, and would not
   revoke one given to `fcpm recorder`, whose bytes didn't change.
 
@@ -318,7 +318,7 @@ so. Nothing is lost.
 
 **Before there is an `fcpm`.** A machine with nothing on it can't run a tool
 that lives in this repository. The way in is the start line on the front page
-(`../README.md`, *Setting up a machine*). It is readable in a browser and pasted
+(`README.md`, *Setting up a machine*). It is readable in a browser and pasted
 once. It gets the repository and runs `fcpm install`.
 
 **Weekly, by itself.** `fcpm install` also registers the task `fcpm weekly`.
@@ -365,7 +365,7 @@ server stays up for the next one.
   a new Claude once calm for 15 minutes, as kiosk-1 does (2026-10-09).
 - Kiosk-1's door keeps no session, and keeps the server (2026-10-09). It
   also bounces the server onto a new Claude once it has been calm for 15
-  minutes (`machines/kiosk-1/PROFILE.md`).
+  minutes (`docs/machines/kiosk-1/PROFILE.md`).
 
 ## What is not decided
 
@@ -375,12 +375,12 @@ server stays up for the next one.
   while they are empty and expensive afterwards.
 - **There is now a candidate FCPM station node, and it is `kiosk-1`.** This
   reverses the position recorded above it and in
-  [`../docs/STATION.md`](../docs/STATION.md) — *"presently, we don't have a
+  [`docs/STATION.md`](../STATION.md) — *"presently, we don't have a
   machine that would be an FCPM station node"* — which was true when it was
   written on 2026-09-17 and stopped being the plan on 2026-09-23: *"I want to
   use it to prove fcpm.org as a station node of its own."* What "prove" means
   is not settled, and it is explicitly not "install station-node":
-  [`../docs/TENANCY.md`](../docs/TENANCY.md) limits what travels to a tenant. A
+  [`docs/TENANCY.md`](../TENANCY.md) limits what travels to a tenant. A
   bay that became one would gain folders; it would not need a different kind of
   profile.
 - **Nothing has been read off `kiosk-1` yet.** Every fact in its `PROFILE.md`

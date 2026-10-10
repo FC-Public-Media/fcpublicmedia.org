@@ -19,7 +19,7 @@ On a studio computer that has Git, paste this into any window, cmd or PowerShell
 
 It gets this repository, or updates it, then puts the computer's profile on. That
 includes the working copy people edit in and a weekly pull. From then on, type
-`fcpm`. See [`machines/README.md`](machines/README.md).
+`fcpm`. See [`docs/machines/README.md`](docs/machines/README.md).
 
 ## Site
 

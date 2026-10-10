@@ -53,7 +53,7 @@ A recipe is one known job on one page, written so that a person and an agent
 following it do the same thing and can tell whether it worked.
 
     page:     the module or route, not the screen (shows reference modules;
-              see ../instruments/README.md)
+              see docs/instruments/README.md)
     shown on: the instruments it is on today, for finding it
     before:   what the page looks like when you start
     steps:    role + accessible name, each with the visible result that proves it
@@ -70,14 +70,14 @@ for what it tests and is not this.
 
 | recipe | page | last followed |
 |---|---|---|
-| [`wall.md`](wall.md) | the wall (rolling TV) | 2026-09-26, on roller-tv from a local render |
+| [`docs/attendant/wall.md`](wall.md) | the wall (rolling TV) | 2026-09-26, on roller-tv from a local render |
 
 ## When a step fails, it is a bug, not a gotcha
 
 - A **gotcha** is a surprise about the environment: a machine, a network, a
   tool. They go where they already go (`machines/kiosk-1/gotcha`).
 - A **bug** is the page not offering what the recipe says it does, or
-  offering it without a name. It goes in [`BUGS.md`](BUGS.md), committed.
+  offering it without a name. It goes in [`docs/attendant/BUGS.md`](BUGS.md), committed.
 
 Committed is the point. An advocate whose unit of work is usability finds
 them on `main` and can research them in the background, and Autumn can step in
@@ -101,8 +101,8 @@ stale) is fixed in the recipe, not logged.
   `bin/services`), not a property of the channel. A node that only tails a
   channel reads the same format and starts nothing.
 - **A local copy of each page.** The wall is written to the depot's share and
-  editing bay 1 cannot reach it (`../instruments/README.md`, *Open*). It can
-  render one itself (see *How it was followed* in [`wall.md`](wall.md)), with
+  editing bay 1 cannot reach it (`docs/instruments/README.md`, *Open*). It can
+  render one itself (see *How it was followed* in [`docs/attendant/wall.md`](wall.md)), with
   the real shell and thin data. Nothing does that as a step yet, so a recipe
   is followed by hand rather than run as a test.
 - **Pages people hold rather than screens we drive.** `/check-in/` is a

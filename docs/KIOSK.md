@@ -459,10 +459,10 @@ building should write rather than an agent:
   assuming.
 
   > **Superseded the day after this was written.** That machine exists and is
-  > described: [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md)
+  > described: [`docs/machines/kiosk-1/PROFILE.md`](machines/kiosk-1/PROFILE.md)
   > — *"It is the box with the three portrait panels. Confirmed rather than
   > inferred."* And something does serve it:
-  > [`../brand/idle/index.html`](../brand/README.md), which carries a marked
+  > [`../brand/idle/index.html`](brand/README.md), which carries a marked
   > empty element and says of it *"The slot in the idle screen is a slot on this
   > box."*
   >

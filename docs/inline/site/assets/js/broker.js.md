@@ -15,7 +15,7 @@ accidentally skip the binding — the hash is computed from the same bytes
 that get sent, in one place, rather than by each caller remembering to.
 
 With no broker URL configured, nothing here is reached: the pages fall back
-to handing the member their own file. See worker/README.md.
+to handing the member their own file. See docs/worker/README.md.
 
 ## 2
 

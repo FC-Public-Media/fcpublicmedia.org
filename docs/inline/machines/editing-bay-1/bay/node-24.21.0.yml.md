@@ -7,7 +7,7 @@ Moved out of the file. Unreviewed.
 Above `payload: node`
 
 A payload the bay has taken in. One file per arrival; the file is the record.
-See ../../BAY.md. No procedure script yet: run by hand by code-d5,
+See docs/machines/BAY.md. No procedure script yet: run by hand by code-d5,
 step by step, each step in the run log. Re-measured by code-e3 the same day.
 
 ## 2

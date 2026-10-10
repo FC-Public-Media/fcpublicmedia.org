@@ -8,7 +8,7 @@ Above `steps:`
 
 The post steps production does, on whichever machine wears it. Where the
 partition is belongs to the hardware (machines/<profile>/post.yml).
-Doc: troves/post/README.md, "Steps".
+Doc: docs/troves/post/README.md, "Steps".
 
 door: true hands the input out at doors/<step>/out and waits for
 doors/<step>/back; run: is a command, with {in}, {out}, {take}, {python} and

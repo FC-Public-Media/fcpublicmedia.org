@@ -7,7 +7,7 @@ Moved out of the file. Unreviewed.
 Above `# The root's instructions are read from the mirror (ref/ here), never copied:`
 
 MANIFEST: what kiosk carries of its own home, for `../sync`.
-Modes are as in ../editing-bay-1/MANIFEST. Doc: PROFILE.md, *What this folder holds now*.
+Modes are as in ../editing-bay-1/MANIFEST. Doc: docs/machines/kiosk-1/PROFILE.md, *What this folder holds now*.
 
 ## 2
 

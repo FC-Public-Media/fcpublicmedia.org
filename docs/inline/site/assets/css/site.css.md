@@ -397,7 +397,7 @@ Above `.tiers { border: 0; margin: 0; padding: 0; min-width: 0; }`
  Membership tiers: the whole tile is the control (membership.md). A radio
 button covers each card, invisible but real, so clicking, tapping,
 keyboard and screen readers all get a native control. The chosen tile
-leans the brand's way, -8deg and never the other (brand/README.md, "The
+leans the brand's way, -8deg and never the other (docs/brand/README.md, "The
 tilt"), with a small overshoot on the way in.
 
 ## 41

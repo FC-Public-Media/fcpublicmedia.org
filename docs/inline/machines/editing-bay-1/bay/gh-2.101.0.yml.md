@@ -7,7 +7,7 @@ Moved out of the file. Unreviewed.
 Above `payload: gh`
 
 A payload the bay has taken in. One file per arrival; the file is the record.
-See ../../BAY.md. No procedure script yet: this one was run by hand,
+See docs/machines/BAY.md. No procedure script yet: this one was run by hand,
 step by step, and each step is in the run log.
 
 ## 2

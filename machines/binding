@@ -22,7 +22,7 @@ THE NAME IS ASKED PER PLATFORM, AND THE PLATFORM IS PART OF THE DECLARATION.
 This is the change that Windows forced, and it is not a portability tidy-up.
 The first version asked `scutil --get LocalHostName` and, on anything that is
 not macOS, printed "unclaimed". That answer was correct for the bays and is
-worthless here: FCPM's default host is Windows (`../machines/README.md`, "What a
+worthless here: FCPM's default host is Windows (`docs/machines/README.md`, "What a
 default is"), so the common case would have been a repository that can never
 identify the machine it is standing on.
 

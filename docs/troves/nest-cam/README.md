@@ -13,7 +13,7 @@ editing bay 1, and nothing on it was run. The camera offered only WPA and WEP
 when Autumn last set it up, and no network in the building, including her own
 router as it is now, offers one it will join. The notes stay because they
 hold up past this camera: the 24-hour stream concept (below) and the setup
-volume pattern (`../README.md`, *Gear that brings its own software*).
+volume pattern (`docs/troves/README.md`, *Gear that brings its own software*).
 
 ## What the camera is, on the cable
 

@@ -9,7 +9,7 @@ Above `set interfaces switch switch0 switch-port interface eth1`
 switch.cfg -- an EdgeRouter X made dumb: five ports, one switch, nothing else.
 
 EdgeOS configure-mode commands, applied in order to a unit fresh from a
-factory reset (README.md, "Preparing a unit"). The same file for every unit:
+factory reset (docs/troves/edgerouter-x/README.md, "Preparing a unit"). The same file for every unit:
 nothing here names one. A unit is told apart by its hardware address.
 
 What it does:

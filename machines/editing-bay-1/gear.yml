@@ -29,7 +29,7 @@ gear:
       branch: its metadata is per working tree (bay/gh-stack-0.1.1.yml)
     at: "%LOCALAPPDATA%\\GitHub CLI\\extensions\\gh-stack\\gh-stack.exe"
     vendor: GitHub (github.com/github/gh-stack), MIT
-    signer: none; a GitHub build attestation instead (../BAY.md)
+    signer: none; a GitHub build attestation instead (docs/machines/BAY.md)
     provisioner: bay          # the release binary, then `gh extension install --pin`
     updates: bay              # pinned, so `gh extension upgrade` leaves it alone
     restart-tier: none

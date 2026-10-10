@@ -6,7 +6,7 @@ Moved out of the file. Unreviewed.
 
 Above `import ctypes`
 
-A crew (crews/README.md) orders from menus: its `services` file names,
+A crew (docs/crews/README.md) orders from menus: its `services` file names,
 line by line, a service some residency serves (`residency.yml`, `serves:`).
 This runs those lines and nothing else. A `keep` line is kept up, coming back
 after 5s, doubling to 5m, the wait reset once it has stayed up 10m. An `every`

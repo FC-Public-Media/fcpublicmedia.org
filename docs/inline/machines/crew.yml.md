@@ -61,7 +61,7 @@ now so that the first person to want it does not have to re-derive it:
     reattachable. station-node got to skip this because ccgroup answered it.
 
 Read by nothing. There is no `crew` command here — this repository's
-`machines/` runs one thing, `binding`, and that is deliberate (`README.md`).
+`machines/` runs one thing, `binding`, and that is deliberate (`docs/machines/README.md`).
 This is a record for a person and an agent to read, which is what most of the
 useful files in this directory are.
 

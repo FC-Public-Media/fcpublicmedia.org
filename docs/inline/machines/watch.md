@@ -8,7 +8,7 @@ Above `set -u`
 
 watch — what `fcpm` alone does: show this machine's state, then offer pull,
 send and install. `watch copy` makes the people's working copy, `watch weekly`
-is the scheduled pull. Doc: machines/README.md, "fcpm on its own".
+is the scheduled pull. Doc: docs/machines/README.md, "fcpm on its own".
 
 ## 2
 

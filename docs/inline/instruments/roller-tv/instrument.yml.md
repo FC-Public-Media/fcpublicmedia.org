@@ -6,7 +6,7 @@ Moved out of the file. Unreviewed.
 
 Above `version: 1`
 
-instrument.yml — the studio's rolling TV. See ../README.md.
+instrument.yml — the studio's rolling TV. See docs/instruments/README.md.
 
 AN INSTRUMENT WE DO NOT OWN. The TV is the building's. It is lent to the
 studio, and it can be taken away without our being able to bring it back
@@ -26,7 +26,7 @@ Above `match:`
 
 What the display reports about itself, over EDID. Read on editing bay 1
 2026-09-25 with WmiMonitorID, which needed no administrator. Matched on
-maker + product code (../README.md, "How a screen is matched"); `model` is
+maker + product code (docs/instruments/README.md, "How a screen is matched"); `model` is
 the readable name. The serial is a filler value, 16843009 (0x01010101), and
 the port is not matched, so a cable moved to another port keeps the show.
 

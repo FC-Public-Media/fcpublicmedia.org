@@ -47,7 +47,7 @@ to run on a bay that has no Python yet.
 
 Above `troves/recorder/bay/obs-portable.ps1 | powershell | check    | read    | what is received, staged, i`
 
-The recorder trove's bay procedure (troves/recorder/README.md, machines/BAY.md).
+The recorder trove's bay procedure (docs/troves/recorder/README.md, docs/machines/BAY.md).
 Bare verbs: the defaults (-Version 32.2.2, -Node editing-bay-1) are the use.
 Every step but check appends to %LOCALAPPDATA%\<profile>\bay.ndjson, so
 none of them is `read`. None needs an administrator; install and confirm are

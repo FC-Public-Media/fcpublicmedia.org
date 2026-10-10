@@ -7,7 +7,7 @@ Moved out of the file. Unreviewed.
 Above `payload: nest-cam-setup`
 
 A payload the bay has taken in. One file per arrival; the file is the record.
-See ../../BAY.md. The trove is ../../../troves/nest-cam/.
+See docs/machines/BAY.md. The trove is ../../../troves/nest-cam/.
 
 This one arrived on the instrument itself: a 2015 Nest Cam, plugged into
 editing bay 1 by USB, presents it as a drive. Received and verified only.

@@ -50,7 +50,7 @@ need a machine are named as such.
 
 > **Amended 2026-09-23, and the amendment is to the fact rather than to the
 > reasoning.** There is now a machine being stood up for this:
-> [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md).
+> [`docs/machines/kiosk-1/PROFILE.md`](machines/kiosk-1/PROFILE.md).
 >
 > > I am setting up Git and Claude on one of the kiosk boxes because I want to
 > > use it to prove fcpm.org as a station node of its own.
@@ -65,7 +65,7 @@ need a machine are named as such.
 > is Windows.** Everything the prototype does about being on a machine —
 > `open -a`, launchd, `scutil`, Homebrew — assumes it is not. What that costs
 > and what survives it is worked through in
-> [`../machines/README.md`](../machines/README.md), "Windows is the default
+> [`docs/machines/README.md`](machines/README.md), "Windows is the default
 > here".
 
 ---
@@ -412,7 +412,7 @@ holdings.
 
 ## What stays with the prototype and what moves to the box
 
-**Added 2026-09-23**, after [`../machines/kiosk-1`](../machines/kiosk-1/PROFILE.md)
+**Added 2026-09-23**, after [`../machines/kiosk-1`](machines/kiosk-1/PROFILE.md)
 came up and an agent was inside it. The section above settled what FCPM *takes*
 from the prototype as a shape. This one is narrower and more operational: now
 that there is a machine, which things actually run on it.

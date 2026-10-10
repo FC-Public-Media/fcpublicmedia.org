@@ -76,7 +76,7 @@ and on the installed Claude (see "server" below).
 
 What it cannot do is log on. After a power cut the box waits at the sign-in
 screen until someone signs in, and signing in automatically needs an
-administrator (PROFILE.md, "Asked of IT").
+administrator (docs/machines/kiosk-1/PROFILE.md, "Asked of IT").
 
 ## 2
 
@@ -380,7 +380,7 @@ Above `def md_html(text):`
 
 ---------------------------------------------------------------- class mode --
 CLASS MODE on the roller: a teacher's supporting materials while their class
-is on (instruments/roller-tv/class-mode.md). A demo for now, written beside
+is on (docs/instruments/roller-tv/class-mode.md). A demo for now, written beside
 the wall as class.html and never in its rotation. A class is a folder:
 class.yml (title, presenter, hours) and one folder per kind of material,
 named by its noun, holding one file per section in name order. Markdown or
@@ -604,7 +604,7 @@ Above `SESSIONS = STATE / "sessions.json"`
 
 ------------------------------------------------------------------ sessions --
 NO SESSION IS KEPT (Autumn, 2026-10-09). Sessions arrive through the root's
-Remote Control server (machines/README.md, "how its sessions arrive"), and
+Remote Control server (docs/machines/README.md, "how its sessions arrive"), and
 the door starts none of its own.
 
 The `startup` seat this replaced: from 2026-10-03, every pass started a
@@ -660,7 +660,7 @@ Above `SERVER_EVERY = 60`
 THE ROOT'S SERVER, KEPT AND KEPT CURRENT (Autumn, 2026-10-09). The door keeps
 `claude remote-control --no-create-session-in-dir` running at ~/code, as
 production's bin/pool.ps1 does: a server, no session of its own and no name
-(machines/README.md, "how its sessions arrive"). Every minute, a missing
+(docs/machines/README.md, "how its sessions arrive"). Every minute, a missing
 server is started.
 
 Claude updates itself under us. The installer swaps claude.exe; the daemon

@@ -3,7 +3,7 @@
 **The contract for digitization, the way it is split up today.** It names the
 troves it plays, splits the work into roles, and says which machine fills each
 role. It carries none of the troves. Crews are explained in
-[`../README.md`](../README.md).
+[`docs/crews/README.md`](../README.md).
 
 Status: draft, written by station-node, which wears this crew today and means to
 vacate it for [`../../machines/digitization/`](../../machines/digitization/PROFILE.md).
@@ -60,7 +60,7 @@ better, so every such disk is served to it, with a grant, by whoever holds it.
 | AJA HELO | input and outlet: the hardware encoder; records and streams | capture | [`aja-helo`](https://github.com/FC-Public-Media/aja-helo) |
 | Integra DTR-6.3 | monitor: the room-sized one | capture | no trove yet |
 | the Drobo B810i, its 1 TB partition | the tank: where every capture lands | tank host | [`drobo`](https://github.com/FC-Public-Media/drobo) |
-| roller TV | outlet: a screen on a stand | screen | [`troves/kiosk-screen`](../../troves/kiosk-screen/), [`instruments`](../../instruments/README.md) |
+| roller TV | outlet: a screen on a stand | screen | [`troves/kiosk-screen`](../../../troves/kiosk-screen), [`instruments`](../../instruments/README.md) |
 | Audio Hijack | gear: the recorder on macOS | capture | [`troves/recorder`](../../troves/recorder/README.md) |
 | OBS | gear: the recorder on Windows, and more | any, its own copy | [`troves/recorder`](../../troves/recorder/README.md) |
 

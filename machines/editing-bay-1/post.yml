@@ -1,5 +1,5 @@
 # see docs/inline/machines/editing-bay-1/post.yml.md#1
 
-crews: [production]          # until the hardware record says what it wears (crews/README.md); digitization's post steps join when it has some
+crews: [production]          # until the hardware record says what it wears (docs/crews/README.md); digitization's post steps join when it has some
 root: "E:/POST"              # the 1 TB LUN, iSCSI (fcpm drobo), shared as `enhance` (fcpm share): the tank
 doors: "E:/DOORS"

@@ -16,7 +16,7 @@ not cosmetic.
 THIS IS THE DEFAULT, NOT THE ONLY ONE. A profile may carry its own
 `gear.yml`, and if it does, it REPLACES this file for that machine rather
 than merging with it. Merging two rosters quietly produces a third that
-nobody wrote and nobody can read off a page. See `README.md`, "What a
+nobody wrote and nobody can read off a page. See `docs/machines/README.md`, "What a
 default is".
 
 PRESENCE IS NOT DECLARED HERE. Whether a thing is actually on a machine is

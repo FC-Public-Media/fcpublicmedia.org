@@ -4,7 +4,7 @@ This directory is the project: Fort Collins Public Media's media node.
 Sessions start here. Windows 10, IT-managed, **no administrator**.
 
 **Autumn calls this root `kiosk`.** It answers to every one of these, and they
-all mean this box (site repo `machines/README.md`, *What a machine is called*):
+all mean this box (site repo `docs/machines/README.md`, *What a machine is called*):
 
 | | |
 |---|---|
@@ -78,7 +78,7 @@ before trusting anyone's guess, including your own.
   checks the door. The log is `%LOCALAPPDATA%\media-node\door.log`.
 - **No seat** (Autumn, 2026-10-09). The door no longer keeps a `startup`
   session. Sessions arrive through the root's Remote Control server, as on
-  production (site repo `machines/README.md`). The door keeps that server up,
+  production (site repo `docs/machines/README.md`). The door keeps that server up,
   and bounces it onto a new Claude after 15 calm minutes. `door.py server`
   says whether it is current and what holds the bounce.
 - **The weekly pull is the gate, and sessions here run it** (Autumn,
@@ -96,7 +96,7 @@ before trusting anyone's guess, including your own.
   (run it from `media-node`; it commits there). Bring those lines to `main`
   by PR every so often.
 - Things still waiting on IT: automatic sign-in, and inbound :8080 (see
-  `machines/kiosk-1/PROFILE.md`).
+  `docs/machines/kiosk-1/PROFILE.md`).
 
 ## Building and testing here
 
@@ -106,7 +106,7 @@ This box is a builder, provisioned on purpose (2026-09-24). Node 24 LTS lives in
 `npx wrangler@4 dev --ip 127.0.0.1` serves the real Worker on loopback. Integration
 tests use invented `*.localhost` hosts (Edge sends them to loopback) and a virtual
 passkey authenticator over the DevTools protocol. No production secrets are needed.
-Details, including the Visual C++ runtime fix, are in `machines/kiosk-1/PROFILE.md`.
+Details, including the Visual C++ runtime fix, are in `docs/machines/kiosk-1/PROFILE.md`.
 
 ## Rules that bite
 

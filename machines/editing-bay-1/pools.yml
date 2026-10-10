@@ -1,4 +1,4 @@
-# The storage pools production watches, for `fcpm pools`. Doc: troves/pools/README.md.
+# The storage pools production watches, for `fcpm pools`. Doc: docs/troves/pools/README.md.
 
 pools:
   - name: depot

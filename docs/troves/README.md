@@ -25,7 +25,7 @@ Status: draft. Nothing reads this directory yet.
 | **node** | these are our instruments, and what each one shows or records | `../instruments/` | the rolling TV shows the wall |
 | **metal** | this is plugged into me, so I provide it | nowhere: the host discovers it, every time | editing bay 1 finds the Vizio, so it drives the rolling TV |
 
-The metal layer is never written down, for the reason `machines/README.md`
+The metal layer is never written down, for the reason `docs/machines/README.md`
 gives for names: anything declared is copied by the act that makes it wrong. The
 node layer is intent. Only the host that finds the hardware on its bus or its
 display stack can say it is there.
@@ -43,7 +43,7 @@ display stack can say it is there.
   machines other people sit down to every week. Their OBS, their browsers, and
   their settings are theirs. A trove brings its own copy, its own profile and its
   own ports, or it does not run.
-- **A trove's gear comes aboard through the bay** (`../machines/BAY.md`): received,
+- **A trove's gear comes aboard through the bay** (`docs/machines/BAY.md`): received,
   verified, staged, installed at a declared restart tier, confirmed. The trove
   carries the procedure; the host keeps the record of each arrival.
 
@@ -66,15 +66,15 @@ files.
 
 | trove | plays | status |
 |---|---|---|
-| [`recorder/`](recorder/) | anything that produces files a node catches: capture decks, the RØDECaster | drafting |
-| [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
-| [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
-| [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
-| [`ti-89/`](ti-89/) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; a black link on COM1, the calculator not answering yet |
-| [`pools/`](pools/) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |
-| [`ki-pro/`](ki-pro/) | an AJA Ki Pro: ProRes recorder and player, read over the LAN | Studio Ki Pro, the TriCaster's backup recorder, read from editing bay 1 |
-| [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | retired 2026-10-06: it won't join any network here. Kept for its notes |
-| [`ptz/`](ptz/) | PTZ cameras on the studio network: presets operators trigger, and behind-the-scenes capture | concept, waiting on the donated cameras |
+| [`recorder/`](../../troves/recorder) | anything that produces files a node catches: capture decks, the RØDECaster | drafting |
+| [`kiosk-screen/`](../../troves/kiosk-screen) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
+| [`camera/`](../../troves/camera) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
+| [`edgerouter-x/`](../../troves/edgerouter-x) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
+| [`ti-89/`](../../troves/ti-89) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; a black link on COM1, the calculator not answering yet |
+| [`pools/`](../../troves/pools) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |
+| [`ki-pro/`](../../troves/ki-pro) | an AJA Ki Pro: ProRes recorder and player, read over the LAN | Studio Ki Pro, the TriCaster's backup recorder, read from editing bay 1 |
+| [`nest-cam/`](../../troves/nest-cam) | a 2015 Nest Cam, and the setup drive it carries | retired 2026-10-06: it won't join any network here. Kept for its notes |
+| [`ptz/`](../../troves/ptz) | PTZ cameras on the studio network: presets operators trigger, and behind-the-scenes capture | concept, waiting on the donated cameras |
 
 ## Troves in their own repositories
 
