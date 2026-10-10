@@ -268,6 +268,20 @@ Every verb a person runs on an FCPM machine is `fcpm <verb>`, found by name, the
 same in any window. `fcpm help` lists them. **A step that needs a path, an
 interpreter or a choice of shell is a gap in `fcpm`, not something to type.**
 
+**The mirror is what the machine runs.** `~/code/refs/fcpublicmedia.org`
+(`~/code/ref/` on kiosk-1) is the checkout `fcpm`, the shim and the pool run
+from. Merges reach a machine only when the mirror is pulled.
+
+| verb | does | pulls |
+|---|---|---|
+| `fcpm pull` | `bin/refs pull fcpublicmedia.org`, then `machines/sync install` | yes, this repository only |
+| `fcpm install` | `sync install`, `watch copy`, and on Windows registers `fcpm weekly` | **no**: it never brings in merges |
+| `fcpm weekly` | the weekly task: pulls the mirror and the other `refs/` repositories | yes |
+| `fcpm dev on\|off` | flag `%LOCALAPPDATA%\fcpm\dev`; while on, the pool pulls and places this repository every 5 minutes | yes, while on |
+
+The other repositories in `refs/` are reading context. Only `fcpm weekly`
+pulls them; `fcpm` has no `refs` verb. `bin/refs pull [REPO...]` takes names.
+
 - **One file serves every profile.** `fcpm` asks the machine which profile it
   wears (`sync`), and finds this repository from where it lives.
 - **On Windows it is `fcpm.cmd` in `~/.local/bin`.** The shim runs the mirror's

@@ -5,5 +5,6 @@ docs out of files: one place for documentation
 - [x] kept: usage text a script prints, member-shipped templates, blobs pinned by runnables.proven
 - [x] scattered markdown moves under docs/; PROFILE.md stays as a one-line pointer (machines/binding reads it)
 - [ ] fcpm install: the "a person runs it, never a session" lines are unchanged; the edit was refused by the classifier and is the owner's to make
+- [x] rebuilt on main cb02a2e (#255, #257, #258); their facts and an audit's false claims recorded in docs/OPEN.md and docs/machines/README.md
 - [x] AGENTS.md rule: one-line comments; docs/README.md says nothing under docs/ is reviewed
 - [ ] .pr back to main's before merge

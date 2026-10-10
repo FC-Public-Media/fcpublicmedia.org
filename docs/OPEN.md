@@ -9,6 +9,29 @@ here looks finished, looks healthy, or looks like somebody else's job.
 Each item says how to check it, because a claim a reader cannot verify is a
 rumour and this file will rot.
 
+## Checked against main at `cb02a2e`, 2026-10-10
+
+Claims in these files are false. They are left as written, for whoever
+reviews `docs/`.
+
+| claim | where | what is true | check |
+|---|---|---|---|
+| a Remote Control server started by hand is left alone; `off` never stops a running one | `machines/editing-bay-1/code/AGENTS.md` | `fcpm pool off` ends every Remote Control server on the box, then prints `server: down` or the pid still up | `StopAll` in `machines/editing-bay-1/code/bin/pool.ps1` |
+| the root keeps one thing up, a Remote Control server | `machines/editing-bay-1/code/AGENTS.md`, `docs/inline/machines/editing-bay-1/code/bin/pool.ps1.md` | the server on EDIT2 is off by choice | `fcpm pool` on EDIT2 |
+| Wi-Fi is the guest network, `192.168.3.x` | `machines/editing-bay-1/code/AGENTS.md` | EDIT2's Wi-Fi is disconnected | `ipconfig` on EDIT2 |
+| read `GOTCHAS.log` first | `machines/editing-bay-1/code/AGENTS.md` | there is no `GOTCHAS.log` in EDIT2's `~/code` | `dir ~\code` on EDIT2 |
+| if `fcpm screen` says kept NO, the pool is out of date | `machines/editing-bay-1/code/AGENTS.md` | `screen.ps1` counts a keep only when `FCPM_BY` is `pool`; the crew's residency sets `production`, which it counts as `hand`. Reported from EDIT2 that kept stays NO | `troves/kiosk-screen/screen.ps1` line 8, `troves/kiosk-screen/residency.yml` |
+| production's supervisor is installed and running | `docs/crews/production/CREW.md`, `docs/crews/README.md` | `fcpm crew status\|install` fails: `crews/crew.ps1` still looks in `machines\crews\`. There is no `production` task on EDIT2 | `grep -n 'machines.crews' crews/crew.ps1` |
+| `powershell -NoProfile -File ~\code\bin\pool.ps1 install` | advice printed by `machines/editing-bay-1/check.ps1` | that command does not work; the verb is `fcpm pool install` | `fcpm check` on EDIT2 |
+| run `fcpm install` to bring in the latest | anywhere | `fcpm install` does not pull. `fcpm pull` does | `machines/fcpm`, the `install` and `pull` cases |
+
+Changed by #255, #257 and #258, and not yet reflected everywhere:
+
+- Bare `fcpm` (the watcher) no longer runs `check.ps1`; `sync` honors
+  `SYNC_CHECK=0`. The check runs only from `fcpm check`. The depot probe is an
+  800 ms socket. A server turned off on purpose shows `--`, not NEEDS.
+- `fcpm pool` shows a `dev` line.
+
 ## Pins that are stale and will stay quiet about it
 
 | | |
