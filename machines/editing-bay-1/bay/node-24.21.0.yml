@@ -1,6 +1,4 @@
-# A payload the bay has taken in. One file per arrival; the file is the record.
-# See ../../BAY.md. No procedure script yet: run by hand by code-d5,
-# step by step, each step in the run log. Re-measured by code-e3 the same day.
+# A payload the bay took in, run by hand. One file per arrival. See docs/station.md, Bay.
 
 payload: node
 version: 24.21.0         # LTS "Krypton", released 2026-09-07
@@ -18,9 +16,7 @@ why-not-winget: >
 
 verified:
   sha256: 158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541
-  # matches that release's SHASUMS256.txt. The file's own signature
-  # (SHASUMS256.txt.sig) was NOT checked against the release keys: there is
-  # no GPG here. The hash is only as good as the TLS that fetched it.
+  # matches SHASUMS256.txt; its .sig was not checked (no GPG here), so only as good as the TLS
   authenticode: "node.exe: Valid, CN=OpenJS Foundation"
 
 staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\node-v24.21.0"
@@ -34,6 +30,5 @@ grants: none
 
 run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (five lines: receive, verify, stage, install, confirm)"
 
-# No rollback copy: there was no previous Node. The next arrival keeps this one
-# in the cellar before it swaps.
+# No rollback copy: there was no previous Node.
 status: installed

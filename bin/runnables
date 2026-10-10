@@ -12,24 +12,15 @@
 #                              --exercise also runs the cycle P's GRANTS
 #                              declares for H, which is what `admit` allows
 #
-# THIS IS THE OSTENSIBLY AVAILABLE LIST, AND BEING ON IT GRANTS NOTHING. It
-# shows what the repository carries (machines/RUNNABLES says what each verb
-# claims to do) so a crew's answer can be read against it. Nothing here writes a
-# setting. docs/RUNNABLES.md.
-#
-# The identity it prints is the file's git blob at HEAD: the same bytes on every
-# host that has this commit. A file changed since HEAD is marked, because what
-# a claim was proven against is the committed file, never the working copy.
-#
-# Read-only. Git Bash on Windows; no Python, because a bay may not have one yet.
+# Being on the census grants nothing. Identity is the git blob at HEAD; a changed file is marked.
+# Git Bash, no Python. See docs/station.md, Runnables and GRANTS.
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLAIMS="$ROOT/machines/RUNNABLES"
 cd "$ROOT" || exit 1
 
-# Where runnables live. A trove's bay procedures and runtime verbs are the
-# recorder's and the screens' own; the rest are the repository's.
+# Where runnables live.
 discover() {
   git ls-files -- bin site/bin machines troves worker/bin 2>/dev/null |
   while IFS= read -r f; do
@@ -48,8 +39,7 @@ claims() {
     print $1 "|" $2 "|" $3 "|" $4 "|" $5 }'
 }
 
-# A GRANTS file's `depends <holder> | <path>` lines, as holder|path, for one
-# holder or (with "") all of them.
+# A GRANTS file's `depends <holder> | <path>` lines as holder|path, for one holder or ("") all.
 depends_of() {
   sed -e 's/#.*$//' "$1" | awk -v want="$2" '
     $1 == "depends" {
@@ -109,20 +99,15 @@ case "$cmd" in
     exit $bad
     ;;
   compile)
-    # Boring on purpose: a machine that grants permissions should have no
-    # judgment in it. It prints; `machines/sync` is what puts it in place.
+    # No judgment here: it prints, and `machines/sync` puts it in place.
     p=${2:-}; G="$ROOT/machines/$p/GRANTS"; PROVEN="$ROOT/machines/$p/bay/runnables.proven"
     [ -n "$p" ] && [ -f "$G" ] || { echo "compile: no machines/$p/GRANTS" >&2; exit 2; }
     [ -f "$PROVEN" ] || PROVEN=/dev/null
-    # {LOCALAPPDATA} in a runner is this host's, with forward slashes: a rule
-    # matches the text a session types, so the committed file names the place
-    # and the compiled one names the path.
+    # {LOCALAPPDATA} in a runner becomes this host's path, with forward slashes.
     lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/')
     blobs=$(claims | cut -d'|' -f1 | sort -u | while read -r h; do
       printf '%s %s\n' "$h" "$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null)"; done)
-    # depends <holder> | <path>: a file the holder reads at run time. Its blob
-    # is part of the proof, so a change to it revokes the grant exactly as an
-    # edit to the holder would.
+    # Each `depends` file's blob: a change to it revokes the grant as an edit to the holder would.
     depblobs=$(depends_of "$G" "" | while IFS='|' read -r dh dp; do
       printf '%s %s %s\n' "$dh" "$dp" "$(git rev-parse --short=12 "HEAD:$dp" 2>/dev/null || echo missing)"; done)
     claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" -v lad="$lad" -v depblobs="$depblobs" '
@@ -232,17 +217,7 @@ case "$cmd" in
       }'
     ;;
   prove)
-    # THE BAY'S QUESTION, ASKED OF OUR OWN BYTES. A payload from outside is
-    # proven by the vendor's digest and signature; a tool of ours by its blob,
-    # and by doing what it claims on the machine that will run it. This runs
-    # every `read` verb of the holder, exactly as the profile's canonical
-    # runner starts it, and requires that nothing changed: not this checkout,
-    # and not the profile's bay or troves folders. Then it writes one line.
-    #
-    # It proves the read verbs by running them, and nothing else. An `inside`
-    # verb is allowed on the strength of the same line, so `--by` names who
-    # read the rest of the holder's code and vouches for it. A proof is a
-    # commit, and admission is still the merge.
+    # Run every `read` verb as the canonical runner starts it; nothing may change. --by vouches for the rest.
     p=${2:-}; h=${3:-}; by=""; exercise=""
     shift 3 2>/dev/null || true
     while [ $# -gt 0 ]; do
@@ -287,13 +262,7 @@ case "$cmd" in
     [ "$before" = "$after" ] || { echo "prove: a read verb changed something; not proven:" >&2
       diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -20 >&2; exit 1; }
 
-    # --exercise: THE CYCLE A TASK WILL RUN, run once, watched. What an
-    # `admit` may allow is what this proved. GRANTS declares it as data:
-    #   exercise <holder> | <shape> ; <shape> ; ...   the cycle, in order
-    #   untouched <path>      must list the same (names, sizes, times) after
-    #   quiet <image>         none may run before it starts, none after it ends
-    # Files may change under the profile's troves folder and nowhere else the
-    # bay watches: not this checkout, not its bay folder or run log.
+    # --exercise: the GRANTS cycle, run once and watched; only the profile's troves folder may change.
     exercised=""
     if [ -n "$exercise" ]; then
       cycle=$(sed -e 's/#.*$//' "$G" | awk -v h="$h" '$1 == "exercise" { r = $0; sub(/^[ \t]*exercise[ \t]+/, "", r); split(r, a, "|"); gsub(/^[ \t]+|[ \t]+$/, "", a[1]); if (a[1] == h) print a[2] }')
@@ -302,8 +271,7 @@ case "$cmd" in
         -e "s|{LOCALAPPDATA}|$lad|g" -e "s|{USERPROFILE}|$(printf '%s' "${USERPROFILE:-}" | tr '\\' '/')|g"; }
       untouched=$(sed -e 's/#.*$//' "$G" | awk '$1 == "untouched" { $1 = ""; sub(/^ /, ""); print }')
       quiet=$(sed -e 's/#.*$//' "$G" | awk '$1 == "quiet" { print $2 }')
-      # expect <file> <text>: something the cycle appends to <file> must
-      # contain <text>, such as a stop that closed rather than killed.
+      # expect <file> <text>: what the cycle appends to <file> must contain <text>.
       expects=$(awk '$1 == "expect" { $1 = ""; sub(/^ /, ""); print }' "$G")
       exp_sizes=$(printf '%s\n' "$expects" | while read -r f _; do [ -n "$f" ] || continue
         f=$(expand "$f"); if [ -f "$f" ]; then wc -c < "$f"; else echo 0; fi; done)
@@ -348,12 +316,12 @@ EXPECT
     out="$ROOT/machines/$p/bay/runnables.proven"
     mkdir -p "$(dirname "$out")"
     [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
-      "# Written by \`bin/runnables prove\`. docs/RUNNABLES.md, machines/BAY.md." \
+      "# Written by \`bin/runnables prove\`. docs/station.md, Runnables." \
       "#" "# holder  blob  date  ran  by" > "$out"
     printf '%s %s %s ran:%s%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
       "${exercised:+ exercised:$exercised}" "${deps:+ deps:$deps}" "$by" >> "$out"
     echo "proven    $h @$blob on $p (ran: ${ran:-none}${exercised:+; exercised: $exercised}); recorded in machines/$p/bay/runnables.proven"
     ;;
   *)
-    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

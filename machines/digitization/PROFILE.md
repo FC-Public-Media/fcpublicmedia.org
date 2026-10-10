@@ -1,40 +1,25 @@
 # digitization
 
-**Status: drafted 2026-10-09, not yet worn.** A Dell OptiPlex 9020M (asset
-200-FCPubMedia), running Debian 13 XFCE live from a USB stick. The first Linux
-profile here.
-
-The name is the crew's on purpose (see `names`): for now this box and the
-[`digitization`](../../crews/README.md) crew share it. It takes the crew over
-from station-node, which can then vacate. The crew's contract
-(`crews/digitization/CREW.md`) has not arrived from station-node yet.
+A Dell OptiPlex 9020M (asset 200-FCPubMedia) running Debian 13 XFCE live from a USB stick, the first
+Linux profile. It shares its name with the [`digitization`](../../crews/digitization/CREW.md) crew,
+which it is to take over from station-node. Not worn yet. Machines: [docs/station.md](../../docs/station.md).
 
 | | |
 |---|---|
-| wears | `digitization` (intended) |
-| names | `names`: `linux Hostname digitization`, not applied yet |
-| keyholders | `KEYHOLDERS`: the secretary's passkey slot, empty |
-| role on the LAN | the FCPM git origin and receiver, so work can go on through a cloud outage (below) |
+| `names` | `linux Hostname digitization`. Not applied: the live boot answers `debian`, and `sudo hostnamectl hostname digitization` lasts until reboot |
+| `KEYHOLDERS` | who may prove themselves to this machine by passkey. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is removing the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
+| role | FCPM's git origin and receiver, so work goes on through a cloud outage |
 
 ## The origin
 
-Bare repos at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media plus the
-four FCCN-ANTIBODY repos fcpublicmedia.org mounts. Only FCPM's own things.
-They live on an ext4 image on the RAID, not on the stick: the origin belongs to the box.
+Bare repositories at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media, and the four FCCN-ANTIBODY
+repositories fcpublicmedia.org mounts. They live on an ext4 image on the RAID, not on the stick.
 
-**Intake is automatic and tracks `main` only** (`origin-intake`, every minute
-from `systemd/origin-intake.timer`). A merge on GitHub is when we pay
-attention. Behind → fast-forward. Ahead → left alone. Both moved → a clean
-merge becomes our own merge commit; a conflict is recorded in
-`/srv/origin/.intake/state.json` and `main` is not touched. Nothing is forced.
-Periodic until GitHub can call us with a webhook.
+`origin-intake` (installed at `~/.local/bin/`, run every minute by `systemd/origin-intake.timer`;
+`--status` prints the last state) tracks GitHub's `main` only, one GraphQL query for every repository,
+`gh` holding the login. Behind: fast-forward. Ahead: left alone. Both moved: a clean merge becomes our
+own merge commit; a conflict is recorded in `/srv/origin/.intake/state.json` and `main` is untouched.
+Nothing is forced or deleted, and every action is appended to `/srv/origin/.intake/actions.ndjson`.
 
-**What comes in from the LAN is authenticated fast-forwards only.** Every repo has
-`receive.denyNonFastForwards` and `receive.denyDeletes`. The authenticated
-door (SSH, keys from `KEYHOLDERS`) is not open yet. No pull requests here:
-everyone has the code, so a station sends a fast-forward. If that turns out
-to be a barrier, we'd rather hit it and take it down on purpose.
-
-Not yet: publishing origin → GitHub, and the page. That will be a front end
-for people at a nonprofit, not station-node's 8080 page. Borrowing its raw
-views is fine, but they aren't the default.
+The LAN may push only authenticated fast-forwards (`receive.denyNonFastForwards`, `receive.denyDeletes`;
+no pull requests here). The SSH door, keyed from `KEYHOLDERS`, is not open yet.

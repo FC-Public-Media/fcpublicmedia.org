@@ -4,26 +4,8 @@
     origin-intake            check every repo once, take what moved
     origin-intake --status   print the last state, change nothing
 
-The origin is bare repos at /srv/origin/<owner>/<repo>, each with one remote,
-`github`. Only main is tracked: a merge on GitHub is the moment we pay attention.
-Other branches are not fetched.
-
-One GraphQL query reads every repo's main. Only repos whose main moved are fetched,
-into github/main. Then, for origin's own main:
-
-    same as github/main              nothing to do
-    behind it                        fast-forward
-    ahead of it                      leave it (a station fast-forwarded in; publishing is separate)
-    both moved                       merge in memory; clean -> our own merge commit,
-                                     conflict -> recorded, main untouched
-
-Nothing is forced and nothing is deleted. A failure in one repo is recorded and
-the next repo goes on: this must never make us crap the bed.
-
-State for a page to read: /srv/origin/.intake/state.json, and every action
-appended to /srv/origin/.intake/actions.ndjson.
-
-System python, stdlib only, plus git and gh (gh holds the GitHub login).
+Only main is fetched, into github/main. A failure in one repo is recorded and the
+next goes on. Stdlib, git and gh. See machines/digitization/PROFILE.md.
 """
 import datetime
 import fcntl

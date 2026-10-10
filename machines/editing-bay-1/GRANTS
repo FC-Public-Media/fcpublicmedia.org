@@ -1,27 +1,10 @@
-# GRANTS: editing bay 1's answer to ../RUNNABLES. What this crew wears, on purpose.
-#
-# See ../kiosk-1/GRANTS for the line types and docs/RUNNABLES.md for the design.
-# Compiled by `bin/runnables compile editing-bay-1`; put in place by a person
-# with `machines/sync install`, never by a session. An allow reaches the
-# settings only for a holder whose blob is in bay/runnables.proven.
-#
-# THIS MACHINE IS NOT OURS TO RUN. People sit down to it every week, and the
-# software they use is theirs: their OBS in Program Files with its settings in
-# %APPDATA%\obs-studio, its virtual camera, its shortcuts, and whatever talks
-# to it (a member's Streamer.bot does). The recorder trove's OBS is a second,
-# portable copy for staff and attendant tasks, prepared so that a person can
-# use it too, and it goes nowhere else (../../troves/recorder/README.md).
+# GRANTS: editing bay 1's answer to ../RUNNABLES. Line types: docs/station.md, GRANTS.
+# People use this machine every week, and their OBS and its settings are theirs, not ours.
 
-# The admitted code is the read-only mirror: it only ever fast-forwards to
-# main, so a rule naming it names what was merged. This bay keeps no live
-# checkout (~/code/AGENTS.md).
+# The read-only mirror: it only fast-forwards to main. This bay keeps no live checkout.
 checkout  refs/fcpublicmedia.org
 
-#   wears <holder>                    answer only for these holders. A profile
-#                                     with no `wears` line answers for every
-#                                     claim, as kiosk-1 does
-#
-# The door is the media node's; this bay does not run it. What it wears:
+# The door is the media node's; this bay does not run it.
 wears  troves/recorder/bay/obs-portable.ps1
 wears  bin/runnables
 wears  bin/build-kiosk.py
@@ -29,20 +12,12 @@ wears  bin/build-sites.py
 wears  machines/binding
 wears  machines/fcpm
 
-# Windows PowerShell 5.1, as the pool's task runs its own script. The Bash form
-# is canonical; the PowerShell tool's form gets the denies too.
 runner  powershell  Bash        powershell -NoProfile -ExecutionPolicy Bypass -File
 runner  powershell  PowerShell  &
 runner  sh          Bash
 runner  python      Bash        uv run --no-project --python 3.12 --with pyyaml
 
-# NEVER STOP ANYTHING BY NAME ON THIS MACHINE.
-#
-# The staff OBS and the members' OBS are both obs64.exe. A stop by name cannot
-# tell them apart, and it would end somebody's recording or stream. The trove
-# stops its own copy by the PID it started (troves/recorder/obs.ps1). The same
-# is true of every other program here, so the rule is not about OBS: a process
-# on this machine is stopped by its id, or by a person.
+# Never stop a process by name here: the staff OBS and the members' OBS are both obs64.exe.
 host  deny  PowerShell(Stop-Process -Name *)
 host  deny  PowerShell(Stop-Process -ProcessName *)
 host  deny  PowerShell(kill -Name *)
@@ -53,46 +28,22 @@ host  deny  Bash(taskkill -im *)
 host  deny  Bash(pkill *)
 host  deny  Bash(killall *)
 
-# THE STAFF OBS, DRIVEN BY ISSUED TASKS.
-#
-# An attendant's task may start the recorder's OBS, record, and stop it,
-# without asking, because of everything below and nothing less:
-#   - the bay installed this copy and confirmed it kept to itself
-#     (bay/obs-portable-32.2.2.yml), and obs.ps1 `start` refuses any obs64.exe
-#     whose hash is not the one that record names;
-#   - the cycle a task runs was exercised on this machine, at this blob of
-#     obs.ps1, and left the members' OBS exactly as it found it;
-#   - and this file, with these lines, was merged.
-# `prepare` is a person's, at the desk. Changing obs.ps1 revokes all of it
-# until it is exercised again.
-#
-#   exercise <holder> | <shape> ; ...   the cycle `prove --exercise` runs
-#   untouched <path>                    listed the same after (names, sizes, times)
-#   quiet <image>                       none running before it, none after
-#   expect <file> <text>                the cycle must append <text> to <file>
-#   admit allow <holder> | <shape>      an outside verb, allowed once exercised
-#   depends <holder> | <path>           a repo file the holder reads at run time;
-#                                       its blob is part of the proof
+# The staff OBS, driven by issued tasks: installed and confirmed by the bay, its cycle exercised
+# here, and this merged. obs.ps1 starts only the obs64.exe whose hash the bay's record names, so
+# the record is part of the proof; a new OBS version means a new record, line and exercise.
 wears      troves/recorder/obs.ps1
-# obs.ps1 takes the installed obs64.exe's hash from the bay's record at run
-# time and refuses any other copy (code-81, 2026-09-26). So the record is part
-# of what is proven: edit it, and the task verbs ask again. The file is named
-# by the installed version, so a new OBS through the bay means a new line here
-# and a new exercise.
 depends    troves/recorder/obs.ps1 | machines/editing-bay-1/bay/obs-portable-32.2.2.yml
 exercise   troves/recorder/obs.ps1 | start ; status ; record start ; status ; record stop ; stop
 untouched  {APPDATA}/obs-studio
 untouched  {USERPROFILE}/Videos
 quiet      obs64
-# The stop has to CLOSE it. A kill can leave a recording unfinished, and a
-# cycle that ends in one is not the behaviour being granted.
+# The stop must close it: a kill can leave a recording unfinished.
 expect     {LOCALAPPDATA}/editing-bay-1/troves/recorder/obs.ndjson "how":"closed"
 admit allow  troves/recorder/obs.ps1 | start
 admit allow  troves/recorder/obs.ps1 | record start
 admit allow  troves/recorder/obs.ps1 | record stop
 admit allow  troves/recorder/obs.ps1 | stop
 
-# Theirs, by path. Reading a name to show it is untouched is the bay's job, and
-# `confirm` does it; nothing a session runs writes here.
+# Theirs, by path.
 host  deny  PowerShell(Remove-Item *obs-studio*)
 host  deny  Bash(rm *obs-studio*)
