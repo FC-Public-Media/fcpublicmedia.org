@@ -61,11 +61,13 @@ while read -r mode src dst <&3; do
       done ;;
     clone:mirror) ;;
     # see docs/inline/machines/sync.md#2
-    settings:status|settings:install)
+    settings:status|settings:install|settings:grants)
       want=$("$REPO/bin/runnables" compile "$src" 2>/dev/null)
       if [ -f "$to" ] && [ "$(cat "$to")" = "$want" ]; then [ "$cmd" = status ] && echo "same      ~/$dst (compiled from $src's GRANTS)"; continue; fi
       if [ "$cmd" = status ]; then
         if [ -f "$to" ]; then echo "differs   ~/$dst (not what $src's GRANTS compiles to)"; else echo "missing   ~/$dst"; fi; rc=1
+      elif [ "$cmd" = install ]; then
+        echo "held      ~/$dst (fcpm grants places it)"
       else
         mkdir -p "$(dirname "$to")"
         [ -e "$to" ] && mv "$to" "$to.pre-sync" && echo "aside     ~/$dst -> $(basename "$to").pre-sync"
@@ -84,6 +86,7 @@ while read -r mode src dst <&3; do
           echo "placed    ~/$dst on PATH (new windows see it)"
       fi ;;
     path:mirror) ;;
+    *:grants) ;;
     *) echo "sync: unknown mode '$mode', or verb '$cmd'" >&2; exit 2 ;;
   esac
 done 3< "$P/MANIFEST"

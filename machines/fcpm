@@ -23,6 +23,7 @@ case "$cmd" in
     "$HERE/watch" copy
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$HERE/watch" weekly install ;; esac ;;
   weekly)    exec "$HERE/watch" weekly ;;
+  grants)    exec "$HERE/sync" grants ;;
   check)
     p=$(profile)
     [ -n "$p" ] || { echo "fcpm: this machine wears no profile"; exit 0; }
@@ -81,7 +82,8 @@ case "$cmd" in
 fcpm                      the watcher: what is going on here, and a short menu
 fcpm status               which profile, and what differs from what it carries
 fcpm pull                 bring in what merged on GitHub, and put it in place
-fcpm install              put the profile on, and the weekly pull. A person runs this
+fcpm install              put the profile on (not its permissions), and the weekly pull
+fcpm grants               place this profile's permissions, compiled from its GRANTS
 fcpm check                what files cannot say: gear, settings, the pool
 fcpm weekly               bring in the latest, once a week (the task runs it)
 fcpm pool [status|pass|off|on|install]      the root's server
