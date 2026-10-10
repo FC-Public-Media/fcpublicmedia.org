@@ -127,11 +127,14 @@ until it runs something that has to be rebased under it.
 
 - **`fcpm` is the one switch** (`machines/fcpm` in the site repo, 2026-09-26),
   the same in cmd and PowerShell once `fcpm install` has put it on PATH:
-  `fcpm` (the watcher: what is going on, and a short menu), `fcpm check`, `fcpm refs ...`, `fcpm pool ...`,
+  `fcpm` (the watcher: what is going on, and a short menu), `fcpm check`, `fcpm pull`, `fcpm pool ...`,
   `fcpm runnables ...`, `fcpm screen ...`, `fcpm help`. When handing Autumn a step, hand her an
   `fcpm` verb, never a path, an interpreter or a choice of window. A step that
   needs one is a gap in `fcpm` to fill.
-- `bin/refs pull` and `bin/refs status` keep the mirrors current.
+- `fcpm pull` brings in fcpublicmedia.org, the mirror this bay runs, and
+  places it. The other mirrors are reading, pulled by the `fcpm weekly` task
+  (`bin/refs pull`, all of them); they are not `fcpm`'s business (Autumn,
+  2026-10-10). Sessions use `bin/refs` directly.
 - **Staying current is the pool's job, not an install** (Autumn, 2026-10-09).
   Each pass, when the mirror has moved, places what it carries
   (`machines/sync install`: this script, settings, PATH), and restarts the
