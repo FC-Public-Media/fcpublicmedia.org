@@ -5,8 +5,10 @@
 #                                    bounce a stale server of ours, start the root's
 #                                    server if it is not up, keep the roller's screen
 #                                    (troves/kiosk-screen). What the logon task runs
-#   bin\pool.ps1 off|on             end every Remote Control server here and keep
-#                                    it off, or start again. off is authoritative
+#   bin\pool.ps1 off|on             end every Remote Control server here (signed
+#                                    off, so the phone lets go) and keep it off
+#                                    until on or a restart, or start again and
+#                                    say if it is ready. off is authoritative
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
 # The root is ~/code. The pool keeps one thing up there, `claude remote-control
@@ -142,6 +144,40 @@ function Stale($srv) {
     $null
 }
 
+function SignOff($srv, $all) {
+    # End a server the way Ctrl+C in its terminal does, so it signs off and
+    # claude.ai lets go of Edit2. A kill never signs off: claude.ai holds the
+    # machine ~3 minutes, refuses each new server ("already served"), and the
+    # phone shows the dead one, with no Remote Control (2026-10-10). Ctrl+C
+    # goes to the server's own console from a helper process, since this one
+    # has to leave its console to reach it. What has not ended in 15 seconds
+    # is killed, as before.
+    $helper = @'
+Add-Type -Namespace W -Name K -MemberDefinition @"
+[DllImport("kernel32.dll")] public static extern bool FreeConsole();
+[DllImport("kernel32.dll")] public static extern bool AttachConsole(uint p);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleCtrlHandler(System.IntPtr h, bool add);
+[DllImport("kernel32.dll")] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g);
+"@
+[W.K]::FreeConsole() | Out-Null
+if (-not [W.K]::AttachConsole(__SERVER__)) { exit 3 }
+[W.K]::SetConsoleCtrlHandler([IntPtr]::Zero, $true) | Out-Null
+if (-not [W.K]::GenerateConsoleCtrlEvent(0, 0)) { exit 4 }
+Start-Sleep -Milliseconds 500
+'@ -replace '__SERVER__', $srv.ProcessId
+    $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($helper))
+    $tree = @(Below $srv.ProcessId $all)
+    try { Start-Process $ps -ArgumentList "-NoProfile -EncodedCommand $enc" -WindowStyle Hidden -Wait } catch {}
+    $t0 = Get-Date
+    while ((Get-Process -Id $srv.ProcessId -ErrorAction SilentlyContinue) -and ((Get-Date) - $t0).TotalSeconds -lt 15) { Start-Sleep -Milliseconds 250 }
+    $how = "signed off"
+    if (Get-Process -Id $srv.ProcessId -ErrorAction SilentlyContinue) { $how = "killed: it did not sign off in 15s" }
+    [array]::Reverse($tree)
+    foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
+    $how
+}
+
 function SayOnce([string]$m) {
     # Log a line only when it differs from the last one said this way, so a
     # held bounce is logged when what holds it changes, not every minute.
@@ -164,14 +200,21 @@ function Bounce {
         }
         SayOnce ""
         Say ("server: {0} {1}: bouncing it" -f $srv.ProcessId, $why)
-        $tree = @(Below $srv.ProcessId $all)
-        [array]::Reverse($tree)
-        foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
+        Say ("server: {0} {1}" -f $srv.ProcessId, (SignOff $srv $all))
     }
 }
 
 function EnsureServer {
-    if (Test-Path $Off) { return }
+    # `off` lasts until the computer restarts, not through it. Kept through
+    # restarts, an `off` left from testing at 23:22 meant the 23:25 boot came
+    # up with no Remote Control (2026-10-10): Autumn wants it up whenever the
+    # bay comes on.
+    $f = Get-Item $Off -ErrorAction SilentlyContinue
+    if ($f) {
+        $boot = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).LastBootUpTime
+        if ($boot -and $f.LastWriteTime -lt $boot) { Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: off ended with the restart" }
+        else { return }
+    }
     Bounce
     if (@(Servers).Count) { return }
     # Why the last one stopped, if it said. A server that ended without
@@ -282,10 +325,7 @@ function StopAll {
     # Then it looks again, and says by pid whatever is still up.
     $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
     foreach ($srv in @(Servers)) {
-        $tree = @(Below $srv.ProcessId $all)
-        [array]::Reverse($tree)
-        foreach ($p in @($tree) + $srv) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
-        Say ("server: {0} stopped" -f $srv.ProcessId)
+        Say ("server: {0} {1}" -f $srv.ProcessId, (SignOff $srv $all))
     }
     $left = @(Servers)
     if ($left.Count) { Say ("server: STILL UP: pid {0}" -f (($left | ForEach-Object { $_.ProcessId }) -join ", ")); exit 1 }
@@ -295,7 +335,23 @@ function StopAll {
 switch ($Verb) {
     "pass" { Follow; Current; EnsureServer; Screens }
     "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopAll }
-    "on" { Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer }
+    "on" {
+        Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer
+        # Say what the phone will see, not just that a process started.
+        $t0 = Get-Date; $state = ""
+        while (((Get-Date) - $t0).TotalSeconds -lt 20) {
+            if (Select-String -Path (Join-Path $State "server.out") -Pattern "Ready" -Quiet -ErrorAction SilentlyContinue) { $state = "ready"; break }
+            if (Select-String -Path (Join-Path $State "server.err") -Pattern "already served" -Quiet -ErrorAction SilentlyContinue) { $state = "refused"; break }
+            if (-not @(Servers).Count) { $state = "exited"; break }
+            Start-Sleep -Milliseconds 500
+        }
+        switch ($state) {
+            "ready" { Say "server: ready: Edit2 has Remote Control" }
+            "refused" { Say "server: refused: claude.ai still holds Edit2 for a server that was killed. The pool tries every minute; up within ~3 min" }
+            "exited" { Say "server: exited at start; see server.err" }
+            default { Say "server: started, not ready yet; fcpm pool shows it" }
+        }
+    }
     "install" {
         $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
         # conhost --headless: no window flashes on a shared desktop every pass.
@@ -319,7 +375,7 @@ switch ($Verb) {
         Write-Output ("dev       {0}" -f $(if (Test-Path $Dev) { "on: pulls GitHub every $PullMin min" + $(if ($pulled) { ", last $pulled" } else { "" }) } else { "off: the weekly pull only" }))
         $srv = @(Servers)
         Write-Output ("server    {0}{1}" -f $(if ($srv.Count) { "up (pid " + (($srv | ForEach-Object { $_.ProcessId }) -join ", ") + ")" } else { "down" }),
-            $(if (Test-Path $Off) { "  (off: the pool will not start it)" } else { "" }))
+            $(if (Test-Path $Off) { "  (off: the pool will not start it until on or a restart)" } else { "" }))
         $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
         foreach ($s in $srv) {
             $why = Stale $s
@@ -335,5 +391,5 @@ switch ($Verb) {
             if ($s) { Write-Output ("{0,-12} {1,-20} {2} {3}" -f $s.kind, $s.name, $s.sessionId.Substring(0, 8), $s.cwd) }
         }
     }
-    default { Get-Content $PSCommandPath -TotalCount 9 | Select-Object -Skip 1; exit 2 }
+    default { Get-Content $PSCommandPath -TotalCount 11 | Select-Object -Skip 1; exit 2 }
 }
