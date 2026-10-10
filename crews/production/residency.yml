@@ -1,5 +1,4 @@
-# residency.yml -- what the production crew itself offers, beside its troves'.
-# A menu, not a startup script: see troves/pools/residency.yml.
+# What the production crew itself serves: a menu, not a startup script. See crews/README.md.
 
 resident: production
 
