@@ -1,22 +1,66 @@
-docs: digest the documentation to under 20% of its size
+pools: video in the tank (plan, for redline)
 
-Read every doc and every long comment, area by area, and rewrite them as one
-plain reference. Same system, same premise; no history, no argument, no
-padding. Long comments in files become one line or nothing.
+A member brings video: Twitch or YouTube streams, a camera's files. To the pools it is a recording
+with a picture attached. Production proofs it (what was said, what is worth keeping) and enhances
+it before anything is edited. Cutting, multitrack and project files are the show pipeline's job,
+not the pools'. First case: Autumn's long play of a video game, about 200 hours, as a new show.
 
-Baseline (main a404bf6): 65 markdown docs, ~13,800 lines; ~9,800 lines of
-multi-line comments across ~225 files. Measured: 22,013 -> 3,628 lines (16.5%).
+## The plan
 
-- [x] site: running-it, deploying, NODE, REDIRECTS, MANIFEST, known-issues, CONTENT-TODO, REVIEW-NOTES, site/ comments
-- [x] programming: programming.md, instruments/, sync and class code
-- [x] members: TENANCY, member-sites, MEMBER-SHOWS, HOLDING-A-BUBBLE, DIRECTORY, LIBRARY-AND-WIZARDS
-- [x] payments and identity: payments, PAYMENTS-CHECKLIST, identity, RESERVE-DESIGN, worker/
-- [x] machines: STATION, machines/README, BAY, RUNNABLES, INTERMEDIATES, profiles, machine code
-- [x] kiosk: KIOSK, SCREENS-DIM, kiosk-1, kiosk/, brand/, kiosk-screen
-- [x] troves: troves/*
-- [x] crews, attendant, advocate, design notes
-- [x] one open list (docs/OPEN.md), one index (docs/README.md), every link repointed
-- [x] byte-pinned holders untouched: machines/fcpm, troves/recorder/obs.ps1, troves/recorder/bay/obs-portable.ps1, obs-portable-32.2.2.yml
-- [x] tests pass
-- [ ] Autumn reads it, area by area
+1. **Formats.** MP4 and WebM first. MKV (the capture proposal's FFV1 masters) comes later. A
+   video file is never changed in place (crews/digitization/CREW.md): anything derived from it is
+   either a local cache or a new file written beside it.
+2. **Two tools, one job each.**
+   - **Adobe makes anything that leaves the pools**: extracted or enhanced audio, proxies,
+     anything for an editor. It runs through doors (`E:\DOORS\<step>`) as Media Encoder watch
+     folders, with presets kept in git under crews/production. This is the supported path on
+     this machine, and a person can open Media Encoder and see the queue.
+   - **ffmpeg only reads, for the page**: it probes files (length, streams), draws the sound
+     envelope (levels, waveform), takes frames for the strip, and decodes a marked range into
+     the samples Whisper hears. It never writes into a pool. It is pinned and hashed, with a bay
+     record, the same as faster-whisper.
+3. **Time.** A downloaded file's modified time is the day it was downloaded, not the day it was
+   streamed, and YouTube strips the creation time. The stream's time comes from a sidecar beside
+   the file (yt-dlp `.info.json`), else from the time in the file's name, else from the square
+   being dated by hand. That puts each stream on the night it was streamed.
+4. **Playing.** Edge plays MP4 (H.264/AAC) and WebM (VP9/Opus) natively. The window gets a
+   picture pane above the waveform. Files are served from disk in byte ranges; today's `/audio`
+   loads the whole file into memory, which works for a WAV clip but not for a 5 GB video. A file
+   Edge can't play is marked on its square, and Media Encoder makes a proxy for it.
+5. **Frame strip.** Zoomed in, the window shows small frames along the lanes, about one every
+   10 s, cached on this machine. Ballpark for 200 h: 72,000 frames, around 1 GB.
+6. **Speech, not loudness.** With music underneath, almost nothing is quiet, so marking silence
+   by level finds very little. A speech pass instead: the Silero VAD bundled with faster-whisper
+   (already installed) marks talk spans across a whole recording. Whisper hears only those spans,
+   or whatever is marked. Large-v3 on the 4080 can get through 200 h overnight if the whole
+   recording is wanted. Separating the music from the voice (Demucs) only comes in if VAD and
+   Whisper fail on a control passage, and it is new software, so it needs Autumn's OK first.
+7. **Size.** The tank is 1 TB. YouTube 1080p60 at 2–4 GB an hour makes 200 h about 0.4–0.8 TB.
+   Caches stay small and local.
+8. **Show repos commit at rest.** Today, releasing an episode commits immediately to
+   `work/<repo>@ejected`. Instead, edits made on the page write the show's files as they happen
+   (the working tree is left uncommitted). The `episodes` tick (every 5 m) commits a show's
+   worktree once it has been still for a while, or at `day_starts_at`. Each commit is one rest:
+   the secretary identity, no member's name, a message listing the files. One worktree per show
+   repo, with the page as its only writer. Pushing stays a person's step until there is a local
+   origin.
+
+## Out of scope
+
+Cutting beyond the proofing marks; multitrack; loading anything into project files (each show's
+pipeline decides that); delivery.
+
+## Steps
+
+- [ ] Autumn redlines this plan
+- [ ] ffmpeg: pinned build, sha256, bay record; reading only (approved 2026-10-11)
+- [ ] probe: does Media Encoder 26.3 open these MP4s and WebMs; is its web service (`AMEWebService.exe`) a documented way to submit jobs
+- [ ] video files as recordings: probe, time (point 3), squares
+- [ ] playback streamed from disk; picture pane in the window
+- [ ] envelope from ffmpeg feeding levels and the waveform
+- [ ] speech pass (VAD) marking talk spans
+- [ ] transcription of video ranges (ffmpeg decodes the range for Whisper)
+- [ ] frame strip
+- [ ] a Media Encoder door: audio out of video, then the enhance door
+- [ ] show worktrees commit at rest (point 8)
 - [ ] .pr back to main's before merge
