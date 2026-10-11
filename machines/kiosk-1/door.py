@@ -892,10 +892,27 @@ window.FCPM_AWAKE = %s;
 // this machine wakes every panel together, not just the one under the
 // pointer. The door reads the session's last input (Windows keeps it for the
 // whole computer); each page asks every two seconds and, when there is new
-// input, wakes its own dim layer. Only pages the door serves: file:// pages
-// have no door to ask.
+// input, wakes its own dim layer. A file:// page has no door to ask, so the
+// host that plays it says where it writes the last input instead, in the
+// query (?input=file:///.../input.js, troves/kiosk-screen on bay 1): a script
+// calling fcpmInput(ms), read again every two seconds.
 (function () {
-  if (location.protocol.indexOf('http') !== 0 || window !== window.top) return;
+  if (window !== window.top) return;
+  if (location.protocol === 'file:') {
+    var src = new URLSearchParams(location.search).get('input');
+    if (!src || src.indexOf('file:') !== 0) return;
+    window.fcpmInput = function (at) {
+      if (at && window.FCPMDim && window.FCPMDim.wake) window.FCPMDim.wake(at);
+    };
+    setInterval(function () {
+      var s = document.createElement('script');
+      s.src = src + (src.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now();
+      s.onload = s.onerror = function () { s.parentNode && s.parentNode.removeChild(s); };
+      document.head.appendChild(s);
+    }, 2000);
+    return;
+  }
+  if (location.protocol.indexOf('http') !== 0) return;
   var last = null;
   setInterval(function () {
     fetch('/input', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {

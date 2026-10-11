@@ -98,7 +98,7 @@ fcpm pool [status|pass|off|on|install]      the root's server
 fcpm dev [status|on|off]  on: merges on GitHub reach this machine by themselves, within 5 min
 fcpm runnables [...]      the census, compile, prove (bin/runnables)
 fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
-fcpm screen [status|on|off|reset|class|wall]   the rolling TV
+fcpm screen [status|on|off|reset|class|wall|toggle]   the rolling TV (toggle: class mode <-> the wall)
 fcpm audition [status|install|remove]   Audition as gear: the enhance engine's panel
 fcpm drobo [status|connect|header|list OUT]   the Drobo, over iSCSI (CHAP)
 fcpm share [status|install]   the drop shares: enhance (E:, TO ENHANCE)

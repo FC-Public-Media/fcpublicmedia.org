@@ -47,10 +47,21 @@ runs between passes except Edge itself.
 | `fcpm screen reset` | close it and start it again |
 | `fcpm screen class` | class mode instead of the wall (`class.html`, `../../instruments/roller-tv/class-mode.md`), held pass after pass. `class light` for the light version |
 | `fcpm screen wall` | back to the wall |
+| `fcpm screen toggle` | the other one: the wall if class mode is showing, class mode if the wall |
 
 Under `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`
 (the local render), `profile\` (Edge's), `off` (present while off), `page` (present while class mode is asked for),
-`screen.log` (what changed, one line each time).
+`input.js` (when this computer last had input), `screen.log` (what changed, one line each time).
+
+## Waking
+
+The page dims outside host shifts and classes (`brand/idle/dim.js`), and any
+mouse or key **anywhere on this computer** wakes it for an hour from that
+input, as kiosk-1's panels do. Kiosk-1's door tells its pages about input;
+here the page is a file with no door. Each pass writes `input.js`, and the
+page is launched with `?input=` naming it and reads it every two seconds. The
+pass runs once a minute, so input on the bay wakes the TV within a minute. A
+mouse moved onto the TV itself wakes it at once.
 
 ## What the local render cannot show
 
