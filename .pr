@@ -84,10 +84,26 @@ not the pools'. First case: Autumn's long play of a video game, about 200 hours,
       the provisional name until the show is named.
     - **Graduating** is one gesture on the name: every region and episode under it moves to the
       show at once, and its out names follow. A rename before then is the same gesture.
-    - **A show that doesn't exist yet** can't be graduated to. Its record (`site/_shows`, public)
-      and its private repo are a person's step, and the page says which are still missing.
+    - **Graduating to a new show creates it** (point 11), so nobody has to leave the page.
     - Until it graduates, everything stays in `groups.json` on this machine. From graduation on,
       the show's repo receives its files at rest (point 8).
+11. **A new show is a new repository, made from the page.** A member in the studio pressing
+    "new show" is the authoritative signal. Nobody here approves or refuses it; we just close the
+    gap between having the idea and acting on it.
+    - **Local first.** The page makes a bare repo in this machine's `origin/`, the same layout
+      station-node uses (`origin/FC-Public-Media/<repo>.git`), plus the page's worktree for
+      it. No cloud is involved.
+    - **The repo's name is never the show's name.** It gets a permanent id, picked once and
+      never changed (`show-2026-10-11-a`). The title, slug and description live in `show.yml`
+      inside the repo, where they can change as often as wanted and commit at rest like
+      everything else. That makes renaming a metadata edit, not a repo rename.
+    - **The first commit records the moment:** made in the studio, on this machine, at this
+      time. Linking it to a member (check-in card, bookings) comes later.
+    - **The page lists shows from both places:** `site/_shows` and this machine's `origin/`.
+      A show goes on the public site, or to GitHub, only when a person takes that step, and
+      that is the one time a public name has to be picked.
+    - **Undoing:** a show with no episodes can be dropped. It moves to `origin/.removed/`, and
+      nothing is deleted, the same as **Remove marked**.
 
 ## Out of scope
 
@@ -109,6 +125,7 @@ pipeline decides that); delivery.
 - [ ] frame strip
 - [ ] a Media Encoder door: audio out of video, then the enhance door
 - [ ] episodes under a provisional name; graduating and renaming in one gesture (point 10)
+- [ ] this machine's `origin/`; "new show" makes `show-<id>` with `show.yml`; shows listed from both places (point 11)
 - [ ] the `undated` lane; dragging a square onto a night dates it (point 3)
 - [ ] show worktrees commit at rest (point 8)
 - [ ] .pr back to main's before merge
