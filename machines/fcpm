@@ -86,7 +86,7 @@ case "$cmd" in
     exec "$uv" run --no-project --python 3.12 --with comtypes --with pyyaml "$REPO/troves/camera/camera.py" "$@" ;;
   ti89)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    exec "$uv" run --no-project --python 3.12 --with pyserial "$REPO/troves/ti-89/link.py" "$@" ;;
+    exec "$uv" run --no-project --python 3.12 --with pyserial "$REPO/troves/ti-89/cable/link.py" "$@" ;;
   help|-h|--help) cat <<'EOF'
 fcpm                      the watcher: what is going on here, and a short menu
 fcpm status               which profile, and what differs from what it carries
