@@ -55,13 +55,15 @@ Under `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`
 
 ## Waking
 
-The page dims outside host shifts and classes (`brand/idle/dim.js`), and any
-mouse or key **anywhere on this computer** wakes it for an hour from that
-input, as kiosk-1's panels do. Kiosk-1's door tells its pages about input;
-here the page is a file with no door. Each pass writes `input.js`, and the
-page is launched with `?input=` naming it and reads it every two seconds. The
-pass runs once a minute, so input on the bay wakes the TV within a minute. A
-mouse moved onto the TV itself wakes it at once.
+The page falls to the bouncing clock outside host shifts and classes
+(`brand/idle/dim.js`). Touching **this computer, anywhere** (a mouse, a key)
+ends it at once, for an hour from the last touch, as on kiosk-1's panels.
+Kiosk-1's door tells its pages about input; here the page is a file with no
+door. A watcher (`screen.ps1 watch`, started by `keep` beside our browser,
+one at a time) writes `input.js` within a fifth of a second of any input, and
+the page, launched with `?input=` naming it, reads it twice a second. The
+watcher ends with our browser, when held off, or when `screen.ps1` changes,
+and the next pass starts it again.
 
 ## What the local render cannot show
 

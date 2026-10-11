@@ -36,7 +36,9 @@ after station-node's `bin/door`, whose rules it keeps:
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
     GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
-    GET /camera            the camera: armed, seconds left, what it last heard (THE CAMERA). The desk polls it
+    GET /input             seconds since this computer was last touched, as JSON. Every page polls it (AWAKE_JS)
+    POST /input            a panel was touched: count it, whether or not Windows does; this box only
+    GET /camera          the camera: armed, seconds left, what it last heard (THE CAMERA). The desk polls it
     POST /camera/arm?for=N, /camera/disarm   arm or stop the camera; this box only (door.py camera)
     GET /camera/eye        the page the camera runs, in a headless Edge; it POSTs /camera/read
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
@@ -888,15 +890,28 @@ def clock_mark(inner="", cls=""):
 # fcpm-awake on <html>.
 AWAKE_JS = """<script>
 window.FCPM_AWAKE = %s;
-// One computer, one waking (Autumn, 2026-09-28): a mouse or key anywhere on
-// this machine wakes every panel together, not just the one under the
-// pointer. The door reads the session's last input (Windows keeps it for the
-// whole computer); each page asks every two seconds and, when there is new
-// input, wakes its own dim layer. A file:// page has no door to ask, so the
-// host that plays it says where it writes the last input instead, in the
-// query (?input=file:///.../input.js, troves/kiosk-screen on bay 1): a script
-// calling fcpmInput(ms), read again every two seconds.
+// One computer, one waking (Autumn, 2026-09-28, and again 2026-10-10: "their
+// two pages wake up separately"): touching this computer anywhere ends the
+// dim on every panel at once, and the hour runs from that touch. The door
+// reads the session's last input (Windows keeps it for the whole computer),
+// and a touch on a panel also tells the door, since Windows may not count
+// touch. Every page asks twice a second and hands the time of the last input
+// to its dim layer: no guessing whether it is new, so no touch is missed and
+// the panels wake within half a second of each other. A file:// page has no
+// door to ask, so the host that plays it says where it keeps the last input
+// instead, in the query (?input=file:///.../input.js, troves/kiosk-screen on
+// bay 1): a script calling fcpmInput(ms), read twice a second too.
 (function () {
+  if (location.protocol.indexOf('http') === 0) {
+    var told = 0;
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function (type) {
+      window.addEventListener(type, function () {
+        if (Date.now() - told < 1000) return;
+        told = Date.now();
+        fetch('/input', {method: 'POST', cache: 'no-store'}).catch(function () {});
+      }, {capture: true, passive: true});
+    });
+  }
   if (window !== window.top) return;
   if (location.protocol === 'file:') {
     var src = new URLSearchParams(location.search).get('input');
@@ -909,21 +924,16 @@ window.FCPM_AWAKE = %s;
       s.src = src + (src.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now();
       s.onload = s.onerror = function () { s.parentNode && s.parentNode.removeChild(s); };
       document.head.appendChild(s);
-    }, 2000);
+    }, 500);
     return;
   }
   if (location.protocol.indexOf('http') !== 0) return;
-  var last = null;
   setInterval(function () {
     fetch('/input', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
-      var at = Date.now() - d.idle * 1000;
-      if (last !== null && at - last > 1500 && d.idle < 3) {
-        if (window.FCPMDim && window.FCPMDim.wake) window.FCPMDim.wake();
-        else window.dispatchEvent(new KeyboardEvent('keydown'));
-      }
-      last = at;
+      if (typeof d.idle === 'number' && window.FCPMDim && window.FCPMDim.wake)
+        window.FCPMDim.wake(Date.now() - d.idle * 1000);
     }).catch(function () {});
-  }, 2000);
+  }, 500);
 })();
 window.fcpmAwake = function (list) {
   if (!list) return;
@@ -958,6 +968,16 @@ def idle_seconds():
         return None
     tick = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF
     return ((tick - li.dwTime) & 0xFFFFFFFF) / 1000.0
+
+
+_touched = [0.0]   # when a panel last said it was touched (POST /input)
+
+
+def input_idle():
+    """Seconds since anyone touched this computer: Windows' last input, or a
+    panel's own touch, which Windows may not count. What GET /input says."""
+    seen = [s for s in (idle_seconds(), time.time() - _touched[0] if _touched[0] else None) if s is not None]
+    return min(seen) if seen else None
 
 
 def page(title, body, style=""):
@@ -2327,6 +2347,8 @@ class Door(BaseHTTPRequestHandler):
     server_version = "media-node-door"
 
     def log_message(self, fmt, *args):
+        if getattr(self, "path", "").split("?", 1)[0] == "/input":
+            return   # every panel asks twice a second; the log is for what happens
         log("%s %s" % (self.address_string(), fmt % args))
 
     def reply(self, code, body, ctype="text/html; charset=utf-8"):
@@ -2353,6 +2375,10 @@ class Door(BaseHTTPRequestHandler):
     def do_POST(self):
         route = self.path.split("?", 1)[0]
         here = self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+        # A panel was touched: the other panels wake on it too (AWAKE_JS).
+        if route == "/input" and here:
+            _touched[0] = time.time()
+            return self.reply(204, "", TYPES[".txt"])
         # Only the panels themselves step aside: they are on this computer.
         if route == "/aside" and here:
             try:
@@ -2403,7 +2429,7 @@ class Door(BaseHTTPRequestHandler):
             if route == "/helo/state":
                 return self.reply(200, json.dumps(helo_state()), TYPES[".json"])
             if route == "/input":
-                return self.reply(200, json.dumps({"idle": idle_seconds()}), TYPES[".json"])
+                return self.reply(200, json.dumps({"idle": input_idle()}), TYPES[".json"])
             if route == "/depot/now":
                 return self.reply(200, json.dumps(depot_now()), TYPES[".json"])
             if route == "/kiosk/now":
