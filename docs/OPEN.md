@@ -147,7 +147,8 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 - The crew install has never run to completion; it needs an administrator.
 - The supervisor is Windows-only; a Linux host needs a unit, a lock, display detection and process-group kill. machines/crew.py
-- The kiosk has no `CREW.md` (its contract is its `PROFILE.md` and `docs/kiosk.md`); digitization has no `services` order. machines/README.md
+- Digitization has no `services` order. machines/README.md
+- The kiosk's supervisor is its door, from sign-in: S4U at the computer's start needs an administrator. machines/kiosk/CREW.md
 - Production's door is not built; its first workflow and whether `/pools/` moves under it are undecided. docs/services.md
 - The welcome before sign-in at the bays is an experiment. docs/services.md#workstation-sign-in
 - Digitization: bay 1's answers as tank host and screen; the Debian member has no capture verb or drive; capture splitting on silence vs one file per session; recording input and start time; a name for the scratch share; the Integra, VCR, multichannel interface and compressors; RØDECaster multitrack.

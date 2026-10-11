@@ -25,23 +25,8 @@ Screens and content: [`docs/kiosk.md`](../../docs/kiosk.md).
 ## The door
 
 `door.py` (its docstring lists verbs and routes), on `[::]:8080`, at
-`http://200-fcpanedit2.local:8080/`. The per-user task `media-node door` starts `supervise` at
-logon and every five minutes (`door.py startup --install`); a named mutex keeps one running.
-Log: `%LOCALAPPDATA%\media-node\door.log`.
-
-| job | what it does |
-|---|---|
-| bounce | `serve` exits 75 when the checkout's commit moves; `supervise` restarts it; pages reload on `/revision` |
-| pull | every 5 min, rebases `media-node` onto `origin/main`; a dirty tree or a conflict is left as it was |
-| screens | every 30 s, one Edge kiosk per panel in `node.yml`, profile under `%LOCALAPPDATA%\media-node\screens\`: missing, astray, silent 120 s or moved is relaunched; covered is raised; none while a monitor is gone, or while stepped aside (a page's Minimize, until 10 min without input) |
-| depot | scans the router's shares every 15 s; files are `declared` (a `.sha256` beside), `arriving` or `unwitnessed`; the index stays in memory |
-| wall, turn | the wall, rewritten every 60 s to the depot share; `/turn/` is its shell on a panel here |
-| server | every minute keeps `claude remote-control --no-create-session-in-dir` at `~/code` (output `server.*`); bounces it onto a newer `claude.exe` after 15 calm minutes; a killed one holds `~/code` a few minutes ("already served"); `door.py server` |
-| sessions | starts none; snapshots `claude agents --json` to `sessions.json`, a record only; `door.py sessions` |
-| camera | `door.py camera arm`, or the desk's button: a headless Edge reads a `wizard:kiosk+lights` reply; lights keep the screens awake |
-| Dropbox | `TO DROPBOX` goes up to `dropbox.to`, removed once Dropbox holds the same bytes; off until `door.py dropbox link` |
-| HELO | sets the AJA HELO's clock from this one when over 90 s out, never while it records |
-| TI-89 | serves the runner from `ref/ti-89`, fast-forwarded with the pulls; the ROM only to this box |
+`http://200-fcpanedit2.local:8080/`. What it keeps, and how it starts without an
+administrator: [`CREW.md`](CREW.md).
 
 ## Asked of IT
 
@@ -50,7 +35,7 @@ Log: `%LOCALAPPDATA%\media-node\door.log`.
 
 ## Files
 
-`door.py`, `node.yml` (what it shows where), `m365-token.ps1` (a Microsoft 365 token signed by
+`CREW.md` (what it keeps, and how), `door.py`, `node.yml` (what it shows where), `m365-token.ps1` (a Microsoft 365 token signed by
 the non-exportable certificate in `Cert:\CurrentUser\My`), `bookings.sample.yml` (a made-up
 week, every booking "Sample"), `GOTCHAS.log` and `gotcha` (`merge=union`), `names`, `called`,
 `GRANTS` (what sessions may run), `MANIFEST` (what `../sync` places), and `code/` and
