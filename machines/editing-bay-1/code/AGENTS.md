@@ -60,7 +60,9 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
   `fcpm` to fill. Sessions use `bin/refs` directly. Log surprises with `machines/kiosk-1/gotcha`.
 - The pool (`bin/pool.ps1`, task `editing-bay-1 pool`) places what the mirror moves to and keeps the
   root's server and the rolling TV up (`%LOCALAPPDATA%\editing-bay-1\pool.log`). `fcpm screen` saying
-  `kept: NO` means it is not running; `fcpm pool off` ends every Remote Control server here. More:
+  `kept: NO` means it is not running. `fcpm pool off` ends every Remote Control server here with
+  Ctrl+C, so they sign off (a killed one leaves claude.ai refusing new servers for ~3 minutes),
+  until `on` or a restart: the bay always comes on with Remote Control. More:
   `docs/station.md`. The depot (`10.209.1.1`) is unreachable from here; joining is Autumn's call.
 - We commit source; station-node builds and deploys. Build only with jekyll-enough in a browser.
 - Secrets never go in files or repos (Credential Manager; the certificate store for the Microsoft 365

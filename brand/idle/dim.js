@@ -210,8 +210,13 @@
     setInterval(function () { for (var i = 0; i < tallies.length; i++) walk(tallies[i]); }, STEP);
   }
 
-  // wake(): a touch seen elsewhere (kiosk-1's /input); restarts the hour, swallows nothing.
-  function wake() { wokeUntil = now() + HOUR; judge(); }
+  // wake([at]): a touch seen elsewhere (kiosk-1's /input, the roller's input.js); the hour runs
+  // from `at` (ms, the real clock), or from now, and is never shortened. Swallows nothing.
+  function wake(at) {
+    var t = at === undefined ? now() : +at + skew;
+    if (t + HOUR > wokeUntil) wokeUntil = t + HOUR;
+    judge();
+  }
 
   window.FCPMDim = { isDim: function () { return dim; }, tally: tally, wake: wake };
   if (document.body) start();

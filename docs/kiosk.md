@@ -131,9 +131,11 @@ tooling and no administrator.
 
 **Waking.** A touch, click, key, wheel or real pointer movement wakes the screen for an hour,
 and each one restarts the hour. The first touch on a dim screen only wakes: the layer swallows
-it. On kiosk-1 the door reports the computer's last input (`/input`), so input anywhere wakes
-every panel. A page holds the screen awake with `<html class="fcpm-awake">`: the wall while
-held or during a class takeover, the desk during a takeover or while the camera is up. A
+it. A touch anywhere on the computer ends the dim on every screen it drives at once, for an
+hour from that touch (Autumn, 2026-10-10): kiosk-1's pages ask the door's `/input` twice a
+second (a tap on a panel also POSTs it, as Windows may not count touch), and the roller reads
+`input.js`, kept by the kiosk-screen trove's watcher. A page holds the screen awake with
+`<html class="fcpm-awake">`: the wall while held or during a class takeover, the desk during a takeover or while the camera is up. A
 check-in does not wake it; it happens on the visitor's phone. `?at=HH:MM` or `?at=<ISO>`,
 `?awake` and `?dim` on the top page's URL show either state.
 
@@ -142,7 +144,7 @@ check-in does not wake it; it happens on the visitor's phone. `?at=HH:MM` or `?a
 | `window.FCPM_AWAKE` | `[[startMs, endMs], ...]`, epoch ms, merged; baked into `<head>` before any body script |
 | `window.fcpmAwake(list)` | fresh windows from the kiosk and depot pages; replaces the list, fires `fcpm:awake` |
 | `<html class="fcpm-awake">` | awake whatever the schedule |
-| `window.FCPMDim` | `isDim()` (the wall asks every frame and stops its turn), `tally(el)` (draws the mark; the idle screen uses it), `wake()` |
+| `window.FCPMDim` | `isDim()` (the wall asks every frame and stops its turn), `tally(el)` (draws the mark; the idle screen uses it), `wake([at])` (the hour runs from `at`, never shortened) |
 | `window !== window.top` | `dim.js` does nothing, so a module's iframe draws no second layer |
 
 While dim the wall's turn is paused, and its ten-minute shell reload waits for the turn to

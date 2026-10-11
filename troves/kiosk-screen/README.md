@@ -13,8 +13,10 @@ Keeps a studio page on a screen this host finds plugged in: kiosk-1's screen kee
 
 Ours is the Edge whose command line names `%LOCALAPPDATA%\<profile>\troves\kiosk-screen\<instrument>\profile`; it is closed by WM_CLOSE, then by process id, never by name. No other screen: the TV is the building's.
 
-Verbs: `fcpm screen` (`status`: attached, our browser, the page, the last log lines), `off` (closed until `on`), `on`, `reset` (close and start again), `class` (class mode, `instruments/README.md`; `class light` for light), `wall` (back).
+Verbs: `fcpm screen` (`status`: attached, our browser, the page, the last log lines), `off` (closed until `on`), `on`, `reset` (close and start again), `class` (class mode, `instruments/README.md`; `class light` for light), `wall` (back), `toggle` (whichever of the two is not showing).
 
-State in `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`, `profile\`, `off`, `page`, `kept-pool` and `kept-hand` (heartbeats), `screen.log`.
+State in `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`, `profile\`, `off`, `page`, `kept-pool` and `kept-hand` (heartbeats), `input.js` (this computer's last input), `screen.log`.
+
+**Waking.** A touch anywhere on this computer ends the dim at once, for an hour from the last touch, as on kiosk-1's panels. The page is a file with no door to ask, so `screen.ps1 watch` (started by `keep` beside our Edge, one at a time) writes `input.js` within 0.2 s of any input, and the page, launched with `?input=` naming it, reads it twice a second. The watcher ends with our Edge, when held off, or when `screen.ps1` changes; the next pass starts it again.
 
 The local render has no depot listing, so its **Files** is empty until the depot answers. **Studio** shows `machines/kiosk-1/bookings.sample.yml` (pills say *Sample*) while `node.yml` says `bookings: sample`.
