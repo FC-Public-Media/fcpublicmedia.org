@@ -29,7 +29,7 @@
 
    window.FCPMDim = { isDim(), tally(el), wake() }. The wall asks isDim() every
    frame and stops turning while it is true. tally() draws the mark into any
-   element; the idle screen uses it. wake() is a touch from elsewhere.
+   element; the idle screen uses it. wake([at]) is a touch from elsewhere.
 
    Only the top window runs it. The wall's modules are pages in iframes that
    carry this file too, and there must be one layer, the shell's.
@@ -257,8 +257,15 @@
   // wake(): what a touch does, without a touch: the hour starts again and the
   // screen wakes. For input seen somewhere else, such as kiosk-1's door
   // reading Windows' last input so a mouse on one panel wakes both (#178).
-  // Nothing was pressed, so nothing needs swallowing.
-  function wake() { wokeUntil = now() + HOUR; judge(); }
+  // Nothing was pressed, so nothing needs swallowing. wake(at) is input seen
+  // at that time (ms, the real clock), so the hour runs from it: a host that
+  // can only say so once a minute (bay 1's roller) still dims an hour after
+  // the last touch, not an hour after it heard. It never shortens the hour.
+  function wake(at) {
+    var t = at === undefined ? now() : +at + skew;
+    if (t + HOUR > wokeUntil) wokeUntil = t + HOUR;
+    judge();
+  }
 
   window.FCPMDim = { isDim: function () { return dim; }, tally: tally, wake: wake };
   if (document.body) start();

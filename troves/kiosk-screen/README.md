@@ -47,10 +47,23 @@ runs between passes except Edge itself.
 | `fcpm screen reset` | close it and start it again |
 | `fcpm screen class` | class mode instead of the wall (`class.html`, `../../instruments/roller-tv/class-mode.md`), held pass after pass. `class light` for the light version |
 | `fcpm screen wall` | back to the wall |
+| `fcpm screen toggle` | the other one: the wall if class mode is showing, class mode if the wall |
 
 Under `%LOCALAPPDATA%\editing-bay-1\troves\kiosk-screen\roller-tv\`: `wall\`
 (the local render), `profile\` (Edge's), `off` (present while off), `page` (present while class mode is asked for),
-`screen.log` (what changed, one line each time).
+`input.js` (when this computer last had input), `screen.log` (what changed, one line each time).
+
+## Waking
+
+The page falls to the bouncing clock outside host shifts and classes
+(`brand/idle/dim.js`). Touching **this computer, anywhere** (a mouse, a key)
+ends it at once, for an hour from the last touch, as on kiosk-1's panels.
+Kiosk-1's door tells its pages about input; here the page is a file with no
+door. A watcher (`screen.ps1 watch`, started by `keep` beside our browser,
+one at a time) writes `input.js` within a fifth of a second of any input, and
+the page, launched with `?input=` naming it, reads it twice a second. The
+watcher ends with our browser, when held off, or when `screen.ps1` changes,
+and the next pass starts it again.
 
 ## What the local render cannot show
 

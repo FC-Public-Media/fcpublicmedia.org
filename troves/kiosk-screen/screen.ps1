@@ -6,7 +6,10 @@ screen.ps1 -- keep a studio page on a screen this host finds plugged in.
     screen.ps1 off    [INSTRUMENT]   close our browser and stay off until `on`
     screen.ps1 on     [INSTRUMENT]   keep it again, starting now
     screen.ps1 reset  [INSTRUMENT]   close our browser and start it again
-    screen.ps1 class  [light|dark]   show class mode instead of the wall, until wall`n    screen.ps1 wall   [INSTRUMENT]   back to the wall
+    screen.ps1 class  [light|dark]   show class mode instead of the wall, until wall
+    screen.ps1 wall   [INSTRUMENT]   back to the wall
+    screen.ps1 toggle [INSTRUMENT]   the wall if it is showing class mode, class mode if the wall
+    screen.ps1 watch  [INSTRUMENT]   keep input.js current while our browser runs (keep starts it)
 
 INSTRUMENT is a folder in ../../instruments/ (default roller-tv). Its
 instrument.yml `match:` says what the screen reports about itself over EDID;
@@ -28,21 +31,33 @@ browser is touched and nothing is kept between starts.
   closed by asking its windows, then by its process ids. Never by name: every
   Edge on this machine is msedge.exe, and the others are people's.
 - Nothing here runs for long. The pool's task runs `keep` every minute, with
-  FCPM_BY=pool, and a person's `off` holds until their `on`. Each pass leaves
-  a heartbeat, and `status` reports when the pool last ran it, not a promise.
+  FCPM_BY=pool (or the crew's name), and a person's `off` holds until their
+  `on`. Each pass leaves a heartbeat, and `status` reports when the pool last
+  ran it, not a promise.
+- Touching this computer anywhere ends the dim at once and for an hour from
+  that touch (brand/idle/dim.js), as on kiosk-1. The page is read over
+  file://, with no door to ask, so a watcher (`watch`, started by `keep`
+  beside our browser, one at a time) writes when this session last had input
+  to input.js beside the profile, within a fifth of a second. The page is
+  launched with ?input=<that file> and reads it twice a second. The watcher
+  ends when our browser does, when the screen is held off, or when this file
+  changes (the next pass starts the new one): it and Edge are all that run
+  between passes.
 
 Windows PowerShell 5.1, no modules. ASCII only.
 #>
 param(
-    [Parameter(Position = 0)] [ValidateSet('status', 'keep', 'off', 'on', 'reset', 'class', 'wall')]
+    [Parameter(Position = 0)] [ValidateSet('status', 'keep', 'off', 'on', 'reset', 'class', 'wall', 'toggle', 'watch')]
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Instrument = 'roller-tv',
     [string] $Node = 'editing-bay-1',
     # Who is running this pass: the pool, or a person (or a session acting
-    # for one). The pool says so with FCPM_BY=pool in the environment, not
-    # with this flag, so a pool newer than this file's copy in the mirror
-    # still keeps the screen instead of failing on an unknown parameter.
-    [ValidateSet('pool', 'hand')] [string] $By = $(if ($env:FCPM_BY -eq 'pool') { 'pool' } else { 'hand' })
+    # for one). The pool says so with FCPM_BY in the environment, not with
+    # this flag, so a pool newer than this file's copy in the mirror still
+    # keeps the screen instead of failing on an unknown parameter. The crew's
+    # desktop pass, which runs it for the pool now, says FCPM_BY=production
+    # (residency.yml): any keeper's name is the pool's heartbeat.
+    [ValidateSet('pool', 'hand')] [string] $By = $(if ($env:FCPM_BY -and $env:FCPM_BY -ne 'hand') { 'pool' } else { 'hand' })
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
@@ -59,6 +74,8 @@ $Wall    = Join-Path $Root 'wall'
 $OffFile = Join-Path $Root 'off'
 $PageFile = Join-Path $Root 'page'   # 'class' or 'class light' while class mode is asked for
 $Said    = Join-Path $Root 'said'
+$InputJs = Join-Path $Root 'input.js'   # when this session last had input, for the page (not in wall\: render.py prunes it)
+$Watching = "Local\fcpm-screen-watch-$Node-$Instrument"   # held by the watcher while it runs
 $Log     = Join-Path $Root 'screen.log'
 # The heartbeat: when a pass last ran, one file per who ran it. `status` reads
 # these rather than promising. For a week in September it said "every pool
@@ -107,6 +124,31 @@ public delegate bool WinProc(IntPtr h, IntPtr p);
 [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
 [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
 [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr ctx);
+[StructLayout(LayoutKind.Sequential)] public struct LASTINPUTINFO { public int cbSize; public uint dwTime; }
+[DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO li);
+
+// When this session last had input, in Windows' ticks: it changes when
+// anyone touches the computer, and costs nothing to ask.
+public static uint LastInputTick() {
+    var li = new LASTINPUTINFO(); li.cbSize = Marshal.SizeOf(li);
+    return GetLastInputInfo(ref li) ? li.dwTime : 0;
+}
+
+// When this session last had mouse or keyboard input, anywhere: ms since the
+// epoch, or 0. Windows keeps it in ticks, 32 bits, so the subtraction wraps.
+public static long LastInputMs() {
+    var li = new LASTINPUTINFO(); li.cbSize = Marshal.SizeOf(li);
+    if (!GetLastInputInfo(ref li)) return 0;
+    uint idle = unchecked((uint)Environment.TickCount - li.dwTime);
+    return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - idle;
+}
+
+// Does the file exist, asked for no longer than ms. A share whose port
+// answers can still take a minute to say no, and the pass waits on it.
+public static bool ExistsWithin(string path, int ms) {
+    var t = System.Threading.Tasks.Task.Run(() => System.IO.File.Exists(path));
+    return t.Wait(ms) && t.Result;
+}
 
 // The adapter names (\\.\DISPLAYn) whose attached monitor's interface id
 // carries the EDID product code, e.g. \\?\DISPLAY#VIZ1006#...
@@ -231,14 +273,63 @@ function FindUv {
 
 function DepotAnswers([string]$path) {
     # A share that is not there can hold Test-Path for half a minute, so ask
-    # its SMB port first, briefly.
+    # its SMB port first, briefly. Then the file, also briefly: on bay 1 on
+    # 2026-10-10 the port answered at once and the share took 57 s to say no,
+    # every pass, so the pool's minute task ran one pass in two or three.
     if (-not $path -or $path -notmatch '^\\\\([^\\]+)\\') { return $false }
     $t = New-Object Net.Sockets.TcpClient
     try {
         $ar = $t.BeginConnect($Matches[1], 445, $null, $null)
         if (-not $ar.AsyncWaitHandle.WaitOne(800) -or -not $t.Connected) { return $false }
     } catch { return $false } finally { $t.Close() }
-    return (Test-Path -LiteralPath $path)
+    return [Fcpm.Screen]::ExistsWithin($path, 3000)
+}
+
+function Heard {
+    # When this session last had input, for the page to wake on (input.js).
+    New-Item -ItemType Directory -Force $Root | Out-Null
+    [IO.File]::WriteAllText($InputJs, ("window.fcpmInput && window.fcpmInput({0});`n" -f [Fcpm.Screen]::LastInputMs()))
+}
+
+function Watch {
+    # The watcher: input.js within a fifth of a second of any touch, so the
+    # page wakes when someone does, not at the next pass. One at a time (the
+    # mutex). It ends with our browser, when held off, or when this file
+    # changes, and the next pass starts it again.
+    $mx = New-Object Threading.Mutex($false, $Watching)
+    if (-not $mx.WaitOne(0)) { $mx.Dispose(); return }
+    try {
+        $born = (Get-Item -LiteralPath $PSCommandPath).LastWriteTimeUtc
+        $tick = [uint32]0; $checked = Get-Date
+        while ($true) {
+            $t = [Fcpm.Screen]::LastInputTick()
+            if ($t -ne $tick) { $tick = $t; Heard }
+            if (((Get-Date) - $checked).TotalSeconds -ge 15) {
+                $checked = Get-Date
+                if ((Get-Item -LiteralPath $PSCommandPath).LastWriteTimeUtc -ne $born) { return }
+                if (Test-Path $OffFile) { return }
+                if (-not (Ours).pids.Count) { return }
+            }
+            Start-Sleep -Milliseconds 200
+        }
+    } finally { $mx.ReleaseMutex(); $mx.Dispose() }
+}
+
+function Watcher {
+    # Start the watcher unless one is running (its mutex exists).
+    $m = $null
+    if ([Threading.Mutex]::TryOpenExisting($Watching, [ref]$m)) { $m.Dispose(); return }
+    $ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    Start-Process -FilePath $ps -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass',
+        '-File', "`"$PSCommandPath`"", 'watch', $Instrument, '-Node', $Node) | Out-Null
+    LogLine 'watching for input'
+}
+
+function WithInput([string]$url) {
+    # The page's URL, told where input.js is. A page that predates this
+    # ignores it.
+    $sep = if ($url.Contains('?')) { '&' } else { '?' }
+    return $url + $sep + 'input=' + [Uri]::EscapeDataString(([Uri]$InputJs).AbsoluteUri)
 }
 
 function Page {
@@ -302,6 +393,7 @@ function Kept {
 
 function Keep([bool]$force) {
     Beat
+    Heard
     $m = Match; $mon = Find $m; $ours = Ours
     if (Test-Path $OffFile) {
         if ($ours.pids.Count) { Close $ours; LogLine 'off: closed our browser' }
@@ -315,6 +407,8 @@ function Keep([bool]$force) {
     $url, $from = Source $file $query
     $from = "$what, from $from"
     if (-not $url) { Changed "no page: $from"; Say "no page  $Instrument  $from"; return }
+    $url = WithInput $url
+    Watcher
     if (-not $force -and (Placed $ours $mon) -and $ours.url -eq $url) {
         Changed "ok: $from"; Say "ok       $Instrument  $($mon.device) fullscreen, $from"; return
     }
@@ -326,10 +420,18 @@ function Keep([bool]$force) {
     Say "launched $Instrument  $($mon.device) ($why), $from"
 }
 
+function ToClass {
+    New-Item -ItemType Directory -Force $Root | Out-Null
+    [IO.File]::WriteAllText($PageFile, (('class ' + $Mode).Trim())); LogLine ('class mode ' + $Mode).Trim(); Keep $false
+}
+function ToWall { Remove-Item -Force $PageFile -ErrorAction SilentlyContinue; LogLine 'the wall'; Keep $false }
+
 switch ($Verb) {
     'keep'  { Keep $false }
-    'class' { New-Item -ItemType Directory -Force $Root | Out-Null; [IO.File]::WriteAllText($PageFile, (('class ' + $Mode).Trim())); LogLine ('class mode ' + $Mode).Trim(); Keep $false }
-    'wall'  { Remove-Item -Force $PageFile -ErrorAction SilentlyContinue; LogLine 'the wall'; Keep $false }
+    'class' { ToClass }
+    'wall'  { ToWall }
+    'toggle' { if ((Page)[2] -eq 'class mode') { ToWall } else { ToClass } }
+    'watch' { Watch }
     'reset' { Remove-Item -Force $OffFile -ErrorAction SilentlyContinue; Keep $true }
     'on'    { Remove-Item -Force $OffFile -ErrorAction SilentlyContinue; LogLine 'on'; Keep $false }
     'off'   { New-Item -ItemType Directory -Force $Root | Out-Null; New-Item -ItemType File -Force $OffFile | Out-Null; Keep $false }
