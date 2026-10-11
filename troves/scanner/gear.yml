@@ -1,0 +1,59 @@
+# gear.yml — the scanner trove's gear, in ../recorder/gear.yml's fields. See README.md.
+# Presence is never declared here: the host finds its camera, screen and drives.
+
+version: 1
+
+gear:
+  - gear: scanner
+    for: >
+      Ours. The screen (inbox.py), the bridge to the carrier (bridge.mjs) and
+      the console font's wedge (font/make-font.py). Runs from the checkout;
+      writes only in $QR_STATE.
+    platform: linux
+    vendor: this trove
+    provisioner: install            # sudo troves/scanner/install
+    grants: >
+      the video group (the camera, /dev/fb0); tty1, given by scanner.service;
+      the adm group to read the kernel log for USB over-current. Drives are
+      listed, never mounted
+
+  - gear: carrier
+    for: >
+      Reads AC1 frames: order, duplicates, fountain healing, foreign tiles,
+      signatures. The bottles transit format.
+    platform: linux, macos, windows
+    vendor: FCCN-ANTIBODY/anecdote.channel composer/ @ 800162c, vendored unchanged in composer/
+    needs: nodejs
+
+  - gear: python3-zbar
+    for: >
+      Finds QR codes in a frame and returns their text and corners. Only that:
+      the carrier decides what a code means.
+    platform: linux
+    vendor: Debian (zbar 0.23)
+    package: python3-zbar           # --no-install-recommends: zbar-tools would pull in ImageMagick
+    provisioner: apt
+
+  - gear: nodejs
+    for: Runs the carrier.
+    platform: linux
+    vendor: Debian (Node 20)
+    package: nodejs                 # --no-install-recommends
+    provisioner: apt
+
+  - gear: rpicam-apps
+    for: >
+      The camera's raw frames on stdout (rpicam-vid --codec yuv420). Rows are
+      padded to 64 bytes; inbox.py reads the stride.
+    platform: linux (Raspberry Pi OS)
+    vendor: Raspberry Pi
+    package: rpicam-apps            # shipped with Raspberry Pi OS
+    provisioner: apt
+
+  - gear: console font
+    for: >
+      Terminus Bold 28x14 with the powerline wedge added at U+E0B0; built into
+      $QR_STATE on first start.
+    platform: linux
+    vendor: Debian console-setup fonts (Uni2-TerminusBold28x14)
+    provisioner: apt

@@ -648,8 +648,8 @@ def panel_camera(C, top, cell_h):
     else:
         left, right = catch_state()
         if not left:
-            left, right = "scanner", "looking" if S.awake else ""
-        lines.append(title(C, left, right, surface=ON_YELLOW if right else ON_MUTED))
+            left, right = "scanner", "looking" if S.awake else "waiting"
+        lines.append(title(C, left, right, surface=ON_MUTED if right == "waiting" else ON_YELLOW))
         if VIDEO:
             VIDEO.origin = ((VIDEO.screen[0] - VIDEO.w) // 2, (top + 1) * cell_h)
             VIDEO.strip = rows * cell_h - VIDEO.h        # the leftover under the picture holds the progress strip

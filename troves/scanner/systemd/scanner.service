@@ -1,6 +1,6 @@
-# The qr screen on tty1. `install` writes this with @PROFILE@ and @STATE@ filled in.
+# The scanner's screen on tty1. `install` writes this with @TROVE@ and @STATE@ filled in.
 [Unit]
-Description=qr.local screen (tty1)
+Description=scanner screen (tty1)
 After=systemd-user-sessions.service getty@tty1.service
 Conflicts=getty@tty1.service
 
@@ -8,7 +8,7 @@ Conflicts=getty@tty1.service
 User=fcpm
 WorkingDirectory=@STATE@
 ExecStartPre=+/usr/bin/setfont -C /dev/tty1 /usr/share/consolefonts/Uni2-TerminusBold28x14.psf.gz
-ExecStart=/usr/bin/python3 @PROFILE@/inbox.py
+ExecStart=/usr/bin/python3 @TROVE@/inbox.py
 StandardInput=tty
 StandardOutput=tty
 StandardError=journal
