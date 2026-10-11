@@ -38,6 +38,7 @@ administrator: [`CREW.md`](CREW.md).
 `CREW.md` (what it keeps, and how), `door.py`, `node.yml` (what it shows where), `m365-token.ps1` (a Microsoft 365 token signed by
 the non-exportable certificate in `Cert:\CurrentUser\My`), `bookings.sample.yml` (a made-up
 week, every booking "Sample"), `GOTCHAS.log` and `gotcha` (`merge=union`), `names`, `called`,
-`GRANTS` (what sessions may run), `MANIFEST` (what `../sync` places), and `code/` and
-`home/code/` (the `~/code` root, its instructions read from the mirror). Secrets live in Windows
+`GRANTS` (what sessions may run), `MANIFEST` (what `../sync` places), `code/` and
+`home/code/` (the `~/code` root, its instructions read from the mirror), and `home/bin/fcpm.cmd`
+(`fcpm` in `~/.local/bin`, on PATH: the per-user Git's bash, the mirror in `ref/`). Secrets live in Windows
 Credential Manager and the certificate store. Publishing stays with station-node.
