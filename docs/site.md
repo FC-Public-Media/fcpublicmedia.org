@@ -27,7 +27,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `worker/` | the broker, its own Worker ([worker/README.md](../worker/README.md)) |
 | `bin/` | `build-sites.py`, `build-kiosk.py`, `make-wallpaper.py` and their tests |
 | `brand/` | the brand; the studio screens are the kiosk's ([kiosk.md](kiosk.md)) |
-| `machines/`, `troves/`, `crews/`, `attendant/` | the station ([station.md](station.md)) |
+| `machines/`, `troves/`, `attendant/` | the station ([station.md](station.md)) |
 | `advocate.yml`, `tell.yml`, `atlas.yml`, `keys/`, `_data/`, `.<name>-engine/` | seats, directory, submodules |
 
 - `site/_data` reads only what is inside `site/`; Jekyll's `data_dir` cannot leave the source.

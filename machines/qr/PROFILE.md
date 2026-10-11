@@ -1,7 +1,7 @@
 # qr
 
 A Raspberry Pi 3 on the desk with a camera looking up over the monitor's edge: kiosk's pickup point
-at `qr.local` ([crews](../../crews/README.md)). It carries the [`scanner`](../../troves/scanner/README.md)
+at `qr.local` ([machines](../README.md)). It carries the [`scanner`](../../troves/scanner/README.md)
 trove: the screen, the camera, the codes. Machines: [docs/station.md](../../docs/station.md).
 
 | | |

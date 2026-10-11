@@ -3,7 +3,7 @@
 A camera and a screen where grants are redeemed: a code held up, or a phone set down, read and
 checked, and a pickup handed out. It reads; it does not decide. Grants are minted and signed by
 [`digitization`](../../machines/digitization/PROFILE.md) (`mint.mjs`). Today: the
-[`qr`](../../machines/qr/PROFILE.md) Pi, kiosk's pickup point ([crews](../../crews/README.md)).
+[`qr`](../../machines/qr/PROFILE.md) Pi, kiosk's pickup point ([machines](../../machines/README.md)).
 Its gear and what each piece needs: [`gear.yml`](gear.yml).
 
 ## The screen

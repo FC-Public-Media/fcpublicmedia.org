@@ -1,7 +1,7 @@
 # digitization
 
 A Dell OptiPlex 9020M (asset 200-FCPubMedia) running Debian 13 XFCE live from a USB stick, the first
-Linux profile. It shares its name with the [`digitization`](../../crews/digitization/CREW.md) crew,
+Linux profile. It shares its name with the [`digitization`](CREW.md) crew,
 which it is to take over from station-node. Not worn yet. Machines: [docs/station.md](../../docs/station.md).
 
 | | |

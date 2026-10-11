@@ -36,7 +36,7 @@ def config():
     cfg["crews"], cfg["crew"] = list(crews), (crews[0] if crews else None)
     steps = {}
     for c in reversed(cfg["crews"]):
-        f = REPO / "crews" / str(c) / "post.yml"
+        f = REPO / "machines" / str(c) / "post.yml"
         if f.is_file():
             steps.update((yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("steps") or {})
     cfg["steps"] = {**steps, **(cfg.get("steps") or {})}
