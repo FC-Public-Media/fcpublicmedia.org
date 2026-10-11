@@ -165,8 +165,13 @@ until it runs something that has to be rebased under it.
   - `fcpm pool` shows the task, the server and the sessions running.
     `fcpm pool off` is authoritative (Autumn, 2026-10-09): it ends every
     Remote Control server on this box, the pool's or one started by hand,
-    with their sessions, keeps it off, and says `down` or the pid still up.
-    `on` starts it again. `uninstall` removes the task.
+    with their sessions, and says `down` or the pid still up. It ends them
+    with Ctrl+C so they sign off, and kills only what is left after 15s: a
+    killed server leaves claude.ai holding Edit2 for ~3 minutes, the phone
+    showing it with no Remote Control and every new server refused
+    (2026-10-10). Off lasts until `on` or a restart: the bay always comes
+    on with Remote Control. `on` starts it again and says `ready` or
+    `refused`. `uninstall` removes the task.
   - The server needs `~/code` trusted first. It is.
   - Each pass also keeps the rolling TV's page up
     (`troves/kiosk-screen`, from the mirror): the wall in Edge, fullscreen,
