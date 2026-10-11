@@ -1,5 +1,4 @@
-# residency.yml -- what screen keeping offers a crew that holds it.
-# A menu, not a startup script: see troves/pools/residency.yml.
+# residency.yml -- what screen keeping offers a crew that holds it (a menu: troves/pools/residency.yml).
 
 resident: kiosk-screen
 

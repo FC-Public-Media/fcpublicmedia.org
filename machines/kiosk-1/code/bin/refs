@@ -6,12 +6,8 @@
 #   bin/refs work REPO BRANCH  new worktree at work/REPO@BRANCH, cut from origin/main
 #   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
 #
-# ref/ is a mirror: it only ever fast-forwards, and nothing is committed there.
-# A repo that is dirty, off its default branch, or diverged is reported and left
-# alone rather than forced. Submodules are NOT hydrated — this box is weighed,
-# and an engine is fetched only when someone asks for it.
-#
-# Git Bash only; no python/ruby/node on this machine.
+# ref/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. No submodules.
+# Git Bash. Doc: machines/kiosk-1/code/AGENTS.md.
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -70,5 +66,5 @@ case "${1:-status}" in
   done)
     repo=${2:?repo name}; branch=${3:?branch name}
     git -C "$REF/$repo" worktree remove "$WORK/$repo@${branch//\//-}" ;;
-  *) sed -n '2,13p' "$0"; exit 1 ;;
+  *) sed -n '2,10p' "$0"; exit 1 ;;
 esac

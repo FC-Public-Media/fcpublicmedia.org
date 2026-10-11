@@ -8,42 +8,10 @@ screen.ps1 -- keep a studio page on a screen this host finds plugged in.
     screen.ps1 reset  [INSTRUMENT]   close our browser and start it again
     screen.ps1 class  [light|dark]   show class mode instead of the wall, until wall
     screen.ps1 wall   [INSTRUMENT]   back to the wall
-    screen.ps1 toggle [INSTRUMENT]   the wall if it is showing class mode, class mode if the wall
-    screen.ps1 watch  [INSTRUMENT]   keep input.js current while our browser runs (keep starts it)
+    screen.ps1 toggle [INSTRUMENT]   the wall if class mode is showing, class mode if not
+    screen.ps1 watch  [INSTRUMENT]   keep input.js current while our Edge runs (keep starts it)
 
-INSTRUMENT is a folder in ../../instruments/ (default roller-tv). Its
-instrument.yml `match:` says what the screen reports about itself over EDID;
-the screen is looked up by that, every time, never by display number
-(../../instruments/README.md).
-
-What goes on it is the wall, or class mode while a person has asked for it
-(../../instruments/roller-tv/class-mode.md: the teacher's materials, written
-as class.html beside the wall, with no turning). Either way, the depot's copy, which kiosk-1 writes, when the
-depot answers; otherwise the wall rendered here from this checkout's door.py
-(render.py, under uv). It is played the way door.py's launch_screen plays a
-screen: Edge in kiosk mode, fullscreen, with a profile of its own under
-%LOCALAPPDATA%\<profile>\troves\kiosk-screen\<instrument>\, so nobody's own
-browser is touched and nothing is kept between starts.
-
-- No match, nothing shown. If Windows piled our browser onto another monitor
-  when the screen went, it is closed; it never takes another screen.
-- Our browser is the one whose command line carries our profile folder. It is
-  closed by asking its windows, then by its process ids. Never by name: every
-  Edge on this machine is msedge.exe, and the others are people's.
-- Nothing here runs for long. The pool's task runs `keep` every minute, with
-  FCPM_BY=pool (or the crew's name), and a person's `off` holds until their
-  `on`. Each pass leaves a heartbeat, and `status` reports when the pool last
-  ran it, not a promise.
-- Touching this computer anywhere ends the dim at once and for an hour from
-  that touch (brand/idle/dim.js), as on kiosk-1. The page is read over
-  file://, with no door to ask, so a watcher (`watch`, started by `keep`
-  beside our browser, one at a time) writes when this session last had input
-  to input.js beside the profile, within a fifth of a second. The page is
-  launched with ?input=<that file> and reads it twice a second. The watcher
-  ends when our browser does, when the screen is held off, or when this file
-  changes (the next pass starts the new one): it and Edge are all that run
-  between passes.
-
+INSTRUMENT is a folder in ../../instruments/ (default roller-tv). See README.md.
 Windows PowerShell 5.1, no modules. ASCII only.
 #>
 param(
@@ -51,12 +19,7 @@ param(
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Instrument = 'roller-tv',
     [string] $Node = 'editing-bay-1',
-    # Who is running this pass: the pool, or a person (or a session acting
-    # for one). The pool says so with FCPM_BY in the environment, not with
-    # this flag, so a pool newer than this file's copy in the mirror still
-    # keeps the screen instead of failing on an unknown parameter. The crew's
-    # desktop pass, which runs it for the pool now, says FCPM_BY=production
-    # (residency.yml): any keeper's name is the pool's heartbeat.
+    # The pool sets FCPM_BY (pool, or the crew's name) in the environment, so an older copy of this file never meets a new flag.
     [ValidateSet('pool', 'hand')] [string] $By = $(if ($env:FCPM_BY -and $env:FCPM_BY -ne 'hand') { 'pool' } else { 'hand' })
 )
 $ErrorActionPreference = 'Stop'
@@ -77,9 +40,7 @@ $Said    = Join-Path $Root 'said'
 $InputJs = Join-Path $Root 'input.js'   # when this session last had input, for the page (not in wall\: render.py prunes it)
 $Watching = "Local\fcpm-screen-watch-$Node-$Instrument"   # held by the watcher while it runs
 $Log     = Join-Path $Root 'screen.log'
-# The heartbeat: when a pass last ran, one file per who ran it. `status` reads
-# these rather than promising. For a week in September it said "every pool
-# pass" while the pool running on EDIT2 had no screens step at all.
+# Heartbeats, one per who ran the pass: `status` reports when the pool last kept it, not a promise.
 $Beat    = @{ pool = (Join-Path $Root 'kept-pool'); hand = (Join-Path $Root 'kept-hand') }
 $Fresh   = 180   # seconds. The pool runs every minute: three missed passes is not kept
 $Edge    = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
@@ -200,8 +161,7 @@ public static object[] Windows(int[] pids) {
 [Fcpm.Screen]::SetThreadDpiAwarenessContext([IntPtr](-4)) | Out-Null   # PER_MONITOR_AWARE_V2
 
 function Match {
-    # instrument.yml's `match:` block, by line. Only `product` is needed to
-    # find it (the EDID product code carries the maker's three letters).
+    # instrument.yml's `match:` block, by line; only `product` (the EDID product code) is needed.
     if (-not (Test-Path $Spec)) { throw "no instrument '$Instrument' ($Spec)" }
     $in = $false; $m = @{}
     foreach ($l in Get-Content $Spec -Encoding UTF8) {
@@ -214,8 +174,7 @@ function Match {
 }
 
 function Find($m) {
-    # The monitor answering to the match, or $null. More than one is also $null:
-    # which of two identical sets is which is not ours to guess.
+    # The one monitor answering to the match, or $null (two identical sets are not ours to tell apart).
     $names = @([Fcpm.Screen]::AdaptersFor($m['product']))
     if ($names.Count -ne 1) { return $null }
     foreach ($o in [Fcpm.Screen]::Monitors()) {
@@ -272,10 +231,7 @@ function FindUv {
 }
 
 function DepotAnswers([string]$path) {
-    # A share that is not there can hold Test-Path for half a minute, so ask
-    # its SMB port first, briefly. Then the file, also briefly: on bay 1 on
-    # 2026-10-10 the port answered at once and the share took 57 s to say no,
-    # every pass, so the pool's minute task ran one pass in two or three.
+    # A missing share can hold Test-Path for a minute (bay 1, 2026-10-10: port at once, share 57 s): ask the port, then the file, each briefly.
     if (-not $path -or $path -notmatch '^\\\\([^\\]+)\\') { return $false }
     $t = New-Object Net.Sockets.TcpClient
     try {
@@ -340,8 +296,7 @@ function Page {
 }
 
 function Source([string]$file, [string]$query) {
-    # Render here every pass, so the fallback is never stale, then prefer the
-    # depot's copy if it answers. Returns the URL, and says which.
+    # Render here every pass (a fresh fallback), then prefer the depot's copy; the URL, and which.
     $uv = FindUv
     $depot = $null
     if ($uv) {

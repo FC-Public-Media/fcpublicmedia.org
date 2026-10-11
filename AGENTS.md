@@ -15,7 +15,7 @@ tooling across a personal projects folder is not guidance about here.
 Specifically: **no `.tool-versions`.** Cloudflare's builder detects it
 undocumentedly and the file's presence alone can fail the build. `.ruby-version`
 is the pin, the `Gemfile` carries a `>= 3.2` floor, and there is no second file
-to keep in agreement. See `docs/deploying.md`.
+to keep in agreement. See `docs/site.md#build-and-run`.
 
 ## Documentation is gathered, not hung at the leaves
 

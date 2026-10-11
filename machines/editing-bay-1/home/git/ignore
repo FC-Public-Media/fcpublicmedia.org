@@ -1,7 +1,3 @@
-# Git's per-user ignore file (~/.config/git/ignore, used when core.excludesFile
-# is unset). Carried by ../../MANIFEST.
-#
-# .pr: the plan progression of the branch a worktree is on. Line 1 becomes the
-# pull request's title and the rest its body; it is revised ahead as the work
-# goes, and never committed (~/code/AGENTS.md, "Working in git").
+# Git's per-user ignore (~/.config/git/ignore), carried by ../../MANIFEST. `.pr` is a branch's plan:
+# line 1 the PR's title, the rest its body; never committed (code/AGENTS.md, "Working in git").
 .pr

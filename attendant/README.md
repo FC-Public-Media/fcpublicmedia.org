@@ -1,110 +1,34 @@
 # Attendants
 
-**An attendant is a seat that can do on a studio page exactly what a person
-at that page can do, and nothing else.** Autumn, 2026-09-26, after a shutdown
-made the startup pool worth planning for:
-
-> operators who have known jobs who can perform the work our UI does, while a
-> human is also present but requiring a11y for basically any reason, voice
-> control eventually and basic "i don't understand, do it for me" assistance.
-
-Status: draft. No attendant runs yet. What exists is this page and the
-recipes beside it, which a person can follow today.
-
-## The word
-
-She said *operator*. Across this constellation **the operator is the person
-who runs a node** (station-node's `docs/the-antenna.md`: *each operator mounts
-their own antenna*; `SEATS.md` in library.anecdote.channel: *the constituency
-is the operator's*). An "operator seat" would read as hers. *Attendant* is the
-recognised word for somebody on the floor who helps a person use what is
-already there. **Settled** (Autumn, 2026-09-26): "attendant is fine to
-confirm. It was on my mind as well."
-
-## Where it sits among the seats
+An attendant is a seat that can do on a studio page exactly what a person at that page can do, and nothing else. No attendant runs yet; recipes are followed by hand. ("Operator" is the person who runs a node, so it is not this seat's name.)
 
 | seat | works on | a person is | its authority |
 |---|---|---|---|
-| advocate | background branches, research | not there | its seat's goals, its own branch |
-| dev | thaws and grants | with it, directly | the thaw and the grant |
-| **attendant** | known jobs on one page | **at the page**, not at the agent | **the page's own controls** |
+| advocate ([`docs/advocate.md`](../docs/advocate.md)) | background branches, research | not there | its seat's goals, its own branch |
+| dev | thaws and grants | with it | the thaw and the grant |
+| attendant | known jobs on one page | at the page | the page's own controls; no console, no Remote Control, no worktree |
 
-**An attendant has no console, no Remote Control and no worktree.** The page
-it is attending is its whole grant. If the person in front of the screen could
-not do it with the controls on that screen, neither can the attendant.
-
-## The accessibility tree is its interface
-
-An attendant finds what to do the way assistive technology does: **by role
-and accessible name.** *Button "Files"*, not `nav button[data-m=files]`.
-
-That is one rule doing three jobs:
-
-- **Parity is checkable.** What the attendant can reach is exactly what the
-  page exposes, so "only what the person could do" is a fact about the page
-  rather than a promise about the agent.
-- **A control it cannot find by name is a bug**, and it is the same bug a
-  screen reader or switch user hits. Fixing it for one fixes it for both.
-- **Voice control later needs nothing new.** "Show files" is the same lookup.
+It finds controls by role and accessible name (button "Files", not a selector), as assistive technology does. A control it cannot find by name is a bug for screen-reader and switch users too, and voice control uses the same lookup.
 
 ## Recipes
 
-A recipe is one known job on one page, written so that a person and an agent
-following it do the same thing and can tell whether it worked.
+A recipe is one known job on one page: `page` (module or route), `shown on` (instruments), `before`, `steps` (role and accessible name, each with the visible result that proves it) and `done` (a check a person can make by looking). "It worked" is never a claim about state the person cannot see. Steps run as written under Playwright's `getByRole(role, {name})`.
 
-    page:     the module or route, not the screen (shows reference modules;
-              see ../instruments/README.md)
-    shown on: the instruments it is on today, for finding it
-    before:   what the page looks like when you start
-    steps:    role + accessible name, each with the visible result that proves it
-    done:     the check a person could make by looking
+A step that fails because the page lacks what the recipe says is a bug, listed in [`docs/OPEN.md`](../docs/OPEN.md). A surprise about the environment is a gotcha (`machines/kiosk-1/gotcha`). A stale recipe is fixed in the recipe.
 
-Every step names something visible. **"It worked" is never a claim about
-state the person cannot see**, because an attendant that says it did something
-the person cannot confirm has not helped them.
+## Pause the wall on a module
 
-Because the steps are by role and name, a recipe is also an integration
-test: Playwright's `getByRole(role, {name})` runs it as written. The existing
-suite in `site/tests/` selects by `data-` attributes and ids, which is right
-for what it tests and is not this.
+**Page:** the wall, built by `machines/kiosk-1/door.py` (`wall_files`, `write_wall`) from `wall:` in `machines/kiosk-1/node.yml`; modules Studio, Files, Classes. **Shown on** roller-tv from `\\10.209.1.1\DIGISTATION\.wall\index.html`.
 
-| recipe | page | last followed |
-|---|---|---|
-| [`wall.md`](wall.md) | the wall (rolling TV) | 2026-09-26, on roller-tv from a local render |
+**Before:** the yellow check-in header; under it, an `aria-hidden` timer; one module on the stage, turning every 45 s; the bar, navigation "Wall": "FCPM" and the module's name, a button per module, one round pause button.
 
-## When a step fails, it is a bug, not a gotcha
+1. Find what is showing: its button has `aria-current="true"` and the frame is named for the module. (Edge's DevTools accessibility tree omits `aria-current`; read the attribute.)
+2. Press button "Files": the bar reads "FCPM Files", the frame is named "Files", the address ends `#files`, the timer restarts.
+3. Press "Pause": the button is now "Keep paused", a ring counts down from 90 s, the timer turns thick and yellow.
+4. Wait a minute: nothing turns or reloads, and the timer stays put.
+5. Press "Keep paused": it is now "Play" and stays paused past 90 s; a module button switches module and stays kept. "Play" returns it to "Pause".
+6. Press "Pause" and leave it: after 90 s it reads "Pause", and within 45 s the next module comes up with the bar and frame name.
+7. Go Back (Alt+Left): the lit button, the bar and the frame still agree.
+8. When a class is soon or on (force it with `?at=<ISO time>`): no module buttons, no pause, no timer; the bar reads "FCPM Classes", a heading names the class under "Starting soon" or "Happening now", with the room and time, and in its first 45 minutes "Join until …".
 
-- A **gotcha** is a surprise about the environment: a machine, a network, a
-  tool. They go where they already go (`machines/kiosk-1/gotcha`).
-- A **bug** is the page not offering what the recipe says it does, or
-  offering it without a name. It goes in [`BUGS.md`](BUGS.md), committed.
-
-Committed is the point. An advocate whose unit of work is usability finds
-them on `main` and can research them in the background, and Autumn can step in
-on any of them. That is the loop: recipes prove the page, failures become
-bugs, and bugs become work.
-
-A recipe that is wrong about the page (the page is fine and the recipe went
-stale) is fixed in the recipe, not logged.
-
-## Open
-
-- **Waking an attendant.** The pool (`bin/pool.ps1` on editing bay 1, `door.py
-  sessions` on the media node) can hold one idle, but nothing can call it yet.
-  The shape is a signal on an `attendant` channel: the loudspeaker, designed in
-  station-node's `docs/the-antenna.md` (its PR #174). A signal has no
-  recipient, so it is written whether anyone is listening or not, and a
-  daemon can commit it even though only a seated agent can send a message.
-  **What is missing is the watcher.** A commit wakes nobody. Something has to
-  watch the channel's ref and start a session when it moves, and that is a
-  job the node declares for its own pool (a `kind:` in station-node's
-  `bin/services`), not a property of the channel. A node that only tails a
-  channel reads the same format and starts nothing.
-- **A local copy of each page.** The wall is written to the depot's share and
-  editing bay 1 cannot reach it (`../instruments/README.md`, *Open*). It can
-  render one itself (see *How it was followed* in [`wall.md`](wall.md)), with
-  the real shell and thin data. Nothing does that as a step yet, so a recipe
-  is followed by hand rather than run as a test.
-- **Pages people hold rather than screens we drive.** `/check-in/` is a
-  person's own phone. An attendant has no place there. Whether a recipe for it
-  still belongs here, as the "do it for me" script read aloud, is undecided.
+**Done:** the module asked for stays while it is read, the bar names it, and the wall carries on alone. All eight steps pass on roller-tv, from a wall editing bay 1 rendered itself (it cannot reach the depot share).

@@ -1,20 +1,5 @@
-// Submitting an episode.
-//
-// Sign in with the passkey registered at /authorize/, describe the episode,
-// and produce a well-formed entry for the member's own site. A feed entry with
-// a future drop date IS the submission — /community/ reads it as "coming up"
-// and nothing else has to happen for us to know about it.
-//
-// WHAT THE SIGN-IN IS FOR
-// -----------------------
-// Working out which member site this person is submitting to, and nothing
-// else. The passkey's user handle carries the repository, so signing in is how
-// the page knows whose site to write an entry for.
-//
-// It is not a security boundary — see the note on signIn() in passkey.js. When
-// the broker exists it issues the challenge and checks the signature; until
-// then nothing is written anywhere as a result of it, so there is nothing to
-// forge your way into.
+// /upload/: sign in to find the member's site, then build a future-dated programs.yml entry.
+// The sign-in is not a security boundary. See docs/identity.md.
 
 import { signIn } from './passkey.js';
 
@@ -32,18 +17,7 @@ let session = null;
 
 /* ------------------------------------------------------------------- times */
 
-/**
- * Build an ISO timestamp with COLORADO's offset, not the browser's.
- *
- * A producer submitting from a hotel two zones over must not schedule their
- * own episode two hours out. Everything else on this site follows the same
- * rule — see the note in _data/classes.yml about times carrying an offset.
- *
- * Two passes because the offset depends on the instant, and the instant
- * depends on the offset: guess at UTC, ask what Colorado was doing then, apply
- * it, and ask again. The second answer is right except within an hour of a DST
- * transition, where an hour either way is the worst case.
- */
+/** ISO timestamp with Colorado's offset, in two passes; can be an hour off near a DST change. */
 function withVenueOffset(date, time) {
   if (!date) return '';
   const clock = time || config.defaultTime || '18:00';
@@ -58,8 +32,7 @@ function withVenueOffset(date, time) {
       const match = name.match(/GMT([+-]\d{2}:\d{2})/);
       return match ? match[1] : null;
     } catch (error) {
-      // An engine without longOffset support. Better to say so than to write
-      // a timestamp that is quietly in the wrong zone.
+      // No longOffset support: refuse rather than write the wrong zone.
       return null;
     }
   };
@@ -90,8 +63,7 @@ function toYaml(entry) {
   if (entry.runtime) lines.push(`    runtime: ${quote(entry.runtime)}`);
   if (entry.summary) {
     lines.push('    summary: >-');
-    // Folded scalar, wrapped so the file stays readable rather than one very
-    // long line nobody can diff.
+    // Folded scalar, wrapped so it diffs readably.
     const words = entry.summary.split(/\s+/);
     let row = '     ';
     for (const word of words) {
@@ -179,8 +151,7 @@ async function submit() {
     });
     if (!response.ok) throw new Error(`the server said no (HTTP ${response.status})`);
   } catch (sendError) {
-    // Everything the member typed is still here, so falling back to handing
-    // it over loses nothing — making them retype it would.
+    // Fall back to handing over what they typed.
     el('copy-status').textContent =
       `We couldn't send it automatically (${sendError.message}).`;
     offerManually(entry);
@@ -216,8 +187,7 @@ async function authenticate() {
   session = result;
   el('ready-site').textContent = result.repo.split('/')[1] || result.repo;
 
-  // Default the drop to next week, which is the common case, rather than
-  // leaving someone to work out what date next Friday is.
+  // Default the drop to next week, the common case.
   const soon = new Date(Date.now() + 7 * 86400000);
   el('ep-date').value = soon.toISOString().slice(0, 10);
   el('ep-time').value = config.defaultTime || '18:00';
@@ -255,8 +225,7 @@ function init() {
 
   el('ep-submit').addEventListener('click', submit);
 
-  // Only shown when there is genuinely nowhere to upload to, so it never
-  // contradicts a working uploader.
+  // Only when there is nowhere to upload to.
   const notice = document.querySelector('[data-no-destination]');
   if (notice) notice.hidden = Boolean(config.destination);
 

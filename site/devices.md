@@ -5,15 +5,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
 
 {%- assign az = site.data.authorize -%}
 
-{%- comment -%}
-  The page that makes "approve once, publish every week" a thing somebody can
-  actually do. Without it, adding a co-producer's phone means asking staff,
-  which is the loop the whole design is trying to leave.
-
-  Deliberately reachable without a link. Someone who already manages a site
-  should be able to come here and look, and the sign-in tells the page which
-  site they mean — the passkey carries it.
-{%- endcomment -%}
+{%- comment -%} Approve or remove a site's devices; reachable without a link. See docs/identity.md. {%- endcomment -%}
 
 <script type="application/json" id="devices-config">
 {
@@ -68,11 +60,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <p class="eyebrow">Signed in</p>
   <h2 id="devices-site"></h2>
 
-  {%- comment -%}
-    Two lists rather than one, because "waiting for you" is a job and
-    "already fine" is not. A single list sorted by status buries the only row
-    anybody came here to act on.
-  {%- endcomment -%}
+  {%- comment -%} Waiting devices get their own list so they are not buried. {%- endcomment -%}
   <div id="waiting-section" hidden>
     <h3>Waiting for you</h3>
     <p class="muted">
@@ -85,11 +73,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
 
   <h3>Can publish</h3>
   <ul class="rows" id="allowed-list"></ul>
-  {%- comment -%}
-    A property of the list, not a result of anything you did — so it has its
-    own line. Sharing one with the status below meant a redraw wiped the
-    confirmation of whatever you had just done.
-  {%- endcomment -%}
+  {%- comment -%} Separate from the status line, which a redraw would otherwise wipe. {%- endcomment -%}
   <p class="muted" id="allowed-note"></p>
 
   <p class="muted" id="devices-status" role="status" aria-live="polite"></p>

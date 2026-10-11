@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the show proposer.
-
-The failures worth catching are the ones that produced a plausible-looking
-wrong answer: a show split into three because its episodes have different
-second words, or two shows merged because one name is a prefix of another.
-Both look fine in a list and are wrong in the archive.
-
-Fixtures are shaped like the real catalog, including the specific messes it
-contains — Paltrocast's varying second word, Parker St.'s inconsistent full
-stop, Stages numbering its own episodes.
-"""
+"""Tests for site/bin/propose-shows.py. The fixtures copy the real catalog's messes."""
 
 import importlib.util
 import pathlib
@@ -29,8 +19,7 @@ def item(title, producer="", local=True, date="2026-01-01"):
 
 class Clustering(unittest.TestCase):
     def test_a_varying_second_word_does_not_split_a_show(self):
-        # The real failure: grouping on two words made Paltrocast into
-        # "paltrocast cast", "paltrocast stars" and "paltrocast the".
+        # Grouping on two words once split Paltrocast into three.
         catalog = [
             item("Paltrocast - Cast of Swagger"),
             item("Paltrocast - Stars of FROM"),
@@ -44,8 +33,6 @@ class Clustering(unittest.TestCase):
         self.assertEqual(proposals[0]["episodes"], 4)
 
     def test_punctuation_does_not_split_a_show(self):
-        # "Parker St." and "Parker St" were two groups in the archive, which is
-        # the kind of wrong nobody reports and everybody notices.
         catalog = [
             item("Parker St. Session One"),
             item("Parker St Session Two"),
@@ -64,9 +51,7 @@ class Clustering(unittest.TestCase):
         self.assertEqual(proposals[0]["slug"], "stages")
 
     def test_the_match_is_the_whole_common_prefix_not_the_first_word(self):
-        # "under" would claim anything starting with it. A greedy match rule
-        # silently swallows somebody else's show; a narrow one just shows up as
-        # a missing episode, which somebody notices and reports.
+        # "under" would claim anything starting with it.
         catalog = [item(f"Under the Marquee - {n}") for n in "ABCD"]
         proposals = ps.propose(catalog, [])
 
@@ -109,8 +94,7 @@ class AlreadyConfigured(unittest.TestCase):
         self.assertEqual(ps.propose(catalog, known), [])
 
     def test_a_producer_rule_claims_episodes_a_prefix_would_miss(self):
-        # Some series were listed under several unrelated titles. The producer
-        # is the only thing they have in common.
+        # Some series were listed under unrelated titles; only the producer is shared.
         catalog = [
             item("Something Entirely Different", producer="In the Shed Media"),
             item("Another Unrelated Name", producer="In the Shed Media"),
@@ -131,10 +115,7 @@ class AlreadyConfigured(unittest.TestCase):
 
 class RoundTrip(unittest.TestCase):
     def test_a_written_stub_claims_the_episodes_it_was_proposed_for(self):
-        # The one that matters: a proposal is only useful if merging it
-        # actually gathers the episodes it was made from. A mismatch between
-        # what the proposer clusters and what the config matches would leave a
-        # show page empty and nobody would know why.
+        # Merging a proposal must gather exactly the episodes it was made from.
         catalog = [item(f"Under the Marquee - {n}") for n in "ABCDEF"]
         catalog += [item("Underground Sound"), item("Under Pressure Rehearsal")]
 
@@ -167,9 +148,7 @@ class RoundTrip(unittest.TestCase):
 
 class TheRealCatalog(unittest.TestCase):
     def test_it_survives_what_cablecast_actually_contains(self):
-        # Not an assertion about any particular show — those change. This is
-        # here so a change to the clustering that blows up on real titles fails
-        # in CI rather than in a workflow run at three in the morning.
+        # About no particular show: catches clustering that breaks on real titles.
         import json
 
         catalog_path = HERE.parent / "_data" / "cablecast.json"

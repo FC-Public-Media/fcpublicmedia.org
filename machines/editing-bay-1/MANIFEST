@@ -1,34 +1,7 @@
-# MANIFEST: what editing bay 1 carries of its own home, for `../sync`.
-#
-# Everything here is hand-built and in no other repository: the `~/code` root
-# this bay's sessions start in, its tools, and its list of mirrors. Losing the
-# disk loses all of it, so it is carried as text with history, where a person
-# or an agent can read the diff before it is put back (station-node's
-# `machine/CARRYING.md`: this restores what someone decided should be there,
-# not what was there).
-#
+# MANIFEST: what editing bay 1 carries of its own home, for `../sync`. See docs/station.md.
 #   mode    repo path (relative to this folder)   home path (relative to ~)
-#
-# mirror    the repository holds a copy. `sync install` puts it in place,
-#           `sync mirror` brings the machine's copy back for a pull request,
-#           and `sync status` says which side differs. A copy, not a link: this
-#           bay keeps no live checkout for a link to point into, and a link
-#           into refs/ would make the read-only mirror the thing being edited.
-# clone     a list of repository URLs, one per line; `sync install` clones any
-#           that are missing into the home directory named, and never touches
-#           one that is there.
-#
-# NOT HERE, AND WHY:
-# - fcpublicmedia.org itself. It is how these bytes arrive, so it is cloned
-#   by hand on Day 0 (PROFILE.md).
-# - station-node's mirror. It is read here, and it is somebody's own
-#   repository; it is cloned by hand, and not named in a public file.
-# - Session state, memory and the pool's snapshot. They are in
-#   %LOCALAPPDATA%\editing-bay-1 and ~/.claude, and none of it is a decision.
 
-# The root's instructions are read from the mirror, never copied: what is
-# placed is a pointer (`@refs/...`), so a `refs pull` keeps them current
-# without an install. code/AGENTS.md is the instructions themselves.
+# The root's instructions stay in the mirror; what is placed only points there.
 mirror  home/code/CLAUDE.md    code/CLAUDE.md
 mirror  home/code/AGENTS.md    code/AGENTS.md
 mirror  code/bin/refs          code/bin/refs
@@ -37,15 +10,9 @@ mirror  code/refs.wanted       code/refs.wanted
 
 clone   code/refs.wanted       code/refs
 
-# Machine-global git ignores: `.pr` stays out of every repository here.
 mirror  home/git/ignore        .config/git/ignore
 
-# The crew's one switch (../fcpm), by name in any window: the shim, and its
-# folder on this user's PATH. After the first `fcpm install`, a person or a
-# session types `fcpm`, never a path or an interpreter.
 mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
 path      -                      .local/bin
 
-# What sessions here may run without asking: this profile's GRANTS, compiled.
-# Placed by `fcpm install`, and by the pool each time the mirror moves.
 settings  editing-bay-1          code/.claude/settings.json

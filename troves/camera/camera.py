@@ -6,20 +6,9 @@
     camera.py presets                the curated presets (presets.yml)
     camera.py apply <preset>         set a preset, then read every value back
 
-The console shows everything the camera reports over USB and lets you set
-everything it lets us set. The operator pages are built on it: /presets is a
-page of buttons, each a curated set of settings (presets.yml), pressed and
-then checked. Both are served on 127.0.0.1 only; nothing outside this host can
-reach them.
-
-One thread owns the camera. It finds it, reads every property about once a
-second, and runs one command at a time from a queue, so a camera pulled out
-mid-read costs one failed reading and never the web server. When the camera
-comes back it is found again.
-
-Needs comtypes and pyyaml:
+Served on 127.0.0.1 only. Needs comtypes and pyyaml; `fcpm camera` runs it so:
     uv run --no-project --python 3.12 --with comtypes --with pyyaml camera.py
-`fcpm camera` does that.
+See troves/camera/README.md.
 """
 import json
 import os
@@ -36,9 +25,7 @@ sys.path.insert(0, HERE)
 MATCH = "Pocket Cinema Camera"
 PORT = 8790
 
-# What each property is, as far as it has been measured (README.md). Units say
-# how to show and enter it: "x100" is stored times 100, "fixed16" is
-# Blackmagic's 5.11 fixed point (value times 2048), "1/x" a shutter speed.
+# As measured. Units: "x100" is stored ×100, "fixed16" is 5.11 fixed point (×2048), "1/x" a shutter.
 PROPS = {
     0x5001: {"key": "battery", "name": "Battery", "unit": "%"},
     0x5003: {"key": "resolution", "name": "Resolution", "unit": ""},
@@ -62,8 +49,7 @@ BY_KEY = {v["key"]: k for k, v in PROPS.items()}
 
 
 def to_raw(code, value):
-    """A value as a person writes it (3200, 1/48 as 48, 24 fps as 24, ND 2)
-    to what the camera stores."""
+    """A value as a person writes it (3200, 48 for 1/48, 24 fps, ND 2) as the camera stores it."""
     u = PROPS.get(code, {}).get("unit", "raw")
     if u in ("fps x100", "f/x100", "deg x100", "mm x100"):
         return int(round(float(value) * 100))

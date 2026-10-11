@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
-"""Write REDIRECTS.md: every public URL on the Wix site, and where it goes.
+"""Check every URL in the live Wix sitemaps against redirects.yml and _site; exit 1 on any gap.
 
-The point is provable coverage. It reads the live Wix sitemaps rather than a
-list somebody typed, checks each URL against the redirect rules and the built
-site, and fails loudly if anything is unaccounted for.
-
-    python3 site/bin/redirect-report.py
-
-Needs network and a built _site/. Run it after `jekyll build`. Not part of CI:
-it depends on the old site still being up, and one day it won't be — at which
-point this script has done its job and can go.
-
-Wix rate-limits sitemap requests, hence the pacing.
+Needs network and a built _site/; not in CI. See docs/site.md#redirects-and-headers.
 """
 
 import json
@@ -21,8 +11,6 @@ import sys
 import time
 import urllib.request
 
-# `site/bin/` is inside the Jekyll source, so a path here is relative to the
-# site rather than to the repository. SITE is the build root; REPO is the node.
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, "..")            # site/, what Jekyll builds from
 REPO = os.path.join(SOURCE, "..")            # the node
@@ -32,7 +20,7 @@ OUT = os.path.join(REPO, "docs", "REDIRECTS.md")
 BASE = "https://www.fcpublicmedia.org"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; fcpm-migration-audit/1.0)"}
 
-# Deliberately allowed to 404. See the note in site/_data/redirects.yml.
+# The unused Wix store, left to 404.
 DROPPED_PREFIXES = ("/product-page/", "/category/")
 
 GROUP_LABELS = {

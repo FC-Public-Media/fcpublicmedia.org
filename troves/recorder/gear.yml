@@ -1,10 +1,5 @@
-# gear.yml — the recorder trove's gear. See README.md.
-#
-# The same fields as ../../machines/gear.yml, which are station-node's. What is
-# different is the provisioner: this gear is not winget's, it is the bay's.
-#
-# PRESENCE IS NOT DECLARED HERE. Whether it is installed on a host is
-# discovered by the procedure's `check`, never written.
+# gear.yml — the recorder trove's gear, in ../../machines/gear.yml's fields; the bay provisions it. See README.md.
+# Presence is never declared here: the procedure's `check` finds it.
 
 version: 1
 
@@ -17,19 +12,14 @@ gear:
     platform: windows
     vendor: OBS Project (github.com/obsproject/obs-studio), GPL-2.0
 
-    # NOT `winget`, and on purpose. winget's OBSProject.OBSStudio is the
-    # installed OBS in Program Files, which is somebody's: its settings live in
-    # %APPDATA%\obs-studio. The portable zip is the only OBS that keeps its
-    # settings to itself, and nothing installs a zip into a folder of ours
-    # except the bay.
+    # Not winget: its OBS is the members' install; only the portable zip keeps its settings to itself.
     package: OBS-Studio-<version>-Windows-x64.zip
     source: https://github.com/obsproject/obs-studio/releases
     provisioner: bay
     updates: bay
     self-update: "off: EnableAutoUpdates=false in config\\obs-studio\\global.ini, asserted by the bay after every install"
 
-    # %LOCALAPPDATA%\<profile>\troves\recorder\obs\ — the prefix says whose code
-    # this is (../README.md, Rules).
+    # under %LOCALAPPDATA%\<profile>\: the prefix says whose code this is (../README.md, Rules)
     at: troves\recorder\obs
     portable: obs_portable_mode.txt
     launch: --multi --portable --profile "FCPM Recorder" --collection "FCPM Recorder" --minimize-to-tray (obs.ps1 start)

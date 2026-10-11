@@ -9,23 +9,11 @@ Access to local news and local perspectives keeps shrinking. FCPM exists so
 that creators, producers, artists, and students in Fort Collins still have
 somewhere to make work and somewhere to put it.
 
-{% comment %}
-The rules come before the prices, on purpose. The feedback on the current site
-is that the pricing is hard to understand — and it is the rules that are hard,
-not the amounts. See _data/membership.yml.
-{% endcomment %}
+{% comment %} The rules come before the prices: the rules are what readers find hard. {% endcomment %}
 
 ## Tiers
 
-{%- comment -%}
-  THE WHOLE TILE IS THE CONTROL. Each card carries a native radio button
-  stretched invisibly over all of it, so a click anywhere on the tile
-  chooses it, the arrow keys move between tiers, a screen reader hears the
-  tier's name and price, and it works with scripts off. The chosen tile leans
-  -8deg, the brand's tilt (brand/README.md, "The tilt"). The value is the
-  checkout SKU the broker prices (worker/src/prices.js, generated from
-  _data/membership.yml), so the next step can send it as-is.
-{%- endcomment -%}
+{%- comment -%} Each tile is a native radio stretched over the card; its value is the checkout SKU. {%- endcomment -%}
 <fieldset class="tiers">
 <legend class="visually-hidden">Choose a tier</legend>
 <ul class="grid grid-4">
@@ -37,14 +25,7 @@ not the amounts. See _data/membership.yml.
            aria-labelledby="tier-{{ slug }}-name tier-{{ slug }}-price">
     <h3 id="tier-{{ slug }}-name">{{ tier.name }}</h3>
     <p class="price" id="tier-{{ slug }}-price">${{ tier.price }}</p>
-    {%- comment -%}
-      The nonprofit price is shown next to the full one rather than explained
-      somewhere further down. Half of the confusion this page is fixing was
-      people not knowing the rate existed.
-
-      `times` on an integer and a float returns a float, so 40 would render as
-      "20.0" — `round` brings it back to something you would write on a cheque.
-    {%- endcomment -%}
+    {%- comment -%} `times` by a float yields "20.0"; `round` makes it 20. {%- endcomment -%}
     <p class="muted">Nonprofits ${{ tier.price | times: m.nonprofit.rate | round }}</p>
     <p>{{ tier.summary }}</p>
     {% if tier.includes and tier.includes.size > 0 %}
@@ -57,12 +38,7 @@ not the amounts. See _data/membership.yml.
 </ul>
 </fieldset>
 
-{%- comment -%}
-  Shown once a tier is chosen. It leads to the Join step below for now. When
-  the broker is live, this is where the member makes their passkey, and our
-  reaction to that passkey is the Stripe checkout for the chosen SKU.
-  Declining the charge breaks nothing; they can come back.
-{%- endcomment -%}
+{%- comment -%} Shown once a tier is chosen; leads to Join until a checkout step exists. {%- endcomment -%}
 <p class="tier-next" id="tier-next" aria-live="polite" hidden>
   <a class="btn btn-primary" id="tier-continue" href="#join">Continue with <span id="tier-chosen"></span></a>
 </p>
@@ -111,13 +87,7 @@ not the amounts. See _data/membership.yml.
   </div>
 </div>
 
-{%- comment -%}
-  The list is every 501(c)(3) the IRS records in Larimer County, which is not
-  every nonprofit — a new one, a chapter of a national body, or one operating
-  under a fiscal sponsor will not be there. So this can never be a gate, and
-  the way through is always visible rather than a fallback you reach by
-  failing. See site/bin/sync-nonprofits.py.
-{%- endcomment -%}
+{%- comment -%} Never a gate: "not listed" is always visible. See docs/payments.md#nonprofit-rate. {%- endcomment -%}
 <p class="muted">
   Not listed? That happens &mdash; new organizations, chapters, and anyone
   working under a fiscal sponsor often aren't.

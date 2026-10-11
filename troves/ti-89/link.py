@@ -1,37 +1,6 @@
-"""link.py -- a TI-89 on a GraphLink cable, on this host's serial port.
-
-    link.py probe   [--port COM1] [--cable auto|black|gray]    is a calculator there, and ready?
-    link.py version [--port COM1] [--cable ...]                its OS, boot code and hardware
-    link.py screen  [--port COM1] [--cable ...] [OUT.png]      its screen, as a PNG
-    link.py rom     [--port COM1] [--cable ...] [OUT.rom]      its whole ROM (about 11 minutes)
-
-Two serial cables, and either works with no driver, no TI software and no
-administrator: Windows already owns COM1, and any user may open it.
-
-- The **gray** GraphLink is a plain RS-232 line at 9600 baud, 8N1, powered from
-  DTR and RTS.
-- The **black** GraphLink ("TI-GRAPH LINK for Windows") is only a level shifter.
-  The calculator's two wires come out on the modem lines: DTR drives one and
-  DSR reads it back, RTS drives the other and CTS reads it back. Bytes are
-  clocked by hand, one handshake per bit, as libticables' serial cable does it.
-  About 3 KB a second, measured.
-
-`auto` tells them apart by that echo: on a black link, pulling DTR pulls DSR.
-(A calculator that is switched on also answers on CTS, which is the first bit
-of a byte to it. That is why every verb starts with a ready check, retried.)
-
-The packets are TI's link protocol as the TiLP project documents it
-(libticalcs, "TI-89 protocol"): a machine ID, a command, a 16-bit
-little-endian length, then that many bytes of data and a 16-bit sum of them.
-
-`rom` sends TiLP's ROM dumper to the calculator, starts it by remote keys, and
-reads 4 KB blocks from it. The dumper is TiLP's (GPL-2.0), built into
-libticalcs as rom89.h. It is fetched from there on first use and kept in the
-prefix, and is not carried in this repo.
-
-Needs pyserial:
-    uv run --no-project --python 3.12 --with pyserial link.py
-`fcpm ti89` does that.
+"""link.py -- a TI-89 on a GraphLink cable, on this host's serial port. See troves/ti-89/README.md.
+    link.py [probe|version|screen [OUT.png]|rom [OUT.rom]] [--port COM1] [--cable auto|black|gray]
+Needs pyserial (`fcpm ti89` brings it through uv).
 """
 import argparse
 import os
@@ -44,6 +13,7 @@ import zlib
 
 import serial
 
+# A packet (libticalcs, "TI-89 protocol"): machine ID, command, u16 length, then data and its u16 sum.
 PC = 0x08        # computer -> TI-89 / TI-92 Plus / Voyage 200
 CALC = 0x98      # TI-89 -> computer
 CALC_ALT = 0x89  # TI-89 -> "CBL": what this TI-89 signs its answers to RDY and SCR with
@@ -57,8 +27,7 @@ KEY = 0x87
 RTS = 0xC9
 EOT = 0x92
 
-# The TI-89 sends the TI-92's 240x128 buffer, one bit a pixel, high bit first,
-# 1 = dark. Its own display is the 160x100 at the top left.
+# The TI-89 sends the TI-92's 240x128 buffer (1 bit a pixel, high first, 1 = dark); it shows the top-left 160x100.
 BUF_W, BUF_H = 240, 128
 LCD_W, LCD_H = 160, 100
 
@@ -90,8 +59,7 @@ class Gray:
 
 
 class Black:
-    """Line A is DTR out / DSR in, line B is RTS out / CTS in. True is
-    released (high), False is pulled low. Both idle released."""
+    """Line A is DTR out / DSR in, B is RTS out / CTS in; True is released (high), both idle released."""
     name = "black"
 
     def __init__(self, s):
@@ -150,8 +118,7 @@ class Black:
 
 
 def echoes(s):
-    """True if pulling DTR pulls DSR: a black link. CTS is not checked, since
-    a calculator that is on answers there."""
+    """True if pulling DTR pulls DSR: a black link. Not CTS: a calculator that is on answers there."""
     s.dtr = s.rts = True
     time.sleep(0.05)
     s.dtr = False
@@ -178,8 +145,7 @@ def send(link, cmd, data=b""):
 
 def recv(link, timeout=3.0, check=True):
     mid, cmd, n = struct.unpack("<BBH", link.read(4, timeout))
-    # ACK, CTS and friends carry no data even when the length field is used
-    # for a status word.
+    # ACK, CTS and friends carry no data, even with a status word in the length field.
     if cmd in (DATA, 0x06, 0xC9, 0xA2):          # data, variable header, RTS, request
         body = link.read(n)
         chk = link.read(2)
@@ -197,9 +163,7 @@ def expect(link, want, timeout=5.0):
 
 
 def probe(link, tries=4):
-    """A ready check, retried: the first packet after the port opens can land
-    on a calculator already counting a stray bit, and it gives up after a
-    moment."""
+    """A ready check, retried: the first packet after opening can land on a stray bit."""
     for i in range(tries):
         try:
             send(link, RDY)
@@ -235,9 +199,7 @@ def screen(link):
     mid, cmd, _ = recv(link)
     if cmd != ACK:
         raise ValueError("answered 0x%02X to a screen request, not ACK" % cmd)
-    # This TI-89 (AMS 2.03) closes its screen with a checksum that is not the
-    # sum of the screen (2026-10-06), though every pixel arrives intact. The
-    # length is checked instead.
+    # This TI-89's screen checksum is wrong though every pixel is right: the length is checked instead.
     mid, cmd, body = recv(link, check=False)
     if cmd != DATA:
         raise ValueError("sent 0x%02X where the screen was expected" % cmd)
@@ -248,8 +210,7 @@ def screen(link):
 
 
 def png(bits, out):
-    # Crop to the TI-89's own display, then write a 1-bit greyscale PNG, where
-    # 0 is black: the calculator's 1 = dark, so every byte is inverted.
+    # Crop to the 160x100 display; a 1-bit PNG's 0 is black and the calculator's 1 is dark, so invert.
     stride = BUF_W // 8
     rows = b"".join(b"\x00" + bytes(255 - b for b in bits[y * stride:y * stride + LCD_W // 8])
                     for y in range(LCD_H))
@@ -268,8 +229,7 @@ def png(bits, out):
 # --- the ROM dump -----------------------------------------------------------
 
 HOME, CLEAR, ENTER, LP, RP = 277, 263, 13, 40, 41
-# The dumper's own packets: a 16-bit command, a 16-bit length, data, and a
-# 16-bit sum of everything before it. No machine ID.
+# The dumper's packets: u16 command, u16 length, data, u16 sum of all before it; no machine ID.
 RD_READY, RD_OK, RD_EXIT, RD_SIZE, RD_BLOCK, RD_DATA, RD_REPEAT = 0xAA55, 1, 2, 3, 5, 6, 7
 
 
