@@ -115,11 +115,15 @@ is left). `mirror` copies the machine's files back into a `work/` worktree for a
 - A machine's root is `~/code`: read-only mirrors in `refs/` and a worktree per branch in
   `work/REPO@BRANCH`, kept by `bin/refs`. Its instructions are the profile's `code/AGENTS.md`, which
   `~/code/CLAUDE.md` points at in the mirror (`@refs/fcpublicmedia.org/machines/<profile>/...`).
-- At sign-in the root runs an unnamed Remote Control server, `claude remote-control
-  --no-create-session-in-dir`. Sessions start from zero at claude.ai or on the phone; none is
-  revived or kept. A server is bounced when signed out, and when older than the installed
-  `claude.exe` once calm for 15 minutes; its sessions end with it. Production does this in
-  `code/bin/pool.ps1`, the kiosk in its door.
+- At sign-in the root runs an unnamed Remote Control server, `claude remote-control`, with its
+  one home session. Only with that session does the server read its bookmark
+  (`bridge-pointer.json`) and come back as the same environment, so the sessions listed under the
+  machine still answer after a restart; production freshens the bookmark so a night off keeps
+  it too. Nothing is revived: an old session waits for a message, a finished one stays finished.
+  Other sessions start from zero at claude.ai or on the phone. A server is bounced when signed
+  out, and when older than the installed `claude.exe` once calm for 15 minutes. Production does
+  this in `code/bin/pool.ps1`; the kiosk's door still runs `--no-create-session-in-dir`, so its
+  listed sessions lose their link at every restart until it adopts this.
 
 ## Runnables
 
