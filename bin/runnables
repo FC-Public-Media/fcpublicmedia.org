@@ -58,9 +58,35 @@ default_for() {
   esac
 }
 
+# A path's blob at HEAD. Inside a trove (a submodule) it is read at the commit this repo pins, so a
+# file keeps its identity, and its proof, when its trove moves to a repository of its own.
+blob_at() {
+  local p=$1 sub pin
+  git rev-parse --short=12 "HEAD:$p" 2>/dev/null && return 0
+  sub=$p
+  while [ "$sub" != "${sub%/*}" ]; do
+    sub=${sub%/*}
+    pin=$(git ls-tree HEAD -- "$sub" 2>/dev/null | awk '$1 == "160000" { print $3 }')
+    if [ -n "$pin" ]; then git -C "$sub" rev-parse --short=12 "$pin:${p#"$sub"/}" 2>/dev/null; return; fi
+  done
+  return 1
+}
+
+# Whether a path's bytes are what HEAD has; inside a trove, what the pinned commit has.
+as_committed() {
+  local p=$1 sub pin
+  sub=$p
+  while [ "$sub" != "${sub%/*}" ]; do
+    sub=${sub%/*}
+    pin=$(git ls-tree HEAD -- "$sub" 2>/dev/null | awk '$1 == "160000" { print $3 }')
+    if [ -n "$pin" ]; then git -C "$sub" diff --quiet "$pin" -- "${p#"$sub"/}" 2>/dev/null; return; fi
+  done
+  git diff --quiet HEAD -- "$p" 2>/dev/null
+}
+
 identity() {
-  blob=$(git rev-parse --short=12 "HEAD:$1" 2>/dev/null || echo "not-committed")
-  if ! git diff --quiet HEAD -- "$1" 2>/dev/null; then blob="$blob+modified"; fi
+  blob=$(blob_at "$1" || echo "not-committed")
+  if ! as_committed "$1"; then blob="$blob+modified"; fi
   echo "$blob"
 }
 
@@ -106,10 +132,10 @@ case "$cmd" in
     # {LOCALAPPDATA} in a runner becomes this host's path, with forward slashes.
     lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/')
     blobs=$(claims | cut -d'|' -f1 | sort -u | while read -r h; do
-      printf '%s %s\n' "$h" "$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null)"; done)
+      printf '%s %s\n' "$h" "$(blob_at "$h")"; done)
     # Each `depends` file's blob: a change to it revokes the grant as an edit to the holder would.
     depblobs=$(depends_of "$G" "" | while IFS='|' read -r dh dp; do
-      printf '%s %s %s\n' "$dh" "$dp" "$(git rev-parse --short=12 "HEAD:$dp" 2>/dev/null || echo missing)"; done)
+      printf '%s %s %s\n' "$dh" "$dp" "$(blob_at "$dp" || echo missing)"; done)
     claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" -v lad="$lad" -v depblobs="$depblobs" '
       function rank(a) { return a == "allow" ? 0 : a == "ask" ? 1 : 2 }
       function esc(s) { gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s); return s }
@@ -228,12 +254,12 @@ case "$cmd" in
     case "$ROOT" in */refs/*) echo "prove: $ROOT is a read-only mirror; prove from a work/ worktree" >&2; exit 2 ;; esac
     if grep -q '^[[:space:]]*wears[[:space:]]' "$G" && ! grep -qE "^[[:space:]]*wears[[:space:]]+$h([[:space:]]|$)" "$G"; then
       echo "prove: $p does not wear $h" >&2; exit 2; fi
-    blob=$(git rev-parse --short=12 "HEAD:$h" 2>/dev/null) || { echo "prove: $h is not committed" >&2; exit 2; }
-    git diff --quiet HEAD -- "$h" || { echo "prove: $h differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+    blob=$(blob_at "$h") || { echo "prove: $h is not committed" >&2; exit 2; }
+    as_committed "$h" || { echo "prove: $h differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
     deps=""
     for d in $(depends_of "$G" "$h" | cut -d'|' -f2); do
-      db=$(git rev-parse --short=12 "HEAD:$d" 2>/dev/null) || { echo "prove: $h depends on $d, which is not committed" >&2; exit 2; }
-      git diff --quiet HEAD -- "$d" || { echo "prove: $d differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+      db=$(blob_at "$d") || { echo "prove: $h depends on $d, which is not committed" >&2; exit 2; }
+      as_committed "$d" || { echo "prove: $d differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
       deps="$deps${deps:+;}$d@$db"
     done
     run=$(claims | awk -F'|' -v h="$h" '$1 == h { print $2; exit }')

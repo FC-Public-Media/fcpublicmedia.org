@@ -6,7 +6,8 @@
 #   bin/refs work REPO BRANCH  new worktree at work/REPO@BRANCH, cut from origin/main
 #   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
 #
-# ref/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. No submodules.
+# ref/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. Its troves/
+# submodules follow to the commits it pins, private ones too; no other submodules.
 # Git Bash. Doc: machines/kiosk/code/AGENTS.md.
 
 set -u
@@ -16,6 +17,15 @@ WORK="$ROOT/work"
 
 default_branch() {
   git -C "$1" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##' || echo main
+}
+
+# troves/ are submodules: check each out at the commit this repo pins. --checkout reaches the
+# private ones, which say `update = none` so that CI's token never tries them.
+troves_one() {
+  local d=$1
+  git -C "$d" config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null | grep -q ' troves/' || return 0
+  git -C "$d" submodule update --init --checkout --quiet -- troves >/dev/null 2>&1 \
+    || printf '%-34s troves: SUBMODULE UPDATE FAILED\n' "$(basename "$d")"
 }
 
 each() { for d in "$REF"/*/; do [ -e "$d/.git" ] && "$@" "${d%/}"; done; }
@@ -39,7 +49,7 @@ pull_one() {
   def=$(default_branch "$d"); def=${def:-main}
   br=$(git -C "$d" branch --show-current)
   if [ "$br" != "$def" ]; then printf '%-34s skipped: on %s, not %s\n' "$name" "$br" "$def"; return; fi
-  if [ -n "$(git -C "$d" status --porcelain)" ]; then printf '%-34s skipped: dirty\n' "$name"; return; fi
+  if [ -n "$(git -C "$d" status --porcelain --ignore-submodules=all)" ]; then printf '%-34s skipped: dirty\n' "$name"; return; fi
   local before after
   before=$(git -C "$d" rev-parse --short HEAD)
   if git -C "$d" merge --ff-only --quiet "origin/$def" 2>/dev/null; then
@@ -47,6 +57,7 @@ pull_one() {
     if [ "$before" = "$after" ]; then printf '%-34s current   %s\n' "$name" "$after"
     else printf '%-34s UPDATED   %s -> %s  (%s)\n' "$name" "$before" "$after" \
       "$(git -C "$d" log -1 --format=%s)"; fi
+    troves_one "$d"
   else
     printf '%-34s skipped: diverged from origin/%s\n' "$name" "$def"
   fi
@@ -62,7 +73,7 @@ case "${1:-status}" in
     def=$(default_branch "$src"); def=${def:-main}
     dest="$WORK/$repo@${branch//\//-}"
     mkdir -p "$WORK"
-    git -C "$src" worktree add -b "$branch" "$dest" "origin/$def" && echo "$dest" ;;
+    git -C "$src" worktree add -b "$branch" "$dest" "origin/$def" && troves_one "$dest" && echo "$dest" ;;
   done)
     repo=${2:?repo name}; branch=${3:?branch name}
     git -C "$REF/$repo" worktree remove "$WORK/$repo@${branch//\//-}" ;;
