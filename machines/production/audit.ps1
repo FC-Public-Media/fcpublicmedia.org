@@ -5,6 +5,11 @@ audit.ps1 -- a record, kept on this bay, of the commands run on it.
     audit.ps1 on            start recording (Windows' own logging; asks for an administrator)
     audit.ps1 collect [OUT] copy the record out to a dated folder on this machine, with SHA-256s
     audit.ps1 off           stop recording (what was recorded stays)
+    audit.ps1 window FROM TO [OUT]
+                            what traces Windows kept of a past stretch of time, recording on or
+                            not: programs launched (Prefetch, with what it can no longer vouch
+                            for), files written anywhere on C:, every log's events, winget's
+                            commands, the Start menu's launches. Times as 2026-10-09T13:40.
 
 Windows' own logging, switched on: PowerShell transcripts, script blocks (4104) and modules
 (4103), process creation with command lines (4688), removable storage (4663), audit policy
@@ -13,9 +18,11 @@ and anything typed, so it never goes in a repo. on, off, collect ask for an admi
 Windows PowerShell 5.1, ASCII only. See machines/production/PROFILE.md.
 #>
 param(
-    [Parameter(Position = 0)] [ValidateSet('status', 'on', 'off', 'collect')]
+    [Parameter(Position = 0)] [ValidateSet('status', 'on', 'off', 'collect', 'window')]
     [string] $Verb = 'status',
-    [Parameter(Position = 1)] [string] $Out,
+    [Parameter(Position = 1)] [string] $Out,     # collect: the folder; window: FROM
+    [Parameter(Position = 2)] [string] $Until,   # window: TO
+    [Parameter(Position = 3)] [string] $Into,    # window: the folder
     [int] $Days = 30,
     [string] $Node = 'editing-bay-1'
 )
@@ -49,8 +56,10 @@ function Elevate {
     New-Item -ItemType Directory -Force -Path $State | Out-Null
     $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"", $Verb)
     if ($Out) { $a += "`"$Out`"" }
+    if ($Until) { $a += "`"$Until`"" }
+    if ($Into) { $a += "`"$Into`"" }
     $a += @('-Days', $Days, '-Node', $Node)
-    try { Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList $a }
+    try { Start-Process powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList $a }
     catch { Write-Host 'Not run: Windows was not given permission.'; exit 1 }
     if (Test-Path $Log) { Get-Content $Log }
     exit 0
@@ -189,6 +198,103 @@ switch ($Verb) {
             $top = (Get-FileHash (Join-Path $Out 'SHA256SUMS') -Algorithm SHA256).Hash.ToLower()
             Note "SHA256SUMS: $(@($sums).Count) file(s); its own SHA-256 is $top"
             Note 'Write that last hash down somewhere apart (the minutes): it fixes this collection as it is now.'
+        } catch { Note "FAILED: $($_.Exception.Message)" }
+    }
+    'window' {
+        # Read-only. Browser profiles are skipped on purpose: whose browsing it was is not ours to read.
+        try {
+            $ProgressPreference = 'SilentlyContinue'
+            if (-not $Out -or -not $Until) { Note 'usage: fcpm audit window FROM TO [OUT]   (times as 2026-10-09T13:40)'; break }
+            $from = [datetime]$Out; $to = [datetime]$Until
+            if (-not $Into) { $Into = Join-Path 'D:\fcpm-audit' ('window_' + $from.ToString('yyyy-MM-dd_HHmm')) }
+            New-Item -ItemType Directory -Force -Path $Into | Out-Null
+            Note "window $($from.ToString('yyyy-MM-dd HH:mm')) to $($to.ToString('yyyy-MM-dd HH:mm')), into $Into"
+            function In($t) { $t -ge $from -and $t -lt $to }
+
+            # launches.txt: Prefetch keeps each program's last 8 run times (Windows 10/11 compresses them, MAM)
+            Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class FcpmMam {
+  [DllImport("ntdll.dll")] static extern uint RtlGetCompressionWorkSpaceSize(ushort f, out uint a, out uint b);
+  [DllImport("ntdll.dll")] static extern uint RtlDecompressBufferEx(ushort f, byte[] o, int os, byte[] i, int isz, out int fs, byte[] ws);
+  public static byte[] Unpack(byte[] d) {
+    if (d.Length < 8 || d[0] != 0x4D || d[1] != 0x41 || d[2] != 0x4D) return d;
+    int size = BitConverter.ToInt32(d, 4); uint a, b; RtlGetCompressionWorkSpaceSize(4, out a, out b);
+    byte[] ws = new byte[a]; byte[] o = new byte[size]; byte[] i = new byte[d.Length - 8]; Array.Copy(d, 8, i, 0, i.Length);
+    int fs; uint st = RtlDecompressBufferEx(4, o, size, i, i.Length, out fs, ws); if (st != 0) throw new Exception("0x" + st.ToString("X")); return o; } }
+"@
+            $ran = @(); $hidden = @(); $bad = @()
+            foreach ($f in Get-ChildItem C:\Windows\Prefetch -Filter *.pf) {
+                try {
+                    $d = [FcpmMam]::Unpack([IO.File]::ReadAllBytes($f.FullName))
+                    $r = @(foreach ($k in 0..7) { $t = [BitConverter]::ToInt64($d, 0x80 + 8 * $k); if ($t -gt 0) { [DateTime]::FromFileTime($t) } }) | Sort-Object
+                } catch { $bad += $f.Name; continue }
+                $w = @($r | Where-Object { In $_ })
+                if ($w.Count) { $ran += '{0,-48} {1}' -f $f.Name, (($w | ForEach-Object { $_.ToString('yyyy-MM-dd HH:mm:ss') }) -join '  ') }
+                elseif ($r.Count -eq 8 -and $r[0] -ge $to -and $f.CreationTime -lt $to) { $hidden += '{0,-48} oldest kept {1:yyyy-MM-dd HH:mm}' -f $f.Name, $r[0] }
+            }
+            $l = @('Programs with a run time in the window (Prefetch):') + ($ran | Sort-Object { $_.Substring(49) }) + '',
+                'Programs run so often since that their window runs may have rolled off (Prefetch keeps 8):' + $hidden
+            if ($bad) { $l += '', 'Unreadable:' ; $l += $bad }
+            $l += '', 'consent.exe is the "Do you want to allow" prompt: each of its runs is something run as administrator.'
+            $l | Set-Content -Encoding ASCII (Join-Path $Into 'launches.txt')
+            Note ("launches: {0} program(s) ran in the window; {1} run too often since to vouch for" -f $ran.Count, $hidden.Count)
+
+            # start-menu.txt: UserAssist, the account's own launches from Start and Explorer (last time only)
+            $ua = foreach ($g in Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist' -ErrorAction SilentlyContinue) {
+                $k = Get-Item "$($g.PSPath)\Count" -ErrorAction SilentlyContinue; if (-not $k) { continue }
+                foreach ($n in $k.GetValueNames()) { $v = $k.GetValue($n); if ($v -is [byte[]] -and $v.Length -ge 68) {
+                    $t = [DateTime]::FromFileTime([BitConverter]::ToInt64($v, 60))
+                    if (In $t) { '{0:yyyy-MM-dd HH:mm:ss}  {1}' -f $t, (-join ($n.ToCharArray() | ForEach-Object { $c = [int]$_
+                        if ($c -ge 65 -and $c -le 90) { [char]((($c - 52) % 26) + 65) } elseif ($c -ge 97 -and $c -le 122) { [char]((($c - 84) % 26) + 97) } else { $_ } })) } } }
+            }
+            @("Launched from Start or Explorer by $env:USERNAME, last time in the window:") + ($ua | Sort-Object) | Set-Content -Encoding ASCII (Join-Path $Into 'start-menu.txt')
+
+            # winget.txt: winget logs its own command lines (it keeps about a week)
+            $wd = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\DiagOutputDir'
+            $wl = @(Get-ChildItem $wd -Filter 'WinGet-*.log' -ErrorAction SilentlyContinue | Where-Object { In $_.CreationTime } | Sort-Object CreationTime)
+            if ($wl) { $wc = Join-Path $Into 'winget-logs'; New-Item -ItemType Directory -Force -Path $wc | Out-Null; $wl | Copy-Item -Destination $wc }
+            @('winget command lines in the window:') + @($wl | ForEach-Object {
+                $m = Select-String -Path $_.FullName -Pattern 'Command line Args: (.*)' | Select-Object -First 1
+                '{0:yyyy-MM-dd HH:mm:ss}  {1}' -f $_.CreationTime, $(if ($m) { $m.Matches[0].Groups[1].Value } else { '?' }) }) | Set-Content -Encoding ASCII (Join-Path $Into 'winget.txt')
+            Note "winget: $($wl.Count) run(s)"
+
+            # events.txt: every log with events in the window, and the power and sign-in ones in full
+            $ev = @(); $rows = @()
+            foreach ($lg in Get-WinEvent -ListLog * -ErrorAction SilentlyContinue | Where-Object RecordCount) {
+                try { $e = @(Get-WinEvent -FilterHashtable @{ LogName = $lg.LogName; StartTime = $from; EndTime = $to } -ErrorAction Stop) } catch { continue }
+                if ($e) { $rows += '{0,6}  {1}' -f $e.Count, $lg.LogName; $ev += $e }
+            }
+            $pick = $ev | Where-Object { ($_.LogName -eq 'System' -and $_.Id -in 1, 42, 107, 506, 507, 6005, 6006) -or
+                ($_.LogName -eq 'Security' -and $_.Id -in 4624, 4625, 4648, 4672, 4720, 4732, 1102) -or
+                $_.LogName -in 'Microsoft-Windows-Kernel-PnP/Configuration', 'Microsoft-Windows-Windows Defender/Operational',
+                    'Microsoft-Windows-WinRM/Operational', 'Microsoft-Windows-TerminalServices-LocalSessionManager/Operational' } | Sort-Object TimeCreated
+            @('Events in the window, per log:') + ($rows | Sort-Object { $_.Substring(8) }) + '', 'Power, sign-in, devices, Defender, remoting:' + @($pick | ForEach-Object {
+                '{0:yyyy-MM-dd HH:mm:ss}  {1,-5} {2,-40} {3}' -f $_.TimeCreated, $_.Id, ($_.LogName -replace '^Microsoft-Windows-', ''), ((($_.Message -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 2) -join ' / ') }) |
+                Set-Content -Encoding UTF8 (Join-Path $Into 'events.txt')
+            Note "events: $($ev.Count) in $($rows.Count) log(s)"
+
+            # files.txt: created or written anywhere on C: in the window
+            $skip = @('*\AppData\Local\Google\Chrome\User Data\*', '*\AppData\Local\Microsoft\Edge\User Data\*', '*\AppData\Local\Mozilla\*', '*\AppData\Roaming\Mozilla\*',
+                '*\AppData\Local\Packages\*\AC\*', '*\AppData\Local\Packages\*\LocalCache\*', '*\AppData\Local\Packages\*\TempState\*',
+                '*\AppData\Local\Packages\*\LocalState\EBWebView\*', 'C:\Windows\Prefetch\*')
+            $fl = New-Object System.Collections.Generic.List[string]; $seen = 0
+            $roots = @(Get-ChildItem C:\ -Force -Directory | Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $_.Name -ne 'System Volume Information' })
+            & { Get-ChildItem C:\ -Force -File; foreach ($r in $roots) { Get-ChildItem $r.FullName -Recurse -Force -File -ErrorAction SilentlyContinue } } | ForEach-Object {
+                $seen++
+                if ((In $_.CreationTime) -or (In $_.LastWriteTime)) {
+                    $p = $_.FullName; $s = $false; foreach ($k in $skip) { if ($p -like $k) { $s = $true; break } }
+                    if (-not $s) { $fl.Add(('{0:yyyy-MM-dd HH:mm:ss}  {1:yyyy-MM-dd HH:mm:ss}  {2,12}  {3}' -f $_.CreationTime, $_.LastWriteTime, $_.Length, $p)) }
+                }
+            }
+            @("Files on C: created or written in the window ($seen scanned; browser profiles skipped). created, written, bytes, path:") + ($fl | Sort-Object { $_.Substring(21, 19) }) |
+                Set-Content -Encoding UTF8 (Join-Path $Into 'files.txt')
+            Note "files: $($fl.Count) of $seen on C:"
+
+            $sums = Get-ChildItem $Into -Recurse -File | Where-Object Name -ne 'SHA256SUMS' | Sort-Object FullName | ForEach-Object {
+                '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.FullName.Substring($Into.Length).TrimStart('\') }
+            [IO.File]::WriteAllLines((Join-Path $Into 'SHA256SUMS'), [string[]]$sums, (New-Object Text.UTF8Encoding $false))
+            Note "SHA256SUMS: its own SHA-256 is $((Get-FileHash (Join-Path $Into 'SHA256SUMS') -Algorithm SHA256).Hash.ToLower())"
         } catch { Note "FAILED: $($_.Exception.Message)" }
     }
 }
