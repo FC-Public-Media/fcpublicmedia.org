@@ -22,7 +22,7 @@ or records to `%USERPROFILE%\Videos`.
 - `gear.yml`: the recorder as gear.
 - `bay/obs-portable.ps1`: `check` (changes nothing), `receive`, `verify`, `stage` (core binaries must
   be signed by OBS Project), `install`, `confirm` (shows `%APPDATA%\obs-studio` untouched). The
-  host's records are in `machines/editing-bay-1/bay/`.
+  host's records are in `machines/production/bay/`.
 - `obs.ps1` (`fcpm recorder`): `status`, `prepare`, `start` (only the binary the bay recorded, with
   the grant in place and 4456 free), `record start|stop` (stop prints the file), `stop` (only the
   process id `start` wrote), `grant` (asks Windows for an administrator itself).

@@ -15,4 +15,4 @@ mirror  home/git/ignore        .config/git/ignore
 mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
 path      -                      .local/bin
 
-settings  editing-bay-1          code/.claude/settings.json
+settings  production             code/.claude/settings.json

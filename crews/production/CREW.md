@@ -17,7 +17,7 @@ What any machine wearing production owes, so a peer can step in beside it:
 - A scheduled task named `production`, triggered at the computer's start, run whether anyone is signed in or not. `fcpm crew install` registers it (administrator; `crews/crew.ps1`).
 - It runs `crews/crew.py serve production` through uv, never a Python from PATH.
 - It runs as this machine's user with no stored password (S4U): the local disks and the Drobo, not network shares or Credential Manager secrets. A share needs a stored credential.
-- A task started with the computer has no desktop (session 0). The pool's every-minute task in the signed-in session runs the `desktop` lines (`crew.py desktop production`, from `machines/editing-bay-1/code/bin/pool.ps1`).
+- A task started with the computer has no desktop (session 0). The pool's every-minute task in the signed-in session runs the `desktop` lines (`crew.py desktop production`, from `machines/production/code/bin/pool.ps1`).
 
 ## Order
 

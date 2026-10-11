@@ -32,7 +32,7 @@ host  deny  Bash(killall *)
 # here, and this merged. obs.ps1 starts only the obs64.exe whose hash the bay's record names, so
 # the record is part of the proof; a new OBS version means a new record, line and exercise.
 wears      troves/recorder/obs.ps1
-depends    troves/recorder/obs.ps1 | machines/editing-bay-1/bay/obs-portable-32.2.2.yml
+depends    troves/recorder/obs.ps1 | machines/production/bay/obs-portable-32.2.2.yml
 exercise   troves/recorder/obs.ps1 | start ; status ; record start ; status ; record stop ; stop
 untouched  {APPDATA}/obs-studio
 untouched  {USERPROFILE}/Videos

@@ -32,7 +32,8 @@ param(
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [ValidateSet('start', 'stop')]
     [string] $Arg = '',
-    [string] $Node = 'editing-bay-1'
+    [string] $Node = 'editing-bay-1',      # the state folder under %LOCALAPPDATA%
+    [string] $Machine = 'production'       # the profile in machines/ whose bay record names obs64's hash
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
@@ -180,7 +181,7 @@ function Ours {
 # so a new version brought aboard by the bay moves the value with it.
 function Recorded {
     $ver = (Get-Item $Exe).VersionInfo.ProductVersion
-    $rec = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\machines\$Node\bay\obs-portable-$ver.yml"))
+    $rec = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\machines\$Machine\bay\obs-portable-$ver.yml"))
     if (-not (Test-Path $rec)) { return @{ ver = $ver; rec = $rec; want = $null } }
     $m = Select-String -Path $rec -Pattern '^\s*obs64-sha256:\s*([0-9a-f]{64})\s*$' | Select-Object -First 1
     @{ ver = $ver; rec = $rec; want = $(if ($m) { $m.Matches[0].Groups[1].Value } else { $null }) }
@@ -407,7 +408,7 @@ switch ($Verb) {
     if (-not $admin) {
         Say 'grant     asking Windows for an administrator, for one firewall rule. Answer the prompt.'
         Start-Process powershell -Verb RunAs -Wait -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass',
-            '-File', "`"$PSCommandPath`"", 'grant', '-Node', $Node) | Out-Null
+            '-File', "`"$PSCommandPath`"", 'grant', '-Node', $Node, '-Machine', $Machine) | Out-Null
         if (-not (Grant)) { Fail 'the rule is not in place: the prompt was declined, or the elevated run failed' }
         Say "grant     in place: '$Rule' blocks inbound for $Exe"
         break
@@ -430,7 +431,7 @@ switch ($Verb) {
     if (-not $p.WaitForExit(20000)) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(5000) | Out-Null; $how = 'killed after 20 s' }
     if (-not $p.HasExited) { Fail "pid $($p.Id) is still running" }
     Remove-Item $PidFile
-    # A CONTRACT: machines/editing-bay-1/GRANTS expects the exact text
+    # A CONTRACT: machines/production/GRANTS expects the exact text
     # "how":"closed" in obs.ndjson for the exercise proof, so a stop that had to
     # kill is not proven. Keep the key, the value and ConvertTo-Json -Compress.
     LogLine 'stopped' @{ pid = $p.Id; how = $how; windows = $n }
