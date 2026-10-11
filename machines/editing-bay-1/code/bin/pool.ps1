@@ -11,7 +11,7 @@
 #                                    say if it is ready. off is authoritative
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
-# Keeps a Remote Control server, not a session, at ~/code; starts and revives no session.
+# Keeps a Remote Control server at ~/code, with its one home session; wakes no other session.
 # See docs/station.md, Sessions. ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
 param([Parameter(Position = 0)][string]$Verb = "status",
@@ -167,6 +167,22 @@ function Bounce {
     }
 }
 
+function KeepBookmark {
+    # Sessions listed under this bay answer after a restart only if the server comes back as the
+    # same environment. It does that from its bookmark, bridge-pointer.json, which it rewrites
+    # hourly and drops at 4 h, so a night off orphaned every session (2026-10-10). Freshen it
+    # before a start, only if one of ours wrote it. Old sessions wait for a message; none wakes.
+    $p = Join-Path $HOME (".claude\projects\{0}\bridge-pointer.json" -f ($Root -replace '[^A-Za-z0-9]', '-'))
+    if (-not (Test-Path $p)) { return }
+    try { $id = (Get-Content $p -Raw | ConvertFrom-Json).environmentId } catch { return }
+    if (-not $id) { return }
+    $logs = @(@("server.log", "server.log.1") | ForEach-Object { Join-Path $State $_ } | Where-Object { Test-Path $_ })
+    if (-not $logs.Count) { return }
+    if (-not (Select-String -Path $logs -SimpleMatch "Registered, server environmentId=$id" -Quiet)) { return }
+    (Get-Item $p).LastWriteTime = Get-Date
+    Say ("server: keeping environment {0}" -f $id)
+}
+
 function EnsureServer {
     # `off` lasts until the computer restarts, not through it. Kept through
     # restarts, an `off` left from testing at 23:22 meant the 23:25 boot came
@@ -184,8 +200,10 @@ function EnsureServer {
     $err = Join-Path $State "server.err"
     $why = Get-Content $err -ErrorAction SilentlyContinue | Where-Object { $_ -match '^Error:' } | Select-Object -Last 1
     if ($why) { Say ("the last server stopped: {0}" -f $why) }
+    KeepBookmark
     # Hidden, with redirected input and output: under conhost --headless a refused server left silently.
-    $a = "remote-control --no-create-session-in-dir --debug-file `"$(Join-Path $State 'server.log')`""
+    # With its home session (no --no-create-session-in-dir): only then does it read its bookmark.
+    $a = "remote-control --debug-file `"$(Join-Path $State 'server.log')`""
     $none = Join-Path $State "server.in"
     if (-not (Test-Path $none)) { New-Item -ItemType File $none | Out-Null }
     try {

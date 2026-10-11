@@ -4,8 +4,8 @@ resident: production
 
 serves:
   - service: remote-control
-    for: "the root's Remote Control server: sessions start from zero at claude.ai or the phone; it opens and names none"
+    for: "the root's Remote Control server and its one home session, so listed sessions keep their link through a restart; it wakes none"
     kind: listener
-    start: "{home}/.local/bin/claude.exe remote-control --no-create-session-in-dir"
+    start: "{home}/.local/bin/claude.exe remote-control"
     cwd: "{code}"
     alive: {process: "claude.exe.*\sremote-control(\s|$)"}
