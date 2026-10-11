@@ -1,5 +1,5 @@
-# What this machine should answer to; `../binding` asks it. Not applied yet: the live boot
-# answers `debian`. Check with `hostname`. See docs/station.md, Profiles.
+# What this machine should answer to; `../binding` asks it. The live boot answers `debian`
+# until the boot step reads this line and applies it. Check with `hostname`. See docs/station.md, Profiles.
 
 # platform   key        value
 linux        Hostname   digitization

@@ -6,7 +6,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 
 | | |
 |---|---|
-| `names` | `linux Hostname digitization`. Not applied: the live boot answers `debian`, and `sudo hostnamectl hostname digitization` lasts until reboot |
+| `names` | `linux Hostname digitization`. A live boot answers `debian`; the boot step (`restore.sh` on the RAID, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
 | `KEYHOLDERS` | who may prove themselves to this machine by passkey. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is removing the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
 | role | FCPM's git origin and receiver, so work goes on through a cloud outage |
 
