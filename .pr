@@ -1,22 +1,131 @@
-docs: digest the documentation to under 20% of its size
+pools: video in the tank (plan, for redline)
 
-Read every doc and every long comment, area by area, and rewrite them as one
-plain reference. Same system, same premise; no history, no argument, no
-padding. Long comments in files become one line or nothing.
+A member brings video: Twitch or YouTube streams, a camera's files. To the pools it is a recording
+with a picture attached. Production proofs it (what was said, what is worth keeping) and enhances
+it before anything is edited. Cutting, multitrack and project files are the show pipeline's job,
+not the pools'. First case: Autumn's long play of a video game, about 200 hours, as a new show.
 
-Baseline (main a404bf6): 65 markdown docs, ~13,800 lines; ~9,800 lines of
-multi-line comments across ~225 files. Measured: 22,013 -> 3,628 lines (16.5%).
+## The plan
 
-- [x] site: running-it, deploying, NODE, REDIRECTS, MANIFEST, known-issues, CONTENT-TODO, REVIEW-NOTES, site/ comments
-- [x] programming: programming.md, instruments/, sync and class code
-- [x] members: TENANCY, member-sites, MEMBER-SHOWS, HOLDING-A-BUBBLE, DIRECTORY, LIBRARY-AND-WIZARDS
-- [x] payments and identity: payments, PAYMENTS-CHECKLIST, identity, RESERVE-DESIGN, worker/
-- [x] machines: STATION, machines/README, BAY, RUNNABLES, INTERMEDIATES, profiles, machine code
-- [x] kiosk: KIOSK, SCREENS-DIM, kiosk-1, kiosk/, brand/, kiosk-screen
-- [x] troves: troves/*
-- [x] crews, attendant, advocate, design notes
-- [x] one open list (docs/OPEN.md), one index (docs/README.md), every link repointed
-- [x] byte-pinned holders untouched: machines/fcpm, troves/recorder/obs.ps1, troves/recorder/bay/obs-portable.ps1, obs-portable-32.2.2.yml
-- [x] tests pass
-- [ ] Autumn reads it, area by area
+1. **Formats.** MP4 and WebM first. MKV (the capture proposal's FFV1 masters) comes later. A
+   video file is never changed in place (crews/digitization/CREW.md): anything derived from it is
+   either a local cache or a new file written beside it.
+2. **Two tools, one job each.**
+   - **Adobe makes anything that leaves the pools**: extracted or enhanced audio, proxies,
+     anything for an editor. It runs through doors (`E:\DOORS\<step>`) as Media Encoder watch
+     folders, with presets kept in git under crews/production. This is the supported path on
+     this machine, and a person can open Media Encoder and see the queue.
+   - **ffmpeg only reads, for the page**: it probes files (length, streams), draws the sound
+     envelope (levels, waveform), takes frames for the strip, and decodes a marked range into
+     the samples Whisper hears. It never writes into a pool. It is pinned and hashed, with a bay
+     record, the same as faster-whisper.
+3. **Time.** A downloaded file's modified time is the day it was downloaded, not the day it was
+   streamed. YouTube strips the creation time, and its downloads come with no sidecar. If no
+   sidecar or name gives a time, the video lands in an `undated` lane, in name order. Dragging
+   its square onto a night dates it. The date is kept on this machine, and the file is never
+   touched.
+4. **Playing.** Edge plays MP4 (H.264/AAC) and WebM (VP9/Opus) natively. The window gets a
+   picture pane above the waveform. Files are served from disk in byte ranges; today's `/audio`
+   loads the whole file into memory, which works for a WAV clip but not for a 5 GB video. A file
+   Edge can't play is marked on its square, and Media Encoder makes a proxy for it.
+5. **Frame strip.** Zoomed in, the window shows small frames along the lanes, about one every
+   10 s, cached on this machine. Ballpark for 200 h: 72,000 frames, around 1 GB.
+6. **Speech, not loudness.** With music underneath, almost nothing is quiet, so marking silence
+   by level finds very little. A speech pass instead: the Silero VAD bundled with faster-whisper
+   (already installed) marks talk spans across a whole recording. Whisper hears only those spans,
+   or whatever is marked. Large-v3 on the 4080 can get through 200 h overnight if the whole
+   recording is wanted. Separating the music from the voice (Demucs) only comes in if VAD and
+   Whisper fail on a control passage, and it is new software, so it needs Autumn's OK first.
+7. **Size.** The tank is 1 TB. YouTube 1080p60 at 2–4 GB an hour makes 200 h about 0.4–0.8 TB.
+   Caches stay small and local.
+8. **Show repos commit at rest.** Today, releasing an episode commits immediately to
+   `work/<repo>@ejected`. Instead, edits made on the page write the show's files as they happen
+   (the working tree is left uncommitted). The `episodes` tick (every 5 m) commits a show's
+   worktree once it has been still for a while, or at `day_starts_at`. Each commit is one rest:
+   the secretary identity, no member's name, a message listing the files. One worktree per show
+   repo, with the page as its only writer. Pushing stays a person's step until there is a local
+   origin.
+
+9. **Residuals: read each recording over the network once, ever.** This is the contact-sheets
+   rule: the footage stays where it is, and everything kept locally is a residual (derived, can be
+   rebuilt, nobody's source of truth). Today the page reads whole files over and over:
+   - **Playing a clip** reads the whole file into memory before the first sound, and only the
+     last 7 are kept. A 4-hour video would never start.
+   - **The waveform's envelope** is held only in memory, so every server restart reads every
+     file shown again.
+   - **Each Whisper job** reads its clips whole again.
+   - **Every 20 s while the page is open**, the scan looks again, and each ghost searches
+     `.removed\` recursively over the share.
+
+   Instead, one residuals pass reads each settled recording once, from start to end in one
+   sequential pass, one file at a time, with a timeout (contact-sheets found that a stalled
+   network read can hang forever without any error). It writes:
+   - **Kept forever (small):** the probe, the SHA-256, and a fine envelope (100 per second,
+     peak and RMS). The envelope covers levels, the waveform at any zoom, and the speech and
+     silence marks.
+   - **Kept until evicted (big):** a local listening copy (Opus, mono 16 kHz for speech, which
+     is what Whisper and VAD use) and the frame strip, taken from keyframes only so the video
+     is not fully decoded. When space runs short the least recently played go first, and the
+     next read rebuilds them.
+   - **`.done`** when complete. An interrupted pass starts that file over; a finished one is
+     never read again.
+
+   Residuals are keyed by the recording itself (size plus a hash of its first and last MB), not
+   by path, so moving the tank does not throw them away. Proofing plays the local copy at once.
+   The source is read only in byte ranges: the picture, and sound when you insist on full
+   quality. Whisper never touches the network. The residual folders are declared the way
+   contact-sheets declares its storage (private, transient), on a local disk with a budget.
+   The ghost and scan costs get measured first, then fixed where they're actually slow.
+
+10. **Graduation: a region becomes a show and its episodes before anyone picks a name.** Today a
+    group is either a show from `site/_shows` or a provisional name, and only a show's group can
+    hold an episode. The change:
+    - **A provisional name can hold episodes too**: the same panel, with the out name taken from
+      the provisional name until the show is named.
+    - **Graduating** is one gesture on the name: every region and episode under it moves to the
+      show at once, and its out names follow. A rename before then is the same gesture.
+    - **Graduating to a new show creates it** (point 11), so nobody has to leave the page.
+    - Until it graduates, everything stays in `groups.json` on this machine. From graduation on,
+      the show's repo receives its files at rest (point 8).
+11. **A new show is a new repository, made from the page.** A member in the studio pressing
+    "new show" is the authoritative signal. Nobody here approves or refuses it; we just close the
+    gap between having the idea and acting on it.
+    - **Local first.** The page makes a bare repo in this machine's `origin/`, the same layout
+      station-node uses (`origin/FC-Public-Media/<repo>.git`), plus the page's worktree for
+      it. No cloud is involved.
+    - **The repo's name is never the show's name.** It gets a permanent id, picked once and
+      never changed (`show-2026-10-11-a`). The title, slug and description live in `show.yml`
+      inside the repo, where they can change as often as wanted and commit at rest like
+      everything else. That makes renaming a metadata edit, not a repo rename.
+    - **The first commit records the moment:** made in the studio, on this machine, at this
+      time. Linking it to a member (check-in card, bookings) comes later.
+    - **The page lists shows from both places:** `site/_shows` and this machine's `origin/`.
+      A show goes on the public site, or to GitHub, only when a person takes that step, and
+      that is the one time a public name has to be picked.
+    - **Undoing:** a show with no episodes can be dropped. It moves to `origin/.removed/`, and
+      nothing is deleted, the same as **Remove marked**.
+
+## Out of scope
+
+Cutting beyond the proofing marks; multitrack; loading anything into project files (each show's
+pipeline decides that); delivery.
+
+## Steps
+
+- [ ] Autumn redlines this plan
+- [ ] ffmpeg: pinned build, sha256, bay record; reading only (approved 2026-10-11)
+- [ ] probe: does Media Encoder 26.3 open these MP4s and WebMs; is its web service (`AMEWebService.exe`) a documented way to submit jobs
+- [ ] measure today's network reads per scan, play and job (a baseline before changing anything)
+- [ ] residuals (point 9): a single reading pass, keyed by content, `.done`, local budget; audio recordings first
+- [ ] playback from the local listening copy; the source only in byte ranges
+- [ ] video files as recordings: probe, time (point 3), squares
+- [ ] picture pane in the window, streamed from the source in ranges
+- [ ] speech pass (VAD) marking talk spans
+- [ ] transcription of video ranges (ffmpeg decodes the range for Whisper)
+- [ ] frame strip
+- [ ] a Media Encoder door: audio out of video, then the enhance door
+- [ ] episodes under a provisional name; graduating and renaming in one gesture (point 10)
+- [ ] this machine's `origin/`; "new show" makes `show-<id>` with `show.yml`; shows listed from both places (point 11)
+- [ ] the `undated` lane; dragging a square onto a night dates it (point 3)
+- [ ] show worktrees commit at rest (point 8)
 - [ ] .pr back to main's before merge
