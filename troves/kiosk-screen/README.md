@@ -23,9 +23,12 @@ runs between passes except Edge itself.
    checkout's `door.py` `wall_files()` under uv. The render is redone every
    pass, and the wall reloads itself every ten minutes.
 3. **Play it.** If our browser is not already fullscreen on that monitor
-   showing that page, close it and launch Edge with `--kiosk`,
-   `--edge-kiosk-type=fullscreen` and a profile of its own, placed on the
-   monitor's rect in physical pixels.
+   showing that page, close it and launch Edge with `--app` and
+   `--start-fullscreen` and a profile of its own, placed on the monitor's
+   rect in physical pixels. Not `--kiosk`: a kiosk window cannot be moved,
+   so one Windows piled onto the wrong monitor sat over a person's work
+   until the next pass. This one leaves fullscreen with F11 and drags by its
+   title bar, and the next pass puts it back on the TV.
 
 ## Never
 
