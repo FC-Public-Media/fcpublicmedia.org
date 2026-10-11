@@ -13,7 +13,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`payments.md`](payments.md) | the transactions, who processes each, prices, keys |
 | [`identity.md`](identity.md) | passkeys, claims, devices, check-in, authorize |
 | [`station.md`](station.md) | the station: machines, profiles, fcpm, sync, grants, runnables, the bay, engines |
-| [`kiosk.md`](kiosk.md) | the kiosk screen, dim mode, kiosk-1's door |
+| [`kiosk.md`](kiosk.md) | the kiosk screen, dim mode, the kiosk's door |
 | [`services.md`](services.md) | designs taken far enough to resume: scheduling, digitization, sign-in, production's door |
 | [`advocate.md`](advocate.md) | the constitution the advocate seats answer to (`../advocate.yml`) |
 | [`review-notes.md`](review-notes.md) | feedback received, board wording verbatim. **Unratified: never publish** |
@@ -24,10 +24,10 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 |---|---|
 | [`../worker/README.md`](../worker/README.md) | the broker |
 | [`../machines/editing-bay-1/PROFILE.md`](../machines/editing-bay-1/PROFILE.md), [`code/AGENTS.md`](../machines/editing-bay-1/code/AGENTS.md) | production (`EDIT2`) and its root instructions |
-| [`../machines/kiosk-1/PROFILE.md`](../machines/kiosk-1/PROFILE.md), [`code/AGENTS.md`](../machines/kiosk-1/code/AGENTS.md) | kiosk (`200-FCPANEDIT2`) and its root instructions |
+| [`../machines/kiosk/PROFILE.md`](../machines/kiosk/PROFILE.md), [`code/AGENTS.md`](../machines/kiosk/code/AGENTS.md) | kiosk (`200-FCPANEDIT2`) and its root instructions |
 | [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md), [`digitization`](../machines/digitization/PROFILE.md), [`thin-client`](../machines/thin-client/PROFILE.md) | the other machines |
 | [`../crews/README.md`](../crews/README.md) | crews: [production](../crews/production/CREW.md), [digitization](../crews/digitization/CREW.md) |
 | [`../troves/README.md`](../troves/README.md) | troves, the gear a machine wears, one README each |
-| [`../machines/kiosk-1/roller-tv/README.md`](../machines/kiosk-1/roller-tv/README.md) | the roller TV and class mode |
+| [`../machines/kiosk/roller-tv/README.md`](../machines/kiosk/roller-tv/README.md) | the roller TV and class mode |
 | [`../attendant/README.md`](../attendant/README.md) | attendants and their recipes |
 | [`../brand/README.md`](../brand/README.md) | brand assets for the screens in the building |

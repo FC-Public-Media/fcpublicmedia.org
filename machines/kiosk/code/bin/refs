@@ -7,7 +7,7 @@
 #   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
 #
 # ref/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. No submodules.
-# Git Bash. Doc: machines/kiosk-1/code/AGENTS.md.
+# Git Bash. Doc: machines/kiosk/code/AGENTS.md.
 
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

@@ -68,8 +68,8 @@ class TheFormatChange(unittest.TestCase):
 
     def test_a_key_that_does_not_belong_to_its_platform_is_refused(self):
         """`windows LocalHostName ...` must not quietly match."""
-        with machines(kiosk="windows LocalHostName FCPM-KIOSK-1\n"):
-            code, out = run("windows", "FCPM-KIOSK-1")
+        with machines(kiosk="windows LocalHostName FCPM-KIOSK\n"):
+            code, out = run("windows", "FCPM-KIOSK")
         self.assertIn("is asked for ComputerName", out)
         self.assertIn("wearing: nothing", out)
 
@@ -81,15 +81,15 @@ class TheFormatChange(unittest.TestCase):
 
 class Matching(unittest.TestCase):
     def test_windows_binds(self):
-        with machines(kiosk="windows ComputerName FCPM-KIOSK-1\n"):
-            code, out = run("windows", "FCPM-KIOSK-1")
+        with machines(kiosk="windows ComputerName FCPM-KIOSK\n"):
+            code, out = run("windows", "FCPM-KIOSK")
         self.assertIn("wearing: kiosk", out)
         self.assertEqual(code, 0)
 
     def test_matching_ignores_case(self):
         """Hostnames are case-insensitive."""
-        with machines(kiosk="windows ComputerName fcpm-kiosk-1\n"):
-            _, out = run("windows", "FCPM-KIOSK-1")
+        with machines(kiosk="windows ComputerName fcpm-kiosk\n"):
+            _, out = run("windows", "FCPM-KIOSK")
         self.assertIn("MATCH", out)
 
     def test_darwin_still_binds(self):
@@ -99,23 +99,23 @@ class Matching(unittest.TestCase):
 
     def test_a_profile_for_another_platform_is_not_a_mismatch(self):
         """A profile for another kind of host must not read as a near miss (`wants X`)."""
-        with machines(kiosk="windows ComputerName FCPM-KIOSK-1\n"):
+        with machines(kiosk="windows ComputerName FCPM-KIOSK\n"):
             _, out = run("darwin", "studio-mac")
         self.assertIn("this host is darwin", out)
         self.assertNotIn("wants", out)
 
     def test_the_wrong_name_on_the_right_platform_is_a_mismatch(self):
         with machines(kiosk="windows ComputerName FCPM-KIOSK-2\n"):
-            _, out = run("windows", "FCPM-KIOSK-1")
+            _, out = run("windows", "FCPM-KIOSK")
         self.assertIn("wants FCPM-KIOSK-2", out)
         self.assertIn("wearing: nothing", out)
 
     def test_two_profiles_claiming_one_host_is_an_error(self):
         with machines(
-            a="windows ComputerName FCPM-KIOSK-1\n",
-            b="windows ComputerName fcpm-kiosk-1\n",
+            a="windows ComputerName FCPM-KIOSK\n",
+            b="windows ComputerName fcpm-kiosk\n",
         ):
-            code, out = run("windows", "FCPM-KIOSK-1")
+            code, out = run("windows", "FCPM-KIOSK")
         self.assertIn("More than one profile claims this machine", out)
         self.assertEqual(code, 1)
 
@@ -125,7 +125,7 @@ class UnclaimedIsClean(unittest.TestCase):
 
     def test_no_profiles_at_all(self):
         with machines():
-            code, out = run("windows", "FCPM-KIOSK-1")
+            code, out = run("windows", "FCPM-KIOSK")
         self.assertEqual(code, 0)
         self.assertIn("No profiles", out)
 
@@ -152,10 +152,10 @@ class WhatCountsAsAProfile(unittest.TestCase):
     """A directory is a profile when it has a PROFILE.md."""
 
     def test_a_directory_with_no_page_is_not_a_machine(self):
-        with machines(kiosk="windows ComputerName FCPM-KIOSK-1\n") as root:
+        with machines(kiosk="windows ComputerName FCPM-KIOSK\n") as root:
             (root / "__pycache__").mkdir()
             (root / ".DS_Store_dir").mkdir()
-            code, out = run("windows", "FCPM-KIOSK-1")
+            code, out = run("windows", "FCPM-KIOSK")
         self.assertNotIn("__pycache__", out)
         self.assertNotIn(".DS_Store_dir", out)
         self.assertIn("wearing: kiosk", out)

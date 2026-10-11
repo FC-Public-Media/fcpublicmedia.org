@@ -1,7 +1,7 @@
 # Kiosk and studio screens
 
-A kiosk is a screen in the studio. This repository owns what it says (`machines/kiosk-1/welcome/`) and the dim
-every studio screen shares (`brand/idle/`). kiosk-1's door draws the pages.
+A kiosk is a screen in the studio. This repository owns what it says (`machines/kiosk/welcome/`) and the dim
+every studio screen shares (`brand/idle/`). The kiosk's door draws the pages.
 
 ## Content
 
@@ -92,10 +92,10 @@ or copy it byte for byte.
 | `now` | takes over: *Happening now*, title, room, *until* the end |
 | none | the next session, one line |
 
-`takeover: false` in `content.yml` makes it an ordinary panel. kiosk-1's door copies
+`takeover: false` in `content.yml` makes it an ordinary panel. The kiosk's door copies
 `pickSession` out of `classes.js` on every page it draws: on the wall the card takes the stage
 under the check-in header; on the desk it takes the check-in words. `?at=<ISO time>` on either
-page pretends it is then. `classes: sample` in `machines/kiosk-1/node.yml` invents three
+page pretends it is then. `classes: sample` in `machines/kiosk/node.yml` invents three
 sessions, marked as samples.
 
 ## Rota
@@ -126,13 +126,13 @@ files (rewritten every 60 s). No list, an empty list, or past its last end: awak
 lit one walking the column, a split clock (hour hand top, seconds middle, minute hand bottom),
 and the column gliding at a calm speed and bouncing off the edges, against burn-in. Fade in
 over 30 s, wake in under a second. Reduced motion: no fade, no glide, the middle square lit,
-and the column moves once an hour. The page dims, not the backlight: kiosk-1 has no DDC/CI
+and the column moves once an hour. The page dims, not the backlight: the kiosk has no DDC/CI
 tooling and no administrator.
 
 **Waking.** A touch, click, key, wheel or real pointer movement wakes the screen for an hour,
 and each one restarts the hour. The first touch on a dim screen only wakes: the layer swallows
 it. A touch anywhere on the computer ends the dim on every screen it drives at once, for an
-hour from that touch (Autumn, 2026-10-10): kiosk-1's pages ask the door's `/input` twice a
+hour from that touch (Autumn, 2026-10-10): the kiosk's pages ask the door's `/input` twice a
 second (a tap on a panel also POSTs it, as Windows may not count touch), and the roller reads
 `input.js`, kept by the kiosk-screen trove's watcher. A page holds the screen awake with
 `<html class="fcpm-awake">`: the wall while held or during a class takeover, the desk during a takeover or while the camera is up. A
@@ -150,7 +150,7 @@ check-in does not wake it; it happens on the visitor's phone. `?at=HH:MM` or `?a
 While dim the wall's turn is paused, and its ten-minute shell reload waits for the turn to
 resume. Screen supervision still relaunches a stuck panel, which works out dim again.
 
-**Monitors.** A monitor attached but off is not an emergency. kiosk-1's panels never sleep
+**Monitors.** A monitor attached but off is not an emergency. The kiosk's panels never sleep
 (*Never* on AC); both are DisplayPort, so one switched off drops out of Windows, and the door
 relaunches its window in place when it returns. Editing bay 1 sleeps its displays after 2 hours
 idle. The roller's Vizio is on an HDMI-to-DisplayPort adapter; suspect the long blue-cored HDMI
@@ -163,10 +163,10 @@ host finds plugged in, by EDID product code, for a host that does not run the do
 1's pool runs `screen.ps1 keep roller-tv` every minute: the depot's copy of the wall if the
 share answers, else a wall rendered locally from `door.py` `wall_files()`.
 
-## kiosk-1's door
+## The kiosk's door
 
-`machines/kiosk-1/door.py` on `[::]:8080` serves the welcome screen (`/kiosk/`: the check-in
+`machines/kiosk/door.py` on `[::]:8080` serves the welcome screen (`/kiosk/`: the check-in
 code, the studio map, Wi-Fi codes built in memory from Credential Manager, the host footer),
 the depot, the cameras, the turn and the idle screen, and writes the wall (no Wi-Fi codes) to
 `\\10.209.1.1\DIGISTATION\.wall\` for the rolling TV. Every page reloads when `/revision` moves.
-Layout: `machines/kiosk-1/node.yml`; the rest: [`PROFILE.md`](../machines/kiosk-1/PROFILE.md).
+Layout: `machines/kiosk/node.yml`; the rest: [`PROFILE.md`](../machines/kiosk/PROFILE.md).

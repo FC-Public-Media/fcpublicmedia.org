@@ -6,7 +6,7 @@ pools:
     kind: smb
     server: 10.209.1.1
     user: FCPM
-    shares_from: machines/kiosk-1/node.yml
+    shares_from: machines/kiosk/node.yml
     stage_by_share:
       TO ENHANCE: to-enhance
       TO DROPBOX: to-dropbox

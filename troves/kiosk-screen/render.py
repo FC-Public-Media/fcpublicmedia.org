@@ -11,7 +11,7 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-DOOR = HERE.parents[1] / "machines" / "kiosk-1" / "door.py"
+DOOR = HERE.parents[1] / "machines" / "kiosk" / "door.py"
 
 
 def main(out):

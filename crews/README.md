@@ -15,7 +15,7 @@ Station-node uses the same model, so a crew can move between machines on either 
 | crew | looks after | worn by |
 |---|---|---|
 | [`production`](production/CREW.md) | recordings after they land: pools, transcription, episodes, release | editing bay 1 (`EDIT2`) |
-| `kiosk` | the media node: the front door, the screens, check-in ([`machines/kiosk-1/`](../machines/kiosk-1/PROFILE.md)), and the pickup point, where digitization's grants are redeemed ([`troves/scanner/`](../troves/scanner/README.md)) | kiosk-1 (`200-FCPANEDIT2`); `qr` (the pickup point) |
+| `kiosk` | the media node: the front door, the screens, check-in ([`machines/kiosk/`](../machines/kiosk/PROFILE.md)), and the pickup point, where digitization's grants are redeemed ([`troves/scanner/`](../troves/scanner/README.md)) | kiosk (`200-FCPANEDIT2`); `qr` (the pickup point) |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node; editing bay 1 is a member |
 
 ## Supervisor

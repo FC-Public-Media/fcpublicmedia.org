@@ -1,6 +1,6 @@
 # m365-token.ps1 - an access token for FCPM's Microsoft 365 app, from this box.
 #
-#   powershell -NoProfile -File machines\kiosk-1\m365-token.ps1 -Tenant <id> -Client <id> -Thumbprint <hex> [-Scope <scope>]
+#   powershell -NoProfile -File machines\kiosk\m365-token.ps1 -Tenant <id> -Client <id> -Thumbprint <hex> [-Scope <scope>]
 #
 # Prints the token only. The key is non-exportable, so the store signs the JWT assertion. PROFILE.md.
 param(

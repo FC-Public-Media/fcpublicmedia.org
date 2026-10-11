@@ -278,7 +278,7 @@ member data pile ──registers to──▶ our Tell ──registers to──�
 
 ### Signer
 
-`machines/kiosk-1/door.py tell mint` on kiosk minted the signer, an ed25519 key commented
+`machines/kiosk/door.py tell mint` on kiosk minted the signer, an ed25519 key commented
 `tell-delivery-signer`. Its private half is only in kiosk's Windows Credential
 Manager, as `fcpm-tell-signer`. `mint` refuses when a signer exists; losing it
 means minting again, and every pile re-pins.
@@ -288,7 +288,7 @@ kiosk), `TELL_QR_SECRET` (polls), and an Atlas signer (peering).
 
 ### Registering
 
-On kiosk, with `machines/kiosk-1/door.py`:
+On kiosk, with `machines/kiosk/door.py`:
 
 ```
 door.py tell            the published signer, and whether this machine holds its key

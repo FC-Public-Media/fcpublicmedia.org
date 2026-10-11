@@ -1,4 +1,4 @@
-# kiosk-1
+# kiosk
 
 The media node: FCPM's own station-like host, called `kiosk`, answering to `200-FCPANEDIT2`
 (names: [`code/AGENTS.md`](code/AGENTS.md)). The old editing bay 2, retired from media work.

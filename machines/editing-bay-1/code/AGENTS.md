@@ -57,7 +57,7 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
 - Reach other machines outward only: code by commit, media through the depot, talk by session
   message. Peers: `kiosk` (media-node), `digitization` (station-node, where `rodecaster` captures).
 - Hand Autumn an `fcpm` verb, never a path, interpreter or window; a step that needs one is a gap in
-  `fcpm` to fill. Sessions use `bin/refs` directly. Log surprises with `machines/kiosk-1/gotcha`.
+  `fcpm` to fill. Sessions use `bin/refs` directly. Log surprises with `machines/kiosk/gotcha`.
 - The pool (`bin/pool.ps1`, task `editing-bay-1 pool`) places what the mirror moves to and keeps the
   root's server and the rolling TV up (`%LOCALAPPDATA%\editing-bay-1\pool.log`). `fcpm screen` saying
   `kept: NO` means it is not running. `fcpm pool off` ends every Remote Control server here with

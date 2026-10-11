@@ -210,7 +210,7 @@
     setInterval(function () { for (var i = 0; i < tallies.length; i++) walk(tallies[i]); }, STEP);
   }
 
-  // wake([at]): a touch seen elsewhere (kiosk-1's /input, the roller's input.js); the hour runs
+  // wake([at]): a touch seen elsewhere (the kiosk's /input, the roller's input.js); the hour runs
   // from `at` (ms, the real clock), or from now, and is never shortened. Swallows nothing.
   function wake(at) {
     var t = at === undefined ? now() : +at + skew;
