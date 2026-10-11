@@ -27,6 +27,7 @@ configuration, per platform. Crews assemble gear from troves; the node's instrum
 | [pools](pools/README.md) | the storage pools and their recordings | editing bay 1 |
 | [post](post/README.md) | a recording after release | editing bay 1 |
 | [ki-pro](ki-pro/README.md) | an AJA Ki Pro over the LAN | Studio Ki Pro |
+| [scanner](scanner/README.md) | a camera and a screen where codes are redeemed | the qr Pi, kiosk's pickup point |
 | [nest-cam](nest-cam/README.md) | a 2015 Nest Cam's setup drive | retired |
 | [ptz](ptz/README.md) | PTZ cameras on the studio network | concept |
 | [game-intake](https://github.com/FC-Public-Media/game-intake) | game recording intake | its own private repository |

@@ -1,0 +1,12 @@
+# residency.yml -- what the scanner offers a crew that holds it (a menu: troves/pools/residency.yml).
+# On Linux it is kept by systemd (scanner.service, written by install); crew.py's Linux supervisor is unproven.
+
+resident: scanner
+
+serves:
+  - service: scanner
+    for: "the pickup point: a screen and a camera where codes are redeemed, on tty1"
+    kind: listener
+    start: "/usr/bin/python3 troves/scanner/inbox.py"
+    env: {QR_STATE: "/home/fcpm/qr"}
+    alive: {process: "python3 .*troves/scanner/inbox.py"}
