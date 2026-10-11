@@ -28,7 +28,7 @@ DiscoveryWritten's workstation in the studio, is the prototype; FCPM copies its 
 
 | called | profile | answers to | what it is |
 |---|---|---|---|
-| production | [`editing-bay-1`](../machines/editing-bay-1/PROFILE.md) | `EDIT2` | sticker "editing bay 1"; Windows 11 Home, the strongest machine |
+| production | [`production`](../machines/production/PROFILE.md) | `EDIT2` | sticker "editing bay 1"; Windows 11 Home, the strongest machine |
 | kiosk | [`kiosk`](../machines/kiosk/PROFILE.md) | `200-FCPANEDIT2` | the old editing bay 2, now the media node: door and screens ([kiosk.md](kiosk.md)) |
 | | [`editing-bay-2`](../machines/editing-bay-2/PROFILE.md) | unfilled | a macOS bay that schedules Cablecast material |
 | | [`digitization`](../machines/digitization/PROFILE.md) | `digitization` | Debian: FCPM's git origin; takes the `digitization` crew from station-node |
@@ -36,7 +36,7 @@ DiscoveryWritten's workstation in the studio, is the prototype; FCPM copies its 
 | | [`qr`](../machines/qr/PROFILE.md) | `qr` | a Raspberry Pi 3 with a camera: kiosk's pickup point at `qr.local`, carrying the scanner |
 
 Both Windows names end in `EDIT2`; in conversation use the called name (`machines/<profile>/called`).
-The bays share one account with a PIN; identity there is a browser profile. [Crews](../crews/README.md).
+The bays share one account with a PIN; identity there is a browser profile. [Jobs](../machines/README.md).
 
 ## Profiles
 
@@ -83,7 +83,7 @@ in `fcpm`. Verbs are for people; a task names the tool itself, because a grant p
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `~/code/bin/pool.ps1`; `bin/runnables` |
 | `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged |
 | `audition`, `drobo`, `share`, `audit` | the profile's own `.ps1` of that name |
-| `recorder`, `screen`, `crew`, `pools`, `post`, `camera`, `ti89` | [troves](../troves/README.md) and [crews](../crews/README.md) |
+| `recorder`, `screen`, `crew`, `pools`, `post`, `camera`, `ti89` | [troves](../troves/README.md) and [machines](../machines/README.md) |
 
 `fcpm` alone shows the machine, `gh`'s sign-in, how far the mirror `~/code/refs/fcpublicmedia.org`
 is behind GitHub, edits and unsent commits in the people's working copy

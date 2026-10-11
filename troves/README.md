@@ -1,8 +1,8 @@
 # Troves
 
 A trove is one discipline's gear, packed: the software that plays a kind of hardware and its
-configuration, per platform. Crews assemble gear from troves; what is plugged in is never written,
-the host finds it.
+configuration, per platform. Jobs ([`machines/`](../machines/README.md)) assemble gear from troves;
+what is plugged in is never written, the host finds it.
 
 ## Rules
 

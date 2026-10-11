@@ -1,6 +1,0 @@
-# Production's post steps, on whichever machine wears it. See troves/post/README.md, "Steps".
-
-steps:
-  enhance:                   # Adobe Podcast, by hand: drag out, download back
-    door: true
-    lease: 7d

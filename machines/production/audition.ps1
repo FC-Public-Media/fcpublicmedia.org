@@ -8,7 +8,7 @@ audition.ps1 -- Audition as gear on this bay: the enhance engine's panel.
 The panel is the enhance engine's (enhance/gear/audition/), read in place from its mirror through
 a junction in this user's CEP extensions. PlayerDebugMode (HKCU, per CSXS version; Audition 26.x
 reads CSXS.12) lets Audition load unsigned panels. No administrator needed.
-Windows PowerShell 5.1, ASCII only. See machines/editing-bay-1/gear.yml.
+Windows PowerShell 5.1, ASCII only. See machines/production/gear.yml.
 #>
 param(
     [Parameter(Position = 0)] [ValidateSet('status', 'install', 'remove')]

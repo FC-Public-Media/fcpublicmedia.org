@@ -23,10 +23,10 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | doc | |
 |---|---|
 | [`../worker/README.md`](../worker/README.md) | the broker |
-| [`../machines/editing-bay-1/PROFILE.md`](../machines/editing-bay-1/PROFILE.md), [`code/AGENTS.md`](../machines/editing-bay-1/code/AGENTS.md) | production (`EDIT2`) and its root instructions |
+| [`../machines/production/PROFILE.md`](../machines/production/PROFILE.md), [`code/AGENTS.md`](../machines/production/code/AGENTS.md) | production (`EDIT2`) and its root instructions |
 | [`../machines/kiosk/PROFILE.md`](../machines/kiosk/PROFILE.md), [`code/AGENTS.md`](../machines/kiosk/code/AGENTS.md) | kiosk (`200-FCPANEDIT2`) and its root instructions |
 | [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md), [`digitization`](../machines/digitization/PROFILE.md), [`thin-client`](../machines/thin-client/PROFILE.md) | the other machines |
-| [`../crews/README.md`](../crews/README.md) | crews: [production](../crews/production/CREW.md), [digitization](../crews/digitization/CREW.md) |
+| [`../machines/README.md`](../machines/README.md) | the jobs and their supervisor: [production](../machines/production/CREW.md), [digitization](../machines/digitization/CREW.md) |
 | [`../troves/README.md`](../troves/README.md) | troves, the gear a machine wears, one README each |
 | [`../machines/kiosk/roller-tv/README.md`](../machines/kiosk/roller-tv/README.md) | the roller TV and class mode |
 | [`../attendant/README.md`](../attendant/README.md) | attendants and their recipes |

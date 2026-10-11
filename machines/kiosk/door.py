@@ -74,10 +74,10 @@ TYPES = {".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
 
 
 # ------------------------------------------------------------------- sources --
-def git(*args, where=None):
+def git(*args, where=None, timeout=60):
     try:
         out = subprocess.run(["git", "-C", str(where or ROOT), *args], capture_output=True,
-                             text=True, timeout=60, creationflags=NO_WINDOW)
+                             text=True, timeout=timeout, creationflags=NO_WINDOW)
         return out.stdout.strip() if out.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
         return None
@@ -2342,9 +2342,22 @@ def serve():
     return BOUNCE if server.bounce else 0
 
 
+def troves_checkout():
+    """troves/ are submodules: each at the commit this checkout pins. --checkout reaches the
+    private ones, which say `update = none` so that CI's token never tries them."""
+    if " troves/" not in (git("config", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.path$") or ""):
+        return
+    # Never a sign-in prompt (nobody is at this machine): the account is the one origin's URL names.
+    m = re.match(r"https://([^@/]+)@github\.com/", git("remote", "get-url", "origin") or "")
+    named = ["-c", "credential.username=" + m.group(1)] if m else []
+    os.environ.update(GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0")
+    if git(*named, "submodule", "update", "--init", "--checkout", "--quiet", "--", "troves", timeout=600) is None:
+        log("pull: troves submodule update failed; the next pull tries again")
+
+
 def pull_once():
     """Rebase onto origin/main if it moved; a dirty tree is left alone, a conflict aborted."""
-    if git("status", "--porcelain") != "":
+    if git("status", "--porcelain", "--ignore-submodules=all") != "":
         return log("pull: worktree has changes, not rebasing")
     if (ROOT / ".git").is_file():
         gitdir = pathlib.Path(git("rev-parse", "--git-dir") or "")
@@ -2353,12 +2366,13 @@ def pull_once():
     if git("fetch", "--quiet", "origin") is None:
         return log("pull: fetch failed")
     if git("merge-base", "--is-ancestor", "origin/main", "HEAD") is not None:
-        return                                       # already on top of main
+        return troves_checkout()                     # already on top of main
     if git("rebase", "--quiet", "origin/main") is None:
         git("rebase", "--abort")
         return log("pull: rebase onto origin/main stopped on a conflict; aborted, still on %s"
                    % git("rev-parse", "--short", "HEAD"))
     log("pull: rebased onto origin/main, now %s" % git("rev-parse", "--short", "HEAD"))
+    troves_checkout()
 
 
 def supervise():

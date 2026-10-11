@@ -6,22 +6,21 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Broken now
 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
-- `crews/crew.ps1` looks for `machines\crews\`; `fcpm crew status|install|uninstall` stop at "no crew". crews/crew.ps1
-- `crews/production/residency.yml` does not parse in PyYAML (`\s` in a double-quoted string). crews/production/residency.yml
-- `machines/editing-bay-1/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
+- `machines/production/residency.yml` does not parse in PyYAML (`\s` in a double-quoted string). machines/production/residency.yml
+- `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
 - `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
 - `cablecast.json` `fetched` is always null: the workflow never sets `SYNC_STAMP`. .github/workflows/sync-cablecast.yml
 - Expired `featured.yml` items stay live: the weekly sync dispatches `deploy.yml`, which builds Azure only. .github/workflows/sync-cablecast.yml
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
-- `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/editing-bay-1/bay/runnables.proven
+- `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/production/bay/runnables.proven
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
 - Page copy: `/contact/` cites a deleted `/api`; `/donate/` says it is not in the nav, and it is. site/contact.md, site/donate.md
 - Unused: `_includes/community.html`, `countdown.html`, `checkin-card.html`; `watch.yml` `live_url`, `live_provider`, `categories`.
 - `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
-- `crew.py`, `crew.ps1` and `episodes.py` hard-code the `editing-bay-1` profile instead of the machine's.
+- `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
 - `door.py`'s route table omits `/preview/`, `/helo/*`, `/input`, `/heard`, `/wall/`; nothing calls `m365-token.ps1`.
 - The kiosk's `code/AGENTS.md` names `docs/CAPTURE.md`, which is not in this repository.
@@ -141,18 +140,18 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - `code/bin/refs` has two copies that differ; it belongs where both machines read it.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
-- The pool restarts the `production` supervisor too. machines/editing-bay-1/code/bin/pool.ps1
+- The pool restarts the `production` supervisor too. machines/production/code/bin/pool.ps1
 - The default `gear.yml` claude-code winget id is unconfirmed.
 
-## Crews and services
+## Jobs and services
 
 - The crew install has never run to completion; it needs an administrator.
-- The supervisor is Windows-only; a Linux host needs a unit, a lock, display detection and process-group kill. crews/crew.py
-- Machines do not yet say which crews they `wear`; the `kiosk` crew has no folder; digitization has no `services` order.
+- The supervisor is Windows-only; a Linux host needs a unit, a lock, display detection and process-group kill. machines/crew.py
+- The kiosk has no `CREW.md` (its contract is its `PROFILE.md` and `docs/kiosk.md`); digitization has no `services` order. machines/README.md
 - Production's door is not built; its first workflow and whether `/pools/` moves under it are undecided. docs/services.md
 - The welcome before sign-in at the bays is an experiment. docs/services.md#workstation-sign-in
 - Digitization: bay 1's answers as tank host and screen; the Debian member has no capture verb or drive; capture splitting on silence vs one file per session; recording input and start time; a name for the scratch share; the Integra, VCR, multichannel interface and compressors; RØDECaster multitrack.
-- Instanced configurations for gear several crews use (ATEM, OBS).
+- Instanced configurations for gear several jobs use (ATEM, OBS).
 - Member scheduling: ask Cablecast about a draft `runStatus`, and how staff's tool creates shows. docs/services.md#member-scheduling
 - Depot volume identity (a marker per partition) is not built. docs/services.md#depot-index
 - Mailing a site's owner when a device is added: not built. worker/

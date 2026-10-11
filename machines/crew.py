@@ -6,7 +6,7 @@
     crew.py check  [CREW]      status, failing if a kept line is down (the after-boot test)
     crew.py log NAME [CREW]    the end of one line's log
 
-See crews/README.md. Nothing here remembers: whether a line is up is asked each time.
+See machines/README.md. Nothing here remembers: whether a line is up is asked each time.
 """
 import ctypes
 import os
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-HERE = Path(__file__).resolve().parent            # crews/
+HERE = Path(__file__).resolve().parent            # machines/
 REPO = HERE.parent
 CODE = REPO.parent.parent                         # ~/code: refs/ and work/ beside each other
 PROFILE = "editing-bay-1"                         # where this machine keeps its state (one profile per machine)
@@ -310,7 +310,7 @@ def main():
         return tail(a[2] if len(a) > 2 else "production", a[1])
     crew = a[1] if len(a) > 1 else "production"
     if not (HERE / crew / "services").exists():
-        sys.exit(f"crew: no crew {crew} (crews/{crew}/services)")
+        sys.exit(f"crew: no crew {crew} (machines/{crew}/services)")
     if verb == "serve":
         return serve(crew)
     if verb == "desktop":

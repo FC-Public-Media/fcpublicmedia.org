@@ -10,7 +10,7 @@ Windows' own logging, switched on: PowerShell transcripts, script blocks (4104) 
 (4103), process creation with command lines (4688), removable storage (4663), audit policy
 changes (4719), USB devices. It records; it never blocks or sends. A collection can hold names
 and anything typed, so it never goes in a repo. on, off, collect ask for an administrator.
-Windows PowerShell 5.1, ASCII only. See machines/editing-bay-1/PROFILE.md.
+Windows PowerShell 5.1, ASCII only. See machines/production/PROFILE.md.
 #>
 param(
     [Parameter(Position = 0)] [ValidateSet('status', 'on', 'off', 'collect')]
