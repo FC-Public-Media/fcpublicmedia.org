@@ -1,4 +1,4 @@
-# show.yml — what the rolling TV shows: the page, as config. See ../README.md.
+# show.yml — what the rolling TV shows: the page, as config. See README.md.
 # A draft nothing reads: the wall is still built from `wall:` in machines/kiosk-1/node.yml.
 
 version: 1
