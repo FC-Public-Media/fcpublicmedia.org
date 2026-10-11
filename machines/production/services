@@ -1,4 +1,4 @@
-# What production runs: `name keep from` or `name every Nm from`. See crews/README.md.
+# What production runs: `name keep from` or `name every Nm from`. See machines/README.md.
 
 pools           keep        troves/pools
 episodes        every 5m    troves/pools
@@ -6,4 +6,4 @@ post            keep        troves/post
 screen          every 1m    troves/kiosk-screen
 
 # Held off: no Claude at startup. Uncomment to keep it.
-# remote-control  keep        crews/production
+# remote-control  keep        machines/production

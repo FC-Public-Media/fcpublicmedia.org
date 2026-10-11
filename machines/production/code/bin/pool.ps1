@@ -215,7 +215,7 @@ function EnsureServer {
 
 function Screens {
     # The production crew's desktop half (its supervisor has no desktop); else the screen trove.
-    $crew = Join-Path $Root "refs\fcpublicmedia.org\crews\crew.py"
+    $crew = Join-Path $Root "refs\fcpublicmedia.org\machines\crew.py"
     $uv = @((Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),
             (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe")) |
           Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -263,7 +263,7 @@ function Current {
     Set-Content -Path $f -Value $head
     # The supervisor rereads its order but not its code; ended, its task restarts it on the new code.
     if (-not $was) { return }
-    & git -C $mirror diff --quiet $was $head -- crews troves 2>$null
+    & git -C $mirror diff --quiet $was $head -- machines/crew.py troves 2>$null
     if ($LASTEXITCODE -ne 1) { return }
     foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'crew\.py"?\s+serve' })) {
         Say ("current: the crew's supervisor ({0}) runs older code: restarting it" -f $p.ProcessId)

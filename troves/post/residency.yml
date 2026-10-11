@@ -1,4 +1,4 @@
-# residency.yml -- the post trove's menu: nothing runs until a crew orders it (crews/<crew>/services).
+# residency.yml -- the post trove's menu: nothing runs until a crew orders it (machines/<crew>/services).
 # {python} is the crew's Python (uv, 3.12, with pyyaml); paths are from the repository's root.
 
 resident: post

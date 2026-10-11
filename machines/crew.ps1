@@ -4,7 +4,7 @@
 #   crew.ps1 install   [CREW]   the task: starts with the computer, runs `crew.py serve`
 #   crew.ps1 uninstall [CREW]   take the task away (what it started stops with it)
 #
-# A task named for the crew, at the computer's start, as this user via S4U. See crews/README.md.
+# A task named for the crew, at the computer's start, as this user via S4U. See machines/README.md.
 # ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
 param([Parameter(Position = 0)][string]$Verb = "status",
@@ -23,7 +23,7 @@ if (-not $Uv) {
 }
 $State = Join-Path $env:LOCALAPPDATA "editing-bay-1\crew"
 $Log = Join-Path $State "install.log"
-$Py = Join-Path $Repo "machines\crews\crew.py"
+$Py = Join-Path $Repo "machines\crew.py"
 
 function IsAdmin {
     ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -43,7 +43,7 @@ function Elevate {
 
 function Note($m) { New-Item -ItemType Directory -Force -Path (Split-Path $Log) | Out-Null; $m | Tee-Object -FilePath $Log -Append | Write-Host }
 
-if (-not (Test-Path (Join-Path $Repo "machines\crews\$Crew\services"))) { Write-Host "no crew $Crew (machines\crews\$Crew\services)"; exit 2 }
+if (-not (Test-Path (Join-Path $Repo "machines\$Crew\services"))) { Write-Host "no crew $Crew (machines\$Crew\services)"; exit 2 }
 
 switch ($Verb) {
     "status" {
@@ -66,7 +66,7 @@ switch ($Verb) {
         $who = New-ScheduledTaskPrincipal -UserId $User -LogonType S4U -RunLevel Limited
         try {
             Register-ScheduledTask -TaskName $Crew -Action $act -Trigger $boot -Settings $set -Principal $who `
-                -Description "The $Crew crew's one service: its supervisor (machines\crews\crew.py serve $Crew), from the computer's start. machines\crews\crew.ps1." -Force | Out-Null
+                -Description "The $Crew crew's one service: its supervisor (machines\crew.py serve $Crew), from the computer's start. machines\crew.ps1." -Force | Out-Null
             Note "registered '$Crew': at the computer's start, as $User, nobody need be signed in"
             Start-ScheduledTask -TaskName $Crew
             Note "started it now"

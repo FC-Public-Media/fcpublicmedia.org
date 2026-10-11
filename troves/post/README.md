@@ -15,7 +15,7 @@ A take's next step is the first in its route with no output folder: â–  done, â–
 
 A worker claims a step by creating `.N-step.claim` exclusively, with a lease it renews, works into
 `.N-step.partial\`, then seals it (`SHA256SUMS`) and renames it `N-step\`, or writes `N-step.failed.json`.
-One taker renames a lapsed claim aside. Steps are `crews/<crew>/post.yml`: `run:` (`{in}`, `{out}`,
+One taker renames a lapsed claim aside. Steps are `machines/<crew>/post.yml`: `run:` (`{in}`, `{out}`,
 `{take}`, `{python}`, `{step.KEY}`) or `door: true` (input out to `DOORS\<step>\out\`, output when every
 piece is back in `back\`), and `lease:` (30m; doors 7d). `machines/<profile>/post.yml`: `root`, `doors`, `crews`.
 
