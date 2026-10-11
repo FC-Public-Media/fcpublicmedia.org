@@ -290,14 +290,15 @@ switch ($Verb) {
     "on" {
         Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer
         # Say what the phone will see, not just that a process started.
-        $t0 = Get-Date; $state = ""
+        # Not $state: PowerShell names are case-blind, and $State is the folder every check reads.
+        $t0 = Get-Date; $seen = ""
         while (((Get-Date) - $t0).TotalSeconds -lt 20) {
-            if (Select-String -Path (Join-Path $State "server.out") -Pattern "Ready" -Quiet -ErrorAction SilentlyContinue) { $state = "ready"; break }
-            if (Select-String -Path (Join-Path $State "server.err") -Pattern "already served" -Quiet -ErrorAction SilentlyContinue) { $state = "refused"; break }
-            if (-not @(Servers).Count) { $state = "exited"; break }
+            if (Select-String -Path (Join-Path $State "server.out") -Pattern "Ready" -Quiet -ErrorAction SilentlyContinue) { $seen = "ready"; break }
+            if (Select-String -Path (Join-Path $State "server.err") -Pattern "already served" -Quiet -ErrorAction SilentlyContinue) { $seen = "refused"; break }
+            if (-not @(Servers).Count) { $seen = "exited"; break }
             Start-Sleep -Milliseconds 500
         }
-        switch ($state) {
+        switch ($seen) {
             "ready" { Say "server: ready: Edit2 has Remote Control" }
             "refused" { Say "server: refused: claude.ai still holds Edit2 for a server that was killed. The pool tries every minute; up within ~3 min" }
             "exited" { Say "server: exited at start; see server.err" }
