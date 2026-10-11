@@ -1,14 +1,15 @@
 #!/bin/sh
-# Make this Pi the qr screen, from a checkout of fcpublicmedia.org: sudo machines/qr/install
+# Make this Pi a scanner, from a checkout of fcpublicmedia.org: sudo troves/scanner/install
 # Installs the QR finder (python3-zbar) and Node.js (the AC1 reader), sets the monitor's mode and
 # turn, and runs the screen on tty1 from this checkout. Login moves to Alt+F2. Safe to run again.
+# The mode and turn are the qr box's (machines/qr/PROFILE.md); set SCREEN_MODE / SCREEN_TURN for another.
 set -e
-PROFILE=$(cd "$(dirname "$0")" && pwd)
+TROVE=$(cd "$(dirname "$0")" && pwd)
 STATE=${QR_STATE:-/home/fcpm/qr}
 BOOT=/boot/firmware/cmdline.txt
 # The monitor stays dark at 1080p from a Pi 3 (cable/adapter), and stands portrait with its top to the right.
-MODE="video=HDMI-A-1:1280x720@60D"
-TURN="fbcon=rotate:3"
+MODE=${SCREEN_MODE:-video=HDMI-A-1:1280x720@60D}
+TURN=${SCREEN_TURN:-fbcon=rotate:3}
 
 apt-get install -y -q --no-install-recommends python3-zbar nodejs >/dev/null
 
@@ -17,11 +18,14 @@ grep -q 'video=HDMI-A-1' "$BOOT" || sed -i "1 s/\$/ $MODE/" "$BOOT"
 grep -q 'fbcon=rotate' "$BOOT" || sed -i "1 s/\$/ $TURN/" "$BOOT"
 
 install -d -o fcpm -g fcpm "$STATE"
-sed -e "s|@PROFILE@|$PROFILE|g" -e "s|@STATE@|$STATE|g" "$PROFILE/systemd/qr-inbox.service" \
-  > /etc/systemd/system/qr-inbox.service
+if [ -e /etc/systemd/system/qr-inbox.service ]; then         # its name before it was a trove
+  systemctl disable --now -q qr-inbox.service; rm /etc/systemd/system/qr-inbox.service
+fi
+sed -e "s|@TROVE@|$TROVE|g" -e "s|@STATE@|$STATE|g" "$TROVE/systemd/scanner.service" \
+  > /etc/systemd/system/scanner.service
 systemctl daemon-reload
 systemctl disable -q getty@tty1.service
-systemctl enable -q qr-inbox.service
-systemctl restart qr-inbox.service
-echo "qr screen: $(systemctl is-active qr-inbox.service), running $PROFILE, state in $STATE"
+systemctl enable -q scanner.service
+systemctl restart scanner.service
+echo "scanner: $(systemctl is-active scanner.service), running $TROVE, state in $STATE"
 grep -q "$MODE" /proc/cmdline && grep -q "$TURN" /proc/cmdline || echo "reboot once for the monitor mode and turn"
