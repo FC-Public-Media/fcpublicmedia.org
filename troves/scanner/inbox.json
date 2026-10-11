@@ -1,5 +1,0 @@
-[
- {"id": "demo-episode", "for": "Jamie", "what": "Episode 12 raw footage", "size": "48 GB", "status": "ready", "demo": true},
- {"id": "demo-minutes", "for": "the Board", "what": "October minutes + audio", "size": "2.1 GB", "status": "ready", "demo": true},
- {"id": "demo-sampler", "for": "anyone", "what": "FCPAN archive sampler", "size": "700 MB", "status": "ready", "demo": true}
-]

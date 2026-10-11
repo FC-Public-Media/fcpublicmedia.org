@@ -23,3 +23,96 @@
 	path = .tell-engine
 	url = https://github.com/FCCN-ANTIBODY/tell.anecdote.channel.git
 	# The hub member data piles register to; `tell.yml`, signed by `keys/tell.fpr`. See docs/members.md#directory.
+# Troves: one repository each, all private (troves/README.md). update = none keeps CI's token
+# from trying them; bin/refs and the kiosk's door check them out with --checkout. ignore = untracked:
+# a trove that runs leaves bytecode beside itself.
+[submodule "troves/aja-helo"]
+	path = troves/aja-helo
+	url = https://github.com/FC-Public-Media/aja-helo.git
+	update = none
+	ignore = untracked
+[submodule "troves/atem-mini-pro"]
+	path = troves/atem-mini-pro
+	url = https://github.com/FC-Public-Media/atem-mini-pro.git
+	update = none
+	ignore = untracked
+[submodule "troves/buffalo-drivestation"]
+	path = troves/buffalo-drivestation
+	url = https://github.com/FC-Public-Media/buffalo-drivestation.git
+	update = none
+	ignore = untracked
+[submodule "troves/camera"]
+	path = troves/camera
+	url = https://github.com/FC-Public-Media/camera.git
+	update = none
+	ignore = untracked
+[submodule "troves/drobo"]
+	path = troves/drobo
+	url = https://github.com/FC-Public-Media/drobo.git
+	update = none
+	ignore = untracked
+[submodule "troves/edgerouter-x"]
+	path = troves/edgerouter-x
+	url = https://github.com/FC-Public-Media/edgerouter-x.git
+	update = none
+	ignore = untracked
+[submodule "troves/etc-colorsource-20"]
+	path = troves/etc-colorsource-20
+	url = https://github.com/FC-Public-Media/etc-colorsource-20.git
+	update = none
+	ignore = untracked
+[submodule "troves/game-intake"]
+	path = troves/game-intake
+	url = https://github.com/FC-Public-Media/game-intake.git
+	update = none
+	ignore = untracked
+[submodule "troves/ki-pro"]
+	path = troves/ki-pro
+	url = https://github.com/FC-Public-Media/ki-pro.git
+	update = none
+	ignore = untracked
+[submodule "troves/kiosk-screen"]
+	path = troves/kiosk-screen
+	url = https://github.com/FC-Public-Media/kiosk-screen.git
+	update = none
+	ignore = untracked
+[submodule "troves/nest-cam"]
+	path = troves/nest-cam
+	url = https://github.com/FC-Public-Media/nest-cam.git
+	update = none
+	ignore = untracked
+[submodule "troves/pools"]
+	path = troves/pools
+	url = https://github.com/FC-Public-Media/pools.git
+	update = none
+	ignore = untracked
+[submodule "troves/post"]
+	path = troves/post
+	url = https://github.com/FC-Public-Media/post.git
+	update = none
+	ignore = untracked
+[submodule "troves/ptz"]
+	path = troves/ptz
+	url = https://github.com/FC-Public-Media/ptz.git
+	update = none
+	ignore = untracked
+[submodule "troves/recorder"]
+	path = troves/recorder
+	url = https://github.com/FC-Public-Media/recorder.git
+	update = none
+	ignore = untracked
+[submodule "troves/rodecaster-pro-ii"]
+	path = troves/rodecaster-pro-ii
+	url = https://github.com/FC-Public-Media/rodecaster-pro-ii.git
+	update = none
+	ignore = untracked
+[submodule "troves/scanner"]
+	path = troves/scanner
+	url = https://github.com/FC-Public-Media/scanner.git
+	update = none
+	ignore = untracked
+[submodule "troves/ti-89"]
+	path = troves/ti-89
+	url = https://github.com/FC-Public-Media/ti-89.git
+	update = none
+	ignore = untracked
