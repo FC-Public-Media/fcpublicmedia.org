@@ -24,7 +24,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the `editing-bay-1` profile instead of the machine's.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
 - `door.py`'s route table omits `/preview/`, `/helo/*`, `/input`, `/heard`, `/wall/`; nothing calls `m365-token.ps1`.
-- kiosk-1's `code/AGENTS.md` names `docs/CAPTURE.md`, which is not in this repository.
+- The kiosk's `code/AGENTS.md` names `docs/CAPTURE.md`, which is not in this repository.
 - `member-site-core/feed.xml` names `script/sync-feeds.py`; `site-template/` points at a README that does not exist.
 - `machines/crew.yml` says there is no supervisor or pool; editing bay 1 runs both.
 
@@ -137,7 +137,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Putting a profile on should be a signed commit; admission a passkey-signed request with KEYHOLDERS, not a merge.
 - Machines pull from a LAN origin (thin-client is the likely host) once they can reach it.
 - digitization: names not applied; SSH door and keys wait on passkeys; intake polls until a webhook.
-- editing-bay-2: names unfilled, and it may be the machine that is now kiosk-1.
+- editing-bay-2: names unfilled, and it may be the machine that is now the kiosk.
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - `code/bin/refs` has two copies that differ; it belongs where both machines read it.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
@@ -162,15 +162,15 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Kiosk
 
-- Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk-1/welcome/content.yml
-- The rota's `crew:` tags are Autumn's to give. machines/kiosk-1/welcome/rota.yml
+- Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk/welcome/content.yml
+- The rota's `crew:` tags are Autumn's to give. machines/kiosk/welcome/rota.yml
 - Bookings: Microsoft 365 calendars replace `bookings: sample`; Bookings is ruled out for intake; a second desk monitor for today's bookings waits on its API.
 - `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
 - Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.
-- The Dropbox queue is off (no app key, no staff folder). machines/kiosk-1/node.yml
-- Camera replies with a passkey signature are refused until devices can be checked; the HELO preview waits on an RTSP player. machines/kiosk-1/door.py
-- kiosk-1's third panel waits on a DVI adapter; editing bay 2's outward monitor has no show.
-- Asked of IT: automatic sign-in, inbound TCP 8080. `kiosk-1` is a placeholder name. machines/kiosk-1/PROFILE.md
+- The Dropbox queue is off (no app key, no staff folder). machines/kiosk/node.yml
+- Camera replies with a passkey signature are refused until devices can be checked; the HELO preview waits on an RTSP player. machines/kiosk/door.py
+- The kiosk's third panel waits on a DVI adapter; editing bay 2's outward monitor has no show.
+- Asked of IT: automatic sign-in, inbound TCP 8080. machines/kiosk/PROFILE.md
 
 ## Troves
 

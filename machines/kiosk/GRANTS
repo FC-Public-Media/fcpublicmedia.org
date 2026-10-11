@@ -1,4 +1,4 @@
-# GRANTS: kiosk-1's answer to ../RUNNABLES, compiled by `bin/runnables compile kiosk-1`. DRAFT.
+# GRANTS: the kiosk's answer to ../RUNNABLES, compiled by `bin/runnables compile kiosk`. DRAFT.
 # A widening lands only by a merged PR; an `allow` reaches settings only for a proven holder.
 # Lines: checkout <path> | runner <run> <tool> [prefix...] (first per run is canonical) | narrow | host
 

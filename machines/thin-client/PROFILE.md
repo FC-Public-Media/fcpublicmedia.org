@@ -21,5 +21,5 @@ Model, serial, BIOS, memory, flash and hardware address are read from the box; t
 ## Reformatting
 
 1. Storage: swap the flash module for 8 to 32 GB, or install to a USB stick in an inside socket.
-2. Write the installer stick on the iMac; kiosk-1 and the bays cannot write a raw disk without an administrator.
+2. Write the installer stick on the iMac; the kiosk and the bays cannot write a raw disk without an administrator.
 3. Boot it with F12 and pick the stick (nothing in the BIOS is locked). Set power on after power failure to On.

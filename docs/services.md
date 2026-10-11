@@ -45,7 +45,7 @@ FCPM digitizes people's media and hands back more than a file on a thumb drive: 
 
 ## Depot index
 
-What is on the studio drive is shown by walking its shares and publishing an index that a page renders: a browser cannot speak SMB. Built in `machines/kiosk-1/door.py` ("the depot", shown at `/depot/`); see [`kiosk.md`](kiosk.md).
+What is on the studio drive is shown by walking its shares and publishing an index that a page renders: a browser cannot speak SMB. Built in `machines/kiosk/door.py` ("the depot", shown at `/depot/`); see [`kiosk.md`](kiosk.md).
 
 The drive's limits are declared, not sniffed: Samba reports every partition as NTFS whatever it is, and the router mounts only FAT.
 

@@ -1,5 +1,5 @@
 # Append-only: union merges keep both sides, so never edit an existing line (that loses data silently).
-machines/kiosk-1/GOTCHAS.log    merge=union
+machines/kiosk/GOTCHAS.log    merge=union
 
 # Windows batch files need CRLF to run; stored LF, checked out CRLF everywhere.
 *.cmd text eol=crlf

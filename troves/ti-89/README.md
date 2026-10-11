@@ -1,7 +1,7 @@
 # The TI-89 trove
 
 A TI-89 graphing calculator on a GraphLink cable: its screen, files and OS, from a computer. The
-calculator on the media node (kiosk-1) is an original TI-89 (AMS 2.03 of 12/08/1999, boot code
+calculator on the media node (kiosk) is an original TI-89 (AMS 2.03 of 12/08/1999, boot code
 1.07, hardware 1) on COM1, through a black link. `link.py` speaks TI's link protocol as libticalcs
 documents it, with nothing installed but pyserial.
 

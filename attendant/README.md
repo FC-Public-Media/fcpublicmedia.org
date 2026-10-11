@@ -14,11 +14,11 @@ It finds controls by role and accessible name (button "Files", not a selector), 
 
 A recipe is one known job on one page: `page` (module or route), `shown on` (instruments), `before`, `steps` (role and accessible name, each with the visible result that proves it) and `done` (a check a person can make by looking). "It worked" is never a claim about state the person cannot see. Steps run as written under Playwright's `getByRole(role, {name})`.
 
-A step that fails because the page lacks what the recipe says is a bug, listed in [`docs/OPEN.md`](../docs/OPEN.md). A surprise about the environment is a gotcha (`machines/kiosk-1/gotcha`). A stale recipe is fixed in the recipe.
+A step that fails because the page lacks what the recipe says is a bug, listed in [`docs/OPEN.md`](../docs/OPEN.md). A surprise about the environment is a gotcha (`machines/kiosk/gotcha`). A stale recipe is fixed in the recipe.
 
 ## Pause the wall on a module
 
-**Page:** the wall, built by `machines/kiosk-1/door.py` (`wall_files`, `write_wall`) from `wall:` in `machines/kiosk-1/node.yml`; modules Studio, Files, Classes. **Shown on** roller-tv from `\\10.209.1.1\DIGISTATION\.wall\index.html`.
+**Page:** the wall, built by `machines/kiosk/door.py` (`wall_files`, `write_wall`) from `wall:` in `machines/kiosk/node.yml`; modules Studio, Files, Classes. **Shown on** roller-tv from `\\10.209.1.1\DIGISTATION\.wall\index.html`.
 
 **Before:** the yellow check-in header; under it, an `aria-hidden` timer; one module on the stage, turning every 45 s; the bar, navigation "Wall": "FCPM" and the module's name, a button per module, one round pause button.
 

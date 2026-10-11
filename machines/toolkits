@@ -2,7 +2,7 @@
 # the box. A project that diverges says so in its own README. See docs/station.md, Crew and gear.
 
 # language   tool        arrives by
-ruby         bundler     # unestablished — see `machines/kiosk-1/PROFILE.md`
+ruby         bundler     # unestablished — see `machines/kiosk/PROFILE.md`
 python       python3     # unestablished; the winget id is probably Python.Python.3.x
-node         npm         # kiosk-1: the nodejs.org LTS zip, sha256-checked against SHASUMS256.txt, in
+node         npm         # kiosk: the nodejs.org LTS zip, sha256-checked against SHASUMS256.txt, in
                          # %LOCALAPPDATA%\media-node\node; winget cannot install zips. worker/, site/tests/

@@ -64,7 +64,7 @@ function WriteLF($path, $text) { [IO.File]::WriteAllText($path, $text, (New-Obje
 # ---------------------------------------------------------------------------
 # Credential Manager, read and written through the Win32 API, because cmdkey
 # cannot read a password back. The door does the same for Wi-Fi keys
-# (machines/kiosk-1/door.py, CredWriteW).
+# (machines/kiosk/door.py, CredWriteW).
 Add-Type -Namespace Fcpm -Name Cred -MemberDefinition @'
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 public struct CREDENTIAL {

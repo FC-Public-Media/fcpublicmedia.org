@@ -10,7 +10,7 @@ strongest machine. Profiles, sync and grants: [docs/station.md](../../docs/stati
 | shells | Git Bash and Windows PowerShell 5.1. `python` on PATH is the Store stub; Python comes from uv |
 | network | Ethernet on the building's managed network and the guest Wi-Fi, category Public. The depot (`10.209.1.1`) answers only on the opt-in Wi-Fi |
 | storage | the Drobo B810i over iSCSI (`10.209.1.179`): `E:` "TO ENHANCE", 1 TB, shared as `enhance`; and an HFS+ LUN, read only, that only this bay may log in to |
-| screens | two HP E273s at the desk, and the rolling TV, which it drives for the kiosk ([roller-tv](../kiosk-1/roller-tv/README.md)) |
+| screens | two HP E273s at the desk, and the rolling TV, which it drives for the kiosk ([roller-tv](../kiosk/roller-tv/README.md)) |
 | not ours | the OBS in Program Files, browser profiles, display settings. People use this machine every week |
 
 | file | what it is |

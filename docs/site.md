@@ -108,7 +108,7 @@ Other data files name their doc in their first line.
 | `assets/js/nav.js`, `archive-filter.js` | mobile menu; filter and sort on `/watch/archive/` |
 | `assets/js/onair.js` | "On now" and "Next at" from Cablecast's API, on pages with `data-onair`; removed on failure |
 | `assets/js/lights.js` | `/lights/`: the lights reply code for the kiosk camera ([kiosk.md](kiosk.md)) |
-| `assets/js/qr-*.mjs` | vendored from anecdote.channel, unchanged; `machines/kiosk-1/door.py` serves them, so never move them |
+| `assets/js/qr-*.mjs` | vendored from anecdote.channel, unchanged; `machines/kiosk/door.py` serves them, so never move them |
 | `bin/make-qr.py` | writes the committed `check-in-qr.svg` from `_data/checkin.yml`; needs `pip install qrcode` |
 | `bin/make-wifi-qr.py` | writes the uncommitted `wifi-qr.svg`; password from `FCPM_WIFI_PASSWORD` or a prompt |
 | `bin/redirect-report.py` | checks the live Wix sitemaps against `redirects.yml` and `_site` |

@@ -4,30 +4,30 @@
 
 # holder                       | run        | shape                | class   | says
 
-# The door (kiosk-1). door.py's usage header is the source for every shape.
-machines/kiosk-1/door.py        | python     | -                    | read    | is the door up
-machines/kiosk-1/door.py        | python     | status               | read    | is the door up
-machines/kiosk-1/door.py        | python     | screens              | read    | are the screens in node.yml up and full-screen
-machines/kiosk-1/door.py        | python     | screens --launch     | outside | bring the screens up: opens windows on the panels
-machines/kiosk-1/door.py        | python     | startup              | read    | what starts the door at logon, and does it point here
-machines/kiosk-1/door.py        | python     | startup --xml        | read    | the logon task this checkout implies, to stdout
-machines/kiosk-1/door.py        | python     | startup --install    | desk    | register that task, and retire the Startup shortcut
-machines/kiosk-1/door.py        | python     | sessions             | read    | the one session this node keeps, and what else runs
-machines/kiosk-1/door.py        | python     | sessions off         | outside | stop starting the kept session
-machines/kiosk-1/door.py        | python     | sessions on          | outside | keep it again, from the next pass
-machines/kiosk-1/door.py        | python     | serve                | service | become the door, on [::]:8080. The logon task's
-machines/kiosk-1/door.py        | python     | supervise            | service | run serve, restart it, pull. The logon task's
-machines/kiosk-1/door.py        | python     | wifi-password *      | secret  | prints a saved network's key
-machines/kiosk-1/m365-token.ps1 | powershell | *                    | secret  | prints a Microsoft 365 access token. The door calls it
-machines/kiosk-1/gotcha         | sh         | *                    | inside  | append one line to GOTCHAS.log; commits on media-node only
+# The door (kiosk). door.py's usage header is the source for every shape.
+machines/kiosk/door.py        | python     | -                    | read    | is the door up
+machines/kiosk/door.py        | python     | status               | read    | is the door up
+machines/kiosk/door.py        | python     | screens              | read    | are the screens in node.yml up and full-screen
+machines/kiosk/door.py        | python     | screens --launch     | outside | bring the screens up: opens windows on the panels
+machines/kiosk/door.py        | python     | startup              | read    | what starts the door at logon, and does it point here
+machines/kiosk/door.py        | python     | startup --xml        | read    | the logon task this checkout implies, to stdout
+machines/kiosk/door.py        | python     | startup --install    | desk    | register that task, and retire the Startup shortcut
+machines/kiosk/door.py        | python     | sessions             | read    | the one session this node keeps, and what else runs
+machines/kiosk/door.py        | python     | sessions off         | outside | stop starting the kept session
+machines/kiosk/door.py        | python     | sessions on          | outside | keep it again, from the next pass
+machines/kiosk/door.py        | python     | serve                | service | become the door, on [::]:8080. The logon task's
+machines/kiosk/door.py        | python     | supervise            | service | run serve, restart it, pull. The logon task's
+machines/kiosk/door.py        | python     | wifi-password *      | secret  | prints a saved network's key
+machines/kiosk/m365-token.ps1 | powershell | *                    | secret  | prints a Microsoft 365 access token. The door calls it
+machines/kiosk/gotcha         | sh         | *                    | inside  | append one line to GOTCHAS.log; commits on media-node only
 
 # Which profile this checkout wears.
 machines/binding                | python     | -                    | read    | which machine profile this checkout wears, if any
 
 # Build tooling at the root. Each writes files that are committed, and nothing else.
-bin/build-kiosk.py              | python     | --check              | read    | fail if machines/kiosk-1/welcome/welcome.* is stale
+bin/build-kiosk.py              | python     | --check              | read    | fail if machines/kiosk/welcome/welcome.* is stale
 bin/build-kiosk.py              | python     | --print              | read    | write nothing, show both
-bin/build-kiosk.py              | python     | -                    | inside  | write machines/kiosk-1/welcome/welcome.yml and welcome.js
+bin/build-kiosk.py              | python     | -                    | inside  | write machines/kiosk/welcome/welcome.yml and welcome.js
 bin/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
 bin/runnables                   | sh         | *                    | read    | this census
 

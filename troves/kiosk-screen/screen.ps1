@@ -11,7 +11,7 @@ screen.ps1 -- keep a studio page on a screen this host finds plugged in.
     screen.ps1 toggle [INSTRUMENT]   the wall if class mode is showing, class mode if not
     screen.ps1 watch  [INSTRUMENT]   keep input.js current while our Edge runs (keep starts it)
 
-INSTRUMENT is a folder in ../../machines/kiosk-1/ (default roller-tv). See README.md.
+INSTRUMENT is a folder in ../../machines/kiosk/ (default roller-tv). See README.md.
 Windows PowerShell 5.1, no modules. ASCII only.
 #>
 param(
@@ -30,7 +30,7 @@ $Mode = ''
 if ($Verb -eq 'class' -and @('light', 'dark') -contains $Instrument) { $Mode = $Instrument; $Instrument = 'roller-tv' }
 
 $Repo    = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$Spec    = Join-Path $Repo "machines\kiosk-1\$Instrument\instrument.yml"
+$Spec    = Join-Path $Repo "machines\kiosk\$Instrument\instrument.yml"
 $Root    = Join-Path $env:LOCALAPPDATA "$Node\troves\kiosk-screen\$Instrument"
 $Profile_ = Join-Path $Root 'profile'
 $Wall    = Join-Path $Root 'wall'
