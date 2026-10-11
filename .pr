@@ -20,9 +20,10 @@ not the pools'. First case: Autumn's long play of a video game, about 200 hours,
      the samples Whisper hears. It never writes into a pool. It is pinned and hashed, with a bay
      record, the same as faster-whisper.
 3. **Time.** A downloaded file's modified time is the day it was downloaded, not the day it was
-   streamed, and YouTube strips the creation time. The stream's time comes from a sidecar beside
-   the file (yt-dlp `.info.json`), else from the time in the file's name, else from the square
-   being dated by hand. That puts each stream on the night it was streamed.
+   streamed. YouTube strips the creation time, and its downloads come with no sidecar. If no
+   sidecar or name gives a time, the video lands in an `undated` lane, in name order. Dragging
+   its square onto a night dates it. The date is kept on this machine, and the file is never
+   touched.
 4. **Playing.** Edge plays MP4 (H.264/AAC) and WebM (VP9/Opus) natively. The window gets a
    picture pane above the waveform. Files are served from disk in byte ranges; today's `/audio`
    loads the whole file into memory, which works for a WAV clip but not for a 5 GB video. A file
@@ -76,6 +77,18 @@ not the pools'. First case: Autumn's long play of a video game, about 200 hours,
    contact-sheets declares its storage (private, transient), on a local disk with a budget.
    The ghost and scan costs get measured first, then fixed where they're actually slow.
 
+10. **Graduation: a region becomes a show and its episodes before anyone picks a name.** Today a
+    group is either a show from `site/_shows` or a provisional name, and only a show's group can
+    hold an episode. The change:
+    - **A provisional name can hold episodes too**: the same panel, with the out name taken from
+      the provisional name until the show is named.
+    - **Graduating** is one gesture on the name: every region and episode under it moves to the
+      show at once, and its out names follow. A rename before then is the same gesture.
+    - **A show that doesn't exist yet** can't be graduated to. Its record (`site/_shows`, public)
+      and its private repo are a person's step, and the page says which are still missing.
+    - Until it graduates, everything stays in `groups.json` on this machine. From graduation on,
+      the show's repo receives its files at rest (point 8).
+
 ## Out of scope
 
 Cutting beyond the proofing marks; multitrack; loading anything into project files (each show's
@@ -95,5 +108,7 @@ pipeline decides that); delivery.
 - [ ] transcription of video ranges (ffmpeg decodes the range for Whisper)
 - [ ] frame strip
 - [ ] a Media Encoder door: audio out of video, then the enhance door
+- [ ] episodes under a provisional name; graduating and renaming in one gesture (point 10)
+- [ ] the `undated` lane; dragging a square onto a night dates it (point 3)
 - [ ] show worktrees commit at rest (point 8)
 - [ ] .pr back to main's before merge
