@@ -1,7 +1,7 @@
 """door — the one address the media node answers on.
 
     door.py serve              become the door, on [::]:8080
-    door.py supervise          run `serve`, restart it when it exits, pull in the background
+    door.py supervise          run `serve`, restart it when it exits, pull in the background, follow its folder if a pull moves it
     door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
     door.py startup --xml      the logon task this checkout implies, to stdout
@@ -2413,6 +2413,25 @@ def supervise():
     threading.Thread(target=keep_dropbox, daemon=True).start()
     while True:
         code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
+        if not pathlib.Path(__file__).exists():
+            # A pull moved the door's folder (machines/kiosk-1 becoming machines/kiosk): nobody is at
+            # this machine to re-point the logon task, so the door does, and starts from there.
+            moved = sorted(ROOT.glob("machines/*/door.py"))
+            if len(moved) != 1:
+                log("supervise: door.py is gone from %s and not found once under machines/ (%d); waiting"
+                    % (HERE.relative_to(ROOT), len(moved)))
+                time.sleep(60)
+                continue
+            new = moved[0]
+            log("supervise: the door moved to %s; following it" % new.relative_to(ROOT))
+            out = subprocess.run([sys.executable, "-X", "utf8", str(new), "startup", "--install"],
+                                 capture_output=True, text=True, creationflags=NO_WINDOW)
+            for l in (out.stdout or out.stderr or "").strip().splitlines()[:2]:
+                log("supervise: " + l)
+            k.CloseHandle(mutex)
+            subprocess.Popen([sys.executable, "-X", "utf8", str(new), "supervise"], close_fds=True,
+                             creationflags=NO_WINDOW | getattr(subprocess, "DETACHED_PROCESS", 0))
+            return 0
         if code == BOUNCE and pathlib.Path(__file__).read_bytes() != me:
             # supervise's own code moved too: hand the mutex to a fresh supervise and leave.
             log("supervise: my code changed; starting a fresh one")
