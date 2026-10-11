@@ -7,7 +7,7 @@ WEP, and no network here takes it. Kept as the record of a setup volume
 ## Setup volume
 
 USB `0525:A4A5` (the Linux USB gadget's stock ID) gives power and a 1.3 MB FAT drive, *Nest Cam
-Setup*; video goes only over Wi-Fi. Hashes: `machines/editing-bay-1/bay/nest-cam-setup-2015.yml`.
+Setup*; video goes only over Wi-Fi. Hashes: `machines/production/bay/nest-cam-setup-2015.yml`.
 
 | file | is |
 |---|---|

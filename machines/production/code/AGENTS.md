@@ -51,7 +51,7 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
 - Open every PR, drafts and any repo included, with `--reviewer tiliv` (`gh pr edit N --add-reviewer
   tiliv` if missed). We push as `fcpm-public`; `gh` is `~/.local/bin/gh.exe`. Autumn merges; within
   5 minutes the door rebases `media-node` onto `main`. No global git identity: each repo has its own.
-- Change this file in a worktree (`machines/editing-bay-1/code/AGENTS.md`); it is read from the mirror.
+- Change this file in a worktree (`machines/production/code/AGENTS.md`); it is read from the mirror.
   Never edit the root's `CLAUDE.md` or `AGENTS.md`: `fcpm install` restores them.
 - A session starts no service, keeps no live checkout and runs nothing long; nothing revives it.
 - Reach other machines outward only: code by commit, media through the depot, talk by session

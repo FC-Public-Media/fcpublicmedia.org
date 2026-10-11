@@ -1,7 +1,9 @@
-# editing bay 1
+# production
 
-Called *production*; the sticker says editing bay 1; Windows answers to `EDIT2`. The studio's
-strongest machine. Profiles, sync and grants: [docs/station.md](../../docs/station.md).
+Editing bay 1 by its sticker; Windows answers to `EDIT2`. The studio's strongest machine. Its state
+on disk keeps the profile's old name, `%LOCALAPPDATA%\editing-bay-1\` (the OBS install, the pool's
+task and log, the Whisper models), and so does the `editing-bay-1 pool` task. Profiles, sync and
+grants: [docs/station.md](../../docs/station.md).
 
 | | |
 |---|---|

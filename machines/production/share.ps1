@@ -7,7 +7,7 @@ share.ps1 -- the drop shares this bay serves over SMB.
 `enhance` is E:, "TO ENHANCE", the 1 TB Drobo LUN, served to a local account `enhance` because
 Macs fail with this bay's Microsoft account over SMB. Its password is typed at install, never
 written; keep it in the password manager. install asks for an administrator; running it twice
-changes nothing. Windows PowerShell 5.1, ASCII only. See machines/editing-bay-1/PROFILE.md.
+changes nothing. Windows PowerShell 5.1, ASCII only. See machines/production/PROFILE.md.
 #>
 param(
     [Parameter(Position = 0)] [ValidateSet('status', 'install')]

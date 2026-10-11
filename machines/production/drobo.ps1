@@ -10,7 +10,7 @@ Only this bay may log in: a second initiator on the HFS+ LUN corrupts it. Nothin
 Drobo disk. The CHAP secret is typed and never written; connect replaces each target's favorite
 with one carrying it, without logging a mounted drive out. A list can hold members' names, so OUT
 never goes in a repo. connect, header, list ask for an administrator.
-Windows PowerShell 5.1, ASCII only. See machines/editing-bay-1/PROFILE.md.
+Windows PowerShell 5.1, ASCII only. See machines/production/PROFILE.md.
 #>
 param(
     [Parameter(Position = 0)] [ValidateSet('status', 'connect', 'header', 'list')]

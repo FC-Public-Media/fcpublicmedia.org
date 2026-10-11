@@ -27,7 +27,7 @@ input: pointer
 # Whoever finds it plugged in may drive it.
 placement:
   where: control-room opening, on its stand
-  driven-by: editing-bay-1   # machines/editing-bay-1; it answers to EDIT2
+  driven-by: production   # machines/production; it answers to EDIT2
   since: 2026-09-25
 
 # Edge in kiosk mode with a profile of its own; nothing else on the host is touched.
