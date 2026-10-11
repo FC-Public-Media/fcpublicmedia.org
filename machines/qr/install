@@ -1,0 +1,27 @@
+#!/bin/sh
+# Make this Pi the qr screen, from a checkout of fcpublicmedia.org: sudo machines/qr/install
+# Installs the QR finder (python3-zbar) and Node.js (the AC1 reader), sets the monitor's mode and
+# turn, and runs the screen on tty1 from this checkout. Login moves to Alt+F2. Safe to run again.
+set -e
+PROFILE=$(cd "$(dirname "$0")" && pwd)
+STATE=${QR_STATE:-/home/fcpm/qr}
+BOOT=/boot/firmware/cmdline.txt
+# The monitor stays dark at 1080p from a Pi 3 (cable/adapter), and stands portrait with its top to the right.
+MODE="video=HDMI-A-1:1280x720@60D"
+TURN="fbcon=rotate:3"
+
+apt-get install -y -q --no-install-recommends python3-zbar nodejs >/dev/null
+
+cp -n "$BOOT" "$BOOT.before-qr"
+grep -q 'video=HDMI-A-1' "$BOOT" || sed -i "1 s/\$/ $MODE/" "$BOOT"
+grep -q 'fbcon=rotate' "$BOOT" || sed -i "1 s/\$/ $TURN/" "$BOOT"
+
+install -d -o fcpm -g fcpm "$STATE"
+sed -e "s|@PROFILE@|$PROFILE|g" -e "s|@STATE@|$STATE|g" "$PROFILE/systemd/qr-inbox.service" \
+  > /etc/systemd/system/qr-inbox.service
+systemctl daemon-reload
+systemctl disable -q getty@tty1.service
+systemctl enable -q qr-inbox.service
+systemctl restart qr-inbox.service
+echo "qr screen: $(systemctl is-active qr-inbox.service), running $PROFILE, state in $STATE"
+grep -q "$MODE" /proc/cmdline && grep -q "$TURN" /proc/cmdline || echo "reboot once for the monitor mode and turn"
