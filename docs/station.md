@@ -81,7 +81,7 @@ in `fcpm`. Verbs are for people; a task names the tool itself, because a grant p
 | `status`, `install` | `sync`; `install` also makes the people's working copy and the `fcpm weekly` task |
 | `pull` | `bin/refs pull fcpublicmedia.org`, then `sync install` |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `~/code/bin/pool.ps1`; `bin/runnables` |
-| `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged |
+| `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged; on the kiosk, the door fetches |
 | `audition`, `drobo`, `share`, `audit` | the profile's own `.ps1` of that name |
 | `recorder`, `screen`, `crew`, `pools`, `post`, `camera`, `ti89` | [troves](../troves/README.md) and [machines](../machines/README.md) |
 

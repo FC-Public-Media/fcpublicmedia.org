@@ -61,6 +61,7 @@ PORT = 8080
 BOUNCE = 75          # exit code meaning "my code changed, start me again"
 PULL_EVERY = 300
 STATE = pathlib.Path(os.environ.get("LOCALAPPDATA", ROOT)) / "media-node"
+DEV = pathlib.Path(os.environ.get("LOCALAPPDATA", ROOT)) / "fcpm" / "dev"   # `fcpm dev on`: follow GitHub
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
@@ -123,7 +124,7 @@ def ti89_pull():
     if git("status", "--porcelain", where=code) != "":
         return log("ti-89: mirror has changes, not pulling")
     before = git("rev-parse", "--short", "HEAD", where=code)
-    if git("fetch", "--quiet", "origin", where=code) is None:
+    if polls(code) and git("fetch", "--quiet", "origin", where=code) is None:
         return log("ti-89: fetch failed")
     if git("merge", "--ff-only", "--quiet", "origin/main", where=code) is None:
         return log("ti-89: mirror cannot fast-forward to origin/main; left as it is")
@@ -2355,6 +2356,14 @@ def troves_checkout():
         log("pull: troves submodule update failed; the next pull tries again")
 
 
+def polls(where=None):
+    """Fetch on the timer only from a LAN origin, or from GitHub while `fcpm dev on`. Otherwise
+    follow origin/main as the mirror has it: `fcpm pull` and the weekly pull move it, and a
+    worktree shares its mirror's refs. GitHub is not asked every five minutes."""
+    url = git("remote", "get-url", "origin", where=where) or ""
+    return DEV.exists() or (url != "" and "github.com" not in url)
+
+
 def pull_once():
     """Rebase onto origin/main if it moved; a dirty tree is left alone, a conflict aborted."""
     if git("status", "--porcelain", "--ignore-submodules=all") != "":
@@ -2363,7 +2372,7 @@ def pull_once():
         gitdir = pathlib.Path(git("rev-parse", "--git-dir") or "")
         if (gitdir / "rebase-merge").exists() or (gitdir / "rebase-apply").exists():
             return log("pull: a rebase is in progress, leaving it")
-    if git("fetch", "--quiet", "origin") is None:
+    if polls() and git("fetch", "--quiet", "origin") is None:
         return log("pull: fetch failed")
     if git("merge-base", "--is-ancestor", "origin/main", "HEAD") is not None:
         return troves_checkout()                     # already on top of main

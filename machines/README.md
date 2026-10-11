@@ -9,7 +9,7 @@ Gear comes from [`troves/`](../troves/README.md).
 | job | looks after | the computer |
 |---|---|---|
 | [`production`](production/CREW.md) | recordings after they land: pools, transcription, episodes, release; it drives the roller TV for the kiosk and hosts digitization's tank | editing bay 1 (`EDIT2`) |
-| [`kiosk`](kiosk/PROFILE.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
+| [`kiosk`](kiosk/CREW.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
 | [`qr`](qr/PROFILE.md) | the kiosk's pickup point ([`troves/scanner`](../troves/scanner/README.md)) | a Raspberry Pi 3 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 

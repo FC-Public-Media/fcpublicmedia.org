@@ -1,7 +1,7 @@
 # FCPM media node: the project
 
 This directory is the project: Fort Collins Public Media's media node. Sessions start here.
-Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.md`.
+Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.md`; crew: `machines/kiosk/CREW.md`.
 
 | this box answers to | |
 |---|---|
@@ -30,13 +30,13 @@ Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.m
 
 ## Work
 
-- **One branch per change**, from `origin/main` with `bin/refs work`. Commit, push, `gh pr create`. Autumn merges; within 5 minutes the door rebases `media-node` onto main and restarts. **Never open a PR from `media-node`**: the door rebases it under the PR.
+- **One branch per change**, from `origin/main` with `bin/refs work`. Commit, push, `gh pr create`. Autumn merges; `fcpm pull` brings it in (the door never asks GitHub on its own), and within 5 minutes the door rebases `media-node` onto main and restarts. **Never open a PR from `media-node`**: the door rebases it under the PR.
 - **Push before telling Autumn a PR is ready.** A commit pushed after the merge never lands: open a new PR. Check `gh pr view <n> --json state` before each push to an existing PR branch.
 - **This file is read from the mirror** through `~/code/CLAUDE.md`. Change it in a worktree (`machines/kiosk/code/AGENTS.md`). Never edit the root's own `CLAUDE.md` or `AGENTS.md`: they are pointers.
 - **Other machines are reached outward only**: code by commit (station-node mounts fcpublicmedia.org), media through the depot, conversation by session message (`rodecaster` is capture on station-node). Nothing connects in.
 - `bin/refs pull` and `bin/refs status` keep the mirrors current; a pull brings this file. `door.py startup` (the logon task), `door.py screens` (the panels), `door.py sessions`, `door.py server`, `door.py` (the door). Log: `%LOCALAPPDATA%\media-node\door.log`.
 - **No seat.** Sessions arrive through the root's Remote Control server, as on production. The door keeps it up and bounces it onto a new Claude after 15 calm minutes.
-- **The weekly pull is the gate, and sessions here run it.** Nobody types `fcpm` at this box. Keep `fcpm weekly` registered (`machines/watch weekly install`); if it can't run, do the pull yourself. Steps other machines leave to a person at the desk are a session's here, when Autumn asks. Don't hedge them back to her.
+- **The weekly pull is the gate, and sessions here run it.** Nobody types `fcpm` at this box; sessions do (`~/.local/bin/fcpm.cmd`, on PATH). Keep `fcpm weekly` registered (`machines/watch weekly install`); if it can't run, do the pull yourself. Steps other machines leave to a person at the desk are a session's here, when Autumn asks. Don't hedge them back to her.
 - Clear merged worktrees out of `work/`. Keep `media-node` clean, or the door stops rebasing. Waiting on IT: automatic sign-in, and inbound :8080.
 - Surprises: `machines/kiosk/gotcha <tag> "assumed -> true"`, run from `media-node` (it commits there). Bring those lines to `main` by PR now and then.
 - Building: Node 24 LTS (`%LOCALAPPDATA%\media-node\node`), `gh` and `uv` (`~/.local/bin`). `node --test worker/test/*.test.mjs`; `npx wrangler@4 dev --ip 127.0.0.1` serves the Worker on loopback; integration tests use invented `*.localhost` hosts and a DevTools virtual passkey authenticator. No production secrets. The Visual C++ fix is in the profile.
