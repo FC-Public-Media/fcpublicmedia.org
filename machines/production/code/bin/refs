@@ -23,9 +23,12 @@ default_branch() {
 # troves/ are submodules: check each out at the commit this repo pins. --checkout reaches the
 # private ones, which say `update = none` so that CI's token never tries them.
 troves_one() {
-  local d=$1
+  local d=$1 user
   git -C "$d" config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null | grep -q ' troves/' || return 0
-  git -C "$d" submodule update --init --checkout --quiet -- troves >/dev/null 2>&1 \
+  # Never a sign-in prompt (a pull runs headless): the account is the one origin's URL names.
+  user=$(git -C "$d" remote get-url origin 2>/dev/null | sed -n 's#^https://\([^@/]*\)@github\.com/.*#\1#p')
+  GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$d" ${user:+-c credential.username="$user"} \
+    submodule update --init --checkout --quiet -- troves >/dev/null 2>&1 \
     || printf '%-34s troves: SUBMODULE UPDATE FAILED\n' "$(basename "$d")"
 }
 
