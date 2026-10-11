@@ -18,7 +18,8 @@ What goes on it is the wall, or class mode while a person has asked for it
 as class.html beside the wall, with no turning). Either way, the depot's copy, which kiosk-1 writes, when the
 depot answers; otherwise the wall rendered here from this checkout's door.py
 (render.py, under uv). It is played the way door.py's launch_screen plays a
-screen: Edge in kiosk mode, fullscreen, with a profile of its own under
+screen, but as an Edge app window, fullscreen, not kiosk mode (so a person can
+F11 it and move it off a monitor it landed on), with a profile of its own under
 %LOCALAPPDATA%\<profile>\troves\kiosk-screen\<instrument>\, so nobody's own
 browser is touched and nothing is kept between starts.
 
@@ -42,7 +43,9 @@ param(
     # for one). The pool says so with FCPM_BY=pool in the environment, not
     # with this flag, so a pool newer than this file's copy in the mirror
     # still keeps the screen instead of failing on an unknown parameter.
-    [ValidateSet('pool', 'hand')] [string] $By = $(if ($env:FCPM_BY -eq 'pool') { 'pool' } else { 'hand' })
+    # A crew's pass says its crew (residency.yml: FCPM_BY=production) and is
+    # the pool's beat too: it is the pool task that runs it, every minute.
+    [ValidateSet('pool', 'hand')] [string] $By = $(if ($env:FCPM_BY -and $env:FCPM_BY -ne 'hand') { 'pool' } else { 'hand' })
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
@@ -191,7 +194,7 @@ function Ours {
                Where-Object { $_.CommandLine -and $_.CommandLine.ToLowerInvariant().Contains($needle) })
     $main = @($procs | Where-Object { $_.CommandLine -notmatch '--type=' })
     $url = ''
-    if ($main.Count -and $main[0].CommandLine -match '--kiosk\s+"?([^"\s]+)') { $url = $Matches[1] }
+    if ($main.Count -and $main[0].CommandLine -match '--app="?([^"\s]+)') { $url = $Matches[1] }
     $wins = @()
     if ($procs.Count) {
         $wins = @([Fcpm.Screen]::Windows([int[]]@($procs | ForEach-Object { [int]$_.ProcessId })) | ForEach-Object {
@@ -270,8 +273,13 @@ function Source([string]$file, [string]$query) {
 }
 
 function Launch($mon, [string]$url) {
+    # An app window, fullscreen, not --kiosk: a kiosk window cannot be moved,
+    # and when Windows piled it onto the wrong monitor it sat there, over a
+    # person's work, until the next pass (Autumn, 2026-10-10). This one leaves
+    # fullscreen with F11, drags by its title bar, and Win+Shift+Left/Right
+    # carries it between monitors. The next pass puts it back on the TV.
     New-Item -ItemType Directory -Force $Profile_ | Out-Null
-    $a = @("--user-data-dir=`"$Profile_`"", '--no-first-run', '--kiosk', "`"$url`"", '--edge-kiosk-type=fullscreen',
+    $a = @("--user-data-dir=`"$Profile_`"", '--no-first-run', '--no-default-browser-check', "--app=`"$url`"", '--start-fullscreen',
            ("--window-position={0},{1}" -f $mon.x, $mon.y), ("--window-size={0},{1}" -f $mon.w, $mon.ht))
     Start-Process -FilePath $Edge -ArgumentList $a | Out-Null
 }
