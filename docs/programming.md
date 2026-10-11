@@ -72,7 +72,7 @@ minute while the page is visible. Windows: `soon` (`lead_minutes`, 90, before th
 `classes.yml` also holds `photo` (top of `/classes/`, never shown without `alt`), `dropin` and
 `sessions` (`title`, `starts`, `ends`, `room`, `summary`, `signup`). Times carry an offset
 (`2026-08-11T18:00:00-06:00`); a bare time is read in the visitor's zone. A new class appears at
-the next build. On the roller TV: [instruments/README.md](../instruments/README.md#class-mode-on-the-roller-tv).
+the next build. On the roller TV: [roller-tv/README.md](../machines/kiosk-1/roller-tv/README.md#class-mode).
 
 ## Calendar
 

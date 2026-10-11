@@ -28,6 +28,6 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md), [`digitization`](../machines/digitization/PROFILE.md), [`thin-client`](../machines/thin-client/PROFILE.md) | the other machines |
 | [`../crews/README.md`](../crews/README.md) | crews: [production](../crews/production/CREW.md), [digitization](../crews/digitization/CREW.md) |
 | [`../troves/README.md`](../troves/README.md) | troves, the gear a machine wears, one README each |
-| [`../instruments/README.md`](../instruments/README.md) | instruments and class mode on the roller TV |
+| [`../machines/kiosk-1/roller-tv/README.md`](../machines/kiosk-1/roller-tv/README.md) | the roller TV and class mode |
 | [`../attendant/README.md`](../attendant/README.md) | attendants and their recipes |
 | [`../brand/README.md`](../brand/README.md) | brand assets for the screens in the building |

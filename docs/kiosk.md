@@ -1,16 +1,16 @@
 # Kiosk and studio screens
 
-A kiosk is a screen in the studio. This repository owns what it says (`kiosk/`) and the dim
+A kiosk is a screen in the studio. This repository owns what it says (`machines/kiosk-1/welcome/`) and the dim
 every studio screen shares (`brand/idle/`). kiosk-1's door draws the pages.
 
 ## Content
 
 | file | |
 |---|---|
-| `kiosk/content.yml` | hand-written: the room, the greeting, the panels' wording |
-| `kiosk/welcome.yml` | generated, committed, canonical |
-| `kiosk/welcome.js` | generated, committed: the same content as `window.FCPM_KIOSK`, for `file://` pages |
-| `kiosk/rota.yml` | hand-written: who is on, by default ([Rota](#rota)) |
+| `welcome/content.yml` | hand-written: the room, the greeting, the panels' wording |
+| `welcome/welcome.yml` | generated, committed, canonical |
+| `welcome/welcome.js` | generated, committed: the same content as `window.FCPM_KIOSK`, for `file://` pages |
+| `welcome/rota.yml` | hand-written: who is on, by default ([Rota](#rota)) |
 | `bin/build-kiosk.py` | joins `content.yml` to `site/_data/` and writes both artifacts |
 
 ```sh
@@ -21,7 +21,7 @@ python3 bin/test_build_kiosk.py
 ```
 
 Edit `content.yml` (or the facts in `site/_data/`), regenerate, commit all three. The root
-reads down into `site/_data/`; nothing in `site/` reads `kiosk/`.
+reads down into `site/_data/`; nothing in `site/` reads `welcome/`.
 
 The artifact never contains:
 
@@ -100,7 +100,7 @@ sessions, marked as samples.
 
 ## Rota
 
-`kiosk/rota.yml` is the standing host rotation: the welcome screen's footer (on now, next) and,
+`welcome/rota.yml` is the standing host rotation: the welcome screen's footer (on now, next) and,
 with classes, the awake windows. Times are local, 24-hour; `days` takes `mon`…`sun`; `role`
 shows beside the name. `crew:` tags people with activities (`site/_data/facilities.yml`, or
 `node.yml` stations); a station with nothing booked this week lists up to three who can help,

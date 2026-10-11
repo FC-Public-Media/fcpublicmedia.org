@@ -25,9 +25,9 @@ machines/kiosk-1/gotcha         | sh         | *                    | inside  | 
 machines/binding                | python     | -                    | read    | which machine profile this checkout wears, if any
 
 # Build tooling at the root. Each writes files that are committed, and nothing else.
-bin/build-kiosk.py              | python     | --check              | read    | fail if kiosk/welcome.* is stale
+bin/build-kiosk.py              | python     | --check              | read    | fail if machines/kiosk-1/welcome/welcome.* is stale
 bin/build-kiosk.py              | python     | --print              | read    | write nothing, show both
-bin/build-kiosk.py              | python     | -                    | inside  | write kiosk/welcome.yml and welcome.js
+bin/build-kiosk.py              | python     | -                    | inside  | write machines/kiosk-1/welcome/welcome.yml and welcome.js
 bin/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
 bin/runnables                   | sh         | *                    | read    | this census
 

@@ -34,7 +34,7 @@ stations:
 # Where bookings come from. Only `sample` exists (bookings.sample.yml, every pill "Sample").
 bookings: sample
 
-# Unset: the classes panel in kiosk/welcome.yml. `sample` invents three, titled "(sample)".
+# Unset: the classes panel in welcome/welcome.yml. `sample` invents three, titled "(sample)".
 # classes: sample
 
 # MICROSOFT 365 app "FC Public Media Booking": identifiers, not secrets (m365-token.ps1).
@@ -99,14 +99,14 @@ wall:
   folder: .wall
   every: 60                  # seconds: how often it is rewritten; the shell reloads every tenth
   rotate: 45                 # seconds on each module before the next (show.yml's guess)
-  class: instruments/roller-tv/class-sample   # class mode's demo, written as class.html; not in the turn
+  class: machines/kiosk-1/roller-tv/class-sample   # class mode's demo, written as class.html; not in the turn
   modules:
     - {name: studio, label: Studio, page: kiosk}
     - {name: files, label: Files, page: drive}      # the wall's own Files: a list, like Classes
     - {name: classes, label: Classes, page: classes}
 
 # ---------------------------------------------------------------------------
-# WORDING, a draft until Autumn's wording pass; once settled it belongs in kiosk/content.yml.
+# WORDING, a draft until Autumn's wording pass; once settled it belongs in welcome/content.yml.
 wording:
   checkin:
     head: Check in

@@ -1,4 +1,4 @@
-# instrument.yml — the studio's rolling TV. See ../README.md. Unread by any tool yet.
+# instrument.yml — the studio's rolling TV. See README.md; troves/kiosk-screen/screen.ps1 reads it.
 # The building owns it: a driver that finds no screen answering to `match:` shows nothing,
 # says so, and takes no other screen.
 

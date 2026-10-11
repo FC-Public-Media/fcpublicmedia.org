@@ -85,7 +85,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Retired podcasts: own entries or one archive listing. site/podcasts.md
 - The artificially pipeline's Audition steps wait on its panel proving out. site/_shows/artificially.md
 - Class mode: grade the lit hour pill; take class and presenter from the calendar; an admin or teacher view; an attendant recipe.
-- Instruments: nothing reads `instruments/` yet; which panels a shared host sets aside; swapping two pages in one action; macOS and Linux drivers; whether an instrument can be a sink (with station-node).
+- The roller TV: which panels a shared host sets aside; swapping two pages in one action; macOS and Linux drivers; whether an instrument can be a sink (with station-node).
 - A view of what the roller TV shows when it faces away; bay OBS is not ours to change.
 
 ## Members
@@ -162,8 +162,8 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Kiosk
 
-- Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `kiosk/content.yml`. kiosk/content.yml
-- The rota's `crew:` tags are Autumn's to give. kiosk/rota.yml
+- Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk-1/welcome/content.yml
+- The rota's `crew:` tags are Autumn's to give. machines/kiosk-1/welcome/rota.yml
 - Bookings: Microsoft 365 calendars replace `bookings: sample`; Bookings is ruled out for intake; a second desk monitor for today's bookings waits on its API.
 - `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
 - Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.

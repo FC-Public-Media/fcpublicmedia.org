@@ -26,7 +26,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `sites.yml`, `site-template/`, `member-site-core/` | the site list and member sites ([members.md](members.md#sitesyml)) |
 | `worker/` | the broker, its own Worker ([worker/README.md](../worker/README.md)) |
 | `bin/` | `build-sites.py`, `build-kiosk.py`, `make-wallpaper.py` and their tests |
-| `kiosk/`, `instruments/`, `brand/` | studio screens ([kiosk.md](kiosk.md)) and the brand |
+| `brand/` | the brand; the studio screens are the kiosk's ([kiosk.md](kiosk.md)) |
 | `machines/`, `troves/`, `crews/`, `attendant/` | the station ([station.md](station.md)) |
 | `advocate.yml`, `tell.yml`, `atlas.yml`, `keys/`, `_data/`, `.<name>-engine/` | seats, directory, submodules |
 

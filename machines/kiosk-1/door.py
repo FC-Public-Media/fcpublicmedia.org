@@ -90,7 +90,7 @@ def load(path):
 
 
 def welcome():
-    return load(ROOT / "kiosk" / "welcome.yml")
+    return load(HERE / "welcome" / "welcome.yml")
 
 
 def node():
@@ -162,7 +162,7 @@ AWAKE_LEAD = datetime.timedelta(minutes=60)
 def awake_windows(now=None, days=7):
     """Awake windows as [startMs, endMs]: rota shifts, classes and lights (docs/kiosk.md, Dim)."""
     now = now or datetime.datetime.now()
-    spans = [(b, e) for b, e, _ in occurrences(load(ROOT / "kiosk" / "rota.yml").get("shifts") or [], now, days + 1)]
+    spans = [(b, e) for b, e, _ in occurrences(load(HERE / "welcome" / "rota.yml").get("shifts") or [], now, days + 1)]
     for c in class_config().get("sessions") or []:
         try:
             b = datetime.datetime.fromisoformat(c["starts"]).astimezone().replace(tzinfo=None)
@@ -193,7 +193,7 @@ def when(t, now):
 def on_now(now=None):
     """Who is on now, and who is next, from the rota."""
     now = now or datetime.datetime.now()
-    spans = occurrences(load(ROOT / "kiosk" / "rota.yml").get("shifts") or [], now)
+    spans = occurrences(load(HERE / "welcome" / "rota.yml").get("shifts") or [], now)
 
     def who(s):
         names = ", ".join(s.get("who") or [])
@@ -209,7 +209,7 @@ WEEK = datetime.timedelta(days=7)
 
 def helpers(activities, now):
     """Up to three people on the rota this week whose `crew:` tags (or none) meet these activities."""
-    rota = load(ROOT / "kiosk" / "rota.yml")
+    rota = load(HERE / "welcome" / "rota.yml")
     crew = rota.get("crew") or {}
     seen, out = set(), []
     for begins, _, s in occurrences(rota.get("shifts") or [], now):
@@ -1491,7 +1491,7 @@ def drive_page():
 
 
 # ---------------------------------------------------------------- class mode --
-# CLASS MODE (instruments/README.md). md_html knows headings, lists, paragraphs, bold.
+# CLASS MODE (roller-tv/README.md). md_html knows headings, lists, paragraphs, bold.
 def md_html(text):
     out, para, lst = [], [], None
 
