@@ -1,7 +1,0 @@
-# MANIFEST: what digitization carries of its own home, for `../sync`. Modes as in ../production/MANIFEST.
-# No `path` line: that mode sets the Windows PATH, and Debian already puts ~/.local/bin on it.
-
-# The origin's intake, and the timer that runs it every minute.
-mirror  origin-intake                    .local/bin/origin-intake
-mirror  systemd/origin-intake.service    .config/systemd/user/origin-intake.service
-mirror  systemd/origin-intake.timer      .config/systemd/user/origin-intake.timer

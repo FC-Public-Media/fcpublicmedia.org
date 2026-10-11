@@ -21,11 +21,12 @@ mustered on an FCPM machine.
 
 ## Supervisor
 
-Each job a machine does has one supervisor there, `machines/crew.py serve <job>` (verbs: its docstring), run by one service named for the job (`machines/crew.ps1`). Never one service per line.
+Each job a machine does has one supervisor there, `machines/crew.py serve <job>` (verbs: its docstring), run by one service named for the job: a scheduled task on Windows (`machines/crew.ps1`), `fcpm-crew@<job>` on Linux (`machines/crew.sh`). Never one service per line.
 
 - **Menu.** A residency's `residency.yml` lists what it `serves:` (`troves/*/`, a mounted repository, or the job's own). Declaring starts nothing.
 - **Order.** `machines/<job>/services`, one line per ordered service: `name keep from` or `name every N[smhd] from`, `from` being the residency's path. A line naming nothing on a menu is reported, never run. The file is re-read on change: a new line starts, a removed one stops.
 - **Running.** `keep` restarts after 5 s, doubling to 5 min, reset after 10 min up. `every` runs on its interval, never two at once. `desktop: true` runs only where there is a desktop; `needs:` waits for the named lines.
 - **Status** is asked live by the service's `alive:` (a port that answers, a process pattern); anything already serving it counts. Keep process patterns specific: a loose one matches the shell that launched a test.
-- **Start lines** fill `{python}` (uv, Python 3.12, pyyaml), `{home}`, `{code}`, `{repo}`. Children get no console; each line logs to `%LOCALAPPDATA%\editing-bay-1\crew\<name>.log`. A named mutex keeps one supervisor per job per machine.
+- **Start lines** fill `{python}` (Windows: uv, Python 3.12, pyyaml; Linux: the supervisor's own `python3`, with `python3-yaml`), `{home}`, `{code}`, `{repo}`. Children get no console; each line logs to `%LOCALAPPDATA%\editing-bay-1\crew\<name>.log`, or `~/.local/state/fcpm/crew/<name>.log` on Linux. A named mutex (Linux: a lock file there) keeps one supervisor per job per machine.
 - **Windows only:** a scheduled task (S4U), a named mutex, the session id for "has a desktop", `taskkill /T`, `Win32_Process`.
+- **Linux only:** one systemd instance per job, all under `fcpm.target` (`machines/fcpm-crew@.service`, `machines/fcpm.target`), restarted by systemd; `DISPLAY` for "has a desktop"; each line in its own process group; `/proc` for process patterns.
