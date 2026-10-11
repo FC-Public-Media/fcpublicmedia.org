@@ -45,6 +45,37 @@ not the pools'. First case: Autumn's long play of a video game, about 200 hours,
    repo, with the page as its only writer. Pushing stays a person's step until there is a local
    origin.
 
+9. **Residuals: read each recording over the network once, ever.** This is the contact-sheets
+   rule: the footage stays where it is, and everything kept locally is a residual (derived, can be
+   rebuilt, nobody's source of truth). Today the page reads whole files over and over:
+   - **Playing a clip** reads the whole file into memory before the first sound, and only the
+     last 7 are kept. A 4-hour video would never start.
+   - **The waveform's envelope** is held only in memory, so every server restart reads every
+     file shown again.
+   - **Each Whisper job** reads its clips whole again.
+   - **Every 20 s while the page is open**, the scan looks again, and each ghost searches
+     `.removed\` recursively over the share.
+
+   Instead, one residuals pass reads each settled recording once, from start to end in one
+   sequential pass, one file at a time, with a timeout (contact-sheets found that a stalled
+   network read can hang forever without any error). It writes:
+   - **Kept forever (small):** the probe, the SHA-256, and a fine envelope (100 per second,
+     peak and RMS). The envelope covers levels, the waveform at any zoom, and the speech and
+     silence marks.
+   - **Kept until evicted (big):** a local listening copy (Opus, mono 16 kHz for speech, which
+     is what Whisper and VAD use) and the frame strip, taken from keyframes only so the video
+     is not fully decoded. When space runs short the least recently played go first, and the
+     next read rebuilds them.
+   - **`.done`** when complete. An interrupted pass starts that file over; a finished one is
+     never read again.
+
+   Residuals are keyed by the recording itself (size plus a hash of its first and last MB), not
+   by path, so moving the tank does not throw them away. Proofing plays the local copy at once.
+   The source is read only in byte ranges: the picture, and sound when you insist on full
+   quality. Whisper never touches the network. The residual folders are declared the way
+   contact-sheets declares its storage (private, transient), on a local disk with a budget.
+   The ghost and scan costs get measured first, then fixed where they're actually slow.
+
 ## Out of scope
 
 Cutting beyond the proofing marks; multitrack; loading anything into project files (each show's
@@ -55,9 +86,11 @@ pipeline decides that); delivery.
 - [ ] Autumn redlines this plan
 - [ ] ffmpeg: pinned build, sha256, bay record; reading only (approved 2026-10-11)
 - [ ] probe: does Media Encoder 26.3 open these MP4s and WebMs; is its web service (`AMEWebService.exe`) a documented way to submit jobs
+- [ ] measure today's network reads per scan, play and job (a baseline before changing anything)
+- [ ] residuals (point 9): a single reading pass, keyed by content, `.done`, local budget; audio recordings first
+- [ ] playback from the local listening copy; the source only in byte ranges
 - [ ] video files as recordings: probe, time (point 3), squares
-- [ ] playback streamed from disk; picture pane in the window
-- [ ] envelope from ffmpeg feeding levels and the waveform
+- [ ] picture pane in the window, streamed from the source in ranges
 - [ ] speech pass (VAD) marking talk spans
 - [ ] transcription of video ranges (ffmpeg decodes the range for Whisper)
 - [ ] frame strip
