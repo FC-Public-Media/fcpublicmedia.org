@@ -5,7 +5,7 @@ FCPAN, Channel 97
 ## Posture: media-node
 
 We perform git over QR video
-with passkey signers on 
+with passkey signers 
 for multitenant public media memberships.
 
 This code root is run as a set of LAN services mapped to a CPU.
