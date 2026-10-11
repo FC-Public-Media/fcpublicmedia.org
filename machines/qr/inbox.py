@@ -33,7 +33,7 @@ FRAME = STRIDE * H * 3 // 2
 # Palette: 0 ink, 2 go, 3 brand yellow, 6 muted yellow, 7 paper. Yellow is a surface, never text.
 PALETTE = "\x1b]P0121417\x1b]P22f9e5b\x1b]P3ffc61a\x1b]P6a8841a\x1b]P7ece8e1"
 OFF, BOLD, GO, BAD = "\x1b[0m", "\x1b[1m", "\x1b[32m", "\x1b[31m"
-ON_YELLOW, ON_MUTED = "\x1b[43;30m", "\x1b[46;30m"
+ON_YELLOW, ON_MUTED, ON_BAD = "\x1b[43;30m", "\x1b[46;30m", "\x1b[41;37m"
 YELLOW_EDGE, MUTED_EDGE = "\x1b[33m", "\x1b[36m"   # a wedge in the colour of the surface it ends
 WEDGE = "\ue0b0"                            # from qr-font.psf; a plain fallback if it won't load
 TONE = {"bad": BAD, "warn": BAD}            # colour points at trouble; everything else stays plain
@@ -81,6 +81,8 @@ class State:
         self.boxes = (0.0, [])    # (when, [(x0, x1, y0, y1)]) where the search last found codes
         self.catch = None         # the AC1 catch underway, or just finished
         self.drives = []          # removable drives plugged in right now (read-only view)
+        self.platform = ""        # power and temperature, for the latest bar
+        self.trouble = None       # the newest power trouble, shown until it has been quiet a while
         self.dirty = True
 
     def event(self, kind, text):
@@ -220,10 +222,12 @@ def drives():
 
 
 def watch_drives():
-    known = set()
+    known = None                                     # what was already in at start isn't news
     while True:
         now = drives()
         names = {d["name"] for d in now}
+        if known is None:
+            known = names
         for d in now:
             if d["name"] not in known:
                 S.event("info", f"drive in · {d['label']} · {gb(d['size'])}")
@@ -247,6 +251,67 @@ def size_bytes(text):
         return float(num) * {"KB": 1e3, "MB": 1e6, "GB": 1e9, "TB": 1e12}[unit.upper()]
     except (ValueError, KeyError):
         return None
+
+
+# ---- the platform: power and heat, for the latest bar ----------------------------------------------------
+# The firmware's throttle flags (under-voltage now / since boot), the core temperature, and the kernel's
+# own word on USB over-current. A Pi 3 shares about 1.2 A across its USB ports.
+
+UNDER_NOW, UNDER_SINCE, HOT_NOW = 0x1, 0x10000, 0x4
+
+
+def watch_platform():
+    threading.Thread(target=watch_kernel, daemon=True).start()
+    while True:
+        try:
+            flags = int(subprocess.run(["vcgencmd", "get_throttled"], capture_output=True, text=True,
+                                       timeout=5).stdout.split("=")[1], 16)
+        except (OSError, ValueError, IndexError, subprocess.TimeoutExpired):
+            flags = 0
+        try:
+            temp = int(open("/sys/class/thermal/thermal_zone0/temp").read()) // 1000
+        except (OSError, ValueError):
+            temp = None
+        if flags & UNDER_NOW:
+            power = "under-voltage"
+        elif flags & HOT_NOW:
+            power = "throttled, hot"
+        elif flags & UNDER_SINCE:
+            power = "power dipped since boot"
+        else:
+            power = "power ok"
+        text = power + (f" · {temp}°C" if temp is not None else "")
+        with S.lock:
+            if text != S.platform:
+                S.platform = text
+                S.dirty = True
+            if flags & (UNDER_NOW | HOT_NOW):
+                S.trouble = (time.time(), power)
+        time.sleep(5)
+
+
+def watch_kernel():
+    """USB over-current and under-voltage, as the kernel reports them."""
+    try:
+        proc = subprocess.Popen(["journalctl", "-k", "-f", "-n", "0", "-o", "cat"], stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, text=True)
+    except OSError:
+        return
+    for line in proc.stdout:
+        low = line.lower()
+        if "over-current" in low:
+            port = line.split(":")[0].replace("usb ", "").strip()
+            what = f"USB over-current · {port}"
+        elif "under-voltage" in low or "undervoltage" in low:
+            what = "under-voltage"
+        else:
+            continue
+        with S.lock:
+            fresh = not S.trouble or S.trouble[1] != what or time.time() - S.trouble[0] > 10
+            S.trouble = (time.time(), what)
+            S.dirty = True
+        if fresh:
+            S.event("warn", what)
 
 
 # ---- the camera: three jobs that never wait on each other ---------------------------------------------
@@ -634,7 +699,10 @@ def panel_latest(C, room):
     lines = []
     for when, kind, text in events:
         lines.append(f" {when}  " + TONE.get(kind, "") + pad(text, C - 9) + OFF)
-    return lines + [title(C, "latest")]
+    trouble = S.trouble and time.time() - S.trouble[0] < 300
+    if trouble:
+        return lines + [title(C, "latest", f"{S.trouble[1]} {time.strftime('%H:%M', time.localtime(S.trouble[0]))}", surface=ON_BAD)]
+    return lines + [title(C, "latest", S.platform)]
 
 
 def render():
@@ -711,6 +779,7 @@ def main():
     search = Search()                                # its own process; start it before the threads
     reader = Reader()
     threading.Thread(target=watch_drives, daemon=True).start()
+    threading.Thread(target=watch_platform, daemon=True).start()
     threading.Thread(target=camera, args=(reader, VIDEO or Blind(), search), daemon=True).start()
     last_clock = ""
     while True:

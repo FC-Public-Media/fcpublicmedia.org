@@ -21,7 +21,7 @@ Machines: [docs/station.md](../../docs/station.md).
 - the bar: `qr.local`, the org, the clock;
 - the inbox: one line per thing waiting, the item on a wedge pointing at its person, then its size. The row being picked up goes full yellow;
 - `scanner`: the live picture while someone is there, dark while resting; its bar says `looking`, `reading 9/17 · frames · healed`, `caught` or `refused`. A pickup takes this pane over: `plug in your drive`, `drive ready`, `drive too small`;
-- `latest`, on the last row: the last few events.
+- `latest`, on the last row: the last few events; its bar carries the platform, `power ok · 66°C`, and turns red with the trouble's name (USB over-current, under-voltage, throttling) when there is any. A Pi 3 shares about 1.2 A across its USB ports: a ring light on the front hub trips over-current.
 
 Brand yellow is a surface, never text. Text is ANSI rotated by fbcon; the picture is written straight
 into the framebuffer, a whole frame at a time. The camera is three jobs that never wait on each
