@@ -102,7 +102,7 @@ fcpm screen [status|on|off|reset|class|wall|toggle]   the rolling TV (toggle: cl
 fcpm audition [status|install|remove]   Audition as gear: the enhance engine's panel
 fcpm drobo [status|connect|header|list OUT]   the Drobo, over iSCSI (CHAP)
 fcpm share [status|install]   the drop shares: enhance (E:, TO ENHANCE)
-fcpm audit [status|on|off|collect [OUT]]   a record, kept here, of the commands run on this machine
+fcpm audit [status|on|off|collect [OUT]|window FROM TO [OUT]]   a record, kept here, of the commands run on this machine; window: what Windows kept of a past stretch
 fcpm camera [console|presets|apply NAME|state]   the USB camera
 fcpm ti89 [probe|version|screen OUT.png|rom OUT.rom] [--port COM1]   a TI-89 on a GraphLink
 fcpm crew [status|install|uninstall|check|log NAME|serve|episodes]   production: its one service (from the computer's start) and what it keeps
