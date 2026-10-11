@@ -1,7 +1,22 @@
-# pool-keep-environment
-1. [x] Find why listed sessions die at every restart: --no-create-session-in-dir skips the bookmark
-2. [x] Server runs with its home session; pool freshens a pool-written bookmark before a start
-3. [x] Docs (station.md, residency.yml)
-4. [ ] Autumn merges; dev places pool.ps1; `fcpm pool off` + `on` once to switch the running server
-5. [ ] Live test: restart the bay, message a pre-restart session, confirm it answers and nothing else woke
-6. [ ] Kiosk adopts in its door (its own PR)
+docs: digest the documentation to under 20% of its size
+
+Read every doc and every long comment, area by area, and rewrite them as one
+plain reference. Same system, same premise; no history, no argument, no
+padding. Long comments in files become one line or nothing.
+
+Baseline (main a404bf6): 65 markdown docs, ~13,800 lines; ~9,800 lines of
+multi-line comments across ~225 files. Measured: 22,013 -> 3,628 lines (16.5%).
+
+- [x] site: running-it, deploying, NODE, REDIRECTS, MANIFEST, known-issues, CONTENT-TODO, REVIEW-NOTES, site/ comments
+- [x] programming: programming.md, instruments/, sync and class code
+- [x] members: TENANCY, member-sites, MEMBER-SHOWS, HOLDING-A-BUBBLE, DIRECTORY, LIBRARY-AND-WIZARDS
+- [x] payments and identity: payments, PAYMENTS-CHECKLIST, identity, RESERVE-DESIGN, worker/
+- [x] machines: STATION, machines/README, BAY, RUNNABLES, INTERMEDIATES, profiles, machine code
+- [x] kiosk: KIOSK, SCREENS-DIM, kiosk-1, kiosk/, brand/, kiosk-screen
+- [x] troves: troves/*
+- [x] crews, attendant, advocate, design notes
+- [x] one open list (docs/OPEN.md), one index (docs/README.md), every link repointed
+- [x] byte-pinned holders untouched: machines/fcpm, troves/recorder/obs.ps1, troves/recorder/bay/obs-portable.ps1, obs-portable-32.2.2.yml
+- [x] tests pass
+- [ ] Autumn reads it, area by area
+- [ ] .pr back to main's before merge
