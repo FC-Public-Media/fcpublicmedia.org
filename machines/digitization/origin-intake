@@ -113,6 +113,8 @@ def take(full, theirs_remote):
 
 
 def main():
+    if "FCPM_ORIGIN" not in os.environ and not os.path.ismount(ORIGIN):
+        return 0                        # the origin's disk is not mounted: nothing to take into
     os.makedirs(STATE_DIR, exist_ok=True)
     if "--status" in sys.argv:
         print(open(STATE).read() if os.path.exists(STATE) else "no state yet")

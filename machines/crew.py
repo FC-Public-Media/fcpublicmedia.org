@@ -25,8 +25,13 @@ HERE = Path(__file__).resolve().parent            # machines/
 REPO = HERE.parent
 CODE = REPO.parent.parent                         # ~/code: refs/ and work/ beside each other
 PROFILE = "editing-bay-1"                         # where this machine keeps its state (one profile per machine)
-STATE = Path(os.environ.get("LOCALAPPDATA", Path.home())) / PROFILE / "crew"
-NO_WINDOW = 0x08000000 | 0x00000200               # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+WINDOWS = os.name == "nt"
+if WINDOWS:
+    STATE = Path(os.environ.get("LOCALAPPDATA", Path.home())) / PROFILE / "crew"
+    NO_WINDOW = 0x08000000 | 0x00000200           # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+else:                                             # Linux: machines/crew.sh runs this as a systemd service
+    STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "fcpm" / "crew"
+    NO_WINDOW = 0
 
 
 def uv():
@@ -99,7 +104,8 @@ def argv(svc):
     out = []
     for tok in shlex.split(svc["start"]):
         if tok == "{python}":
-            out += [uv(), "run", "--no-project", "--python", "3.12", "--with", "pyyaml"]
+            # Linux: the Python running the supervisor, which already has pyyaml (python3-yaml)
+            out += [uv(), "run", "--no-project", "--python", "3.12", "--with", "pyyaml"] if WINDOWS else [sys.executable]
             continue
         for k, v in fill.items():
             tok = tok.replace(k, v)
@@ -121,8 +127,17 @@ _procs = {"at": 0, "lines": []}
 
 
 def processes():
-    """Every process's command line, asked of Windows (at most every 20s)."""
-    if time.time() - _procs["at"] > 20:
+    """Every process's command line, asked of the system (at most every 20s)."""
+    if time.time() - _procs["at"] > 20 and not WINDOWS:
+        lines = []
+        for d in Path("/proc").iterdir():
+            if d.name.isdigit():
+                try:
+                    lines.append((d / "cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace").strip())
+                except OSError:
+                    pass
+        _procs.update(at=time.time(), lines=lines)
+    elif time.time() - _procs["at"] > 20:
         r = subprocess.run(["powershell", "-NoProfile", "-Command",
                             "Get-CimInstance Win32_Process | ForEach-Object { $_.Name + ' ' + $_.CommandLine }"],
                            capture_output=True, text=True, creationflags=NO_WINDOW)
@@ -143,6 +158,8 @@ def alive(svc):
 
 def has_desktop():
     """Whether this process is in someone's session, not session 0 (started with the machine)."""
+    if not WINDOWS:
+        return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
     sid = ctypes.c_ulong()
     ctypes.windll.kernel32.ProcessIdToSessionId(os.getpid(), ctypes.byref(sid))
     return sid.value != 0
@@ -150,6 +167,15 @@ def has_desktop():
 
 def single(crew):
     """Hold the crew's mutex for life; False if another supervisor has it."""
+    if not WINDOWS:
+        import fcntl
+        STATE.mkdir(parents=True, exist_ok=True)
+        single.h = open(STATE / f"{crew}.lock", "w")
+        try:
+            fcntl.flock(single.h, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError:
+            return False
     k = ctypes.windll.kernel32
     k.CreateMutexW.restype = ctypes.c_void_p
     single.h = k.CreateMutexW(None, False, f"Local\\fcpm-crew-{crew}")
@@ -157,6 +183,15 @@ def single(crew):
 
 
 def supervising(crew):
+    if not WINDOWS:
+        import fcntl
+        STATE.mkdir(parents=True, exist_ok=True)
+        with open(STATE / f"{crew}.lock", "a") as f:
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return False                          # nobody holds it
+            except BlockingIOError:
+                return True
     k = ctypes.windll.kernel32
     k.OpenMutexW.restype = ctypes.c_void_p
     h = k.OpenMutexW(0x00100000, False, f"Local\\fcpm-crew-{crew}")   # SYNCHRONIZE
@@ -175,12 +210,22 @@ def start(line):
     log = open(STATE / f"{line['name']}.log", "a", encoding="utf-8")
     log.write(f"--- {time.strftime('%Y-%m-%d %H:%M:%S')}  start\n"); log.flush()
     p = subprocess.Popen(argv(svc), cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                         creationflags=NO_WINDOW)
+                         creationflags=NO_WINDOW, start_new_session=not WINDOWS)
     log.close()
     return p
 
 
 def stop(p):
+    if not WINDOWS:                                   # its own process group, from start()
+        import signal
+        try:
+            os.killpg(p.pid, signal.SIGTERM)
+            p.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        return
     subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True, creationflags=NO_WINDOW)
 
 

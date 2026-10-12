@@ -1,0 +1,19 @@
+# One crew's supervisor: machines/crew.py serve <crew>. `crew.sh install <crew>` writes this
+# with @REPO@ and @USER@ filled in and enables one instance per crew, under fcpm.target.
+[Unit]
+Description=FCPM crew %i: its supervisor (machines/crew.py serve %i)
+PartOf=fcpm.target
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=@REPO@/machines/%i/services
+
+[Service]
+User=@USER@
+WorkingDirectory=@REPO@
+ExecStart=/usr/bin/python3 @REPO@/machines/crew.py serve %i
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=fcpm.target
