@@ -53,7 +53,7 @@ claim to have the thing it names; absence is a complete answer, so add one only 
 Hostname` (`hostname`). Which profile is worn is never committed, since that file would be copied
 to every other machine. The key must be its platform's (macOS's `ComputerName` is not Windows'
 `COMPUTERNAME`); a bad line is reported and ignored. Matching is case-insensitive. No match is the
-clean state and exits 0; two profiles claiming one host exits 1. Tests: `bin/test_binding.py`.
+clean state and exits 0; a host named by two profiles wears both, each with its own supervisor. Tests: `bin/test_binding.py`.
 
 ## Crew and gear
 

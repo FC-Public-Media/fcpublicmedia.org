@@ -1,0 +1,9 @@
+# What this repository runs of troves/scanner/, when a job orders it (machines/<job>/services).
+# On the Pi, scanner.service (troves/scanner/install) keeps it today. See machines/README.md.
+
+serves:
+  - service: scanner
+    for: "the pickup point: a screen and a camera where codes are redeemed, on tty1"
+    start: "/usr/bin/python3 troves/scanner/inbox.py"
+    env: {QR_STATE: "/home/fcpm/qr"}
+    alive: {process: "python3 .*troves/scanner/inbox.py"}

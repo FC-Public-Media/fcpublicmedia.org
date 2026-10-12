@@ -110,14 +110,14 @@ class Matching(unittest.TestCase):
         self.assertIn("wants FCPM-KIOSK-2", out)
         self.assertIn("wearing: nothing", out)
 
-    def test_two_profiles_claiming_one_host_is_an_error(self):
+    def test_a_host_named_by_two_jobs_wears_both(self):
         with machines(
             a="windows ComputerName FCPM-KIOSK\n",
             b="windows ComputerName fcpm-kiosk\n",
         ):
             code, out = run("windows", "FCPM-KIOSK")
-        self.assertIn("More than one profile claims this machine", out)
-        self.assertEqual(code, 1)
+        self.assertIn("wearing: a, b", out)
+        self.assertEqual(code, 0)
 
 
 class UnclaimedIsClean(unittest.TestCase):

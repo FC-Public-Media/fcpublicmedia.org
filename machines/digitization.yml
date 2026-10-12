@@ -1,0 +1,6 @@
+# What the digitization job itself serves, when it orders it (digitization/services). See README.md.
+
+serves:
+  - service: intake
+    for: "GitHub's main into the origin at /srv/origin; see digitization/PROFILE.md, The origin"
+    start: "/usr/bin/python3 -I machines/digitization/origin-intake"

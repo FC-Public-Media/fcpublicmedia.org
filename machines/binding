@@ -125,15 +125,11 @@ def main():
         print(f"  {p.name:<20} {state}")
 
     print()
-    if len(matched) == 1:
-        print(f"wearing: {matched[0].name}")
-        print(f"read {matched[0].name}/PROFILE.md before changing anything here.")
+    if matched:
+        # A machine named in two jobs' `names` does both, each with its own supervisor.
+        print("wearing:", ", ".join(p.name for p in matched))
+        print("read", ", ".join(f"{p.name}/PROFILE.md" for p in matched), "before changing anything here.")
         return 0
-    if len(matched) > 1:
-        # A mistake in the files, never resolved by picking one.
-        print("More than one profile claims this machine:", ", ".join(p.name for p in matched))
-        print("That is a contradiction in machines/, not something to guess past.")
-        return 1
 
     print("wearing: nothing.")
     print("A clone with no profile is not a broken station. It is data.")
