@@ -1,0 +1,66 @@
+# gear.yml: what the digitization job stands on, on Debian. Replaces ../gear.yml (Windows) whole.
+# `package:` is an apt name. Presence is never written: check.sh asks dpkg. On the live boot, apt's
+# installs last until reboot, and the RAID's linux-persist/restore.sh puts back what apt saved.
+
+version: 1
+platform: linux
+
+gear:
+  - gear: python3-yaml
+    for: >
+      The crew's supervisor (machines/crew.py) reads the order's menus with it.
+      `crew.sh install` puts it on when it is missing.
+    package: python3-yaml
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"
+
+  - gear: git
+    for: >
+      The origin's bare repositories and every checkout in ~/code.
+    package: git
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "~/.gitconfig"
+
+  - gear: gh
+    for: >
+      The GitHub login: intake's one query for every repository's main, and
+      HTTPS remotes (`credential.helper=!gh auth git-credential`), so the SSH
+      key's passphrase stays with a person.
+    package: gh
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "the login, in ~/.config/gh/hosts.yml"
+
+  - gear: systemd-timesyncd
+    for: >
+      The clock, from the network at every boot. This box's motherboard clock
+      once read 2019, and a wrong date makes every certificate look invalid.
+    package: systemd-timesyncd
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "nothing of its own"
+
+  - gear: openssh-server
+    for: >
+      The LAN's door to this machine, keys only: no passwords, no root
+      (/etc/ssh/sshd_config.d/10-no-passwords.conf).
+    package: openssh-server
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "the host keys (an upgrade keeps them; the live boot restores them), and the no-passwords file"
+
+  - gear: claude-code
+    for: >
+      The agent. Installed by hand with its own installer, so apt does not see it.
+    at: "~/.local/bin/claude"
+    provisioner: hand
+    updates: self
+    restart-tier: app
+    holds: "~/.claude"
