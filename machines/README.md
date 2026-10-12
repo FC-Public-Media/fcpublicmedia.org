@@ -2,8 +2,8 @@
 
 One folder per job a machine does, named for the job. A computer takes the job by answering to the
 folder's `names` ([`binding`](binding)); what the computer is, and what it is called on its sticker
-and by Windows, is in the folder's `PROFILE.md`. A computer without a job yet keeps a placeholder
-name (`editing-bay-2`, `thin-client`). Profiles, sync and grants: [`docs/station.md`](../docs/station.md).
+and by Windows, is in the folder's `PROFILE.md`. A computer without a job or a name yet keeps a
+placeholder (`editing-bay-2`, `thin-client`). Profiles, sync and grants: [`docs/station.md`](../docs/station.md).
 Gear comes from [`troves/`](../troves/README.md).
 
 | job | looks after | the computer |
@@ -11,6 +11,7 @@ Gear comes from [`troves/`](../troves/README.md).
 | [`production`](production/CREW.md) | recordings after they land: pools, transcription, episodes, release; it drives the roller TV for the kiosk and hosts digitization's tank | editing bay 1 (`EDIT2`) |
 | [`kiosk`](kiosk/CREW.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
 | [`qr`](qr/PROFILE.md) | the kiosk's pickup point ([`troves/scanner`](../troves/scanner/README.md)) | a Raspberry Pi 3 |
+| [`thin-client`](thin-client/PROFILE.md) | the kiosk's overflow console, beside the scanner | a donated HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 
 A job's folder holds its contract (`CREW.md`: what it looks after and what it serves) beside its

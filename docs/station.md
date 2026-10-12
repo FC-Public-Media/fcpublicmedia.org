@@ -32,7 +32,7 @@ DiscoveryWritten's workstation in the studio, is the prototype; FCPM copies its 
 | kiosk | [`kiosk`](../machines/kiosk/PROFILE.md) | `200-FCPANEDIT2` | the old editing bay 2, now the media node: door and screens ([kiosk.md](kiosk.md)) |
 | | [`editing-bay-2`](../machines/editing-bay-2/PROFILE.md) | unfilled | a macOS bay that schedules Cablecast material |
 | | [`digitization`](../machines/digitization/PROFILE.md) | `digitization` | Debian: FCPM's git origin; takes the `digitization` crew from station-node |
-| | [`thin-client`](../machines/thin-client/PROFILE.md) | unfilled | a donated HP t510 in the control rack, to be reformatted |
+| | [`thin-client`](../machines/thin-client/PROFILE.md) | unfilled | a donated HP t510 in the control rack: the kiosk's overflow console, beside the scanner; to be reformatted |
 | | [`qr`](../machines/qr/PROFILE.md) | `qr` | a Raspberry Pi 3 with a camera: kiosk's pickup point at `qr.local`, carrying the scanner |
 
 Both Windows names end in `EDIT2`; in conversation use the called name (`machines/<profile>/called`).
