@@ -1,8 +1,9 @@
 # thin-client
 
 A donated HP t510 thin client in the control rack, under the headphone amp and above the switcher. It
-boots HP ThinPro (Linux) into one remote desktop connection its last owner left, and is to be wiped
-and given a job. The folder name is a placeholder until the machine is named (`names`).
+boots HP ThinPro (Linux) into one remote desktop connection its last owner left, and is to be wiped.
+Its job is the kiosk's overflow console, beside the scanner. The folder name is a placeholder until
+the machine is named (`names`).
 
 | | |
 |---|---|
@@ -17,6 +18,22 @@ and given a job. The folder name is a placeholder until the machine is named (`n
 
 Model, serial, BIOS, memory, flash and hardware address are read from the box; the rest is from
 [parkytowers' t510 page](https://www.parkytowers.me.uk/thin/hp/t510/).
+
+## The job
+
+The kiosk's overflow console, partnering the [`qr`](../qr/PROFILE.md) Pi's scanner. It is our own
+thin client: like ThinPro it shows what is kept elsewhere, and keeps nothing itself.
+
+- It runs the scanner's eyes (`eyes.py`, FC-Public-Media/scanner#2) with no camera. Its console goes
+  up one `ssh -T` to where the inbox is kept, and that page paints it as it paints the Pi. No logic
+  and no secrets live here, so any box can stand in.
+- It is a text console, not a browser. Debian 13 carries no driver for its graphics chip (no
+  `xserver-xorg-video-openchrome`), so only the firmware framebuffer is safe.
+- It watches. Anything asked for here is approved elsewhere, the way a grant is.
+- Standing beside the scanner, its page can point at it.
+
+Open: whether both DVI screens show a console at once. The first boot is Debian 13 live from a stick
+with no persistence. It changes nothing on the box and answers that.
 
 ## Reformatting
 
