@@ -65,7 +65,8 @@ it whole, never merged. Why an agent runs here is [advocate.md](advocate.md)'s, 
 Gear on Windows is whatever winget owns. An entry has `gear`, `for`, `package` (winget id) or `at` (a
 path), `provisioner` (`winget`, `bay`, `hand`), `updates`, `restart-tier` and `holds` (what an
 upgrade must not lose). Presence is never written: `check.ps1` finds it, and an absent entry is
-`WANTED`. A macOS profile's own `gear.yml` uses `bundle:` and `brew | mas | hand`.
+`WANTED`. A macOS profile's own `gear.yml` uses `bundle:` and `brew | mas | hand`; a Linux one,
+`package:` (an apt name) or `at:`, and `apt | hand`, with `check.sh` asking dpkg.
 
 ## fcpm
 

@@ -45,8 +45,9 @@ all=0
 for profile in $profiles; do
 (
 P="$HERE/$profile"
-[ -f "$P/MANIFEST" ] || { echo "sync: $profile carries no MANIFEST"; exit 0; }
 echo "profile  $profile"
+MAN="$P/MANIFEST"                                    # none: nothing placed, but its check still runs
+[ -f "$MAN" ] || { echo "carries no MANIFEST"; MAN=/dev/null; }
 
 rc=0
 while read -r mode src dst <&3; do
@@ -101,10 +102,10 @@ while read -r mode src dst <&3; do
     path:mirror) ;;
     *) echo "sync: unknown mode '$mode', or verb '$cmd'" >&2; exit 2 ;;
   esac
-done 3< "$P/MANIFEST"
+done 3< "$MAN"
 
 if [ "$cmd" = status ]; then
-  n=$(sed -e 's/#.*$//' "$P/MANIFEST" | awk '$1 == "clone" { print $2 }' | while read -r l; do
+  n=$(sed -e 's/#.*$//' "$MAN" | awk '$1 == "clone" { print $2 }' | while read -r l; do
       sed -e 's/#.*$//' "$P/$l" | grep -c . ; done | awk '{ s += $1 } END { print s + 0 }')
   echo "mirrors  $n listed"
   # SYNC_CHECK=0: the watcher wants only what differs; `fcpm check` runs the check.
