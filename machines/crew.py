@@ -60,8 +60,8 @@ def say(msg, name="crew"):
 # --- the order, and the menus it orders from ----------------------------------
 
 def menu(source):
-    """The services a residency offers, by name."""
-    f = REPO / source / "residency.yml"
+    """The services a source offers, by name: `<source>.yml`, written beside it by this repository."""
+    f = REPO / f"{source}.yml"
     if not f.exists():
         return {}
     doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
@@ -146,7 +146,7 @@ def processes():
 
 
 def alive(svc):
-    """Whether the service is up, by its residency's test; None if it has none (periodic)."""
+    """Whether the service is up, by its menu's test; None if it has none (periodic)."""
     a = svc.get("alive") or {}
     if "port" in a:
         return port_answers(a["port"])

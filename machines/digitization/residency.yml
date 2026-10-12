@@ -1,6 +1,0 @@
-# What the digitization crew itself serves: a menu, not a startup script. See machines/README.md.
-
-serves:
-  - service: intake
-    for: "GitHub's main into the origin at /srv/origin; see PROFILE.md, The origin"
-    start: "/usr/bin/python3 -I machines/digitization/origin-intake"

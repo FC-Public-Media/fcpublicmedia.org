@@ -1,5 +1,6 @@
 #!/bin/sh
-# sync — put on the profile this machine wears, or say how far off it is.
+# sync — put on the profiles this machine wears, or say how far off they are. A machine named in
+# two jobs' `names` wears both, one after the other here.
 #
 #   machines/sync              status: which profile, what differs. Changes nothing
 #   machines/sync install      put the profile on: carried files, compiled settings, PATH, clone
@@ -13,8 +14,8 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/.." && pwd)
-profile=""
-if [ "${1:-}" = "-p" ]; then profile=${2:-}; shift 2; fi
+profiles=""
+if [ "${1:-}" = "-p" ]; then profiles=${2:-}; shift 2; fi
 cmd=${1:-status}
 
 # The name this machine answers to, per platform, the way `binding` asks.
@@ -26,18 +27,23 @@ asked() {
   esac
 }
 
-if [ -z "$profile" ]; then
+if [ -z "$profiles" ]; then
   fact=$(asked | tr '[:upper:]' '[:lower:]')
   for n in "$HERE"/*/names; do
     if sed -e 's/#.*$//' "$n" | awk 'NF == 3 { print tolower($1 " " $2 " " $3) }' | grep -qxF "$fact"; then
-      profile=$(basename "$(dirname "$n")"); break
+      profiles="$profiles $(basename "$(dirname "$n")")"
     fi
   done
 fi
-if [ -z "$profile" ]; then
+if [ -z "$profiles" ]; then
   echo "sync: this machine ($(asked)) wears no profile here. That is the clean state."
   exit 0
 fi
+
+# One pass per job this machine wears; a pass's `exit` ends only that pass.
+all=0
+for profile in $profiles; do
+(
 P="$HERE/$profile"
 [ -f "$P/MANIFEST" ] || { echo "sync: $profile carries no MANIFEST"; exit 0; }
 echo "profile  $profile"
@@ -110,3 +116,6 @@ if [ "$cmd" = status ]; then
   fi
 fi
 exit $rc
+) || all=$?
+done
+exit $all

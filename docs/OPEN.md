@@ -6,7 +6,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Broken now
 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
-- `machines/production/residency.yml` does not parse in PyYAML (`\s` in a double-quoted string). machines/production/residency.yml
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
 - `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
 - `cablecast.json` `fetched` is always null: the workflow never sets `SYNC_STAMP`. .github/workflows/sync-cablecast.yml

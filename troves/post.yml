@@ -1,0 +1,13 @@
+# What this repository runs of troves/post/, when a job orders it (machines/<job>/services).
+# {python} is the crew's Python; paths are from this repository's root. See machines/README.md.
+
+serves:
+  - service: post
+    for: "the page: every take's route, what's done, held, at a door or failed; runs what's ready here when asked"
+    start: "{python} troves/post/post.py view"
+    env: {POST_NO_OPEN: "1"}         # served without a window; `fcpm post` opens one onto it
+    alive: {port: 8093}
+
+  - service: post-run
+    for: "every ready step this machine's crew does, then exit; the page's ▶ without the page"
+    start: "{python} troves/post/post.py run"

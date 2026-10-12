@@ -7,7 +7,7 @@ their release. Editing bay 1 (`EDIT2`) wears it. Jobs and the supervisor: [`mach
 
 What any machine wearing production owes, so a peer can step in beside it:
 
-- It runs the lines in `machines/production/services`, each from a residency's menu.
+- It runs the lines in `machines/production/services`, each from a menu (`<from>.yml`).
 - It stays in the building: LAN only, nothing to Cloudflare, no grants to anyone outside. `fcpm` tends it.
 - Status is asked live; nothing it shows was written down at start.
 - One supervisor, up before anyone signs in, with no window, nothing in Startup apps and no cost at sign-in.
