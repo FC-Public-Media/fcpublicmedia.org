@@ -36,6 +36,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
     POST /key/unlock       the signing key into this session's agent, its passphrase asked on this screen; this box only
+    POST /dev/on, /dev/off `fcpm dev`: GitHub asked every few minutes, or weekly; this box only. The board shows it to all
 
 Runs from the fixed venv %LOCALAPPDATA%\\media-node\\venv (pyyaml, qrcode), so the firewall asks once.
 """
@@ -63,7 +64,8 @@ BOUNCE = 75          # exit code meaning "my code changed, start me again"
 PULL_EVERY = 300
 STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ
          else pathlib.Path.home() / ".local" / "state") / "media-node"
-DEV = pathlib.Path(os.environ.get("LOCALAPPDATA", ROOT)) / "fcpm" / "dev"   # `fcpm dev on`: follow GitHub
+DEV = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ      # `fcpm dev on`: follow GitHub
+       else pathlib.Path.home() / ".local" / "state") / "fcpm" / "dev"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
@@ -912,14 +914,20 @@ def board_page(here=False):
         for n in networks())
     items = "".join('<li><a href="%s">%s</a> <span>%s</span></li>' % (
         html.escape(h, quote=True), e(t), e(d)) for h, t, d in rows)
+    dev = DEV.exists()
+    pace = "<h2>GitHub</h2><p>%s%s</p>" % (
+        "Asked every few minutes <span class=dim>(dev on)</span>." if dev else
+        "Asked weekly <span class=dim>(dev off)</span>.",
+        "" if not here else " <form method=post action=/dev/%s style='display:inline'><button>%s</button></form>" % (
+            ("off", "Back to weekly") if dev else ("on", "Every few minutes")))
     key = key_state() if here else None
     keys = "" if key is None else "<h2>Signing key</h2><p>%s</p>" % (
         "Unlocked. Commits sign." if key == "unlocked" else
         "Locked. <form method=post action=/key/unlock style='display:inline'>"
         "<button>Unlock</button></form> <span class=dim>asks its passphrase on this screen</span>")
     body = """<main><h1>FC Public Media &middot; media node</h1>
-<p class=dim>%s &middot; revision <code>%s</code></p>%s<ul>%s</ul><h2>Wi-Fi codes</h2><ul>%s</ul></main>""" % (
-        e(socket.gethostname().lower()), e(revision()), keys, items, nets)
+<p class=dim>%s &middot; revision <code>%s</code></p>%s%s<ul>%s</ul><h2>Wi-Fi codes</h2><ul>%s</ul></main>""" % (
+        e(socket.gethostname().lower()), e(revision()), pace, keys, items, nets)
     return page("Media node", body, """main { max-width:44rem; margin:3rem auto; padding:0 16px; }
 .dim, li span { color:var(--dim); } li { margin:.6rem 0; } li span { display:block; font-size:.85em; }""")
 
@@ -2252,11 +2260,20 @@ class Door(BaseHTTPRequestHandler):
         if route == "/camera/disarm" and here:
             camera_disarm()
             return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
-        # The signing key: asked here, answered on this screen. A page from elsewhere may not ask.
-        if route == "/key/unlock" and here and (self.headers.get("Origin") or "null") in (
-                "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
-                "http://localhost:%d" % PORT, "http://127.0.0.1:%d" % PORT):
-            key_unlock()
+        # The board's switches: asked here, by this computer's own page. A page from elsewhere may not ask.
+        mine = here and (self.headers.get("Origin") or "null") in (
+            "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
+            "http://localhost:%d" % PORT, "http://127.0.0.1:%d" % PORT)
+        if mine and route in ("/key/unlock", "/dev/on", "/dev/off"):
+            if route == "/key/unlock":
+                key_unlock()                                   # answered on this screen
+            elif route == "/dev/on":
+                DEV.parent.mkdir(parents=True, exist_ok=True)
+                DEV.touch()
+                log("dev: on, from the board")
+            else:
+                DEV.unlink(missing_ok=True)
+                log("dev: off, from the board")
             self.send_response(303)
             self.send_header("Location", "/")
             self.end_headers()
