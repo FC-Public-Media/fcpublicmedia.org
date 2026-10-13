@@ -21,6 +21,8 @@ the machine is named (`names`).
 Model, serial, BIOS, memory, flash and hardware address are read from the box; the rest is from
 [parkytowers' t510 page](https://www.parkytowers.me.uk/thin/hp/t510/).
 
+Today it wears [`origin`](../origin/PROFILE.md) from a USB stick; this job waits for another box.
+
 ## The job
 
 The kiosk's overflow console, partnering the [`qr`](../qr/PROFILE.md) Pi's scanner. It is our own

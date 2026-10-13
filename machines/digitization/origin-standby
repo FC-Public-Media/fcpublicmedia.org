@@ -1,0 +1,14 @@
+#!/bin/sh
+# origin-standby -- keep origin.local a minute behind this origin: every branch and tag, fast-forward only.
+# Run every minute by the crew's `standby` line. If this card leaves, origin.local already holds the
+# work; promoting it is pointing remotes there. See ../origin/PROFILE.md.
+mountpoint -q /srv/origin || exit 0
+TO=${ORIGIN_STANDBY:-origin-standby}          # ~/.ssh/config: origin.local's git account, by its own key
+cd /srv/origin || exit 1
+for r in */*/; do
+  r=${r%/}; [ -f "$r/HEAD" ] || continue
+  if ! git ls-remote -q "$TO:/srv/origin/$r" HEAD >/dev/null 2>&1; then
+    ssh -o BatchMode=yes fcpm@origin.local "sudo -u git git init -q --bare /srv/origin/$r" || continue
+  fi
+  git -C "$r" push -q "$TO:/srv/origin/$r" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*' 2>&1 | sed "s|^|$r: |"
+done

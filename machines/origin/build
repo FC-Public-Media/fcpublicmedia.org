@@ -1,0 +1,76 @@
+#!/bin/bash
+# build -- the origin's system disk, made on another Debian box and carried over: minimal Debian 13,
+# legacy BIOS, DHCP, origin.local, keys only. fcpm manages it (sudo); git takes pushes (git-shell).
+#   sudo bash build /dev/sdX <serial>          ERASES that disk
+set -euo pipefail
+DISK=${1:?disk}; SERIAL=${2:?serial}
+[ "$(lsblk -dno SERIAL "$DISK")" = "$SERIAL" ] || { echo "$DISK is not serial $SERIAL. Stopping."; exit 1; }
+[ "$(lsblk -dno RM "$DISK")" = 1 ] || { echo "$DISK is not removable. Stopping."; exit 1; }
+KEYS=${KEYS:-/home/user/.ssh/id_ed25519.pub}          # who may manage it, as fcpm
+SEED=${SEED:-/srv/origin}                             # bare repositories to start from
+MNT=/mnt/origin-build
+
+for p in $(lsblk -rno PATH "$DISK" | tail -n +2); do umount "$p" 2>/dev/null || true; done
+if [ "${RESUME:-}" = 1 ]; then                       # keep the base system already on the disk
+  P=$(lsblk -rno PATH "$DISK" | sed -n 2p); mkdir -p "$MNT"; mount "$P" "$MNT"
+  [ -f "$MNT/etc/debian_version" ] || { echo "Nothing to resume on $P."; exit 1; }
+else
+wipefs -aq "$DISK"
+parted -s "$DISK" mklabel msdos mkpart primary ext4 1MiB 100% set 1 boot on
+partprobe "$DISK"; udevadm settle; P=$(lsblk -rno PATH "$DISK" | sed -n 2p)
+mkfs.ext4 -q -F -L origin-root "$P"
+mkdir -p "$MNT"; mount "$P" "$MNT"
+fi
+trap 'umount -R "$MNT" 2>/dev/null || true' EXIT
+
+[ "${RESUME:-}" = 1 ] || debootstrap --include=sudo,git,ca-certificates,python3,python3-yaml,curl,less,nano \
+  trixie "$MNT" http://deb.debian.org/debian
+
+echo "UUID=$(blkid -s UUID -o value "$P") / ext4 errors=remount-ro,noatime 0 1" > "$MNT/etc/fstab"
+echo origin > "$MNT/etc/hostname"
+printf '127.0.0.1\tlocalhost\n127.0.1.1\torigin\n::1\tlocalhost ip6-localhost ip6-loopback\n' > "$MNT/etc/hosts"
+cat > "$MNT/etc/apt/sources.list" <<'S'
+deb http://deb.debian.org/debian trixie main
+deb http://deb.debian.org/debian trixie-updates main
+deb http://security.debian.org/debian-security trixie-security main
+S
+ln -sf /usr/share/zoneinfo/America/Denver "$MNT/etc/localtime"; echo America/Denver > "$MNT/etc/timezone"
+printf '[Match]\nName=en*\n\n[Network]\nDHCP=yes\n' > "$MNT/etc/systemd/network/20-wired.network"
+mkdir -p "$MNT/etc/systemd/resolved.conf.d"
+printf '[Resolve]\nMulticastDNS=no\nLLMNR=no\n' > "$MNT/etc/systemd/resolved.conf.d/avahi-does-mdns.conf"
+mkdir -p "$MNT/etc/ssh/sshd_config.d"
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' > "$MNT/etc/ssh/sshd_config.d/10-no-passwords.conf"
+
+for d in dev proc sys run; do mount --rbind /$d "$MNT/$d"; mount --make-rslave "$MNT/$d"; done
+# The rest installs inside the new system, its services held still until it boots for real.
+rm -f "$MNT/etc/resolv.conf"; cp -L /etc/resolv.conf "$MNT/etc/resolv.conf"
+printf '#!/bin/sh\nexit 101\n' > "$MNT/usr/sbin/policy-rc.d"; chmod +x "$MNT/usr/sbin/policy-rc.d"
+chroot "$MNT" /bin/sh -e <<'C'
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq linux-image-amd64 grub-pc openssh-server avahi-daemon libnss-mdns systemd-timesyncd >/dev/null
+apt-get install -y -qq systemd-resolved >/dev/null      # last: it takes over /etc/resolv.conf
+passwd -l root >/dev/null
+useradd -m -s /bin/bash -G sudo fcpm; passwd -l fcpm >/dev/null
+echo 'fcpm ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/fcpm; chmod 440 /etc/sudoers.d/fcpm
+useradd -r -m -d /srv/git -s /usr/bin/git-shell git
+mkdir -p /srv/origin /home/fcpm/.ssh /srv/git/.ssh
+touch /srv/git/.ssh/authorized_keys
+systemctl enable -q systemd-networkd systemd-resolved ssh avahi-daemon systemd-timesyncd
+ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=2/; s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
+grub-install --target=i386-pc --recheck "$(findmnt -no SOURCE / | sed 's/[0-9]*$//')" 2>&1 | tail -1
+update-grub 2>&1 | tail -1
+apt-get clean
+C
+rm -f "$MNT/usr/sbin/policy-rc.d"
+install -m 600 "$KEYS" "$MNT/home/fcpm/.ssh/authorized_keys"
+chroot "$MNT" chown -R fcpm:fcpm /home/fcpm/.ssh; chmod 700 "$MNT/home/fcpm/.ssh"
+chroot "$MNT" sh -c 'chown -R git:git /srv/git; chmod 700 /srv/git/.ssh'
+if [ -d "$SEED" ]; then
+  rsync -a --exclude=lost+found "$SEED"/ "$MNT/srv/origin/"
+  chroot "$MNT" chown -R git:git /srv/origin
+fi
+sync
+df -h "$MNT" | tail -1
+echo "Built origin on $DISK."

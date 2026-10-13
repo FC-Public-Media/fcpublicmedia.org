@@ -12,6 +12,7 @@ Gear comes from [`troves/`](../troves/README.md).
 | [`kiosk`](kiosk/CREW.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
 | [`qr`](qr/PROFILE.md) | the kiosk's pickup point ([`troves/scanner`](../troves/scanner/README.md)) | a Raspberry Pi 3 |
 | [`thin-client`](thin-client/PROFILE.md) | the kiosk's overflow console, beside the scanner | a donated HP t510 |
+| [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 
 A job's folder holds its contract (`CREW.md`: what it looks after and what it serves) beside its
