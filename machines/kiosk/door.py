@@ -814,15 +814,23 @@ window.FCPM_AWAKE = %s;
 // instead, in the query (?input=file:///.../input.js, troves/kiosk-screen on
 // bay 1): a script calling fcpmInput(ms), read twice a second too.
 (function () {
+  // The door keeps one mark for the whole computer. Tell it at once while the clocks are on,
+  // and at most once a minute while they are off: the mark is an hour wide.
   if (location.protocol.indexOf('http') === 0) {
-    var told = 0;
-    ['pointerdown', 'touchstart', 'keydown'].forEach(function (type) {
-      window.addEventListener(type, function () {
-        if (Date.now() - told < 1000) return;
-        told = Date.now();
-        fetch('/input', {method: 'POST', cache: 'no-store'}).catch(function () {});
-      }, {capture: true, passive: true});
+    var told = 0, px = null, py = null;
+    var tell = function () {
+      var dim = window.FCPMDim && window.FCPMDim.isDim();
+      if (!dim && Date.now() - told < 60000) return;
+      told = Date.now();
+      fetch('/input', {method: 'POST', cache: 'no-store'}).catch(function () {});
+    };
+    ['pointerdown', 'touchstart', 'keydown', 'wheel'].forEach(function (type) {
+      window.addEventListener(type, tell, {capture: true, passive: true});
     });
+    window.addEventListener('pointermove', function (ev) {
+      if (px !== null && (Math.abs(ev.screenX - px) > 2 || Math.abs(ev.screenY - py) > 2)) tell();
+      px = ev.screenX; py = ev.screenY;
+    }, true);
   }
   if (window !== window.top) return;
   if (location.protocol === 'file:') {
@@ -842,8 +850,8 @@ window.FCPM_AWAKE = %s;
   if (location.protocol.indexOf('http') !== 0) return;
   setInterval(function () {
     fetch('/input', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
-      if (typeof d.idle === 'number' && window.FCPMDim && window.FCPMDim.wake)
-        window.FCPMDim.wake(Date.now() - d.idle * 1000);
+      if (window.FCPMDim && window.FCPMDim.mark)
+        window.FCPMDim.mark(typeof d.idle === 'number' ? Date.now() - d.idle * 1000 : null);
     }).catch(function () {});
   }, 500);
 })();
@@ -868,26 +876,84 @@ def dim_inline():
 
 
 def idle_seconds():
-    """Seconds since this session last had mouse or keyboard input, anywhere."""
-    from ctypes import wintypes as W
+    """Seconds since this computer last had mouse or keyboard input, anywhere: Windows' last input,
+    or X's screensaver clock on a Linux desktop. None where neither can say."""
+    if os.name == "nt":
+        from ctypes import wintypes as W
 
-    class LASTINPUTINFO(ctypes.Structure):
-        _fields_ = [("cbSize", W.UINT), ("dwTime", W.DWORD)]
-    li = LASTINPUTINFO(ctypes.sizeof(LASTINPUTINFO), 0)
-    if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(li)):
+        class LASTINPUTINFO(ctypes.Structure):
+            _fields_ = [("cbSize", W.UINT), ("dwTime", W.DWORD)]
+        li = LASTINPUTINFO(ctypes.sizeof(LASTINPUTINFO), 0)
+        if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(li)):
+            return None
+        tick = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF
+        return ((tick - li.dwTime) & 0xFFFFFFFF) / 1000.0
+    return x_idle()
+
+
+_x = []
+
+
+def x_idle():
+    """X's idle time (libXss), from the desktop this door was started in; None without one."""
+    if not os.environ.get("DISPLAY"):
         return None
-    tick = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF
-    return ((tick - li.dwTime) & 0xFFFFFFFF) / 1000.0
+    try:
+        if not _x:
+            class Info(ctypes.Structure):
+                _fields_ = [("window", ctypes.c_ulong), ("state", ctypes.c_int), ("kind", ctypes.c_int),
+                            ("til_or_since", ctypes.c_ulong), ("idle", ctypes.c_ulong), ("mask", ctypes.c_ulong)]
+            x11, xss = ctypes.CDLL("libX11.so.6"), ctypes.CDLL("libXss.so.1")
+            x11.XOpenDisplay.restype = ctypes.c_void_p
+            x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+            x11.XDefaultRootWindow.restype = ctypes.c_ulong
+            xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(Info)
+            xss.XScreenSaverQueryInfo.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(Info)]
+            dpy = x11.XOpenDisplay(None)
+            if not dpy:
+                return None
+            _x.extend([xss, dpy, x11.XDefaultRootWindow(dpy), xss.XScreenSaverAllocInfo()])
+        xss, dpy, root, info = _x
+        return info.contents.idle / 1000.0 if xss.XScreenSaverQueryInfo(dpy, root, info) else None
+    except (OSError, AttributeError):
+        return None
 
 
-_touched = [0.0]   # when a panel last said it was touched (POST /input)
+# THE MARK: this computer's last touch, one file every page here reads (Autumn, 2026-10-13: "the
+# machine's own local state is the lock"). Present and under an hour old, every clock stays off;
+# missing, every clock is on. A touch writes it at once when it is missing, and at most once a minute
+# while it is fresh, so moving the mouse does not write to the disk. The first look that finds it an
+# hour old removes it, so every page finds the clocks on together.
+MARK = STATE / "awake"
+MARK_EVERY = 60
+MARK_HOUR = 3600
+
+
+def touched():
+    """Someone touched this computer: refresh the mark, sparingly while it is fresh."""
+    try:
+        if time.time() - MARK.stat().st_mtime < MARK_EVERY:
+            return
+    except OSError:
+        pass                                            # missing: write it now, and every page wakes
+    STATE.mkdir(parents=True, exist_ok=True)
+    MARK.touch()
 
 
 def input_idle():
-    """Seconds since anyone touched this computer: Windows' last input, or a
-    panel's own touch, which Windows may not count. What GET /input says."""
-    seen = [s for s in (idle_seconds(), time.time() - _touched[0] if _touched[0] else None) if s is not None]
-    return min(seen) if seen else None
+    """Seconds since this computer was last touched, by the mark; None once it is gone (the clocks
+    are on). Input the system saw in the last few seconds counts as a touch. What GET /input says."""
+    seen = idle_seconds()
+    if seen is not None and seen < 5:
+        touched()
+    try:
+        age = time.time() - MARK.stat().st_mtime
+    except OSError:
+        return None
+    if age >= MARK_HOUR:
+        MARK.unlink(missing_ok=True)                    # the clocks come on, everywhere at once
+        return None
+    return age
 
 
 def page(title, body, style=""):
@@ -2239,7 +2305,7 @@ class Door(BaseHTTPRequestHandler):
         here = self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
         # A panel was touched: the other panels wake on it too (AWAKE_JS).
         if route == "/input" and here:
-            _touched[0] = time.time()
+            touched()
             return self.reply(204, "", TYPES[".txt"])
         # Only the panels themselves step aside: they are on this computer.
         if route == "/aside" and here:

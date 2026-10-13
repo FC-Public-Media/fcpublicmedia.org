@@ -129,12 +129,14 @@ over 30 s, wake in under a second. Reduced motion: no fade, no glide, the middle
 and the column moves once an hour. The page dims, not the backlight: the kiosk has no DDC/CI
 tooling and no administrator.
 
-**Waking.** A touch, click, key, wheel or real pointer movement wakes the screen for an hour,
-and each one restarts the hour. The first touch on a dim screen only wakes: the layer swallows
-it. A touch anywhere on the computer ends the dim on every screen it drives at once, for an
-hour from that touch (Autumn, 2026-10-10): the kiosk's pages ask the door's `/input` twice a
-second (a tap on a panel also POSTs it, as Windows may not count touch), and the roller reads
-`input.js`, kept by the kiosk-screen trove's watcher. A page holds the screen awake with
+**Waking.** One mark per computer is the lock (Autumn, 2026-10-13): `awake` in the door's state
+folder. Present and under an hour old, every clock is off; missing, every clock is on. Any input on
+the computer writes it: Windows' last input, X's idle clock on a Linux desktop, or a page's own touch,
+key, wheel or real pointer movement (POST `/input`). It is written at once when missing, and at most
+once a minute while fresh. The first look that finds it an hour old removes it, so every screen dims
+together. Pages ask `/input` twice a second and take its answer whole. The first touch on a dim screen
+only wakes: the layer swallows it. The roller, read over `file://`, reads `input.js`, kept by the
+kiosk-screen trove's watcher. A page holds the screen awake with
 `<html class="fcpm-awake">`: the wall while held or during a class takeover, the desk during a takeover or while the camera is up. A
 check-in does not wake it; it happens on the visitor's phone. `?at=HH:MM` or `?at=<ISO>`,
 `?awake` and `?dim` on the top page's URL show either state.

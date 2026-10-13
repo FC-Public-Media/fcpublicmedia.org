@@ -179,6 +179,7 @@
   // The layer keeps catching briefly after waking, so the rest of the tap presses nothing.
   var waking = 0;
   function woke() {
+    touchedHere = now();
     wokeUntil = now() + HOUR;
     if (dim) {
       html.classList.add('fcpm-waking');
@@ -210,6 +211,16 @@
     setInterval(function () { for (var i = 0; i < tallies.length; i++) walk(tallies[i]); }, STEP);
   }
 
+  // mark(at|null): the door's mark for the whole computer (docs/kiosk.md, Dim). Once a page has
+  // one, it is the verdict: the hour runs from `at`, and null means the clocks are on, whatever
+  // this page last saw. A touch here still wakes at once; the mark catches up within a second.
+  var touchedHere = 0;
+  function mark(at) {
+    if (at === null && now() - touchedHere < 3000) return;
+    wokeUntil = at === null ? 0 : +at + skew + HOUR;
+    judge();
+  }
+
   // wake([at]): a touch seen elsewhere (the kiosk's /input, the roller's input.js); the hour runs
   // from `at` (ms, the real clock), or from now, and is never shortened. Swallows nothing.
   function wake(at) {
@@ -218,7 +229,7 @@
     judge();
   }
 
-  window.FCPMDim = { isDim: function () { return dim; }, tally: tally, wake: wake };
+  window.FCPMDim = { isDim: function () { return dim; }, tally: tally, wake: wake, mark: mark };
   if (document.body) start();
   else document.addEventListener('DOMContentLoaded', start);
 })();
