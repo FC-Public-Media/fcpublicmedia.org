@@ -22,7 +22,7 @@ verbs:
     args: ""
     says: "bring in what merged on GitHub, and put it in place"
     windows: "~/code/bin/refs, then machines/sync install"
-    linux: "not: ~/code/bin is not placed here yet; git pull in the checkout stands in"
+    linux: "not: ~/code/bin is not placed here yet; the crew's follow line keeps the checkout on the origin"
 
   - verb: install
     args: ""
