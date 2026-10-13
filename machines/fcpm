@@ -42,11 +42,12 @@ case "$cmd" in
     exec "$HERE/sync" install ;;
   dev)
     # On: the pool pulls GitHub every 5 minutes and places what merged
-    # (Autumn, 2026-10-09). Off: the weekly pull and people, as before.
+    # (Autumn, 2026-10-09), and digitization's origin-intake asks every minute.
+    # Off: the weekly pull and people, as before; intake weekly (Autumn, 2026-10-13).
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
     case "${1:-status}" in
-      on)  mkdir -p "$(dirname "$f")" && : > "$f" && echo "dev: on. The pool pulls GitHub every 5 minutes and places what merged" ;;
-      off) rm -f "$f" && echo "dev: off. The weekly pull only" ;;
+      on)  mkdir -p "$(dirname "$f")" && : > "$f" && echo "dev: on. GitHub is asked every few minutes: the pool's pull, the origin's intake" ;;
+      off) rm -f "$f" && echo "dev: off. GitHub weekly: the weekly pull, the origin's intake" ;;
       status) [ -f "$f" ] && echo "dev: on" || echo "dev: off" ;;
       *) echo "fcpm dev [status|on|off]" >&2; exit 2 ;;
     esac ;;
