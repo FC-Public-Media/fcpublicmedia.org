@@ -1,0 +1,3 @@
+#!/bin/sh
+# askpass -- ssh-add's question, asked on this screen. The door's /key/unlock uses it (SSH_ASKPASS).
+exec zenity --entry --hide-text --title "Signing key" --text "${1:-Passphrase}" 2>/dev/null

@@ -33,4 +33,11 @@ say $? "the origin mounted at /srv/origin"
 say $? "the clock synchronized from the network" "sudo timedatectl set-ntp true"
 [ -f /etc/ssh/sshd_config.d/10-no-passwords.conf ]
 say $? "SSH takes keys only" "/etc/ssh/sshd_config.d/10-no-passwords.conf"
+[ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start)" -le 80 ]
+say $? "the door may take port 80 without root" \
+  "echo net.ipv4.ip_unprivileged_port_start=80 | sudo tee /etc/sysctl.d/50-fcpm-door.conf && sudo sysctl --system"
+cmp -s "$HERE/fcpm-digitization.desktop" /etc/xdg/autostart/fcpm-digitization.desktop
+say $? "the desktop starts the door and its page" "sudo cp $HERE/fcpm-digitization.desktop /etc/xdg/autostart/"
+curl -fsS -o /dev/null http://localhost/revision
+say $? "the door answers on port 80" "log out and in, or run $HERE/at-login"
 exit $bad
