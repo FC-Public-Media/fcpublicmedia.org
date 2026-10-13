@@ -56,6 +56,26 @@ gear:
     restart-tier: app
     holds: "the host keys (an upgrade keeps them; the live boot restores them), and the no-passwords file"
 
+  - gear: zenity
+    for: >
+      The door's one question on this screen: the signing key's passphrase
+      (machines/kiosk/askpass), so it never passes through a page.
+    package: zenity
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "nothing of its own"
+
+  - gear: vivaldi
+    for: >
+      The door's page, opened at login as its own window (at-login). From
+      Vivaldi's signed repository; the toolbox keeps the vetted .deb and key.
+    package: vivaldi-stable
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "its profile, in ~/.config/vivaldi"
+
   - gear: claude-code
     for: >
       The agent. Installed by hand with its own installer, so apt does not see it.

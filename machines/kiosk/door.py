@@ -1,6 +1,6 @@
 """door — the one address the media node answers on.
 
-    door.py serve              become the door, on [::]:8080
+    door.py serve              become the door, on [::]:8080 (FCPM_DOOR_PORT moves it: 80 on digitization)
     door.py supervise          run `serve`, restart it when it exits, pull in the background, follow its folder if a pull moves it
     door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
@@ -35,6 +35,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /idle/             brand/idle/index.html (?say=... fills its slot)
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
+    POST /key/unlock       the signing key into this session's agent, its passphrase asked on this screen; this box only
 
 Runs from the fixed venv %LOCALAPPDATA%\\media-node\\venv (pyyaml, qrcode), so the firewall asks once.
 """
@@ -57,10 +58,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-PORT = 8080
+PORT = int(os.environ.get("FCPM_DOOR_PORT") or 8080)
 BOUNCE = 75          # exit code meaning "my code changed, start me again"
 PULL_EVERY = 300
-STATE = pathlib.Path(os.environ.get("LOCALAPPDATA", ROOT)) / "media-node"
+STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ
+         else pathlib.Path.home() / ".local" / "state") / "media-node"
 DEV = pathlib.Path(os.environ.get("LOCALAPPDATA", ROOT)) / "fcpm" / "dev"   # `fcpm dev on`: follow GitHub
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -707,6 +709,40 @@ def camera_state():
             "said": said, "awake": awake_windows()}
 
 
+# ------------------------------------------------------------------- the key --
+# THE SIGNING KEY: the machine's own SSH key (GitHub's "FCPM Digitization") signs commits once it is in
+# this desktop's ssh-agent. Asked from this computer only; the passphrase goes into a dialog on this
+# screen (askpass, beside this file), never through a page. Whoever asks is the one who answers.
+KEY = pathlib.Path.home() / ".ssh" / "id_ed25519"
+_key_asking = threading.Lock()
+
+
+def key_state():
+    """"unlocked", "locked", or None where this door holds no key (Windows, no agent, no key)."""
+    if os.name == "nt" or not os.environ.get("SSH_AUTH_SOCK") or not KEY.with_suffix(".pub").is_file():
+        return None
+    fp = subprocess.run(["ssh-keygen", "-lf", str(KEY.with_suffix(".pub"))],
+                        capture_output=True, text=True).stdout.split()
+    held = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True).stdout
+    return "unlocked" if len(fp) > 1 and fp[1] in held else "locked"
+
+
+def key_unlock():
+    if not os.environ.get("DISPLAY") or not _key_asking.acquire(blocking=False):
+        return False                                   # no screen to ask on, or already asking
+    try:
+        env = dict(os.environ, SSH_ASKPASS=str(HERE / "askpass"), SSH_ASKPASS_REQUIRE="force")
+        r = subprocess.run(["ssh-add", str(KEY)], env=env, stdin=subprocess.DEVNULL,
+                           capture_output=True, text=True, timeout=300)
+        log("key: unlock asked here, ssh-add %d" % r.returncode)
+        return r.returncode == 0
+    except subprocess.TimeoutExpired:
+        log("key: unlock asked here, nobody answered")
+        return False
+    finally:
+        _key_asking.release()
+
+
 # --------------------------------------------------------------------- pages --
 POLL = """<script>
 (function () {
@@ -864,7 +900,7 @@ def e(s):
     return html.escape(str(s or ""))
 
 
-def board_page():
+def board_page(here=False):
     rows = [("/kiosk/", "Welcome screen", "check-in, Wi-Fi, who is on"),
             ("/depot/", "Depot", "what is on the studio drive"),
             ("/idle/", "Idle screen", "brand/idle: the lamp pointed at the room"),
@@ -876,9 +912,14 @@ def board_page():
         for n in networks())
     items = "".join('<li><a href="%s">%s</a> <span>%s</span></li>' % (
         html.escape(h, quote=True), e(t), e(d)) for h, t, d in rows)
+    key = key_state() if here else None
+    keys = "" if key is None else "<h2>Signing key</h2><p>%s</p>" % (
+        "Unlocked. Commits sign." if key == "unlocked" else
+        "Locked. <form method=post action=/key/unlock style='display:inline'>"
+        "<button>Unlock</button></form> <span class=dim>asks its passphrase on this screen</span>")
     body = """<main><h1>FC Public Media &middot; media node</h1>
-<p class=dim>%s &middot; revision <code>%s</code></p><ul>%s</ul><h2>Wi-Fi codes</h2><ul>%s</ul></main>""" % (
-        e(socket.gethostname().lower()), e(revision()), items, nets)
+<p class=dim>%s &middot; revision <code>%s</code></p>%s<ul>%s</ul><h2>Wi-Fi codes</h2><ul>%s</ul></main>""" % (
+        e(socket.gethostname().lower()), e(revision()), keys, items, nets)
     return page("Media node", body, """main { max-width:44rem; margin:3rem auto; padding:0 16px; }
 .dim, li span { color:var(--dim); } li { margin:.6rem 0; } li span { display:block; font-size:.85em; }""")
 
@@ -2211,6 +2252,15 @@ class Door(BaseHTTPRequestHandler):
         if route == "/camera/disarm" and here:
             camera_disarm()
             return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+        # The signing key: asked here, answered on this screen. A page from elsewhere may not ask.
+        if route == "/key/unlock" and here and (self.headers.get("Origin") or "null") in (
+                "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
+                "http://localhost:%d" % PORT, "http://127.0.0.1:%d" % PORT):
+            key_unlock()
+            self.send_response(303)
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
         return self.reply(404, "", TYPES[".txt"])
 
     def do_GET(self):
@@ -2218,7 +2268,8 @@ class Door(BaseHTTPRequestHandler):
         tail = route.rsplit("/", 1)[-1]
         try:
             if route == "/":
-                return self.reply(200, board_page())
+                return self.reply(200, board_page(
+                    self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")))
             if route == "/revision":
                 m = re.search(r"[?&]screen=([\w-]+)", self.path)
                 if m:
