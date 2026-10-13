@@ -1,0 +1,134 @@
+# fcpm.yml -- what each fcpm verb means, once, for every platform. `fcpm help` prints from it and the
+# board (machines/kiosk/door.py) shows it, so neither can drift from it.
+#
+# A platform's script is an equivalent, never a lesser copy. `windows:` and `linux:` name what does the
+# verb there; "not: ..." says plainly that it cannot yet, and what stands in. Linux covers the Pi.
+# `board: switch` puts a control on the board: shown to all, flipped from that computer only.
+
+verbs:
+  - verb: watch
+    args: ""
+    says: "the watcher: what is going on here, and a short menu (fcpm alone)"
+    windows: machines/watch
+    linux: machines/watch
+
+  - verb: status
+    args: ""
+    says: "which profile, and what differs from what it carries"
+    windows: machines/sync
+    linux: machines/sync
+
+  - verb: pull
+    args: ""
+    says: "bring in what merged on GitHub, and put it in place"
+    windows: "~/code/bin/refs, then machines/sync install"
+    linux: "not: ~/code/bin is not placed here yet; git pull in the checkout stands in"
+
+  - verb: install
+    args: ""
+    says: "put the profile on, and the weekly pull. A person runs this"
+    windows: "machines/sync install, machines/watch copy, the weekly task"
+    linux: "machines/sync install; no weekly task: the crew's intake keeps the origin"
+
+  - verb: check
+    args: ""
+    says: "what files cannot say: gear, settings, services"
+    windows: "machines/<profile>/check.ps1"
+    linux: "machines/<profile>/check.sh"
+
+  - verb: weekly
+    args: ""
+    says: "bring in the latest, once a week (the task runs it)"
+    windows: machines/watch weekly
+    linux: "not: no weekly task; origin-intake asks GitHub weekly by itself (fcpm dev)"
+
+  - verb: dev
+    args: "[status|on|off]"
+    says: "on: GitHub is asked every few minutes; off: weekly"
+    board: switch
+    windows: "the flag %LOCALAPPDATA%\\fcpm\\dev; the pool and the door read it"
+    linux: "the flag ~/.local/state/fcpm/dev; origin-intake and the door read it"
+
+  - verb: pool
+    args: "[status|pass|off|on|install]"
+    says: "the root's Remote Control server"
+    windows: "~/code/bin/pool.ps1"
+    linux: "not: the pool is editing bay 1's"
+
+  - verb: crew
+    args: "[status|install|uninstall|check|log NAME|serve]"
+    says: "this machine's crew: its one service and what it keeps"
+    windows: "machines/crew.ps1; crew.py by uv"
+    linux: "machines/crew.sh (fcpm-crew@<job>); crew.py by python3"
+
+  - verb: runnables
+    args: "[...]"
+    says: "the census, compile, prove"
+    windows: bin/runnables
+    linux: bin/runnables
+
+  - verb: recorder
+    args: "[status|prepare|start|record start|record stop|stop|grant]"
+    says: "OBS, the recorder"
+    windows: troves/recorder/obs.ps1
+    linux: "not: Windows gear (OBS on the bays)"
+
+  - verb: screen
+    args: "[status|on|off|reset|class|wall|toggle]"
+    says: "the rolling TV (toggle: class mode <-> the wall)"
+    windows: troves/kiosk-screen/screen.ps1
+    linux: "not: Windows gear (the kiosk drives the TV)"
+
+  - verb: audition
+    args: "[status|install|remove]"
+    says: "Audition as gear: the enhance engine's panel"
+    windows: "machines/<profile>/audition.ps1"
+    linux: "not: Windows gear (Adobe Audition)"
+
+  - verb: drobo
+    args: "[status|connect|header|list OUT]"
+    says: "the Drobo, over iSCSI (CHAP)"
+    windows: "machines/<profile>/drobo.ps1"
+    linux: "not: Windows gear (the iSCSI initiator)"
+
+  - verb: share
+    args: "[status|install]"
+    says: "the drop shares: enhance (E:, TO ENHANCE)"
+    windows: "machines/<profile>/share.ps1"
+    linux: "not: Windows gear (SMB shares on the bays)"
+
+  - verb: audit
+    args: "[status|on|off|collect [OUT]|window FROM TO [OUT]]"
+    says: "a record, kept here, of the commands run on this machine"
+    windows: "machines/<profile>/audit.ps1"
+    linux: "not: no record kept here yet; the journal holds sudo's"
+
+  - verb: camera
+    args: "[console|presets|apply NAME|state]"
+    says: "the USB camera"
+    windows: "troves/camera/camera.py by uv (comtypes)"
+    linux: "not: it speaks Windows COM"
+
+  - verb: ti89
+    args: "[probe|version|screen OUT.png|rom OUT.rom] [--port COM1]"
+    says: "a TI-89 on a GraphLink"
+    windows: "troves/ti-89/cable/link.py by uv"
+    linux: "troves/ti-89/cable/link.py by uv"
+
+  - verb: pools
+    args: "[timeline|key|sample|sample clear]"
+    says: "the storage pools, as a page"
+    windows: "troves/pools/pools.py by uv"
+    linux: "troves/pools/pools.py by uv"
+
+  - verb: post
+    args: "[status|run [STEP]|admit CONFIG|retry TAKE N]"
+    says: "after release: the takes and their steps, as a page"
+    windows: "troves/post/post.py by uv"
+    linux: "troves/post/post.py by uv"
+
+  - verb: help
+    args: ""
+    says: "this, from machines/fcpm.yml"
+    windows: machines/fcpm
+    linux: machines/fcpm

@@ -71,6 +71,13 @@ case "$cmd" in
   crew)
     # The production crew (machines/production): what its supervisor keeps, asked
     # live. `serve` is what the crew's service runs; in a window, it tries it.
+    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) ;; *)
+      # Linux: this machine's own job, by crew.sh (fcpm-crew@<job>), and crew.py by python3.
+      case "${1:-status}" in
+        status|install|uninstall) exec sh "$HERE/crew.sh" "${1:-status}" "$(profile)" ;;
+        *) exec python3 "$REPO/machines/crew.py" "$@" ;;
+      esac ;;
+    esac
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     case "${1:-status}" in
       status|install|uninstall) ps1 "$REPO/machines/crew.ps1" "${1:-status}" ;;   # the task, and what it keeps; install is an administrator's
@@ -88,29 +95,23 @@ case "$cmd" in
   ti89)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyserial "$REPO/troves/ti-89/cable/link.py" "$@" ;;
-  help|-h|--help) cat <<'EOF'
-fcpm                      the watcher: what is going on here, and a short menu
-fcpm status               which profile, and what differs from what it carries
-fcpm pull                 bring in what merged on GitHub, and put it in place
-fcpm install              put the profile on, and the weekly pull. A person runs this
-fcpm check                what files cannot say: gear, settings, the pool
-fcpm weekly               bring in the latest, once a week (the task runs it)
-fcpm pool [status|pass|off|on|install]      the root's server
-fcpm dev [status|on|off]  on: merges on GitHub reach this machine by themselves, within 5 min
-fcpm runnables [...]      the census, compile, prove (bin/runnables)
-fcpm recorder [status|prepare|start|record start|record stop|stop|grant]
-fcpm screen [status|on|off|reset|class|wall|toggle]   the rolling TV (toggle: class mode <-> the wall)
-fcpm audition [status|install|remove]   Audition as gear: the enhance engine's panel
-fcpm drobo [status|connect|header|list OUT]   the Drobo, over iSCSI (CHAP)
-fcpm share [status|install]   the drop shares: enhance (E:, TO ENHANCE)
-fcpm audit [status|on|off|collect [OUT]|window FROM TO [OUT]]   a record, kept here, of the commands run on this machine; window: what Windows kept of a past stretch
-fcpm camera [console|presets|apply NAME|state]   the USB camera
-fcpm ti89 [probe|version|screen OUT.png|rom OUT.rom] [--port COM1]   a TI-89 on a GraphLink
-fcpm crew [status|install|uninstall|check|log NAME|serve|episodes]   production: its one service (from the computer's start) and what it keeps
-fcpm pools [timeline|key|sample|sample clear]   the storage pools, as a page (timeline: opened at the nights; key: the depot's password)
-fcpm post [status|run [STEP]|admit CONFIG|retry TAKE N]   after release: the takes on E:\POST and their steps, as a page
-fcpm help                 this
-EOF
- ;;
+  help|-h|--help)
+    # From machines/fcpm.yml, the one place each verb is defined (Autumn, 2026-10-13).
+    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) plat=windows ;; *) plat=linux ;; esac
+    awk -v plat="$plat" '
+      function val(s) { sub(/^[^:]*:[ ]*/, "", s); gsub(/^"|"$/, "", s); return s }
+      function flush() {
+        if (v == "") return
+        c = "fcpm " v (a != "" ? " " a : "")
+        if (p ~ /^not:/) away = away sprintf("  %s\n      %s\n", c, substr(p, 6))
+        else here = here sprintf("  %s\n      %s\n", c, s)
+      }
+      /^  - verb:/        { flush(); v = val($0); a = s = p = ""; next }
+      /^    args:/        { a = val($0); next }
+      /^    says:/        { s = val($0); next }
+      $0 ~ "^    " plat ":" { p = val($0); next }
+      END { flush(); printf "fcpm, on %s:\n%s", plat, here
+            if (away != "") printf "\nNot on %s yet, and what stands in:\n%s", plat, away }
+    ' "$HERE/fcpm.yml" ;;
   *) echo "fcpm: no verb '$cmd'. fcpm help" >&2; exit 2 ;;
 esac

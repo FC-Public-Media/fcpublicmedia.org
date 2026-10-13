@@ -902,7 +902,30 @@ def e(s):
     return html.escape(str(s or ""))
 
 
+def masthead(where):
+    """The board's lockup: the mark and the wordmark, as the site's (site/_includes/header.html).
+    The one place to change when the new logo lands."""
+    return ('<header class=masthead><span class=mark aria-hidden=true></span>'
+            '<span class=words><b>Fort Collins</b><span>Public Media</span></span>'
+            '<span class=where>%s</span></header>' % where)
+
+
+def verbs_here():
+    """machines/fcpm.yml, split by whether each verb runs on this platform ("not: ..." does not)."""
+    import yaml
+    plat = "windows" if os.name == "nt" else "linux"
+    here, away = [], []
+    for v in yaml.safe_load((ROOT / "machines" / "fcpm.yml").read_text(encoding="utf-8"))["verbs"]:
+        how = str(v.get(plat, ""))
+        if how.startswith("not:"):
+            away.append((v, how[4:].strip()))
+        else:
+            here.append((v, how))
+    return plat, here, away
+
+
 def board_page(here=False):
+    """The board: this machine's switches, then fcpm's verbs as machines/fcpm.yml defines them."""
     rows = [("/kiosk/", "Welcome screen", "check-in, Wi-Fi, who is on"),
             ("/depot/", "Depot", "what is on the studio drive"),
             ("/idle/", "Idle screen", "brand/idle: the lamp pointed at the room"),
@@ -914,22 +937,64 @@ def board_page(here=False):
         for n in networks())
     items = "".join('<li><a href="%s">%s</a> <span>%s</span></li>' % (
         html.escape(h, quote=True), e(t), e(d)) for h, t, d in rows)
+
+    def button(action, label):
+        return "<form method=post action=%s><button>%s</button></form>" % (action, label) if here else ""
+
     dev = DEV.exists()
-    pace = "<h2>GitHub</h2><p>%s%s</p>" % (
-        "Asked every few minutes <span class=dim>(dev on)</span>." if dev else
-        "Asked weekly <span class=dim>(dev off)</span>.",
-        "" if not here else " <form method=post action=/dev/%s style='display:inline'><button>%s</button></form>" % (
-            ("off", "Back to weekly") if dev else ("on", "Every few minutes")))
+    cards = ["<div class=card><b>GitHub</b><p>%s</p>%s<code>fcpm dev %s</code></div>" % (
+        "Asked every few minutes." if dev else "Asked weekly.",
+        button("/dev/off", "Back to weekly") if dev else button("/dev/on", "Every few minutes"),
+        "on" if dev else "off")]
     key = key_state() if here else None
-    keys = "" if key is None else "<h2>Signing key</h2><p>%s</p>" % (
-        "Unlocked. Commits sign." if key == "unlocked" else
-        "Locked. <form method=post action=/key/unlock style='display:inline'>"
-        "<button>Unlock</button></form> <span class=dim>asks its passphrase on this screen</span>")
-    body = """<main><h1>FC Public Media &middot; media node</h1>
-<p class=dim>%s &middot; revision <code>%s</code></p>%s%s<ul>%s</ul><h2>Wi-Fi codes</h2><ul>%s</ul></main>""" % (
-        e(socket.gethostname().lower()), e(revision()), pace, keys, items, nets)
-    return page("Media node", body, """main { max-width:44rem; margin:3rem auto; padding:0 16px; }
-.dim, li span { color:var(--dim); } li { margin:.6rem 0; } li span { display:block; font-size:.85em; }""")
+    if key:
+        cards.append("<div class=card><b>Signing key</b><p>%s</p>%s</div>" % (
+            "Unlocked. Commits sign." if key == "unlocked" else "Locked. Its passphrase is asked on this screen.",
+            "" if key == "unlocked" else button("/key/unlock", "Unlock")))
+    cards.append("<div class=card><b>Revision</b><p><code>%s</code></p></div>" % e(revision()))
+
+    plat, ok, away = verbs_here()
+    verbs = "".join("<dt><code>fcpm %s</code></dt><dd>%s%s</dd>" % (
+        e(v["verb"]), e(v.get("says")),
+        "<code class=args>%s</code>" % e(v["args"]) if v.get("args") else "") for v, _ in ok)
+    elsewhere = "".join("<dt><code>fcpm %s</code></dt><dd>%s</dd>" % (e(v["verb"]), e(why)) for v, why in away)
+
+    body = """%s<main>
+<section class=here>%s</section>
+<h2>fcpm, on this %s machine</h2><dl class=verbs>%s</dl>
+<details><summary>Not on %s yet, and what stands in</summary><dl class=verbs>%s</dl></details>
+<h2>Screens</h2><ul>%s</ul>
+<h2>Wi-Fi codes</h2><ul>%s</ul>
+<p class=dim>Every verb: <code>machines/fcpm.yml</code>, or <code>fcpm help</code></p></main>""" % (
+        masthead("%s &middot; the board" % e(socket.gethostname().lower())),
+        "".join(cards), plat.capitalize(), verbs, plat.capitalize(), elsewhere, items, nets)
+    return page("The board", body, BOARD_CSS)
+
+
+BOARD_CSS = """
+.masthead { display:flex; align-items:center; gap:.8rem; padding:18px max(16px, calc(50vw - 26rem));
+  background:var(--slate); border-bottom:3px solid var(--signal); }
+.masthead .mark { width:1.6rem; height:1.6rem; flex:none; }
+.masthead .words { display:flex; flex-direction:column; line-height:1.05; }
+.masthead .words b { font-size:1.25rem; font-weight:780; letter-spacing:-.02em; }
+.masthead .words span { font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; color:var(--soft); }
+.masthead .where { margin-left:auto; color:var(--dim); font-size:.9rem; }
+main { max-width:52rem; margin:1.6rem auto 3rem; padding:0 16px; }
+h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--signal); margin:2.2rem 0 .7rem; }
+.here { display:grid; grid-template-columns:repeat(auto-fit, minmax(14rem, 1fr)); gap:12px; }
+.card { background:var(--slate); padding:14px 16px; border-left:4px solid var(--signal); }
+.card p { margin:.35rem 0 .7rem; } .card code { color:var(--dim); font-size:.85em; }
+button { font:inherit; font-weight:650; background:var(--signal); color:var(--ink); border:0;
+  padding:.35rem .9rem; cursor:pointer; margin-bottom:.6rem; }
+.verbs { display:grid; grid-template-columns:max-content 1fr; gap:.45rem 1.4rem; margin:0; }
+.verbs dt code { color:var(--paper); } .verbs dd { margin:0; color:var(--dim); min-width:0; }
+.verbs .args { display:block; font-size:.8em; color:var(--soft); overflow-wrap:anywhere; }
+details { margin-top:1.2rem; color:var(--dim); } summary { cursor:pointer; }
+details .verbs { margin-top:.8rem; }
+.dim, li span { color:var(--dim); } ul { padding-left:1.1rem; } li { margin:.6rem 0; }
+li span { display:block; font-size:.85em; }
+@media (max-width: 34rem) { .verbs { grid-template-columns:1fr; } .verbs dd { margin-bottom:.5rem; } }
+"""
 
 
 KIOSK_CSS = """
