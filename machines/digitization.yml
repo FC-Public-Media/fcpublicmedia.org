@@ -4,3 +4,7 @@ serves:
   - service: intake
     for: "GitHub's main into the origin at /srv/origin; see digitization/PROFILE.md, The origin"
     start: "/usr/bin/python3 -I machines/digitization/origin-intake"
+
+  - service: standby
+    for: "every branch and tag into origin.local, a minute behind; see origin/PROFILE.md"
+    start: "/bin/sh machines/digitization/origin-standby"
