@@ -2,6 +2,8 @@
 
 A donated HP t510 thin client in the control rack, under the headphone amp and above the switcher. It
 boots HP ThinPro (Linux) into one remote desktop connection its last owner left, and is to be wiped.
+ThinPro is a 2011 image (Ubuntu 10.04, kernel 2.6.32): its OpenSSH 5.3 cannot reach digitization's,
+its kernel cannot read exFAT cards, and IPv4 was switched off (IPv6 only).
 Its job is the kiosk's overflow console, beside the scanner. The folder name is a placeholder until
 the machine is named (`names`).
 
@@ -13,7 +15,7 @@ the machine is named (`names`).
 | graphics | VIA Chrome9 HD (VX900), DVI-I and DVI-D, both at once; 128 MB from memory. Linux support is thin: a text console is safe, a browser on each screen may not be |
 | memory | 2 GB DDR3 in one SO-DIMM socket (1920 MB after video); 4 GB modules are reported to work |
 | storage | 1 GB flash on the 44-pin IDE header (`PM-1GB ATA Flash`), replaceable; two USB sockets inside, under the top cover |
-| network | gigabit Ethernet, Broadcom BCM57780, `9C:8E:99:E9:58:3B`; network boot (MBA v12.2). Not on the studio LAN |
+| network | gigabit Ethernet, Broadcom BCM57780, `9C:8E:99:E9:58:3B`; network boot (MBA v12.2). On the studio LAN by DHCP |
 | ports, power | serial, parallel, two PS/2, USB 2.0 front and back, audio; 19 V barrel, about 8 W idle, 19 W running |
 
 Model, serial, BIOS, memory, flash and hardware address are read from the box; the rest is from
@@ -32,11 +34,13 @@ thin client: like ThinPro it shows what is kept elsewhere, and keeps nothing its
 - It watches. Anything asked for here is approved elsewhere, the way a grant is.
 - Standing beside the scanner, its page can point at it.
 
-Open: whether both DVI screens show a console at once. The first boot is Debian 13 live from a stick
-with no persistence. It changes nothing on the box and answers that.
+First boot (2026-10-13), Debian 13.7 live `standard` written straight to a stick: about a minute
+on `microcode: no support for this CPU vendor` (harmless: VIA), then a prompt. No `nomodeset`;
+DHCP gives IPv4. Ventoy's XFCE image reaches no desktop here. Open: both DVI screens at once.
 
 ## Reformatting
 
 1. Storage: swap the flash module for 8 to 32 GB, or install to a USB stick in an inside socket.
-2. Write the installer stick on the iMac; the kiosk and the bays cannot write a raw disk without an administrator.
+2. Write the stick on digitization, from the toolbox (verified against Debian's signed `SHA256SUMS`):
+   `sudo dd if=/srv/toolbox/isos/debian-live-13.7.0-amd64-standard.iso of=/dev/sdX bs=4M conv=fsync`
 3. Boot it with F12 and pick the stick (nothing in the BIOS is locked). Set power on after power failure to On.
