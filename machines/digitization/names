@@ -8,7 +8,7 @@
 #
 # NOT APPLIED YET. The box boots Debian live and answers `debian` today. Setting it
 # is a deliberate act (`sudo hostnamectl hostname digitization`), and on a live
-# boot it lasts only until reboot, until the stick carries it.
+# boot it lasts only until reboot, until the card carries it.
 #
 # The first Linux profile here. Check on the machine with `hostname`.
 

@@ -1,7 +1,7 @@
 # digitization
 
 **Status: drafted 2026-10-09, not yet worn.** A Dell OptiPlex 9020M (asset
-200-FCPubMedia), running Debian 13 XFCE live from a USB stick. The first Linux
+200-FCPubMedia), running Debian 13 XFCE live from an SD card. The first Linux
 profile here.
 
 The name is the crew's on purpose (see `names`): for now this box and the
@@ -20,7 +20,7 @@ from station-node, which can then vacate. The crew's contract
 
 Bare repos at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media plus the
 four FCCN-ANTIBODY repos fcpublicmedia.org mounts. Only FCPM's own things.
-They live on an ext4 image on the RAID, not on the stick: the origin belongs to the box.
+They live on an ext4 image on the RAID, not on the card: the origin belongs to the box.
 
 **Intake is automatic and tracks `main` only** (`origin-intake`, every minute
 from `systemd/origin-intake.timer`). A merge on GitHub is when we pay
