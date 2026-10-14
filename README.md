@@ -8,10 +8,10 @@ Generated 2026-10-14 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | seat | last spoke | sessions | draft | ready | state |
 | --- | --- | --- | --- | --- | --- |
 | [`payments`](payments.md) | 2026-10-14 | 18 | 7 | 0 | up to date |
-| [`credentials`](credentials.md) | 2026-10-13 | 22 | 8 | 0 | up to date |
+| [`credentials`](credentials.md) | 2026-10-14 | 23 | 8 | 0 | up to date |
 | [`vendors`](vendors.md) | 2026-10-14 | 15 | 5 | 1 | up to date |
 | [`truthfulness`](truthfulness.md) | 2026-10-13 | 17 | 13 | 0 | up to date |
-| [`node`](node.md) | 2026-10-13 | 9 | 6 | 0 | up to date |
+| [`node`](node.md) | 2026-10-14 | 10 | 6 | 0 | up to date |
 
 ## Asking to graduate
 
