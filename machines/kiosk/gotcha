@@ -1,0 +1,27 @@
+#!/bin/sh
+# gotcha net "assumed X -> actually Y": append one line to GOTCHAS.log (merge=union), re-sorted.
+# Commits on `media-node` only, since the door's rebase skips a dirty tree. PROFILE.md.
+set -eu
+[ $# -ge 2 ] || { echo "usage: gotcha <tag> \"<one line>\"" >&2; exit 2; }
+tag="$1"; shift
+here="$(cd "$(dirname "$0")" && pwd)"
+log="$here/GOTCHAS.log"
+printf '%s    %-9s %s\n' "$(date +%Y-%m-%d)" "$tag" "$*" >> "$log"
+
+# Stable sort by date ('#' headers sort first); temp file and rename, so the log stays whole.
+tmp="$log.$$"
+if LC_ALL=C sort -s -k1,1 "$log" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    mv "$tmp" "$log"
+else
+    rm -f "$tmp"
+fi
+
+branch="$(git -C "$here" branch --show-current 2>/dev/null || true)"
+if [ "$branch" != "media-node" ]; then
+    echo "logged: $tag - $*"
+    echo "gotcha: on branch '$branch', so the line was NOT committed." >&2
+    exit 0
+fi
+git -C "$here" add "$log"
+git -C "$here" commit -q -m "gotcha: $tag" -- "$log"
+echo "logged and committed: $tag - $*"

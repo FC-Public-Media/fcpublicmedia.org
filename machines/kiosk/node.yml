@@ -1,0 +1,145 @@
+# node.yml: what the media node shows, and where; read on every request. See PROFILE.md.
+
+# ---------------------------------------------------------------------------
+# SCREENS: one kiosk browser per portrait panel (`door.py screens [--launch]`).
+browser: msedge
+screens:
+  - name: centre
+    display: DISPLAY1        # the primary panel
+    rect: [0, 0, 1050, 1680]
+    url: /kiosk/
+  - name: left
+    display: DISPLAY2
+    rect: [-1050, 0, 1050, 1680]
+    url: /turn/            # turns like the roller: the cameras, then the files
+
+# ---------------------------------------------------------------------------
+# NETWORKS as Wi-Fi QR codes, built in memory; set each password with `door.py wifi-password "<ssid>"`.
+networks:
+  - from: wifi               # site/_data/wifi.yml: ssid, security, confirmed
+    label: Guest Wi-Fi
+  # AirPlay needs no network of its own: the Apple TV is on the guest network.
+
+# ---------------------------------------------------------------------------
+# STATIONS on the studio map, from site/_data/facilities.yml (`couples_with` share a square).
+facilities: [Video Studio, Podcast Studio, Editing Bays]
+
+# Stations the public site does not list yet.
+stations:
+  - name: Digitization
+    note: Opening soon
+    activities: [digitization]
+    preparing: true          # bay 3, being prepared: no bookings, shows its note
+
+# Where bookings come from. Only `sample` exists (bookings.sample.yml, every pill "Sample").
+bookings: sample
+
+# Unset: the classes panel in welcome/welcome.yml. `sample` invents three, titled "(sample)".
+# classes: sample
+
+# MICROSOFT 365 app "FC Public Media Booking": identifiers, not secrets (m365-token.ps1).
+m365:
+  tenant: c2df68bb-b157-4f21-9a16-f574eb44ed6d
+  client: 6a3863ca-5544-4ffc-9d1f-71311cfb1bfe
+  certificate: 2280B1B905911D8C93C643EF292D86BD2F882C31   # expires 2028-09-24
+
+# ---------------------------------------------------------------------------
+# THE DROPBOX QUEUE (door.py): off until `to` is set and `door.py dropbox link` has run.
+dropbox:
+  app_key: ""                # the app's public key, from the App Console
+  to: ""                     # the folder staff already use: not yet named
+  share: TO DROPBOX
+
+# THE HELO, the studio's AJA H.264 recorder, by mDNS name (the router hands out its address).
+helo:
+  host: aja-helo-1HE001404.local
+
+# DEPOT: the router's FAT partitions (Samba says NTFS): no file over 4 GiB, nothing in the root.
+depot:
+  server: 10.209.1.1
+  groups:                    # a share named nowhere joins the group whose `match` fits, else the first
+    - name: stations
+      title: Stations
+      rows:
+        - files: false       # a bar and a count, no file list
+          shares:
+            - {share: BAY 1, label: Bay 1}
+            - {share: BAY2, label: Bay 2}
+        - shares:
+            - {share: DIGISTATION, label: Digitization}
+            - {share: FILMING, label: Filming}
+            - {share: PODCAST, label: Podcast}
+    - name: queues
+      title: Queues
+      match: "TO "
+      rows:
+        - shares:
+            - {share: TO DROPBOX, label: To Dropbox}
+            - {share: TO ENHANCE, label: To Enhance}
+            - {share: TO STEM, label: To Stem}
+
+# ---------------------------------------------------------------------------
+# THE TURN: the wall's shell on the left panel; a module frames `url:` live or draws `page:`.
+turn:
+  rotate: 45                 # seconds on each, as on the wall
+  modules:
+    - {name: cameras, label: Cameras, url: /preview/}
+    - {name: files, label: Files, url: /depot/}
+    - {name: ti-89, label: TI-89, url: '/ti-89/?show&wake&rom=/ti-89/local/rom'}   # the AMS ROM running the show; '/ti-89/?show' alone is the bare machine
+
+# ---------------------------------------------------------------------------
+# THE TI-89 runner (FC-Public-Media/ti-89), from its mirror; the ROM is TI's, never published.
+ti89:
+  code: '%USERPROFILE%\code\ref\ti-89'
+  rom: '%LOCALAPPDATA%\media-node\troves\ti-89\ti89-ams203-hw1.rom'
+# ---------------------------------------------------------------------------
+# THE WALL, for the rolling TV: file://10.209.1.1/DIGISTATION/.wall/index.html. Never Wi-Fi codes.
+wall:
+  share: DIGISTATION         # the partition is the depot's; .wall is this node's
+  folder: .wall
+  every: 60                  # seconds: how often it is rewritten; the shell reloads every tenth
+  rotate: 45                 # seconds on each module before the next (show.yml's guess)
+  class: machines/kiosk/roller-tv/class-sample   # class mode's demo, written as class.html; not in the turn
+  modules:
+    - {name: studio, label: Studio, page: kiosk}
+    - {name: files, label: Files, page: drive}      # the wall's own Files: a list, like Classes
+    - {name: classes, label: Classes, page: classes}
+
+# ---------------------------------------------------------------------------
+# WORDING, a draft until Autumn's wording pass; once settled it belongs in welcome/content.yml.
+wording:
+  checkin:
+    head: Check in
+    sub: |-                  # our name, large, where people look; "Fort Collins" together
+      Fort Collins
+      Public Media
+  camera:                    # over the check-in words while the camera is armed (door.py, THE CAMERA). Placeholder words
+    head: Show your code
+    sub: "The camera is on: {s} s"   # {s} is the seconds left
+    arm: Show a code                  # the button that arms it: the panel takes touch
+  wall:                      # the roller: the check-in head stays, the words are its own
+    sub: |-                  # one line each, title case, as Autumn wrote it (2026-09-26)
+      Don’t Just View It.
+      Do It.
+    brand: FCPM              # the bar's label; the lit button says which module is up
+  map:
+    until: until
+  classes:                   # the upcoming list, and the takeover while a class is soon or on
+    head: Classes
+    soon: Starting soon
+    now: Happening now
+    starts: Starts
+    until: Until
+    join: Join until
+    next: Next class
+    none: No classes on the calendar yet.
+    sample: Sample classes
+    hint_wall: Check in with the code above.   # while joining late, on the wall
+  depot:
+    gateway: Gateway         # the strip on top: the router's address, and its partition count
+    head: Files
+    sub: On the studio drive
+  footer:
+    "on": "Hosting:"         # quoted: bare, YAML reads on as true
+    next: Next
+    none: Ask whoever is at the desk.

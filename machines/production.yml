@@ -1,0 +1,8 @@
+# What the production job itself serves, when it orders it (production/services). See README.md.
+
+serves:
+  - service: remote-control
+    for: "the root's Remote Control server and its one home session, so listed sessions keep their link through a restart; it wakes none"
+    start: "{home}/.local/bin/claude.exe remote-control"
+    cwd: "{code}"
+    alive: {process: 'claude.exe.*\sremote-control(\s|$)'}

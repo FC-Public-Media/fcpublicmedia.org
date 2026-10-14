@@ -1,0 +1,18 @@
+# MANIFEST: what editing bay 1 carries of its own home, for `../sync`. See docs/station.md.
+#   mode    repo path (relative to this folder)   home path (relative to ~)
+
+# The root's instructions stay in the mirror; what is placed only points there.
+mirror  home/code/CLAUDE.md    code/CLAUDE.md
+mirror  home/code/AGENTS.md    code/AGENTS.md
+mirror  code/bin/refs          code/bin/refs
+mirror  code/bin/pool.ps1      code/bin/pool.ps1
+mirror  code/refs.wanted       code/refs.wanted
+
+clone   code/refs.wanted       code/refs
+
+mirror  home/git/ignore        .config/git/ignore
+
+mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
+path      -                      .local/bin
+
+settings  production             code/.claude/settings.json

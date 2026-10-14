@@ -1,22 +1,4 @@
-// Check-in, recorded on the visitor's own device.
-//
-// There is no server. Everything here reads and writes storage on the phone in
-// front of the person, and nothing leaves it.
-//
-// The shape of the thing:
-//
-//   1. Tap "Check in". The page asks for location once.
-//   2. If you are at the studio, you are checked in.
-//   3. If you are not, the check-in becomes *pending*: the page shows
-//      directions, and finishes by itself when you arrive. Leave it open,
-//      walk in, look down, it is done.
-//
-// Re-checks happen every few minutes and only while the tab is visible, so a
-// page left open in a pocket costs nothing.
-//
-// The device identifier is a random UUID generated on first visit. It is not
-// derived from anything about the device or the person, it is never sent
-// anywhere, and "Forget this device" deletes it.
+// /check-in/: visits recorded in this browser's storage, never sent. See docs/identity.md#check-in.
 
 import { readConfig, pickSession, sessionKey, clockTime, watch } from './classes.js';
 import { verifyClaim, claimFromLocation, clearClaimFromLocation } from './claims.js';
@@ -31,16 +13,14 @@ const CLAIM_KEY = 'fcpm.claim';
 const config = JSON.parse(document.getElementById('checkin-config').textContent);
 const classConfig = readConfig();
 
-// The session currently in a window, or null. Re-read rather than cached, so
-// a page left open through the start of a class behaves correctly.
+// The class session in its window now, or null; re-read so an open page sees a class start.
 let session = null;
 
 let timer = null;
 
 /* ---------------------------------------------------------------- storage */
 
-// Private browsing makes localStorage throw rather than return null, so every
-// access goes through these.
+// Private browsing makes localStorage throw, so every access goes through these.
 function readStore(key, fallback) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -78,10 +58,7 @@ function storageWorks() {
   }
 }
 
-// Ask the browser to exempt this origin from routine eviction. Chrome decides
-// silently on engagement heuristics; Safari grants it largely when the site is
-// a Home Screen web app, which is why the page says so rather than relying on
-// this call alone.
+// Ask to be exempt from eviction; Safari mostly grants it only to Home Screen apps.
 async function requestPersistence() {
   if (!navigator.storage?.persist) return null;
   try {
@@ -124,8 +101,7 @@ function saveHistory(entries) {
 
 /* -------------------------------------------------------------- distance */
 
-// Haversine. Good to a few metres at these distances, which is far better
-// than a phone's own fix.
+// Haversine, far more precise than a phone's fix.
 function metresBetween(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -157,15 +133,10 @@ function locate({ fresh = false } = {}) {
       (position) => resolve(position),
       (error) => reject(error),
       {
-        // Low accuracy on purpose: a coarse fix is plenty against a 200m
-        // radius and costs far less battery than a GPS lock.
+        // A coarse fix is plenty against a 200m radius and spares the battery.
         enableHighAccuracy: false,
         timeout: 20000,
-        // When someone taps "check again", they have almost certainly just
-        // moved, so a cached fix is exactly the wrong answer — it would tell
-        // a person standing in the doorway that they are still down the
-        // street. Background polls reuse a recent fix instead, which is where
-        // the battery saving actually comes from.
+        // A tap wants a fresh fix (they just moved); background polls reuse a recent one.
         maximumAge: fresh ? 0 : 120000,
       }
     );
@@ -223,9 +194,7 @@ function renderHistory() {
     when.textContent = formatWhen(entry.at);
 
     const detail = document.createElement('span');
-    // An unconfirmed address is marked in the list itself. Someone reading
-    // their own history should be able to see which visits carry an address we
-    // actually checked, without having to remember when they got the link.
+    // Unconfirmed addresses are marked in the list.
     const who = entry.email
       ? entry.email_verified
         ? entry.email
@@ -238,11 +207,7 @@ function renderHistory() {
   }
 }
 
-// What to call this phone before anyone has said. Not a device fingerprint:
-// only the kind of thing it is, in words a person would use, so the default
-// is already useful ("iPhone", "Samsung", "Windows PC") and changing it is a
-// refinement rather than a chore. Chrome can say the model (Pixel 8, or a
-// Samsung's SM- number) when asked; nothing else is asked for.
+// A default name for this phone ("iPhone", "Windows PC"): its kind, never a fingerprint.
 function deviceKind(ua = navigator.userAgent, model = '') {
   if (/iPhone/.test(ua)) return 'iPhone';
   if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
@@ -281,8 +246,7 @@ function renderDevice() {
       if (!el('device-label').value) el('device-label').value = label;
     });
   }
-  // A fragment is enough to tell two devices apart. There is no reason to put
-  // a full identifier on screen.
+  // A fragment is enough to tell devices apart.
   el('device-id').textContent = device.id.slice(0, 8);
   el('device-since').textContent = new Date(device.created).toLocaleDateString();
 }
@@ -297,19 +261,14 @@ function saveProfile() {
   writeStore(PROFILE_KEY, {
     ...getProfile(),
     name: el('profile-name').value.trim(),
-    // Only meaningful while there is no claim; a confirmed address supersedes
-    // it rather than overwriting it, so removing the claim leaves whatever the
-    // visitor had typed before.
+    // A claim supersedes the typed address without overwriting it.
     email: el('profile-email').value.trim().toLowerCase(),
   });
 }
 
 /* ----------------------------------------------------------------- reason */
 
-// Nobody is asked why they came. The code they scanned says so — a QR aimed
-// at /check-in/?reason=Class does what it looks like it does — or a class
-// being on does. Only the reasons _data/checkin.yml lists are accepted, so a
-// made-up one in the URL is ignored rather than recorded.
+// The reason comes from ?reason= (only those in _data/checkin.yml) or a running class.
 function visitReason() {
   const primed = new URLSearchParams(window.location.search).get('reason');
   if (primed && (config.reasons || []).includes(primed)) return primed;
@@ -326,19 +285,7 @@ function renderReason() {
 
 /* --------------------------------------------------------------- identity */
 
-// Three ways this page can know an email address, in descending order of how
-// much they are worth:
-//
-//   claim   a signed token we minted and mailed. Verified, and the proof is
-//           kept so anyone downstream can check it themselves.
-//   access  Cloudflare Access authenticated the visitor at the edge. Verified,
-//           but only while the request is ours to make — nothing portable
-//           comes out of it.
-//   typed   the visitor told us. Unverified, and recorded as such.
-//
-// A typed address is not treated as a failure. Most people will never have a
-// claim, and an address they typed still lines their visits up with the
-// membership list, which is the whole point.
+// An address comes from, in order: a claim, Cloudflare Access, or typing (recorded unverified).
 
 async function getAccessIdentity() {
   if (config.identityMode !== 'access') return null;
@@ -366,13 +313,7 @@ async function getIdentity() {
   return { email: null, verified: false, via: null };
 }
 
-/**
- * Take a claim from the URL, check it, and keep it if it holds.
- *
- * The stored record includes the token itself, not just the address read out
- * of it. That is the part with any value: the address alone is a string this
- * device wrote, while the token is something we signed and anyone can re-check.
- */
+/** Take a claim from the URL, check it, and keep the whole token if it holds. */
 async function redeemClaim(token) {
   const status = el('claim-status');
   const result = await verifyClaim(token, config.identity.keys);
@@ -444,15 +385,12 @@ function complete(reading) {
       at: new Date().toISOString(),
       device: device.id,
       email,
-      // Recorded rather than inferred. A row that says an address was
-      // confirmed has to mean it, and a row that says otherwise is still a
-      // perfectly good row.
+      // Recorded, not inferred.
       email_verified: Boolean(email) && verified,
       name: profile.name || null,
       // A held check-in keeps the reason it was started with.
       reason: getPending()?.reason || visitReason(),
-      // Distance only — the coordinates themselves are not kept, even locally.
-      // Knowing the check-in was verified is the useful part.
+      // Distance only; coordinates are never kept, even locally.
       verified: Boolean(reading),
       distance_m: reading ? Math.round(reading.distance) : null,
     };
@@ -467,8 +405,7 @@ function complete(reading) {
       return;
     }
 
-    // The pass already says who. This says when, and whether the address on
-    // the visit is one we checked.
+    // When, and whether the visit's address was checked.
     el('done-detail').textContent = [
       clockTime(Date.parse(entry.at)),
       email && !verified ? 'email unconfirmed' : null,
@@ -545,8 +482,7 @@ function stopTimer() {
 
 function onVisibilityChange() {
   if (document.visibilityState === 'visible' && getPending()) {
-    // Coming back to the page is the strongest signal that something changed,
-    // so check immediately as well as restarting the clock.
+    // Returning to the page: check now and restart the clock.
     attempt({ silent: true });
     startTimer();
   } else {
@@ -556,9 +492,7 @@ function onVisibilityChange() {
 
 /* ------------------------------------------------------------------ class */
 
-// The same question the homepage asks, answered by the same function over the
-// same data. Neither page can drift from the other, and the QR on the door
-// stays a permanent link that carries no class information.
+// The homepage's class logic over the same data; the door QR carries no class information.
 function renderClass() {
   const banner = el('class-banner-root');
   if (!banner || !classConfig) return;
@@ -582,14 +516,12 @@ function renderClass() {
     : `Starts at ${clockTime(session.starts)}`;
   q('[data-class-late]').hidden = session.phase !== 'late';
 
-  // Before it starts, offer to note intent. Once it is running, the thing to
-  // do is check in, so the offer goes away.
+  // Before a class starts, offer to note intent; once running, just check in.
   const noted = getRsvps().includes(sessionKey(session));
   q('[data-rsvp-offer]').hidden = session.running || noted;
   q('[data-rsvp-noted]').hidden = !noted || session.running;
 
-  // A class arrival is a check-in with the reason already known, unless the
-  // code that was scanned said otherwise.
+  // A class arrival carries its reason unless the scanned code said otherwise.
   renderReason();
 
   // The button says what it is for.
@@ -613,9 +545,7 @@ function exportHistory() {
     exported: new Date().toISOString(),
     device: getDevice(),
     profile: getProfile(),
-    // The whole token, so a restored backup is verified again rather than
-    // trusted. Moving a file between devices must not be a way to manufacture
-    // a confirmed address.
+    // The whole token, so a restored backup is verified again, not trusted.
     claim: getClaim(),
     checkins: getHistory(),
   };
@@ -637,8 +567,7 @@ async function importHistory(file) {
     const payload = JSON.parse(await file.text());
     if (!Array.isArray(payload.checkins)) throw new Error('no check-ins in that file');
 
-    // Merge rather than replace, so importing a backup onto a device used
-    // since does not discard the newer visits.
+    // Merge, so newer visits survive an import.
     const seen = new Set(getHistory().map((entry) => entry.at));
     const merged = [...getHistory(), ...payload.checkins.filter((e) => !seen.has(e.at))]
       .sort((a, b) => new Date(b.at) - new Date(a.at));
@@ -646,8 +575,7 @@ async function importHistory(file) {
     saveHistory(merged);
     renderHistory();
 
-    // A claim in the file is re-checked from scratch. The file said it was
-    // verified; that is not evidence, and the signature is.
+    // A claim in the file is re-checked from scratch.
     let note = '';
     if (payload.claim?.token && !getClaim()) {
       note = (await redeemClaim(payload.claim.token))
@@ -678,9 +606,7 @@ function forgetDevice() {
 
 /* ------------------------------------------------------------------ views */
 
-// The pass is one screen; the visits and this phone are screens of their own,
-// named by the address's # so Back and a bookmark both work. Anything else in
-// the # (a claim link, say) is the pass.
+// Views by #: #visits, #device; anything else (a claim link, say) is the pass.
 const VIEWS = ['visits', 'device'];
 let view = 'pass';
 let cameFromPass = false;
@@ -695,8 +621,7 @@ function route() {
   }
 }
 
-// "Pass" goes back if that is where you came from, so the history does not
-// fill up with trips between screens. Opened straight at #visits, it replaces.
+// "Pass" goes Back when it can, else replaces, so history does not fill with screens.
 function backToPass(event) {
   event.preventDefault();
   if (cameFromPass) {
@@ -719,9 +644,7 @@ async function init() {
   renderProfile();
   renderReason();
 
-  // Before anything is rendered that depends on it: a claim arriving in the
-  // URL is the reason this page was opened, and the history rows below should
-  // already know about it.
+  // Take a claim from the URL before rendering anything that depends on it.
   const arriving = claimFromLocation();
   if (arriving) {
     await redeemClaim(arriving);
@@ -733,8 +656,7 @@ async function init() {
   el('venue-directions').href =
     `https://www.google.com/maps/dir/?api=1&destination=${config.location.latitude},${config.location.longitude}`;
 
-  // Form state is written on every change, so closing the page mid-answer and
-  // coming back later loses nothing.
+  // Saved on every change, so closing mid-answer loses nothing.
   for (const id of ['profile-name', 'profile-email']) {
     el(id).addEventListener('input', saveProfile);
     el(id).addEventListener('change', saveProfile);
@@ -742,10 +664,7 @@ async function init() {
 
   el('claim-forget').addEventListener('click', dropClaim);
 
-  // A contact card, where the browser can offer one (Android Chrome's Contact
-  // Picker). The person picks the card; nothing else in their contacts is
-  // read. Elsewhere autocomplete="name" and "email" already let the keyboard
-  // offer their own card, which is the same feeling without a button.
+  // The Contact Picker where it exists (reads only the picked card); else autocomplete.
   const contact = el('use-contact');
   if (contact && navigator.contacts?.select) {
     const offer = () => { contact.hidden = Boolean(el('profile-name').value.trim()); };
@@ -796,8 +715,7 @@ async function init() {
   const rsvp = el('rsvp-button');
   if (rsvp) rsvp.addEventListener('click', noteRsvp);
 
-  // Re-evaluated on a timer while visible, so a page open through the start of
-  // a class updates itself the same way the homepage does.
+  // Re-evaluated on a timer while visible, as the homepage does.
   if (classConfig) watch(renderClass);
 
   const persisted = await requestPersistence();
@@ -806,8 +724,7 @@ async function init() {
       ? 'Until you delete it'
       : 'Only while the browser allows. Save a copy, or add this to your Home Screen';
 
-  // A pending check-in survives a reload — pick it back up rather than making
-  // someone start again.
+  // A pending check-in survives a reload.
   if (getPending()) {
     show('far');
     startTimer();

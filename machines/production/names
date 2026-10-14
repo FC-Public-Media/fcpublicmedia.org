@@ -1,0 +1,4 @@
+# What this machine should answer to; `../binding` asks it (`$env:COMPUTERNAME`). See docs/station.md.
+
+# platform   key             value
+windows      ComputerName    EDIT2

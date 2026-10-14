@@ -1,0 +1,23 @@
+# bookings.sample.yml: MADE UP, a sparse week for the studio map while `bookings: sample`. PROFILE.md.
+# The rota's shape, local time; `station` is a station name. Every pill reads "Sample".
+
+bookings:
+  - station: Podcast Studio
+    days: [tue]
+    from: "15:00"
+    to: "16:30"
+
+  - station: Editing Bay 1
+    days: [thu]
+    from: "17:30"
+    to: "19:00"
+
+  - station: Video Studio
+    days: [sat]
+    from: "12:00"
+    to: "14:00"
+
+  - station: Editing Bay 1
+    days: [sun]
+    from: "15:00"
+    to: "17:00"

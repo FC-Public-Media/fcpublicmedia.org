@@ -1,55 +1,15 @@
-// Being a GitHub App rather than a person.
-//
-// WHY NOT A PERSONAL ACCESS TOKEN
-// -------------------------------
-// A token belongs to whoever made it. It outlives their interest in the
-// project and dies with their account, so the day somebody leaves the board is
-// the day member sites stop saving — and nobody will connect those two events.
-// An App belongs to the organization.
-//
-// The rest follows from that:
-//
-//   * The stored secret is a private key that signs requests for tokens. It is
-//     never itself a token, so it cannot be replayed against the API.
-//   * The tokens it mints last an hour and are minted per write.
-//   * Each one is narrowed at the moment of minting to ONE repository and two
-//     permissions. An installation covering forty member sites still produces
-//     a credential good for one of them.
-//   * Revoking a site is uninstalling the App from it. No list to edit, and no
-//     way to forget.
-//   * Workflows are not among the permissions granted, so the API refuses a
-//     write to .github/ regardless of what this code does. intent.js refuses
-//     it too. Two locks, which is what that README claim needs to be true.
-//
-// site/_data/authorize.yml said "a GitHub App installation token" from the start.
-// This is that.
-//
-// SETUP
-// -----
-//   1. Create an App under the organization. Permissions: Contents (write),
-//      Pull requests (write), Metadata (read). Nothing else — especially not
-//      Workflows, Secrets, or Administration.
-//   2. Install it on the member repositories.
-//   3. Generate a private key. GitHub hands back PKCS#1, which WebCrypto
-//      cannot read, so convert it once:
-//
-//        openssl pkcs8 -topk8 -nocrypt -in app.private-key.pem -out app.pkcs8.pem
-//
-//   4. npx wrangler secret put GITHUB_APP_KEY   < paste app.pkcs8.pem
-//      npx wrangler secret put GITHUB_APP_ID    < the numeric App ID
+// Minting per-repository installation tokens as the GitHub App. Setup: worker/README.md#github-app.
 
 const API = 'https://api.github.com';
 
-// GitHub rejects a JWT claiming more than ten minutes. Nine leaves room for
-// the clock skew allowance below without ever crossing the ceiling.
+// GitHub rejects a JWT longer than ten minutes; nine plus the skew stays under it.
 const JWT_LIFETIME = 540;
 const SKEW = 60;
 
 // Re-mint a minute early rather than discovering expiry mid-write.
 const EARLY = 60_000;
 
-// Everything the broker is allowed to do, restated at the moment of minting.
-// The installation may hold more; a token from here never does.
+// Restated at every mint, so a token never carries more than this.
 const PERMISSIONS = { contents: 'write', pull_requests: 'write' };
 
 const utf8 = (text) => new TextEncoder().encode(text);
@@ -60,13 +20,7 @@ const b64u = (bytes) => {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 
-/**
- * Read the App's private key.
- *
- * The PKCS#1 case gets its own message on purpose. GitHub's download button
- * produces exactly that format, WebCrypto's error for it is "Invalid keyData",
- * and the fix is one command that nobody guesses.
- */
+/** Read the App's PKCS#8 key; GitHub's PKCS#1 download gets a message naming the fix. */
 async function importPrivateKey(pem) {
   const text = String(pem || '').trim();
   if (!text) throw new Error('no private key');
@@ -101,8 +55,7 @@ async function appJwt(appId, key, now) {
   const seconds = Math.floor(now / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
-    // Back-dated, because GitHub rejects a JWT issued in its future and our
-    // clock is not their clock.
+    // Back-dated: GitHub rejects a JWT issued in its future.
     iat: seconds - SKEW,
     exp: seconds + JWT_LIFETIME,
     iss: appId,
@@ -113,20 +66,7 @@ async function appJwt(appId, key, now) {
   return `${signed}.${b64u(signature)}`;
 }
 
-/**
- * A credential source: hand it a repository, get a token good for that one.
- *
- * Resolves to { ok: true, token } or { ok: false, detail }. Never throws — a
- * misconfigured App is something the page has to tell somebody about, not a
- * stack trace.
- *
- * CACHING, AND WHERE IT DELIBERATELY IS NOT
- * -----------------------------------------
- * Tokens are held in memory, in the isolate, and nowhere else. Not KV. A
- * write credential at rest in a store that outlives the request is a worse
- * thing to have than the handful of extra API calls avoiding it costs. The
- * cache dying with the isolate is the correct lifetime.
- */
+/** repo -> { ok, token } or { ok: false, detail }; never throws. Tokens live in isolate memory only. */
 export function appCredential({ appId, privateKey, fetchImpl = fetch, api = API, now = () => Date.now() }) {
   let key = null;
   let keyProblem = null;
@@ -185,8 +125,7 @@ export function appCredential({ appId, privateKey, fetchImpl = fetch, api = API,
 
     const minted = await asApp(`/app/installations/${installation}/access_tokens`, {
       method: 'POST',
-      // Narrowed here, every time. An installation spanning every member site
-      // still yields a token that can only touch this one.
+      // Narrowed to this one repository, every time.
       body: { repositories: [repo.split('/')[1]], permissions: PERMISSIONS },
     });
     if (!minted.ok || !minted.payload?.token) {
@@ -201,12 +140,6 @@ export function appCredential({ appId, privateKey, fetchImpl = fetch, api = API,
   };
 }
 
-/**
- * A personal access token, wrapped to look the same.
- *
- * A stopgap for trying the broker out before an App exists, and the reason
- * index.js prefers the App whenever both are configured. Everything in the
- * comment at the top of this file is an argument against leaving it here.
- */
+/** A personal access token in the same shape: a stopgap until the App exists. */
 export const patCredential = (token) => async () =>
   token ? { ok: true, token } : { ok: false, detail: 'GITHUB_TOKEN is not set.' };

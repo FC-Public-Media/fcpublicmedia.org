@@ -1,0 +1,36 @@
+# instrument.yml — the studio's rolling TV. See README.md; troves/kiosk-screen/screen.ps1 reads it.
+# The building owns it: a driver that finds no screen answering to `match:` shows nothing,
+# says so, and takes no other screen.
+
+version: 1
+
+instrument: roller-tv
+kind: screen
+for: >
+  A 55-inch set on a rolling stand, turned on its side, in the control room's
+  opening. Seen from the studio floor; from the control room it is often
+  facing away.
+
+# EDID, read with WmiMonitorID (no administrator). Matched on manufacturer + product only.
+match:
+  manufacturer: VIZ
+  product: VIZ1006
+  model: M551d-A2R
+  # EDID's size (160x90 cm) is wrong for a 55" panel, and its serial is filler (0x01010101).
+
+# 720x1280 logical on editing bay 1 (likely 1080x1920 at 150%).
+orientation: portrait
+
+# Behind the control-room glass, not touch; the driving host's pointer can reach it.
+input: pointer
+
+# Whoever finds it plugged in may drive it.
+placement:
+  where: control-room opening, on its stand
+  driven-by: production   # machines/production; it answers to EDIT2
+  since: 2026-09-25
+
+# Edge in kiosk mode with a profile of its own; nothing else on the host is touched.
+played-through: msedge
+
+show: show.yml

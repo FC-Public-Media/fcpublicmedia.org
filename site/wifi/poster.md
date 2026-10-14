@@ -8,12 +8,7 @@ sitemap: false
 {%- assign wifi = site.data.wifi -%}
 {%- assign qr = site.static_files | where: "path", "/assets/img/wifi-qr.svg" | first -%}
 
-{%- comment -%}
-  The code is generated locally and is NOT committed, so on the deployed site
-  this page shows the instructions and no image. That is the intended state,
-  not a broken build — a Wi-Fi QR carries the password in plain decodable form,
-  and this repository is public. See the header of _data/wifi.yml.
-{%- endcomment -%}
+{%- comment -%} The QR is never committed, so the deployed page shows no image. See docs/site.md. {%- endcomment -%}
 
 {% if qr %}
 <div class="poster">

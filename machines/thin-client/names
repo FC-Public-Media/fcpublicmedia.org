@@ -1,0 +1,5 @@
+# What this machine should answer to; `../binding` asks it. Unfilled until it runs Debian and is
+# named (`sudo hostnamectl hostname`); check with `hostname`. See docs/station.md.
+
+# platform   key        value
+# linux      Hostname

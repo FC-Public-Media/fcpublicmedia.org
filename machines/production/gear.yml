@@ -1,0 +1,91 @@
+# gear.yml: what editing bay 1's crew stands on; replaces ../gear.yml here. check.ps1 reads
+# `package:` and `at:`. Nothing needs an administrator: winget --scope user, or else the bay.
+# Not ours: the OBS in Program Files (winget, 32.1.1), which people use. See docs/station.md.
+
+version: 1
+platform: windows
+
+gear:
+  - gear: git
+    for: everything; Git Bash is also the shell `../sync` and bin/refs run in
+    package: Git.Git
+    provisioner: winget
+    updates: winget
+
+  - gear: claude-code
+    for: the crew. The pool (code/bin/pool.ps1) calls it by this path
+    at: "%USERPROFILE%\\.local\\bin\\claude.exe"
+    provisioner: hand         # the vendor's native installer, which updates itself
+    updates: self
+
+  - gear: gh
+    for: opening pull requests from this bay, which is how work leaves it
+    at: "%USERPROFILE%\\.local\\bin\\gh.exe"
+    vendor: GitHub, Inc. (github.com/cli/cli), MIT
+    provisioner: bay          # the portable zip; see bay/gh-2.101.0.yml
+    updates: bay
+    restart-tier: none
+
+  - gear: gh-stack
+    for: stacked pull requests, `gh stack`. One worktree per stack, not per
+      branch: its metadata is per working tree (bay/gh-stack-0.1.1.yml)
+    at: "%LOCALAPPDATA%\\GitHub CLI\\extensions\\gh-stack\\gh-stack.exe"
+    vendor: GitHub (github.com/github/gh-stack), MIT
+    signer: none; a GitHub build attestation instead (docs/station.md, Bay)
+    provisioner: bay          # the release binary, then `gh extension install --pin`
+    updates: bay              # pinned, so `gh extension upgrade` leaves it alone
+    restart-tier: none
+
+  - gear: uv
+    for: Python, when this bay first needs it. `python` on PATH is the Store stub,
+      so `../binding` cannot run here until this arrives
+    package: astral-sh.uv
+    vendor: Astral (github.com/astral-sh/uv), MIT or Apache-2.0
+    # Authenticode Valid, signed OpenAI OpCo, LLC, not Astral. Another signer is a question.
+    signer: OpenAI OpCo, LLC
+    provisioner: winget       # --scope user, no administrator. 0.12.19, 2026-09-26
+    updates: winget
+    restart-tier: none
+    # An older shell: %LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe
+
+  - gear: node
+    for: the broker's tests and wrangler, as on the media node, and previewing
+      the site (jekyll-enough, Playwright). Not on PATH: call it by `at:`
+    at: "%LOCALAPPDATA%\\editing-bay-1\\node\\node.exe"
+    vendor: OpenJS Foundation (nodejs.org), LTS
+    provisioner: bay          # the zip, published with SHASUMS256.txt; bay/node-24.21.0.yml
+    updates: bay
+    restart-tier: none
+
+  - gear: audition
+    for: the enhance suite, run unattended through the engine's panel (below).
+      Members' recordings in, enhanced or stemmed takes out (.enhance-engine)
+    at: "%ProgramFiles%\\Adobe\\Adobe Audition 2026\\Adobe Audition.exe"
+    vendor: Adobe Inc., Creative Cloud
+    provisioner: hand         # Creative Cloud, FCPM's seat; it updates itself
+    updates: creative-cloud
+
+  - gear: audition-panel
+    for: the enhance engine's way into Audition (enhance/gear/audition/). Read
+      where it sits, in the engine's mirror, through a junction; so it changes
+      by merge and a reformat loses nothing git does not have
+    at: "%APPDATA%\\Adobe\\CEP\\extensions\\org.fcpublicmedia.enhance"
+    from: "%USERPROFILE%\\code\\refs\\enhance\\gear\\audition\\org.fcpublicmedia.enhance"
+    vendor: FC Public Media (FC-Public-Media/enhance)
+    signer: none; CEP loads it under PlayerDebugMode (HKCU CSXS.12), which
+      `fcpm audition install` turns on and `remove` turns off
+    provisioner: fcpm audition install
+    updates: bin/refs pull
+    restart-tier: audition
+
+  - gear: faster-whisper
+    for: transcription for the pools page (troves/pools/engines/whisper.py):
+      Whisper large-v3 on the RTX 4080. Its output also says which recordings
+      hold nothing worth keeping, so they can be recommended for removal
+    at: "%LOCALAPPDATA%\\editing-bay-1\\whisper\\venv\\Scripts\\python.exe"
+    vendor: SYSTRAN (faster-whisper), MIT; OpenAI (Whisper large-v3), MIT
+    signer: none; packages pinned from PyPI, the model checked by its content
+      hash (bay/faster-whisper-1.1.1.yml)
+    provisioner: bay          # a uv venv and pinned packages; bay/faster-whisper-1.1.1.yml
+    updates: bay
+    restart-tier: none

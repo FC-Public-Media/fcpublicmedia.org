@@ -1,5 +1,6 @@
 // Vendored from FCCN-ANTIBODY/anecdote.channel composer/qr-encode.mjs @ 6481e38bc7a5f44346be465b0091c3377b33552a,
 // unchanged below this header. The kiosk reads with the same project's qr-decode.mjs. Refresh by copying it again.
+// See docs/site.md.
 // composer/qr-encode.mjs — "qr-enough": a vendorless byte-mode QR encoder (docs/offline-transfer.md). Just
 // enough of the QR spec to render a payload as a scannable code — versions 1–40, all four ECC levels
 // L/M/Q/H, byte mode (a signed poll URL runs ~800 B → a mid-teens version). The first hands-on carrier:

@@ -1,0 +1,5 @@
+# What digitization runs: `name keep from` or `name every Nm from`. See machines/README.md.
+
+intake          every 1m    machines/digitization
+standby         every 1m    machines/digitization
+follow          every 5m    machines/digitization

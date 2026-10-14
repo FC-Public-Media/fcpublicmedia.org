@@ -1,26 +1,5 @@
-# The spaces, and what is in them.
-#
-# Copy and square footage from the board president, August 2026. His words are
-# kept close to verbatim — this is the one part of the site not written by us,
-# and it reads better for it.
-#
-# `area` is separate from `summary` on purpose. The number is structured so it
-# can be shown, sorted or joined against an activity later; the prose is what a
-# member actually reads. Neither has to be parsed out of the other.
-#
-# Membership is required to reserve any of these.
-#
-# THE FLOOR PLAN USES THE BUILDING'S LABELS, NOT OURS. On
-# assets/img/floor-plan.png the rooms read CONTROL ROOM, STUDIO and OFFICE:
-#
-#   CONTROL ROOM  318 sq ft  ->  Editing Bays
-#   STUDIO        635 sq ft  ->  Video Studio
-#   OFFICE        113 sq ft  ->  Podcast Studio
-#
-# The square footage matches, so the plan is right — it is named for the
-# building rather than for what we do in there. Anybody reading the page and
-# the plan together will hit that mismatch, which is why `plan_label` is here
-# and why the page captions it rather than leaving someone to work it out.
+# The bookable spaces; membership is required for all. See docs/site.md#data-files.
+# `summary` is the board's wording: keep it verbatim. `plan_label` is the room's name on floor-plan.png.
 
 - name: Video Studio
   plan_label: STUDIO
@@ -32,10 +11,7 @@
     state-of-the-art RGB light system, live editing board, acoustic treatment,
     and a massive green screen to make your vision real.
 
-# ACOUSTICALLY COUPLED TO THE VIDEO STUDIO. Sound carries between the two, so
-# booking either one takes both off the calendar. They stay listed separately
-# because they are different things to come here and do — the coupling is a
-# scheduling fact, not a description of the rooms.
+# Acoustically coupled: booking either studio blocks both.
 - name: Podcast Studio
   plan_label: OFFICE
   area: 113
@@ -45,21 +21,7 @@
     Room for up to four in-person guests. Acoustically treated, with
     professional audio equipment to make your podcast sound great.
 
-# TWO STATIONS, IN ONE ROOM, AND "EDITING BAY" MEANS BOTH.
-#
-# The word is stratified and that is not a mistake to tidy away: the room is
-# the editing bay, and each of the two computer stations in it is also an
-# editing bay. Both are what people here say.
-#
-# There were three. One machine was retired, and the third lingered on the Wix
-# site as a bookable service — harmless there, because picking a station was a
-# soft reservation and staff just sat you at whichever was free. It is a real
-# number here, so it is two.
-#
-# The stations are meant to be interchangeable and are both dual-monitor. What
-# differs is superficial and account-shaped — whose OneDrive is signed in — and
-# there is a plan to put them on a small LAN so work can move between them when
-# something goes wrong mid-session.
+# One room with two interchangeable stations; "editing bay" names both the room and each station.
 - name: Editing Bays
   plan_label: CONTROL ROOM
   area: 318

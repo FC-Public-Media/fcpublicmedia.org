@@ -1,5 +1,4 @@
-// The only JavaScript on the site: the mobile menu toggle.
-// Everything else works without it.
+// Mobile menu toggle; the page works without it. See docs/site.md.
 
 const toggle = document.querySelector('.nav-toggle');
 const nav = document.getElementById('site-nav');

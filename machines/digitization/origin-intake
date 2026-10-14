@@ -1,29 +1,13 @@
 #!/usr/bin/python3
-"""origin-intake: GitHub's main -> FCPM's origin, by itself, every minute.
+"""origin-intake: GitHub's main -> FCPM's origin, by itself: every minute while `fcpm dev on`,
+weekly while off, so GitHub is not asked from here 1,440 times a day.
 
-    origin-intake            check every repo once, take what moved
+    origin-intake            check every repo once, take what moved (if it is time)
+    origin-intake --now      check now, whatever the pace
     origin-intake --status   print the last state, change nothing
 
-The origin is bare repos at /srv/origin/<owner>/<repo>, each with one remote,
-`github`. Only main is tracked: a merge on GitHub is the moment we pay attention.
-Other branches are not fetched.
-
-One GraphQL query reads every repo's main. Only repos whose main moved are fetched,
-into github/main. Then, for origin's own main:
-
-    same as github/main              nothing to do
-    behind it                        fast-forward
-    ahead of it                      leave it (a station fast-forwarded in; publishing is separate)
-    both moved                       merge in memory; clean -> our own merge commit,
-                                     conflict -> recorded, main untouched
-
-Nothing is forced and nothing is deleted. A failure in one repo is recorded and
-the next repo goes on: this must never make us crap the bed.
-
-State for a page to read: /srv/origin/.intake/state.json, and every action
-appended to /srv/origin/.intake/actions.ndjson.
-
-System python, stdlib only, plus git and gh (gh holds the GitHub login).
+Only main is fetched, into github/main. A failure in one repo is recorded and the
+next goes on. Stdlib, git and gh. See machines/digitization/PROFILE.md.
 """
 import datetime
 import fcntl
@@ -38,6 +22,8 @@ STATE = os.path.join(STATE_DIR, "state.json")
 ACTIONS = os.path.join(STATE_DIR, "actions.ndjson")
 CRED = ["-c", "credential.helper=!gh auth git-credential"]
 WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@digitization.local"]
+DEV = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.local/state"), "fcpm", "dev")
+WEEK = datetime.timedelta(days=7)
 
 
 def now():
@@ -130,10 +116,27 @@ def take(full, theirs_remote):
     return row
 
 
+def due():
+    """Every run while `fcpm dev on`; otherwise once a week after GitHub last answered."""
+    if "--now" in sys.argv or os.path.exists(DEV):
+        return True
+    try:
+        last = json.load(open(STATE))
+        if last.get("github") != "ok":
+            return True
+        return datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(last["checked"]) >= WEEK
+    except (OSError, ValueError, KeyError):
+        return True
+
+
 def main():
+    if "FCPM_ORIGIN" not in os.environ and not os.path.ismount(ORIGIN):
+        return 0                        # the origin's disk is not mounted: nothing to take into
     os.makedirs(STATE_DIR, exist_ok=True)
     if "--status" in sys.argv:
         print(open(STATE).read() if os.path.exists(STATE) else "no state yet")
+        return 0
+    if not due():
         return 0
     with open(os.path.join(STATE_DIR, "lock"), "w") as lock:
         try:

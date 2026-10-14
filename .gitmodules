@@ -4,37 +4,115 @@
 [submodule ".contact-sheets-engine"]
 	path = .contact-sheets-engine
 	url = https://github.com/FC-Public-Media/contact-sheets.git
-	# Not part of any build here. The engine is a tool the studio runs, not
-	# an input to the site, so a checkout that skips it is correct rather
-	# than degraded. It is ALSO private, and publish-member-sites.yml checks
-	# out with `submodules: recursive` under a GITHUB_TOKEN scoped to this
-	# repository alone — which cannot read another private repo.
+	# Private and in no build; a repo-scoped GITHUB_TOKEN cannot fetch it, so checkouts skip it.
 	update = none
 [submodule ".library-engine"]
 	path = .library-engine
 	url = https://github.com/FCCN-ANTIBODY/library.anecdote.channel.git
-	# Mounted 2026-09-24, as README.md's "Library (`.library-engine`)" already
-	# claimed. Mounting an engine is this node's sign that it can do that
-	# engine's work, or offer to. FCPM's library itself is the `library`
-	# BRANCH, not a folder on main ("a library is a branch": the engine's
-	# SHELVES.md). Answering the engine's residency.yml wants (stacks,
-	# catalogue, intake, seats, petitions) is the next gesture, and it is not
-	# done here. Pinned where station-node pins it.
+	# FCPM's library is the `library` branch, not a folder on main. Pinned where station-node pins it.
 [submodule ".enhance-engine"]
 	path = .enhance-engine
 	url = https://github.com/FC-Public-Media/enhance.git
-	# Mounted 2026-09-24: recordings out to the enhance suite and back,
-	# enhanced or stemmed. A companion to contact-sheets. This node owns
-	# the depot, so receipt is ours. Private like contact-sheets, and for
-	# the same reason as its entry above: nothing in a build needs it.
+	# Private and in no build, like contact-sheets.
 	update = none
 [submodule ".atlas-engine"]
 	path = .atlas-engine
 	url = https://github.com/FCCN-ANTIBODY/atlas.anecdote.channel.git
-	# Mounted 2026-10-05: the directory. We are our own Atlas, and our Tell
-	# registers to it. `atlas.yml` is who we are. docs/DIRECTORY.md.
+	# The directory; `atlas.yml` is who we are. See docs/members.md#directory.
 [submodule ".tell-engine"]
 	path = .tell-engine
 	url = https://github.com/FCCN-ANTIBODY/tell.anecdote.channel.git
-	# Mounted 2026-10-05: the hub member data piles register to. `tell.yml`
-	# is who we are and `keys/tell.fpr` signs for it. docs/DIRECTORY.md.
+	# The hub member data piles register to; `tell.yml`, signed by `keys/tell.fpr`. See docs/members.md#directory.
+# Troves: one repository each, all private (troves/README.md). update = none keeps CI's token
+# from trying them; bin/refs and the kiosk's door check them out with --checkout. ignore = untracked:
+# a trove that runs leaves bytecode beside itself.
+[submodule "troves/aja-helo"]
+	path = troves/aja-helo
+	url = https://github.com/FC-Public-Media/aja-helo.git
+	update = none
+	ignore = untracked
+[submodule "troves/atem-mini-pro"]
+	path = troves/atem-mini-pro
+	url = https://github.com/FC-Public-Media/atem-mini-pro.git
+	update = none
+	ignore = untracked
+[submodule "troves/buffalo-drivestation"]
+	path = troves/buffalo-drivestation
+	url = https://github.com/FC-Public-Media/buffalo-drivestation.git
+	update = none
+	ignore = untracked
+[submodule "troves/camera"]
+	path = troves/camera
+	url = https://github.com/FC-Public-Media/camera.git
+	update = none
+	ignore = untracked
+[submodule "troves/drobo"]
+	path = troves/drobo
+	url = https://github.com/FC-Public-Media/drobo.git
+	update = none
+	ignore = untracked
+[submodule "troves/edgerouter-x"]
+	path = troves/edgerouter-x
+	url = https://github.com/FC-Public-Media/edgerouter-x.git
+	update = none
+	ignore = untracked
+[submodule "troves/etc-colorsource-20"]
+	path = troves/etc-colorsource-20
+	url = https://github.com/FC-Public-Media/etc-colorsource-20.git
+	update = none
+	ignore = untracked
+[submodule "troves/game-intake"]
+	path = troves/game-intake
+	url = https://github.com/FC-Public-Media/game-intake.git
+	update = none
+	ignore = untracked
+[submodule "troves/ki-pro"]
+	path = troves/ki-pro
+	url = https://github.com/FC-Public-Media/ki-pro.git
+	update = none
+	ignore = untracked
+[submodule "troves/kiosk-screen"]
+	path = troves/kiosk-screen
+	url = https://github.com/FC-Public-Media/kiosk-screen.git
+	update = none
+	ignore = untracked
+[submodule "troves/nest-cam"]
+	path = troves/nest-cam
+	url = https://github.com/FC-Public-Media/nest-cam.git
+	update = none
+	ignore = untracked
+[submodule "troves/pools"]
+	path = troves/pools
+	url = https://github.com/FC-Public-Media/pools.git
+	update = none
+	ignore = untracked
+[submodule "troves/post"]
+	path = troves/post
+	url = https://github.com/FC-Public-Media/post.git
+	update = none
+	ignore = untracked
+[submodule "troves/ptz"]
+	path = troves/ptz
+	url = https://github.com/FC-Public-Media/ptz.git
+	update = none
+	ignore = untracked
+[submodule "troves/recorder"]
+	path = troves/recorder
+	url = https://github.com/FC-Public-Media/recorder.git
+	update = none
+	ignore = untracked
+[submodule "troves/rodecaster-pro-ii"]
+	path = troves/rodecaster-pro-ii
+	url = https://github.com/FC-Public-Media/rodecaster-pro-ii.git
+	update = none
+	ignore = untracked
+[submodule "troves/scanner"]
+	path = troves/scanner
+	url = https://github.com/FC-Public-Media/scanner.git
+	update = none
+	ignore = untracked
+[submodule "troves/ti-89"]
+	path = troves/ti-89
+	url = https://github.com/FC-Public-Media/ti-89.git
+	update = none
+	ignore = untracked

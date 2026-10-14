@@ -1,0 +1,3877 @@
+"""door — the one address the media node answers on.
+
+    door.py serve              become the door, on [::]:8080 (FCPM_DOOR_PORT moves it: 80 on digitization)
+    door.py supervise          run `serve`, restart it when it exits, pull in the background, follow its folder if a pull moves it
+    door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
+    door.py startup            what starts the door at logon, and does it point here
+    door.py startup --xml      the logon task this checkout implies, to stdout
+    door.py startup --install  register that task, and retire the Startup shortcut
+    door.py sessions           what Claude sessions are running, and what ran at the last pass
+    door.py server             the root's Remote Control server: up, current, and what holds a bounce
+    door.py dropbox link|status|pass   the TO DROPBOX queue's app, and one look at it
+    door.py tell [mint|register]       our Tell's signer, and listing it with our Atlas
+    door.py camera [arm [SECS]|off]    arm the camera for a code (THE CAMERA), stop it, or ask
+    door.py wifi-password "<ssid>"     store a guest network's password in Credential Manager
+    door.py                    is the door up
+
+One port that never moves (8080 taken: refuse), dual-stack, and no document root: only the
+surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
+
+    GET /                  the board: what this node shows
+    GET /kiosk/            the welcome screen
+    GET /kiosk/qr/<n>      the check-in QR for panel n, as welcome.yml names it
+    GET /kiosk/wifi/<n>    Wi-Fi QR n, built in memory. See node.yml
+    GET /kiosk/now         who is on, and the studio map, as JSON. The page polls it
+    GET /depot/            what is on the studio drive, for the third panel
+    GET /depot/now         the drive's index, as JSON. The page polls it
+    GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
+    GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
+    POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
+    GET /input             seconds since this computer was last touched, as JSON. Every page polls it (AWAKE_JS)
+    POST /input            a panel was touched: count it, whether or not Windows does; this box only
+    GET /camera          the camera: armed, seconds left, what it last heard (THE CAMERA). The desk polls it
+    POST /camera/arm?for=N, /camera/disarm   arm or stop the camera; this box only (door.py camera)
+    GET /camera/eye        the page the camera runs, in a headless Edge; it POSTs /camera/read
+    GET /idle/             brand/idle/index.html (?say=... fills its slot)
+    GET /wallpaper/<file>  brand/wallpaper/
+    GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
+    POST /key/unlock       the signing key into this session's agent, its passphrase asked on this screen; this box only
+    POST /dev/on, /dev/off `fcpm dev`: GitHub asked every few minutes, or weekly; this box only. The board shows it to all
+
+Runs from the fixed venv %LOCALAPPDATA%\\media-node\\venv (pyyaml, qrcode), so the firewall asks once.
+"""
+import base64
+import ctypes
+import datetime
+import html
+import importlib.util
+import json
+import os
+import pathlib
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+PORT = int(os.environ.get("FCPM_DOOR_PORT") or 8080)
+BOUNCE = 75          # exit code meaning "my code changed, start me again"
+PULL_EVERY = 300
+STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ
+         else pathlib.Path.home() / ".local" / "state") / "media-node"
+DEV = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ      # `fcpm dev on`: follow GitHub
+       else pathlib.Path.home() / ".local" / "state") / "fcpm" / "dev"
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+NAMED_DIRS = {"wallpaper": ROOT / "brand" / "wallpaper",
+              "idle": ROOT / "brand" / "idle"}          # /idle/ is the idle screen; these are its dim.js and dim.css
+TYPES = {".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
+         ".png": "image/png", ".txt": "text/plain; charset=utf-8",
+         ".json": "application/json",
+         ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+         ".css": "text/css; charset=utf-8",
+         ".webmanifest": "application/manifest+json"}
+
+
+# ------------------------------------------------------------------- sources --
+def git(*args, where=None, timeout=60):
+    try:
+        out = subprocess.run(["git", "-C", str(where or ROOT), *args], capture_output=True,
+                             text=True, timeout=timeout, creationflags=NO_WINDOW)
+        return out.stdout.strip() if out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def load(path):
+    import yaml
+    with open(path, encoding="utf-8") as fh:
+        return yaml.safe_load(fh) or {}
+
+
+def welcome():
+    return load(HERE / "welcome" / "welcome.yml")
+
+
+def node():
+    return load(HERE / "node.yml")
+
+
+def revision():
+    try:
+        kiosk = str(welcome().get("revision", "?"))
+    except Exception:
+        kiosk = "unreadable"
+    rev = "%s-%s" % (git("rev-parse", "--short", "HEAD") or "nogit", kiosk)
+    code = ti89_path("code")
+    if code and (code / ".git").exists():       # the runner moves on its own merges too
+        rev += "-" + (git("rev-parse", "--short", "HEAD", where=code) or "nogit")
+    return rev
+
+
+# THE TI-89: FC-Public-Media/ti-89 served from its mirror; the ROM is TI's, to this box only.
+def ti89_path(key):
+    v = (node().get("ti89") or {}).get(key)
+    return pathlib.Path(os.path.expandvars(str(v))).expanduser() if v else None
+
+
+def ti89_pull():
+    """Fast-forward the runner's mirror; one that has diverged or has changes is left alone."""
+    code = ti89_path("code")
+    if not code or not (code / ".git").exists():
+        return
+    if git("status", "--porcelain", where=code) != "":
+        return log("ti-89: mirror has changes, not pulling")
+    before = git("rev-parse", "--short", "HEAD", where=code)
+    if polls(code) and git("fetch", "--quiet", "origin", where=code) is None:
+        return log("ti-89: fetch failed")
+    if git("merge", "--ff-only", "--quiet", "origin/main", where=code) is None:
+        return log("ti-89: mirror cannot fast-forward to origin/main; left as it is")
+    after = git("rev-parse", "--short", "HEAD", where=code)
+    if after != before:
+        log("ti-89: mirror %s -> %s" % (before, after))
+
+
+# -------------------------------------------------------------- the schedule --
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def occurrences(entries, now, days_ahead=8):
+    """Weekly entries (days, from, to) as unended spans, soonest first, from yesterday (past midnight)."""
+    out = []
+    for s in entries:
+        days = [d.lower()[:3] for d in s.get("days") or []]
+        start = datetime.datetime.strptime(str(s["from"]), "%H:%M").time()
+        end = datetime.datetime.strptime(str(s["to"]), "%H:%M").time()
+        for ahead in range(-1, days_ahead):
+            day = now.date() + datetime.timedelta(days=ahead)
+            if DAYS[day.weekday()] not in days:
+                continue
+            begins = datetime.datetime.combine(day, start)
+            ends = datetime.datetime.combine(day, end)
+            if ends <= begins:
+                ends += datetime.timedelta(days=1)
+            if ends > now:
+                out.append((begins, ends, s))
+    return sorted(out, key=lambda o: o[0])
+
+
+AWAKE_LEAD = datetime.timedelta(minutes=60)
+
+
+def awake_windows(now=None, days=7):
+    """Awake windows as [startMs, endMs]: rota shifts, classes and lights (docs/kiosk.md, Dim)."""
+    now = now or datetime.datetime.now()
+    spans = [(b, e) for b, e, _ in occurrences(load(HERE / "welcome" / "rota.yml").get("shifts") or [], now, days + 1)]
+    for c in class_config().get("sessions") or []:
+        try:
+            b = datetime.datetime.fromisoformat(c["starts"]).astimezone().replace(tzinfo=None)
+            e = datetime.datetime.fromisoformat(c["ends"]).astimezone().replace(tzinfo=None)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if now - AWAKE_LEAD < e and b < now + datetime.timedelta(days=days):
+            spans.append((b, e))
+    lit = lights_until()                    # somebody here off hours said so (THE CAMERA)
+    if lit:
+        spans.append((now, datetime.datetime.fromtimestamp(lit)))
+    merged = []
+    for b, e in sorted((b - AWAKE_LEAD, e) for b, e in spans):
+        if merged and b <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([b, e])
+    ms = lambda t: int(time.mktime(t.timetuple()) * 1000)
+    return [[ms(b), ms(e)] for b, e in merged if e > now]
+
+
+def when(t, now):
+    """`3 PM` if it is today, `Thu 10:30 AM` otherwise."""
+    s = t.strftime("%I:%M %p").lstrip("0").replace(":00", "")
+    return s if t.date() == now.date() else t.strftime("%a ") + s
+
+
+def on_now(now=None):
+    """Who is on now, and who is next, from the rota."""
+    now = now or datetime.datetime.now()
+    spans = occurrences(load(HERE / "welcome" / "rota.yml").get("shifts") or [], now)
+
+    def who(s):
+        names = ", ".join(s.get("who") or [])
+        return names + (" · " + s["role"] if s.get("role") else "")
+    current = [who(s) for b, _, s in spans if b <= now]
+    later = [(b, s) for b, _, s in spans if b > now]
+    nxt = {"who": who(later[0][1]), "when": when(later[0][0], now)} if later else None
+    return {"now": current, "next": nxt, "source": "rota"}
+
+
+WEEK = datetime.timedelta(days=7)
+
+
+def helpers(activities, now):
+    """Up to three people on the rota this week whose `crew:` tags (or none) meet these activities."""
+    rota = load(HERE / "welcome" / "rota.yml")
+    crew = rota.get("crew") or {}
+    seen, out = set(), []
+    for begins, _, s in occurrences(rota.get("shifts") or [], now):
+        if begins > now + WEEK:
+            break
+        for person in s.get("who") or []:
+            tags = set(crew.get(person) or [])
+            if person in seen or (tags and not tags & set(activities)):
+                continue
+            seen.add(person)
+            # Non-breaking spaces: wrap between people, never between a name and its time.
+            out.append(("%s %s" % (person, "now" if begins <= now else when(begins, now))).replace(" ", " "))
+            if len(out) == 3:
+                return out
+    return out
+
+
+def stations(now=None):
+    """The studio map, lit while in use; bookings ranked across the whole map: solid, outline, soft."""
+    now = now or datetime.datetime.now()
+    cfg = node()
+    wanted = cfg.get("facilities") or []
+    facilities = {f["name"]: f for f in load(ROOT / "site" / "_data" / "facilities.yml") or []}
+    groups, placed = [], set()
+    for name in wanted:
+        f = facilities.get(name)
+        if not f or name in placed:
+            continue
+        if f.get("stations"):
+            single = name[:-1] if name.endswith("s") else name
+            groups += [{"names": ["%s %d" % (single, i + 1)], "activities": f.get("activities") or []}
+                       for i in range(int(f["stations"]))]
+            placed.add(name)
+            continue
+        names = [name]
+        acts = list(f.get("activities") or [])
+        if f.get("couples_with") in wanted:
+            names.append(f["couples_with"])
+            acts += (facilities.get(f["couples_with"]) or {}).get("activities") or []
+        placed.update(names)
+        groups.append({"names": names, "activities": acts})
+    for s in cfg.get("stations") or []:
+        groups.append({"names": [s["name"]], "note": s.get("note", ""),
+                       "activities": s.get("activities") or [],
+                       "preparing": bool(s.get("preparing"))})
+
+    sample = cfg.get("bookings") == "sample"
+    entries = (load(HERE / "bookings.sample.yml").get("bookings") or []) if sample else []
+    upcoming = []
+    for g in groups:
+        g["coupled"] = len(g["names"]) > 1
+        spans = [] if g.get("preparing") else occurrences(
+            [b for b in entries if b.get("station") in g["names"]], now)
+        live = [sp for sp in spans if sp[0] <= now]
+        g["lit"] = bool(live)
+        g["until"] = when(max(sp[1] for sp in live), now) if live else None
+        g["next"] = []
+        upcoming += [(sp[0], g, sp[2]) for sp in spans if now < sp[0] <= now + WEEK]
+
+    # The sample week's bookings are for "Sample", which is how the screen says it is not the real day.
+    for rank, (begins, g, b) in enumerate(sorted(upcoming, key=lambda u: u[0])):
+        if len(g["next"]) < 2:
+            g["next"].append({"when": when(begins, now), "rank": min(rank, 2),
+                              "who": b.get("who") or ("Sample" if sample else "")})
+    for g in groups:
+        g["helpers"] = [] if (g["next"] or g["lit"] or g.get("preparing")) else helpers(g["activities"], now)
+        del g["activities"]
+    return {"groups": groups, "sample": sample}
+
+
+# ---------------------------------------------------------------- the Wi-Fi --
+class CREDENTIAL(ctypes.Structure):
+    _fields_ = [("Flags", ctypes.c_uint32), ("Type", ctypes.c_uint32),
+                ("TargetName", ctypes.c_wchar_p), ("Comment", ctypes.c_wchar_p),
+                ("LastWritten", ctypes.c_uint64), ("CredentialBlobSize", ctypes.c_uint32),
+                ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)), ("Persist", ctypes.c_uint32),
+                ("AttributeCount", ctypes.c_uint32), ("Attributes", ctypes.c_void_p),
+                ("TargetAlias", ctypes.c_wchar_p), ("UserName", ctypes.c_wchar_p)]
+
+
+def secret(target):
+    """A generic credential's password (UTF-16) from Windows Credential Manager, or None."""
+    if os.name != "nt":
+        return None
+    adv = ctypes.windll.advapi32
+    ptr = ctypes.POINTER(CREDENTIAL)()
+    if not adv.CredReadW(target, 1, 0, ctypes.byref(ptr)):      # 1 = CRED_TYPE_GENERIC
+        return None
+    try:
+        c = ptr.contents
+        raw = bytes(c.CredentialBlob[:c.CredentialBlobSize])
+        return raw.decode("utf-16-le") if raw else None
+    finally:
+        adv.CredFree(ptr)
+
+
+def set_secret(target, user, password):
+    """Store a generic credential that survives logoff; OSError if Windows refuses."""
+    blob = password.encode("utf-16-le")
+    buf = (ctypes.c_ubyte * len(blob)).from_buffer_copy(blob)
+    cred = CREDENTIAL(Type=1, TargetName=target, UserName=user, Persist=2,
+                      CredentialBlobSize=len(blob), CredentialBlob=buf)
+    if not ctypes.windll.advapi32.CredWriteW(ctypes.byref(cred), 0):
+        raise ctypes.WinError()
+
+
+def wifi_password(ssid):
+    """door.py wifi-password "<ssid>": prompt without echo, store it here."""
+    import getpass
+    known = [n["ssid"] for n in networks_declared()]
+    if ssid not in known:
+        print("not a network node.yml names: %r (it names %s)" % (ssid, ", ".join(map(repr, known))))
+        return 2
+    first = getpass.getpass("Password for %s: " % ssid)
+    if not first or getpass.getpass("Again: ") != first:
+        print("empty, or the two did not match. Nothing stored.")
+        return 1
+    set_secret("fcpm-wifi:" + ssid, ssid, first)
+    print("stored in Windows Credential Manager as fcpm-wifi:%s" % ssid)
+    return 0
+
+
+# ------------------------------------------------------------------ the Tell --
+TELL_SIGNER = "fcpm-tell-signer"                  # its Credential Manager target
+OUR_ATLAS = "FC-Public-Media/fcpublicmedia.org"   # we are our own Atlas
+
+
+def git_bash():
+    """Git's bash, which the engines' scripts are written for. Never WSL's."""
+    exe = shutil.which("git")
+    for p in pathlib.Path(exe).resolve().parents if exe else ():
+        if (p / "bin" / "bash.exe").exists():
+            return str(p / "bin" / "bash.exe")
+    return "bash"
+
+
+def tell(args):
+    """door.py tell [mint|register]: our Tell's signer, private half in Credential Manager (docs/members.md)."""
+    import tempfile
+    keys, verb = ROOT / "keys", (args[0] if args else "status")
+    held = secret(TELL_SIGNER)
+    if verb == "mint":
+        if held or (keys / "tell.fpr").exists():
+            print("already minted. A new signer makes every pile re-pin; rotate by hand if you mean it.")
+            return 1
+        with tempfile.TemporaryDirectory() as tmp:
+            key = pathlib.Path(tmp) / "tell-signer"
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "tell-delivery-signer",
+                            "-f", str(key)], check=True)
+            pub = key.with_suffix(".pub").read_text().strip()
+            fpr = subprocess.run(["ssh-keygen", "-lf", str(key.with_suffix(".pub"))], capture_output=True,
+                                 text=True, check=True).stdout.split()[1]
+            set_secret(TELL_SIGNER, "tell", key.read_text())
+        keys.mkdir(exist_ok=True)
+        for name, text in (("tell.pub", pub), ("tell.signers", "tell " + pub), ("tell.fpr", fpr)):
+            with open(keys / name, "w", newline="\n") as f:     # LF: piles compare these byte for byte
+                f.write(text + "\n")
+        print("minted %s\n  private  Credential Manager, %s\n  public   keys/tell.{pub,signers,fpr}; commit them"
+              % (fpr, TELL_SIGNER))
+        return 0
+    if verb == "register":
+        if not held:
+            print("no signer on this machine. door.py tell mint")
+            return 1
+        token = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True).stdout.strip()
+        with tempfile.TemporaryDirectory() as tmp:
+            key = pathlib.Path(tmp) / "tell-signer"
+            with open(key, "w", newline="\n") as f:
+                f.write(held)
+            env = dict(os.environ, ATLAS_REPO=OUR_ATLAS, TELL_SIGNER_KEY_FILE=key.as_posix(), GH_TOKEN=token)
+            return subprocess.run([git_bash(), "-c", "chmod 600 \"$TELL_SIGNER_KEY_FILE\"; bash .tell-engine/bin/register pr"],
+                                  cwd=str(ROOT), env=env).returncode
+    fpr = (keys / "tell.fpr").read_text().strip() if (keys / "tell.fpr").exists() else None
+    print("signer    %s" % (fpr or "none published.  door.py tell mint"))
+    print("private   %s" % ("in Credential Manager, %s" % TELL_SIGNER if held else "not on this machine"))
+    print("lists to  %s, _data/tells.yml.  door.py tell register" % OUR_ATLAS)
+    return 0 if fpr and held else 1
+
+
+def networks_declared():
+    out = []
+    for n in node().get("networks") or []:
+        if n.get("from") == "wifi":
+            out.append(dict(load(ROOT / "site" / "_data" / "wifi.yml").get("network") or {}))
+        else:
+            out.append({"ssid": n["ssid"]})
+    return out
+
+
+def _wifi_module():
+    """site/bin/make-wifi-qr.py, for its payload(): one copy of the escaping."""
+    spec = importlib.util.spec_from_file_location(
+        "make_wifi_qr", ROOT / "site" / "bin" / "make-wifi-qr.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def networks():
+    """node.yml's networks: ssid, security, label, and `ready` (a password is set). Never the password."""
+    out = []
+    for n in node().get("networks") or []:
+        if n.get("from") == "wifi":
+            net = dict(load(ROOT / "site" / "_data" / "wifi.yml").get("network") or {})
+            if not net.get("confirmed"):
+                continue          # the site's own gate: an unconfirmed SSID is not shown
+        else:
+            net = {"ssid": n["ssid"], "security": n.get("security", "wpa")}
+        net["label"] = n.get("label", "")
+        is_open = (net.get("security") or "wpa").lower() == "open"
+        net["ready"] = is_open or secret("fcpm-wifi:" + net["ssid"]) is not None
+        out.append(net)
+    return out
+
+
+def wifi_svg(i):
+    nets = networks()
+    if not (0 <= i < len(nets)) or not nets[i]["ready"]:
+        return None
+    net = nets[i]
+    password = secret("fcpm-wifi:" + net["ssid"]) or ""
+    data, _ = _wifi_module().payload(net, password)
+    import io
+    import qrcode
+    import qrcode.image.svg
+    code = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, border=0)
+    code.add_data(data)
+    code.make(fit=True)
+    buf = io.BytesIO()
+    code.make_image(image_factory=qrcode.image.svg.SvgPathImage).save(buf)
+    return buf.getvalue()
+
+
+# ----------------------------------------------------------------- the depot --
+# The studio drive's index (docs/services.md#depot-index). It names people's files: memory only.
+DEPOT_EVERY = 15
+_depot = {"at": None, "shares": [], "files": {}}
+_heard, _serving_since = {}, time.time()     # screen name -> when its page last polled; this serve's start
+_depot_lock = threading.Lock()
+
+
+def share_root(server, share):
+    return "\\\\%s\\%s\\" % (server, share)
+
+
+def discover_shares(server):
+    """The disk shares the router offers (`net view`), or [] if it cannot be asked."""
+    try:
+        out = subprocess.run(["net", "view", "\\\\" + server], capture_output=True, text=True,
+                             timeout=20, creationflags=NO_WINDOW).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    found = []
+    for line in out.splitlines():
+        m = re.match(r"^(\S.*?)\s{2,}Disk\b", line)
+        if m:
+            found.append(m.group(1))
+    return found
+
+
+def depot_layout(cfg, discovered):
+    """Every share to scan: [(group, row, share-config)], row None for unknowns."""
+    out, known = [], set()
+    for group in cfg.get("groups") or []:
+        for r, row in enumerate(group.get("rows") or []):
+            for sh in row.get("shares") or []:
+                known.add(sh["share"])
+                out.append((group, r, dict(sh, files=row.get("files", True))))
+    groups = cfg.get("groups") or []
+    for name in discovered:
+        if name in known or not groups:
+            continue
+        home = next((g for g in groups if g.get("match") and name.upper().startswith(g["match"].upper())),
+                    groups[0])
+        out.append((home, None, {"share": name, "label": name, "files": True}))
+    return out
+
+
+def scan_depot(now=None, discovered=None):
+    cfg = node().get("depot") or {}
+    server = cfg.get("server")
+    now = now or time.time()
+    if discovered is None:
+        discovered = discover_shares(server) if server else []
+    prev, files, shares = _depot["files"], {}, []
+    for group, row, sh in depot_layout(cfg, discovered):
+        root = sh.get("path") or share_root(server, sh["share"])     # `path` is for tests
+        entry = {"share": sh["share"], "label": sh.get("label", sh["share"]),
+                 "group": group["name"], "row": row, "files": sh["files"], "ok": False, "items": []}
+        try:
+            usage = shutil.disk_usage(root)
+            entry.update(ok=True, total=usage.total, free=usage.free)
+            for dirpath, dirnames, filenames in os.walk(root):
+                # Dot-directories (.Spotlight-V100) are other machines' bookkeeping.
+                dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                for f in filenames:
+                    if f.startswith(".") or f.endswith(".sha256"):
+                        continue
+                    full = os.path.join(dirpath, f)
+                    try:
+                        size = os.stat(full).st_size
+                    except OSError:
+                        continue
+                    old = prev.get(full)
+                    growing = bool(old) and size != old["size"]
+                    stopped = growing is False and bool(old) and old["growing"]
+                    rec = {"size": size, "seen": old["seen"] if old else now, "growing": growing,
+                           "growth_last_observed": now if stopped else (old or {}).get("growth_last_observed")}
+                    files[full] = rec
+                    state = ("declared" if os.path.exists(full + ".sha256")
+                             else "arriving" if growing else "unwitnessed")
+                    rel = os.path.relpath(full, root).replace("\\", "/")
+                    entry["items"].append({"name": rel, "size": size, "state": state,
+                                           "seen": rec["seen"],
+                                           "growth_last_observed": rec["growth_last_observed"]})
+        except OSError as exc:
+            entry["error"] = exc.strerror or str(exc)
+        entry["items"].sort(key=lambda i: -i["seen"])
+        shares.append(entry)
+    with _depot_lock:
+        _depot.update(at=now, shares=shares, files=files)
+
+
+def watch_depot():
+    while True:
+        try:
+            scan_depot()
+        except Exception as exc:
+            log("depot: %r" % exc)
+        time.sleep(DEPOT_EVERY)
+
+
+def depot_now():
+    with _depot_lock:
+        out = {"at": _depot["at"], "now": time.time(), "shares": _depot["shares"]}
+    out["awake"] = awake_windows()
+    return out
+
+
+def kiosk_now():
+    return {"on": on_now(), "map": stations(), "awake": awake_windows()}
+
+
+# -------------------------------------------------------------------- camera --
+# THE CAMERA: armed, a headless Edge on /camera/eye reads one reply QR (made at /lights/), video only.
+CAMERA_ARM_FOR = 120          # seconds armed, unless asked for longer
+CAMERA_SAY_FOR = 20           # seconds the desk shows what was heard
+REPLY_FRESH = 12 * 3600       # a reply's `issued` must be this recent
+LIGHTS = STATE / "lights.json"
+HEARD = STATE / "camera-heard.json"
+_camera = {"until": 0.0, "proc": None, "said": None, "at": 0.0}
+_camera_lock = threading.Lock()
+
+
+def lights_until():
+    """When the lights go off, epoch seconds, or 0."""
+    try:
+        until = float(json.loads(LIGHTS.read_text(encoding="utf-8")).get("until") or 0)
+    except (OSError, ValueError, AttributeError):
+        return 0
+    return until if until > time.time() else 0
+
+
+def camera_running():
+    p = _camera["proc"]
+    return p is not None and p.poll() is None
+
+
+def camera_arm(secs=CAMERA_ARM_FOR):
+    """Arm for `secs`: start the camera if it isn't running."""
+    with _camera_lock:
+        _camera["until"] = time.time() + max(10, min(int(secs), 3600))
+        _camera["said"] = None
+        if camera_running():
+            return
+        args = [BROWSERS["msedge"], "--headless=new", "--no-first-run",
+                "--user-data-dir=%s" % (STATE / "camera"),
+                "--use-fake-ui-for-media-stream",          # the page asks for video, and gets it unasked
+                "http://127.0.0.1:%d/camera/eye" % PORT]
+        _camera["proc"] = subprocess.Popen(args, creationflags=NO_WINDOW)
+    log("camera: armed for %ds" % secs)
+
+
+def camera_disarm(why="disarmed"):
+    with _camera_lock:
+        _camera["until"] = 0
+        p, _camera["proc"] = _camera["proc"], None
+    if p is not None and p.poll() is None:
+        # The whole tree: Edge's renderer is what holds the camera.
+        subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True,
+                       creationflags=NO_WINDOW)
+        log("camera: %s" % why)
+
+
+def watch_camera():
+    """Disarm when the time is up or the eye has died, so the light never stays on for nothing."""
+    while True:
+        time.sleep(1)
+        if _camera["proc"] is not None and (time.time() > _camera["until"] or not camera_running()):
+            camera_disarm("timed out" if camera_running() else "stopped by itself")
+
+
+def heard_nonces():
+    try:
+        heard = json.loads(HEARD.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        heard = {}
+    cutoff = time.time() - REPLY_FRESH - 3600       # older replies are refused anyway
+    return {k: v for k, v in heard.items() if isinstance(v, (int, float)) and v > cutoff}
+
+
+def judge_reply(text):
+    """(kind, words, reply); kind is "ok", "seen", "no", or "other" for a code not ours."""
+    try:
+        r = json.loads(text)
+    except ValueError:
+        return "other", "That code isn't one for the kiosk", None
+    if not isinstance(r, dict) or r.get("schema") != "fcpm.reply/v0" or r.get("wizard") != "wizard:kiosk+lights":
+        return "other", "That code isn't one for the kiosk", None
+    now = time.time()
+    try:
+        issued = datetime.datetime.fromisoformat(str(r.get("issued"))).timestamp()
+    except ValueError:
+        return "no", "Not taken: it has no time it was made", r
+    if not (-300 < now - issued < REPLY_FRESH):
+        return "no", "Not taken: that code is too old. Make a fresh one", r
+    nonce = r.get("nonce")
+    if not isinstance(nonce, str) or len(nonce) < 16:
+        return "no", "Not taken: it has no nonce", r
+    if r.get("sig") is not None:
+        return "no", "Not taken: signatures aren't checked here yet", r
+    if r.get("lights") == "on":
+        try:
+            until = datetime.datetime.fromisoformat(str(r.get("until"))).timestamp()
+        except ValueError:
+            return "no", "Not taken: lights on needs an until time", r
+        if until <= now:
+            return "no", "Not taken: that time has passed", r
+    elif r.get("lights") != "off":
+        return "no", "Not taken: lights are on or off", r
+    heard = heard_nonces()
+    if nonce in heard:
+        return "seen", "Already heard. Make a fresh code", r
+    heard[nonce] = issued
+    HEARD.write_text(json.dumps(heard), encoding="utf-8")
+    if r["lights"] == "off":
+        LIGHTS.unlink(missing_ok=True)
+        return "ok", "Lights off", r
+    LIGHTS.write_text(json.dumps({"until": until, "issued": issued, "nonce": nonce}), encoding="utf-8")
+    now_dt = datetime.datetime.now()
+    return "ok", "Lights on until %s" % when(datetime.datetime.fromtimestamp(until), now_dt), r
+
+
+def camera_read(text):
+    """The eye read a code: a reply trips the camera; anything else is said, and it keeps looking."""
+    kind, words, _ = judge_reply(text)
+    with _camera_lock:
+        if _camera["proc"] is None:
+            return                                   # not armed: nobody asked
+        _camera["said"], _camera["at"] = {"kind": kind, "words": words}, time.time()
+    log("camera: read %d bytes: %s" % (len(text), words))
+    if kind != "other":
+        camera_disarm("tripped")
+
+
+CAMERA_EYE = """<!doctype html><meta charset=utf-8><title>camera</title>
+<video id=v muted playsinline></video><canvas id=c></canvas>
+<script type=module>
+import { decodeImage } from "/camera/qr-decode.mjs";
+const v = document.getElementById("v"), c = document.getElementById("c"),
+      g = c.getContext("2d", { willReadFrequently: true });
+const s = await navigator.mediaDevices.getUserMedia({ audio: false,
+  video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
+v.srcObject = s; await v.play();
+let last = "";
+async function look() {
+  c.width = v.videoWidth; c.height = v.videoHeight; g.drawImage(v, 0, 0);
+  const r = decodeImage(g.getImageData(0, 0, c.width, c.height));
+  if (r && r.text !== last) {
+    last = r.text;
+    await fetch("/camera/read", { method: "POST", body: r.text }).catch(() => {});
+  }
+  setTimeout(look, 250);
+}
+look();
+</script>"""
+
+
+def camera_state():
+    now = time.time()
+    said = _camera["said"] if now - _camera["at"] < CAMERA_SAY_FOR else None
+    armed = _camera["proc"] is not None
+    return {"armed": armed, "left": max(0, int(_camera["until"] - now)) if armed else 0,
+            "said": said, "awake": awake_windows()}
+
+
+# ------------------------------------------------------------------- the key --
+# THE SIGNING KEY: the machine's own SSH key (GitHub's "FCPM Digitization") signs commits once it is in
+# this desktop's ssh-agent. Asked from this computer only; the passphrase goes into a dialog on this
+# screen (askpass, beside this file), never through a page. Whoever asks is the one who answers.
+KEY = pathlib.Path.home() / ".ssh" / "id_ed25519"
+_key_asking = threading.Lock()
+
+
+def key_state():
+    """"unlocked", "locked", or None where this door holds no key (Windows, no agent, no key)."""
+    if os.name == "nt" or not os.environ.get("SSH_AUTH_SOCK") or not KEY.with_suffix(".pub").is_file():
+        return None
+    fp = subprocess.run(["ssh-keygen", "-lf", str(KEY.with_suffix(".pub"))],
+                        capture_output=True, text=True).stdout.split()
+    held = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True).stdout
+    return "unlocked" if len(fp) > 1 and fp[1] in held else "locked"
+
+
+def key_unlock():
+    if not os.environ.get("DISPLAY") or not _key_asking.acquire(blocking=False):
+        return False                                   # no screen to ask on, or already asking
+    try:
+        env = dict(os.environ, SSH_ASKPASS=str(HERE / "askpass"), SSH_ASKPASS_REQUIRE="force")
+        r = subprocess.run(["ssh-add", str(KEY)], env=env, stdin=subprocess.DEVNULL,
+                           capture_output=True, text=True, timeout=300)
+        log("key: unlock asked here, ssh-add %d" % r.returncode)
+        return r.returncode == 0
+    except subprocess.TimeoutExpired:
+        log("key: unlock asked here, nobody answered")
+        return False
+    finally:
+        _key_asking.release()
+
+
+# --------------------------------------------------------------------- pages --
+POLL = """<script>
+(function () {
+  var seen = null;
+  function check() {
+    // A screen's page says which screen it is (?screen=, from the launch), so
+    // the door can tell a page that has gone quiet (screens(), "silent").
+    var q = /[?&]screen=([\\w-]+)/.exec(location.search);
+    fetch('/revision' + (q ? '?screen=' + q[1] : ''), {cache: 'no-store'}).then(function (r) { return r.text(); })
+      .then(function (v) {
+        if (seen === null) seen = v; else if (v !== seen) return location.reload();
+        // The door answers, but a picture on this page never arrived: the page
+        // loaded while the door was restarting. Load it again (2026-09-26).
+        if (Array.prototype.some.call(document.images, function (i) { return i.complete && !i.naturalWidth; }))
+          location.reload();
+      })
+      .catch(function () {});
+  }
+  check(); setInterval(check, 20000);
+})();
+</script>"""
+
+
+def with_poll(page):
+    i = page.lower().rfind("</body>")
+    return page[:i] + POLL + page[i:] if i >= 0 else page + POLL
+
+
+BRAND = """:root { --signal:#ffc61a; --slate:#232830; --ink:#121417;
+  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; --rule:#2f363d;
+  --record:#d93a26; }                 /* on-air red, site.css: for what is live */
+html,body { margin:0; background:var(--ink); color:var(--paper);
+  font:18px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; }
+a { color:inherit; }
+/* THE MARK: the brand square, and a shape any page here may reuse. Signal
+   yellow, hard edges, leaning -8deg: counterclockwise, always (brand/README.md,
+   "The tilt"). Unlit it is slate, as in brand/idle. */
+.mark { background:var(--signal); rotate:-8deg; }
+.mark.unlit { background:var(--slate); }
+/* The clock mark: the same square with clock hands drawn on top of whatever
+   it holds (site/_includes/clock-hands.html). */
+.mark.clock { position:relative; }"""
+
+
+def clock_hands():
+    """The clock-hands fragment, the same file the site includes."""
+    return (ROOT / "site" / "_includes" / "clock-hands.html").read_text(encoding="utf-8")
+
+
+def clock_mark(inner="", cls=""):
+    """The mark with a live clock in it, drawn over `inner` (the check-in QR)."""
+    return '<div class="mark clock%s">%s%s</div>' % (" " + cls if cls else "", inner, clock_hands())
+
+
+# The dim layer's side of every page: FCPM_AWAKE, fcpmAwake(), and /input (docs/kiosk.md, Dim).
+AWAKE_JS = """<script>
+window.FCPM_AWAKE = %s;
+// One computer, one waking (Autumn, 2026-09-28, and again 2026-10-10: "their
+// two pages wake up separately"): touching this computer anywhere ends the
+// dim on every panel at once, and the hour runs from that touch. The door
+// reads the session's last input (Windows keeps it for the whole computer),
+// and a touch on a panel also tells the door, since Windows may not count
+// touch. Every page asks twice a second and hands the time of the last input
+// to its dim layer: no guessing whether it is new, so no touch is missed and
+// the panels wake within half a second of each other. A file:// page has no
+// door to ask, so the host that plays it says where it keeps the last input
+// instead, in the query (?input=file:///.../input.js, troves/kiosk-screen on
+// bay 1): a script calling fcpmInput(ms), read twice a second too.
+(function () {
+  // The door keeps one mark for the whole computer. Tell it at once while the clocks are on,
+  // and at most once a minute while they are off: the mark is an hour wide.
+  if (location.protocol.indexOf('http') === 0) {
+    var told = 0, px = null, py = null;
+    var tell = function () {
+      var dim = window.FCPMDim && window.FCPMDim.isDim();
+      if (!dim && Date.now() - told < 60000) return;
+      told = Date.now();
+      fetch('/input', {method: 'POST', cache: 'no-store'}).catch(function () {});
+    };
+    ['pointerdown', 'touchstart', 'keydown', 'wheel'].forEach(function (type) {
+      window.addEventListener(type, tell, {capture: true, passive: true});
+    });
+    window.addEventListener('pointermove', function (ev) {
+      if (px !== null && (Math.abs(ev.screenX - px) > 2 || Math.abs(ev.screenY - py) > 2)) tell();
+      px = ev.screenX; py = ev.screenY;
+    }, true);
+  }
+  if (window !== window.top) return;
+  if (location.protocol === 'file:') {
+    var src = new URLSearchParams(location.search).get('input');
+    if (!src || src.indexOf('file:') !== 0) return;
+    window.fcpmInput = function (at) {
+      if (at && window.FCPMDim && window.FCPMDim.wake) window.FCPMDim.wake(at);
+    };
+    setInterval(function () {
+      var s = document.createElement('script');
+      s.src = src + (src.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now();
+      s.onload = s.onerror = function () { s.parentNode && s.parentNode.removeChild(s); };
+      document.head.appendChild(s);
+    }, 500);
+    return;
+  }
+  if (location.protocol.indexOf('http') !== 0) return;
+  setInterval(function () {
+    fetch('/input', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (window.FCPMDim && window.FCPMDim.mark)
+        window.FCPMDim.mark(typeof d.idle === 'number' ? Date.now() - d.idle * 1000 : null);
+    }).catch(function () {});
+  }, 500);
+})();
+window.fcpmAwake = function (list) {
+  if (!list) return;
+  window.FCPM_AWAKE = list;
+  try { window.dispatchEvent(new CustomEvent('fcpm:awake')); } catch (e) {}
+};
+</script>"""
+
+
+DIM = ROOT / "brand" / "idle"
+
+
+def dim_inline():
+    """brand/idle/dim.css and dim.js, inlined (the wall is read over file://), or "" if missing."""
+    try:
+        return "<style>%s</style><script>%s</script>" % (
+            (DIM / "dim.css").read_text(encoding="utf-8"), (DIM / "dim.js").read_text(encoding="utf-8"))
+    except OSError:
+        return ""
+
+
+def idle_seconds():
+    """Seconds since this computer last had mouse or keyboard input, anywhere: Windows' last input,
+    or X's screensaver clock on a Linux desktop. None where neither can say."""
+    if os.name == "nt":
+        from ctypes import wintypes as W
+
+        class LASTINPUTINFO(ctypes.Structure):
+            _fields_ = [("cbSize", W.UINT), ("dwTime", W.DWORD)]
+        li = LASTINPUTINFO(ctypes.sizeof(LASTINPUTINFO), 0)
+        if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(li)):
+            return None
+        tick = ctypes.windll.kernel32.GetTickCount() & 0xFFFFFFFF
+        return ((tick - li.dwTime) & 0xFFFFFFFF) / 1000.0
+    return x_idle()
+
+
+_x = []
+
+
+def x_idle():
+    """X's idle time (libXss), from the desktop this door was started in; None without one."""
+    if not os.environ.get("DISPLAY"):
+        return None
+    try:
+        if not _x:
+            class Info(ctypes.Structure):
+                _fields_ = [("window", ctypes.c_ulong), ("state", ctypes.c_int), ("kind", ctypes.c_int),
+                            ("til_or_since", ctypes.c_ulong), ("idle", ctypes.c_ulong), ("mask", ctypes.c_ulong)]
+            x11, xss = ctypes.CDLL("libX11.so.6"), ctypes.CDLL("libXss.so.1")
+            x11.XOpenDisplay.restype = ctypes.c_void_p
+            x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+            x11.XDefaultRootWindow.restype = ctypes.c_ulong
+            xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(Info)
+            xss.XScreenSaverQueryInfo.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(Info)]
+            dpy = x11.XOpenDisplay(None)
+            if not dpy:
+                return None
+            _x.extend([xss, dpy, x11.XDefaultRootWindow(dpy), xss.XScreenSaverAllocInfo()])
+        xss, dpy, root, info = _x
+        return info.contents.idle / 1000.0 if xss.XScreenSaverQueryInfo(dpy, root, info) else None
+    except (OSError, AttributeError):
+        return None
+
+
+# THE MARK: this computer's last touch, one file every page here reads (Autumn, 2026-10-13: "the
+# machine's own local state is the lock"). Present and under an hour old, every clock stays off;
+# missing, every clock is on. A touch writes it at once when it is missing, and at most once a minute
+# while it is fresh, so moving the mouse does not write to the disk. The first look that finds it an
+# hour old removes it, so every page finds the clocks on together.
+MARK = STATE / "awake"
+MARK_EVERY = 60
+MARK_HOUR = 3600
+
+
+def touched():
+    """Someone touched this computer: refresh the mark, sparingly while it is fresh."""
+    try:
+        if time.time() - MARK.stat().st_mtime < MARK_EVERY:
+            return
+    except OSError:
+        pass                                            # missing: write it now, and every page wakes
+    STATE.mkdir(parents=True, exist_ok=True)
+    MARK.touch()
+
+
+def input_idle():
+    """Seconds since this computer was last touched, by the mark; None once it is gone (the clocks
+    are on). Input the system saw in the last few seconds counts as a touch. What GET /input says."""
+    seen = idle_seconds()
+    if seen is not None and seen < 5:
+        touched()
+    try:
+        age = time.time() - MARK.stat().st_mtime
+    except OSError:
+        return None
+    if age >= MARK_HOUR:
+        MARK.unlink(missing_ok=True)                    # the clocks come on, everywhere at once
+        return None
+    return age
+
+
+def page(title, body, style=""):
+    return with_poll("""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%s</title><style>%s
+%s</style>%s%s</head><body>%s</body></html>""" % (html.escape(title), BRAND, style,
+                                               AWAKE_JS % json.dumps(awake_windows()), dim_inline(), body))
+
+
+def e(s):
+    return html.escape(str(s or ""))
+
+
+def masthead(where):
+    """The board's lockup: the mark and the wordmark, as the site's (site/_includes/header.html).
+    The one place to change when the new logo lands."""
+    return ('<header class=masthead><span class=mark aria-hidden=true></span>'
+            '<span class=words><b>Fort Collins</b><span>Public Media</span></span>'
+            '<span class=where>%s</span></header>' % where)
+
+
+def verbs_here():
+    """machines/fcpm.yml, split by whether each verb runs on this platform ("not: ..." does not)."""
+    import yaml
+    plat = "windows" if os.name == "nt" else "linux"
+    here, away = [], []
+    for v in yaml.safe_load((ROOT / "machines" / "fcpm.yml").read_text(encoding="utf-8"))["verbs"]:
+        how = str(v.get(plat, ""))
+        if how.startswith("not:"):
+            away.append((v, how[4:].strip()))
+        else:
+            here.append((v, how))
+    return plat, here, away
+
+
+def board_page(here=False):
+    """The board: this machine's switches, then fcpm's verbs as machines/fcpm.yml defines them."""
+    rows = [("/kiosk/", "Welcome screen", "check-in, Wi-Fi, who is on"),
+            ("/depot/", "Depot", "what is on the studio drive"),
+            ("/idle/", "Idle screen", "brand/idle: the lamp pointed at the room"),
+            ("/idle/?say=On+air+now", "Idle, with its slot filled", "?say= fills the marked slot")]
+    for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png")):
+        rows.append(("/wallpaper/" + f.name, f.stem, "portrait wallpaper, this panel's size"))
+    nets = "".join("<li>%s <span>%s</span></li>" % (
+        e(n["ssid"]), "password set" if n["ready"] else "no password on this machine yet")
+        for n in networks())
+    items = "".join('<li><a href="%s">%s</a> <span>%s</span></li>' % (
+        html.escape(h, quote=True), e(t), e(d)) for h, t, d in rows)
+
+    def button(action, label):
+        return "<form method=post action=%s><button>%s</button></form>" % (action, label) if here else ""
+
+    dev = DEV.exists()
+    cards = ["<div class=card><b>GitHub</b><p>%s</p>%s<code>fcpm dev %s</code></div>" % (
+        "Asked every few minutes." if dev else "Asked weekly.",
+        button("/dev/off", "Back to weekly") if dev else button("/dev/on", "Every few minutes"),
+        "on" if dev else "off")]
+    key = key_state() if here else None
+    if key:
+        cards.append("<div class=card><b>Signing key</b><p>%s</p>%s</div>" % (
+            "Unlocked. Commits sign." if key == "unlocked" else "Locked. Its passphrase is asked on this screen.",
+            "" if key == "unlocked" else button("/key/unlock", "Unlock")))
+    cards.append("<div class=card><b>Revision</b><p><code>%s</code></p></div>" % e(revision()))
+
+    plat, ok, away = verbs_here()
+    verbs = "".join("<dt><code>fcpm %s</code></dt><dd>%s%s</dd>" % (
+        e(v["verb"]), e(v.get("says")),
+        "<code class=args>%s</code>" % e(v["args"]) if v.get("args") else "") for v, _ in ok)
+    elsewhere = "".join("<dt><code>fcpm %s</code></dt><dd>%s</dd>" % (e(v["verb"]), e(why)) for v, why in away)
+
+    body = """%s<main>
+<section class=here>%s</section>
+<h2>fcpm, on this %s machine</h2><dl class=verbs>%s</dl>
+<details><summary>Not on %s yet, and what stands in</summary><dl class=verbs>%s</dl></details>
+<h2>Screens</h2><ul>%s</ul>
+<h2>Wi-Fi codes</h2><ul>%s</ul>
+<p class=dim>Every verb: <code>machines/fcpm.yml</code>, or <code>fcpm help</code></p></main>""" % (
+        masthead("%s &middot; the board" % e(socket.gethostname().lower())),
+        "".join(cards), plat.capitalize(), verbs, plat.capitalize(), elsewhere, items, nets)
+    return page("The board", body, BOARD_CSS)
+
+
+BOARD_CSS = """
+.masthead { display:flex; align-items:center; gap:.8rem; padding:18px max(16px, calc(50vw - 26rem));
+  background:var(--slate); border-bottom:3px solid var(--signal); }
+.masthead .mark { width:1.6rem; height:1.6rem; flex:none; }
+.masthead .words { display:flex; flex-direction:column; line-height:1.05; }
+.masthead .words b { font-size:1.25rem; font-weight:780; letter-spacing:-.02em; }
+.masthead .words span { font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; color:var(--soft); }
+.masthead .where { margin-left:auto; color:var(--dim); font-size:.9rem; }
+main { max-width:52rem; margin:1.6rem auto 3rem; padding:0 16px; }
+h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--signal); margin:2.2rem 0 .7rem; }
+.here { display:grid; grid-template-columns:repeat(auto-fit, minmax(14rem, 1fr)); gap:12px; }
+.card { background:var(--slate); padding:14px 16px; border-left:4px solid var(--signal); }
+.card p { margin:.35rem 0 .7rem; } .card code { color:var(--dim); font-size:.85em; }
+button { font:inherit; font-weight:650; background:var(--signal); color:var(--ink); border:0;
+  padding:.35rem .9rem; cursor:pointer; margin-bottom:.6rem; }
+.verbs { display:grid; grid-template-columns:max-content 1fr; gap:.45rem 1.4rem; margin:0; }
+.verbs dt code { color:var(--paper); } .verbs dd { margin:0; color:var(--dim); min-width:0; }
+.verbs .args { display:block; font-size:.8em; color:var(--soft); overflow-wrap:anywhere; }
+details { margin-top:1.2rem; color:var(--dim); } summary { cursor:pointer; }
+details .verbs { margin-top:.8rem; }
+.dim, li span { color:var(--dim); } ul { padding-left:1.1rem; } li { margin:.6rem 0; }
+li span { display:block; font-size:.85em; }
+@media (max-width: 34rem) { .verbs { grid-template-columns:1fr; } .verbs dd { margin-bottom:.5rem; } }
+"""
+
+
+KIOSK_CSS = """
+html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:1fr 1fr auto; }
+.half { position:relative; overflow:hidden; }
+.checkin { background:var(--slate); }
+.map { background:var(--ink); }
+
+/* Check-in: the code IS the mark, sitting on the first-third line. */
+.checkin .mark { position:absolute; left:33.333%; top:50%; translate:-50% -50%;
+  width:25vh; height:25vh; padding:1.1vh; box-sizing:border-box; }
+.checkin .mark img { display:block; width:100%; height:100%; }
+.checkin .mark .ticks { display:none; }
+.checkin .words { position:absolute; top:50%; translate:0 -50%;
+  left:calc(33.333% + 15vh + 3vw); right:4vw; }
+h1 { margin:0; font-size:min(5.2vh, 8.2vw); line-height:1; font-weight:750;
+  letter-spacing:-.01em; white-space:nowrap; }
+.sub { margin:1.4vh 0 0; font-size:min(2.5vh, 4.4vw); line-height:1.25; white-space:pre-line; font-weight:500; color:var(--soft); }
+
+/* The map: what can be booked, lit when in use. */
+.stations { position:absolute; left:6vw; right:calc(16% + 5vh + 2vw); top:50%; translate:0 -50%;
+  display:flex; flex-direction:column; gap:2.6vh; }
+.group { display:grid; grid-template-columns:2.4vh 1fr; column-gap:1.6vw; align-items:center; }
+.group .mark { width:2.4vh; height:2.4vh; }
+.names { display:flex; flex-direction:column; gap:.4vh; }
+.names span { font-size:2.3vh; font-weight:600; line-height:1.15; }
+.times { grid-column:2; display:flex; flex-wrap:wrap; align-items:center; gap:.9vh 1vw; margin-top:1vh; }
+.times:empty { display:none; }
+.pill { font-size:1.5vh; font-weight:650; padding:.35vh 1.05vh; border-radius:99px;
+  border:.25vh solid var(--signal); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pill.solid { background:var(--signal); color:var(--ink); }
+.pill.outline { color:var(--signal); }
+.pill.soft { color:var(--dim); border-color:var(--rule); font-weight:500; }
+.names .until { font-size:1.6vh; font-weight:650; color:var(--signal); white-space:nowrap; }
+.note { font-size:1.7vh; color:var(--dim); }
+.group.preparing .names span { color:var(--dim); }
+.group.preparing .mark { opacity:.6; }
+
+/* The guest Wi-Fi code: one now, top right of the map half, at its smaller size
+   (Autumn, 2026-09-26: small and alone, it reads as less of a demand). */
+.wifi { position:absolute; right:6vw; top:5vh; display:flex; flex-direction:column; gap:3vh; }
+.qr { display:block; width:10vh; height:10vh; background:#fff; padding:.9vh; box-sizing:border-box; }
+.qr img { display:block; width:100%; height:100%; }
+.net { display:flex; flex-direction:column; align-items:center; gap:.9vh; }
+.net b { font-size:1.25vh; letter-spacing:.1em; text-transform:uppercase; font-weight:650; white-space:nowrap; }
+.slot { width:10vh; height:10vh; border:.25vh dashed var(--dim); color:var(--dim);
+  display:flex; align-items:center; justify-content:center; text-align:center; font-size:1.2vh;
+  padding:1vh; box-sizing:border-box; }
+
+footer { background:var(--slate); display:flex; align-items:baseline;
+  justify-content:space-between; gap:3vw; padding:2.4vh 5vw; }
+.on { display:flex; align-items:baseline; gap:1.6vw; min-width:0; }
+.on b { font-size:1.5vh; letter-spacing:.1em; text-transform:uppercase; color:var(--signal); white-space:nowrap; }
+.on span { font-size:2.2vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.place { font-size:1.4vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
+"""
+
+NOW_JS = """<script>
+(function () {
+  var W = %s;
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function footer(d) {
+    var label = document.getElementById('on-label'), who = document.getElementById('on-who');
+    if (d.now.length) { label.textContent = W.on; who.textContent = d.now.join(', '); }
+    else if (d.next) { label.textContent = W.next; who.textContent = d.next.who + ' \\u00b7 ' + d.next.when; }
+    else { label.textContent = ''; who.textContent = W.none; }
+  }
+  function map(m) {
+    var box = document.getElementById('stations'); box.textContent = '';
+    m.groups.forEach(function (g) {
+      var row = el('div', 'group' + (g.coupled ? ' coupled' : '') + (g.preparing ? ' preparing' : ''));
+      row.appendChild(el('div', 'mark' + (g.lit ? '' : ' unlit')));
+      var names = el('div', 'names');
+      g.names.forEach(function (n) { names.appendChild(el('span', null, n)); });
+      row.appendChild(names);
+      var times = el('div', 'times');
+      if (g.preparing && g.note) times.appendChild(el('span', 'note', g.note));
+      if (g.until) names.appendChild(el('span', 'until', W.until + ' ' + g.until));
+      g.next.forEach(function (b) {
+        times.appendChild(el('span', 'pill ' + ['solid', 'outline', 'soft'][b.rank], b.when + (b.who ? ' \\u00b7 ' + b.who : '')));
+      });
+      if (g.helpers.length) times.appendChild(el('span', 'note', g.helpers.join(' \\u00b7 ')));
+      row.appendChild(times);
+      box.appendChild(row);
+    });
+  }
+  function tick() {
+    fetch('/kiosk/now', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { footer(d.on); map(d.map); window.fcpmAwake(d.awake); }).catch(function () {});
+  }
+  tick(); setInterval(tick, 60000);
+})();
+</script>"""
+
+
+def qr_image(n):
+    """The file behind the check-in QR for panel n, or None."""
+    panels = welcome().get("panels") or []
+    if n < len(panels) and isinstance(panels[n].get("qr"), dict):
+        rel = pathlib.PurePosixPath(panels[n]["qr"]["image"]).relative_to("site/assets")
+        return inside(ROOT / "site" / "assets", rel)
+    return None
+
+
+def checkin_mark(inline=False):
+    """The check-in code on the mark, under the clock; inline, as data, for pages on a share."""
+    panels = welcome().get("panels") or []
+    idx = next((i for i, p in enumerate(panels) if isinstance(p.get("qr"), dict)), None)
+    if idx is None:
+        return ""
+    src = "/kiosk/qr/%d" % idx
+    if inline:
+        img = qr_image(idx)
+        if not img:
+            return ""
+        src = "data:%s;base64,%s" % (TYPES.get(img.suffix.lower(), "application/octet-stream"),
+                                     base64.b64encode(img.read_bytes()).decode())
+    return clock_mark('<img src="%s" alt="%s">' % (src, html.escape(panels[idx]["qr"].get("alt", ""), quote=True)))
+
+
+def kiosk_page(wall=False, map_only=False):
+    """The welcome screen. For the wall: its QR inline and no Wi-Fi codes (a share is readable by all)."""
+    w, n = welcome(), node()
+    words = n.get("wording") or {}
+    ci, mp, ft = words.get("checkin") or {}, words.get("map") or {}, words.get("footer") or {}
+
+    code = checkin_mark(inline=wall)
+
+    nets = []
+    for i, net in enumerate([] if wall else networks()):
+        img = ('<div class=qr><img src="/kiosk/wifi/%d" alt="Wi-Fi code for %s"></div>' % (i, e(net["ssid"]))
+               if net["ready"] else
+               '<div class=slot>%s<br>needs its password set on this machine</div>' % e(net["ssid"]))
+        nets.append('<div class=net>%s<b>%s</b></div>' % (img, e(net.get("label") or net["ssid"])))
+
+    body = """
+<section class="half checkin">
+  %s
+  <div class=words><h1>%s</h1><p class=sub>%s</p></div>
+  <div class="words class" id=class hidden></div>
+  <div class=camera id=camera hidden><h1></h1><p class=sub></p></div>
+  <button type=button class=arm id=camera-arm hidden></button>
+</section>
+<section class="half map">
+  <div class=stations id=stations></div>
+  <div class=wifi>%s</div>
+</section>
+<footer><div class=on><b id=on-label></b><span id=on-who></span></div><div class=place>%s</div></footer>
+%s""" % (code, e(ci.get("head")), e(ci.get("sub")), "".join(nets),
+         e(w.get("place")),
+         NOW_JS % json.dumps({"on": ft.get("on", ""), "next": ft.get("next", ""),
+                              "none": ft.get("none", ""), "until": mp.get("until", "until")}))
+    if map_only:
+        body = body[body.index('<section class="half map">'):]
+        return page(w.get("place", "Welcome"), body, KIOSK_CSS + MAP_ONLY_CSS)
+    if not wall:
+        cam = words.get("camera") or {}
+        body += class_js() + DESK_CLASS_JS + CAMERA_JS % json.dumps(
+            {"head": cam.get("head", ""), "sub": cam.get("sub", ""), "arm": cam.get("arm", "")}) + ASIDE_HTML
+    return page(w.get("place", "Welcome"), body, KIOSK_CSS + CLASS_CSS + DESK_CLASS_CSS + CAMERA_CSS)
+
+
+# The wall's map: a frame half the desk's height, read across a room, so about twice the size.
+MAP_ONLY_CSS = """
+body { grid-template-rows:1fr auto; }
+.stations { top:6vh; translate:none; left:7vw; right:7vw; gap:5vh; }
+.group { grid-template-columns:4.4vh 1fr; column-gap:3vw; }
+.group .mark { width:4.4vh; height:4.4vh; }
+.names { gap:.8vh; }
+.names span { font-size:4.4vh; }
+.names .until { font-size:3vh; }
+.times { margin-top:1.8vh; gap:1.6vh 2vw; }
+.pill { font-size:2.9vh; padding:.6vh 2vh; border-width:.45vh; }
+.note { font-size:3.1vh; }
+footer { padding:3.4vh 7vw; }
+.on b { font-size:2.6vh; }
+.on span { font-size:4vh; }
+.place { font-size:2.3vh; }
+"""
+
+# The desk's card is the check-in words' size, with the code beside it.
+DESK_CLASS_CSS = """
+.checkin .class .kicker { font-size:1.5vh; }
+.checkin .class .title { margin-top:.8vh; font-size:3.4vh; }
+.checkin .class .room { margin-top:1vh; font-size:2vh; }
+.checkin .class .when { margin-top:.3vh; font-size:2vh; }
+.checkin .class .join { margin-top:1.4vh; }
+"""
+
+DESK_CLASS_JS = """<script>
+(function () {
+  var K = window.FCPMClass, box = document.getElementById('class'),
+      words = document.querySelector('.checkin .words:not(.class)');
+  function draw() {
+    var s = K.pick();
+    if (s) K.card(box, s);
+    box.hidden = !s; words.hidden = !!s;
+    document.documentElement.classList.toggle('fcpm-awake', !!s || !!window.FCPMCameraUp);
+  }
+  draw(); setInterval(draw, 15000);
+})();
+</script>"""
+
+
+# The camera on the desk, laid over the check-in words at their place, so the code never moves.
+CAMERA_CSS = """
+.checkin .camera { position:absolute; top:50%; translate:0 -50%;
+  left:calc(33.333% + 15vh + 3vw); right:4vw; background:var(--slate); }
+.checkin .camera h1 { white-space:normal; }          /* longer than "Check in"; it wraps */
+.checkin .camera.ok h1 { color:var(--signal); }
+.checkin .camera.no h1, .checkin .camera.other h1 { font-size:min(3.6vh, 6vw); }
+/* The panel takes touch: a tap arms the camera (Autumn, 2026-10-08). */
+.checkin .arm { position:absolute; left:calc(33.333% + 15vh + 3vw); bottom:5vh;
+  padding:1.2vh 2.6vh; border:.25vh solid var(--signal); border-radius:99px; background:none;
+  color:var(--signal); font-family:inherit; font-weight:650; font-size:2.2vh; line-height:1; cursor:pointer; }
+.checkin .arm[hidden] { display:none; }
+"""
+
+CAMERA_JS = """<script>
+(function () {
+  var W = %s, box = document.getElementById('camera'), arm = document.getElementById('camera-arm'),
+      head = box.querySelector('h1'), sub = box.querySelector('.sub'), was = '';
+  arm.textContent = W.arm;
+  arm.addEventListener('click', function () {
+    arm.hidden = true;
+    fetch('/camera/arm', {method: 'POST'}).then(tick, tick);
+  });
+  function draw(d) {
+    var s = d.said, show = d.armed || !!s, K = window.FCPMClass;
+    box.hidden = !show; arm.hidden = show || !W.arm;
+    // Awake while it looks and while it speaks; the class card's own hold
+    // (DESK_CLASS_JS) is kept when the camera lets go.
+    window.FCPMCameraUp = show;
+    document.documentElement.classList.toggle('fcpm-awake', show || !!(K && K.pick && K.pick()));
+    if (!show) return;
+    box.className = 'camera ' + (s ? s.kind : 'armed');
+    head.textContent = s ? s.words : W.head;
+    sub.textContent = d.armed ? W.sub.replace('{s}', d.left) : '';
+    var now = s ? s.words : '';
+    if (now !== was && s && s.kind === 'ok') window.fcpmAwake(d.awake);
+    was = now;
+  }
+  function tick() {
+    fetch('/camera', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(draw).catch(function () {});
+  }
+  tick(); setInterval(tick, 1500);
+})();
+</script>"""
+
+
+DEPOT_CSS = """
+html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:auto auto 1fr; }
+/* The gateway strip: the check-in footer turned over. Where the files are,
+   and how many partitions it offers. */
+.gateway { background:var(--slate); border-bottom:.15vh solid var(--rule); display:flex;
+  align-items:baseline; justify-content:space-between; gap:3vw; padding:2.2vh 6vw; }
+.gateway .on { display:flex; align-items:baseline; gap:1.6vw; }
+.gateway .on b { font-size:1.5vh; letter-spacing:.1em; text-transform:uppercase; color:var(--signal); }
+.gateway .on span { font-size:2.2vh; font-weight:600; }
+.gateway .ip { font-size:1.6vh; letter-spacing:.06em; color:var(--soft); font-variant-numeric:tabular-nums; }
+header { background:var(--slate); padding:3.6vh 6vw 3.4vh; display:flex; align-items:center; gap:4vw; }
+header .mark { width:7vh; height:7vh; flex:none; }
+header h1 { margin:0; font-size:5.2vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
+header p { margin:1vh 0 0; font-size:1.7vh; color:var(--soft); }
+main { padding:3.4vh 6vw; display:flex; flex-direction:column; gap:3.6vh; overflow:hidden; }
+h2 { margin:0 0 1.6vh; font-size:1.5vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:650; }
+.rows { display:flex; flex-direction:column; gap:3vh; }
+
+/* A row of known shares sits side by side, one column each. */
+.row { display:flex; gap:4vw; }
+.row > .share { flex:1 1 0; min-width:0; }
+/* The name line: name, a soft note (a file count), and the free-space badge. */
+.head { display:flex; align-items:center; gap:.6vw; }
+.share b { flex:0 1 auto; min-width:0; font-size:2.15vh; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.note { flex:none; font-size:1.45vh; color:var(--dim); white-space:nowrap; }
+.free { flex:none; margin-left:auto; background:var(--slate); border-radius:.9vh; padding:.45vh .65vh;
+  display:flex; flex-direction:column; align-items:center; line-height:1; font-variant-numeric:tabular-nums; }
+.free span { font-size:1.55vh; font-weight:650; }
+.free small { font-size:1vh; letter-spacing:.1em; color:var(--dim); margin-top:.3vh; }
+.bar { height:.45vh; background:var(--slate); margin-top:.9vh; }
+.bar i { display:block; height:100%; background:var(--signal); }
+
+.items { list-style:none; margin:1.4vh 0 0; padding:0; display:flex; flex-direction:column; gap:1.1vh; }
+.items li { display:grid; grid-template-columns:1.5vh 1fr; column-gap:.9vw; align-items:start; }
+.items .mark { width:1.5vh; height:1.5vh; box-sizing:border-box; margin-top:.35vh; }
+.items .mark.arriving { background:transparent; border:.25vh solid var(--signal); }
+.items li > div { min-width:0; }
+.items .name { display:block; font-size:1.6vh; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.items .state { display:block; font-size:1.3vh; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.more { font-size:1.35vh; color:var(--dim); margin:1vh 0 0; }
+.error { font-size:1.45vh; color:var(--signal); margin:.8vh 0 0; }
+
+/* A share nobody has described: the plain full-width line, beneath the rows. */
+.unknown { display:flex; flex-direction:column; gap:2vh; }
+.unknown .share b { display:inline; }
+"""
+
+DEPOT_JS = """<script>
+(function () {
+  var MAX = 3;
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function size(b) {
+    var u = ['B', 'KB', 'MB', 'GB'], i = 0;
+    while (b >= 1000 && i < u.length - 1) { b /= 1000; i++; }
+    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + '\\u00a0' + u[i];
+  }
+  function ago(s) {
+    s = Math.max(0, Math.round(s));
+    return s < 60 ? s + 's' : s < 3600 ? Math.round(s / 60) + ' min' : Math.round(s / 3600) + ' h';
+  }
+  function state(it, now) {
+    if (it.state === 'declared') return 'declared';
+    if (it.state === 'arriving') return 'arriving';
+    // unwitnessed: say what we did see, never that it is done.
+    return it.growth_last_observed ? 'stopped growing ' + ago(now - it.growth_last_observed) + ' ago'
+                                   : 'unwitnessed';
+  }
+  function share(s) {
+    var col = el('div', 'share'), head = el('div', 'head');
+    head.appendChild(el('b', null, s.label)); col.appendChild(head);
+    if (s.error) { col.appendChild(el('p', 'error', 'Cannot reach it')); return col; }
+    if (!s.files && s.items.length)
+      head.appendChild(el('span', 'note', s.items.length + (s.items.length === 1 ? ' file' : ' files')));
+    // The badge: free space, number over unit. An estimate: this much, give
+    // or take what is being written right now.
+    var free = el('div', 'free'), f = size(s.free).split('\\u00a0');
+    free.appendChild(el('span', null, f[0])); free.appendChild(el('small', null, f[1]));
+    head.appendChild(free);
+    var bar = el('div', 'bar'), fill = el('i');
+    fill.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
+    bar.appendChild(fill); col.appendChild(bar);
+    if (s.files && s.items.length) {
+      var ul = el('ul', 'items');
+      s.items.slice(0, MAX).forEach(function (it) {
+        var li = el('li'), text = el('div');
+        li.appendChild(el('div', 'mark' + (it.state === 'declared' ? '' : it.state === 'arriving' ? ' arriving' : ' unlit')));
+        text.appendChild(el('span', 'name', it.name));
+        text.appendChild(el('span', 'state', size(it.size) + '  \\u00b7  ' + state(it, d_now)));
+        li.appendChild(text); ul.appendChild(li);
+      });
+      col.appendChild(ul);
+      if (s.items.length > MAX) col.appendChild(el('p', 'more', '+ ' + (s.items.length - MAX) + ' more'));
+    }
+    return col;
+  }
+  var d_now = 0;
+  function draw(d) {
+    d_now = d.now;
+    document.getElementById('partitions').textContent =
+      d.shares.length + (d.shares.length === 1 ? ' partition' : ' partitions');
+    document.getElementById('scanned').textContent =
+      d.at ? 'Checked ' + ago(d.now - d.at) + ' ago' : 'Not checked yet';
+    var boxes = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-group]'), function (b) {
+      b.textContent = ''; boxes[b.getAttribute('data-group')] = {box: b, rows: {}, unknown: null};
+    });
+    d.shares.forEach(function (s) {
+      var g = boxes[s.group]; if (!g) return;
+      if (s.row === null) {
+        if (!g.unknown) { g.unknown = el('div', 'unknown'); }
+        g.unknown.appendChild(share(s));
+        return;
+      }
+      if (!g.rows[s.row]) { g.rows[s.row] = el('div', 'row'); }
+      g.rows[s.row].appendChild(share(s));
+    });
+    Object.keys(boxes).forEach(function (k) {
+      var g = boxes[k];
+      Object.keys(g.rows).sort(function (a, b) { return a - b; }).forEach(function (r) { g.box.appendChild(g.rows[r]); });
+      if (g.unknown) g.box.appendChild(g.unknown);
+    });
+  }
+  function tick() {
+    fetch('/depot/now', {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { draw(d); window.fcpmAwake(d.awake); }).catch(function () {});
+  }
+  tick(); setInterval(tick, 10000);
+})();
+</script>"""
+
+
+def depot_page():
+    cfg = node().get("depot") or {}
+    words = (node().get("wording") or {}).get("depot") or {}
+    sections = "".join('<section><h2>%s</h2><div class=rows data-group="%s"></div></section>' % (
+        e(g.get("title", g["name"])), html.escape(g["name"], quote=True)) for g in cfg.get("groups") or [])
+    body = """<div class=gateway><div class=on><b>%s</b><span id=partitions></span></div><div class=ip>%s</div></div>
+<header>%s<div><h1>%s</h1><p><span>%s</span> &middot; <span id=scanned></span></p></div></header>
+<main>%s</main>%s""" % (e(words.get("gateway", "Gateway")), e(cfg.get("server", "")), clock_mark(),
+                        e(words.get("head", "Files")), e(words.get("sub", "")), sections, DEPOT_JS)
+    return page("Depot", body, DEPOT_CSS)
+
+
+# ------------------------------------------------------------------- classes --
+# The class on now (docs/kiosk.md): pickSession is copied out of classes.js on every page drawn.
+CLASSES_JS = ROOT / "site" / "assets" / "js" / "classes.js"
+
+
+def pick_session_js():
+    """pickSession, byte for byte from classes.js, minus its `export`."""
+    src = CLASSES_JS.read_text(encoding="utf-8")
+    m = re.search(r"^export (function pickSession\(.*?^\})$", src, re.S | re.M)
+    if not m:
+        raise ValueError("pickSession not found in %s" % CLASSES_JS)
+    return m.group(1)
+
+
+def class_config(now=None):
+    """The classes panel's config as pickSession takes it; `classes: sample` in node.yml invents three."""
+    if node().get("classes") == "sample":
+        base = (now or datetime.datetime.now()).astimezone()
+
+        def at(days, hour):
+            d = (base + datetime.timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
+            return d.isoformat()
+        rows = [(1, 18, "Podcasting 101 (sample)", "Podcast Studio"),
+                (3, 18, "Social Media Marketing 101 (sample)", "Video Studio"),
+                (8, 10, "Digitizing Home Movies (sample)", "Digitization")]
+        return {"leadMinutes": 90, "lateMinutes": 45, "sample": True,
+                "sessions": [{"title": t, "room": r, "starts": at(d, h), "ends": at(d, h + 2),
+                              "summary": "A made-up class, so the screen has something to show."}
+                             for d, h, t, r in rows]}
+    panel = next((q for q in welcome().get("panels") or [] if isinstance(q.get("classes"), dict)), {})
+    c = panel.get("classes") or {}
+    keep = ("title", "room", "starts", "ends", "summary")
+    return {"leadMinutes": c.get("leadMinutes", 90), "lateMinutes": c.get("lateMinutes", 45),
+            "sessions": [{k: x[k] for k in keep if k in x}
+                         for x in c.get("sessions") or [] if isinstance(x, dict) and not x.get("cancelled")]}
+
+
+def class_words():
+    w = (node().get("wording") or {}).get("classes") or {}
+    return {"soon": w.get("soon", "Starting soon"), "now": w.get("now", "Happening now"),
+            "starts": w.get("starts", "Starts"), "until": w.get("until", "Until"),
+            "join": w.get("join", "Join until"), "next": w.get("next", "Next class"),
+            "head": w.get("head", "Classes"), "none": w.get("none", "No classes on the calendar yet."),
+            "sample": w.get("sample", "Sample classes"),
+            "hint_wall": w.get("hint_wall", "Check in with the code above.")}
+
+
+# The clock every class view shares; `?at=<ISO time>` pretends it is then.
+CLASS_JS = """<script>
+(function () {
+  var C = @CONFIG@, W = @WORDS@;
+  @PICK@
+  var at = Date.parse(new URLSearchParams(location.search).get('at') || ''), skew = isNaN(at) ? 0 : at - Date.now();
+  function now() { return Date.now() + skew; }
+  function time(ms) { return new Date(ms).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); }
+  function day(ms) { return new Date(ms).toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'}); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function upcoming(n) {
+    var t = now();
+    return (C.sessions || []).map(function (s) {
+      return {title: s.title, room: s.room, summary: s.summary, starts: Date.parse(s.starts), ends: Date.parse(s.ends)};
+    }).filter(function (s) { return s.starts > t; })
+      .sort(function (a, b) { return a.starts - b.starts; }).slice(0, n);
+  }
+  // The takeover card: what is on, where, and until when. Late also says how
+  // long there is to walk in.
+  function card(box, s, hint) {
+    box.textContent = '';
+    box.appendChild(el('p', 'kicker', s.phase === 'soon' ? W.soon : W.now));
+    box.appendChild(el('h2', 'title', s.title));
+    if (s.room) box.appendChild(el('p', 'room', s.room));
+    box.appendChild(el('p', 'when', s.phase === 'soon' ? W.starts + ' ' + time(s.starts) : W.until + ' ' + time(s.ends)));
+    if (s.phase === 'late') {
+      var j = el('p', 'join'); j.appendChild(el('span', 'pill solid', W.join + ' ' + time(s.starts + (C.lateMinutes == null ? 45 : C.lateMinutes) * 60000)));
+      box.appendChild(j);
+      if (hint) box.appendChild(el('p', 'hint', hint));
+    }
+  }
+  window.FCPMClass = {config: C, words: W, now: now, time: time, day: day, el: el, card: card, upcoming: upcoming,
+                      pick: function () { return pickSession(C, now()); }};
+})();
+</script>"""
+
+CLASS_CSS = """
+.class .kicker { margin:0; font-size:1.7vh; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--signal); }
+.class .title { margin:1vh 0 0; font-size:5vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
+.class .room { margin:1.2vh 0 0; font-size:2.4vh; font-weight:600; }
+.class .when { margin:.6vh 0 0; font-size:2.4vh; color:var(--soft); font-variant-numeric:tabular-nums; }
+.class .join { margin:1.8vh 0 0; }
+.class .hint { margin:1.2vh 0 0; font-size:1.8vh; color:var(--dim); }
+.class .pill { font-size:1.6vh; font-weight:650; padding:.4vh 1.2vh; border-radius:99px;
+  border:.25vh solid var(--signal); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.class .pill.solid { background:var(--signal); color:var(--ink); }
+"""
+
+
+def class_js():
+    return (CLASS_JS.replace("@CONFIG@", json.dumps(class_config()).replace("</", "<\\/"))
+            .replace("@WORDS@", json.dumps(class_words()))
+            .replace("@PICK@", pick_session_js()))
+
+
+CLASSES_CSS = """
+html, body { height:100%; overflow:hidden; }
+main { padding:6vh 7vw; }
+h1 { margin:0 0 5vh; font-size:3vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:700; }
+ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5.5vh; }
+.when { display:block; font-size:2.7vh; font-weight:650; color:var(--signal); font-variant-numeric:tabular-nums; }
+.what { display:block; margin-top:.8vh; font-size:4.6vh; font-weight:750; line-height:1.1; }
+.room { display:block; margin-top:.8vh; font-size:2.9vh; font-weight:600; }
+li p { margin:.8vh 0 0; font-size:2.5vh; color:var(--soft); line-height:1.3; }
+.empty { font-size:3.6vh; color:var(--soft); }
+.flag { margin:5vh 0 0; font-size:2.2vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+"""
+
+CLASSES_LIST_JS = """<script>
+(function () {
+  var K = window.FCPMClass, box = document.getElementById('upcoming');
+  function draw() {
+    var list = K.upcoming(5); box.textContent = '';
+    if (!list.length) { box.appendChild(K.el('p', 'empty', K.words.none)); return; }
+    var ol = K.el('ol');
+    list.forEach(function (s) {
+      // A line of text per class, never a calendar leaf (Autumn: "calendar-
+      // powered but not displaying like a calendar").
+      var li = K.el('li');
+      li.appendChild(K.el('span', 'when', K.day(s.starts) + '  \\u00b7  ' + K.time(s.starts) + '\\u2013' + K.time(s.ends)));
+      li.appendChild(K.el('span', 'what', s.title));
+      if (s.room) li.appendChild(K.el('span', 'room', s.room));
+      if (s.summary) li.appendChild(K.el('p', null, s.summary));
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+  }
+  draw(); setInterval(draw, 60000);
+})();
+</script>"""
+
+
+def classes_page():
+    """Upcoming classes, as a list and never as a calendar grid."""
+    w, cfg = class_words(), class_config()
+    body = '<main><h1>%s</h1><div id=upcoming></div>%s</main>%s%s' % (
+        e(w["head"]), '<p class=flag>%s</p>' % e(w["sample"]) if cfg.get("sample") else "",
+        class_js(), CLASSES_LIST_JS)
+    return page(w["head"], body, CLASSES_CSS)
+
+
+# The wall's Files: a module like Classes, the partitions down the page with free space and a bar.
+DRIVE_CSS = """
+html, body { height:100%; overflow:hidden; }
+main { padding:6vh 7vw; }
+h1 { margin:0; font-size:3vh; letter-spacing:.14em; text-transform:uppercase; color:var(--signal); font-weight:700; }
+.lede { margin:1.4vh 0 4vh; font-size:2.6vh; color:var(--soft); }
+h2 { margin:3.4vh 0 1.6vh; font-size:2.1vh; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:650; }
+ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2.6vh; }
+.row { display:flex; align-items:baseline; gap:2vw; }
+.row b { font-size:3.6vh; font-weight:700; }
+.row span { font-size:2.3vh; color:var(--dim); }
+.row em { margin-left:auto; font-style:normal; font-size:2.6vh; font-weight:650; font-variant-numeric:tabular-nums; }
+.bar { height:.7vh; background:var(--slate); margin-top:1vh; }
+.bar i { display:block; height:100%; background:var(--signal); }
+.gone { font-size:2.3vh; color:var(--signal); }
+"""
+
+DRIVE_JS = """<script>
+(function () {
+  var T = @TITLES@, W = @WORDS@, box = document.getElementById('drive'), lede = document.getElementById('lede');
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+    if (text != null) n.textContent = text; return n; }
+  function size(b) {
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
+    while (b >= 1000 && i < u.length - 1) { b /= 1000; i++; }
+    return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + '\\u00a0' + u[i];
+  }
+  function draw(d) {
+    lede.textContent = W.sub + '  \\u00b7  ' + d.shares.length + ' ' + W.partitions;
+    box.textContent = ''; var group = null, ul = null;
+    d.shares.forEach(function (s) {
+      if (s.group !== group) {
+        group = s.group; box.appendChild(el('h2', null, T[group] || group));
+        ul = el('ul'); box.appendChild(ul);
+      }
+      var li = el('li'), row = el('div', 'row');
+      row.appendChild(el('b', null, s.label));
+      if (s.error) { row.appendChild(el('span', 'gone', W.gone)); li.appendChild(row); ul.appendChild(li); return; }
+      if (s.items.length) row.appendChild(el('span', null, s.items.length + (s.items.length === 1 ? W.file : W.files)));
+      row.appendChild(el('em', null, size(s.free) + ' ' + W.free));
+      var bar = el('div', 'bar'), i = el('i');
+      i.style.width = (100 * (1 - s.free / s.total)).toFixed(1) + '%';
+      bar.appendChild(i); li.appendChild(row); li.appendChild(bar); ul.appendChild(li);
+    });
+  }
+  fetch('/depot/now').then(function (r) { return r.json(); }).then(draw).catch(function () {});
+})();
+</script>"""
+
+
+def drive_page():
+    cfg = node().get("depot") or {}
+    words = (node().get("wording") or {}).get("depot") or {}
+    titles = {g["name"]: g.get("title", g["name"]) for g in cfg.get("groups") or []}
+    w = {"sub": words.get("sub", ""), "partitions": words.get("partitions", "partitions"),
+         "free": words.get("free", "free"), "file": words.get("file", " file"),
+         "files": words.get("files", " files"), "gone": words.get("gone", "Cannot reach it")}
+    body = "<main><h1>%s</h1><p class=lede id=lede></p><div id=drive></div></main>%s" % (
+        e(words.get("head", "Files")),
+        DRIVE_JS.replace("@TITLES@", json.dumps(titles)).replace("@WORDS@", json.dumps(w)))
+    return page(words.get("head", "Files"), body, DRIVE_CSS)
+
+
+# ---------------------------------------------------------------- class mode --
+# CLASS MODE (roller-tv/README.md). md_html knows headings, lists, paragraphs, bold.
+def md_html(text):
+    out, para, lst = [], [], None
+
+    def inline(t):
+        t = html.escape(t)
+        return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
+
+    def flush():
+        nonlocal para, lst
+        if para:
+            out.append("<p>%s</p>" % inline(" ".join(para)))
+            para = []
+        if lst:
+            out.append("<%s>%s</%s>" % (lst[0], "".join("<li>%s</li>" % inline(i) for i in lst[1]), lst[0]))
+            lst = None
+    for line in text.splitlines():
+        m = re.match(r"(#{1,3})\s+(.*)", line)
+        item = re.match(r"\s*(?:([-*])|\d+[.)])\s+(.*)", line)
+        if m:
+            flush()
+            out.append("<h%d>%s</h%d>" % (len(m.group(1)), inline(m.group(2)), len(m.group(1))))
+        elif item:
+            kind = "ul" if item.group(1) else "ol"
+            if para or (lst and lst[0] != kind):
+                flush()
+            lst = lst or (kind, [])
+            lst[1].append(item.group(2))
+        elif not line.strip():
+            flush()
+        else:
+            if lst:
+                flush()
+            para.append(line.strip())
+    flush()
+    return "\n".join(out)
+
+
+def class_folder(path):
+    """A class folder, read: its card and its sections, by kind."""
+    root = ROOT / path
+    card = load(root / "class.yml")
+    kinds = []
+    for d in sorted(q for q in root.iterdir() if q.is_dir()):
+        secs = []
+        for f in sorted(q for q in d.iterdir() if q.suffix.lower() in (".md", ".txt")):
+            m = re.match(r"(\d+)\s*[-.]?\s*(.*)", f.stem)
+            text = f.read_text(encoding="utf-8")
+            secs.append({"num": str(int(m.group(1))) if m else "", "title": (m.group(2) if m else f.stem) or f.stem,
+                         "html": md_html(text) if f.suffix.lower() == ".md" else
+                         "".join("<p>%s</p>" % html.escape(b.strip()) for b in text.split("\n\n") if b.strip())})
+        if secs:
+            kinds.append({"kind": d.name, "sections": secs})
+    return card, kinds
+
+
+CLASSMODE_CSS = """html, body { height:100%; overflow:hidden; }
+/* The frame (header, footer) is the lighter slate. The content is the dark
+   slate, or white (?light), and the tabs at rest are the dark slate too.
+   Yellow is only the mark and the tab that is up. */
+body { display:grid; grid-template-rows:25vh 1fr auto; grid-template-columns:minmax(0, 1fr); user-select:none;
+  background:var(--ink); }
+body.light { background:#fff; }
+/* Two whites for the dark, as the ink and slate are for the light: the bright
+   one says "now", the dim one "before" and "the time". */
+body { --now:var(--paper); --then:#7d848d; --yet:transparent; }
+body.light { --now:var(--ink); --then:var(--slate); --yet:transparent; }
+.top { position:relative; z-index:2; pointer-events:none; }
+.top a, .top button { pointer-events:auto; }
+.head { height:100%; box-sizing:border-box; background:var(--slate); display:flex; align-items:flex-start; gap:6vw;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%); padding:3.4vh 7vw 0; }
+.head .mark { flex:none; width:14vh; height:14vh; padding:.9vh; box-sizing:border-box; }
+.head .mark img { display:block; width:100%; height:100%; }
+.head .mark .ticks { display:none; }
+.head h1 { margin:.6vh 0 0; font-size:4.2vh; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
+/* On the slant, above the edge: who is presenting at the left, in a serif so
+   the name reads apart from everything else; the class's hours at the right. */
+.who, .hours { position:absolute; bottom:1.4vh; rotate:-8deg; margin:0; white-space:nowrap; }
+.who { left:7vw; transform-origin:0 100%; font:600 2.5vh/1 Georgia, "Times New Roman", serif;
+  color:var(--paper); }
+.hours { right:5vw; bottom:calc(13.35vw + 1.2vh); transform-origin:100% 100%; font-size:2vh; color:var(--soft);
+  font-variant-numeric:tabular-nums; }
+/* Under the edge at the right, tucked toward the corner: a pill for each hour
+   of the class, an overline for the time. The hour we are in is lit; the ones
+   before it stay lit, dimmer; hours not yet reached are not drawn at all
+   (their places are kept); outside the class's hours nothing is bright, so
+   the floor is visibly given back. Fixed pills, anchored at the right: a
+   longer class reaches further toward the middle, not off the screen. The
+   time under it is a convenience: small, dim, for the edge of the eye. */
+.hourbar { position:absolute; right:5vw; top:calc(100% - 13.35vw + .9vh); transform-origin:100% 0; rotate:-8deg;
+  display:flex; gap:.5vw; }
+.hourbar i { width:3.6vw; height:.7vh; border-radius:99px; background:var(--yet); }
+.hourbar i.then { background:var(--then); }
+.hourbar i.on { background:var(--now); }
+.now { position:absolute; right:5vw; top:calc(100% - 13.35vw + 2.4vh); transform-origin:100% 0; rotate:-8deg;
+  font-size:1.8vh; font-weight:400; color:var(--then); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* The content runs under the overhang if it has to scroll: its top reaches up
+   behind the header's slant, which hides its top-left corner, and its
+   scrollbar starts at the slant. */
+main { position:relative; z-index:1; margin-top:-14.05vw; padding:calc(14.05vw + 4vh) 7vw 4vh; overflow-y:auto;
+  color:var(--paper); }
+body.light main { color:var(--ink); }
+main article[hidden] { display:none; }
+main h1 { margin:0 0 2.4vh; font-size:4.6vh; line-height:1.1; }
+main h2 { margin:3vh 0 1.4vh; font-size:3.4vh; }
+main p, main li { font-size:2.8vh; line-height:1.4; }
+main p { margin:0 0 1.8vh; }
+main ul, main ol { margin:0 0 1.8vh; padding-left:1.4em; }
+main li { margin:.6vh 0; }
+
+/* The footer is the sections, as strips the full height of the footer, flush
+   against each other, no gaps. Each strip is a tab turned -90 degrees (its
+   name reads bottom to top), then skewed so its bottom pulls left: its top
+   and bottom stay level with the screen, only its sides lean. The skew is
+   the strip's alone (a pseudo-element behind the name); the name is turned
+   the same 8 degrees, so it runs along the strip without being sheared. Up is signal; the one before it is signal at 30%%; the rest are
+   the dark slate, told apart by a hairline (Autumn, 2026-09-26). */
+footer { background:var(--slate); padding:0 6vw 0 5vw; display:flex; align-items:stretch; gap:5vw; overflow:hidden; }
+/* The footer's own corner: CLASS, as the wall's bar says FCPM, over four
+   round keys. Dark and Light are two keys, not a toggle, and the arrows stop
+   at the ends: pressing anything again, or fast, cannot make the screen
+   flicker (Autumn, 2026-09-26). */
+.keys { flex:none; align-self:center; display:flex; flex-direction:column; align-items:center; gap:1.4vh; padding:2vh 0; }
+.keys b { font-size:1.8vh; font-weight:750; letter-spacing:.14em; text-transform:uppercase; color:var(--paper); }
+.keys div { display:grid; grid-template-columns:repeat(2, 4.6vh); gap:1.1vh; }
+/* A key's face is the slate, its underside the ink: raised, not a hole. The
+   Light key always wears light mode's colours, so it shows what it gives
+   before it is pressed. Pressed, a key sits down on its underside. */
+.keys button { width:4.6vh; height:4.6vh; padding:0; border:0; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; background:var(--slate); color:var(--soft);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); transition:transform .08s, box-shadow .08s; }
+.keys #light { background:#fff; color:var(--ink); box-shadow:inset 0 0 0 1px #d5d9de, 0 .45vh 0 #aeb4bb; }
+.keys button:active, .keys button[aria-pressed=true] { transform:translateY(.35vh);
+  box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
+.keys #light:active, .keys #light[aria-pressed=true] { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #aeb4bb; }
+.keys #dark[aria-pressed=true] { color:var(--paper); }
+.keys button:disabled { opacity:.35; cursor:default; }
+/* In light mode the footer and the arrow keys take the two lights, so the
+   Dark key (always dark) and the Light key (always white) each stand out
+   against it: a key wears the mode it gives. */
+body.light footer { background:#e9ecef; }
+body.light .keys b { color:var(--ink); }
+body.light .keys button { background:#f6f7f8; color:#6b737c; box-shadow:inset 0 0 0 1px #d5d9de, 0 .45vh 0 #bcc2c9; }
+body.light .keys button:active { box-shadow:inset 0 0 0 1px #d5d9de, 0 .1vh 0 #bcc2c9; }
+body.light .keys #dark { background:var(--slate); color:var(--soft); box-shadow:inset 0 0 0 1px var(--rule), 0 .45vh 0 var(--ink); }
+body.light .keys #dark:active { box-shadow:inset 0 0 0 1px var(--rule), 0 .1vh 0 var(--ink); }
+body.light .keys #light { background:#fff; color:var(--ink); }
+/* The section strips in light mode: at rest they are the content's white,
+   as at night they are the content's dark; every name is ink, whatever its
+   strip's colour (Autumn, 2026-09-26). */
+body.light .tabs button, body.light .tabs button.recent { color:var(--ink); }
+body.light .tabs button:not([aria-current=true]):not(.recent)::before { background:#fff; box-shadow:inset 1px 0 0 #d5d9de; }
+.keys svg { width:55%; height:55%; }
+.tabs { display:flex; align-items:stretch; }
+.tabs button { position:relative; isolation:isolate; writing-mode:vertical-rl; rotate:180deg; margin:0;
+  padding:2.2vh .6vh; border:0; background:transparent; cursor:pointer; font:inherit; font-size:1.6vh;
+  font-weight:650; line-height:1.2; white-space:nowrap; color:var(--soft); }
+.tabs button span { display:block; max-height:18vh; overflow:hidden; text-overflow:ellipsis; rotate:8deg; }
+.tabs button::before { content:""; position:absolute; z-index:-1; inset:-1px 0; background:var(--ink);
+  box-shadow:inset 1px 0 0 var(--rule); transform:skewX(-8deg); }
+.tabs button.recent { color:var(--paper); }
+.tabs button.recent::before { background:rgba(255,198,26,.3); }
+.tabs button[aria-current=true] { color:var(--ink); }
+.tabs button[aria-current=true]::before { background:var(--signal); box-shadow:none; }
+"""
+
+# THE KEYS: 1-9 pick the first nine pages, a-z the rest; the turn and the wall add space to hold.
+KEYED_JS = """
+  function keyed(ev) {
+    var t = ev.target, k = ev.key || '';
+    if (ev.ctrlKey || ev.altKey || ev.metaKey || ev.defaultPrevented || k.length !== 1) return -1;
+    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName || ''))) return -1;
+    k = k.toLowerCase();
+    if (k >= '1' && k <= '9') return k.charCodeAt(0) - 49;
+    if (k >= 'a' && k <= 'z') return 9 + k.charCodeAt(0) - 97;
+    return -1;
+  }"""
+
+CLASSMODE_JS = """<script>
+(function () {
+  var tabs = document.querySelectorAll('.tabs button'), arts = document.querySelectorAll('main article'),
+      now = document.getElementById('now'), bar = document.getElementById('hourbar'), cur = -1, recent = -1,
+      H = @HOURS@, at = /[?&]at=(\\d\\d?):(\\d\\d)/.exec(location.search), skew = 0;
+  if (at) { var t = new Date(); t.setHours(+at[1], +at[2], 0, 0); skew = t - Date.now(); }
+  function clock() { return new Date(Date.now() + skew); }
+  var dark = document.getElementById('dark'), light = document.getElementById('light'),
+      prev = document.getElementById('prev'), next = document.getElementById('next'), stepped = 0;
+  // Two keys, each only ever sets its own mode: a second press is nothing.
+  function mode(lit) {
+    document.body.classList.toggle('light', lit);
+    dark.setAttribute('aria-pressed', !lit); light.setAttribute('aria-pressed', lit);
+  }
+  mode(/[?&]light\\b/.test(location.search));
+  dark.addEventListener('click', function () { mode(false); });
+  light.addEventListener('click', function () { mode(true); });
+  function show(i) {
+    if (i === cur) return;
+    if (cur >= 0) recent = cur;
+    cur = i;
+    tabs.forEach(function (t, k) {
+      t.setAttribute('aria-current', k === cur); t.classList.toggle('recent', k === recent);
+    });
+    arts.forEach(function (a, k) { a.hidden = k !== cur; });
+    prev.disabled = cur <= 0; next.disabled = cur >= tabs.length - 1;
+    try { history.replaceState(null, '', location.search + '#' + (cur + 1)); } catch (e) {}
+  }
+  tabs.forEach(function (t, k) { t.addEventListener('click', function () { show(k); }); });
+@KEYED@
+  document.addEventListener('keydown', function (ev) {
+    var i = keyed(ev);
+    if (i >= 0 && i < tabs.length) { ev.preventDefault(); show(i); }
+  });
+  // The arrows step one section, stop at the ends (no wrapping round), and
+  // take at most one step per quarter second, however fast they are pressed.
+  function step(d) {
+    var t = Date.now(); if (t - stepped < 250) return; stepped = t;
+    show(Math.max(0, Math.min(tabs.length - 1, cur + d)));
+  }
+  prev.addEventListener('click', function () { step(-1); });
+  next.addEventListener('click', function () { step(1); });
+  // One pill per hour of the class, from its start: lit while it is on, the
+  // earlier ones dimmer; nothing bright before the start or after the end.
+  function hours(d) {
+    if (!H) return;
+    var m = d.getHours() * 60 + d.getMinutes();
+    Array.prototype.forEach.call(bar.children, function (p, k) {
+      var from = H[0] + 60 * k, to = Math.min(H[1], from + 60);
+      p.className = m >= to ? 'then' : m >= from && m < H[1] ? 'on' : '';
+    });
+  }
+  function tick() {
+    var d = clock(); now.textContent = d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); hours(d);
+  }
+  tick(); setInterval(tick, 5000);
+  var h = parseInt(location.hash.slice(1), 10);
+  show(h >= 1 && h <= tabs.length ? h - 1 : 0);
+  document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+})();
+</script>"""
+
+
+def class_hours(card):
+    """(start, end) in minutes after midnight, from class.yml's starts/ends."""
+    def mins(v):
+        m = re.fullmatch(r"(\d{1,2}):(\d{2})", str(v or ""))
+        return int(m.group(1)) * 60 + int(m.group(2)) if m else None
+    a, b = mins(card.get("starts")), mins(card.get("ends"))
+    return (a, b) if a is not None and b is not None and b > a else None
+
+
+def hours_label(span):
+    """6–8 PM: the minutes only when they are not :00, the half once."""
+    def part(v, half):
+        h, m = divmod(v, 60)
+        return "%d%s%s" % ((h - 1) % 12 + 1, ":%02d" % m if m else "", " " + half if half else "")
+    a, b = span
+    ha, hb = ("AM" if a < 720 else "PM"), ("AM" if b < 720 else "PM")
+    return "%s\u2013%s" % (part(a, ha if ha != hb else ""), part(b, hb))
+
+
+def class_mode_page(path):
+    card, kinds = class_folder(path)
+    span = class_hours(card)
+    kind = kinds[0] if kinds else {"kind": "", "sections": []}
+    tabs = "".join('<button type=button><span>%s</span></button>' % e(x["title"]) for x in kind["sections"])
+    arts = "".join("<article hidden>%s</article>" % x["html"] for x in kind["sections"])
+    pills = "<i></i>" * (-(-(span[1] - span[0]) // 60)) if span else ""
+    body = """<div class=top><header class=head>%s<div><h1>%s</h1></div></header>
+<p class=who>%s</p><p class=hours>%s</p><div class=hourbar id=hourbar aria-hidden=true>%s</div>
+<div class=now id=now aria-hidden=true></div></div>
+<main>%s</main>
+<footer><div class=keys><b>%s</b><div>
+<button type=button id=dark aria-label="Dark" aria-pressed=true><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx=12 cy=12 r=8 fill=none stroke=currentColor stroke-width=2 /><path d="M12 4 A8 8 0 0 0 12 20 Z" fill=currentColor /></svg></button>
+<button type=button id=light aria-label="Light" aria-pressed=false><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx=12 cy=12 r=4.5 fill=currentColor /><g stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></g></svg></button>
+<button type=button id=prev aria-label="Previous section"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 L8 12 L15 19" fill=none stroke=currentColor stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg></button>
+<button type=button id=next aria-label="Next section"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 L16 12 L9 19" fill=none stroke=currentColor stroke-width=2.6 stroke-linecap=round stroke-linejoin=round /></svg></button>
+</div></div><nav class=tabs aria-label="%s">%s</nav></footer>%s""" % (
+        checkin_mark(inline=True), e(card.get("title")), e(card.get("presenter")),
+        e(hours_label(span) if span else card.get("hours")), pills, arts,
+        e(card.get("label", "Class")), html.escape(kind["kind"], quote=True), tabs, CLASSMODE_JS.replace("@KEYED@", KEYED_JS).replace("@HOURS@", json.dumps(list(span) if span else None)))
+    return page(card.get("title", "Class"), body, CLASSMODE_CSS.replace("%%", "%")).replace(POLL, "")
+
+
+# ---------------------------------------------------------------------- wall --
+# THE WALL: nothing can reach this port, so pages for other screens are written to a share, fetching nothing.
+WALL_PAGES = {
+    "kiosk": (lambda: kiosk_page(wall=True, map_only=True), "/kiosk/now", kiosk_now),
+    "depot": (depot_page, "/depot/now", depot_now),
+    "drive": (lambda: drive_page(), "/depot/now", depot_now),
+    "classes": (classes_page, None, None),
+}
+
+WALL_SHIM = """<script>
+(function () {
+  var snap = %s, real = window.fetch;
+  window.fetch = function (url) {
+    if (Object.prototype.hasOwnProperty.call(snap, url))
+      return Promise.resolve(new Response(JSON.stringify(snap[url]),
+        {headers: {'Content-Type': 'application/json'}}));
+    return real ? real.apply(this, arguments) : Promise.reject(new Error('offline'));
+  };
+})();
+</script>"""
+
+WALL_CSS = """html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:auto 1fr auto; user-select:none; }
+
+/* The superheader: check-in with the colours inverted. A plane of signal at
+   the brand's tilt, cropped off left, right and top, so its one edge is the
+   divider at the bottom, rising to the right: -8deg, counterclockwise
+   (brand/README.md, "The tilt"). 14.05vw is the rise, tan 8deg of the width. */
+.top { position:relative; }
+.super { background:var(--signal); color:var(--ink); display:flex; align-items:center; gap:6vw;
+  clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14.05vw), 0 100%);
+  padding:4.5vh 7vw calc(3vh + 14.05vw); }
+/* One shape: the code is the black tilted square, straight on the field. The
+   field is the light a phone needs around it. */
+.super .mark { flex:none; width:21vh; height:21vh; padding:0; background:transparent; }
+.super .mark img { display:block; width:100%; height:100%; }
+.super .mark .ticks { display:none; }
+.super h1 { margin:0; font-size:6vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
+.super .sub { margin:1.4vh 0 0; font-size:2.6vh; line-height:1.25; white-space:pre-line; font-weight:600;
+  color:rgba(18,20,23,.7); }
+
+/* The turn: a track under the edge at the right, parallel to it, a fifth of
+   the width projected (20.2vw along the tilt). The brighter slate, so its whole
+   length reads before the red fills it from the right; the knob is the record
+   button, a red dot in a half-clear ring of the same red. Thin while it runs;
+   held, it thickens and turns signal, so the two never look alike. */
+.timer { position:absolute; right:0; bottom:calc(14.05vw - 3vh); width:20.2vw; height:.4vh;
+  background:var(--rule); border-radius:.45vh 0 0 .45vh; transform-origin:100% 50%; rotate:-8deg;
+  transition:height .3s; }
+.timer i { position:absolute; top:0; bottom:0; right:0; left:100%; background:var(--record);
+  border-radius:.45vh 0 0 .45vh; transition:background-color .3s; }
+.timer.held { height:.9vh; }
+.timer.held i { background:var(--signal); }
+.timer b { position:absolute; top:50%; left:0; width:2.4vh; height:2.4vh; border-radius:50%;
+  background:var(--record); box-shadow:0 0 0 .9vh rgba(217,58,38,.5); opacity:0; translate:-50% -50%; }
+.timer.off { display:none; }
+
+.stage { position:relative; overflow:hidden; }
+.stage iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--ink);
+  opacity:0; transition:opacity .6s; }
+.stage iframe.shown { opacity:1; }
+.stage.taken iframe { visibility:hidden; }
+.takeover { position:absolute; inset:0; padding:5vh 7vw 4vh; background:var(--ink); }
+.takeover .title { font-size:6.5vh; }
+.takeover .room, .takeover .when { font-size:3vh; }
+
+/* The bar: small, because this screen gets a pointer at most. */
+.bar { background:var(--slate); padding:1.1vh 4vw 1.3vh; }
+nav { display:flex; align-items:center; gap:1.2vw; }
+.showing { margin:0 auto 0 0; font-size:1.3vh; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+/* The brand, then what is up: FCPM STUDIO, FCPM FILES, FCPM CLASSES. */
+.showing b, .showing span { font-size:1.8vh; font-weight:750; letter-spacing:.14em; }
+.showing b { color:var(--paper); }
+.showing span { margin-left:.5em; color:var(--signal); }
+nav button { padding:.5vh 1.6vw; border:.2vh solid var(--rule); border-radius:99px; background:transparent;
+  color:var(--soft); font:inherit; font-size:1.35vh; font-weight:650; cursor:pointer; }
+nav button[aria-current=true] { background:var(--signal); border-color:var(--signal); color:var(--ink); }
+/* Hold is a narrow pause button. Pressed, it is a countdown, a ring draining
+   around the seconds left; pressed again, it keeps the wall paused, the ring
+   full, and shows play: the only thing left to do. See press() below. */
+nav #hold { flex:none; width:3.8vh; height:3.8vh; padding:0; border:0; border-radius:50%; }
+nav #hold svg { display:block; width:100%; height:100%; }
+#hold .track { fill:none; stroke:var(--rule); stroke-width:2.4; }
+#hold .left { fill:none; stroke:var(--signal); stroke-width:2.4; stroke-dasharray:100.53; stroke-dashoffset:100.53; }
+#hold .pause { fill:var(--soft); }
+#hold .secs { fill:var(--signal); font:700 12px system-ui, sans-serif; }
+#hold .play { fill:var(--signal); }
+#hold:not([data-state=run]) .pause, #hold:not([data-state=count]) .secs,
+#hold:not([data-state=pinned]) .play { display:none; }
+nav.taken button[data-m], nav.taken #hold { display:none; }"""
+
+WALL_JS = """<script>
+(function () {
+  var M = @MODS@, EVERY = @EVERY@, RELOAD = @RELOAD@, HOLD_FOR = 90, W = @WORDS@, pinned = false,
+      K = window.FCPMClass, qs = location.search, born = Date.now(),
+      stage = document.getElementById('stage'), card = document.getElementById('class'),
+      nav = document.querySelector('nav'),
+      hold = document.getElementById('hold'), ring = hold.querySelector('.left'), secs = hold.querySelector('.secs'),
+      showing = document.getElementById('showing'),
+      timer = document.getElementById('timer'), fill = timer.querySelector('i'), knob = timer.querySelector('b'),
+      buttons = document.querySelectorAll('nav button[data-m]'),
+      still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches,
+      EXIT = still ? 0 : 1100, GAP = 500, FILL = Math.max(1000, EVERY * 1000 - EXIT - GAP),
+      cur = 0, held = 0, taken = false, t0 = 0, stopped = 0, up = null, left = {};
+  function find(name) { for (var i = 0; i < M.length; i++) if (M[i].name === name) return i; return 0; }
+  // Away and straight back (Autumn, 2026-10-07): a module left less than
+  // 2.5 s ago and shown again gets {type: 'fcpm:next'} once it has loaded,
+  // a nudge to its next part. A page with parts of its own (the TI-89's
+  // show: its next block) steps on; any other page never hears it.
+  function show(i) {
+    cur = (i + M.length) %% M.length;
+    var m = M[cur], f = document.createElement('iframe'), now = Date.now();
+    if (up && up !== m.name) left[up] = now;
+    var nudge = up !== m.name && now - (left[m.name] || 0) < 2500;
+    up = m.name;
+    // The panel's own query (?screen=left) rides along, joined with '&' to a
+    // url that has one already: '/ti-89/?show?screen=left' has no 'show'.
+    var src = m.src || m.name + '.html';
+    f.title = m.label; f.src = src + (qs && src.indexOf('?') >= 0 ? '&' + qs.slice(1) : qs);
+    f.addEventListener('load', function () {
+      f.classList.add('shown');
+      try {                                           // the keys work with the page focused, too
+        f.contentWindow.addEventListener('keydown', key);
+        f.contentWindow.addEventListener('keyup', key);
+      } catch (e) {}
+      if (nudge) try { f.contentWindow.postMessage({type: 'fcpm:next'}, '*'); } catch (e) {}
+      Array.prototype.forEach.call(stage.querySelectorAll('iframe'), function (o) {
+        if (o !== f) setTimeout(function () { o.remove(); }, 700);
+      });
+    });
+    stage.insertBefore(f, card);
+    buttons.forEach(function (b) { b.setAttribute('aria-current', b.dataset.m === m.name); });
+    showing.textContent = m.label;
+    try { history.replaceState(null, '', qs + '#' + m.name); } catch (e) {}
+    t0 = performance.now(); stopped = 0;
+  }
+  // The turn, drawn every frame. Stopped (held, or a class on), time stops
+  // with it and picks up where it was.
+  function frame(now) {
+    var dim = window.FCPMDim && window.FCPMDim.isDim && window.FCPMDim.isDim();
+    document.body.classList.toggle('stilled', !!dim);
+    if (held || taken || dim) { if (!stopped) stopped = now; return requestAnimationFrame(frame); }
+    if (stopped) { t0 += now - stopped; stopped = 0; }
+    var t = now - t0;
+    if (t < 0) {                                      // the gap after the take-off: empty
+      fill.style.left = '100%%'; knob.style.opacity = 0;
+    } else if (t < FILL) {                            // quick, then slow: ease-out
+      var p = t / FILL, e = 1 - Math.pow(1 - p, 3);
+      fill.style.left = (100 - 100 * e) + '%%'; knob.style.opacity = 0;
+    } else if (t < FILL + EXIT) {                     // the knob, then the take-off
+      var q = (t - FILL) / EXIT, pop = Math.min(1, q / .2),
+          go = q < .2 ? 0 : Math.pow((q - .2) / .8, 2.4), x = 118 * go;
+      knob.style.opacity = 1; knob.style.left = x + '%%';
+      knob.style.transform = 'scale(' + (.3 + .7 * pop) + ')';
+      fill.style.left = Math.min(100, x) + '%%';
+    } else {
+      knob.style.opacity = 0; fill.style.left = '100%%';
+      // The shell reloads now and then, for a change in its modules or
+      // classes, but only here, as a turn ends, and straight into the next
+      // module: mid-turn, it restarted the timer on the module already up.
+      if (!held && Date.now() - born > RELOAD * 1000) {
+        try { history.replaceState(null, '', qs + '#' + M[(cur + 1) %% M.length].name); } catch (e) {}
+        return location.reload();
+      }
+      show(cur + 1); t0 += GAP;                       // a breath before it creeps again
+    }
+    requestAnimationFrame(frame);
+  }
+  // One button, three steps, each drawn as what the next press does (Autumn,
+  // 2026-09-26): running, a pause glyph; pressed, a countdown, the ring
+  // draining around the seconds left; pressed again, held for good, and only
+  // now a play glyph, which can mean nothing but "run again". A double-click
+  // is just the first two steps. Each state is named for what it shows
+  // ("Pause", "Keep paused", "Play"), so voice control says what it sees;
+  // the name changes with the state, never with the ticking seconds.
+  function label() {
+    var state = !held ? 'run' : pinned ? 'pinned' : 'count',
+        used = state === 'run' ? 1 : pinned ? 0 : Math.min(1, (Date.now() - held) / (HOLD_FOR * 1000));
+    ring.style.strokeDashoffset = (100.53 * used).toFixed(2);
+    secs.textContent = state === 'count' ? String(Math.max(0, Math.ceil(HOLD_FOR * (1 - used)))) : '';
+    if (hold.dataset.state !== state) {
+      hold.dataset.state = state;
+      hold.setAttribute('aria-label', state === 'run' ? W.pause : state === 'count' ? W.keep : W.play);
+    }
+  }
+  function setHold(on) {
+    held = on ? Date.now() : 0; pinned = false; label();
+    timer.classList.toggle('held', !!on);
+    document.documentElement.classList.toggle('fcpm-awake', !!held || taken);
+  }
+  function press() {
+    if (!held) return setHold(true);
+    if (!pinned) { pinned = true; return label(); }
+    setHold(false);
+  }
+  function classes() {
+    var s = K.pick(), was = taken;
+    taken = !!s;
+    if (s) K.card(card, s, K.words.hint_wall);
+    card.hidden = !taken; stage.classList.toggle('taken', taken); nav.classList.toggle('taken', taken);
+    document.documentElement.classList.toggle('fcpm-awake', !!held || taken);
+    timer.classList.toggle('off', taken);
+    if (taken) showing.textContent = K.words.head;
+    else if (was) show(cur);
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { show(find(b.dataset.m)); }); });
+  hold.addEventListener('click', press);
+  // The keys: a number or letter picks a module (KEYED_JS), and space keeps
+  // what is showing for good, straight to the play glyph; space again lets
+  // it turn. On a focused button too, so space never also clicks it.
+@KEYED@
+  function stay() {
+    if (!held) setHold(true);
+    if (!pinned) { pinned = true; return label(); }
+    setHold(false);
+  }
+  function key(ev) {
+    if (taken) return;
+    if (ev.key === ' ' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.defaultPrevented) {
+      ev.preventDefault();
+      if (ev.type === 'keydown' && !ev.repeat) stay();
+      return;
+    }
+    if (ev.type !== 'keydown') return;
+    var i = keyed(ev);
+    if (i < 0 || i >= M.length) return;
+    ev.preventDefault();
+    if (i !== cur) show(i);
+  }
+  document.addEventListener('keydown', key);
+  document.addEventListener('keyup', key);
+  document.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+  setInterval(function () {
+    if (held && !pinned && Date.now() - held >= HOLD_FOR * 1000) setHold(false);
+    else if (held) label();
+  }, 250);
+  show(find(location.hash.slice(1)));
+  classes(); setInterval(classes, 15000);
+  requestAnimationFrame(frame);
+})();
+</script>"""
+
+
+def wall_cfg():
+    return node().get("wall") or {}
+
+
+def wall_modules():
+    return [m for m in wall_cfg().get("modules") or []
+            if m.get("page") in WALL_PAGES and re.fullmatch(r"[a-z0-9-]+", str(m.get("name", "")))]
+
+
+def wall_files():
+    """Every file of the wall, by name: the shell, then one per module."""
+    cfg = wall_cfg()
+    mods = wall_modules()
+    files = {}
+    for m in mods:
+        build, url, data = WALL_PAGES[m["page"]]
+        shim = WALL_SHIM % json.dumps({url: data()}).replace("</", "<\\/") if url else ""
+        files[m["name"] + ".html"] = build().replace(POLL, "").replace("</head>", shim + "</head>", 1)
+    files["index.html"] = wall_shell(cfg, mods).replace(POLL, "")
+    if cfg.get("class"):                       # class mode's demo: beside the wall, never in its turn
+        files["class.html"] = class_mode_page(cfg["class"])
+    return files
+
+
+# THE TURN: the wall's shell on a panel here, over live pages (`url:`) or wall pages (`page:`).
+def turn_modules():
+    return [m for m in (node().get("turn") or {}).get("modules") or []
+            if re.fullmatch(r"[a-z0-9-]+", str(m.get("name", "")))
+            and (str(m.get("url", "")).startswith("/") or m.get("page") in WALL_PAGES)]
+
+
+# The turn's head is our name in the wordmark's face; while dim, its pause shows pressed.
+TURN_CSS = """%s
+.super h1.name { font-family:"Source Serif 4", Georgia, serif; font-size:6vh; font-weight:780; letter-spacing:-.02em; }
+.stilled .timer { height:.9vh; }
+.stilled .timer i { background:var(--signal); }
+.stilled #hold { background:var(--signal); }
+.stilled #hold .pause { fill:var(--ink); }"""
+
+
+def turn_font():
+    """The wordmark's face (site/assets/fonts), inlined, read every time."""
+    try:
+        data = (ROOT / "site" / "assets" / "fonts" / "source-serif-4.woff2").read_bytes()
+    except OSError:
+        return ""
+    return ('@font-face { font-family:"Source Serif 4"; font-weight:200 900; '
+            'src:url(data:font/woff2;base64,%s) format("woff2"); }' % base64.b64encode(data).decode())
+
+
+def turn_file(name):
+    mods = turn_modules()
+    if name == "index.html":
+        cfg = node().get("turn") or {}
+        shell = wall_shell(cfg, mods, head="<h1 class=name>%s</h1>" % e(cfg.get("name", "Fort Collins Public Media")),
+                           css=TURN_CSS % turn_font())
+        i = shell.rfind("</body>")
+        return shell[:i] + ASIDE_HTML + shell[i:]
+    for m in mods:
+        if name == m["name"] + ".html" and m.get("page") in WALL_PAGES:
+            return WALL_PAGES[m["page"]][0]()
+    return None
+
+
+def wall_shell(cfg, mods, head=None, css=""):
+    every, rotate = int(cfg.get("every", 60)), int(cfg.get("rotate", 45))
+    ci = (node().get("wording") or {}).get("checkin") or {}
+    ww = (node().get("wording") or {}).get("wall") or {}
+    rail = "".join('<button type=button data-m="%s">%s</button>' % (
+        html.escape(m["name"], quote=True), e(m.get("label", m["name"]))) for m in mods)
+    if head is None:
+        head = "%s<div><h1>%s</h1><p class=sub>%s</p></div>" % (
+            checkin_mark(inline=True), e(ci.get("head")), e(ww.get("sub", ci.get("sub"))))
+    body = """<div class=top><header class=super>%s</header>
+<div class=timer id=timer aria-hidden=true><i></i><b></b></div></div>
+<main class=stage id=stage><div class="class takeover" id=class hidden></div></main>
+<footer class=bar>
+  <nav aria-label="Wall"><p class=showing><b>%s</b><span id=showing></span></p>%s<button type=button id=hold aria-label="%s" data-state=run title="Pause for a minute and a half; press again to keep it paused"><svg viewBox="0 0 36 36" aria-hidden="true"><circle class=track cx=18 cy=18 r=16 /><circle class=left cx=18 cy=18 r=16 transform="rotate(-90 18 18)" /><g class=pause><rect x=12.5 y=11 width=3.6 height=14 /><rect x=19.9 y=11 width=3.6 height=14 /></g><text class=secs x=18 y=18.5 text-anchor=middle dominant-baseline=central></text><path class=play d="M14.5 11 L25.5 18 L14.5 25 Z" /></svg></button></nav>
+</footer>
+%s%s""" % (head,
+           e(ww.get("brand", "FCPM")), rail, e(cfg.get("pause", "Pause")),
+           class_js(),
+           WALL_JS.replace("%%", "%").replace("@KEYED@", KEYED_JS).replace("@MODS@", json.dumps(
+               [{"name": m["name"], "label": m.get("label", m["name"]), "src": m.get("url")} for m in mods]))
+           .replace("@EVERY@", str(rotate)).replace("@RELOAD@", str(every * 10))
+           .replace("@WORDS@", json.dumps({"pause": cfg.get("pause", "Pause"), "keep": cfg.get("keep", "Keep paused"),
+                                    "play": cfg.get("play", "Play")})))
+    return page("Studio wall", body, WALL_CSS + CLASS_CSS + css)
+
+
+def wall_target():
+    cfg, server = wall_cfg(), (node().get("depot") or {}).get("server")
+    if not (cfg.get("share") and server):
+        return None
+    return pathlib.Path(share_root(server, cfg["share"])) / cfg.get("folder", ".wall")
+
+
+def write_wall():
+    """Write the wall to its share, each file whole, removing old ones; what went wrong, or None."""
+    target = wall_target()
+    if target is None:
+        return "no wall share in node.yml"
+    files = wall_files()
+    target.mkdir(exist_ok=True)
+    ctypes.windll.kernel32.SetFileAttributesW(str(target), 0x2)   # hidden, for Explorer
+    for name, body in files.items():
+        part = target / (name + ".part")
+        part.write_bytes(body.encode("utf-8"))
+        os.replace(part, target / name)
+    for old in target.iterdir():
+        if old.is_file() and old.name not in files:
+            old.unlink()
+    return None
+
+
+def watch_wall():
+    said = ...                                       # so the first outcome is logged too
+    while True:
+        try:
+            err = write_wall()
+        except Exception as exc:
+            err = repr(exc)
+        if err != said:                              # log changes, not every beat
+            log("wall: " + (err or "writing to %s" % wall_target()))
+            said = err
+        time.sleep(int(wall_cfg().get("every", 60)))
+
+
+# -------------------------------------------------------------------- server --
+def inside(base, rel):
+    """The file at base/rel, or None if rel steps outside base or is not a file."""
+    target = (base / rel).resolve()
+    if base.resolve() not in target.parents or not target.is_file():
+        return None
+    return target
+
+
+class Door(BaseHTTPRequestHandler):
+    server_version = "media-node-door"
+
+    def log_message(self, fmt, *args):
+        if getattr(self, "path", "").split("?", 1)[0] == "/input":
+            return   # every panel asks twice a second; the log is for what happens
+        log("%s %s" % (self.address_string(), fmt % args))
+
+    def reply(self, code, body, ctype="text/html; charset=utf-8"):
+        data = body.encode("utf-8") if isinstance(body, str) else body
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
+
+    def file(self, path):
+        if path is None:
+            return self.reply(404, page("Not here", "<p>Nothing by that name.</p>"))
+        data = path.read_bytes()
+        if path.suffix.lower() == ".html":
+            data = with_poll(data.decode("utf-8")).encode("utf-8")
+        self.reply(200, data, TYPES.get(path.suffix.lower(), "application/octet-stream"))
+
+    def do_HEAD(self):
+        self.do_GET()
+
+    def do_POST(self):
+        route = self.path.split("?", 1)[0]
+        here = self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+        # A panel was touched: the other panels wake on it too (AWAKE_JS).
+        if route == "/input" and here:
+            touched()
+            return self.reply(204, "", TYPES[".txt"])
+        # Only the panels themselves step aside: they are on this computer.
+        if route == "/aside" and here:
+            try:
+                step_aside()
+            except Exception as exc:
+                log("aside: %r" % exc)
+            return self.reply(204, "", TYPES[".txt"])
+        # The camera answers to this computer only: its eye, and a session's verb.
+        if route == "/camera/read" and here:
+            n = min(int(self.headers.get("Content-Length") or 0), 8192)
+            camera_read(self.rfile.read(n).decode("utf-8", "replace"))
+            return self.reply(204, "", TYPES[".txt"])
+        if route == "/camera/arm" and here:
+            m = re.search(r"[?&]for=(\d+)", self.path)
+            camera_arm(int(m.group(1)) if m else CAMERA_ARM_FOR)
+            return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+        if route == "/camera/disarm" and here:
+            camera_disarm()
+            return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+        # The board's switches: asked here, by this computer's own page. A page from elsewhere may not ask.
+        mine = here and (self.headers.get("Origin") or "null") in (
+            "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
+            "http://localhost:%d" % PORT, "http://127.0.0.1:%d" % PORT)
+        if mine and route in ("/key/unlock", "/dev/on", "/dev/off"):
+            if route == "/key/unlock":
+                key_unlock()                                   # answered on this screen
+            elif route == "/dev/on":
+                DEV.parent.mkdir(parents=True, exist_ok=True)
+                DEV.touch()
+                log("dev: on, from the board")
+            else:
+                DEV.unlink(missing_ok=True)
+                log("dev: off, from the board")
+            self.send_response(303)
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
+        return self.reply(404, "", TYPES[".txt"])
+
+    def do_GET(self):
+        route = self.path.split("?", 1)[0]
+        tail = route.rsplit("/", 1)[-1]
+        try:
+            if route == "/":
+                return self.reply(200, board_page(
+                    self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")))
+            if route == "/revision":
+                m = re.search(r"[?&]screen=([\w-]+)", self.path)
+                if m:
+                    _heard[m.group(1)] = time.time()
+                return self.reply(200, revision(), TYPES[".txt"])
+            if route == "/heard":
+                now = time.time()
+                return self.reply(200, json.dumps({"up": now - _serving_since,
+                                                   "heard": {k: now - v for k, v in _heard.items()}}), TYPES[".json"])
+            if route in ("/kiosk", "/kiosk/"):
+                return self.reply(200, kiosk_page())
+            if route in ("/depot", "/depot/"):
+                return self.reply(200, depot_page())
+            if route in ("/preview", "/preview/"):
+                return self.reply(200, preview_page())
+            if route == "/helo/feed.jpg":
+                try:
+                    return self.reply(200, helo_feed(), "image/jpeg")
+                except Exception:
+                    return self.reply(503, "", TYPES[".txt"])
+            if route == "/helo/state":
+                return self.reply(200, json.dumps(helo_state()), TYPES[".json"])
+            if route == "/input":
+                return self.reply(200, json.dumps({"idle": input_idle()}), TYPES[".json"])
+            if route == "/depot/now":
+                return self.reply(200, json.dumps(depot_now()), TYPES[".json"])
+            if route == "/kiosk/now":
+                return self.reply(200, json.dumps(kiosk_now()), TYPES[".json"])
+            if route == "/camera":
+                return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+            if route == "/camera/eye":
+                return self.reply(200, CAMERA_EYE)
+            if route in ("/camera/qr-decode.mjs", "/camera/qr-encode.mjs"):
+                return self.file(ROOT / "site" / "assets" / "js" / tail)
+            if route.startswith("/kiosk/wifi/") and tail.isdigit():
+                svg = wifi_svg(int(tail))
+                return self.reply(200, svg, TYPES[".svg"]) if svg else self.file(None)
+            if route.startswith("/kiosk/qr/") and tail.isdigit():
+                return self.file(qr_image(int(tail)))
+            if route == "/wall" or route.startswith("/wall/"):
+                files = wall_files()           # the same bytes the share gets
+                name = tail or "index.html"
+                return self.reply(200, files[name]) if name in files else self.file(None)
+            if route == "/turn" or route.startswith("/turn/"):
+                body = turn_file(tail or "index.html")
+                return self.reply(200, body) if body else self.file(None)
+            if route == "/ti-89":
+                self.send_response(301)
+                self.send_header("Location", "/ti-89/")
+                self.end_headers()
+                return
+            if route.startswith("/ti-89/"):
+                rest = route[len("/ti-89/"):]
+                if rest == "local/rom":
+                    if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                        return self.reply(403, "", TYPES[".txt"])
+                    rom = ti89_path("rom")
+                    return self.reply(200, rom.read_bytes(), "application/octet-stream") \
+                        if rom and rom.is_file() else self.file(None)
+                code = ti89_path("code")
+                return self.file(inside(code, rest or "index.html") if code else None)
+            if route in ("/idle", "/idle/"):
+                return self.file(ROOT / "brand" / "idle" / "index.html")
+            head, _, rest = route.strip("/").partition("/")
+            if head in NAMED_DIRS and rest:
+                return self.file(inside(NAMED_DIRS[head], rest))
+            return self.file(None)
+        except Exception as exc:          # a broken data file is a page, not a dead door
+            log("error on %s: %r" % (route, exc))
+            return self.reply(500, page("Something is wrong",
+                "<main style='padding:5vh'><h1>This screen could not be drawn.</h1><p>%s</p></main>"
+                % e(repr(exc))))
+
+
+class DualStack(ThreadingHTTPServer):
+    address_family = socket.AF_INET6
+    daemon_threads = True
+
+    def server_bind(self):
+        self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        super().server_bind()
+
+
+_logfh = None
+
+
+def log(msg):
+    global _logfh
+    if _logfh is None:
+        STATE.mkdir(parents=True, exist_ok=True)
+        _logfh = open(STATE / "door.log", "a", encoding="utf-8")
+    _logfh.write("%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), msg))
+    _logfh.flush()
+
+
+def watch_commit(server):
+    start = git("rev-parse", "HEAD")
+    while True:
+        time.sleep(15)
+        now = git("rev-parse", "HEAD")
+        if now and start and now != start:
+            log("worktree moved %s -> %s; bouncing" % (start[:8], now[:8]))
+            server.bounce = True
+            server.shutdown()
+            return
+
+
+def serve():
+    try:
+        server = DualStack(("::", PORT), Door)
+    except OSError as exc:
+        log("port %d unavailable, refusing to pick another: %s" % (PORT, exc))
+        return 1
+    server.bounce = False
+    threading.Thread(target=watch_commit, args=(server,), daemon=True).start()
+    threading.Thread(target=watch_depot, daemon=True).start()
+    threading.Thread(target=watch_wall, daemon=True).start()
+    threading.Thread(target=watch_camera, daemon=True).start()
+    log("door up on [::]:%d from %s at %s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD")))
+    server.serve_forever()
+    server.server_close()
+    return BOUNCE if server.bounce else 0
+
+
+def troves_checkout():
+    """troves/ are submodules: each at the commit this checkout pins. --checkout reaches the
+    private ones, which say `update = none` so that CI's token never tries them."""
+    if " troves/" not in (git("config", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.path$") or ""):
+        return
+    # Never a sign-in prompt (nobody is at this machine): the account is the one origin's URL names.
+    m = re.match(r"https://([^@/]+)@github\.com/", git("remote", "get-url", "origin") or "")
+    named = ["-c", "credential.username=" + m.group(1)] if m else []
+    os.environ.update(GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0")
+    if git(*named, "submodule", "update", "--init", "--checkout", "--quiet", "--", "troves", timeout=600) is None:
+        log("pull: troves submodule update failed; the next pull tries again")
+
+
+def polls(where=None):
+    """Fetch on the timer only from a LAN origin, or from GitHub while `fcpm dev on`. Otherwise
+    follow origin/main as the mirror has it: `fcpm pull` and the weekly pull move it, and a
+    worktree shares its mirror's refs. GitHub is not asked every five minutes."""
+    url = git("remote", "get-url", "origin", where=where) or ""
+    return DEV.exists() or (url != "" and "github.com" not in url)
+
+
+def pull_once():
+    """Rebase onto origin/main if it moved; a dirty tree is left alone, a conflict aborted."""
+    if git("status", "--porcelain", "--ignore-submodules=all") != "":
+        return log("pull: worktree has changes, not rebasing")
+    if (ROOT / ".git").is_file():
+        gitdir = pathlib.Path(git("rev-parse", "--git-dir") or "")
+        if (gitdir / "rebase-merge").exists() or (gitdir / "rebase-apply").exists():
+            return log("pull: a rebase is in progress, leaving it")
+    if polls() and git("fetch", "--quiet", "origin") is None:
+        return log("pull: fetch failed")
+    if git("merge-base", "--is-ancestor", "origin/main", "HEAD") is not None:
+        return troves_checkout()                     # already on top of main
+    if git("rebase", "--quiet", "origin/main") is None:
+        git("rebase", "--abort")
+        return log("pull: rebase onto origin/main stopped on a conflict; aborted, still on %s"
+                   % git("rev-parse", "--short", "HEAD"))
+    log("pull: rebased onto origin/main, now %s" % git("rev-parse", "--short", "HEAD"))
+    troves_checkout()
+
+
+def supervise():
+    # The logon task starts supervise every five minutes; this mutex makes a second one leave.
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateMutexW.restype = ctypes.c_void_p
+    k.CloseHandle.argtypes = [ctypes.c_void_p]
+    mutex = k.CreateMutexW(None, False, "Local\\media-node-supervise")
+    if ctypes.get_last_error() == 183:                  # ERROR_ALREADY_EXISTS
+        log("supervise: already running; this one leaves")
+        return 0
+    me = pathlib.Path(__file__).read_bytes()
+
+    def raise_screens():
+        # Every half minute once the door answers; only lines that change are logged.
+        for _ in range(60):
+            if door_answers():
+                break
+            time.sleep(2)
+        else:
+            log("screens: the door did not answer in two minutes; keeping watch anyway")
+        said = None
+        while True:
+            try:
+                out = []
+                screens(launch=True, say=out.append)
+                news = [l for l in out if not l.startswith("ok ")]
+                if news and news != said:
+                    for l in news:
+                        log("screens: " + l.strip())
+                said = news
+            except Exception as exc:
+                log("screens: %r" % exc)
+            time.sleep(30)
+
+    def puller():
+        while True:
+            try:
+                pull_once()
+            except Exception as exc:
+                log("pull: %r" % exc)
+            try:
+                ti89_pull()
+            except Exception as exc:
+                log("ti-89: %r" % exc)
+            time.sleep(PULL_EVERY)
+    threading.Thread(target=puller, daemon=True).start()
+    threading.Thread(target=raise_screens, daemon=True).start()
+    threading.Thread(target=keep_sessions, daemon=True).start()
+    threading.Thread(target=keep_server, daemon=True).start()
+    threading.Thread(target=keep_helo_clock, daemon=True).start()
+    threading.Thread(target=keep_dropbox, daemon=True).start()
+    while True:
+        code = subprocess.run([sys.executable, __file__, "serve"], creationflags=NO_WINDOW).returncode
+        if not pathlib.Path(__file__).exists():
+            # A pull moved the door's folder (a profile renamed): nobody is at
+            # this machine to re-point the logon task, so the door does, and starts from there.
+            moved = sorted(ROOT.glob("machines/*/door.py"))
+            if len(moved) != 1:
+                log("supervise: door.py is gone from %s and not found once under machines/ (%d); waiting"
+                    % (HERE.relative_to(ROOT), len(moved)))
+                time.sleep(60)
+                continue
+            new = moved[0]
+            log("supervise: the door moved to %s; following it" % new.relative_to(ROOT))
+            out = subprocess.run([sys.executable, "-X", "utf8", str(new), "startup", "--install"],
+                                 capture_output=True, text=True, creationflags=NO_WINDOW)
+            for l in (out.stdout or out.stderr or "").strip().splitlines()[:2]:
+                log("supervise: " + l)
+            k.CloseHandle(mutex)
+            subprocess.Popen([sys.executable, "-X", "utf8", str(new), "supervise"], close_fds=True,
+                             creationflags=NO_WINDOW | getattr(subprocess, "DETACHED_PROCESS", 0))
+            return 0
+        if code == BOUNCE and pathlib.Path(__file__).read_bytes() != me:
+            # supervise's own code moved too: hand the mutex to a fresh supervise and leave.
+            log("supervise: my code changed; starting a fresh one")
+            k.CloseHandle(mutex)
+            subprocess.Popen([sys.executable, "-X", "utf8", __file__, "supervise"], close_fds=True,
+                             creationflags=NO_WINDOW | getattr(subprocess, "DETACHED_PROCESS", 0))
+            return 0
+        time.sleep(1 if code == BOUNCE else 10)
+
+
+# ------------------------------------------------------------------- screens --
+def browser_windows(exe):
+    """A browser's visible top-level windows: title, rect, and fullscreen (no caption bar)."""
+    u = ctypes.windll.user32
+    try:
+        u.SetProcessDPIAware()
+    except Exception:
+        pass
+    k = ctypes.windll.kernel32
+    found = []
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("l", ctypes.c_long), ("t", ctypes.c_long), ("r", ctypes.c_long), ("b", ctypes.c_long)]
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def each(h, _):
+        if not u.IsWindowVisible(h):
+            return True
+        pid = ctypes.c_ulong()
+        u.GetWindowThreadProcessId(h, ctypes.byref(pid))
+        hp = k.OpenProcess(0x1000, False, pid.value)     # PROCESS_QUERY_LIMITED_INFORMATION
+        name = ""
+        if hp:
+            buf = ctypes.create_unicode_buffer(1024)
+            size = ctypes.c_ulong(1024)
+            if k.QueryFullProcessImageNameW(hp, 0, buf, ctypes.byref(size)):
+                name = pathlib.Path(buf.value).stem.lower()
+            k.CloseHandle(hp)
+        if name != exe:
+            return True
+        title = ctypes.create_unicode_buffer(512)
+        u.GetWindowTextW(h, title, 512)
+        if not title.value:
+            return True
+        r = RECT()
+        u.GetWindowRect(h, ctypes.byref(r))
+        style = u.GetWindowLongW(h, -16)
+        found.append({"title": title.value, "rect": [r.l, r.t, r.r - r.l, r.b - r.t],
+                      "fullscreen": not (style & 0x00C00000), "pid": pid.value, "hwnd": h})
+        return True
+
+    u.EnumWindows(each, 0)
+    return found
+
+
+BROWSERS = {"msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            "chrome": r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"}
+
+
+def launch_screen(exe, s, url):
+    """One kiosk-mode browser per screen, with its own profile, or the open browser swallows it."""
+    x, y, w, h = s["rect"]
+    args = [BROWSERS[exe], "--user-data-dir=%s" % (STATE / "screens" / s["name"]),
+            "--no-first-run", "--kiosk", url,
+            "--window-position=%d,%d" % (x, y), "--window-size=%d,%d" % (w, h)]
+    if exe == "msedge":
+        args.append("--edge-kiosk-type=fullscreen")
+    subprocess.Popen(args)
+
+
+def command_line(pid):
+    """A process's command line (ours, so no administrator), or ""."""
+    from ctypes import wintypes as W
+    k, nt = ctypes.windll.kernel32, ctypes.windll.ntdll
+    k.OpenProcess.restype = W.HANDLE
+    h = k.OpenProcess(0x1000, False, pid)                  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return ""
+    try:
+        size = W.ULONG(0)
+        nt.NtQueryInformationProcess(W.HANDLE(h), 60, None, 0, ctypes.byref(size))   # ProcessCommandLineInformation
+        if not size.value:
+            return ""
+        buf = ctypes.create_string_buffer(size.value)
+        if nt.NtQueryInformationProcess(W.HANDLE(h), 60, buf, size, ctypes.byref(size)) != 0:
+            return ""
+
+        class USTR(ctypes.Structure):
+            _fields_ = [("Length", W.USHORT), ("MaximumLength", W.USHORT), ("Buffer", ctypes.c_void_p)]
+        u = USTR.from_buffer(buf)
+        return ctypes.wstring_at(u.Buffer, u.Length // 2) if u.Buffer else ""
+    finally:
+        k.CloseHandle(W.HANDLE(h))
+
+
+def monitors():
+    """The rects of the monitors attached right now."""
+    u = ctypes.windll.user32
+    found = []
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("l", ctypes.c_long), ("t", ctypes.c_long), ("r", ctypes.c_long), ("b", ctypes.c_long)]
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(RECT), ctypes.c_void_p)
+    def each(hm, dc, r, _):
+        found.append([r.contents.l, r.contents.t, r.contents.r - r.contents.l, r.contents.b - r.contents.t])
+        return True
+    u.EnumDisplayMonitors(None, None, each, 0)
+    return found
+
+
+def top_pid(x, y):
+    """The process of the top-level window at a point on the screen."""
+    from ctypes import wintypes as W
+    u = ctypes.windll.user32
+    u.WindowFromPoint.restype = W.HWND
+    u.WindowFromPoint.argtypes = [W.POINT]
+    u.GetAncestor.restype = W.HWND
+    u.GetAncestor.argtypes = [W.HWND, W.UINT]
+    h = u.GetAncestor(u.WindowFromPoint(W.POINT(x, y)), 2)             # GA_ROOT
+    if not h:
+        return None
+    pid = W.DWORD()
+    u.GetWindowThreadProcessId(h, ctypes.byref(pid))
+    return pid.value
+
+
+def raise_window(hwnd):
+    from ctypes import wintypes as W
+    u = ctypes.windll.user32
+    u.keybd_event(0x12, 0, 0, 0); u.keybd_event(0x12, 0, 2, 0)          # an Alt tap lets the next line through
+    u.SetForegroundWindow(W.HWND(hwnd))
+    u.SetWindowPos(W.HWND(hwnd), W.HWND(0), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)   # HWND_TOP, no move/size, show
+
+
+def close_profile(pids, wait=10):
+    """Close a screen's own browser (these pids only): WM_CLOSE, then terminate."""
+    from ctypes import wintypes as W
+    u, k = ctypes.windll.user32, ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    for win in browser_windows(node().get("browser", "msedge")):
+        if win["pid"] in pids:
+            u.PostMessageW(W.HWND(win["hwnd"]), 0x0010, 0, 0)            # WM_CLOSE
+    for pid in pids:
+        h = k.OpenProcess(0x00100001, False, pid)                       # SYNCHRONIZE | PROCESS_TERMINATE
+        if not h:
+            continue
+        if k.WaitForSingleObject(W.HANDLE(h), wait * 1000) != 0:        # still running
+            k.TerminateProcess(W.HANDLE(h), 1)
+            k.WaitForSingleObject(W.HANDLE(h), 5000)
+        k.CloseHandle(W.HANDLE(h))
+
+
+SILENT = 120     # seconds a screen's page may go without polling before it is relaunched
+
+
+# STEPPING ASIDE: a page's Minimize posts /aside; the screens stay down until ASIDE_FOR without input.
+ASIDE_FOR = 600
+ASIDE = STATE / "aside"
+
+ASIDE_HTML = """<button type=button id=fcpm-aside hidden aria-label=Minimize title=Minimize>
+<svg viewBox="0 0 24 24" aria-hidden=true><rect x=4 y=17 width=16 height=3 /></svg></button>
+<style>#fcpm-aside { position:fixed; top:2.5vh; right:2.5vw; z-index:2147483000; display:flex; align-items:center;
+  gap:1.2vh; padding:1.6vh 3vh; border:0; border-radius:1vh; background:var(--signal); color:var(--ink);
+  font:750 3.4vh/1 system-ui, sans-serif; cursor:pointer; box-shadow:0 .6vh 3vh rgba(0,0,0,.5); }
+#fcpm-aside[hidden] { display:none; }
+#fcpm-aside svg { width:3.4vh; height:3.4vh; fill:currentColor; }</style>
+<script>
+(function () {
+  // Shown only while a real mouse moves here; gone ten seconds after it stops.
+  if (location.protocol.indexOf('http') !== 0 || window !== window.top) return;
+  var b = document.getElementById('fcpm-aside'), px = null, py = null, t = 0;
+  window.addEventListener('pointermove', function (ev) {
+    if (px !== null && (Math.abs(ev.screenX - px) > 2 || Math.abs(ev.screenY - py) > 2)) {
+      b.hidden = false; clearTimeout(t); t = setTimeout(function () { b.hidden = true; }, 10000);
+    }
+    px = ev.screenX; py = ev.screenY;
+  }, true);
+  b.addEventListener('click', function () {
+    b.hidden = true;
+    fetch('/aside', {method: 'POST'}).catch(function () {});
+  });
+})();
+</script>"""
+
+
+def aside():
+    """True while stepped aside; ends, and logs it, after ASIDE_FOR without input."""
+    if not ASIDE.exists():
+        return False
+    idle = idle_seconds()
+    if idle is not None and idle >= ASIDE_FOR:
+        try:
+            ASIDE.unlink()
+        except OSError:
+            pass
+        log("screens: nobody at the desk for %d min; the screens come back" % (ASIDE_FOR // 60))
+        return False
+    return True
+
+
+def step_aside():
+    """Minimize every screen's own browser, and keep them down (aside())."""
+    from ctypes import wintypes as W
+    STATE.mkdir(parents=True, exist_ok=True)
+    ASIDE.write_text(time.strftime("%Y-%m-%d %H:%M:%S"), encoding="utf-8")
+    log("screens: stepped aside for somebody at the desk")
+    profs = [str(STATE / "screens" / s["name"]).lower() for s in node().get("screens") or []]
+    for win in browser_windows(node().get("browser", "msedge")):
+        line = command_line(win["pid"]).lower()
+        if any(p in line for p in profs):
+            ctypes.windll.user32.ShowWindow(W.HWND(win["hwnd"]), 6)       # SW_MINIMIZE
+
+
+def screen_url(s):
+    """Loopback, never the name (its IPv6 addresses rotate); ?screen= says which screen it is."""
+    return "http://127.0.0.1:%d%s%sscreen=%s" % (PORT, s["url"], "&" if "?" in s["url"] else "?", s["name"])
+
+
+def camera(argv):
+    """door.py camera [arm [SECONDS] | off]: arm (two minutes), stop, or ask the running door."""
+    import urllib.request
+    verb = argv[0] if argv else ""
+    path = {"arm": "/camera/arm", "off": "/camera/disarm"}.get(verb, "/camera")
+    if verb == "arm" and len(argv) > 1 and argv[1].isdigit():
+        path += "?for=" + argv[1]
+    try:
+        req = urllib.request.Request("http://127.0.0.1:%d%s" % (PORT, path),
+                                     data=b"" if verb in ("arm", "off") else None)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            d = json.loads(r.read().decode())
+    except Exception as exc:
+        print("the door did not answer: %s" % exc)
+        return 1
+    said = d.get("said") or {}
+    print("armed, %ds left" % d["left"] if d["armed"] else "not armed")
+    if said:
+        print("heard: %s" % said.get("words"))
+    lit = lights_until()
+    print("lights on until %s" % when(datetime.datetime.fromtimestamp(lit), datetime.datetime.now())
+          if lit else "lights: off (the schedule decides)")
+    return 0
+
+
+def heard():
+    """{"up": seconds served, "heard": {screen: seconds since its last poll}}, or None."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:%d/heard" % PORT, timeout=5) as r:
+            return json.loads(r.read().decode())
+    except Exception:
+        return None
+
+
+def screens(launch=False, reset=False, say=print):
+    """Each screen in its own browser, full-screen at its rect; launch puts back, reset relaunches all."""
+    if reset and ASIDE.exists():
+        ASIDE.unlink()
+    elif aside():
+        say("aside    minimized for somebody at the desk; back after %d min with no mouse or keyboard"
+            % (ASIDE_FOR // 60))
+        return 0
+    cfg = node()
+    exe = cfg.get("browser", "msedge")
+    wins = browser_windows(exe)
+    mons = monitors()
+    lines = {}
+    for w in wins:
+        if w["pid"] not in lines:
+            lines[w["pid"]] = command_line(w["pid"]).lower()
+    bad = 0
+    ears = heard()
+    for s in cfg.get("screens") or []:
+        x, y, w, h = s["rect"]
+        prof = str(STATE / "screens" / s["name"]).lower()
+        own = [win for win in wins if prof in lines.get(win["pid"], "")]
+        hit = next((win for win in own if win["fullscreen"]
+                    and abs(win["rect"][0] - x) <= 8 and abs(win["rect"][1] - y) <= 8
+                    and abs(win["rect"][2] - w) <= 16 and abs(win["rect"][3] - h) <= 16), None)
+        # Its page has stopped polling: stuck, whatever the cause, and a fresh launch mends it.
+        quiet = (hit and ears and ears["up"] > SILENT and
+                 ears["heard"].get(s["name"], SILENT + 1) > SILENT)
+        if quiet and not reset:
+            bad += 1
+            say("silent   %-8s %-9s its page has not asked the door anything for %d s" % (
+                s["name"], s["display"], min(ears["heard"].get(s["name"], ears["up"]), ears["up"])))
+            if launch:
+                close_profile({hit["pid"]})
+                launch_screen(exe, s, screen_url(s))
+                say("         relaunched %s" % screen_url(s))
+            continue
+        # node.yml moved its url since launch; a reload keeps the old address, so relaunch.
+        if hit and not reset and screen_url(s).lower() not in lines.get(hit["pid"], ""):
+            bad += 1
+            say("moved    %-8s %-9s node.yml has it at %s now" % (s["name"], s["display"], s["url"]))
+            if launch:
+                close_profile({win["pid"] for win in own})
+                launch_screen(exe, s, screen_url(s))
+                say("         relaunched %s" % screen_url(s))
+            continue
+        if hit and not reset:
+            top = top_pid(x + w // 2, y + h // 2)
+            if top is not None and top != hit["pid"]:
+                # Something else covers it: raise ours, never close somebody else's.
+                bad += 1
+                say("covered  %-8s %-9s by another window" % (s["name"], s["display"]))
+                if launch:
+                    raise_window(hit["hwnd"])
+                    say("         raised %s's browser" % s["name"])
+                continue
+            say("ok       %-8s %-9s full-screen  %s" % (s["name"], s["display"], hit["title"]))
+            continue
+        bad += 1
+        here = any(abs(m[0] - x) <= 8 and abs(m[1] - y) <= 8 for m in mons)
+        what = ("reset" if reset and hit else
+                "astray   %-8s %-9s its browser is not full-screen at %s" % (s["name"], s["display"], s["rect"]) if own else
+                "missing  %-8s %-9s its browser is not running" % (s["name"], s["display"]))
+        if what != "reset":
+            say(what)
+        if not (launch or reset):
+            continue
+        if not here:
+            say("         its monitor is not attached; waiting for it")
+            continue
+        if own:
+            close_profile({win["pid"] for win in own})
+            say("         closed %s's browser" % s["name"])
+        url = screen_url(s)
+        launch_screen(exe, s, url)
+        say("         launched %s there" % url)
+    return 1 if bad and not (launch or reset) else 0
+
+
+# ------------------------------------------------------------------ sessions --
+# The door starts no session. The snapshot is a record only; ids stay in LOCALAPPDATA, never the repo.
+SESSIONS = STATE / "sessions.json"
+CLAUDE = shutil.which("claude") or str(pathlib.Path.home() / ".local" / "bin" / "claude.exe")
+
+
+def claude(*args, cwd=None):
+    try:
+        out = subprocess.run([CLAUDE, *args], capture_output=True, text=True, timeout=120,
+                             cwd=cwd, creationflags=NO_WINDOW, encoding="utf-8", errors="replace")
+        return out.returncode, (out.stdout + out.stderr).strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, repr(exc)
+
+
+def running_sessions():
+    """What `claude agents --json` lists as live; None if it could not be asked (not "none running")."""
+    code, out = claude("agents", "--json")
+    if code != 0:
+        return None
+    try:
+        rows = json.loads(out[out.index("["):])
+    except ValueError:
+        return None
+    return [{"id": r["sessionId"], "name": r.get("name") or r["sessionId"][:8],
+             "cwd": r.get("cwd"), "kind": r.get("kind")} for r in rows if r.get("sessionId")]
+
+
+def booted_at():
+    ms = ctypes.windll.kernel32.GetTickCount64
+    ms.restype = ctypes.c_ulonglong
+    return time.time() - ms() / 1000
+
+
+def signed_in_at():
+    """When this sign-in began, from LSA (Fast Startup carries uptime across Shut down); else the boot."""
+    from ctypes import wintypes as W
+
+    class LUID(ctypes.Structure):
+        _fields_ = [("Low", W.DWORD), ("High", W.LONG)]
+
+    class STATS(ctypes.Structure):          # TOKEN_STATISTICS
+        _fields_ = [("TokenId", LUID), ("AuthenticationId", LUID), ("ExpirationTime", ctypes.c_longlong),
+                    ("TokenType", ctypes.c_int), ("ImpersonationLevel", ctypes.c_int),
+                    ("DynamicCharged", W.DWORD), ("DynamicAvailable", W.DWORD),
+                    ("GroupCount", W.DWORD), ("PrivilegeCount", W.DWORD), ("ModifiedId", LUID)]
+
+    class USTR(ctypes.Structure):           # LSA_UNICODE_STRING
+        _fields_ = [("Length", W.USHORT), ("MaximumLength", W.USHORT), ("Buffer", W.LPWSTR)]
+
+    class LOGON(ctypes.Structure):          # SECURITY_LOGON_SESSION_DATA, as far as LogonTime
+        _fields_ = [("Size", W.ULONG), ("LogonId", LUID), ("UserName", USTR), ("LogonDomain", USTR),
+                    ("AuthenticationPackage", USTR), ("LogonType", W.ULONG), ("Session", W.ULONG),
+                    ("Sid", ctypes.c_void_p), ("LogonTime", ctypes.c_longlong)]
+
+    adv, k32, sec = ctypes.windll.advapi32, ctypes.windll.kernel32, ctypes.windll.secur32
+    k32.GetCurrentProcess.restype = W.HANDLE
+    adv.OpenProcessToken.argtypes = [W.HANDLE, W.DWORD, ctypes.POINTER(W.HANDLE)]
+    k32.CloseHandle.argtypes = [W.HANDLE]
+    tok, st, n, data = W.HANDLE(), STATS(), W.DWORD(), ctypes.POINTER(LOGON)()
+    if not adv.OpenProcessToken(k32.GetCurrentProcess(), 0x0008, ctypes.byref(tok)):     # TOKEN_QUERY
+        return booted_at()
+    try:
+        if not adv.GetTokenInformation(tok, 10, ctypes.byref(st), ctypes.sizeof(st), ctypes.byref(n)):
+            return booted_at()
+    finally:
+        k32.CloseHandle(tok)
+    if sec.LsaGetLogonSessionData(ctypes.byref(st.AuthenticationId), ctypes.byref(data)) != 0 or not data:
+        return booted_at()
+    try:
+        return data.contents.LogonTime / 1e7 - 11644473600        # FILETIME, 1601 UTC -> Unix
+    finally:
+        sec.LsaFreeReturnBuffer(data)
+
+
+def read_sessions():
+    try:
+        return json.loads(SESSIONS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"taken": 0, "sessions": [], "startup": {}}
+
+
+def write_sessions(book):
+    STATE.mkdir(parents=True, exist_ok=True)
+    tmp = SESSIONS.with_suffix(".tmp")
+    tmp.write_text(json.dumps(book, indent=1), encoding="utf-8")
+    os.replace(tmp, SESSIONS)
+
+
+def snapshot_sessions():
+    live = running_sessions()
+    if live is None:
+        return log("sessions: could not list them; keeping the last snapshot")
+    book = read_sessions()
+    book.pop("pins", None)          # revival is gone; the key was its, not the snapshot's
+    book.pop("startup", None)       # so is the seat, and its off switch
+    book.update(taken=time.time(), sessions=live)
+    write_sessions(book)
+
+
+def keep_sessions():
+    while True:
+        try:
+            snapshot_sessions()
+        except Exception as exc:
+            log("sessions: %r" % exc)
+        time.sleep(PULL_EVERY)
+
+
+def sessions(argv):
+    """door.py sessions        what is running, and what ran at the last pass"""
+    book = read_sessions()
+    if argv:
+        print(sessions.__doc__)
+        return 2
+    live = running_sessions()
+    live_ids = {s["id"] for s in live or []}
+    taken = book.get("taken") or 0
+    # A snapshot older than this sign-in lists sessions that are gone.
+    print("snapshot  %s%s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(taken)) if taken else "never",
+                              "  (before this sign-in: what it lists is gone)"
+                              if taken and taken < signed_in_at() else ""))
+    rows = {s["id"]: s for s in book.get("sessions") or []}
+    rows.update({s["id"]: s for s in live or []})
+    for sid, s in rows.items():
+        state = "running" if sid in live_ids else ("unknown" if live is None else "stopped")
+        print("%-9s %-11s %s  %s" % (state, s.get("kind") or "", sid[:8], s.get("name") or ""))
+    return 0
+
+
+# -------------------------------------------------------------------- server --
+# The root's Remote Control server: started if missing, bounced onto a newer claude.exe once calm.
+SERVER_EVERY = 60
+CALM_FOR = 15 * 60
+ROOT_CWD = pathlib.Path.home() / "code"         # AGENTS.md: sessions start here
+TRANSCRIPTS = pathlib.Path.home() / ".claude" / "projects"
+OURS = {"claude.exe", "conhost.exe"}            # under a server, these are not a task
+
+
+def processes():
+    """{pid: (parent pid, exe name)} for every process, from a Toolhelp snapshot."""
+    from ctypes import wintypes as W
+    k = ctypes.windll.kernel32
+
+    class ENTRY(ctypes.Structure):          # PROCESSENTRY32W
+        _fields_ = [("dwSize", W.DWORD), ("cntUsage", W.DWORD), ("th32ProcessID", W.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_void_p), ("th32ModuleID", W.DWORD),
+                    ("cntThreads", W.DWORD), ("th32ParentProcessID", W.DWORD),
+                    ("pcPriClassBase", ctypes.c_long), ("dwFlags", W.DWORD), ("szExeFile", W.WCHAR * 260)]
+    k.CreateToolhelp32Snapshot.restype = W.HANDLE
+    snap = k.CreateToolhelp32Snapshot(0x2, 0)                   # TH32CS_SNAPPROCESS
+    if not snap or snap == W.HANDLE(-1).value:
+        return {}
+    found, e = {}, ENTRY()
+    e.dwSize = ctypes.sizeof(ENTRY)
+    try:
+        ok = k.Process32FirstW(W.HANDLE(snap), ctypes.byref(e))
+        while ok:
+            found[e.th32ProcessID] = (e.th32ParentProcessID, e.szExeFile.lower())
+            ok = k.Process32NextW(W.HANDLE(snap), ctypes.byref(e))
+    finally:
+        k.CloseHandle(W.HANDLE(snap))
+    return found
+
+
+def started_at(pid):
+    """When a process started, as Unix time, or None."""
+    from ctypes import wintypes as W
+    k = ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    h = k.OpenProcess(0x1000, False, pid)                       # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return None
+    try:
+        t = [ctypes.c_ulonglong() for _ in range(4)]
+        if not k.GetProcessTimes(W.HANDLE(h), *[ctypes.byref(x) for x in t]):
+            return None
+        return t[0].value / 1e7 - 11644473600                   # FILETIME, 1601 UTC -> Unix
+    finally:
+        k.CloseHandle(W.HANDLE(h))
+
+
+def under(pid, procs):
+    """Every process below pid; Windows reuses pids, so a child must start after its parent."""
+    kids, out, todo = {}, [], [pid]
+    for p, (pp, _) in procs.items():
+        kids.setdefault(pp, []).append(p)
+    while todo:
+        parent = todo.pop()
+        born = started_at(parent) or 0
+        for c in kids.get(parent, []):
+            if c not in out and c != pid and (started_at(c) or born) >= born:
+                out.append(c)
+                todo.append(c)
+    return out
+
+
+def servers(procs):
+    """claude.exe running the `remote-control` subcommand (not a session's --remote-control flag)."""
+    return [pid for pid, (_, exe) in procs.items() if exe == "claude.exe"
+            and re.search(r"(^|\s)remote-control(\s|$)", command_line(pid))]
+
+
+def holds(pid, procs):
+    """Why the server at pid can't be bounced now: a task under it, a busy session, a fresh transcript."""
+    below = under(pid, procs)
+    why = ["running %s (%d)" % (procs[c][1], c) for c in below if procs[c][1] not in OURS]
+    # Transcripts of sessions outside the server don't count.
+    code, out = claude("agents", "--json")
+    rows = []
+    if code == 0 and "[" in out:
+        try:
+            rows = json.loads(out[out.index("["):])
+        except ValueError:
+            rows = []
+    mine = set(below) | {pid}
+    elsewhere = {r.get("sessionId") for r in rows if r.get("pid") not in mine}
+    why += ["busy: %s" % (r.get("name") or r.get("sessionId", "")[:8])
+            for r in rows if r.get("pid") in mine and r.get("status") == "busy"]
+    now = time.time()
+    for f in TRANSCRIPTS.rglob("*.jsonl") if TRANSCRIPTS.is_dir() else []:
+        try:
+            age = now - f.stat().st_mtime
+        except OSError:
+            continue
+        if age >= CALM_FOR:
+            continue
+        # A transcript is <id>.jsonl, and a subagent's sits in <id>/subagents/.
+        sid = f.name.split(".")[0]
+        if {sid, f.parent.name, f.parent.parent.name} & elsewhere:
+            continue
+        why.append("written %d min ago: %s" % (age // 60, sid[:8]))
+    return why
+
+
+def start_server():
+    STATE.mkdir(parents=True, exist_ok=True)
+    none = STATE / "server.in"
+    none.touch()
+    cwd = str(ROOT_CWD) if ROOT_CWD.is_dir() else None
+    with open(none, "rb") as i, open(STATE / "server.out", "ab") as o, open(STATE / "server.err", "ab") as e:
+        p = subprocess.Popen([CLAUDE, "remote-control", "--no-create-session-in-dir",
+                              "--debug-file", str(STATE / "server.log")],
+                             cwd=cwd, stdin=i, stdout=o, stderr=e, close_fds=True,
+                             creationflags=NO_WINDOW | getattr(subprocess, "DETACHED_PROCESS", 0))
+    return p.pid
+
+
+def end_tree(pid, procs):
+    from ctypes import wintypes as W
+    k = ctypes.windll.kernel32
+    k.OpenProcess.restype = W.HANDLE
+    for p in list(reversed(under(pid, procs))) + [pid]:
+        h = k.OpenProcess(0x0001, False, p)                     # PROCESS_TERMINATE
+        if h:
+            k.TerminateProcess(W.HANDLE(h), 1)
+            k.CloseHandle(W.HANDLE(h))
+
+
+def installed():
+    """(mtime of claude.exe, its version), or (None, "")."""
+    try:
+        when = pathlib.Path(CLAUDE).stat().st_mtime
+    except OSError:
+        return None, ""
+    code, out = claude("--version")
+    return when, (out.split()[0] if code == 0 and out else "")
+
+
+def server_pass(state):
+    """One minute's look; state carries what was said last, so only changes are logged."""
+    procs = processes()
+    up = servers(procs)
+    if not up:
+        if state.get("said") != "starting":
+            log("server: none up; starting the root's server")
+        state["said"] = "starting"
+        try:
+            pid = start_server()
+        except OSError as exc:
+            return log("server: could not start: %r" % exc)
+        time.sleep(5)
+        if pid in processes():
+            log("server: started in %s (pid %d)" % (ROOT_CWD, pid))
+            state["said"] = None
+        return
+    when, version = installed()
+    stale = [pid for pid in up if when and (started_at(pid) or when) < when]
+    if not stale:
+        if state.get("said"):
+            log("server: current%s" % (" (%s)" % version if version else ""))
+        state["said"] = None
+        return
+    for pid in stale:
+        why = holds(pid, procs)
+        if why:
+            line = "server: %d predates %s; held: %s" % (pid, version or "the installed claude", "; ".join(why))
+            if state.get("said") != line:
+                log(line)
+            state["said"] = line
+            continue
+        log("server: %d predates %s, calm for %d min: bouncing it" % (pid, version or "the installed claude",
+                                                                      CALM_FOR // 60))
+        end_tree(pid, procs)
+        state["said"] = "starting"
+
+
+def keep_server():
+    state = {}
+    while True:
+        try:
+            server_pass(state)
+        except Exception as exc:
+            log("server: %r" % exc)
+        time.sleep(SERVER_EVERY)
+
+
+def server_status():
+    """door.py server: what keep_server sees this minute."""
+    procs = processes()
+    up = servers(procs)
+    when, version = installed()
+    print("installed %s%s" % (version or "unknown",
+                              time.strftime("  (%Y-%m-%d %H:%M)", time.localtime(when)) if when else ""))
+    if not up:
+        print("server    none up: the door starts one within a minute")
+        return 1
+    for pid in up:
+        at = started_at(pid)
+        print("server    pid %d, started %s, %s" % (pid, time.strftime("%Y-%m-%d %H:%M", time.localtime(at))
+                                                   if at else "unknown",
+                                                   "current" if not when or not at or at >= when else "stale"))
+        why = holds(pid, procs)
+        print("calm      %s" % ("yes" if not why else "no: " + "; ".join(why)))
+    return 0
+
+
+def door_url():
+    return "http://%s.local:%d/" % (socket.gethostname().lower(), PORT)
+
+
+def door_answers():
+    """The revision, if the door answers by name, else None."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(door_url() + "revision", timeout=5) as r:
+            return r.read().decode()
+    except Exception:
+        return None
+
+
+def status():
+    rev = door_answers()
+    if rev:
+        print("up    %s   revision %s" % (door_url(), rev))
+        return 0
+    print("down  %s" % door_url())
+    print("log   %s" % (STATE / "door.log"))
+    return 1
+
+
+# ---------------------------------------------------------------------- helo --
+# THE HELO's CLOCK: it forgets the time without power; set from ours (FC-Public-Media/aja-helo).
+HELO_DRIFT = 90
+
+
+def helo_host():
+    return (node().get("helo") or {}).get("host")
+
+
+_helo_addr = {"name": None, "ip": None, "at": 0}
+
+
+def helo_addr(fresh=False):
+    """The HELO's address by mDNS, kept ten minutes (a lookup costs a second; the preview asks each)."""
+    name = helo_host()
+    if fresh or _helo_addr["name"] != name or time.time() - _helo_addr["at"] > 600:
+        _helo_addr.update(name=name, ip=socket.getaddrinfo(name, 80, socket.AF_INET)[0][4][0], at=time.time())
+    return _helo_addr["ip"]
+
+
+def helo_fetch(path, timeout=5):
+    """Bytes from the HELO; looks its name up again once if the kept address fails."""
+    import urllib.request
+    for fresh in (False, True):
+        try:
+            with urllib.request.urlopen("http://%s%s" % (helo_addr(fresh), path), timeout=timeout) as r:
+                return r.read()
+        except OSError:
+            if fresh:
+                raise
+
+
+def helo_get(path, timeout=5):
+    return helo_fetch(path, timeout).decode("utf-8", "replace")
+
+
+def helo_clock():
+    """The HELO's clock as epoch seconds, or None if it cannot be asked."""
+    try:
+        return float(json.loads(helo_get("/clock"))["epoch"])
+    except Exception:
+        return None
+
+
+def helo_recording():
+    try:
+        v = json.loads(helo_get("/config?action=get&paramid=eParamID_ReplicatorRecordState"))
+        return "record" in str(v.get("value_name", "")).lower() and "idle" not in str(v.get("value_name", "")).lower()
+    except Exception:
+        return False
+
+
+def helo_set_clock():
+    """Set the HELO's clock to ours on a minute boundary, as AJA's page does (eParamID_DateSet)."""
+    import urllib.request, urllib.parse
+    while datetime.datetime.now().second != 0:
+        time.sleep(0.2)
+    value = datetime.datetime.now().strftime("%m/%d/%Y %H:%M")
+    data = urllib.parse.urlencode({"paramName": "eParamID_DateSet", "newValue": value}).encode()
+    req = urllib.request.Request("http://%s/values?eParamID_DateSet" % helo_addr(), data=data, method="POST")
+    with urllib.request.urlopen(req, timeout=5) as r:
+        r.read()
+    return value
+
+
+
+def helo_state():
+    """The HELO's detected format, stream, record and free space; None if it cannot be asked."""
+    if not helo_host():
+        return None
+    out = {}
+    try:
+        for key, pid in (("input", "DetectInputFormat"), ("select", "VideoInSelect"),
+                         ("stream", "ReplicatorStreamState"), ("record", "ReplicatorRecordState"),
+                         ("free", "CurrentMediaUnusedBytes")):
+            v = json.loads(helo_get("/config?action=get&paramid=eParamID_" + pid, timeout=3))
+            out[key] = v.get("value_name") or v.get("value")
+    except Exception:
+        return None
+    return out
+
+
+def helo_feed():
+    """The HELO's 240x135 preview JPEG (a test pattern without input; the page says "no signal")."""
+    return helo_fetch("/wall/videofeed.jpg", timeout=3)
+
+
+PREVIEW_CSS = """
+html, body { height:100%; overflow:hidden; }
+body { display:grid; grid-template-rows:auto 1fr auto; }
+header { background:var(--slate); padding:5vh 6vw 4vh; display:flex; align-items:center; gap:4vw; }
+header .mark { width:7vh; height:7vh; flex:none; }
+header h1 { margin:0; font-size:5.2vh; line-height:1; font-weight:750; letter-spacing:-.01em; }
+header p { margin:1vh 0 0; font-size:1.7vh; color:var(--soft); }
+main { display:flex; align-items:center; justify-content:center; padding:0 3vw; }
+.frame { position:relative; width:100%; aspect-ratio:16 / 9; background:#000; }
+.frame img { display:block; width:100%; height:100%; object-fit:contain; }
+.frame .none { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:2.6vh; color:var(--soft); background:#000; }
+.frame .none[hidden] { display:none; }
+footer { background:var(--slate); padding:2.4vh 6vw; display:flex; gap:4vw; font-size:1.8vh; }
+footer b { display:block; font-size:1.3vh; letter-spacing:.12em; text-transform:uppercase; color:var(--signal); margin-bottom:.4vh; }
+footer span { font-variant-numeric:tabular-nums; }
+"""
+
+PREVIEW_JS = """<script>
+(function () {
+  var img = document.getElementById('feed'), none = document.getElementById('none'), W = @WORDS@;
+  // The next picture loads off-screen and is swapped in whole: no flicker.
+  function next() {
+    var n = new Image();
+    n.onload = function () { img.src = n.src; setTimeout(next, 1000); };
+    n.onerror = function () { none.textContent = W.gone; none.hidden = false; setTimeout(next, 5000); };
+    n.src = '/helo/feed.jpg?t=' + Date.now();
+  }
+  function says(id, t) { document.getElementById(id).textContent = t; }
+  function state() {
+    fetch('/helo/state', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d) { none.textContent = W.gone; none.hidden = false; return; }
+      var signal = d.select === 'Test Pattern' || !/no input|unknown|none/i.test(d.input || '');
+      none.textContent = W.nosignal; none.hidden = signal;
+      says('input', signal ? d.input : W.nosignal);
+      says('stream', /stream/i.test(d.stream) && !/idle|fail/i.test(d.stream) ? W.on : W.off);
+      says('record', /record/i.test(d.record) && !/idle|fail/i.test(d.record) ? W.on : W.off);
+      says('free', d.free ? (d.free / 1e9).toFixed(1) + ' GB' : '');
+    }).catch(function () {});
+  }
+  next(); state(); setInterval(state, 5000);
+})();
+</script>"""
+
+
+def preview_page():
+    """The studio's cameras: the ATEM's multiview as the HELO receives it, once a second."""
+    words = (node().get("wording") or {}).get("preview") or {}
+    w = {"gone": words.get("gone", "The recorder is not answering"),
+         "nosignal": words.get("nosignal", "No signal"), "on": words.get("on", "On"), "off": words.get("off", "Off")}
+    body = """<header>%s<div><h1>%s</h1><p>%s</p></div></header>
+<main><div class=frame><img id=feed alt="%s"><div class=none id=none hidden></div></div></main>
+<footer><div><b>%s</b><span id=input></span></div><div><b>%s</b><span id=stream></span></div>
+<div><b>%s</b><span id=record></span></div><div><b>%s</b><span id=free></span></div></footer>%s""" % (
+        clock_mark(), e(words.get("head", "Cameras")), e(words.get("sub", "The studio, as the recorder sees it")),
+        html.escape(words.get("alt", "The studio's cameras, as the recorder receives them"), quote=True),
+        e(words.get("input", "Input")), e(words.get("stream", "Streaming")), e(words.get("record", "Recording")),
+        e(words.get("free", "Card free")), PREVIEW_JS.replace("@WORDS@", json.dumps(w)))
+    return page(words.get("head", "Cameras"), body, PREVIEW_CSS)
+
+
+def keep_helo_clock():
+    said = None
+    while True:
+        try:
+            if helo_host():
+                t = helo_clock()
+                if t is None:
+                    note = "helo: not answering at %s" % helo_host()
+                elif abs(t - time.time()) <= HELO_DRIFT:
+                    note = None
+                elif helo_recording():
+                    note = "helo: clock is out (%s) but it is recording; leaving it" % \
+                        time.strftime("%Y-%m-%d %H:%M", time.localtime(t))
+                else:
+                    was = time.strftime("%Y-%m-%d %H:%M", time.localtime(t))
+                    log("helo: clock read %s; set to %s" % (was, helo_set_clock()))
+                    note = None
+                if note != said and note:
+                    log(note)
+                said = note
+        except Exception as exc:
+            log("helo: %r" % exc)
+        time.sleep(60)
+
+
+# ------------------------------------------------------------------- dropbox --
+# THE DROPBOX QUEUE: an eviction, not a sync. Settled files go up; removed once content_hash matches.
+DROPBOX_API, DROPBOX_CONTENT = "https://api.dropboxapi.com", "https://content.dropboxapi.com"
+DROPBOX_SECRET = "fcpm-dropbox:refresh"
+DROPBOX_CHUNK = 8 * 1024 * 1024
+DROPBOX_JUNK = re.compile(r"^(\..*|Thumbs\.db|desktop\.ini)$", re.I)
+_dropbox = {"token": None, "until": 0, "seen": {}}
+
+
+def dropbox_cfg():
+    return node().get("dropbox") or {}
+
+
+def dropbox_hash(path):
+    """Dropbox's content_hash: SHA-256 over the SHA-256 of each 4 MB block."""
+    import hashlib
+    outer = hashlib.sha256()
+    with open(path, "rb") as fh:
+        while True:
+            block = fh.read(4 * 1024 * 1024)
+            if not block:
+                break
+            outer.update(hashlib.sha256(block).digest())
+    return outer.hexdigest()
+
+
+def dropbox_post(url, body=None, arg=None, data=None, token=True, form=None):
+    """One call: JSON (body), bytes (data, arg in the header) or form in; JSON out, or {"error_409": ...}."""
+    import urllib.request, urllib.parse, urllib.error
+    headers = {}
+    if token:
+        headers["Authorization"] = "Bearer " + dropbox_token()
+    if form is not None:
+        payload = urllib.parse.urlencode(form).encode()
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    elif data is not None:
+        payload = data
+        headers["Content-Type"] = "application/octet-stream"
+        headers["Dropbox-API-Arg"] = json.dumps(arg)          # ASCII-escaped, as the header needs
+    elif body is not None:
+        payload = json.dumps(body).encode()
+        headers["Content-Type"] = "application/json"
+    else:
+        payload = None
+    req = urllib.request.Request(url, data=payload if payload is not None else b"", headers=headers, method="POST")
+    if payload is None:
+        req.data = None
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            raw = r.read()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as err:
+        if err.code == 409:
+            return {"error_409": json.loads(err.read() or b"{}")}
+        raise RuntimeError("dropbox %s: %s %s" % (url.rsplit("/", 2)[-2:], err.code, err.read()[:200]))
+
+
+def dropbox_token():
+    """A short-lived access token, from the refresh token in Credential Manager."""
+    if _dropbox["token"] and time.time() < _dropbox["until"] - 60:
+        return _dropbox["token"]
+    refresh, key = secret(DROPBOX_SECRET), dropbox_cfg().get("app_key")
+    if not (refresh and key):
+        raise RuntimeError("not linked: run door.py dropbox link")
+    d = dropbox_post(DROPBOX_API + "/oauth2/token", token=False,
+                     form={"grant_type": "refresh_token", "refresh_token": refresh, "client_id": key})
+    _dropbox.update(token=d["access_token"], until=time.time() + int(d.get("expires_in", 3600)))
+    return _dropbox["token"]
+
+
+def dropbox_meta(path):
+    d = dropbox_post(DROPBOX_API + "/2/files/get_metadata", {"path": path})
+    return None if "error_409" in d else d
+
+
+def dropbox_upload(local, remote):
+    """Upload whole, or in 8 MB pieces past 150 MB; metadata, or {"error_409": ...} if the path is taken."""
+    size = os.path.getsize(local)
+    commit = {"path": remote, "mode": "add", "autorename": False, "mute": True}
+    with open(local, "rb") as fh:
+        if size <= 150 * 1024 * 1024:
+            return dropbox_post(DROPBOX_CONTENT + "/2/files/upload", arg=commit, data=fh.read())
+        sid = dropbox_post(DROPBOX_CONTENT + "/2/files/upload_session/start", arg={"close": False},
+                           data=fh.read(DROPBOX_CHUNK))["session_id"]
+        while True:
+            offset = fh.tell()
+            chunk = fh.read(DROPBOX_CHUNK)
+            cursor = {"session_id": sid, "offset": offset}
+            if fh.tell() >= size:
+                return dropbox_post(DROPBOX_CONTENT + "/2/files/upload_session/finish",
+                                    arg={"cursor": cursor, "commit": commit}, data=chunk)
+            dropbox_post(DROPBOX_CONTENT + "/2/files/upload_session/append_v2",
+                         arg={"cursor": cursor, "close": False}, data=chunk)
+
+
+def dropbox_queue_root():
+    server = (node().get("depot") or {}).get("server")
+    share = dropbox_cfg().get("share", "TO DROPBOX")
+    return pathlib.Path(share_root(server, share)) if server else None
+
+
+def dropbox_waiting(root):
+    """Files in the queue, skipping Mac leftovers and hidden folders."""
+    for dirpath, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if not DROPBOX_JUNK.match(d)]
+        for n in names:
+            if not DROPBOX_JUNK.match(n):
+                yield pathlib.Path(dirpath) / n
+
+
+def dropbox_pass(dry=False, say=log):
+    """One look at the queue: send what has settled, remove what Dropbox holds."""
+    cfg, root = dropbox_cfg(), dropbox_queue_root()
+    to = (cfg.get("to") or "").rstrip("/")
+    if not (to and root):
+        return
+    now, seen, sent = time.time(), _dropbox["seen"], 0
+    for f in list(dropbox_waiting(root)):
+        try:
+            st = f.stat()
+        except OSError:
+            continue
+        mark = (st.st_size, st.st_mtime)
+        settled = seen.get(str(f)) == mark and now - st.st_mtime > 120
+        seen[str(f)] = mark
+        if not settled:
+            continue
+        rel = f.relative_to(root).as_posix()
+        remote = to + "/" + rel
+        ours = dropbox_hash(f)
+        if dry:
+            say("dropbox: would send %s (%d bytes) -> %s" % (rel, st.st_size, remote))
+            continue
+        there = dropbox_meta(remote)
+        if there is None:
+            there = dropbox_upload(f, remote)
+            if "error_409" in there:
+                say("dropbox: %s is already taken in Dropbox; leaving %s" % (remote, rel))
+                continue
+        if there.get("content_hash") != ours:
+            say("dropbox: %s in Dropbox is not these bytes; leaving %s" % (remote, rel))
+            continue
+        os.remove(f)
+        seen.pop(str(f), None)
+        parent = f.parent
+        while parent != root:
+            try:
+                parent.rmdir()                           # only if empty
+            except OSError:
+                break
+            parent = parent.parent
+        sent += 1
+        say("dropbox: sent %s (%d bytes) -> %s; removed from %s" % (rel, st.st_size, remote, root.name))
+    return sent
+
+
+def keep_dropbox():
+    said = None
+    while True:
+        try:
+            if dropbox_cfg().get("to") and secret(DROPBOX_SECRET):
+                dropbox_pass()
+                said = None
+        except Exception as exc:
+            note = "dropbox: %s" % exc
+            if note != said:
+                log(note)
+            said = note
+        time.sleep(60)
+
+
+DROPBOX_PENDING = STATE / "dropbox-link.json"
+
+
+def dropbox(argv):
+    """door.py dropbox link           print the link to approve the app (once)
+    door.py dropbox link <code>    finish: trade the code Dropbox shows for a refresh token
+    door.py dropbox status         who it is signed in as, and whether the folder is there
+    door.py dropbox pass [--dry]   look at the queue once, now"""
+    import base64 as b64, hashlib, secrets, urllib.parse
+    key = dropbox_cfg().get("app_key")
+    if argv[:1] == ["link"] and len(argv) == 1:
+        if not key:
+            print("no app_key in node.yml's dropbox block yet")
+            return 2
+        verifier = b64.urlsafe_b64encode(secrets.token_bytes(48)).decode().rstrip("=")
+        challenge = b64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+        STATE.mkdir(parents=True, exist_ok=True)
+        DROPBOX_PENDING.write_text(json.dumps({"verifier": verifier}), encoding="utf-8")
+        print("Open this, approve, then run: door.py dropbox link <the code it shows>\n")
+        print("https://www.dropbox.com/oauth2/authorize?" + urllib.parse.urlencode({
+            "client_id": key, "response_type": "code", "token_access_type": "offline",
+            "code_challenge": challenge, "code_challenge_method": "S256"}))
+        return 0
+    if argv[:1] == ["link"] and len(argv) == 2:
+        try:
+            verifier = json.loads(DROPBOX_PENDING.read_text(encoding="utf-8"))["verifier"]
+        except (OSError, ValueError, KeyError):
+            print("run door.py dropbox link first")
+            return 2
+        d = dropbox_post(DROPBOX_API + "/oauth2/token", token=False, form={
+            "grant_type": "authorization_code", "code": argv[1].strip(), "client_id": key,
+            "code_verifier": verifier})
+        set_secret(DROPBOX_SECRET, "dropbox", d["refresh_token"])
+        DROPBOX_PENDING.unlink()
+        print("linked; the refresh token is in Credential Manager as %s" % DROPBOX_SECRET)
+        return 0
+    if argv[:1] == ["status"]:
+        me = dropbox_post(DROPBOX_API + "/2/users/get_current_account")
+        print("signed in as  %s" % me.get("email"))
+        to = dropbox_cfg().get("to")
+        print("lands in      %s  (%s)" % (to or "(not set)", "there" if to and dropbox_meta(to) else "not found"))
+        print("queue         %s" % dropbox_queue_root())
+        return 0
+    if argv[:1] == ["pass"]:
+        dropbox_pass(dry="--dry" in argv, say=print)
+        dropbox_pass(dry="--dry" in argv, say=print)      # a file must look the same twice
+        return 0
+    print(dropbox.__doc__)
+    return 2
+
+
+# ------------------------------------------------------------------- startup --
+TASK = "media-node door"
+VENV_PYTHONW = STATE / "venv" / "Scripts" / "pythonw.exe"
+SHORTCUT = (pathlib.Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" /
+            "Start Menu" / "Programs" / "Startup" / "media-node door.lnk")
+
+
+def whoami():
+    return "%s\\%s" % (os.environ.get("USERDOMAIN", ""), os.environ.get("USERNAME", ""))
+
+
+def task_xml(here=HERE):
+    """The logon task for this checkout; `-X utf8` because a task action cannot set PYTHONUTF8."""
+    esc = html.escape
+    user = esc(whoami())
+    return """<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>The media node's door and screens. Generated by machines\\kiosk\\door.py startup --xml; regenerate rather than edit.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <UserId>%(user)s</UserId>
+    </LogonTrigger>
+    <!-- The keep-alive. Not a repetition on the logon trigger: that one only
+         arms at a logon, so a task registered mid-session would have none
+         until the next one. A time trigger in the past repeats from now. -->
+    <TimeTrigger>
+      <Enabled>true</Enabled>
+      <StartBoundary>2026-01-01T00:00:00</StartBoundary>
+      <Repetition>
+        <Interval>PT5M</Interval>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>%(user)s</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>%(py)s</Command>
+      <Arguments>-X utf8 "%(door)s" supervise</Arguments>
+      <WorkingDirectory>%(root)s</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+""" % {"user": user, "py": esc(str(VENV_PYTHONW)),
+       "door": esc(str(here / "door.py")), "root": esc(str(here.parents[1]))}
+
+
+def installed_task():
+    """The registered task's XML from Task Scheduler, or None."""
+    out = subprocess.run(["schtasks", "/Query", "/TN", TASK, "/XML"],
+                         capture_output=True, text=True, creationflags=NO_WINDOW)
+    return out.stdout if out.returncode == 0 else None
+
+
+def startup(argv):
+    if "--xml" in argv:
+        print(task_xml(), end="")
+        return 0
+    if "--install" in argv:
+        path = STATE / "door-task.xml"
+        STATE.mkdir(parents=True, exist_ok=True)
+        path.write_text(task_xml(), encoding="utf-16")
+        out = subprocess.run(["schtasks", "/Create", "/TN", TASK, "/XML", str(path), "/F"],
+                             capture_output=True, text=True, creationflags=NO_WINDOW)
+        path.unlink()
+        if out.returncode != 0:
+            print("could not register the task: %s" % (out.stderr or out.stdout).strip())
+            return 1
+        print("registered  task %r -> %s" % (TASK, HERE / "door.py"))
+        if SHORTCUT.exists():
+            # Two things starting supervise at logon would be two pullers.
+            SHORTCUT.unlink()
+            print("removed     the Startup shortcut, which the task replaces")
+        print("\nA door already running from before keeps running. The task will not")
+        print("start another while it lives. To hand over now: stop it, then")
+        print('  schtasks /Run /TN "%s"' % TASK)
+        return 0
+
+    bad = 0
+    xml = installed_task()
+    want = str(HERE / "door.py")
+    if xml is None:
+        bad += 1
+        print("task      %r is not registered.  door.py startup --install" % TASK)
+    elif want.lower() in xml.lower():
+        print("task      %r starts %s at logon" % (TASK, want))
+    else:
+        bad += 1
+        print("task      %r points elsewhere; regenerate from the checkout the door runs from" % TASK)
+    if SHORTCUT.exists():
+        print("shortcut  %s still exists%s" % (SHORTCUT.name, "; --install removes it" if xml else ""))
+    rev = door_answers()
+    print("door      %s" % ("up, revision " + rev if rev else "not answering"))
+    print("logon     manual. Signing in automatically needs an administrator (PROFILE.md)")
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    verb = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if verb == "screens":
+        sys.exit(screens(launch="--launch" in sys.argv, reset="--reset" in sys.argv))
+    if verb == "startup":
+        sys.exit(startup(sys.argv[2:]))
+    if verb == "sessions":
+        sys.exit(sessions(sys.argv[2:]))
+    if verb == "server":
+        sys.exit(server_status())
+    if verb == "dropbox":
+        sys.exit(dropbox(sys.argv[2:]))
+    if verb == "tell":
+        sys.exit(tell(sys.argv[2:]))
+    if verb == "camera":
+        sys.exit(camera(sys.argv[2:]))
+    if verb == "wifi-password" and len(sys.argv) > 2:
+        sys.exit(wifi_password(sys.argv[2]))
+    sys.exit({"serve": serve, "supervise": supervise, "status": status}.get(verb, status)())

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# refs — keep refs/ current, and make changes in worktrees beside it.
+#
+#   bin/refs pull [REPO...]    fetch every repo in refs/ (or just those named),
+#                              fast-forward the clean ones
+#   bin/refs status            one line per repo: branch, behind/ahead, dirty
+#   bin/refs work REPO BRANCH  new worktree at work/REPO@BRANCH, cut from origin/main
+#   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
+#
+# refs/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. Its troves/
+# submodules follow to the commits it pins, private ones too; no other submodules.
+# Git Bash only. See docs/station.md, Sessions.
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REF="$ROOT/refs"
+WORK="$ROOT/work"
+
+default_branch() {
+  git -C "$1" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##' || echo main
+}
+
+# troves/ are submodules: check each out at the commit this repo pins. --checkout reaches the
+# private ones, which say `update = none` so that CI's token never tries them.
+troves_one() {
+  local d=$1 user
+  git -C "$d" config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null | grep -q ' troves/' || return 0
+  # Never a sign-in prompt (a pull runs headless): the account is the one origin's URL names.
+  user=$(git -C "$d" remote get-url origin 2>/dev/null | sed -n 's#^https://\([^@/]*\)@github\.com/.*#\1#p')
+  GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$d" ${user:+-c credential.username="$user"} \
+    submodule update --init --checkout --quiet -- troves >/dev/null 2>&1 \
+    || printf '%-34s troves: SUBMODULE UPDATE FAILED\n' "$(basename "$d")"
+}
+
+each() { for d in "$REF"/*/; do [ -e "$d/.git" ] && "$@" "${d%/}"; done; }
+
+line() {
+  local d=$1 name br def up behind ahead dirty
+  name=$(basename "$d"); br=$(git -C "$d" branch --show-current)
+  def=$(default_branch "$d"); def=${def:-main}
+  behind=$(git -C "$d" rev-list --count "HEAD..origin/$def" 2>/dev/null || echo ?)
+  ahead=$(git -C "$d" rev-list --count "origin/$def..HEAD" 2>/dev/null || echo ?)
+  dirty=$(git -C "$d" status --porcelain | wc -l | tr -d ' ')
+  printf '%-34s %-8s behind=%-3s ahead=%-3s dirty=%s\n' "$name" "$br" "$behind" "$ahead" "$dirty"
+}
+
+pull_one() {
+  local d=$1 name def br
+  name=$(basename "$d")
+  if ! git -C "$d" fetch --prune --quiet 2>/dev/null; then
+    printf '%-34s FETCH FAILED\n' "$name"; return
+  fi
+  def=$(default_branch "$d"); def=${def:-main}
+  br=$(git -C "$d" branch --show-current)
+  if [ "$br" != "$def" ]; then printf '%-34s skipped: on %s, not %s\n' "$name" "$br" "$def"; return; fi
+  if [ -n "$(git -C "$d" status --porcelain --ignore-submodules=all)" ]; then printf '%-34s skipped: dirty\n' "$name"; return; fi
+  local before after
+  before=$(git -C "$d" rev-parse --short HEAD)
+  if git -C "$d" merge --ff-only --quiet "origin/$def" 2>/dev/null; then
+    after=$(git -C "$d" rev-parse --short HEAD)
+    if [ "$before" = "$after" ]; then printf '%-34s current   %s\n' "$name" "$after"
+    else printf '%-34s UPDATED   %s -> %s  (%s)\n' "$name" "$before" "$after" \
+      "$(git -C "$d" log -1 --format=%s)"; fi
+    troves_one "$d"
+  else
+    printf '%-34s skipped: diverged from origin/%s\n' "$name" "$def"
+  fi
+}
+
+case "${1:-status}" in
+  pull)   shift; if [ $# -gt 0 ]; then for r in "$@"; do
+             [ -e "$REF/$r/.git" ] || { echo "no such repo: $REF/$r" >&2; exit 1; }
+             pull_one "$REF/$r"; done
+           else each pull_one; fi ;;
+  status) each line ;;
+  work)
+    repo=${2:?repo name}; branch=${3:?branch name}
+    src="$REF/$repo"; [ -e "$src/.git" ] || { echo "no such repo: $src" >&2; exit 1; }
+    git -C "$src" fetch --prune --quiet
+    def=$(default_branch "$src"); def=${def:-main}
+    dest="$WORK/$repo@${branch//\//-}"
+    mkdir -p "$WORK"
+    git -C "$src" worktree add -b "$branch" "$dest" "origin/$def" && troves_one "$dest" && echo "$dest" ;;
+  done)
+    repo=${2:?repo name}; branch=${3:?branch name}
+    git -C "$REF/$repo" worktree remove "$WORK/$repo@${branch//\//-}" ;;
+  *) sed -n '2,10p' "$0"; exit 1 ;;
+esac

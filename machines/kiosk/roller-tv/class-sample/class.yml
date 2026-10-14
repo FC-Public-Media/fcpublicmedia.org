@@ -1,0 +1,6 @@
+# A made-up class for class mode (../README.md); a real one has the same shape.
+# Beside it, one folder per kind of material (Handouts…), one file per section in name order.
+title: Podcasting 101 (sample)
+presenter: Doug              # short; a long one should be the person's real name
+starts: "18:00"               # 24-hour, local; later, from the class's calendar entry
+ends: "20:00"                 # shown as 6–8 PM, with a pill for each hour

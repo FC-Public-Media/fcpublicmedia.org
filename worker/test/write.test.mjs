@@ -1,10 +1,4 @@
-// Writing the file.
-//
-// The verification is tested in broker.test.mjs and is not repeated here; what
-// these are about is what happens after it passes, and the two failures that
-// matter are opposite in shape. Writing when it should not have is the obvious
-// one. Reporting a failure for a write that actually landed is the other, and
-// it is worse in practice: the member edits again, and now there are two.
+// /write after verification passes: never write wrongly, never report a landed write as failed.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -26,12 +20,7 @@ const post = (path, body) =>
     body: JSON.stringify(body),
   });
 
-/**
- * A broker with a token, a repository, and one registered device.
- *
- * `blobs` seeds what GitHub already holds at a path, so a test can arrange for
- * the file to have moved on since the member read it.
- */
+/** A broker with a token, a repository and one device; `blobs` seeds what GitHub already holds. */
 async function setUp({ writeMode, mayPublish = true, blobs = {}, token = 'ghp_test' } = {}) {
   const credential = await makeCredential({ mayPublish });
   const hub = fakeGitHub({ [REPO]: { version: 1, devices: [credential.record] } }, { blobs });
@@ -88,8 +77,7 @@ test('a save lands on a branch and opens a pull request', async () => {
 });
 
 test('what gets written is exactly what was signed for, comments and all', async () => {
-  // The reason /settings/ is a textarea. If a comment can be lost anywhere in
-  // this path, the argument for the whole page collapses.
+  // /settings/ is a textarea so that YAML comments survive.
   const { hub, save } = await setUp();
 
   await save(SETTINGS);
@@ -99,9 +87,7 @@ test('what gets written is exactly what was signed for, comments and all', async
 });
 
 test('the same edit retried reuses its branch and its pull request', async () => {
-  // A member who taps save twice, or a page that retried a request it never
-  // saw the answer to. The branch name comes from the content hash, so the
-  // second attempt finds its own work rather than making a second copy.
+  // A double tap or retry; the branch is named from the content hash.
   const { hub, save } = await setUp();
 
   const first = await save(SETTINGS);
@@ -111,8 +97,6 @@ test('the same edit retried reuses its branch and its pull request', async () =>
   assert.equal(second.body.url, first.body.url);
   assert.equal(hub.pulls.length, 1, 'a second pull request was opened');
 
-  // Reported as a repeat rather than as a fresh save, so the page is not
-  // claiming something happened that did not.
   assert.equal(first.body.repeated, false);
   assert.equal(second.body.repeated, true);
   assert.equal(hub.written.length, 1, 'the file was written twice');
@@ -144,8 +128,6 @@ test('direct mode commits to the default branch and opens nothing', async () => 
 /* -------------------------------------------------------------- refusals */
 
 test('a stale SHA is refused rather than allowed to discard somebody', async () => {
-  // The member read the file, somebody else changed it, the member saved. The
-  // SHA is the only thing standing between that and a silent overwrite.
   const { hub, save } = await setUp({ blobs: { [`${REPO}/${PATH}`]: 'a'.repeat(40) } });
 
   const { response, body } = await save(SETTINGS, { sha: 'b'.repeat(40) });
@@ -166,9 +148,6 @@ test('a device that may not publish cannot write', async () => {
 });
 
 test('a challenge issued to prove a device cannot be spent on a write', async () => {
-  // Both are genuine signatures from a device that is allowed to publish. The
-  // difference is what the member was asked to approve, and that difference
-  // has to survive all the way to the write.
   const { hub, save } = await setUp();
 
   const { response, body } = await save(SETTINGS, { action: 'verify' });
@@ -208,9 +187,7 @@ test('a broker with no credential says so, and still verifies', async () => {
   assert.equal(response.status, 500);
   assert.match(body.detail, /GITHUB_APP_ID/);
 
-  // The half it is configured for keeps working. A broker that refused to
-  // prove anything because it cannot write would be worse than one that does
-  // the job it is set up for.
+  // Verification still works without a write credential.
   const declared = await service.fetch(post('/challenge', { action: 'verify', repo: REPO }));
   const { challenge } = await declared.json();
   const assertion = await makeAssertion(credential, { challenge, origin: ORIGIN, rpId: RP_ID });

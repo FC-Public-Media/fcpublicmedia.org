@@ -1,0 +1,14 @@
+# What the digitization job itself serves, when it orders it (digitization/services). See README.md.
+
+serves:
+  - service: intake
+    for: "GitHub's main into the origin at /srv/origin; see digitization/PROFILE.md, The origin"
+    start: "/usr/bin/python3 -I machines/digitization/origin-intake"
+
+  - service: standby
+    for: "every branch and tag into origin.local, a minute behind; see origin/PROFILE.md"
+    start: "/bin/sh machines/digitization/origin-standby"
+
+  - service: follow
+    for: "this checkout follows the origin's main, fast-forward only; see digitization/PROFILE.md"
+    start: "/bin/sh machines/digitization/follow"

@@ -1,0 +1,11 @@
+# Production's post: the partition on this machine and the steps it does, for `fcpm post`.
+# Doc: troves/post/README.md. A job also listed in `crews:` adds its own machines/<job>/post.yml steps.
+
+crews: [production]          # digitization's post steps join when it has some
+root: "E:/POST"              # the 1 TB LUN, iSCSI (fcpm drobo), shared as `enhance` (fcpm share): the tank
+doors: "E:/DOORS"
+
+steps:
+  enhance:                   # Adobe Podcast, by hand: drag out, download back
+    door: true
+    lease: 7d
