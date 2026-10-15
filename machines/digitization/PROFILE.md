@@ -1,6 +1,6 @@
 # digitization
 
-A Dell OptiPlex 9020M (asset 200-FCPubMedia) running Debian 13 XFCE live from a USB stick, the first
+A Dell OptiPlex 9020M (asset 200-FCPubMedia) running Debian 13 XFCE live from an SD card, the first
 Linux profile. It shares its name with the [`digitization`](CREW.md) crew,
 which it is to take over from station-node. Not worn yet. Machines: [docs/station.md](../../docs/station.md).
 
@@ -18,7 +18,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 ## The origin
 
 Bare repositories at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media, and the four FCCN-ANTIBODY
-repositories fcpublicmedia.org mounts. They live on an ext4 image on the RAID, not on the stick.
+repositories fcpublicmedia.org mounts. They live on an ext4 image on the RAID, not on the card.
 
 `origin-intake` (started every minute by the crew's `intake` line; it asks GitHub every minute only while `fcpm dev on`, otherwise weekly, or now with `--now`; and only while `/srv/origin` is mounted;
 `--status` prints the last state) tracks GitHub's `main` only, one GraphQL query for every repository,
