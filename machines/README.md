@@ -22,6 +22,14 @@ two jobs' `names` does both. Station-node uses the same model, so a job can
 move between machines on either side. [`crew.yml`](crew.yml) is something else: which agents can be
 mustered on an FCPM machine.
 
+## Screens
+
+A job's screen belongs to the job, not to the box it runs on. A box that keeps nothing paints its
+console from the machine that keeps the job's page: [`leash.py`](leash.py) on its tty1 opens one
+`ssh -T` there, sends up what the box can see, and passes the page's ANSI down. The grant is one
+forced-command line in that machine's `authorized_keys`. [`origin`](origin/PROFILE.md) wears one;
+the scanner's eyes are the same wire with cameras.
+
 ## Supervisor
 
 Each job a machine does has one supervisor there, `machines/crew.py serve <job>` (verbs: its docstring), run by one service named for the job: a scheduled task on Windows (`machines/crew.ps1`), `fcpm-crew@<job>` on Linux (`machines/crew.sh`). Never one service per line.

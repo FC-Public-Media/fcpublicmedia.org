@@ -8,7 +8,7 @@ cd /srv/origin || exit 1
 for r in */*/; do
   r=${r%/}; [ -f "$r/HEAD" ] || continue
   if ! git ls-remote -q "$TO:/srv/origin/$r" HEAD >/dev/null 2>&1; then
-    ssh -o BatchMode=yes fcpm@origin.local "sudo -u git git init -q --bare /srv/origin/$r" || continue
+    ssh -o BatchMode=yes "$TO" init "$r" || continue          # the git account's own command (../origin/outfit)
   fi
   git -C "$r" push -q "$TO:/srv/origin/$r" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*' 2>&1 | sed "s|^|$r: |"
 done

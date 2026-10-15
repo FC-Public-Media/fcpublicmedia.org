@@ -1,0 +1,66 @@
+#!/bin/sh
+# install -- the origin job onto a box, run from the machine that keeps its page (today digitization).
+#
+#   machines/origin/install root@HOST DISK SERIAL   HOST runs Alpine's live system (the recovery stick:
+#                                                  root, network, sshd, our keys). ERASES DISK, installs
+#                                                  Alpine there, outfits it, and powers HOST off.
+#   machines/origin/install fcpm@HOST              outfit an origin that is already running. No disk.
+#
+# Any box that boots Alpine will do. DISK is named and must answer to SERIAL ("none" if it reports
+# none), so the wrong disk is never the one erased; the rest is ./outfit. Afterwards this machine
+# lets the box's screen in (one forced-command line in ~/.ssh/authorized_keys, its page.py) and, for
+# a new install, pins the box's host key for NAME.local. Settings, with what they default to:
+#   FCPM_KEYS  ~/.ssh/id_ed25519.pub        who manages it (fcpm, sudo)
+#   GIT_KEYS   ~/.ssh/origin-standby.pub    who pushes (git, git-shell)
+#   PAGE       $USER@<this host>.local      where its screen is painted
+#   ROOM_TZ    America/Denver               the room's clock
+# NAME comes from ./names. See PROFILE.md.
+set -eu
+cd "$(dirname "$0")/../.."
+REPO=$(pwd -P)
+TARGET=${1:?root@HOST DISK SERIAL, or fcpm@HOST}
+NAME=$(awk '$1=="linux" && $2=="Hostname" {print $3}' machines/origin/names)
+FCPM_KEYS=${FCPM_KEYS:-$(cat ~/.ssh/id_ed25519.pub)}
+GIT_KEYS=${GIT_KEYS:-$(cat ~/.ssh/origin-standby.pub)}
+PAGE=${PAGE:-$(id -un)@$(hostname).local}
+ROOM_TZ=${ROOM_TZ:-America/Denver}
+PAGE_HOSTKEY="${PAGE#*@} $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"
+for v in "$FCPM_KEYS" "$GIT_KEYS" "$PAGE" "$PAGE_HOSTKEY" "$ROOM_TZ"; do
+  case $v in *\'*) echo "A setting holds a quote. Stopping."; exit 1;; esac
+done
+
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+mkdir "$T/fcpm-origin"
+cp machines/leash.py machines/origin/facts.py machines/origin/outfit "$T/fcpm-origin/"
+cat > "$T/fcpm-origin/settings" <<S
+FCPM_KEYS='$FCPM_KEYS'
+GIT_KEYS='$GIT_KEYS'
+PAGE='$PAGE'
+PAGE_HOSTKEY='$PAGE_HOSTKEY'
+NAME='$NAME'
+ROOM_TZ='$ROOM_TZ'
+S
+unpack='rm -rf /tmp/fcpm-origin && tar -xf - -C /tmp'
+
+if [ $# -eq 3 ]; then
+  out=$(tar -C "$T" -cf - fcpm-origin | ssh -o BatchMode=yes "$TARGET" \
+    "$unpack && sh /tmp/fcpm-origin/outfit '$2' '$3'" | tee /dev/stderr)
+  hostkey=$(printf '%s\n' "$out" | sed -n 's/^HOST-KEY: //p')
+  [ -n "$hostkey" ] || { echo "No host key came back; the install did not finish."; exit 1; }
+  ssh-keygen -R "$NAME.local" >/dev/null 2>&1 || true
+  echo "$NAME.local $hostkey" >> ~/.ssh/known_hosts
+  ssh -o BatchMode=yes "$TARGET" poweroff || true
+  echo "Powered off. Take the installer out, then power it on."
+else
+  out=$(tar -C "$T" -cf - fcpm-origin | ssh -o BatchMode=yes "$TARGET" \
+    "$unpack && sudo NOW=1 sh /tmp/fcpm-origin/outfit; rm -rf /tmp/fcpm-origin" | tee /dev/stderr)
+fi
+
+leash=$(printf '%s\n' "$out" | sed -n 's/^LEASH-KEY: //p')
+[ -n "$leash" ] || { echo "No screen key came back."; exit 1; }
+key=$(echo "$leash" | cut -d' ' -f2)
+touch ~/.ssh/authorized_keys
+grep -v -F "$key" ~/.ssh/authorized_keys > "$T/ak" || true
+echo "restrict,command=\"TZ=$ROOM_TZ /usr/bin/python3 $REPO/machines/origin/page.py\" $leash" >> "$T/ak"
+cat "$T/ak" > ~/.ssh/authorized_keys
+echo "The screen of $NAME.local is let in here: its page is $REPO/machines/origin/page.py."

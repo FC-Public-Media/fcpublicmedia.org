@@ -1,0 +1,117 @@
+#!/bin/sh
+# outfit -- the origin job on this box, as root: its accounts and keys, the repositories' rules, its
+# screen on a leash, its services. Alpine. Any box will do; nothing here asks what it is.
+#
+#   outfit                   this system (a running origin, or a new one from inside, chrooted)
+#   outfit DISK SERIAL       from Alpine's live system: install onto DISK, then outfit it. ERASES DISK.
+#                            DISK must answer to SERIAL ("none" if it reports none), must not be in use,
+#                            and is never the disk the live system came from.
+#
+# Sent with its files and settings by ./install, which also says where they come from:
+#   FCPM_KEYS  GIT_KEYS  PAGE  PAGE_HOSTKEY  NAME  ROOM_TZ  [NOW=1: start what it sets up]
+# Safe to run again. See PROFILE.md.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+[ -f "$HERE/settings" ] && . "$HERE/settings"
+: "${FCPM_KEYS:?}" "${GIT_KEYS:?}" "${PAGE:?}" "${NAME:=origin}" "${ROOM_TZ:=America/Denver}"
+LIB=/usr/local/lib/fcpm
+
+if [ $# -eq 2 ]; then
+  DISK=$1; SERIAL=$2; d=${DISK#/dev/}
+  [ -d "/sys/block/$d" ] || { echo "$DISK is not a whole disk. Stopping."; exit 1; }
+  apk add -q lsblk >/dev/null 2>&1 || true
+  got=$(lsblk -dno SERIAL "$DISK" 2>/dev/null | tr -d ' '); [ -n "$got" ] || got=none
+  [ "$got" = "$SERIAL" ] || { echo "$DISK answers to serial $got, not $SERIAL. Stopping."; exit 1; }
+  busy=$(grep -c "^$DISK" /proc/mounts || true)
+  for h in /sys/block/$d/holders /sys/block/$d/$d*/holders; do [ -z "$(ls -A "$h" 2>/dev/null)" ] || busy=1; done
+  [ "$busy" = 0 ] || { echo "$DISK is in use (mounted, or held: the live system's own disk?). Stopping."; exit 1; }
+  mb=$(( $(cat /sys/block/$d/size) / 2048 ))
+  echo "Installing the $NAME job onto $DISK: $(cat /sys/block/$d/device/model 2>/dev/null | xargs), ${mb} MB, serial $got."
+
+  v=$(cut -d. -f1,2 /etc/alpine-release)
+  printf 'https://dl-cdn.alpinelinux.org/alpine/v%s/main\nhttps://dl-cdn.alpinelinux.org/alpine/v%s/community\n' "$v" "$v" > /etc/apk/repositories
+  apk update -q
+  setup-hostname "$NAME"; hostname "$NAME"
+  setup-timezone -z "$ROOM_TZ" >/dev/null
+  setup-ntp chrony >/dev/null 2>&1 || true
+  boot=300; [ "$mb" -lt 8192 ] && boot=100          # a small disk keeps its room for the repositories
+  ERASE_DISKS=$DISK BOOT_SIZE=$boot setup-disk -m sys -s 0 "$DISK" >/dev/null
+
+  case $d in *[0-9]) p=${DISK}p ;; *) p=$DISK ;; esac
+  M=/mnt; mountpoint -q $M || mount "${p}2" $M
+  for x in dev proc sys; do mountpoint -q $M/$x || mount --bind /$x $M/$x; done
+  cp /etc/resolv.conf $M/etc/resolv.conf
+  sed -i 's/\(ext4[[:space:]]*\)rw,relatime/\1rw,noatime/' $M/etc/fstab
+  rm -rf $M/tmp/fcpm-origin; cp -r "$HERE" $M/tmp/fcpm-origin
+  chroot $M /bin/sh /tmp/fcpm-origin/outfit
+  echo "HOST-KEY: $(cut -d' ' -f1,2 $M/etc/ssh/ssh_host_ed25519_key.pub)"
+  rm -rf $M/tmp/fcpm-origin
+  umount $M/dev $M/proc $M/sys $M; sync
+  echo "Installed onto $DISK."
+  exit 0
+fi
+
+apk add -q git sudo avahi avahi-tools dbus python3 chrony openssh
+echo "$NAME" > /etc/hostname
+setup-timezone -z "$ROOM_TZ" >/dev/null
+
+# fcpm: management, by key, with sudo. git: pushes, git-shell only. leash: the screen, nothing else.
+id fcpm >/dev/null 2>&1 || adduser -D -s /bin/sh fcpm
+id git >/dev/null 2>&1 || adduser -D -h /srv/git -s /usr/bin/git-shell git
+id leash >/dev/null 2>&1 || adduser -D -s /bin/sh leash
+sed -i -E 's/^(fcpm|git):!:/\1:*:/' /etc/shadow      # sshd refuses a locked account, even by key
+passwd -l root >/dev/null 2>&1 || true
+grep -qx /usr/bin/git-shell /etc/shells || echo /usr/bin/git-shell >> /etc/shells
+keys() {
+  install -d -m 700 -o "$1" -g "$1" "$2/.ssh"
+  printf '%s\n' "$3" > "$2/.ssh/authorized_keys"
+  chown "$1:$1" "$2/.ssh/authorized_keys"; chmod 600 "$2/.ssh/authorized_keys"
+}
+keys fcpm /home/fcpm "$FCPM_KEYS"
+keys git /srv/git "$GIT_KEYS"
+echo 'fcpm ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/fcpm; chmod 440 /etc/sudoers.d/fcpm
+rm -f /etc/sudoers.d/fcpm-standby
+mkdir -p /etc/ssh/sshd_config.d
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/10-fcpm.conf
+grep -q '^Include /etc/ssh/sshd_config.d' /etc/ssh/sshd_config || sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config
+sshd -t
+# musl looks up no .local names; ssh asks avahi for them.
+mkdir -p /etc/ssh/ssh_config.d
+cat > /etc/ssh/ssh_config.d/10-local.conf <<'L'
+Host *.local
+  ProxyCommand /bin/sh -c 'a=$(avahi-resolve -4 -n %h 2>/dev/null | cut -f2); exec nc "${a:-%h}" %p'
+L
+grep -q '^Include /etc/ssh/ssh_config.d' /etc/ssh/ssh_config || sed -i '1i Include /etc/ssh/ssh_config.d/*.conf' /etc/ssh/ssh_config
+
+# The repositories: nothing rewritten, nothing deleted. `ssh git@… init <owner>/<repo>` makes one.
+install -d -o git -g git /srv/origin
+git config --system receive.denyNonFastForwards true
+git config --system receive.denyDeletes true
+G=/srv/git/git-shell-commands; mkdir -p $G
+cat > $G/init <<'I'
+#!/bin/sh
+# init <owner>/<repo>: an empty bare repository under /srv/origin, if it isn't there yet.
+printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_-][A-Za-z0-9._-]*/[A-Za-z0-9_-][A-Za-z0-9._-]*$' || { echo "init: want <owner>/<repo>" >&2; exit 1; }
+case "$1" in *..*) echo "init: bad name" >&2; exit 1;; esac
+[ -f "/srv/origin/$1/HEAD" ] && exit 0
+exec git init -q --bare "/srv/origin/$1"
+I
+printf '#!/bin/sh\necho "%s: git only." >&2\nexit 128\n' "$NAME" > $G/no-interactive-login
+chmod 755 $G/init $G/no-interactive-login; chown -R git:git $G
+
+# The screen: tty1 is the leash, painted by the page at $PAGE; a keyboard login stays on tty2.
+install -d $LIB; install -m 755 "$HERE/leash.py" "$HERE/facts.py" $LIB/
+install -d -m 700 -o leash -g leash /home/leash/.ssh
+[ -f /home/leash/.ssh/id_ed25519 ] || su -s /bin/sh leash -c "ssh-keygen -q -t ed25519 -N '' -C '$NAME screen' -f /home/leash/.ssh/id_ed25519"
+[ -z "${PAGE_HOSTKEY:-}" ] || { printf '%s\n' "$PAGE_HOSTKEY" > /home/leash/.ssh/known_hosts; chown leash:leash /home/leash/.ssh/known_hosts; }
+LINE="tty1::respawn:/bin/su -s /bin/sh leash -c 'exec env TERM=linux LANG=C.UTF-8 /usr/bin/python3 $LIB/leash.py --facts $LIB/facts.py -- /usr/bin/ssh -T -o BatchMode=yes -o ServerAliveInterval=10 -o ServerAliveCountMax=3 $PAGE'"
+grep -v '^tty1::' /etc/inittab > /etc/inittab.new
+printf '%s\n' "$LINE" >> /etc/inittab.new; mv /etc/inittab.new /etc/inittab
+
+for s in networking sshd chronyd dbus avahi-daemon; do rc-update add $s default >/dev/null 2>&1 || true; done
+if [ "${NOW:-}" = 1 ]; then
+  for s in sshd chronyd dbus avahi-daemon; do rc-service $s start >/dev/null 2>&1 || true; done
+  rc-service sshd reload >/dev/null 2>&1 || true
+  kill -HUP 1; pkill -f 'getty 38400 tty1' 2>/dev/null || true
+fi
+echo "LEASH-KEY: $(cat /home/leash/.ssh/id_ed25519.pub)"
