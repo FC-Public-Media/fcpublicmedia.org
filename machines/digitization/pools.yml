@@ -1,0 +1,34 @@
+# The storage pools digitization serves, for `fcpm pools`. Doc: troves/pools/README.md.
+# The landing is any ext4 disk labelled fcpm-landing, mounted at /srv/landing (fstab, nofail).
+
+pools:
+  - name: landing
+    title: The landing
+    kind: folder
+    path: /srv/landing/recordings   # a subfolder named for a stage is that stage; deliveries go to landed/
+    stage: landed
+
+  - name: emulated
+    title: Emulated pool
+    kind: folder
+    path: /srv/landing/samples
+    create: true
+    capacity: 8 GB
+    stage: landed
+
+# How the squares page draws: presentation, not a ruling on what is noise or a take.
+view:
+  debris_seconds: 6
+  cluster_minutes: 5
+  day_starts_at: 9
+
+stages:
+  landed:      {label: Landed,       color: "#5b8def"}
+  to-enhance:  {label: To enhance,   color: "#e0a63a"}
+  enhanced:    {label: Enhanced,     color: "#3ec28f"}
+  transcribed: {label: Transcribed,  color: "#b07cf0"}
+  declined:    {label: Not promoted, color: "#5d6470"}
+
+# No engine here: this box has no GPU. Transcription is to be lent by editing bay 1, not wired yet.
+transcribe:
+  engine: none

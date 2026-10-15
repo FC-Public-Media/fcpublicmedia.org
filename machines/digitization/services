@@ -3,3 +3,4 @@
 intake          every 1m    machines/digitization
 standby         every 1m    machines/digitization
 follow          every 5m    machines/digitization
+pools           keep        troves/pools
