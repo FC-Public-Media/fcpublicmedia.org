@@ -29,6 +29,9 @@ systemctl is-active -q fcpm-crew@digitization
 say $? "the crew's supervisor, fcpm-crew@digitization" "sudo sh machines/crew.sh install digitization"
 mountpoint -q /srv/origin
 say $? "the origin mounted at /srv/origin"
+mountpoint -q /srv/landing
+say $? "the landing mounted at /srv/landing" \
+  "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"
 [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ]
 say $? "the clock synchronized from the network" "sudo timedatectl set-ntp true"
 [ -f /etc/ssh/sshd_config.d/10-no-passwords.conf ]

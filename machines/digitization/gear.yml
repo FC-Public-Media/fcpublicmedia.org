@@ -56,6 +56,17 @@ gear:
     restart-tier: app
     holds: "the host keys (an upgrade keeps them; the live boot restores them), and the no-passwords file"
 
+  - gear: rsync
+    for: >
+      Deliveries into the landing: a capture member pushes each finished
+      capture over SSH, no SMB. rsync's partial files are dotfiles, so the
+      pools never show a half-copied recording.
+    package: rsync
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "nothing of its own"
+
   - gear: zenity
     for: >
       The door's one question on this screen: the signing key's passphrase
