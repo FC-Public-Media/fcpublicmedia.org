@@ -68,8 +68,8 @@ gear:
 
   - gear: vivaldi
     for: >
-      The door's page, opened at login as its own window (at-login). From
-      Vivaldi's signed repository; the toolbox keeps the vetted .deb and key.
+      The browser, opened maximized at login with the door's page as a pinned
+      tab (at-login, open-page). From Vivaldi's signed repository; the toolbox keeps the vetted .deb and key.
     package: vivaldi-stable
     provisioner: apt
     updates: apt

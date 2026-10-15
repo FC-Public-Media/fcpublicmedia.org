@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""open-page -- Vivaldi itself, maximized, with the door's page as one of its tabs. Never a window
+of its own: the page is a tab, kept pinned.
+
+  open-page [url]          default http://localhost/
+
+Vivaldi brings back its last session. If that session already has the page open, the tab is
+pinned (when Vivaldi is closed) and Vivaldi opens as it was. If not, Vivaldi opens with the page
+added as a new tab; the next login pins it. If Vivaldi is already running, the page is only
+added when it is missing. The session is read from Vivaldi's own file (SNSS), the newest
+~/.config/vivaldi/Default/Sessions/Session_*."""
+import glob, json, os, struct, subprocess, sys
+
+PAGE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost/"
+PROFILE = os.path.expanduser("~/.config/vivaldi/Default")
+VIVALDI = ["vivaldi", "--start-maximized"]
+
+# The session commands read here (components/sessions/core/session_service_commands.cc).
+SET_TAB_WINDOW, UPDATE_NAVIGATION, SET_SELECTED_NAVIGATION = 0, 6, 7
+SET_PINNED, TAB_CLOSED, WINDOW_CLOSED = 12, 16, 17
+
+
+def session_file():
+    files = glob.glob(os.path.join(PROFILE, "Sessions", "Session_*"))
+    return max(files, key=os.path.getmtime) if files else None
+
+
+def restores_last_session():
+    """Vivaldi's default is the last session; only a different choice in its settings says no."""
+    try:
+        prefs = json.load(open(os.path.join(PROFILE, "Preferences")))
+    except (OSError, ValueError):
+        return True
+    return prefs.get("session", {}).get("restore_on_startup", 1) == 1
+
+
+def open_tabs(path):
+    """{tab id: (url it shows, pinned)} for the tabs the session will bring back."""
+    data = open(path, "rb").read()
+    if data[:4] != b"SNSS":
+        return {}
+    window_of, navs, selected, pinned, closed_windows = {}, {}, {}, {}, set()
+    pos = 8
+    while pos + 3 <= len(data):
+        size, = struct.unpack_from("<H", data, pos)
+        cid, body = data[pos + 2], data[pos + 3:pos + 2 + size]
+        pos += 2 + size
+        if len(body) < size - 1:
+            break                               # a torn last record
+        if cid == SET_TAB_WINDOW and len(body) >= 8:
+            w, t = struct.unpack_from("<ii", body)
+            window_of[t] = w
+        elif cid == UPDATE_NAVIGATION and len(body) >= 16:
+            t, i, n = struct.unpack_from("<iii", body, 4)   # a pickle: its length, then fields
+            navs.setdefault(t, {})[i] = body[16:16 + n].decode("utf-8", "replace")
+        elif cid == SET_SELECTED_NAVIGATION and len(body) >= 8:
+            t, i = struct.unpack_from("<ii", body)
+            selected[t] = i
+        elif cid == SET_PINNED and len(body) >= 5:
+            t, = struct.unpack_from("<i", body)
+            pinned[t] = bool(body[4])
+        elif cid == TAB_CLOSED and len(body) >= 4:
+            t, = struct.unpack_from("<i", body)
+            for d in (window_of, navs, selected, pinned):
+                d.pop(t, None)
+        elif cid == WINDOW_CLOSED and len(body) >= 4:
+            closed_windows.add(struct.unpack_from("<i", body)[0])
+    tabs = {}
+    for t, w in window_of.items():
+        if w in closed_windows or t not in navs:
+            continue
+        url = navs[t].get(selected.get(t, max(navs[t])))
+        if url:
+            tabs[t] = (url, pinned.get(t, False))
+    return tabs
+
+
+def shows_page(url):
+    return url.rstrip("/") == PAGE.rstrip("/") or url.startswith(PAGE.rstrip("/") + "/")
+
+
+def running():
+    return subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "vivaldi-bin"],
+                          stdout=subprocess.DEVNULL).returncode == 0
+
+
+path = session_file()
+tabs = open_tabs(path) if path and restores_last_session() else {}
+mine = [t for t, (url, _) in tabs.items() if shows_page(url)]
+
+if running():
+    if not mine:
+        os.execvp("vivaldi", ["vivaldi", PAGE])  # a tab in the open window
+    sys.exit(0)
+
+if not mine:
+    os.execvp(VIVALDI[0], VIVALDI + [PAGE])
+if not any(tabs[t][1] for t in mine):
+    with open(path, "ab") as f:                 # pin it: one more command for Vivaldi to replay
+        f.write(struct.pack("<HBi?3x", 9, SET_PINNED, mine[0], True))
+os.execvp(VIVALDI[0], VIVALDI)
