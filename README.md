@@ -9,7 +9,7 @@ Generated 2026-10-16 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | --- | --- | --- | --- | --- | --- |
 | [`payments`](payments.md) | 2026-10-16 | 19 | 7 | 0 | up to date |
 | [`credentials`](credentials.md) | 2026-10-15 | 24 | 8 | 0 | up to date |
-| [`vendors`](vendors.md) | 2026-10-14 | 15 | 5 | 1 | up to date |
+| [`vendors`](vendors.md) | 2026-10-16 | 16 | 5 | 1 | up to date |
 | [`truthfulness`](truthfulness.md) | 2026-10-15 | 18 | 13 | 0 | up to date |
 | [`node`](node.md) | 2026-10-16 | 11 | 6 | 0 | up to date |
 
