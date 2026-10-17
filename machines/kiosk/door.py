@@ -2354,9 +2354,14 @@ SITE_DIR = os.environ.get("FCPM_SITE_DIR")                 # the built site, ser
 
 
 def lan_module():
+    """machines/lan.py, loaded without leaving a __pycache__ in machines/ (every folder there is a profile)."""
     spec = importlib.util.spec_from_file_location("lan", ROOT / "machines" / "lan.py")
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    was, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = was
     return mod
 
 
