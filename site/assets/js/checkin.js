@@ -264,6 +264,16 @@ function saveProfile() {
     // A claim supersedes the typed address without overwriting it.
     email: el('profile-email').value.trim().toLowerCase(),
   });
+  staffLink();
+}
+
+// The host wizard on the studio's network (site/_data/lan.yml), given the name typed here, so staff
+// check in as the host without typing it twice. The wizard keeps its own copy on the phone.
+function staffLink() {
+  const link = el('staff-link');
+  if (!link) return;
+  const name = getProfile().name;
+  link.search = name ? '?name=' + encodeURIComponent(name) : '';
 }
 
 /* ----------------------------------------------------------------- reason */
@@ -711,6 +721,7 @@ async function init() {
   window.addEventListener('hashchange', route);
   document.querySelectorAll('[data-back]').forEach((link) => link.addEventListener('click', backToPass));
   route();
+  staffLink();
 
   const rsvp = el('rsvp-button');
   if (rsvp) rsvp.addEventListener('click', noteRsvp);

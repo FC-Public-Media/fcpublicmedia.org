@@ -215,4 +215,5 @@ phone), Hosting or Left, until (23:59 by default), and what is in the room.
 ```
 
 `hosting: false` is leaving. `present` is the whole list each time; gear the room does not list is
-ignored and noted in the verdict.
+ignored and noted in the verdict. The public check-in's pass offers *Hosting a room? Check in as
+staff*: the wizard on the board's LAN name (`site/_data/lan.yml`), the typed name carried in `?name=`.

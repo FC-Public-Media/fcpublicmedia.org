@@ -155,8 +155,10 @@ async function dropIt() {
   said.textContent = "kept · not read yet (the door reads every half minute)";
 }
 
-// Names: the one this phone used last, and the rota's crew as one-tap picks.
-el("name").value = profile().name || "";
+// Names: the one the public check-in handed over (?name=), else the one this phone used last; the
+// rota's crew as one-tap picks.
+const given = (new URLSearchParams(location.search).get("name") || "").trim().slice(0, 40);
+el("name").value = given || profile().name || "";
 const picks = el("picks");
 (C.crew || []).forEach((n) => {
   const b = document.createElement("button");
