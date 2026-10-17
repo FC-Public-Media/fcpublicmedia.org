@@ -11,11 +11,32 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `pools.yml` | the landing (`/srv/landing`, label `fcpm-landing`) as a pool, served by the crew's `pools` line on 8091 (`../../troves/pools.yml`); an emulated pool beside it for `pools.py sample` |
 | `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `zenity`, `vivaldi-stable`; Claude Code by hand |
 | the door | `../kiosk/door.py serve` on port 80, started at login by `at-login` (`fcpm-digitization.desktop` in `/etc/xdg/autostart`), then Vivaldi opens maximized with its page as a pinned tab, never a window of its own (`open-page`). `digitization.local` on the LAN; at `localhost` the board also offers **Unlock** for the signing key, its passphrase asked on this screen (`../kiosk/askpass`) |
-| `site-build`, `site-lan.yml`, `site-name` | the public site, built here from this checkout by Debian's Jekyll when the commit moves (the crew's `site every 5m` line, into `~/.local/state/fcpm/site/current`), and served by the door to the LAN under the name **`fcpublicmedia.local`**, an mDNS name of this machine beside `digitization.local` (the `name keep` line), so the site's wizards load through a cloud outage. `site-lan.yml` puts that name in `url`; the pages are the deploy's |
+| `site-build`, `site-lan.yml` | the public site, built here from this checkout by Debian's Jekyll when the commit moves (the crew's `site every 5m` line, into `~/.local/state/fcpm/site/current`), and served by the door to the LAN as **`fcpublicmedia.local`** and **`www.fcpublicmedia.local`** (`lan.yml`), so the site's wizards load through a cloud outage. `site-lan.yml` puts the bare name in `url`; the pages are the deploy's |
+| `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
-| `check.sh` | each gear present (dpkg), the crew's supervisor up, the origin mounted, the clock synced, SSH keys only, port 80 and the door, the site built and answering to its name: `ok` or `WANTED` with the fix. `fcpm check` |
+| `check.sh` | each gear present (dpkg), the crew's supervisor up, the origin mounted, the clock synced, SSH keys only, port 80 and the door, the site built, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
 | `KEYHOLDERS` | who may prove themselves to this machine by passkey. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is removing the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
 | role | FCPM's git origin and receiver, so work goes on through a cloud outage |
+
+## Names
+
+People reach things here by name, as deep as DNS goes, each an mDNS name of this machine beside
+`digitization.local` (decided 2026-10-17). `lan.yml` says which, and the door serves each:
+
+| name | serves |
+|---|---|
+| `helm.fcpublicmedia.local` | the board. Shared: any machine may hold it; the first to claim it does, and another asks again every 30 s, so it takes over when the holder goes |
+| `fcpublicmedia.local`, `www.fcpublicmedia.local` | the public site, built here (shared the same way) |
+| `digitization.fcpublicmedia.local` | this machine's directory: its gear, and the shared names with who holds each |
+| `atem-mini-pro.digitization.fcpublicmedia.local`, `aja-helo.…`, `rodecaster-pro-ii.…` | one piece of gear, named for its trove: its facts (`instrument.yml`) and where it is now, discovered (mDNS or this USB), never declared |
+
+`digitization.local` and every path under it stay as they were (the board, the rooms, the host check-in).
+The machine's part of each name is its `names` line, so a rename moves them all. Linux refuses names
+past two labels by default (nss-mdns's heuristic); here `/etc/mdns.allow` is `mdns.allow`, and the hosts line
+in `/etc/nsswitch.conf` is `files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4`: two-label names
+as before, deeper ones through `mdns4` after unicast DNS says no, so reverse lookups stay fast. Apple's
+resolvers take the deep names as they are. Windows' is not tested yet. `python3 machines/lan.py` says who
+holds each name now.
 
 ## The origin
 

@@ -5,4 +5,4 @@ standby         every 1m    machines/digitization
 follow          every 5m    machines/digitization
 pools           keep        troves/pools
 site            every 5m    machines/digitization
-name            keep        machines/digitization
+names           keep        machines/digitization

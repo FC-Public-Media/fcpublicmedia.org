@@ -90,8 +90,8 @@ gear:
 
   - gear: avahi-utils
     for: >
-      avahi-publish, for fcpublicmedia.local as an mDNS name of this machine
-      beside digitization.local (site-name, the crew's name line).
+      avahi-publish, for this machine's names under fcpublicmedia.local (lan.yml),
+      each an mDNS name beside digitization.local (../lan.py, the crew's names line).
     package: avahi-utils
     provisioner: apt
     updates: apt

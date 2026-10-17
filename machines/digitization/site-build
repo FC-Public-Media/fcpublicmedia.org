@@ -1,7 +1,7 @@
 #!/bin/sh
 # site-build -- the public site, built from this checkout, so the LAN has it through a cloud outage:
-# the door serves it as fcpublicmedia.local (FCPM_SITE_DIR, at-login) and site-name answers to the
-# name. Every 5 minutes from the crew's `site` line; a build only when the checkout's commit moved.
+# the door serves it as fcpublicmedia.local and www.fcpublicmedia.local (FCPM_SITE_DIR, at-login), names
+# lan.yml gives it and ../lan.py holds up. Every 5 minutes from the crew's `site` line; a build only when the checkout's commit moved.
 # Jekyll is Debian's (gear.yml); the build is the deploy's (deploy.yml) with site-lan.yml's url on top.
 cd "$(dirname "$0")/../.." || exit 1
 out=$HOME/.local/state/fcpm/site
