@@ -116,8 +116,8 @@
 	url = https://github.com/FC-Public-Media/ti-89.git
 	update = none
 	ignore = untracked
-# The Wix site, photocopied: the static job serves it as it sits (machines/static/). In no build, so
-# checkouts skip it; follow takes it from this building's origin, where it lives first.
+# The Wix site, photocopied: the static job serves it as it sits (machines/static/). Private and in no
+# build, like contact-sheets; follow takes it from this building's origin, where it lives first.
 [submodule "wix"]
 	path = wix
 	url = https://github.com/FC-Public-Media/wix.git
