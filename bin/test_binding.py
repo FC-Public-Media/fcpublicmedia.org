@@ -58,6 +58,9 @@ def run(system, fact):
     return code, buf.getvalue()
 
 
+NOT_JOBS = {"cards"}     # boot cards (machines/cards), worn by no machine
+
+
 class TheFormatChange(unittest.TestCase):
     def test_a_leftover_two_column_line_is_reported_not_skipped(self):
         with machines(bay="darwin LocalHostName\nLocalHostName studio-mac\n"):
@@ -163,7 +166,7 @@ class WhatCountsAsAProfile(unittest.TestCase):
 
     def test_every_committed_profile_has_a_page(self):
         root = ROOT / "machines"
-        dirs = sorted(p.name for p in root.iterdir() if p.is_dir())
+        dirs = sorted(p.name for p in root.iterdir() if p.is_dir() and p.name not in NOT_JOBS)
         seen = sorted(p.name for p in binding.profiles())
         self.assertEqual(dirs, seen,
                          "a directory in machines/ has no PROFILE.md, so nothing "
