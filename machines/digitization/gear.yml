@@ -88,6 +88,26 @@ gear:
     restart-tier: none
     holds: "nothing of its own"
 
+  - gear: earlyoom
+    for: >
+      Ends the biggest process before a memory shortage hangs the box: browsers
+      and headless captures first, the ways in last (earlyoom.default).
+    package: earlyoom
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "nothing of its own"
+
+  - gear: zram
+    for: >
+      Swap in compressed RAM (zram-generator.conf, sysctl-zram.conf), so memory
+      pressure has somewhere to go instead of the SD card.
+    package: systemd-zram-generator
+    provisioner: apt
+    updates: apt
+    restart-tier: reboot
+    holds: "nothing of its own"
+
   - gear: vivaldi
     for: >
       The browser, opened maximized at login with the door's page as a pinned
