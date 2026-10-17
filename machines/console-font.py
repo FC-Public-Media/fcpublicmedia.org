@@ -96,7 +96,7 @@ def drawn(ch, W, H):
 # Icons a screen sets before its numbers, in Unicode's private use area. page.py writes them.
 COMMIT, BRANCH, TAG = "\ue000", "\ue001", "\ue002"
 # Activity, four steps of one centred square that grows: a period, a small square, a square, a full one.
-TIERS = {"\ue010": 3, "\ue011": 6, "\ue012": 9, "\ue013": 12}        # sides in a 14-wide cell; the largest leaves a gap, so days stay apart
+TIERS = {"\ue010": 3, "\ue011": 6, "\ue012": 9, "\ue013": 14}        # sides in a 14-wide cell; the largest fills it, so full days meet
 
 
 def icon(ch, W, H):

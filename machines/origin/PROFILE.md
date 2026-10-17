@@ -31,7 +31,9 @@ built on the box by the outfit ([`../console-font.py`](../console-font.py), JetB
 - per repository: its history, one centred square per block that grows with commits a day, the
   same rule in every block (a period under 1 a day, a small square from 1, a square from 3, a full
   one from 8; empty where there were none): ten blocks back about seven months, each step longer,
-  then this week's seven days, today last. Then ◉ and the commits
+  then this week's seven days, today last. A full square fills the cell's width, so full days meet
+  into a bar; inside a run every second one is a shade darker, so the run still counts, and a lone
+  one always shows what full looks like. Then ◉ and the commits
   main holds; a ⑂ per other branch, newest first, bright with work this week, grey when quiet, dark
   once merged into main; its size on the box (`.2M`, `5.3M`, `37M`); its last commit (the
   time today, the weekday this week, the date after, dimmer with age); `github`, dim when GitHub's

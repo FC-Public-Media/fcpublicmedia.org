@@ -10,7 +10,8 @@ A pane per owner, a line per repository, in name order so a place on the screen 
     name   history ┊ week  size  ◉score ⑂⑂⑂  last  github  tag  hash
 
 history is main's commits a day as one centred square that grows: a period under 1 a day, a
-small square from 1, a square from 3, a full square from 8; empty where there were none. Ten blocks reach back about seven months, each
+small square from 1, a square from 3, a full square from 8; empty where there were none. Full
+squares fill the cell's width, so full days meet; every other one is a shade darker. Ten blocks reach back about seven months, each
 step longer, then the seven days ending today. ◉ counts main's commits. A ⑂ per other branch, newest first: bright with work this week, grey
 when quiet, dark once merged into main (a leftover). Size is in megabytes: .2M, 5.3M, 37M. last is the time today, the weekday within a week, the date
 before that, dimmer with age. github is dim when GitHub's main is ours, lit with how far when
@@ -28,7 +29,7 @@ from facts import refs, repos  # noqa: E402  the same reading on both sides
 
 # The console's 16 colours, all ours: 0-7 as backgrounds too, 8-15 as text only.
 PALETTE = "".join(f"\x1b]P{i:X}{c}" for i, c in enumerate((
-    "121417", "c8372d", "3fb36f", "ffc61a", "5b8fe0", "a58be6", "a8841a", "ece8e1",   # ink red tag yellow (spare) github muted paper
+    "121417", "c8372d", "3fb36f", "ffc61a", "a3a8b0", "a58be6", "a8841a", "ece8e1",   # ink red tag yellow full's other grey (spare) muted paper
     "2b2f36", "454a53", "646a74", "8b919b", "b8bdc4", "f4f5f7", "ff6b5b", "ffffff")))  # the greys, dark to light; alarm; white
 
 
@@ -48,11 +49,22 @@ QUIET = 90          # seconds without facts before the box counts as not heard f
 STALE = 300         # seconds apart before a line turns to trouble
 EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
 RATES = (1, 3, 8)                                       # commits a day where the mark steps up
-FILL = "\ue010\ue011\ue012\ue013"                         # one centred square growing: 3, 6, 9, 12 pixels (../console-font.py)
+FILL = "\ue010\ue011\ue012\ue013"                         # one centred square growing: 3, 6, 9, 14 pixels (../console-font.py)
 
 
-def shade(rate):
-    return " " if not rate else GREY[4] + FILL[sum(1 for r in RATES if rate >= r)]
+def step(rate):
+    """None for no commits, else 0-3: under 1 a day, from 1, from 3, from 8."""
+    return None if not rate else sum(1 for r in RATES if rate >= r)
+
+
+def marks(steps):
+    """Full squares fill the cell's width and meet; in a run of them every second is a shade
+    darker, so the run still counts and a lone one always looks like full."""
+    out, run = [], 0
+    for s in steps:
+        run = run + 1 if s == 3 else 0
+        out.append(s if isinstance(s, str) else " " if s is None else (fg(4) if run % 2 == 0 and run else GREY[4]) + FILL[s])
+    return "".join(out)
 
 
 def git(repo, *args):
@@ -100,11 +112,11 @@ def history(times, now):
             cells.append(" ")
             continue
         n = sum(1 for d in days if lo <= d < hi)
-        cells.append(shade(n / (min(hi, born + 1) - lo)))
+        cells.append(step(n / (min(hi, born + 1) - lo)))
     cells.append(GREY[1] + "┊")
     for d in range(6, -1, -1):
-        cells.append(" " if born < d else shade(days.count(d)))
-    return "".join(cells) + OFF
+        cells.append(" " if born < d else step(days.count(d)))
+    return marks(cells) + OFF
 
 
 def forks(repo, main, branches, now):
