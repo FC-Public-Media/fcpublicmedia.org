@@ -13,4 +13,4 @@ GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- troves
 # The Wix copy (the static job's `wix` site) is taken from this origin, where it lives first.
 o=${FCPM_ORIGIN:-/srv/origin}/FC-Public-Media/wix
 [ -d "$o" ] && git config submodule.wix.url "$o"
-GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- wix
+GIT_TERMINAL_PROMPT=0 git -c protocol.file.allow=always submodule update -q --init --checkout -- wix
