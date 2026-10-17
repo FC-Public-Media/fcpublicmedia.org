@@ -24,13 +24,14 @@ leash sends up what [`facts.py`](facts.py) sees every 30 s: every branch and tag
 with the commit it names, each repository's size, and the box itself. The page checks it ref by ref
 against digitization's own origin and draws what is there, in as few words as it can. Its font is
 built on the box by the outfit ([`../console-font.py`](../console-font.py), JetBrains Mono Bold at
-14x28) with the blocks and our own icons: ◉ commit, ⑂ branch, a tag.
+14x28) with the blocks, our own icons (◉ commit, ⑂ branch, a tag) and four activity squares.
 
 - a bar per owner, the repositories under it in name order, so a place on the screen keeps its
-  meaning; the bar's number counts them (`2 · 23` when two are apart);
-- per repository: its history as blocks that fill with commits a day, the same rule in every block
-  (▂ under 1 a day, ▄ from 1, ▅ from 3, ▇ from 8, █ from 16; empty where there were none): ten
-  blocks back about seven months, each step longer, then this week's seven days, today last. Then ◉ and the commits
+  meaning;
+- per repository: its history, one centred square per block that grows with commits a day, the
+  same rule in every block (a period under 1 a day, a small square from 1, a square from 3, a full
+  one from 8; empty where there were none): ten blocks back about seven months, each step longer,
+  then this week's seven days, today last. Then ◉ and the commits
   main holds; a ⑂ per other branch, newest first, bright with work this week, grey when quiet, dark
   once merged into main; its size on the box (`.2M`, `5.3M`, `37M`); its last commit (the
   time today, the weekday this week, the date after, dimmer with age); `github`, dim when GitHub's

@@ -9,8 +9,8 @@ A pane per owner, a line per repository, in name order so a place on the screen 
 
     name   history ┊ week  size  ◉score ⑂⑂⑂  last  github  tag  hash
 
-history is main's commits a day, never a block that fills: . under 1 a day, ▒ from 1, █ from 8;
-empty where there were none. Ten blocks reach back about seven months, each
+history is main's commits a day as one centred square that grows: a period under 1 a day, a
+small square from 1, a square from 3, a full square from 8; empty where there were none. Ten blocks reach back about seven months, each
 step longer, then the seven days ending today. ◉ counts main's commits. A ⑂ per other branch, newest first: bright with work this week, grey
 when quiet, dark once merged into main (a leftover). Size is in megabytes: .2M, 5.3M, 37M. last is the time today, the weekday within a week, the date
 before that, dimmer with age. github is dim when GitHub's main is ours, lit with how far when
@@ -47,8 +47,8 @@ INTAKE = os.path.join(ROOT, ".intake", "state.json")
 QUIET = 90          # seconds without facts before the box counts as not heard from
 STALE = 300         # seconds apart before a line turns to trouble
 EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
-RATES = (1, 8)                                          # commits a day where the mark steps up
-FILL = ".▒█"                                            # under 1 a day, from 1, from 8: a dot, a checker, a block
+RATES = (1, 3, 8)                                       # commits a day where the mark steps up
+FILL = "\ue010\ue011\ue012\ue013"                         # one centred square growing: 3, 6, 9, 12 pixels (../console-font.py)
 
 
 def shade(rate):
@@ -338,8 +338,7 @@ def paint():
         body = []
         for owner in sorted(owners, key=str.lower):
             rows = owners[owner]
-            apart = sum(1 for r in rows if r["apart"])
-            body.append(bar(C, owner, (f"{apart} · " if apart else "") + str(len(rows))))
+            body.append(bar(C, owner))
             show = rows if len(rows) <= room else rows[:max(0, room - 1)]
             body += [line(C, r, now, w) for r in show]
             if len(show) < len(rows):

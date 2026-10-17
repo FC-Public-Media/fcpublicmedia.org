@@ -5,7 +5,7 @@
 
 The console draws one bit per pixel and at most 512 glyphs, so this picks its own: ASCII and
 Latin-1, the punctuation, arrows and signs a screen writes (− ± ∅ … · •), the blocks, shades and
-lines a screen draws with, and our own icons (commit, branch, tag) at U+E000-E002. Letters come from FONT, rendered four times over and kept where they
+lines a screen draws with, our own icons (commit, branch, tag) at U+E000-E002, and four activity squares at U+E010-E013. Letters come from FONT, rendered four times over and kept where they
 cover more than 45% of a pixel. Blocks, shades and lines are drawn here, cell-exact, so a bar of
 them meets without seams whatever FONT does. Needs Pillow.
 """
@@ -95,10 +95,18 @@ def drawn(ch, W, H):
 
 # Icons a screen sets before its numbers, in Unicode's private use area. page.py writes them.
 COMMIT, BRANCH, TAG = "\ue000", "\ue001", "\ue002"
+# Activity, four steps of one centred square that grows: a period, a small square, a square, a full one.
+TIERS = {"\ue010": 3, "\ue011": 6, "\ue012": 9, "\ue013": 12}        # sides in a 14-wide cell; the largest leaves a gap, so days stay apart
 
 
 def icon(ch, W, H):
     """Our own marks, drawn to the cell; None for anything else."""
+    if ch in TIERS:
+        side = min(TIERS[ch] * W // 14, W, H)
+        img = Image.new("1", (W, H), 0)
+        x0, y0 = (W - side) // 2, (H - side) // 2
+        ImageDraw.Draw(img).rectangle((x0, y0, x0 + side - 1, y0 + side - 1), fill=1)
+        return img
     if ch not in (COMMIT, BRANCH, TAG):
         return None
     S = 4                                               # drawn four times over, kept where mostly covered
@@ -134,7 +142,7 @@ def icon(ch, W, H):
     return img
 
 
-DRAWN = [chr(c) for c in range(0x2580, 0x25A0)] + list("─━═│┃║┄┈╌┆┊╎┌┐└┘├┤┬┴┼■□▪▫▬▮▯") + [COMMIT, BRANCH, TAG]
+DRAWN = [chr(c) for c in range(0x2580, 0x25A0)] + list("─━═│┃║┄┈╌┆┊╎┌┐└┘├┤┬┴┼■□▪▫▬▮▯") + [COMMIT, BRANCH, TAG] + list(TIERS)
 
 
 def fitted(path, W, H):
