@@ -1,0 +1,8 @@
+#!/bin/sh
+# fill PART DIR, from ../build: this machine's origin and toolbox, as they are.
+set -eu
+case "$1" in
+  origin) if [ -d /srv/origin/FC-Public-Media ]; then rsync -aH --exclude=lost+found /srv/origin/ "$2"/; fi ;;
+  toolbox) rsync -aH --exclude=lost+found "${TOOLBOX:-/srv/toolbox}"/ "$2"/ ;;
+esac
+chown "${SUDO_UID:-1000}:${SUDO_GID:-1000}" "$2"

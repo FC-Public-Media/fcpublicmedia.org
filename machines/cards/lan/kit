@@ -1,0 +1,64 @@
+#!/bin/bash
+# kit DIR: a lan card's kit, made on any Linux, as root: the package cache Alpine boots from
+# (cache/, signed by Alpine), its saved settings (<hostname>.apkovl.tar.gz; kept when there already)
+# and bin/claude. Run again on a copy of a card's kit to refresh it, then copy it back.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; . "$HERE/card"
+OUT="${1:?usage: kit DIR}"; mkdir -p "$OUT/cache" "$OUT/bin"
+ISO="${ISO:-$(ls "${TOOLBOX:-/srv/toolbox}"/isos/alpine-standard-*-x86_64.iso | tail -1)}"
+MIRROR=https://dl-cdn.alpinelinux.org/alpine
+CLAUDE=https://downloads.claude.ai/claude-code-releases
+WORLD="alpine-base bash doas cryptsetup e2fsprogs dosfstools util-linux tzdata chrony dbus avahi
+  avahi-tools openssh-client git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less"
+
+(cd "$(dirname "$ISO")" && sha256sum -c --quiet "$(basename "$ISO").sha256")
+W="$(mktemp -d /var/tmp/kit.XXXXXX)"; R="$W/root"
+trap 'for m in "$R/proc" "$R/dev" "$W/iso"; do umount "$m" 2>/dev/null || true; done; rm -rf "$W"' EXIT
+mkdir -p "$W/iso" "$W/b" "$R/etc/apk"
+mount -o loop,ro "$ISO" "$W/iso"
+VER="$(sed -n 's/^alpine-[a-z]*-\([0-9]*\.[0-9]*\).*/\1/p' "$W/iso/.alpine-release")"
+
+# Alpine's own apk, from the ISO, on its own musl.
+for p in musl zlib libcrypto3 libssl3 libapk apk-tools alpine-keys; do
+  tar -xzif "$(ls "$W"/iso/apks/x86_64/$p-[0-9]*.apk)" -C "$W/b" --exclude='.*' 2>/dev/null
+done
+apk() { "$W/b/lib/ld-musl-x86_64.so.1" --library-path "$W/b/lib:$W/b/usr/lib" "$W/b/sbin/apk" "$@"; }
+cp -a "$W/b/etc/apk/keys" "$R/etc/apk/"
+printf '%s\n' "$MIRROR/v$VER/main" "$MIRROR/v$VER/community" > "$R/etc/apk/repositories"
+apk --root "$R" --arch x86_64 --initdb --cache-dir "$OUT/cache" --update-cache --quiet add $WORLD
+apk --root "$R" --cache-dir "$OUT/cache" --quiet cache clean
+
+if ! ls "$OUT"/*.apkovl.tar.gz >/dev/null 2>&1; then
+  mount --bind /proc "$R/proc"; mount --bind /dev "$R/dev"
+  root() { chroot "$R" /bin/sh -c "$1"; }
+  echo "$hostname" > "$R/etc/hostname"
+  printf '127.0.0.1\t%s.local %s localhost\n::1\t\tlocalhost\n' "$hostname" "$hostname" > "$R/etc/hosts"
+  printf 'auto lo\niface lo inet loopback\n\nauto eth0\niface eth0 inet dhcp\n' > "$R/etc/network/interfaces"
+  printf 'LABEL=%s-kit /media/%s-kit vfat rw,noatime 0 0\nLABEL=%s-code /srv/code ext4 noauto,noatime 0 0\n' \
+    "$label" "$label" "$label" > "$R/etc/fstab"
+  rm -rf "$R/etc/apk/cache"; ln -s "/media/$label-kit/cache" "$R/etc/apk/cache"
+  echo "LBU_MEDIA=$label-kit" >> "$R/etc/lbu/lbu.conf"
+  ln -sf /usr/share/zoneinfo/America/Denver "$R/etc/localtime"; echo America/Denver > "$R/etc/timezone"
+  printf 'export PATH="$PATH:/media/%s-kit/bin"\nexport USE_BUILTIN_RIPGREP=0\n' "$label" > "$R/etc/profile.d/fcpm.sh"
+  printf '#!/bin/sh\nmkdir -p /srv/code && { mountpoint -q /srv/code || mount /srv/code; }\n' > "$R/etc/local.d/code.start"
+  chmod +x "$R/etc/local.d/code.start"
+  mkdir -p "$R/etc/fcpm"
+  printf '#!/bin/sh\nS=/srv/code/fcpublicmedia.org/machines/cards/lan/seat\n[ -f "$S" ] && exec /bin/sh "$S"\nexec /sbin/getty 38400 tty1\n' > "$R/etc/fcpm/seat"
+  sed -i 's|^tty1::respawn:.*|tty1::respawn:/bin/sh /etc/fcpm/seat|' "$R/etc/inittab"
+  mkdir -p "$R/etc/doas.d"; echo 'permit nopass user' > "$R/etc/doas.d/fcpm.conf"
+  root 'adduser -D -u 1000 -s /bin/bash -h /home/user user >/dev/null'
+  for s in devfs dmesg mdev hwdrivers modloop; do root "rc-update -q add $s sysinit"; done
+  for s in modules sysctl hostname bootmisc syslog networking; do root "rc-update -q add $s boot"; done
+  for s in dbus avahi-daemon chronyd local; do root "rc-update -q add $s default"; done
+  for s in mount-ro killprocs savecache; do root "rc-update -q add $s shutdown"; done
+  rm -f "$R/etc/machine-id"
+  root "lbu package /tmp/$hostname.apkovl.tar.gz"
+  mv "$R/tmp/$hostname.apkovl.tar.gz" "$OUT/"
+fi
+
+V="$(curl -fsSL "$CLAUDE/latest")"; [[ "$V" =~ ^[0-9.]+$ ]]
+SUM="$(curl -fsSL "$CLAUDE/$V/manifest.json" | jq -r '.platforms["linux-x64-musl"].checksum')"
+curl -fsSL -o "$W/claude" "$CLAUDE/$V/linux-x64-musl/claude"
+echo "$SUM  $W/claude" | sha256sum -c --quiet
+cp "$W/claude" "$OUT/bin/claude"; chmod 755 "$OUT/bin/claude" 2>/dev/null || true
+echo "kit: Alpine $VER, $(ls "$OUT/cache" | grep -c '\.apk$') packages, Claude Code $V"

@@ -1,0 +1,11 @@
+#!/bin/sh
+# fill PART DIR, from ../build: the kit (./kit), and the checkout that built the card.
+set -eu
+HERE="$(cd "$(dirname "$0")" && pwd)"
+case "$1" in
+  kit) "$HERE/kit" "$2" ;;
+  code)
+    git -c safe.directory='*' clone -q "$(git -c safe.directory='*' -C "$HERE" rev-parse --show-toplevel)" "$2/fcpublicmedia.org"
+    git -C "$2/fcpublicmedia.org" remote set-url origin https://github.com/FC-Public-Media/fcpublicmedia.org.git
+    chown -R 1000:1000 "$2" ;;
+esac
