@@ -1,0 +1,23 @@
+#!/bin/sh
+# site-name -- fcpublicmedia.local answers to this machine on the LAN: an mDNS address record beside
+# digitization.local, held up while this runs (the crew's `name` line keeps it), so the site the door
+# serves (site-build, FCPM_SITE_DIR) is one name away during an outage. Avahi's publisher is Debian's
+# avahi-utils (gear.yml). The address is the LAN interface's, re-published when it changes.
+name=${FCPM_SITE_HOST:-fcpublicmedia.local}
+address() {
+  # The first global IPv4 that is not Tailscale's (100.64/10): the LAN's.
+  ip -4 -o addr show scope global 2>/dev/null | awk '{ split($4, a, "/"); print a[1] }' |
+    grep -v -E '^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.' | head -n 1
+}
+pid=""; was=""
+trap 'kill $pid 2>/dev/null; exit 0' INT TERM
+while :; do
+  now=$(address)
+  if [ -n "$now" ] && { [ "$now" != "$was" ] || ! kill -0 "$pid" 2>/dev/null; }; then
+    kill "$pid" 2>/dev/null
+    avahi-publish -a -R "$name" "$now" >/dev/null 2>&1 &
+    pid=$!; was=$now
+    echo "name: $name -> $now"
+  fi
+  sleep 30
+done

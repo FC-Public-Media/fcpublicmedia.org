@@ -1,0 +1,61 @@
+# podcast.yml: the podcast studio, as its hallway door shows it (door.py, /room/podcast/). docs/kiosk.md, Rooms.
+# Hand-written. Who is hosting and what is in the room right now come from the host wizard's replies
+# (replies.py), never from here. Never the Wi-Fi password: this repository is public.
+
+room: podcast
+title: The Podcast Studio
+# Two sentences at most, for somebody who came down the hall looking for something else.
+say: >-
+  Four seats, four microphones, two cameras. A studio for Fort Collins storytellers,
+  open to everyone.
+# Under the host's name while somebody has checked in as the host (wizard:kiosk+host).
+welcome: Come in and have a look.
+# When nobody has: the rota says who is next (welcome/rota.yml).
+quiet: Nobody is in right now.
+
+# The code: the site, not check-in. A passer-by is not here for a reservation.
+encodes: https://www.fcpublicmedia.org/
+shown: fcpublicmedia.org
+# This room's name in site/_data/classes.yml, for what is coming up here.
+classes: Podcast Studio
+
+# What lives in the room. `id` is what a reply names; `trove` cites the instrument's repository and the
+# page reads its instrument.yml when the trove is checked out. `usually: true` is lit until a reply says
+# otherwise. Rough, from Autumn on 2026-10-17, to be written down properly: the lenses' focal lengths
+# (67 mm is a filter thread), the second camera's model.
+gear:
+  - id: rodecaster
+    name: RØDECaster Pro II
+    say: the console, four microphones in and the show out
+    trove: rodecaster-pro-ii
+    usually: true
+
+  - id: mics
+    name: 512 Audio Limelight microphones
+    say: dynamic broadcast microphones on arms, one per seat
+    count: 4
+    usually: true
+
+  - id: headphones
+    name: Shure SRH840 headphones
+    say: one pair per seat
+    count: 4
+    usually: true
+
+  - id: camera-6k
+    name: Blackmagic Pocket Cinema Camera 6K Pro
+    say: across the room, two seats in frame, a Canon lens
+    trove: camera
+    usually: true
+
+  - id: camera-4k
+    name: A second camera, 4K
+    say: the other two seats, a Canon lens. Its model is to be written down
+    usually: true
+
+  - id: roller-tv
+    name: The rolling TV
+    say: the studio's wall, placed out of both cameras' frames
+    trove: kiosk-screen
+    instrument: machines/kiosk/roller-tv/instrument.yml
+    usually: true

@@ -12,6 +12,7 @@ What any machine wearing the kiosk owes, so a peer can step in beside it:
 - It keeps the door on :8080 and one screen per panel in `node.yml`, and writes the wall to the depot share.
 - It stays in the building and reaches out only: code by commit, media through the depot, talk by session message. Nothing connects in. `fcpm` tends it.
 - Status is asked live (`door.py`, `door.py screens`, `door.py server`); nothing it shows was written down at start.
+- A room's door (`rooms/<room>.yml`, `/room/<room>/`) only reads. What a wizard made comes in as a bottle, kept first and read later (`replies.py`); that inbox is the one writer of a room's state.
 - One supervisor, with no window and nothing in Startup apps.
 - It never asks GitHub on a timer: only when asked (`fcpm pull`), once a week (`fcpm weekly`), or while `fcpm dev on`. A LAN origin it may poll.
 
@@ -39,6 +40,7 @@ Log: `%LOCALAPPDATA%\media-node\door.log`.
 | server | every minute keeps `claude remote-control --no-create-session-in-dir` at `~/code` (output `server.*`); bounces it onto a newer `claude.exe` after 15 calm minutes; a killed one holds `~/code` a few minutes ("already served"); `door.py server` |
 | sessions | starts none; snapshots `claude agents --json` to `sessions.json`, a record only; `door.py sessions` |
 | camera | `door.py camera arm`, or the desk's button: a headless Edge reads a `wizard:kiosk+lights` reply; lights keep the screens awake |
+| replies | every 20 s, the bottles set down since (`POST /drop`, or frames from the eyes) are read: applied to a room's state, or held with the reason (`replies.py`); nothing is applied on arrival |
 | Dropbox | `TO DROPBOX` goes up to `dropbox.to`, removed once Dropbox holds the same bytes; off until `door.py dropbox link` |
 | HELO | sets the AJA HELO's clock from this one when over 90 s out, never while it records |
 | TI-89 | serves the runner from `ref/ti-89`, fast-forwarded with the pulls, by the same rule; the ROM only to this box |
