@@ -108,6 +108,17 @@ gear:
     restart-tier: app
     holds: "its profile, in ~/.config/vivaldi"
 
+  - gear: firefox
+    for: >
+      The resting screen (rest): brand/idle full screen, in its own kiosk
+      profile, because Vivaldi's --kiosk shows its setup wizard first. On the
+      Debian live image already.
+    package: firefox-esr
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "its profile, in ~/.config/fcpm-rest"
+
   - gear: claude-code
     for: >
       The agent. Installed by hand with its own installer, so apt does not see it.

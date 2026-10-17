@@ -1,8 +1,8 @@
 #!/bin/sh
 # at-login -- what digitization's desktop starts (fcpm-digitization.desktop, in /etc/xdg/autostart):
-# the door on port 80, kept up, then Vivaldi, maximized, with the door's page as a pinned tab
-# (open-page). In the desktop, so the door can ask on this screen and reach this session's
-# ssh-agent. The door also serves the site built here (site-build) to the LAN under the name
+# the door on port 80, kept up; the screen kept on, resting on the mark when nobody is here (rest);
+# then Vivaldi, maximized, with the door's page as a pinned tab (open-page). In the desktop, so the
+# door can ask on this screen and reach this session's ssh-agent. The door also serves the site built here (site-build) to the LAN under the name
 # fcpublicmedia.local (site-name). See PROFILE.md.
 cd "$(dirname "$0")/../.." || exit 1
 up() { curl -fsS -o /dev/null http://localhost/revision; }
@@ -13,4 +13,5 @@ if ! up; then
     done ) &
   for _ in $(seq 60); do up && break; sleep 1; done
 fi
+machines/digitization/rest &
 exec machines/digitization/open-page http://localhost/
