@@ -5,7 +5,8 @@
 
 The console draws one bit per pixel and at most 512 glyphs, so this picks its own: ASCII and
 Latin-1, the punctuation, arrows and signs a screen writes (− ± ∅ … · •), the blocks, shades and
-lines a screen draws with, our own icons (commit, branch, tag) at U+E000-E002, and four activity squares at U+E010-E013. Letters come from FONT, rendered four times over and kept where they
+lines a screen draws with, our own icons (commit, branch, tag) at U+E000-E002, four activity squares and a seam at
+U+E010-E014, and a gauge's pieces at U+E020-E02A. Letters come from FONT, rendered four times over and kept where they
 cover more than 45% of a pixel. Blocks, shades and lines are drawn here, cell-exact, so a bar of
 them meets without seams whatever FONT does. Needs Pillow.
 """
@@ -97,10 +98,34 @@ def drawn(ch, W, H):
 COMMIT, BRANCH, TAG = "\ue000", "\ue001", "\ue002"
 # Activity, four steps of one centred square that grows: a period, a small square, a square, a full one.
 TIERS = {"\ue010": 3, "\ue011": 6, "\ue012": 9, "\ue013": 14}        # sides in a 14-wide cell; the largest fills it, so full days meet
+SEAM = "\ue014"                                         # the full square less its left column: a run of full ones still counts
+# A gauge, drawn in the text colour over the bar it sits in: outlined, solid where it is free.
+GAUGE_L, GAUGE_R, GAUGE_USED, GAUGE_FREE = "\ue020", "\ue021", "\ue022", "\ue023"
+GAUGE_PART = [chr(0xE024 + k) for k in range(7)]         # 1-7 eighths free, at the right
 
 
 def icon(ch, W, H):
     """Our own marks, drawn to the cell; None for anything else."""
+    if ch == SEAM:
+        img = Image.new("1", (W, H), 0)
+        y0 = (H - W) // 2
+        ImageDraw.Draw(img).rectangle((1, y0, W - 1, y0 + W - 1), fill=1)
+        return img
+    if ch in (GAUGE_L, GAUGE_R, GAUGE_USED, GAUGE_FREE) or ch in GAUGE_PART:
+        img = Image.new("1", (W, H), 0)
+        d = ImageDraw.Draw(img)
+        top, bot, t = H // 4, H - H // 4 - 1, 2                 # the band, and its outline's weight
+        if ch == GAUGE_L:
+            d.rectangle((W - t, top, W - 1, bot), fill=1)
+        elif ch == GAUGE_R:
+            d.rectangle((0, top, t - 1, bot), fill=1)
+        else:
+            free = W if ch == GAUGE_FREE else 0 if ch == GAUGE_USED else round(W * (GAUGE_PART.index(ch) + 1) / 8)
+            d.rectangle((0, top, W - 1, top + t - 1), fill=1)
+            d.rectangle((0, bot - t + 1, W - 1, bot), fill=1)
+            if free:
+                d.rectangle((W - free, top, W - 1, bot), fill=1)
+        return img
     if ch in TIERS:
         side = min(TIERS[ch] * W // 14, W, H)
         img = Image.new("1", (W, H), 0)
@@ -142,7 +167,7 @@ def icon(ch, W, H):
     return img
 
 
-DRAWN = [chr(c) for c in range(0x2580, 0x25A0)] + list("─━═│┃║┄┈╌┆┊╎┌┐└┘├┤┬┴┼■□▪▫▬▮▯") + [COMMIT, BRANCH, TAG] + list(TIERS)
+DRAWN = [chr(c) for c in range(0x2580, 0x25A0)] + list("─━═│┃║┄┈╌┆┊╎┌┐└┘├┤┬┴┼■□▪▫▬▮▯") + [COMMIT, BRANCH, TAG] + list(TIERS) + [SEAM, GAUGE_L, GAUGE_R, GAUGE_USED, GAUGE_FREE] + GAUGE_PART
 
 
 def fitted(path, W, H):
