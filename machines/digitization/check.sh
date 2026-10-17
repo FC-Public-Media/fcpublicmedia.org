@@ -45,22 +45,20 @@ cmp -s "$HERE/fcpm-digitization.desktop" /etc/xdg/autostart/fcpm-digitization.de
 say $? "the desktop starts the door and its page" "sudo cp $HERE/fcpm-digitization.desktop /etc/xdg/autostart/"
 curl -fsS -o /dev/null http://localhost/revision
 say $? "the door answers on port 80" "log out and in, or run $HERE/at-login"
-[ -f "$HOME/.local/state/fcpm/site/current/index.html" ]
-say $? "the site built for the LAN" "sh $HERE/site-build (the crew's site line, every 5 minutes)"
 hosts='files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4'
 cmp -s "$HERE/mdns.allow" /etc/mdns.allow && [ "$(awk '$1 == "hosts:" { $1 = ""; sub(/^ /, ""); print }' /etc/nsswitch.conf)" = "$hosts" ]
 say $? "names deeper than two labels resolve here" \
   "sudo cp $HERE/mdns.allow /etc/mdns.allow, and in /etc/nsswitch.conf: hosts: $hosts"
 found=$(python3 -I "$HERE/../lan.py" status | while read -r name serves who; do
   case "$serves $who" in
-    directory\ here|gear\ here|board\ here*|board\ held*|site\ here*|site\ held*) say 0 "$name answers on the LAN ($serves)" ;;
+    directory\ here|gear\ here|board\ here*|board\ held*) say 0 "$name answers on the LAN ($serves)" ;;
+    directory\ *|gear\ *|board\ *) say 1 "$name answers on the LAN ($serves): $who" "the crew's names line (../lan.py publish)" ;;
+    *\ here*|*\ held*) say 0 "$name answers on the LAN ($serves, a static site)" ;;
     *) say 1 "$name answers on the LAN ($serves): $who" "the crew's names line (../lan.py publish)" ;;
   esac
 done)
 echo "$found"
 case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
-curl -fsS -o /dev/null -H 'Host: fcpublicmedia.local' http://localhost/
-say $? "the door serves the site as fcpublicmedia.local" "log out and in, or run $HERE/at-login (FCPM_SITE_DIR)"
 own=$(hostname).fcpublicmedia.local
 curl -fsS -H "Host: $own" http://localhost/ 2>/dev/null | grep -q "<title>$own</title>"
 say $? "the door serves this machine's directory as $own" "a door from before lan.yml: it bounces on the next commit"

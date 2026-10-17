@@ -8,8 +8,9 @@ domain: fcpublicmedia.local
 # 30 seconds and takes it over when the holder goes. `@` is the domain itself.
 shared:
   helm: board        # the board: the door's switches, screens and fcpm's verbs
-  "@": site          # the public site (site-build), the same as www
+  "@": site          # the static job's sites (../static/sites.yml): the public site, the same as www
   www: site
+  wix: wix           # the Wix site, photocopied, until the board retires it
 
 # <hostname>.fcpublicmedia.local is this machine's directory: its gear, each one level deeper
 # (atem-mini-pro.digitization.fcpublicmedia.local), named for its trove, which holds its facts.

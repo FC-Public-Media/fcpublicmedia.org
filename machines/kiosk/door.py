@@ -30,9 +30,9 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /host/?room=<room> wizard:kiosk+host, the staff check-in: a reply bottled for a camera, or set down here
     POST /drop             a bottle set down: kept as a file, read later (replies.py); GET /drop/<name> says where it got
     GET /js/qr-encode.mjs  the site's QR encoder, for pages here
-    Host: <a LAN name>     what the profile's lan.yml says the name serves (machines/lan.py): the board, the
-                           built site from FCPM_SITE_DIR (digitization's site-build), this machine's directory
-                           of its gear, or one piece of gear. Any other name is the board
+    Host: <a LAN name>     what the profile's lan.yml says the name serves (machines/lan.py): the board, a
+                           static site (forwarded to the static job's serve.py, machines/static/sites.yml), this
+                           machine's directory of its gear, or one piece of gear. Any other name is the board
     GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /input             seconds since this computer was last touched, as JSON. Every page polls it (AWAKE_JS)
@@ -2350,7 +2350,6 @@ def watch_wall():
 # host reply's (replies.py); the rota and the classes say what is coming. docs/kiosk.md, Rooms.
 COMPOSER = ROOT / "troves" / "scanner" / "composer"        # the bottle codec, when the scanner trove is checked out
 COMPOSER_FILES = ("sign.mjs", "transfer.mjs", "carrier.mjs", "fountain.mjs", "anecdote.mjs")
-SITE_DIR = os.environ.get("FCPM_SITE_DIR")                 # the built site, served under the names lan.yml gives it
 
 
 def lan_module():
@@ -2371,6 +2370,19 @@ try:
 except Exception as exc:                                   # no profile, or no PyYAML: every name is the board
     LAN, NAMES = None, {}
     print("door: no LAN names: %r" % exc, file=sys.stderr)
+
+
+def static_job():
+    """(port, sites) of the static job (machines/static/sites.yml): names serving one are forwarded there."""
+    try:
+        import yaml
+        cfg = yaml.safe_load((ROOT / "machines" / "static" / "sites.yml").read_text(encoding="utf-8")) or {}
+        return int(cfg.get("port") or 8480), set(cfg.get("sites") or {})
+    except Exception:
+        return None, set()
+
+
+STATIC_PORT, STATIC_SITES = static_job()
 
 
 def lan_link(name):
@@ -2396,11 +2408,11 @@ def directory_page():
     rows = ['<li><a href="%s">%s</a> <span>%s</span></li>' % (
         html.escape(lan_link(n), quote=True), e(n), e(", ".join(x for x in (f.get("model"), w or "not seen") if x)))
         for (n, _), f, w in zip(gear, facts, seen)]
-    shared = [n for n, (s, _) in NAMES.items() if s in ("board", "site")]
+    shared = [n for n, (s, _) in NAMES.items() if s == "board" or s in STATIC_SITES]
     held = lan_where(shared)
-    says = {"board": "the board", "site": "the public site, built here"}
+    says = {"board": "the board", "site": "the public site, built here", "wix": "the Wix site, photocopied"}
     rows2 = ['<li><a href="%s">%s</a> <span>%s</span></li>' % (
-        html.escape(lan_link(n), quote=True), e(n), e(", ".join(x for x in (says[NAMES[n][0]], held[n]) if x)))
+        html.escape(lan_link(n), quote=True), e(n), e(", ".join(x for x in (says.get(NAMES[n][0], NAMES[n][0]), held[n]) if x)))
         for n in shared]
     own = next(n for n, (s, _) in NAMES.items() if s == "directory")
     body = """%s<main><h2>Gear</h2><ul>%s</ul><h2>Names</h2><ul>%s</ul></main>""" % (
@@ -2779,31 +2791,30 @@ class Door(BaseHTTPRequestHandler):
             return
         return self.reply(404, "", TYPES[".txt"])
 
-    def site(self, route):
-        """The built site, to the LAN, by its own name: a document root only under that Host."""
-        base = pathlib.Path(SITE_DIR)
-        rel = route.lstrip("/") + ("index.html" if route.endswith("/") else "")
-        path = inside(base, rel) if rel else None
-        if path is None and not route.endswith("/") and (base / rel).is_dir():
-            self.send_response(301)
-            self.send_header("Location", route + "/")
-            self.end_headers()
-            return
-        code = 200
-        if path is None:
-            path, code = inside(base, "404.html"), 404
-        if path is None:
-            return self.reply(404, "Nothing by that name.", TYPES[".txt"])
-        import mimetypes
-        ctype = TYPES.get(path.suffix.lower()) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        return self.reply(code, path.read_bytes(), ctype)
+    def static(self):
+        """A static site's name: the request as it came, to the static job's serve.py, and its answer back."""
+        import http.client
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", STATIC_PORT, timeout=30)
+            conn.request(self.command, self.path, headers={"Host": self.headers.get("Host") or ""})
+            r = conn.getresponse()
+            body = r.read()
+        except OSError:
+            return self.reply(502, "The static job is not answering on port %s." % STATIC_PORT, TYPES[".txt"])
+        self.send_response(r.status)
+        for k, v in r.getheaders():
+            if k.lower() not in ("connection", "transfer-encoding", "server", "date"):
+                self.send_header(k, v)
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
         serves, gear = NAMES.get((self.headers.get("Host") or "").split(":")[0].rstrip(".").lower(), (None, None))
-        if serves == "site" and SITE_DIR:
-            return self.site(route)
+        if serves in STATIC_SITES and STATIC_PORT:
+            return self.static()
         try:
             if route == "/" and serves == "directory":
                 return self.reply(200, directory_page())

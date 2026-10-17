@@ -1,0 +1,4 @@
+# What the static job runs: `name keep from` or `name every Nm from`. See ../README.md.
+
+site            every 5m    machines/static
+serve           keep        machines/static

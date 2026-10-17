@@ -78,17 +78,6 @@ gear:
     restart-tier: none
     holds: "nothing of its own"
 
-  - gear: jekyll
-    for: >
-      The public site built here from this checkout (site-build), so the door can
-      serve it to the LAN as fcpublicmedia.local through a cloud outage. Debian's
-      package: the same Jekyll 4 the deploy runs, no theme gem, no plugins.
-    package: jekyll
-    provisioner: apt
-    updates: apt
-    restart-tier: none
-    holds: "nothing of its own; the builds are in ~/.local/state/fcpm/site"
-
   - gear: avahi-utils
     for: >
       avahi-publish, for this machine's names under fcpublicmedia.local (lan.yml),
