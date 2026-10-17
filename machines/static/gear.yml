@@ -1,0 +1,24 @@
+# gear.yml: what the static job stands on, on Debian. `package:` is an apt name; check.sh asks dpkg.
+
+version: 1
+platform: linux
+
+gear:
+  - gear: jekyll
+    for: >
+      The public site, built here from this checkout (site-build). Debian's package: the same
+      Jekyll 4 the deploy runs, no theme gem, no plugins. A site without a build needs nothing.
+    package: jekyll
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "nothing of its own; the builds are in ~/.local/state/fcpm/site"
+
+  - gear: python3-yaml
+    for: >
+      serve.py reads sites.yml and lan.yml with it, as the crew's supervisor does.
+    package: python3-yaml
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"

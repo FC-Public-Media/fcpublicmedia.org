@@ -1,0 +1,14 @@
+# sites.yml -- what the static job serves: each site a folder of finished files, served under every
+# LAN name lan.yml gives it (`www: site`). A site with a `build` is rebuilt by the job's own line;
+# one without is served as it sits. Paths are from this checkout's root; {state} is
+# ~/.local/state/fcpm. See CREW.md.
+
+# Where `serve` listens on a machine wearing the job; the door (or any reverse proxy) forwards to it.
+port: 8480
+
+sites:
+  site:
+    root: "{state}/site/current"
+    build: machines/static/site-build   # Jekyll, from site/, when the commit moves
+  wix:
+    root: wix/site                      # the Wix site, photocopied (submodule `wix`): no build

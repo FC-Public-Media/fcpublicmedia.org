@@ -81,6 +81,9 @@ from Outlook on the web (Settings, Calendar, Shared calendars, Publish a calenda
 link can read it, so publish a dedicated public programming calendar. It keeps events not yet ended,
 skips and lists repeating events (`RRULE`), and refuses time zones it cannot map.
 
+Until that calendar is published, `calendar.json` is the same script's reading of the Wix site's
+classes, frozen: `--file wix/events.ics` (the `wix` submodule's `bin/events.py`).
+
 ## Homepage
 
 - The check-in panel with its QR and the class panel, then the on-air strip.

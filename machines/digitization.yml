@@ -13,10 +13,6 @@ serves:
     for: "this checkout follows the origin's main, fast-forward only; see digitization/PROFILE.md"
     start: "/bin/sh machines/digitization/follow"
 
-  - service: site
-    for: "the public site, built from this checkout when its commit moves, for the LAN as fcpublicmedia.local and www; see digitization/PROFILE.md"
-    start: "/bin/sh machines/digitization/site-build"
-
   - service: names
     for: "this machine's names under fcpublicmedia.local (lan.yml: helm, the site, its directory and gear), by mDNS, while this runs"
     start: "/usr/bin/python3 -I machines/lan.py publish"

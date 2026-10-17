@@ -3,13 +3,13 @@
 # the door on port 80, kept up; the screen kept on, resting on the mark when nobody is here (rest);
 # then Vivaldi, maximized, with the door's page as a pinned tab (open-page). In the desktop, so the
 # door can ask on this screen and reach this session's ssh-agent. The door also serves what lan.yml
-# names (../lan.py): the board as helm.fcpublicmedia.local, the site built here (site-build) as
-# fcpublicmedia.local and www, this machine's directory and its gear. See PROFILE.md.
+# names (../lan.py): the board as helm.fcpublicmedia.local, this machine's directory and its gear;
+# the static sites' names (fcpublicmedia.local, www, wix) it forwards to the static job. See PROFILE.md.
 cd "$(dirname "$0")/../.." || exit 1
 up() { curl -fsS -o /dev/null http://localhost/revision; }
 if ! up; then
   ( while :; do
-      FCPM_DOOR_PORT=80 FCPM_SITE_DIR="$HOME/.local/state/fcpm/site/current" python3 machines/kiosk/door.py serve
+      FCPM_DOOR_PORT=80 python3 machines/kiosk/door.py serve
       sleep 5
     done ) &
   for _ in $(seq 60); do up && break; sleep 1; done
