@@ -30,7 +30,9 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /host/?room=<room> wizard:kiosk+host, the staff check-in: a reply bottled for a camera, or set down here
     POST /drop             a bottle set down: kept as a file, read later (replies.py); GET /drop/<name> says where it got
     GET /js/qr-encode.mjs  the site's QR encoder, for pages here
-    Host: fcpublicmedia.local  the built site to the LAN, from FCPM_SITE_DIR (digitization's site-build); else off
+    Host: <a LAN name>     what the profile's lan.yml says the name serves (machines/lan.py): the board, the
+                           built site from FCPM_SITE_DIR (digitization's site-build), this machine's directory
+                           of its gear, or one piece of gear. Any other name is the board
     GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /input             seconds since this computer was last touched, as JSON. Every page polls it (AWAKE_JS)
@@ -2348,8 +2350,79 @@ def watch_wall():
 # host reply's (replies.py); the rota and the classes say what is coming. docs/kiosk.md, Rooms.
 COMPOSER = ROOT / "troves" / "scanner" / "composer"        # the bottle codec, when the scanner trove is checked out
 COMPOSER_FILES = ("sign.mjs", "transfer.mjs", "carrier.mjs", "fountain.mjs", "anecdote.mjs")
-SITE_DIR = os.environ.get("FCPM_SITE_DIR")                 # the built site, served to the LAN under SITE_HOST
-SITE_HOST = (os.environ.get("FCPM_SITE_HOST") or "fcpublicmedia.local").lower()
+SITE_DIR = os.environ.get("FCPM_SITE_DIR")                 # the built site, served under the names lan.yml gives it
+
+
+def lan_module():
+    """machines/lan.py, loaded without leaving a __pycache__ in machines/ (every folder there is a profile)."""
+    spec = importlib.util.spec_from_file_location("lan", ROOT / "machines" / "lan.py")
+    mod = importlib.util.module_from_spec(spec)
+    was, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = was
+    return mod
+
+
+try:
+    LAN = lan_module()
+    NAMES = LAN.load()                                     # {name: (serves, gear)}, this machine's profile
+except Exception as exc:                                   # no profile, or no PyYAML: every name is the board
+    LAN, NAMES = None, {}
+    print("door: no LAN names: %r" % exc, file=sys.stderr)
+
+
+def lan_link(name):
+    return "http://%s%s/" % (name, "" if PORT == 80 else ":%d" % PORT)
+
+
+def lan_where(names):
+    """{name: phrase} for each name: who holds it now, asked at once."""
+    from concurrent.futures import ThreadPoolExecutor
+    here = LAN.address()
+    with ThreadPoolExecutor(8) as pool:
+        got = dict(zip(names, pool.map(LAN.resolve, names)))
+    return {n: "" if a == here else ("held by %s" % a if a else "nobody holds it") for n, a in got.items()}
+
+
+def directory_page():
+    """<hostname>.<domain>: this machine's names, its gear first, each a link one level deeper."""
+    from concurrent.futures import ThreadPoolExecutor
+    gear = [(n, g) for n, (s, g) in NAMES.items() if s == "gear"]
+    with ThreadPoolExecutor(8) as pool:
+        facts = list(pool.map(LAN.gear_facts, [g for _, g in gear]))
+        seen = list(pool.map(LAN.presence, facts))
+    rows = ['<li><a href="%s">%s</a> <span>%s</span></li>' % (
+        html.escape(lan_link(n), quote=True), e(n), e(", ".join(x for x in (f.get("model"), w or "not seen") if x)))
+        for (n, _), f, w in zip(gear, facts, seen)]
+    shared = [n for n, (s, _) in NAMES.items() if s in ("board", "site")]
+    held = lan_where(shared)
+    says = {"board": "the board", "site": "the public site, built here"}
+    rows2 = ['<li><a href="%s">%s</a> <span>%s</span></li>' % (
+        html.escape(lan_link(n), quote=True), e(n), e(", ".join(x for x in (says[NAMES[n][0]], held[n]) if x)))
+        for n in shared]
+    own = next(n for n, (s, _) in NAMES.items() if s == "directory")
+    body = """%s<main><h2>Gear</h2><ul>%s</ul><h2>Names</h2><ul>%s</ul></main>""" % (
+        masthead(e(own)), "".join(rows), "".join(rows2))
+    return shell(own, body, BOARD_CSS)
+
+
+def gear_page(gear):
+    """One piece of gear, under its own name: its facts as its trove has them, and where it is now."""
+    name = next(n for n, (s, g) in NAMES.items() if g == gear)
+    f = LAN.gear_facts(gear)
+    where = LAN.presence(f)
+    rows = [("Model", e(f.get("model"))), ("Serial", e(f.get("serial"))), ("Now", e(where or "not seen"))]
+    if where and f.get("http") and f.get("mdns"):
+        rows.append(("Its own page", '<a href="http://%s/">%s</a>' % (html.escape(f["mdns"], quote=True), e(f["mdns"]))))
+    rows.append(("Facts", '<a href="%s">%s</a>' % (html.escape(f["repo"], quote=True), e(f["repo"].split("//", 1)[1]))))
+    dl = "".join("<dt>%s</dt><dd>%s</dd>" % (k, v) for k, v in rows if v)
+    body = """%s<main>%s<dl class=verbs>%s</dl>%s</main>""" % (
+        masthead(e(name)), "<p>%s</p>" % e(f["about"]) if f.get("about") else "", dl,
+        "<h2>instrument.yml</h2><pre class=facts>%s</pre>" % e(f["text"]) if f.get("text") else
+        "<p class=dim>Its trove is not checked out here: <code>troves/%s</code></p>" % e(gear))
+    return shell(name, body, BOARD_CSS + ".facts { white-space:pre-wrap; color:var(--dim); font-size:.8rem; }")
 
 
 def shell(title, body, style=""):
@@ -2728,9 +2801,14 @@ class Door(BaseHTTPRequestHandler):
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
-        if SITE_DIR and (self.headers.get("Host") or "").split(":")[0].lower() == SITE_HOST:
+        serves, gear = NAMES.get((self.headers.get("Host") or "").split(":")[0].rstrip(".").lower(), (None, None))
+        if serves == "site" and SITE_DIR:
             return self.site(route)
         try:
+            if route == "/" and serves == "directory":
+                return self.reply(200, directory_page())
+            if route == "/" and serves == "gear":
+                return self.reply(200, gear_page(gear))
             if route == "/":
                 return self.reply(200, board_page(
                     self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")))
@@ -2887,7 +2965,7 @@ def serve():
     threading.Thread(target=watch_camera, daemon=True).start()
     threading.Thread(target=watch_replies, daemon=True).start()
     log("door up on [::]:%d from %s at %s%s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD"),
-                                                 "; the site as %s from %s" % (SITE_HOST, SITE_DIR) if SITE_DIR else ""))
+                                                 "; %d LAN names" % len(NAMES) if NAMES else ""))
     server.serve_forever()
     server.server_close()
     return BOUNCE if server.bounce else 0
