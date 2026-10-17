@@ -7,15 +7,14 @@ origin's leash (../leash.py) runs this at the far end of its `ssh -T`, a forced 
 
 A pane per owner, a line per repository, in name order so a place on the screen keeps meaning:
 
-    name   history ┊ week   ◉score ⑂⑂⑂  size  last  ●github  ▶tag  hash
+    name   history ┊ week   ◉score ⑂⑂⑂  size  last  github  tag  hash
 
-history is main's commits in one grey: brighter is more commits per day, the same rule in every
-block (under 1, 3, 8, 16 a day, and over). Ten blocks reach back about seven months, each step
-longer, then the seven days ending today; nothing before a repository's first commit. ◉ counts
-main's commits. A ⑂ per other branch, newest first: bright with work this week, grey
-when quiet, dark once merged into main (a leftover). Size is in megabytes: .2, 5.3, 37. last is the time today, the weekday within a week, the date
-before that, dimmer with age. The cat is GitHub: dim when its main is ours, violet with how far
-when not. A tag shows by name; the hash, dim, is the box's main. Everything is read from the box
+history is main's commits a day as a block that fills: ▂ under 1 a day, ▄ from 1, ▅ from 3,
+▇ from 8, █ from 16; empty where there were none. Ten blocks reach back about seven months, each
+step longer, then the seven days ending today. ◉ counts main's commits. A ⑂ per other branch, newest first: bright with work this week, grey
+when quiet, dark once merged into main (a leftover). Size is in megabytes: .2M, 5.3M, 37M. last is the time today, the weekday within a week, the date
+before that, dimmer with age. github is dim when GitHub's main is ours, lit with how far when
+not; another remote would get its own word. A tag shows by name; the hash, dim, is the box's main. Everything is read from the box
 (facts.py) and checked here, ref by ref, against the origin kept here: a repository apart sits on
 a muted wedge, red after five minutes, with how far where its tag would be (−9: the box's main
 lacks 9 of ours; ~1: a branch or tag differs; ∅: not on the box). The bar at the bottom is the
@@ -38,22 +37,22 @@ def fg(i):
 
 
 OFF = "\x1b[0m"
-INK, TAGGED, GH_C, PAPER = fg(0), fg(2), fg(5), fg(7)
+INK, TAGGED, PAPER, LIT = fg(0), fg(2), fg(7), fg(15)
 GREY = [fg(8), fg(9), fg(10), fg(11), fg(12), fg(13)]       # 0: nothing; 1-5: more
 ON_YELLOW, ON_MUTED, ON_BAD = "\x1b[22;43;30m", "\x1b[22;46;30m", "\x1b[22;41;37m"
-COMMIT, BRANCH, TAG, GITHUB = "\ue000", "\ue001", "\ue002", "\ue003"   # drawn by ../console-font.py
+COMMIT, BRANCH, TAG = "\ue000", "\ue001", "\ue002"     # drawn by ../console-font.py
 ROOT = sys.argv[1] if len(sys.argv) > 1 else "/srv/origin"
 STATE = os.path.expanduser("~/.local/state/fcpm/crew")
 INTAKE = os.path.join(ROOT, ".intake", "state.json")
 QUIET = 90          # seconds without facts before the box counts as not heard from
 STALE = 300         # seconds apart before a line turns to trouble
 EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
-CELL = "▆"                                              # three quarters high: rows of them don't touch
-RATES = (1, 3, 8, 16)                                   # commits a day where the grey steps up
+RATES = (1, 3, 8, 16)                                   # commits a day where a block grows a step
+FILL = "▂▄▅▇█"                                          # under 1 a day, then 1, 3, 8, 16 and over
 
 
 def shade(rate):
-    return GREY[0] + "·" if not rate else GREY[1 + sum(1 for r in RATES if rate >= r)] + CELL
+    return " " if not rate else GREY[4] + FILL[sum(1 for r in RATES if rate >= r)]
 
 
 def git(repo, *args):
@@ -120,11 +119,11 @@ def forks(repo, main, branches, now):
 
 
 def mb(n):
-    """Megabytes, no unit and no leading zero: .2, 5.3, 37."""
+    """Megabytes without a leading zero: .2M, 5.3M, 37M."""
     if n is None:
         return ""
     m = n / (1 << 20)
-    return f"{m:.1f}".lstrip("0") if m < 9.95 else f"{m:.0f}"
+    return (f"{m:.1f}".lstrip("0") if m < 9.95 else f"{m:.0f}") + "M"
 
 
 def last(t, now):
@@ -289,13 +288,13 @@ def line(C, row, now, w):
     text = (f" {PAPER}{row['name']:<{w}} " + history(row["times"], now)
             + f" {GREY[3]}{COMMIT}{PAPER}{count if count else '':<4}"
             + " " + fit("".join(c + BRANCH for c in row["forks"]), 8)
-            + f" {GREY[2] if (row['bytes'] or 0) < 1 << 20 else GREY[3]}{mb(row['bytes']):>4}  "
+            + f" {GREY[2] if (row['bytes'] or 0) < 1 << 20 else GREY[3]}{mb(row['bytes']):>5} "
             + fit(last(row["times"][0] if row["times"] else 0, now), 6) + " "
-            + fit((GREY[2] + GITHUB) if gh == "" else (GH_C + GITHUB + gh) if gh else "", 5))
+            + fit((GREY[2] + "github") if gh == "" else (LIT + "github" + gh) if gh else "", 9))
     tail = (PAPER + row["apart"]) if row["apart"] else (TAGGED + TAG + PAPER + row["tags"][-1]) if row["tags"] else ""
     sha = GREY[2] + (row["sha"] or "")[:7]
     room = C - visible(text) - 1
-    if tail and visible(tail) + 2 + 7 > room:
+    if room < 7 or tail and visible(tail) + 2 + 7 > room:     # a tag's name before the hash
         text += " " + fit(tail, room)
     else:
         text += " " + fit(tail, room - 7) + sha
