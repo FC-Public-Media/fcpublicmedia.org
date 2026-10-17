@@ -3,4 +3,5 @@ label=lan
 hostname=card
 ventoy=2G
 isos="alpine-standard-*-x86_64.iso"
+default="alpine-standard-*-x86_64.iso"
 parts="kit:vfat:2G code:ext4:2G home:luks:rest"

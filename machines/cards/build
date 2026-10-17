@@ -8,8 +8,8 @@ TYPES="$(cd "$HERE" && ls -d */ | tr -d / | tr '\n' ' ')"
 [ -n "$TYPE" ] && [ -f "$HERE/$TYPE/card" ] && [ -n "$DISK" ] || { echo "usage: build TYPE /dev/sdX sdX   types: $TYPES"; exit 1; }
 [ "${3:-}" = "$(basename "$DISK")" ] || { echo "Name the disk twice: $DISK $(basename "$DISK")"; exit 1; }
 [ "$(id -u)" != 0 ] || { echo "Run as the desktop's user, not root."; exit 1; }
-[ "$(lsblk -dno TYPE "$DISK" 2>/dev/null)" = disk ] || { echo "$DISK is not a whole disk."; exit 1; }
-persistence=""; . "$HERE/$TYPE/card"
+case "$(lsblk -dno TYPE "$DISK" 2>/dev/null)" in disk|loop) ;; *) echo "$DISK is not a whole disk."; exit 1;; esac
+persistence=""; default=""; . "$HERE/$TYPE/card"
 TOOLBOX="${TOOLBOX:-/srv/toolbox}"
 export PATH="$PATH:/sbin:/usr/sbin"
 
@@ -25,7 +25,7 @@ for p in $parts; do s="${p##*:}"; NEED=$(( NEED + $( [ "$s" = rest ] && echo 102
 [ "$DISK_MB" -ge "$NEED" ] || { echo "$DISK is $DISK_MB MiB; a $TYPE card needs $NEED."; exit 1; }
 
 # ---------------------------------------------------------------- the OK, on this screen
-[ -n "${DISPLAY:-}" ] || { [ -S /tmp/.X11-unix/X0 ] && export DISPLAY=:0; } || true
+if [ -z "${DISPLAY:-}" ] && [ -S /tmp/.X11-unix/X0 ] && [ "$(lsblk -dno TYPE "$DISK")" = disk ]; then export DISPLAY=:0; fi
 LOCKED="$(lsblk -rno FSTYPE,LABEL "$DISK" | awk '$1=="crypto_LUKS"{print $2 ? $2 : "(no label)"}' | paste -sd ' ')"
 TEXT="$(printf 'Erase %s and make it a %s card?\n\n%s\n\n%s%s' "$DISK" "$TYPE" \
   "$(lsblk -dno SIZE,VENDOR,MODEL,SERIAL "$DISK" | tr -s ' ')" \
@@ -84,12 +84,17 @@ for pat in $isos; do
     cp "$f" "$WORK/m/"
   done
 done
+VJ='{}'
 if [ -n "$persistence" ]; then
   set -- $persistence
   (cd "$WORK/m" && sudo "$VD/CreatePersistentImg.sh" -s "$(mib "$1")" -l persistence -c persistence.conf -o persistence.dat >/dev/null)
-  mkdir -p "$WORK/m/ventoy"
-  jq -n --arg i "/$(cd "$WORK/m" && ls $2 | head -1)" '{persistence:[{image:$i, backend:"/persistence.dat"}]}' > "$WORK/m/ventoy/ventoy.json"
+  VJ="$(jq --arg i "/$(cd "$WORK/m" && ls $2 | head -1)" '.persistence=[{image:$i, backend:"/persistence.dat"}]' <<<"$VJ")"
 fi
+if [ -n "$default" ]; then                                    # boots by itself after a few seconds
+  VJ="$(jq --arg i "/$(cd "$WORK/m" && ls $default | head -1)" \
+    '.control=[{VTOY_DEFAULT_IMAGE:$i}, {VTOY_MENU_TIMEOUT:"5"}, {VTOY_SECONDARY_BOOT_MENU:"0"}]' <<<"$VJ")"
+fi
+if [ "$VJ" != '{}' ]; then mkdir -p "$WORK/m/ventoy"; echo "$VJ" > "$WORK/m/ventoy/ventoy.json"; fi
 sync; sudo umount "$WORK/m"
 sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'                # read the ISOs back from the card
 release "$P1"; sudo mount -t exfat -o ro "$P1" "$WORK/m"
