@@ -1,0 +1,17 @@
+#!/bin/sh
+# tty1 on a lan card: the home's passphrase, then its holder's shell. Logging out locks it again.
+. "$(dirname "$0")/card"
+H=/home/user; M="$label-home"
+while :; do
+  clear
+  printf '\n  %s.local   %s\n\n' "$(hostname)" \
+    "$(ip -4 -o addr show scope global 2>/dev/null | awk '{sub("/.*", "", $4); print $4; exit}')"
+  if ! mountpoint -q "$H"; then
+    dev="$(findfs LABEL="$M" 2>/dev/null)" || { echo "  This card has no home."; sleep 60; continue; }
+    echo "  The home is locked."
+    [ -e "/dev/mapper/$M" ] || cryptsetup open "$dev" "$M" || { sleep 2; continue; }
+    mkdir -p "$H"; mount "/dev/mapper/$M" "$H" || { sleep 5; continue; }
+  fi
+  login -f user
+  umount "$H" 2>/dev/null && cryptsetup close "$M"
+done

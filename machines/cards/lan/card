@@ -1,0 +1,7 @@
+# A card that leans on the LAN: code from digitization, packages from the internet. Read by ../build.
+label=lan
+hostname=card
+ventoy=2G
+isos="alpine-standard-*-x86_64.iso"
+default="alpine-standard-*-x86_64.iso"
+parts="kit:vfat:2G code:ext4:2G home:luks:rest"
