@@ -45,6 +45,12 @@ cmp -s "$HERE/fcpm-digitization.desktop" /etc/xdg/autostart/fcpm-digitization.de
 say $? "the desktop starts the door and its page" "sudo cp $HERE/fcpm-digitization.desktop /etc/xdg/autostart/"
 curl -fsS -o /dev/null http://localhost/revision
 say $? "the door answers on port 80" "log out and in, or run $HERE/at-login"
+cmp -s "$HERE/zram-generator.conf" /etc/systemd/zram-generator.conf && grep -q '^/dev/zram' /proc/swaps
+say $? "swap in compressed RAM" "sudo cp $HERE/zram-generator.conf /etc/systemd/zram-generator.conf && sudo systemctl daemon-reload && sudo systemctl start systemd-zram-setup@zram0"
+cmp -s "$HERE/sysctl-zram.conf" /etc/sysctl.d/60-fcpm-zram.conf && [ "$(cat /proc/sys/vm/swappiness)" = 180 ]
+say $? "the kernel leans on that swap" "sudo cp $HERE/sysctl-zram.conf /etc/sysctl.d/60-fcpm-zram.conf && sudo sysctl --system"
+cmp -s "$HERE/earlyoom.default" /etc/default/earlyoom && systemctl is-active -q earlyoom
+say $? "earlyoom ends the biggest process before memory runs out" "sudo cp $HERE/earlyoom.default /etc/default/earlyoom && sudo systemctl restart earlyoom"
 hosts='files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4'
 cmp -s "$HERE/mdns.allow" /etc/mdns.allow && [ "$(awk '$1 == "hosts:" { $1 = ""; sub(/^ /, ""); print }' /etc/nsswitch.conf)" = "$hosts" ]
 say $? "names deeper than two labels resolve here" \

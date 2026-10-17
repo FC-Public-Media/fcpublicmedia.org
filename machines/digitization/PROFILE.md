@@ -16,6 +16,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
 | `check.sh` | each gear present (dpkg), the crew's supervisor up, the origin mounted, the clock synced and on Fort Collins time, SSH keys only, port 80 and the door, the site built, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
+| `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
 | `KEYHOLDERS` | who may prove themselves to this machine by passkey. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is removing the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
 | role | FCPM's git origin and receiver, so work goes on through a cloud outage |
 
@@ -39,6 +40,21 @@ in `/etc/nsswitch.conf` is `files myhostname mdns4_minimal [NOTFOUND=return] dns
 as before, deeper ones through `mdns4` after unicast DNS says no, so reverse lookups stay fast. Apple's
 resolvers take the deep names as they are. Windows' is not tested yet. `python3 machines/lan.py` says who
 holds each name now.
+
+## Memory
+
+7.7 GB, no disk swap, and a root on an SD card. On 2026-10-17 at 01:38 the box ran short with no swap: the kernel
+evicted the programs' own code and read it back from the card, over and over, so every program stopped while the
+kernel lived (SSH took the connection and said nothing) and the OOM killer never fired. Twenty minutes later
+only the power button helped. Now there is a way out on its own:
+
+- **zram** (`zram-generator.conf` → `/etc/systemd/zram-generator.conf`): half the RAM as compressed swap, zstd,
+  and `sysctl-zram.conf` (`vm.swappiness = 180`, `vm.page-cluster = 0`) so the kernel uses it before evicting code.
+- **earlyoom** (`earlyoom.default` → `/etc/default/earlyoom`): under 5% memory and 15% swap free it sends SIGTERM
+  (SIGKILL at half that) to the biggest process, preferring browser tabs, headless Firefox captures, `node` and
+  Claude's desktop app, and avoiding SSH, X, the session, `python3` (the crew, the door, pools) and Claude Code.
+  The patterns have no spaces or quotes: systemd splits the line at spaces. `journalctl -u earlyoom` says what it
+  ended; `earlyoom --dryrun -m 90 -s 100` shows what it would pick now.
 
 ## The origin
 

@@ -1,0 +1,6 @@
+# earlyoom.default -- /etc/default/earlyoom on digitization. When available memory is under 5% and
+# free swap (zram-generator.conf) under 15%, earlyoom ends the biggest process, browsers' tabs and
+# headless captures first, and the ways in (SSH, X, the crew, the door, Claude sessions) last, so the
+# box sheds one job instead of hanging. `journalctl -u earlyoom` says what it ended. See PROFILE.md, Memory.
+# systemd splits these at spaces and keeps quotes, so the patterns have neither (`.` for a space).
+EARLYOOM_ARGS="-m 5 -s 15 -r 3600 --prefer ^(Isolated.Web.Co|Web.Content|firefox-esr|node|claude-desktop)$ --avoid ^(sshd|Xorg|lightdm|systemd.*|python3|claude|2[.][0-9.]+|xfwm4|xfce4-session)$"
