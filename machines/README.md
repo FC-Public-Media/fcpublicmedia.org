@@ -15,6 +15,8 @@ Gear comes from [`troves/`](../troves/README.md).
 | [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 
+[`cards/`](cards/README.md) are boot cards, not jobs: each carries the checkout, so it can start any job.
+
 A job's folder holds its contract (`CREW.md`: what it looks after and what it serves) beside its
 hardware (`PROFILE.md`, `names`) and, when it runs anything, its order (`services`) and its post
 steps (`post.yml`); its own menu sits beside the folder (`machines/<job>.yml`). A computer named in

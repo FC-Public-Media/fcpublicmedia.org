@@ -6,15 +6,16 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 
 | | |
 |---|---|
-| `names` | `linux Hostname digitization`. A live boot answers `debian`; the boot step (`restore.sh` on the RAID, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
+| `names` | `linux Hostname digitization`. A live boot answers `debian`; the card's one-time setup (`settle-card.sh` on its toolbox partition, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
 | `services` | the crew's order: `intake every 1m`, from its own menu `../digitization.yml`, kept by `fcpm-crew@digitization` (`../crew.sh`) |; `follow every 5m` keeps this checkout on the origin's main with every trove at its pin, so a merge reaches the board by itself
 | `pools.yml` | the landing (`/srv/landing`, label `fcpm-landing`) as a pool, served by the crew's `pools` line on 8091 (`../../troves/pools.yml`); an emulated pool beside it for `pools.py sample` |
-| `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `zenity`, `vivaldi-stable`; Claude Code by hand |
+| `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `rsync`, `zenity`, `jekyll`, `avahi-utils`, `vivaldi-stable`, `firefox-esr`; Claude Code by hand |
 | the door | `../kiosk/door.py serve` on port 80, started at login by `at-login` (`fcpm-digitization.desktop` in `/etc/xdg/autostart`), then Vivaldi opens maximized with its page as a pinned tab, never a window of its own (`open-page`). `digitization.local` on the LAN; at `localhost` the board also offers **Unlock** for the signing key, its passphrase asked on this screen (`../kiosk/askpass`) |
+| `rest` | the screen never blanks or powers down (X and XFCE's power manager both told). Ten minutes without input, `../../brand/idle` comes up full screen, the mark and the clock, read from the checkout; the first touch takes it away. Started by `at-login` beside the door |
 | `site-build`, `site-lan.yml` | the public site, built here from this checkout by Debian's Jekyll when the commit moves (the crew's `site every 5m` line, into `~/.local/state/fcpm/site/current`), and served by the door to the LAN as **`fcpublicmedia.local`** and **`www.fcpublicmedia.local`** (`lan.yml`), so the site's wizards load through a cloud outage. `site-lan.yml` puts the bare name in `url`; the pages are the deploy's |
 | `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
-| `check.sh` | each gear present (dpkg), the crew's supervisor up, the origin mounted, the clock synced, SSH keys only, port 80 and the door, the site built, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
+| `check.sh` | each gear present (dpkg), the crew's supervisor up, the origin mounted, the clock synced and on Fort Collins time, SSH keys only, port 80 and the door, the site built, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
 | `KEYHOLDERS` | who may prove themselves to this machine by passkey. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is removing the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
 | role | FCPM's git origin and receiver, so work goes on through a cloud outage |
 
@@ -41,7 +42,7 @@ holds each name now.
 ## The origin
 
 Bare repositories at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media, and the four FCCN-ANTIBODY
-repositories fcpublicmedia.org mounts. They live on an ext4 image on the RAID, not on the card.
+repositories fcpublicmedia.org mounts. They live on the card's own `card-origin` partition (ext4, mounted by label), beside the system, not inside it.
 
 `origin-intake` (started every minute by the crew's `intake` line; it asks GitHub every minute only while `fcpm dev on`, otherwise weekly, or now with `--now`; and only while `/srv/origin` is mounted;
 `--status` prints the last state) tracks GitHub's `main` only, one GraphQL query for every repository,

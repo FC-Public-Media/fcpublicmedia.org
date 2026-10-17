@@ -1,0 +1,6 @@
+# Everything to bring FCPM back with nothing else around. Read by ../build.
+label=card
+ventoy=48G
+isos="debian-live-*-xfce.iso debian-live-*-standard.iso systemrescue-*.iso alpine-standard-*.iso"
+persistence="16G debian-live-*-xfce.iso"
+parts="home:luks:32G origin:ext4:16G toolbox:ext4:16G"

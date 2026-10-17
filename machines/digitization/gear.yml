@@ -1,6 +1,7 @@
 # gear.yml: what the digitization job stands on, on Debian. Replaces ../gear.yml (Windows) whole.
 # `package:` is an apt name. Presence is never written: check.sh asks dpkg. On the live boot, apt's
-# installs last until reboot, and the RAID's linux-persist/restore.sh puts back what apt saved.
+# installs live in the card's persistence file, and every .deb apt fetches is kept on the card's
+# toolbox partition (/srv/toolbox/pkgs), so a fresh persistence can put them back without a network.
 
 version: 1
 platform: linux
@@ -107,6 +108,17 @@ gear:
     updates: apt
     restart-tier: app
     holds: "its profile, in ~/.config/vivaldi"
+
+  - gear: firefox
+    for: >
+      The resting screen (rest): brand/idle full screen, in its own kiosk
+      profile, because Vivaldi's --kiosk shows its setup wizard first. On the
+      Debian live image already.
+    package: firefox-esr
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "its profile, in ~/.config/fcpm-rest"
 
   - gear: claude-code
     for: >
