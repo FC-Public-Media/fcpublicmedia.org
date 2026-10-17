@@ -14,7 +14,7 @@ Today's: the HP t510 in the control rack ([`../thin-client/PROFILE.md`](../thin-
 | `fcpm` | management, by key only, with sudo. Its key: digitization's |
 | `git` | pushes, `git-shell` only. Its keys: digitization's standby key; keyholders' when it is primary. `ssh git@origin.local init <owner>/<repo>` makes an empty repository; the standby uses it for new ones |
 | repos | `/srv/origin/<owner>/<repo>`, bare, as on digitization. Nothing is rewritten or deleted (`receive.denyNonFastForwards`, `receive.denyDeletes`, for every repository on the box) |
-| screen | tty1 is its leash ([`../leash.py`](../leash.py)): one `ssh -T` to digitization, where [`page.py`](page.py) paints it. A keyboard login stays on Alt+F2 |
+| screen | tty1 is its leash ([`../leash.py`](../leash.py)): one `ssh -T` to digitization, where [`page.py`](page.py) paints it. In pixels: on a box that boots by BIOS, the largest VESA mode the firmware offers, and Terminus Bold. A keyboard login stays on Alt+F2 |
 | root | locked; no password logins at all |
 
 ## The screen

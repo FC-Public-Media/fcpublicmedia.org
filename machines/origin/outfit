@@ -39,6 +39,7 @@ if [ $# -eq 2 ]; then
 
   case $d in *[0-9]) p=${DISK}p ;; *) p=$DISK ;; esac
   M=/mnt; mountpoint -q $M || mount "${p}2" $M
+  mountpoint -q $M/boot || mount "${p}1" $M/boot
   for x in dev proc sys; do mountpoint -q $M/$x || mount --bind /$x $M/$x; done
   cp /etc/resolv.conf $M/etc/resolv.conf
   sed -i 's/\(ext4[[:space:]]*\)rw,relatime/\1rw,noatime/' $M/etc/fstab
@@ -46,7 +47,7 @@ if [ $# -eq 2 ]; then
   chroot $M /bin/sh /tmp/fcpm-origin/outfit
   echo "HOST-KEY: $(cut -d' ' -f1,2 $M/etc/ssh/ssh_host_ed25519_key.pub)"
   rm -rf $M/tmp/fcpm-origin
-  umount $M/dev $M/proc $M/sys $M; sync
+  umount $M/dev $M/proc $M/sys $M/boot $M; sync
   echo "Installed onto $DISK."
   exit 0
 fi
@@ -107,6 +108,23 @@ install -d -m 700 -o leash -g leash /home/leash/.ssh
 LINE="tty1::respawn:/bin/su -s /bin/sh leash -c 'exec env TERM=linux LANG=C.UTF-8 /usr/bin/python3 $LIB/leash.py --facts $LIB/facts.py -- /usr/bin/ssh -T -o BatchMode=yes -o ServerAliveInterval=10 -o ServerAliveCountMax=3 $PAGE'"
 grep -v '^tty1::' /etc/inittab > /etc/inittab.new
 printf '%s\n' "$LINE" >> /etc/inittab.new; mv /etc/inittab.new /etc/inittab
+
+# In pixels, not the firmware's 80x25 text, which a monitor stretches into a blur. A box that boots
+# by BIOS gets the largest mode its VESA offers, set at boot for the kernel's simple framebuffer; a
+# graphics driver, if the box has one, takes over from it. UEFI boots in pixels already.
+apk add -q font-terminus kbd
+if [ ! -d /sys/firmware/efi ]; then
+  apk add -q -t .fcpm-probe hwinfo
+  mode=$(hwinfo --framebuffer 2>/dev/null | awk '/Mode 0x.*24 bits/ { split($3, r, "x"); a = r[1] * r[2]; if (a > best) { best = a; m = $2 } } END { sub(":", "", m); print m }')
+  apk del -q .fcpm-probe
+  if [ -n "$mode" ]; then
+    opts=$(sed -n 's/^default_kernel_opts="\(.*\)"/\1/p' /etc/update-extlinux.conf | sed 's/ *vga=[^ ]*//g')
+    sed -i "s/^default_kernel_opts=.*/default_kernel_opts=\"$opts vga=$mode\"/" /etc/update-extlinux.conf
+    update-extlinux >/dev/null 2>&1
+  fi
+fi
+echo 'consolefont="ter-128b.psf.gz"' > /etc/conf.d/consolefont
+rc-update add consolefont boot >/dev/null 2>&1 || true
 
 for s in networking sshd chronyd dbus avahi-daemon; do rc-update add $s default >/dev/null 2>&1 || true; done
 if [ "${NOW:-}" = 1 ]; then
