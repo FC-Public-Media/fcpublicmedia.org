@@ -34,6 +34,8 @@ say $? "the landing mounted at /srv/landing" \
   "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"
 [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ]
 say $? "the clock synchronized from the network" "sudo timedatectl set-ntp true"
+[ "$(timedatectl show -p Timezone --value 2>/dev/null)" = America/Denver ]
+say $? "the clock on Fort Collins time" "sudo timedatectl set-timezone America/Denver"
 [ -f /etc/ssh/sshd_config.d/10-no-passwords.conf ]
 say $? "SSH takes keys only" "/etc/ssh/sshd_config.d/10-no-passwords.conf"
 [ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start)" -le 80 ]
