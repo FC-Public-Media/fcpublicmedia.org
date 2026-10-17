@@ -21,29 +21,28 @@ Today's: the HP t510 in the control rack ([`../thin-client/PROFILE.md`](../thin-
 
 The box keeps nothing but the repositories, so its screen is painted where the page is kept. The
 leash sends up what [`facts.py`](facts.py) sees every 30 s: every branch and tag of every repository
-with the commit it names, each repository's size, and the box itself (system, kernel, processor,
-memory, address, screen, load, free space, uptime, the kernel's clock). The page checks it ref by
-ref against digitization's own origin and shows the evidence, not a verdict:
+with the commit it names, each repository's size, and the box itself. The page checks it ref by ref
+against digitization's own origin and draws what is there, in as few words as it can:
 
-    origin.local                                                       FC Public Media  02:46
-    FC-Public-Media                             23 in step with digitization · 23 with github
-    fcpublicmedia.org         674c381  973 commits   9 branches             5.1M   1m
-    pools                     ee2465d   75 commits     1 branch             344K   2d
+    FC-Public-Media                                                                         23
+    fcpublicmedia.org          ▆▆▆▆▆▆▆┊▆▆▆·▆▆▆   977 +8   5.3M  03:11              435986e
+    kiosk-screen                  ▆▆▆▆┊▆······    17      376K  Sun                d413258
     …
-    HP t510 Thin Client                                           up 12m · 493M free of 845M
-    Alpine Linux v3.24 · Linux 6.18.56-0-lts · VIA Eden X2 U4200 ×2 · 1.8G memory, 1.6G free
-    10.209.1.133 · 1280x1024 · load 0.15 · clock synced · standby 02:45 · github 02:45
+    FC Public Media                                                  418M  1.6G  0.46  03:13
 
-- one pane per owner, its bar counting how many repositories match digitization's and GitHub's;
-- one line per repository, newest commit first (bold within the hour): main's hash on the box, the
-  commits main holds, its branches (GitHub's `github/main`, intake's copy, is not counted) and tags,
-  its size on the box, the age of main's last commit;
-- a repository apart says how far and shows digitization's hash, `9 behind 674c381` (the box's main
-  lacks 9 of our commits), `1 ref apart`, `not on the box`, on a muted wedge, red after five minutes.
-  A main that differs from GitHub's says so in the same place (`github 2 ahead`, `3 not on github`);
-- the box's own pane, its bar red with the trouble: the last standby run's complaint, the clock
-  unsynchronized, the disk nearly full, intake unable to reach GitHub; red `not heard from` when the
-  facts stop.
+- a bar per owner, the repositories under it in name order, so a place on the screen keeps its
+  meaning; the bar's number counts them (`2 · 23` when two are apart);
+- per repository: its history (main's commits, brighter for more: twelve blocks back to about
+  fifteen months, each step longer, then this week's seven days, today last; nothing before its
+  first commit; a tag's block green), the commits main holds, `+n` other branches, its size on the
+  box, its last commit (the time today, the weekday this week, the date after, dimming past a
+  month), a tag's name, and dim at the right the box's hash of main;
+- a repository apart sits on a muted wedge, red after five minutes, with how far where a tag would
+  be: `−9` (the box's main lacks 9 of ours), `~1` (a branch or tag differs), `∅` (not on the box).
+  `gh−2` where GitHub's main (intake's `github/main`) differs;
+- the bottom bar is the room's: free space on the box, its memory, its load, the time. It goes red
+  with the trouble: the standby's complaint or silence, GitHub out of reach, the clock, a full disk;
+  `— 3m` when the box stops being heard.
 
 The grant is one line in digitization's `authorized_keys`, which `install` writes:
 
