@@ -6,7 +6,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 
 | | |
 |---|---|
-| `names` | `linux Hostname digitization`. A live boot answers `debian`; the boot step (`restore.sh` on the RAID, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
+| `names` | `linux Hostname digitization`. A live boot answers `debian`; the card's one-time setup (`settle-card.sh` on its toolbox partition, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
 | `services` | the crew's order: `intake every 1m`, from its own menu `../digitization.yml`, kept by `fcpm-crew@digitization` (`../crew.sh`) |; `follow every 5m` keeps this checkout on the origin's main with every trove at its pin, so a merge reaches the board by itself
 | `pools.yml` | the landing (`/srv/landing`, label `fcpm-landing`) as a pool, served by the crew's `pools` line on 8091 (`../../troves/pools.yml`); an emulated pool beside it for `pools.py sample` |
 | `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `rsync`, `zenity`, `jekyll`, `avahi-utils`, `vivaldi-stable`, `firefox-esr`; Claude Code by hand |
