@@ -4,8 +4,8 @@
     console-font.py FONT OUT.psf [WxH]     WxH: the cell, 14x28 unless given
 
 The console draws one bit per pixel and at most 512 glyphs, so this picks its own: ASCII and
-Latin-1, the punctuation, arrows and signs a screen writes (− ± ∅ … · •), and the blocks, shades and
-lines a screen draws with. Letters come from FONT, rendered four times over and kept where they
+Latin-1, the punctuation, arrows and signs a screen writes (− ± ∅ … · •), the blocks, shades and
+lines a screen draws with, and our own icons (commit, branch, tag, GitHub) at U+E000-E003. Letters come from FONT, rendered four times over and kept where they
 cover more than 45% of a pixel. Blocks, shades and lines are drawn here, cell-exact, so a bar of
 them meets without seams whatever FONT does. Needs Pillow.
 """
@@ -93,7 +93,56 @@ def drawn(ch, W, H):
     return img
 
 
-DRAWN = [chr(c) for c in range(0x2580, 0x25A0)] + list("─━═│┃║┄┈╌┆┊╎┌┐└┘├┤┬┴┼■□▪▫▬▮▯")
+# Icons a screen sets before its numbers, in Unicode's private use area. page.py writes them.
+COMMIT, BRANCH, TAG, GITHUB = "\ue000", "\ue001", "\ue002", "\ue003"
+
+
+def icon(ch, W, H):
+    """Our own marks, drawn to the cell; None for anything else."""
+    if ch not in (COMMIT, BRANCH, TAG, GITHUB):
+        return None
+    S = 4                                               # drawn four times over, kept where mostly covered
+    big = Image.new("L", (W * S, H * S), 0)
+    d = ImageDraw.Draw(big)
+    w, h = W * S, H * S
+    mid = h // 2
+    line = w * 0.2
+    if ch == COMMIT:                                    # a commit on a line: ─○─
+        r = w * 0.47
+        d.rectangle((0, mid - line / 2, w, mid + line / 2), fill=255)
+        d.ellipse((w / 2 - r, mid - r, w / 2 + r, mid + r), fill=255)
+        r2 = r - line * 1.05
+        d.ellipse((w / 2 - r2, mid - r2, w / 2 + r2, mid + r2), fill=0)
+    elif ch == BRANCH:                                  # a fork: a tip joining the trunk
+        a, b, top, low, dot = w * 0.3, w * 0.74, h * 0.27, h * 0.73, w * 0.2
+        d.line((a, top, a, low), fill=255, width=round(line))
+        d.line((b, top, b, h * 0.43), fill=255, width=round(line))
+        d.line((b, h * 0.43, a, h * 0.6), fill=255, width=round(line))
+        for x, y in ((a, top), (b, top), (a, low)):
+            d.ellipse((x - dot, y - dot, x + dot, y + dot), fill=255)
+    elif ch == TAG:                                     # a label, pointing left, with its hole
+        t, bt = h * 0.3, h * 0.7
+        d.polygon([(0, mid), (w * 0.4, t), (w, t), (w, bt), (w * 0.4, bt)], fill=255)
+        r = w * 0.12
+        d.ellipse((w * 0.4 - r, mid - r, w * 0.4 + r, mid + r), fill=0)
+    elif ch == GITHUB:                                  # a cat's head: GitHub
+        top, bot = h * 0.36, h * 0.74
+        d.ellipse((0, top, w, bot), fill=255)
+        d.polygon([(w * 0.04, h * 0.24), (w * 0.04, top + h * 0.12), (w * 0.44, top + h * 0.04)], fill=255)
+        d.polygon([(w * 0.96, h * 0.24), (w * 0.96, top + h * 0.12), (w * 0.56, top + h * 0.04)], fill=255)
+        e = w * 0.1
+        for x in (w * 0.32, w * 0.68):
+            d.ellipse((x - e, h * 0.54 - e * 1.5, x + e, h * 0.54 + e * 1.5), fill=0)
+    img = Image.new("1", (W, H), 0)
+    px = big.load()
+    for y in range(H):
+        for x in range(W):
+            if sum(px[x * S + i, y * S + j] for i in range(S) for j in range(S)) >= 0.4 * 255 * S * S:
+                img.putpixel((x, y), 1)
+    return img
+
+
+DRAWN = [chr(c) for c in range(0x2580, 0x25A0)] + list("─━═│┃║┄┈╌┆┊╎┌┐└┘├┤┬┴┼■□▪▫▬▮▯") + [COMMIT, BRANCH, TAG, GITHUB]
 
 
 def fitted(path, W, H):
@@ -137,7 +186,7 @@ def main(argv):
     missing = rendered("￿", f, W, H).tobytes()
     glyphs, table = [], []
     for ch in dict.fromkeys(TEXT + DRAWN + ["�"]):
-        img = drawn(ch, W, H)
+        img = icon(ch, W, H) or drawn(ch, W, H)
         if img is None:
             img = rendered(ch, f, W, H)
             if ch.strip() and img.tobytes() == missing and ch != "�":

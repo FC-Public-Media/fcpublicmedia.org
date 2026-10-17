@@ -7,40 +7,53 @@ origin's leash (../leash.py) runs this at the far end of its `ssh -T`, a forced 
 
 A pane per owner, a line per repository, in name order so a place on the screen keeps meaning:
 
-    name   history ┊ week   score  +branches  size  last  tag   hash
+    name   history ┊ week   ◉score ⑂⑂⑂  size  last  ●github  ▶tag  hash
 
-history is main's commits, brighter for more: twelve blocks back to about fifteen months, each
-twice as long as the one before every second step, then the seven days ending today. Space before a
-repository's first commit stays empty; a tag lands green. score counts main's commits. last is the
-time today, the weekday within a week, the date before that, dimming after a month. The hash, dim, is the
-box's main. Everything is read from the box (facts.py) and checked here, ref by ref, against the
-origin kept here: a repository apart sits on a muted wedge, red after five minutes, with how far
-(−9: the box's main lacks 9 of ours) where its tag would be; gh±n where GitHub's main differs.
-The bar at the bottom is the room's: free space on the box, its memory, its load, the time; red
-with the trouble when there is one.
+history is main's commits in one grey: brighter is more commits per day, the same rule in every
+block (under 1, 3, 8, 16 a day, and over). Ten blocks reach back about seven months, each step
+longer, then the seven days ending today; nothing before a repository's first commit. ◉ counts
+main's commits. A ⑂ per other branch, newest first: bright with work this week, grey
+when quiet, dark once merged into main (a leftover). Size is in megabytes: .2, 5.3, 37. last is the time today, the weekday within a week, the date
+before that, dimmer with age. The cat is GitHub: dim when its main is ours, violet with how far
+when not. A tag shows by name; the hash, dim, is the box's main. Everything is read from the box
+(facts.py) and checked here, ref by ref, against the origin kept here: a repository apart sits on
+a muted wedge, red after five minutes, with how far where its tag would be (−9: the box's main
+lacks 9 of ours; ~1: a branch or tag differs; ∅: not on the box). The bar at the bottom is the
+room's: free space on the box, its memory, its load, the time; red with the trouble.
 """
-import calendar, json, os, subprocess, sys, threading, time
+import calendar, json, os, re, subprocess, sys, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from facts import refs, repos  # noqa: E402  the same reading on both sides
 
-# The console's 16 colours, all ours: 0-7 as backgrounds too, 8-15 (bold) as text only.
+# The console's 16 colours, all ours: 0-7 as backgrounds too, 8-15 as text only.
 PALETTE = "".join(f"\x1b]P{i:X}{c}" for i, c in enumerate((
-    "121417", "c8372d", "2f9e5b", "ffc61a", "3b6fb6", "8a6bbf", "a8841a", "ece8e1",   # ink red go yellow blue violet muted paper
-    "3a3e46", "ff6b5b", "5fd38d", "fff1b8", "6fa2ff", "b9a3e3", "5e4b16", "ffffff")))  # faint, bright…, ember (14), white
+    "121417", "c8372d", "3fb36f", "ffc61a", "5b8fe0", "a58be6", "a8841a", "ece8e1",   # ink red tag yellow (spare) github muted paper
+    "2b2f36", "454a53", "646a74", "8b919b", "b8bdc4", "f4f5f7", "ff6b5b", "ffffff")))  # the greys, dark to light; alarm; white
+
+
+def fg(i):
+    return f"\x1b[1;3{i - 8}m" if i >= 8 else f"\x1b[22;3{i}m"
+
+
 OFF = "\x1b[0m"
-INK, RED, GO, YELLOW, BLUE, MUTED, PAPER = "\x1b[30m", "\x1b[31m", "\x1b[32m", "\x1b[33m", "\x1b[34m", "\x1b[36m", "\x1b[37m"
-FAINT, HOT, EMBER, WHITE = "\x1b[1;30m", "\x1b[1;33m", "\x1b[1;36m", "\x1b[1;37m"
-ON_YELLOW, ON_MUTED, ON_BAD = "\x1b[43;30m", "\x1b[46;30m", "\x1b[41;37m"
+INK, TAGGED, GH_C, PAPER = fg(0), fg(2), fg(5), fg(7)
+GREY = [fg(8), fg(9), fg(10), fg(11), fg(12), fg(13)]       # 0: nothing; 1-5: more
+ON_YELLOW, ON_MUTED, ON_BAD = "\x1b[22;43;30m", "\x1b[22;46;30m", "\x1b[22;41;37m"
+COMMIT, BRANCH, TAG, GITHUB = "\ue000", "\ue001", "\ue002", "\ue003"   # drawn by ../console-font.py
 ROOT = sys.argv[1] if len(sys.argv) > 1 else "/srv/origin"
 STATE = os.path.expanduser("~/.local/state/fcpm/crew")
 INTAKE = os.path.join(ROOT, ".intake", "state.json")
 QUIET = 90          # seconds without facts before the box counts as not heard from
 STALE = 300         # seconds apart before a line turns to trouble
-EDGES = [7 * 2 ** (k / 2) for k in range(13)]          # days: 7, 9.9, 14, … 448; twelve blocks
+EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
 CELL = "▆"                                              # three quarters high: rows of them don't touch
-LEVELS = (FAINT + "·", EMBER + CELL, MUTED + CELL, YELLOW + CELL, HOT + CELL)
+RATES = (1, 3, 8, 16)                                   # commits a day where the grey steps up
+
+
+def shade(rate):
+    return GREY[0] + "·" if not rate else GREY[1 + sum(1 for r in RATES if rate >= r)] + CELL
 
 
 def git(repo, *args):
@@ -73,35 +86,45 @@ def signed(s, mark=""):
     return mark + (f"−{b}" if b and not a else f"+{a}" if a and not b else f"±{a}/{b}")
 
 
-def history(times, tagged, now):
-    """Twelve log blocks, a divider, seven days; brightness by commits."""
+def history(times, now):
+    """Ten log blocks, a divider, seven days: commits a day, in grey."""
     if not times:
-        return " " * 12 + FAINT + "┊" + " " * 7 + OFF
+        return " " * 10 + GREY[1] + "┊" + " " * 7 + OFF
     midnight = time.mktime(time.localtime(now)[:3] + (0, 0, 0, 0, 0, -1))
     def day(t):
         return 0 if t >= midnight else 1 + int((midnight - t) // 86400)
     days = [day(t) for t in times]
-    born, tags = max(days), {day(t) for t in tagged}
-    cells = []
-    for k in range(11, -1, -1):
-        lo, hi = EDGES[k], EDGES[k + 1] if k < 11 else 10 ** 9
+    born, cells = max(days), []
+    for k in range(9, -1, -1):
+        lo, hi = EDGES[k], EDGES[k + 1] if k < 9 else 10 ** 9
         if born < lo:
             cells.append(" ")
             continue
         n = sum(1 for d in days if lo <= d < hi)
-        rate = n / (min(hi, born + 1) - lo) if n else 0
-        level = 0 if not n else 1 if rate < 0.15 else 2 if rate < 0.5 else 3 if rate < 1.5 else 4
-        hit = any(lo <= d < hi for d in tags)
-        cells.append((GO + CELL) if hit else LEVELS[level])
-    cells.append(FAINT + "┊")
+        cells.append(shade(n / (min(hi, born + 1) - lo)))
+    cells.append(GREY[1] + "┊")
     for d in range(6, -1, -1):
-        if born < d:
-            cells.append(" ")
-            continue
-        n = days.count(d)
-        level = 0 if not n else 1 if n == 1 else 2 if n <= 3 else 3 if n <= 7 else 4
-        cells.append((GO + CELL) if d in tags else LEVELS[level])
+        cells.append(" " if born < d else shade(days.count(d)))
     return "".join(cells) + OFF
+
+
+def forks(repo, main, branches, now):
+    """A ⑂ per branch, newest first: bright with work this week, grey when quiet, dark once merged."""
+    out = []
+    for sha in branches.values():
+        t = known(repo, "log", "-1", "--format=%ct", sha, "--")
+        merged = known(repo, "merge-base", "--is-ancestor", sha, main) is not None
+        t = int(t) if t else 0
+        out.append((t, GREY[2] if merged else GREY[5] if now - t < 7 * 86400 else GREY[3]))
+    return [c for _, c in sorted(out, reverse=True)]
+
+
+def mb(n):
+    """Megabytes, no unit and no leading zero: .2, 5.3, 37."""
+    if n is None:
+        return ""
+    m = n / (1 << 20)
+    return f"{m:.1f}".lstrip("0") if m < 9.95 else f"{m:.0f}"
 
 
 def last(t, now):
@@ -109,14 +132,11 @@ def last(t, now):
         return ""
     lt, ln = time.localtime(t), time.localtime(now)
     if lt[:3] == ln[:3]:
-        return PAPER + time.strftime("%H:%M", lt)
+        return GREY[5] + time.strftime("%H:%M", lt)
     if now - t < 6.5 * 86400:
-        return PAPER + time.strftime("%a", lt)
-    if now - t < 30 * 86400:
-        return MUTED + time.strftime("%b", lt) + f"{lt.tm_mday:>3}"
-    if lt.tm_year == ln.tm_year:
-        return FAINT + time.strftime("%b", lt) + f"{lt.tm_mday:>3}"
-    return FAINT + time.strftime("%Y", lt)
+        return GREY[4] + time.strftime("%a", lt)
+    date = time.strftime("%b", lt) + f"{lt.tm_mday:>3}" if lt.tm_year == ln.tm_year else time.strftime("%Y", lt)
+    return (GREY[3] if now - t < 30 * 86400 else GREY[2]) + date
 
 
 class Seen:
@@ -149,17 +169,14 @@ class Seen:
             seen = theirs or mine
             main = theirs.get("heads/main") or mine.get("heads/main")
             row = {"owner": owner, "name": repo, "sha": theirs.get("heads/main"), "bytes": t.get("bytes"),
-                   "branches": sum(1 for k in seen if k.startswith("heads/") and k != "heads/main"
-                                   and not k.startswith("heads/github/")),
+                   "branches": {k: v for k, v in seen.items() if k.startswith("heads/") and k != "heads/main"
+                                and not k.startswith("heads/github/")},
                    "tags": sorted(k[len("tags/"):] for k in seen if k.startswith("tags/")),
-                   "times": [], "tagged": [], "apart": None, "remotes": []}
+                   "times": [], "forks": [], "apart": None, "github": None}
             if r and main:
                 out = known(r, "log", "--format=%ct", main)
                 row["times"] = [int(x) for x in out.split()] if out else []
-                for tag in row["tags"]:
-                    ct = known(r, "log", "-1", "--format=%ct", f"refs/tags/{tag}^{{commit}}", "--")
-                    if ct:
-                        row["tagged"].append(int(ct))
+                row["forks"] = forks(r, main, row["branches"], now)
             if name not in there:
                 row["apart"] = "∅"
             elif not r:
@@ -176,8 +193,8 @@ class Seen:
                 row["since"] = since[name]
             if r and mine.get("heads/main"):
                 gh = mine.get("heads/github/main")          # GitHub's main, as intake last fetched it
-                if gh and gh != mine["heads/main"]:
-                    row["remotes"].append(signed(steps(r, mine["heads/main"], gh), "gh"))
+                if gh:
+                    row["github"] = "" if gh == mine["heads/main"] else signed(steps(r, mine["heads/main"], gh))
             rows.append(row)
         self.rows, self.since = rows, since
 
@@ -263,27 +280,29 @@ def fit(s, width):
 
 
 def bar(C, left, right="", surface=ON_YELLOW):
-    right = right + " " if right else ""
+    right = "  " + right + " " if right else ""
     return surface + fit(" " + left, C - len(right)) + right + OFF
 
 
 def line(C, row, now, w):
-    wedge = (ON_BAD if now - row["since"] > STALE else ON_MUTED) if row["apart"] else ""
-    count = len(row["times"])
-    left = (f" {PAPER}{row['name']:<{w}} " + history(row["times"], row["tagged"], now)
-            + f" {PAPER}{count if count else '':>5} {BLUE}{('+' + str(row['branches'])) if row['branches'] else '':<3}"
-            + f" {FAINT if (row['bytes'] or 0) < 1 << 20 else MUTED}{size(row['bytes']):>5}  "
-            + fit(last(row["times"][0] if row["times"] else 0, now), 6))
-    note = row["apart"] or (row["tags"][-1] if row["tags"] else "")
-    note = ((WHITE if row["apart"] else GO) + note) if note else ""
-    note += "".join(f" {MUTED}{m}" for m in row["remotes"])
-    room = C - visible(left) - 2 - 1 - 7
-    text = left + "  " + fit(note, max(0, room)) + " " + FAINT + (row["sha"] or "")[:7]
+    count, gh = len(row["times"]), row["github"]
+    text = (f" {PAPER}{row['name']:<{w}} " + history(row["times"], now)
+            + f" {GREY[3]}{COMMIT}{PAPER}{count if count else '':<4}"
+            + " " + fit("".join(c + BRANCH for c in row["forks"]), 8)
+            + f" {GREY[2] if (row['bytes'] or 0) < 1 << 20 else GREY[3]}{mb(row['bytes']):>4}  "
+            + fit(last(row["times"][0] if row["times"] else 0, now), 6) + " "
+            + fit((GREY[2] + GITHUB) if gh == "" else (GH_C + GITHUB + gh) if gh else "", 5))
+    tail = (PAPER + row["apart"]) if row["apart"] else (TAGGED + TAG + PAPER + row["tags"][-1]) if row["tags"] else ""
+    sha = GREY[2] + (row["sha"] or "")[:7]
+    room = C - visible(text) - 1
+    if tail and visible(tail) + 2 + 7 > room:
+        text += " " + fit(tail, room)
+    else:
+        text += " " + fit(tail, room - 7) + sha
     text = fit(text, C)
-    if wedge:   # the wedge holds under every colour change; text on it stays readable
-        text = wedge + text.replace(OFF, OFF + wedge)
-        for c in (FAINT, EMBER, MUTED, BLUE):
-            text = text.replace(c, INK)
+    if row["apart"]:            # on the wedge, everything in ink
+        wedge = ON_BAD if now - row["since"] > STALE else ON_MUTED
+        text = wedge + re.sub(r"\x1b\[[0-9;]*m", "", text)
     return text + OFF
 
 
@@ -325,7 +344,7 @@ def paint():
             show = rows if len(rows) <= room else rows[:max(0, room - 1)]
             body += [line(C, r, now, w) for r in show]
             if len(show) < len(rows):
-                body.append(f" {FAINT}+{len(rows) - len(show)}{OFF}")
+                body.append(f" {GREY[3]}+{len(rows) - len(show)}{OFF}")
             room -= len(show) + (len(show) < len(rows))
         lines = body[:R - 1]
         lines += [""] * (R - 1 - len(lines)) + [foot]

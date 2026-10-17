@@ -22,24 +22,21 @@ Today's: the HP t510 in the control rack ([`../thin-client/PROFILE.md`](../thin-
 The box keeps nothing but the repositories, so its screen is painted where the page is kept. The
 leash sends up what [`facts.py`](facts.py) sees every 30 s: every branch and tag of every repository
 with the commit it names, each repository's size, and the box itself. The page checks it ref by ref
-against digitization's own origin and draws what is there, in as few words as it can:
-
-    FC-Public-Media                                                                         23
-    fcpublicmedia.org          ▆▆▆▆▆▆▆┊▆▆▆·▆▆▆   977 +8   5.3M  03:11              435986e
-    kiosk-screen                  ▆▆▆▆┊▆······    17      376K  Sun                d413258
-    …
-    FC Public Media                                                  418M  1.6G  0.46  03:13
+against digitization's own origin and draws what is there, in as few words as it can. Its font is
+built on the box by the outfit ([`../console-font.py`](../console-font.py), JetBrains Mono Bold at
+14x28) with the blocks and our own icons: ◉ commit, ⑂ branch, a tag, a cat for GitHub.
 
 - a bar per owner, the repositories under it in name order, so a place on the screen keeps its
   meaning; the bar's number counts them (`2 · 23` when two are apart);
-- per repository: its history (main's commits, brighter for more: twelve blocks back to about
-  fifteen months, each step longer, then this week's seven days, today last; nothing before its
-  first commit; a tag's block green), the commits main holds, `+n` other branches, its size on the
-  box, its last commit (the time today, the weekday this week, the date after, dimming past a
-  month), a tag's name, and dim at the right the box's hash of main;
+- per repository: its history in one grey, brighter for more commits a day by the same rule in every
+  block (under 1, 3, 8, 16 a day, and over): ten blocks back about seven months, each step longer,
+  then this week's seven days, today last, nothing before its first commit. Then ◉ and the commits
+  main holds; a ⑂ per other branch, newest first, bright with work this week, grey when quiet, dark
+  once merged into main; its size on the box in megabytes (`.2`, `5.3`, `37`); its last commit (the
+  time today, the weekday this week, the date after, dimmer with age); the cat, dim when GitHub's
+  main is ours, violet with how far when not; a tag by name; dim at the right the box's hash of main;
 - a repository apart sits on a muted wedge, red after five minutes, with how far where a tag would
-  be: `−9` (the box's main lacks 9 of ours), `~1` (a branch or tag differs), `∅` (not on the box).
-  `gh−2` where GitHub's main (intake's `github/main`) differs;
+  be: `−9` (the box's main lacks 9 of ours), `~1` (a branch or tag differs), `∅` (not on the box);
 - the bottom bar is the room's: free space on the box, its memory, its load, the time. It goes red
   with the trouble: the standby's complaint or silence, GitHub out of reach, the clock, a full disk;
   `— 3m` when the box stops being heard.
