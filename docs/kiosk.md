@@ -172,3 +172,47 @@ code, the studio map, Wi-Fi codes built in memory from Credential Manager, the h
 the depot, the cameras, the turn and the idle screen, and writes the wall (no Wi-Fi codes) to
 `\\10.209.1.1\DIGISTATION\.wall\` for the rolling TV. Every page reloads when `/revision` moves.
 Layout: `machines/kiosk/node.yml`; the rest: [`PROFILE.md`](../machines/kiosk/PROFILE.md).
+
+## Rooms
+
+A room's hallway door is a tablet in a holder showing `/room/<room>/` from the door, any shape, landscape
+first (an iPad Air 2 at the podcast studio, on `digitization.local`). `machines/kiosk/rooms/<room>.yml` is
+the room: its title, two sentences for somebody passing, the code (the site, not check-in), its name in the
+classes list, and its gear (`id`, `name`, `say`, `count`, `trove`, `usually`). The page never dims: the
+tablet is put away when nobody is in. It shows who is hosting (the last host reply, while its `until`
+holds), else who is at the desk or next (the rota), this room's next classes, and the gear lit as the last
+reply left it, or as `usually:` says while no reply has spoken. The small `Staff` link opens the wizard.
+
+## Replies
+
+A wizard is a page that helps one person form one reply, and only that: the form's checks exist to make
+the shape, never to refuse. `fcpm.reply/v0` names the wizard (`wizard:kiosk+lights`, `wizard:kiosk+host`)
+and the wizard's commit (`at`, the form's version), and carries `issued`, a `nonce` and `sig: null`. The
+reply travels in a bottle: a signed transfer (the scanner trove's composer; Ed25519, the phone's own key,
+its fingerprint the pseudonym), poured as AC1 fountain frames at 48 bytes a frame, so every bottle is a
+video from the first byte and a dented, shuffled or lossy catch heals; or the same bytes set down over the
+LAN (`POST /drop`). Either way it is kept first, as the file it arrived as, and read on the door's next pass
+(`replies.py take`, every 20 s): applied to the room's state, or held with the reason (`held/`,
+`log.ndjson`). Nothing is refused at the door and nothing is applied on arrival. Held: not JSON, a payload
+whose hash does not match, an unknown wizard or room, `issued` more than a day from now, a nonce seen
+before, an `until` already passed. The signature is read by the composer under Node (`verify-bottle.mjs`);
+without Node the payload's hash is still checked and the reply applies as `unverified`. For `kiosk+host`,
+unsigned and unknown-key replies apply too: being on the studio's network is the staff's authority for
+this. `trust` is recorded (`friend`, `signed`, `unsigned`, `unverified`), and `replies.py trust
+<fingerprint> <name>` names a phone. The eyes' path (`troves/scanner` `page.py` handing a catch to
+`replies.drop_frames`) is not wired yet; the reader is.
+
+### wizard:kiosk+host
+
+`/host/?room=<room>` on a staff phone: your name (the rota's crew as one-tap picks, remembered on the
+phone), Hosting or Left, until (23:59 by default), and what is in the room.
+
+```json
+{"schema": "fcpm.reply/v0", "wizard": "wizard:kiosk+host", "at": "64b194e", "room": "podcast",
+ "hosting": true, "host": "Autumn", "until": "2026-10-17T23:59:00-06:00",
+ "present": ["rodecaster", "mics", "headphones", "camera-6k"],
+ "issued": "2026-10-17T14:02:11-06:00", "nonce": "…", "sig": null}
+```
+
+`hosting: false` is leaving. `present` is the whole list each time; gear the room does not list is
+ignored and noted in the verdict.

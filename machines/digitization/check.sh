@@ -43,4 +43,10 @@ cmp -s "$HERE/fcpm-digitization.desktop" /etc/xdg/autostart/fcpm-digitization.de
 say $? "the desktop starts the door and its page" "sudo cp $HERE/fcpm-digitization.desktop /etc/xdg/autostart/"
 curl -fsS -o /dev/null http://localhost/revision
 say $? "the door answers on port 80" "log out and in, or run $HERE/at-login"
+[ -f "$HOME/.local/state/fcpm/site/current/index.html" ]
+say $? "the site built for the LAN" "sh $HERE/site-build (the crew's site line, every 5 minutes)"
+avahi-resolve-host-name -4 fcpublicmedia.local >/dev/null 2>&1
+say $? "fcpublicmedia.local answers on the LAN" "the crew's name line ($HERE/site-name)"
+curl -fsS -o /dev/null -H 'Host: fcpublicmedia.local' http://localhost/
+say $? "the door serves the site under that name" "log out and in, or run $HERE/at-login (FCPM_SITE_DIR)"
 exit $bad

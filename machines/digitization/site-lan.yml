@@ -1,0 +1,3 @@
+# site-lan.yml: what the LAN's build of the site overrides in site/_config.yml (site-build). The
+# pages are the same; absolute links point at this building's copy, not the cloud's.
+url: http://fcpublicmedia.local

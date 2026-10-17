@@ -12,3 +12,11 @@ serves:
   - service: follow
     for: "this checkout follows the origin's main, fast-forward only; see digitization/PROFILE.md"
     start: "/bin/sh machines/digitization/follow"
+
+  - service: site
+    for: "the public site, built from this checkout when its commit moves, for the LAN as fcpublicmedia.local; see digitization/PROFILE.md"
+    start: "/bin/sh machines/digitization/site-build"
+
+  - service: name
+    for: "fcpublicmedia.local answering to this machine on the LAN (mDNS), while this runs"
+    start: "/bin/sh machines/digitization/site-name"
