@@ -31,7 +31,7 @@ done
 
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 mkdir "$T/fcpm-origin"
-cp machines/leash.py machines/origin/facts.py machines/origin/outfit "$T/fcpm-origin/"
+cp machines/leash.py machines/console-font.py machines/origin/facts.py machines/origin/outfit "$T/fcpm-origin/"
 cat > "$T/fcpm-origin/settings" <<S
 FCPM_KEYS='$FCPM_KEYS'
 GIT_KEYS='$GIT_KEYS'

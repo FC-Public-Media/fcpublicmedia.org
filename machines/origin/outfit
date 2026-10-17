@@ -9,6 +9,7 @@
 #
 # Sent with its files and settings by ./install, which also says where they come from:
 #   FCPM_KEYS  GIT_KEYS  PAGE  PAGE_HOSTKEY  NAME  ROOM_TZ  [NOW=1: start what it sets up]
+#   [SCREEN_FONT_PKG SCREEN_FONT: the screen's font, font-jetbrains-mono JetBrainsMono-Bold.ttf]
 # Safe to run again. See PROFILE.md.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -112,7 +113,8 @@ printf '%s\n' "$LINE" >> /etc/inittab.new; mv /etc/inittab.new /etc/inittab
 # In pixels, not the firmware's 80x25 text, which a monitor stretches into a blur. A box that boots
 # by BIOS gets the largest mode its VESA offers, set at boot for the kernel's simple framebuffer; a
 # graphics driver, if the box has one, takes over from it. UEFI boots in pixels already.
-apk add -q font-terminus kbd
+apk add -q kbd
+apk del -q font-terminus 2>/dev/null || true          # the screen builds its own font (below)
 if [ ! -d /sys/firmware/efi ]; then
   apk add -q -t .fcpm-probe hwinfo
   mode=$(hwinfo --framebuffer 2>/dev/null | awk '/Mode 0x.*24 bits/ { split($3, r, "x"); a = r[1] * r[2]; if (a > best) { best = a; m = $2 } } END { sub(":", "", m); print m }')
@@ -123,8 +125,15 @@ if [ ! -d /sys/firmware/efi ]; then
     update-extlinux >/dev/null 2>&1
   fi
 fi
-echo 'consolefont="ter-128b.psf.gz"' > /etc/conf.d/consolefont
+# Its own console font, built here from a TrueType font with the blocks, lines and icons the page
+# draws (../console-font.py); the build's tools leave again.
+apk add -q -t .fcpm-font py3-pillow "${SCREEN_FONT_PKG:-font-jetbrains-mono}"
+ttf=$(find /usr/share/fonts -name "${SCREEN_FONT:-JetBrainsMono-Bold.ttf}" | head -1)
+python3 "$HERE/console-font.py" "$ttf" /usr/share/consolefonts/fcpm-screen.psf
+apk del -q .fcpm-font
+echo 'consolefont="fcpm-screen.psf"' > /etc/conf.d/consolefont
 rc-update add consolefont boot >/dev/null 2>&1 || true
+[ "${NOW:-}" = 1 ] && setfont -C /dev/tty1 /usr/share/consolefonts/fcpm-screen.psf 2>/dev/null || true
 
 for s in networking sshd chronyd dbus avahi-daemon; do rc-update add $s default >/dev/null 2>&1 || true; done
 if [ "${NOW:-}" = 1 ]; then

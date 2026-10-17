@@ -20,17 +20,39 @@ Today's: the HP t510 in the control rack ([`../thin-client/PROFILE.md`](../thin-
 ## The screen
 
 The box keeps nothing but the repositories, so its screen is painted where the page is kept. The
-leash sends up what [`facts.py`](facts.py) sees every 30 s (each repository's branches and tags as
-one digest, free space, uptime, the kernel's clock), and the page compares it with digitization's own
-origin:
+leash sends up what [`facts.py`](facts.py) sees every 30 s: every branch and tag of every repository
+with the commit it names, each repository's size, and the box itself. The page checks it ref by ref
+against digitization's own origin and draws what is there, in as few words as it can. Its font is
+built on the box by the outfit ([`../console-font.py`](../console-font.py), JetBrains Mono Bold at
+14x28) with the blocks, our own icons (◉ commit, ⑂ branch, a tag), the activity squares and a gauge.
 
-- the bar: `origin.local`, the org, the clock;
-- `origin`: `standby · 27 in step` (muted: caught up), `catching up · N` with one line per repository
-  out of step (`behind`, `missing`, `only there`), red when one stays out of step past five minutes.
-  Inbox zero is the finished state; `not heard from` in red when the facts stop;
-- `latest`, on the last row: the last few events. Its bar carries the box (`up 3d · 540M free`) and
-  turns red with the trouble: the last standby run's complaint, the clock unsynchronized, the disk
-  nearly full.
+- a bar per owner, the repositories under it in name order, so a place on the screen keeps its
+  meaning. The bar doubles as a status line: the crew's git runs on digitization too, so the page
+  watches it and says the step on the right (`pools → origin.local` for the standby,
+  `scanner ← github` for intake, `github …` while intake asks GitHub), and keeps the last one,
+  dimmer, with its time. The repository being worked on flickers softly in blue underneath;
+- per repository: its history, one centred square per block that grows with commits a day, the
+  same rule in every block (a period under 1 a day, a small square from 1, a square from 3, a full
+  one from 8; empty where there were none). The seven days ending today are the strongest, in the
+  colour of the repository's kind, which it declares by the file it carries (`show.yml` a show,
+  pink; `instrument.yml` an instrument, orange; `gear.yml` gear, green; `residency.yml` an engine,
+  violet; the rest paper). Ten blocks behind them reach back about seven months, each step longer,
+  and cool as they recede: the kind's colour, then blue, then deep blue. Full squares fill the
+  cell, so full days meet into a bar; inside a run every second one loses its left column, so the
+  run still counts, and a lone one always shows what full looks like.
+  Then its size on the box (`.2M`, `5.3M`, `37M`); ◉ and the commits main holds; a ⑂ per other
+  branch, newest first, bright with work this week, grey when quiet, dark once merged into main;
+  its last commit (the time today, the weekday this week, the date after, dimmer with age);
+  `github`, dim when GitHub's main is ours, lit `github↓2` when two commits there have not come in,
+  `github↑3` for three of ours not on GitHub (another remote gets its own word); a tag by name;
+  dim at the right the box's hash of main;
+- a repository apart sits on a muted wedge, red after five minutes, with how far where a tag would
+  be: `−9` (the box's main lacks 9 of ours), `~1` (a branch or tag differs), `∅` (not on the box);
+- the bottom bar is the room's: the box's disk and memory as outlined gauges (the bar's yellow
+  shows through for what is used, black for what is free) each followed by what is free in G
+  (`.48`, `1.6`), its load (processes wanting the processor, averaged over a minute; it has two),
+  and the time. It goes red with the trouble: the standby's complaint or silence, GitHub out of
+  reach, the clock, a full disk; `— 3m` when the box stops being heard.
 
 The grant is one line in digitization's `authorized_keys`, which `install` writes:
 
