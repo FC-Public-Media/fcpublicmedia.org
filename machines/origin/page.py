@@ -16,15 +16,16 @@ still counts. The seven days ending today are the strongest thing on the line, i
 repository's kind gives it (the file it carries: show.yml a show, instrument.yml an instrument,
 gear.yml gear, residency.yml an engine; paper for the rest). Ten blocks behind them reach back
 about seven months, each step longer, and cool as they recede: the kind's colour, then a blue, then
-a deeper one. ◉ counts main's commits. A ⑂ per other branch, newest first: bright with work this
-week, grey when quiet, dark once merged into main. last is the time today, the weekday within a
+a deeper one. ◉ counts main's commits. A ⑂ per branch: first, in GitHub's blue, github/main, the
+one intake brings from GitHub; then ours, newest first, bright with work this week, grey when
+quiet, dark once merged into main. last is the time today, the weekday within a
 week, the date before that, dimmer with age. github is dim when GitHub's main is ours, lit with
 ↓n when GitHub holds n commits that have not come in, ↑n for ours not on GitHub. A tag shows by
 name; the hash, dim, is the box's main.
 
 Everything is read from the box (facts.py) and checked here, ref by ref, against the origin kept
-here: a repository apart sits on a muted wedge, red after five minutes, with how far where its tag
-would be (−9: the box's main lacks 9 of ours; ~1: a branch or tag differs; ∅: not on the box).
+here: a repository apart sits on a muted wedge, red once the standby has had a run (its pace, read
+from its log) and five minutes more, with how far where its tag would be (−9: the box's main lacks 9 of ours; ~1: a branch or tag differs; ∅: not on the box).
 
 The crew's git runs here too, so the page watches it: the repository being worked on flickers
 softly in blue, and its owner's bar says the step on the right (pools → origin.local, pools ←
@@ -62,7 +63,7 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else "/srv/origin"
 STATE = os.path.expanduser("~/.local/state/fcpm/crew")
 INTAKE = os.path.join(ROOT, ".intake", "state.json")
 QUIET = 90          # seconds without facts before the box counts as not heard from
-STALE = 300         # seconds apart before a line turns to trouble
+GRACE = 300         # seconds past the standby's next run before a line apart turns to trouble
 LINGER = 1.5        # seconds a repository stays lit after its git is done
 EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
 RATES = (1, 3, 8)                                       # commits a day where the mark steps up
@@ -223,7 +224,7 @@ class Seen:
             if r and main:
                 out = known(r, "log", "--format=%ct", main)
                 row["times"] = [int(x) for x in out.split()] if out else []
-                row["forks"] = forks(r, main, row["branches"], now)
+                row["forks"] = ([GH] if "heads/github/main" in seen else []) + forks(r, main, row["branches"], now)
                 files = (known(r, "ls-tree", "--name-only", main) or "").split("\n")
                 row["kind"] = next((c for f, c in KINDS.items() if f in files), PAPER)
             if name not in there:
@@ -311,6 +312,16 @@ def watch():
         time.sleep(0.25)
 
 
+def cadence(job):
+    """Seconds between the crew's last two starts of JOB, read from its log: its pace, whatever it is set to."""
+    try:
+        lines = open(os.path.join(STATE, f"{job}.log"), encoding="utf-8", errors="replace").read().splitlines()[-400:]
+        t = [time.mktime(time.strptime(" ".join(l.split()[1:3]), "%Y-%m-%d %H:%M:%S")) for l in lines if l.startswith("--- ")]
+        return max(60, t[-1] - t[-2])
+    except (OSError, ValueError, IndexError):
+        return 60
+
+
 def last_run(job):
     """When the crew last started JOB, and its last run's first complaint if it had one."""
     try:
@@ -385,7 +396,7 @@ def remote(gh):
     return (GH if theirs else LIGHT) + "github" + (f"↓{theirs}" if theirs else "") + (f"↑{ours}" if ours else "")
 
 
-def line(C, row, now, w, lit):
+def line(C, row, now, w, lit, stale):
     count = len(row["times"])
     text = (f" {PAPER}{row['name']:<{w}} " + history(row["times"], now, row["kind"])
             + f" {DIM if (row['bytes'] or 0) < 1 << 20 else LIGHT}{mb(row['bytes']):>5}"
@@ -402,7 +413,7 @@ def line(C, row, now, w, lit):
         text += " " + fit(tail, room - 7) + sha
     text = fit(text, C)
     if row["apart"]:            # on the wedge, everything in ink
-        wedge = ON_BAD if now - row["since"] > STALE else ON_MUTED
+        wedge = ON_BAD if now - row["since"] > stale else ON_MUTED
         return wedge + re.sub(r"\x1b\[[0-9;]*m", "", text) + OFF
     if lit:                     # being worked on: a soft flicker underneath
         under = WORK[int(now * 3) % 2]
@@ -415,9 +426,11 @@ def paint():
         C, R = S.grid
         f, now = S.facts, time.time()
         when, complaint = last_run("standby")
+        pace = cadence("standby")
+        stale = pace + GRACE
         checked, reach = github()
         trouble = complaint
-        if when and now - when > STALE:
+        if when and now - when > 2 * pace + GRACE:
             trouble = trouble or f"standby {ago(now - when)}"
         if reach and reach != "ok":
             trouble = trouble or f"github: {reach}"
@@ -461,7 +474,7 @@ def paint():
             for r in show:
                 lit = now - S.busy.get(r["full"], 0) < LINGER
                 busy = busy or lit
-                body.append(line(C, r, now, w, lit))
+                body.append(line(C, r, now, w, lit, stale))
             if len(show) < len(rows):
                 body.append(f" {LIGHT}+{len(rows) - len(show)}{OFF}")
             room -= len(show) + (len(show) < len(rows))

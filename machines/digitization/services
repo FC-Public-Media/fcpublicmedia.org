@@ -1,7 +1,7 @@
-# What digitization runs: `name keep from` or `name every Nm from`. See machines/README.md.
+# What digitization runs: `name keep from` or `name every N from`. See machines/README.md.
 
-intake          every 1m    machines/digitization
-standby         every 1m    machines/digitization
+intake          every 1h    machines/digitization
+standby         every 1h    machines/digitization
 follow          every 5m    machines/digitization
 pools           keep        troves/pools
 names           keep        machines/digitization

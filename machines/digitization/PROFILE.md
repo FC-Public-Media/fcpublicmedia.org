@@ -7,7 +7,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | | |
 |---|---|
 | `names` | `linux Hostname digitization`. A live boot answers `debian`; the card's one-time setup (`settle-card.sh` on its toolbox partition, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
-| `services` | the crew's order: `intake every 1m`, from its own menu `../digitization.yml`, kept by `fcpm-crew@digitization` (`../crew.sh`) |; `follow every 5m` keeps this checkout on the origin's main with every trove at its pin, so a merge reaches the board by itself
+| `services` | the crew's order: `intake every 1h`, from its own menu `../digitization.yml`, kept by `fcpm-crew@digitization` (`../crew.sh`) |; `follow every 5m` keeps this checkout on the origin's main with every trove at its pin, so a merge reaches the board by itself
 | `pools.yml` | the landing (`/srv/landing`, label `fcpm-landing`) as a pool, served by the crew's `pools` line on 8091 (`../../troves/pools.yml`); an emulated pool beside it for `pools.py sample` |
 | `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `rsync`, `zenity`, `avahi-utils`, `vivaldi-stable`, `firefox-esr`; Claude Code by hand |
 | the door | `../kiosk/door.py serve` on port 80, started at login by `at-login` (`fcpm-digitization.desktop` in `/etc/xdg/autostart`), then Vivaldi opens maximized with its page as a pinned tab, never a window of its own (`open-page`). `digitization.local` on the LAN; at `localhost` the board also offers **Unlock** for the signing key, its passphrase asked on this screen (`../kiosk/askpass`) |
@@ -61,7 +61,7 @@ only the power button helped. Now there is a way out on its own:
 Bare repositories at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media, and the four FCCN-ANTIBODY
 repositories fcpublicmedia.org mounts. They live on the card's own `card-origin` partition (ext4, mounted by label), beside the system, not inside it.
 
-`origin-intake` (started every minute by the crew's `intake` line; it asks GitHub every minute only while `fcpm dev on`, otherwise weekly, or now with `--now`; and only while `/srv/origin` is mounted;
+`origin-intake` (started every hour by the crew's `intake` line; it asks GitHub each run only while `fcpm dev on`, otherwise weekly, or now with `--now`; and only while `/srv/origin` is mounted;
 `--status` prints the last state) tracks GitHub's `main` only, one GraphQL query for every repository,
 `gh` holding the login. Behind: fast-forward. Ahead: left alone. Both moved: a clean merge becomes our
 own merge commit; a conflict is recorded in `/srv/origin/.intake/state.json` and `main` is untouched.

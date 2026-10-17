@@ -1,6 +1,6 @@
 #!/bin/sh
-# origin-standby -- keep origin.local a minute behind this origin: every branch and tag, fast-forward only.
-# Run every minute by the crew's `standby` line. If this card leaves, origin.local already holds the
+# origin-standby -- keep origin.local an hour behind this origin at most: every branch and tag, fast-forward only.
+# Run every hour by the crew's `standby` line. If this card leaves, origin.local already holds the
 # work; promoting it is pointing remotes there. See ../origin/PROFILE.md.
 mountpoint -q /srv/origin || exit 0
 TO=${ORIGIN_STANDBY:-origin-standby}          # ~/.ssh/config: origin.local's git account, by its own key

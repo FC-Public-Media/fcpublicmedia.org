@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-"""origin-intake: GitHub's main -> FCPM's origin, by itself: every minute while `fcpm dev on`,
-weekly while off, so GitHub is not asked from here 1,440 times a day.
+"""origin-intake: GitHub's main -> FCPM's origin, by itself: each run (the crew's, hourly) while
+`fcpm dev on`, weekly while off, so GitHub is not asked from here more than it needs to be.
 
     origin-intake            check every repo once, take what moved (if it is time)
     origin-intake --now      check now, whatever the pace

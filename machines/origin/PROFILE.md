@@ -1,7 +1,7 @@
 # origin
 
 FCPM's git origin on its own box, so the origin does not leave with digitization's SD card. Today
-it is the **standby**: digitization pushes every branch and tag here each minute (`../digitization/origin-standby`).
+it is the **standby**: digitization pushes every branch and tag here each hour (`../digitization/origin-standby`).
 It becomes the primary when it holds its own GitHub login; then remotes point here and intake runs here.
 
 The job is the whole of it. Any box that boots Alpine can wear it; nothing here asks what the box is.
@@ -40,18 +40,20 @@ built on the box by the outfit ([`../console-font.py`](../console-font.py), JetB
   and cool as they recede: the kind's colour, then blue, then deep blue. Full squares fill the
   cell, so full days meet into a bar; inside a run every second one loses its left column, so the
   run still counts, and a lone one always shows what full looks like.
-  Then its size on the box (`.2M`, `5.3M`, `37M`); ◉ and the commits main holds; a ⑂ per other
-  branch, newest first, bright with work this week, grey when quiet, dark once merged into main;
+  Then its size on the box (`.2M`, `5.3M`, `37M`); ◉ and the commits main holds; a ⑂ per branch:
+  first, in GitHub's blue, `github/main`, the one intake brings from GitHub; then ours, newest
+  first, bright with work this week, grey when quiet, dark once merged into main;
   its last commit (the time today, the weekday this week, the date after, dimmer with age);
   `github`, dim when GitHub's main is ours, lit `github↓2` when two commits there have not come in,
   `github↑3` for three of ours not on GitHub (another remote gets its own word); a tag by name;
   dim at the right the box's hash of main;
-- a repository apart sits on a muted wedge, red after five minutes, with how far where a tag would
-  be: `−9` (the box's main lacks 9 of ours), `~1` (a branch or tag differs), `∅` (not on the box);
+- a repository apart sits on a muted wedge, red once the standby has had its run and five minutes
+  more (the page reads the standby's pace from its log), with how far where a tag would be: `−9` (the box's main lacks 9 of ours), `~1` (a branch or tag differs), `∅` (not on the box);
 - the bottom bar is the room's: the box's disk and memory as outlined gauges (the bar's yellow
   shows through for what is used, black for what is free) each followed by what is free in G
   (`.48`, `1.6`), its load (processes wanting the processor, averaged over a minute; it has two),
-  and the time. It goes red with the trouble: the standby's complaint or silence, GitHub out of
+  and the time. It goes red with the trouble: the standby's complaint, or its silence for two of
+  its runs, GitHub out of
   reach, the clock, a full disk; `— 3m` when the box stops being heard.
 
 The grant is one line in digitization's `authorized_keys`, which `install` writes:
@@ -71,6 +73,6 @@ From digitization, with the box booted into Alpine's live system from the recove
 
 `DISK` is named and must answer to `SERIAL` (`none` if it reports none); a disk in use, like the
 live system's own, is refused. Everything after the disk is [`outfit`](outfit), safe to run again.
-Take the stick out and power on: the standby fills the repositories within a minute or two.
+Take the stick out and power on: the standby fills the repositories on its next run, within the hour.
 
 **Promote it** (the card is gone): on each checkout, `git remote set-url origin git@origin.local:/srv/origin/<owner>/<repo>`.
