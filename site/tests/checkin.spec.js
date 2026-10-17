@@ -384,7 +384,8 @@ test.describe('check-in entry points', () => {
 // ---------------------------------------------------------------------------
 // Class mode: the homepage's class logic, worked out on arrival.
 
-const CLASS_START = Date.parse('2026-08-12T00:00:00Z');
+const BAKED = require('./pages').bakedClass();
+const CLASS_START = BAKED.start;
 const classAt = (minutes) => new Date(CLASS_START + minutes * 60000);
 
 async function visitDuringClass(page, context, minutes, coords = STUDIO) {
@@ -408,7 +409,7 @@ test.describe('check-in during a class', () => {
 
     const banner = page.locator('#class-banner-root');
     await expect(banner).toBeVisible();
-    await expect(banner.locator('[data-class-title]')).toHaveText('Podcasting 101');
+    await expect(banner.locator('[data-class-title]')).toHaveText(BAKED.title);
     await expect(banner.locator('[data-class-eyebrow]')).toHaveText('Happening now');
     await expect(banner.locator('[data-class-late]')).toBeVisible();
   });

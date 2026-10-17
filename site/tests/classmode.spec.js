@@ -1,9 +1,10 @@
-// The clock is mocked. Podcasting 101 (site/_data/classes.yml) runs 2026-08-12 00:00–02:00 UTC.
+// The clock is mocked to the class the site bakes in (pages.js bakedClass), a two-hour session.
 
 const { test, expect } = require('@playwright/test');
-const { isThirdParty } = require('./pages');
+const { isThirdParty, bakedClass } = require('./pages');
 
-const START = Date.parse('2026-08-12T00:00:00Z');
+const CLASS = bakedClass();
+const START = CLASS.start;
 const MINUTE = 60000;
 
 const at = (offsetMinutes) => new Date(START + offsetMinutes * MINUTE);
@@ -35,9 +36,9 @@ test.describe('class mode', () => {
     await expect(slot(page)).toBeVisible();
     await expect(card(page)).toHaveAttribute('data-class-mode', 'soon');
     await expect(page.locator('[data-class-eyebrow]')).toHaveText('Starting soon');
-    await expect(page.locator('[data-class-title]')).toHaveText('Podcasting 101');
+    await expect(page.locator('[data-class-title]')).toHaveText(CLASS.title);
     await expect(page.locator('[data-class-when]')).toContainText('Starts at');
-    await expect(page.locator('[data-class-room]')).toHaveText('Podcast Studio');
+    await expect(page.locator('[data-class-room]')).toHaveText(CLASS.room);
   });
 
   test('is quiet before the lead window opens', async ({ page }) => {

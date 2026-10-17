@@ -51,4 +51,13 @@ const THIRD_PARTY_CONSOLE = [
 const isThirdPartyConsole = (text) =>
   THIRD_PARTY_CONSOLE.some((prefix) => text.includes(prefix));
 
-module.exports = { PAGES, THIRD_PARTY, isThirdParty, isThirdPartyConsole };
+// The class the site bakes in (site/_includes/class-config.html): calendar.json's first session when
+// it has one, else classes.yml's, Podcasting 101. Class tests set their clock by it.
+function bakedClass() {
+  const cal = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '_data', 'calendar.json'), 'utf8'));
+  const s = (cal.sessions || [])[0];
+  return s ? { start: Date.parse(s.starts), title: s.title, room: s.room }
+           : { start: Date.parse('2026-08-12T00:00:00Z'), title: 'Podcasting 101', room: 'Podcast Studio' };
+}
+
+module.exports = { PAGES, THIRD_PARTY, isThirdParty, isThirdPartyConsole, bakedClass };
