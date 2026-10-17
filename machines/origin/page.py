@@ -7,10 +7,10 @@ origin's leash (../leash.py) runs this at the far end of its `ssh -T`, a forced 
 
 A pane per owner, a line per repository, in name order so a place on the screen keeps meaning:
 
-    name   history ┊ week   ◉score ⑂⑂⑂  size  last  github  tag  hash
+    name   history ┊ week  size  ◉score ⑂⑂⑂  last  github  tag  hash
 
-history is main's commits a day as a block that fills: ▂ under 1 a day, ▄ from 1, ▅ from 3,
-▇ from 8, █ from 16; empty where there were none. Ten blocks reach back about seven months, each
+history is main's commits a day, never a block that fills: . under 1 a day, ▒ from 1, █ from 8;
+empty where there were none. Ten blocks reach back about seven months, each
 step longer, then the seven days ending today. ◉ counts main's commits. A ⑂ per other branch, newest first: bright with work this week, grey
 when quiet, dark once merged into main (a leftover). Size is in megabytes: .2M, 5.3M, 37M. last is the time today, the weekday within a week, the date
 before that, dimmer with age. github is dim when GitHub's main is ours, lit with how far when
@@ -47,8 +47,8 @@ INTAKE = os.path.join(ROOT, ".intake", "state.json")
 QUIET = 90          # seconds without facts before the box counts as not heard from
 STALE = 300         # seconds apart before a line turns to trouble
 EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
-RATES = (1, 3, 8, 16)                                   # commits a day where a block grows a step
-FILL = "▂▄▅▇█"                                          # under 1 a day, then 1, 3, 8, 16 and over
+RATES = (1, 8)                                          # commits a day where the mark steps up
+FILL = ".▒█"                                            # under 1 a day, from 1, from 8: a dot, a checker, a block
 
 
 def shade(rate):
@@ -286,9 +286,9 @@ def bar(C, left, right="", surface=ON_YELLOW):
 def line(C, row, now, w):
     count, gh = len(row["times"]), row["github"]
     text = (f" {PAPER}{row['name']:<{w}} " + history(row["times"], now)
+            + f" {GREY[2] if (row['bytes'] or 0) < 1 << 20 else GREY[3]}{mb(row['bytes']):>5}"
             + f" {GREY[3]}{COMMIT}{PAPER}{count if count else '':<4}"
-            + " " + fit("".join(c + BRANCH for c in row["forks"]), 8)
-            + f" {GREY[2] if (row['bytes'] or 0) < 1 << 20 else GREY[3]}{mb(row['bytes']):>5} "
+            + " " + fit("".join(c + BRANCH for c in row["forks"]), 8) + " "
             + fit(last(row["times"][0] if row["times"] else 0, now), 6) + " "
             + fit((GREY[2] + "github") if gh == "" else (LIT + "github" + gh) if gh else "", 9))
     tail = (PAPER + row["apart"]) if row["apart"] else (TAGGED + TAG + PAPER + row["tags"][-1]) if row["tags"] else ""
