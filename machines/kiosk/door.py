@@ -25,6 +25,12 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /depot/            what is on the studio drive, for the third panel
     GET /depot/now         the drive's index, as JSON. The page polls it
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
+    GET /room/<room>/      a room's hallway door, any shape (rooms/<room>.yml): who is hosting, what is coming, what is in
+    GET /room/<room>/now   the same as JSON. The page polls it
+    GET /host/?room=<room> wizard:kiosk+host, the staff check-in: a reply bottled for a camera, or set down here
+    POST /drop             a bottle set down: kept as a file, read later (replies.py); GET /drop/<name> says where it got
+    GET /js/qr-encode.mjs  the site's QR encoder, for pages here
+    Host: fcpublicmedia.local  the built site to the LAN, from FCPM_SITE_DIR (digitization's site-build); else off
     GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /input             seconds since this computer was last touched, as JSON. Every page polls it (AWAKE_JS)
@@ -998,6 +1004,15 @@ def board_page(here=False):
             ("/idle/?say=On+air+now", "Idle, with its slot filled", "?say= fills the marked slot")]
     for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png")):
         rows.append(("/wallpaper/" + f.name, f.stem, "portrait wallpaper, this panel's size"))
+    try:
+        import replies
+        for room, cfg in replies.rooms().items():
+            rows.append(("/room/%s/" % room, "%s, at its door" % cfg.get("title", room),
+                         "the hallway tablet: who is hosting, what is coming, what is in the room"))
+            rows.append(("/host/?room=%s" % room, "Host check-in, %s" % cfg.get("title", room),
+                         "wizard:kiosk+host, from a phone on this network"))
+    except Exception as exc:
+        log("rooms: %r" % exc)
     nets = "".join("<li>%s <span>%s</span></li>" % (
         e(n["ssid"]), "password set" if n["ready"] else "no password on this machine yet")
         for n in networks())
@@ -2328,6 +2343,271 @@ def watch_wall():
 
 
 # -------------------------------------------------------------------- server --
+# ROOMS: a room's hallway door, a tablet in a holder, any shape (rooms/<room>.yml). It never dims:
+# the tablet is put away when nobody is in. Who is hosting and what is in the room are the last
+# host reply's (replies.py); the rota and the classes say what is coming. docs/kiosk.md, Rooms.
+COMPOSER = ROOT / "troves" / "scanner" / "composer"        # the bottle codec, when the scanner trove is checked out
+COMPOSER_FILES = ("sign.mjs", "transfer.mjs", "carrier.mjs", "fountain.mjs", "anecdote.mjs")
+SITE_DIR = os.environ.get("FCPM_SITE_DIR")                 # the built site, served to the LAN under SITE_HOST
+SITE_HOST = (os.environ.get("FCPM_SITE_HOST") or "fcpublicmedia.local").lower()
+
+
+def shell(title, body, style=""):
+    """A page that never dims: the brand and the reload on /revision, no awake windows."""
+    return with_poll("""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%s</title><style>%s
+%s</style></head><body>%s</body></html>""" % (html.escape(title), BRAND, style, body))
+
+
+def room_cfg(room):
+    import replies
+    return replies.rooms().get(room) if re.fullmatch(r"[a-z0-9-]{1,32}", room or "") else None
+
+
+def room_classes(cfg, now, limit=3):
+    """This room's next classes (site/_data/classes.yml, by the room's name), the one on now first."""
+    want = str(cfg.get("classes") or "")
+    out = []
+    for c in class_config(now).get("sessions") or []:
+        if want and c.get("room") != want:
+            continue
+        try:
+            b = datetime.datetime.fromisoformat(c["starts"]).astimezone().replace(tzinfo=None)
+            d = datetime.datetime.fromisoformat(c["ends"]).astimezone().replace(tzinfo=None)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if d < now:
+            continue
+        out.append({"title": c.get("title", ""), "when": "now" if b <= now else when(b, now), "on": b <= now})
+    return sorted(out, key=lambda c: not c["on"])[:limit]
+
+
+def room_now(room):
+    """What the room's page polls: hosting as the last reply left it, the rota, this room's classes, the gear."""
+    import replies
+    cfg = room_cfg(room)
+    if not cfg:
+        return None
+    now = datetime.datetime.now()
+    r = replies.room_now(room, cfg)
+    r["on"] = on_now(now)
+    r["classes"] = room_classes(cfg, now)
+    return r
+
+
+def room_page(room):
+    import replies
+    cfg = room_cfg(room)
+    if not cfg:
+        return None
+    lit = {g["id"] for g in replies.room_now(room, cfg)["gear"] if g["lit"]}     # as the page's first poll will say
+    gear = "".join('<li%s data-id="%s"><span class="mark%s"></span><b>%s</b><span>%s</span></li>' % (
+        "" if g["id"] in lit else " class=unlit", e(g["id"]), "" if g["id"] in lit else " unlit",
+        e(g.get("name", g["id"])) + (" ×%d" % g["count"] if g.get("count") else ""), e(g.get("say")))
+        for g in cfg.get("gear") or [])
+    body = """
+<main class=room>
+  <section class=who>
+    <div class=lockup><span class=mark aria-hidden=true></span><span class=words><b>Fort Collins</b><span>Public Media</span></span></div>
+    <h1>%s</h1>
+    <p class=say>%s</p>
+    <div class="host quiet" id=host><b class=label></b><span class=name>%s</span><p class=welcome></p></div>
+  </section>
+  <section class=what>
+    <div class=code><canvas role=img aria-label="Code for %s"></canvas><div><b>%s</b><span class=hint>Point your camera at it</span></div></div>
+    <div class=coming id=coming hidden><h2>Coming up</h2><ul></ul></div>
+    <ul class=gear id=gear>%s</ul>
+  </section>
+</main>
+<footer><span>%s</span><a href="/host/?room=%s">Staff</a></footer>
+%s""" % (e(cfg.get("title", room)), e(cfg.get("say")), e(cfg.get("quiet")), e(cfg.get("shown") or cfg.get("encodes")),
+         e(cfg.get("shown") or cfg.get("encodes")), gear, e(load(ROOT / "site" / "_data" / "org.yml").get("address", {}).get("street", "")),
+         e(room), ROOM_JS % json.dumps({"room": room, "encodes": cfg.get("encodes") or "", "quiet": cfg.get("quiet") or "",
+                                        "welcome": cfg.get("welcome") or ""}))
+    return shell(cfg.get("title", room), body, ROOM_CSS)
+
+
+ROOM_CSS = """
+html, body { height:100%; overflow:hidden; }
+body { display:flex; flex-direction:column; }
+.room { flex:1; min-height:0; display:grid; grid-template-columns:1fr 1fr; }
+@media (orientation: portrait) { .room { grid-template-columns:1fr; grid-template-rows:auto 1fr; } }
+.who { background:var(--slate); padding:5vmin 6vmin; display:flex; flex-direction:column; justify-content:center; gap:2.6vmin; min-width:0; }
+.lockup { display:flex; align-items:center; gap:1.6vmin; }
+.lockup .mark { width:4.2vmin; height:4.2vmin; flex:none; }
+.lockup .words { display:flex; flex-direction:column; line-height:1.05; font-size:2vmin; letter-spacing:.06em; text-transform:uppercase; }
+.lockup .words b { font-weight:750; }
+h1 { margin:0; font-size:min(9vmin, 7.4vw); line-height:.98; font-weight:750; letter-spacing:-.01em; }
+.say { margin:0; font-size:min(3.3vmin, 3vw); line-height:1.3; font-weight:500; color:var(--soft); max-width:36ch; }
+.host { margin-top:2vmin; }
+.host .label { display:block; font-size:2.1vmin; letter-spacing:.12em; text-transform:uppercase; color:var(--signal); }
+.host .label:empty { display:none; }
+.host .name { display:block; font-size:min(7vmin, 6vw); font-weight:750; line-height:1.05; }
+.host .welcome { margin:.9vmin 0 0; font-size:2.9vmin; line-height:1.25; }
+.host .welcome:empty { display:none; }
+.host.quiet .name { font-size:min(4.2vmin, 4vw); font-weight:600; color:var(--paper); }
+.host.desk .label { color:var(--dim); }
+.what { padding:4.5vmin 5vmin; display:grid; grid-template-rows:auto auto 1fr; gap:3.2vmin; min-height:0; min-width:0; overflow:hidden; }
+.code { display:flex; align-items:center; gap:2.6vmin; min-width:0; }
+.code canvas { width:28vmin; height:28vmin; flex:none; background:#fff; box-sizing:border-box; image-rendering:pixelated; image-rendering:crisp-edges; }
+.code div { display:flex; flex-direction:column; gap:.8vmin; min-width:0; }
+.code b { font-size:2.4vmin; letter-spacing:.02em; overflow-wrap:anywhere; }
+.code .hint { font-size:2vmin; line-height:1.25; color:var(--soft); }
+.coming h2 { margin:0 0 1vmin; font-size:1.9vmin; letter-spacing:.12em; text-transform:uppercase; color:var(--signal); }
+.coming ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.6vmin; }
+.coming li { font-size:2.7vmin; font-weight:600; }
+.coming li span { color:var(--dim); font-weight:500; }
+.coming li.on span { color:var(--signal); }
+.coming[hidden] { display:none; }
+.gear { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(22vmin, 1fr));
+  gap:1.8vmin 2.6vmin; align-content:start; min-width:0; }
+.gear li { display:grid; grid-template-columns:2vmin 1fr; column-gap:1.5vmin; align-items:center; min-width:0; }
+.gear .mark { width:2vmin; height:2vmin; }
+.gear b { font-size:2.4vmin; font-weight:650; line-height:1.15; }
+.gear li > span:last-child { grid-column:2; font-size:1.85vmin; line-height:1.25; color:var(--dim); }
+.gear li.unlit b { color:var(--dim); }
+.gear li.unlit .mark { opacity:.6; }
+footer { flex:none; display:flex; justify-content:space-between; align-items:baseline; padding:1.5vmin 6vmin;
+  background:var(--slate); font-size:1.7vmin; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+footer a { text-decoration:none; opacity:.45; }
+"""
+
+ROOM_JS = """<script type=module>
+import { encodeQR } from "/js/qr-encode.mjs";
+var W = %s, QUIET = 4;
+var canvas = document.querySelector('.code canvas'), host = document.getElementById('host'),
+    coming = document.getElementById('coming'), gear = document.getElementById('gear');
+function code() {
+  if (!W.encodes) return;
+  var qr = encodeQR(W.encodes, {ecLevel: 'M'}), box = canvas.getBoundingClientRect(),
+      dpr = window.devicePixelRatio || 1, n = qr.size + 2 * QUIET,
+      s = Math.max(1, Math.floor(Math.min(box.width, box.height) * dpr / n)), g = canvas.getContext('2d');
+  canvas.width = canvas.height = n * s;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, canvas.width, canvas.height); g.fillStyle = '#000';
+  for (var r = 0; r < qr.size; r++) for (var c = 0; c < qr.size; c++)
+    if (qr.modules[r][c]) g.fillRect((c + QUIET) * s, (r + QUIET) * s, s, s);
+}
+function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls;
+  if (text != null) n.textContent = text; return n; }
+function paint(d) {
+  var label = host.querySelector('.label'), name = host.querySelector('.name'), welcome = host.querySelector('.welcome');
+  host.className = 'host';
+  if (d.hosting) { label.textContent = 'Hosting'; name.textContent = d.host; welcome.textContent = W.welcome; }
+  else if (d.on && d.on.now.length) { host.className += ' desk'; label.textContent = 'At the desk'; name.textContent = d.on.now.join(', '); welcome.textContent = ''; }
+  else if (d.on && d.on.next) { host.className += ' quiet'; label.textContent = 'Next'; name.textContent = d.on.next.who + ' \\u00b7 ' + d.on.next.when; welcome.textContent = ''; }
+  else { host.className += ' quiet'; label.textContent = ''; name.textContent = W.quiet; welcome.textContent = ''; }
+  var list = coming.querySelector('ul'); list.textContent = '';
+  (d.classes || []).forEach(function (c) {
+    var li = el('li', c.on ? 'on' : '', c.title + ' '); li.appendChild(el('span', null, c.when)); list.appendChild(li);
+  });
+  coming.hidden = !(d.classes || []).length;
+  (d.gear || []).forEach(function (g) {
+    var li = gear.querySelector('[data-id="' + g.id + '"]'); if (!li) return;
+    li.className = g.lit ? '' : 'unlit'; li.querySelector('.mark').className = 'mark' + (g.lit ? '' : ' unlit');
+  });
+}
+function tick() {
+  fetch('/room/' + W.room + '/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(paint).catch(function () {});
+}
+code(); addEventListener('resize', code);
+tick(); setInterval(tick, 30000);
+</script>"""
+
+
+# THE HOST WIZARD: wizard:kiosk+host, on a staff phone on the LAN (host.js forms the reply and bottles it).
+def host_page(room):
+    import replies
+    cfg = room_cfg(room)
+    if not cfg:
+        return None
+    state = replies.room_now(room, cfg)
+    lit = {g["id"] for g in state["gear"] if g["lit"]}
+    crew = list((load(HERE / "welcome" / "rota.yml").get("crew") or {}).keys())
+    gear = "".join('<label><input type=checkbox name=present value="%s"%s><span class=mark></span><span>%s</span></label>' % (
+        e(g["id"]), " checked" if g["id"] in lit else "", e(g.get("name", g["id"]))) for g in cfg.get("gear") or [])
+    body = """
+<div class=host data-host>
+  <form id=host-form onsubmit="return false">
+    <h1>%s</h1>
+    <p class=lede>Check in as the host, and say what is in the room. The code is your reply: show it to a
+    camera, or set it down on this network.</p>
+    <label class=field><span>Your name</span><input id=name type=text maxlength=40 autocomplete=name autocapitalize=words></label>
+    <div class=picks id=picks></div>
+    <div class=seg>
+      <label><input type=radio name=hosting value=on checked><span>Hosting</span></label>
+      <label><input type=radio name=hosting value=off><span>Left</span></label>
+    </div>
+    <label class=field><span>Until</span><input id=until type=time value="23:59"></label>
+    <fieldset class=gear><legend>In the room</legend>%s</fieldset>
+  </form>
+  <div class=code><canvas role=img aria-label="Your reply, as a code; tap for a fresh one"></canvas><span id=read></span></div>
+  <div class=bar><button id=drop type=button>Set it down here</button><span id=said></span></div>
+</div>
+<script type=application/json id=host-config>%s</script>
+<script type=module src="/host/host.js?v=%s"></script>""" % (
+        e(cfg.get("title", room)), gear,
+        json.dumps({"room": room, "at": git("rev-parse", "--short", "HEAD") or "nogit", "crew": crew,
+                    "composer": (COMPOSER / "transfer.mjs").is_file()}),
+        e(git("rev-parse", "--short", "HEAD") or "0"))
+    return shell("Host · %s" % cfg.get("title", room), body, HOST_CSS)
+
+
+HOST_CSS = """
+body { font-size:17px; }
+.host { max-width:36rem; margin:0 auto; padding:1.2rem 1rem calc(1.2rem + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:1rem; }
+h1 { margin:0; font-size:1.7rem; line-height:1.05; font-weight:750; letter-spacing:-.01em; }
+.lede { margin:0; color:var(--soft); font-size:.95rem; line-height:1.35; }
+form { display:flex; flex-direction:column; gap:.9rem; }
+.field { display:flex; flex-direction:column; gap:.3rem; }
+.field span { font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+input[type=text], input[type=time] { font:inherit; font-size:1.2rem; padding:.55rem .7rem; border-radius:.6rem;
+  border:1px solid var(--rule); background:var(--slate); color:var(--paper); }
+input[type=time]:disabled { opacity:.35; }
+.picks { display:flex; flex-wrap:wrap; gap:.4rem; }
+.picks:empty { display:none; }
+.picks button { font:inherit; font-size:.9rem; padding:.35rem .8rem; border-radius:99px; border:1px solid var(--rule);
+  background:none; color:var(--paper); cursor:pointer; }
+.seg { display:flex; }
+.seg label { flex:1; }
+.seg input { position:absolute; opacity:0; pointer-events:none; }
+.seg span { display:block; text-align:center; padding:.6rem; border:1px solid var(--rule); font-weight:650; cursor:pointer; }
+.seg label:first-child span { border-radius:.6rem 0 0 .6rem; }
+.seg label:last-child span { border-radius:0 .6rem .6rem 0; border-left:none; }
+.seg input:checked + span { background:var(--signal); color:var(--ink); border-color:var(--signal); }
+.seg input:focus-visible + span { outline:2px solid #6af; outline-offset:2px; }
+.gear { border:1px solid var(--rule); border-radius:.6rem; padding:.6rem .8rem .8rem; display:flex; flex-direction:column; gap:.5rem; }
+.gear legend { font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); padding:0 .3rem; }
+/* What is in the room: a mark lit or unlit, never a check mark (docs/kiosk.md). The box itself is kept for the keyboard. */
+.gear label { display:flex; align-items:center; gap:.8rem; font-weight:600; cursor:pointer; }
+.gear input { position:absolute; opacity:0; width:1px; height:1px; }
+.gear .mark { width:1.1rem; height:1.1rem; flex:none; background:var(--slate); }
+.gear input:checked ~ .mark { background:var(--signal); }
+.gear input:focus-visible ~ .mark { outline:2px solid #6af; outline-offset:2px; }
+.gear input:not(:checked) ~ span:last-child { color:var(--dim); }
+.code { display:flex; flex-direction:column; align-items:center; gap:.5rem; }
+.code canvas { width:min(84vw, 46vh); height:min(84vw, 46vh); background:#fff; image-rendering:pixelated; image-rendering:crisp-edges;
+  cursor:pointer; touch-action:manipulation; }
+.code span { font-size:.75rem; color:var(--dim); font-variant-numeric:tabular-nums; text-align:center; }
+.bar { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; }
+.bar button { font:inherit; font-weight:650; padding:.7rem 1.2rem; border-radius:99px; border:none; background:var(--signal); color:var(--ink); cursor:pointer; }
+.bar button:disabled { opacity:.4; cursor:default; }
+.bar span { color:var(--soft); font-size:.9rem; }
+"""
+
+
+def watch_replies():
+    """Every 20 s, the bottles set down since are read (replies.take): applied, or held with the reason."""
+    import replies
+    while True:
+        try:
+            for name, verdict, why in replies.take():
+                log("replies: %s %s: %s" % (verdict, name, why))
+        except Exception as exc:
+            log("replies: %r" % exc)
+        time.sleep(20)
+
+
 def inside(base, rel):
     """The file at base/rel, or None if rel steps outside base or is not a file."""
     target = (base / rel).resolve()
@@ -2379,6 +2659,21 @@ class Door(BaseHTTPRequestHandler):
             except Exception as exc:
                 log("aside: %r" % exc)
             return self.reply(204, "", TYPES[".txt"])
+        # A bottle set down, from anywhere on the LAN: kept as it came, read on the next pass (replies.py).
+        if route == "/drop":
+            import replies
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > replies.MAX_BYTES:
+                return self.reply(413, json.dumps({"why": "too big: %d bytes allowed" % replies.MAX_BYTES}), TYPES[".json"])
+            data = self.rfile.read(n)
+            if not data.strip():
+                return self.reply(400, json.dumps({"why": "nothing in it"}), TYPES[".json"])
+            try:
+                name = replies.drop(data, self.client_address[0])
+            except (OSError, ValueError) as exc:
+                log("drop: %r" % exc)
+                return self.reply(500, json.dumps({"why": "not kept: %s" % exc}), TYPES[".json"])
+            return self.reply(202, json.dumps({"kept": name}), TYPES[".json"])
         # The camera answers to this computer only: its eye, and a session's verb.
         if route == "/camera/read" and here:
             n = min(int(self.headers.get("Content-Length") or 0), 8192)
@@ -2411,9 +2706,30 @@ class Door(BaseHTTPRequestHandler):
             return
         return self.reply(404, "", TYPES[".txt"])
 
+    def site(self, route):
+        """The built site, to the LAN, by its own name: a document root only under that Host."""
+        base = pathlib.Path(SITE_DIR)
+        rel = route.lstrip("/") + ("index.html" if route.endswith("/") else "")
+        path = inside(base, rel) if rel else None
+        if path is None and not route.endswith("/") and (base / rel).is_dir():
+            self.send_response(301)
+            self.send_header("Location", route + "/")
+            self.end_headers()
+            return
+        code = 200
+        if path is None:
+            path, code = inside(base, "404.html"), 404
+        if path is None:
+            return self.reply(404, "Nothing by that name.", TYPES[".txt"])
+        import mimetypes
+        ctype = TYPES.get(path.suffix.lower()) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        return self.reply(code, path.read_bytes(), ctype)
+
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
+        if SITE_DIR and (self.headers.get("Host") or "").split(":")[0].lower() == SITE_HOST:
+            return self.site(route)
         try:
             if route == "/":
                 return self.reply(200, board_page(
@@ -2429,6 +2745,39 @@ class Door(BaseHTTPRequestHandler):
                                                    "heard": {k: now - v for k, v in _heard.items()}}), TYPES[".json"])
             if route in ("/kiosk", "/kiosk/"):
                 return self.reply(200, kiosk_page())
+            m = re.fullmatch(r"/room/([a-z0-9-]+)(/|/now)?", route)
+            if m:
+                if not m.group(2):
+                    self.send_response(301)
+                    self.send_header("Location", route + "/")
+                    self.end_headers()
+                    return
+                if m.group(2) == "/now":
+                    now = room_now(m.group(1))
+                    return self.reply(200, json.dumps(now), TYPES[".json"]) if now else self.file(None)
+                body = room_page(m.group(1))
+                return self.reply(200, body) if body else self.file(None)
+            if route == "/host":
+                self.send_response(301)
+                self.send_header("Location", "/host/" + (("?" + self.path.split("?", 1)[1]) if "?" in self.path else ""))
+                self.end_headers()
+                return
+            if route == "/host/":
+                import replies
+                m = re.search(r"[?&]room=([a-z0-9-]+)", self.path)
+                room = m.group(1) if m else next(iter(replies.rooms()), "")
+                body = host_page(room)
+                return self.reply(200, body) if body else self.file(None)
+            if route == "/host/host.js":
+                return self.file(HERE / "host.js")
+            if route.startswith("/host/composer/") and tail in COMPOSER_FILES:
+                return self.file(inside(COMPOSER, tail))
+            if route in ("/host/qr-encode.mjs", "/js/qr-encode.mjs"):
+                return self.file(ROOT / "site" / "assets" / "js" / "qr-encode.mjs")
+            if route.startswith("/drop/") and re.fullmatch(r"[0-9TZ.]+-[0-9a-f]+", tail):
+                import replies
+                got = replies.where(tail)
+                return self.reply(200 if got else 404, json.dumps(got or {"name": tail, "state": None}), TYPES[".json"])
             if route in ("/depot", "/depot/"):
                 return self.reply(200, depot_page())
             if route in ("/preview", "/preview/"):
@@ -2536,7 +2885,9 @@ def serve():
     threading.Thread(target=watch_depot, daemon=True).start()
     threading.Thread(target=watch_wall, daemon=True).start()
     threading.Thread(target=watch_camera, daemon=True).start()
-    log("door up on [::]:%d from %s at %s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD")))
+    threading.Thread(target=watch_replies, daemon=True).start()
+    log("door up on [::]:%d from %s at %s%s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD"),
+                                                 "; the site as %s from %s" % (SITE_HOST, SITE_DIR) if SITE_DIR else ""))
     server.serve_forever()
     server.server_close()
     return BOUNCE if server.bounce else 0

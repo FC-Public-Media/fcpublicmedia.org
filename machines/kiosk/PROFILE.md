@@ -35,7 +35,9 @@ administrator: [`CREW.md`](CREW.md).
 
 ## Files
 
-`CREW.md` (what it keeps, and how), `door.py`, `node.yml` (what it shows where), `m365-token.ps1` (a Microsoft 365 token signed by
+`CREW.md` (what it keeps, and how), `door.py`, `node.yml` (what it shows where), `rooms/` (each room as its
+hallway door shows it), `replies.py` (the inbox for what a wizard made), `host.js` (`wizard:kiosk+host`, the
+staff check-in), `verify-bottle.mjs` (the composer reading a bottle), `m365-token.ps1` (a Microsoft 365 token signed by
 the non-exportable certificate in `Cert:\CurrentUser\My`), `bookings.sample.yml` (a made-up
 week, every booking "Sample"), `GOTCHAS.log` and `gotcha` (`merge=union`), `names`, `called`,
 `GRANTS` (what sessions may run), `MANIFEST` (what `../sync` places), `code/` and
