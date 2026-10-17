@@ -1444,6 +1444,8 @@ html.is-pass,
   background: none; border: 0; color: var(--signal-ink); text-decoration: underline;
 }
 .pass-contact[hidden] { display: none; }
+.pass-staff { margin: 0.7rem 0 0; font-size: 0.85rem; }
+.pass-staff a { color: var(--ink-soft); }
 
 /* Check in: a band at the card's angle; the clipped parallelogram is all that can be pressed. */
 .pass-go { --thick: 4.5rem; --gap: 0.55rem; margin-top: calc(var(--gap) - var(--slope)); }

@@ -88,6 +88,10 @@ lede: One tap when you get here. Your visits stay on your own phone.
     </button>
   </div>
 
+  {%- comment -%} Staff, in the building: the host wizard on the board's LAN name, the name carried along (docs/kiosk.md, Replies). {%- endcomment -%}
+  <p class="pass-staff"><a id="staff-link" href="http://{{ site.data.lan.board }}/host/">Hosting a room? Check in as staff</a>
+    <span class="muted">· in the building</span></p>
+
   <div class="pass-now">
     <p class="pass-status" id="claim-status" role="status" aria-live="polite" hidden></p>
 
