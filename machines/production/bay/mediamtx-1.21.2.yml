@@ -1,0 +1,48 @@
+# A payload the bay has taken in. One file per arrival; the file is the record.
+# See ../../BAY.md. The procedure is ../../../troves/roku/bay/mediamtx.ps1.
+
+payload: mediamtx
+version: 1.21.2
+replaces: nothing        # the first relay on this host
+vendor: bluenviron (github.com/bluenviron/mediamtx), MIT
+role: the roku trove's relay, OBS's RTMP in on loopback, HLS out on 8888 for the Roku to pull
+trove: roku
+
+received: 2026-10-18
+source: https://github.com/bluenviron/mediamtx/releases/download/v1.21.2/mediamtx_v1.21.2_windows_amd64.zip
+size: 28583662
+
+verified:
+  sha256: a84224f5a490855684e62ba6fb71e80ea2a5e16aed61883bb58380290e93e467
+  # Two publications that had to agree, and did: GitHub's asset digest and the vendor's
+  # checksums.sha256 in the same release. The procedure refuses when they differ.
+  contents: "LICENSE (1062), mediamtx.exe (57024512), mediamtx.yml (38937): the vendor's default config, unused"
+  exe-sha256: 31bc3cc425a0278c7a5696c7ba309257235060157eb338eed20bb88dbe0faf87
+  signature: >
+    NotSigned. The vendor signs no Windows build (a static Go binary, released
+    with checksums). The gate is the zip's digest; the exe's own hash is recorded
+    so a changed copy shows.
+
+staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\mediamtx-1.21.2"
+install-to: "%LOCALAPPDATA%\\editing-bay-1\\troves\\roku\\mediamtx"
+restart-tier: none       # started and stopped by roku.ps1 obs / off; no service, no task
+cover: none
+config: troves/roku/relay/mediamtx.yml, passed on the command line; its listeners are 127.0.0.1:1935 (RTMP) and :8888 (HLS)
+grants: >
+  one: an inbound allow on TCP 8888 for the installed mediamtx.exe, remote
+  address LocalSubnet, all profiles (the bay's networks are Public). Placed by
+  an administrator Windows asks for: `fcpm roku grant`. Without it the Roku
+  cannot fetch the HLS; everything else works from loopback.
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage, install on 2026-10-18)"
+
+# staged -> installed | rolled-back | installed-outside, as it becomes known.
+status: installed
+
+installed:
+  at: "%LOCALAPPDATA%\\editing-bay-1\\troves\\roku\\mediamtx"
+  mediamtx: 1.21.2
+  exe-sha256: 31bc3cc425a0278c7a5696c7ba309257235060157eb338eed20bb88dbe0faf87
+  rollback-copy: none, because there was no previous copy. The next arrival cellars this one.
+
+grant-pending: inbound allow on 8888 for the installed mediamtx.exe (`fcpm roku grant`)
