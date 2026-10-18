@@ -32,6 +32,16 @@ troves_one() {
     || printf '%-34s troves: SUBMODULE UPDATE FAILED\n' "$(basename "$d")"
 }
 
+# A fetch that never asks who: as the account origin's URL names, and no credential window. A
+# private trove pinned anew makes fetch recurse into it on demand, which is where a bare fetch
+# hung on Git Credential Manager's "Select an account" (2026-10-18).
+fetch_quiet() {
+  local d=$1 user
+  user=$(git -C "$d" remote get-url origin 2>/dev/null | sed -n 's#^https://\([^@/]*\)@github\.com/.*#\1#p')
+  GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$d" ${user:+-c credential.username="$user"} \
+    fetch --prune --quiet 2>/dev/null
+}
+
 each() { for d in "$REF"/*/; do [ -e "$d/.git" ] && "$@" "${d%/}"; done; }
 
 line() {
@@ -47,7 +57,7 @@ line() {
 pull_one() {
   local d=$1 name def br
   name=$(basename "$d")
-  if ! git -C "$d" fetch --prune --quiet 2>/dev/null; then
+  if ! fetch_quiet "$d"; then
     printf '%-34s FETCH FAILED\n' "$name"; return
   fi
   def=$(default_branch "$d"); def=${def:-main}
@@ -76,7 +86,7 @@ case "${1:-status}" in
   work)
     repo=${2:?repo name}; branch=${3:?branch name}
     src="$REF/$repo"; [ -e "$src/.git" ] || { echo "no such repo: $src" >&2; exit 1; }
-    git -C "$src" fetch --prune --quiet
+    fetch_quiet "$src" || echo "fetch failed; cutting from the origin/main already here" >&2
     def=$(default_branch "$src"); def=${def:-main}
     dest="$WORK/$repo@${branch//\//-}"
     mkdir -p "$WORK"
