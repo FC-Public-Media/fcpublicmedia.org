@@ -41,5 +41,6 @@ written, the host finds it.
 | [ptz](https://github.com/FC-Public-Media/ptz) | PTZ cameras on the studio network | concept |
 | [recorder](https://github.com/FC-Public-Media/recorder) | whatever makes files a node catches | OBS aboard production |
 | [rodecaster-pro-ii](https://github.com/FC-Public-Media/rodecaster-pro-ii) | the RØDECaster Pro II | borrowed by station-node |
+| [roku](https://github.com/FC-Public-Media/roku) | a Roku on the studio network: the FCPM Sling channel, and OBS relayed onto it | the FC Public Roku, from production |
 | [scanner](https://github.com/FC-Public-Media/scanner) | a camera and a screen where codes are redeemed | the qr Pi, the kiosk's pickup point |
 | [ti-89](https://github.com/FC-Public-Media/ti-89) | a TI-89: the browser runner, and `cable/` for the GraphLink | the kiosk |

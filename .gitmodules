@@ -122,3 +122,8 @@
 	path = wix
 	url = https://github.com/FC-Public-Media/wix.git
 	update = none
+[submodule "troves/roku"]
+	path = troves/roku
+	url = https://fcpm-public@github.com/FC-Public-Media/roku.git
+	update = none
+	ignore = untracked
