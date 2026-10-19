@@ -9,7 +9,7 @@ layout: default
 {%- assign cc = site.data.cablecast -%}
 
 <article class="show">
-  <p class="eyebrow">Show</p>
+  <p class="eyebrow">{% if page.kind == "site" %}Site{% else %}Show{% endif %}</p>
   <h1>{{ page.title }}</h1>
 
   {%- if page.producer and page.producer != "" -%}
@@ -27,6 +27,9 @@ layout: default
   {%- endif -%}
 
   {{ content }}
+
+  {%- comment -%} A site (kind: site) is not in the Cablecast catalog: no episodes, no archive. {%- endcomment -%}
+  {%- unless page.kind == "site" -%}
 
   {%- comment -%} Normalised like propose-shows.py, but without regex: only the punctuation these titles use. {%- endcomment -%}
   {%- assign episodes = "" | split: "" -%}
@@ -71,4 +74,5 @@ layout: default
   {%- endif -%}
 
   <p><a class="btn" href="{{ '/watch/archive/' | relative_url }}">Browse everything</a></p>
+  {%- endunless -%}
 </article>

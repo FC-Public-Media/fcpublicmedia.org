@@ -49,6 +49,8 @@ A show is `site/_shows/<slug>.md` at `/watch/<slug>/`: `title`, `slug`, `kind`, 
 (Cablecast record dates, not airings), `repository` (its own repository) and `pipeline`
 (per-episode steps, see [troves/pools/README.md](../troves/pools/README.md)). Its episodes are
 `cablecast.json` filtered by title prefix, case and punctuation ignored; there are no episode pages.
+A `kind: site` record (a member's site project, like `nccv`) is not in the catalog: its page skips
+episodes and the archive link.
 
 Cablecast titles are episode titles, so a person names each show. `propose-shows.py` groups
 unclaimed titles by first word, names a group by the longest word prefix 80% of it shares (less
