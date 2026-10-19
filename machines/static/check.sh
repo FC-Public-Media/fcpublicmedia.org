@@ -7,20 +7,25 @@ bad=0
 say() {   # say OK WHAT [FIX]
   if [ "$1" = 0 ]; then echo "ok      $2"; else echo "WANTED  $2${3:+  -> $3}"; bad=$((bad + 1)); fi
 }
-dpkg-query -W -f='${Status}' jekyll 2>/dev/null | grep -q "install ok installed"
-say $? "gear jekyll (jekyll)" "sudo apt-get install jekyll"
-systemctl is-active -q fcpm-crew@static
-say $? "the static job's supervisor, fcpm-crew@static" "sudo sh machines/crew.sh install static"
-[ -f "$HOME/.local/state/fcpm/site/current/index.html" ]
-say $? "the site built for the LAN" "sh $HERE/site-build (the job's site line, every 5 minutes)"
+for package in nginx-light jekyll rsync python3-yaml; do
+  dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed"
+  say $? "gear $package" "sudo apt-get install $package"
+done
+cmp -s "$HERE/nginx.conf" /etc/nginx/sites-available/fcpm && [ -L /etc/nginx/sites-enabled/fcpm ] &&
+  [ ! -e /etc/nginx/sites-enabled/default ]
+say $? "nginx carries nginx.conf, and nothing else" "sudo sh $HERE/install"
+systemctl is-active -q nginx && ss -Hltnp 'sport = :80' | grep -q '"nginx"'
+say $? "nginx holds port 80" "sudo sh $HERE/install"
+! systemctl is-active -q fcpm-crew@static
+say $? "serve.py's old supervisor is gone" "sudo systemctl disable --now fcpm-crew@static"
 [ -f "$REPO/wix/site/index.html" ]
 say $? "the Wix copy checked out" "git submodule update --init --checkout wix"
-port=$(awk '$1 == "port:" { print $2 }' "$HERE/sites.yml")
-python3 -I "$HERE/serve.py" list | while read -r name site folder; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $name" "http://localhost:$port/")
-  [ "$code" = 200 ]; say $? "serve answers $name ($site) on :$port" "the job's serve line (serve.py)"
+python3 -I "$HERE/publish.py" list | while read -r name site folder; do
+  [ -f "$folder/index.html" ]; say $? "$site published, $folder" "python3 $HERE/publish.py"
   code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $name" http://localhost/)
-  [ "$code" = 200 ]; say $? "the door forwards $name" "a door from before static: it bounces on the next commit"
+  [ "$code" = 200 ]; say $? "nginx serves $name ($site)" "sudo sh $HERE/install"
+  code=$(curl -s -o /dev/null -w '%{http_code}' -r 0-0 -H "Host: $name" http://localhost/)
+  [ "$code" = 206 ]; say $? "nginx serves $name in pieces (Range), as Safari plays video" "sudo sh $HERE/install"
 done | { out=$(cat); echo "$out"; case "$out" in *WANTED*) exit 1 ;; esac; }
 [ $? = 0 ] || bad=$((bad + 1))
 exit $bad

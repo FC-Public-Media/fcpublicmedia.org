@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=FCPM digitization
-Comment=The door on port 80 and its page (machines/digitization/at-login)
+Comment=The door behind nginx, and its page (machines/digitization/at-login)
 Exec=/home/user/code/work/fcpublicmedia.org/machines/digitization/at-login
 NoDisplay=true

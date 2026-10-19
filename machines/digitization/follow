@@ -5,12 +5,16 @@
 # restarts itself when its checkout moves.
 # Troves are submodules (`update = none`): each is checked out at the pin, as bin/refs and the
 # kiosk's door do, so a crew line `from troves/<name>` has its code; a pin already there costs nothing.
+# When the checkout moved, the static job's sites are published from it (../static/publish.py): the
+# only time the site is built here.
 cd "$(dirname "$0")/../.." || exit 1
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 [ -z "$(git status --porcelain --ignore-submodules=all)" ] || exit 0
+was=$(git rev-parse HEAD)
 git fetch -q origin main && git merge -q --ff-only origin/main
 GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- troves
 # The Wix copy (the static job's `wix` site) is taken from this origin, where it lives first.
 o=${FCPM_ORIGIN:-/srv/origin}/FC-Public-Media/wix
 [ -d "$o" ] && git config submodule.wix.url "$o"
 GIT_TERMINAL_PROMPT=0 git -c protocol.file.allow=always submodule update -q --init --checkout -- wix
+[ "$(git rev-parse HEAD)" = "$was" ] || python3 -I machines/static/publish.py

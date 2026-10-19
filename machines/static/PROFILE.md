@@ -6,5 +6,5 @@ The computers that wear the [static](CREW.md) job. Today one: the OptiPlex 9020M
 | | |
 |---|---|
 | `names` | `linux Hostname digitization` |
-| port | `serve.py` on 8480 (`sites.yml`); the door on 80 forwards the static names to it |
-| supervisor | `fcpm-crew@static` (`../crew.sh install static`), beside `fcpm-crew@digitization` |
+| port | nginx on 80 (`nginx.conf`, by `install`); the door behind it on loopback :8081 |
+| sites | `/var/lib/fcpm/sites`, the user's; rebuilt from the checkout by `publish.py`, so it is a cache |

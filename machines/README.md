@@ -14,7 +14,7 @@ Gear comes from [`troves/`](../troves/README.md).
 | [`thin-client`](thin-client/PROFILE.md) | the kiosk's overflow console, beside the scanner | a donated HP t510 |
 | [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
-| [`static`](static/CREW.md) | finished sites to the LAN by name: the public site (built here) and the Wix copy | the OptiPlex 9020M, beside digitization |
+| [`static`](static/CREW.md) | finished sites to the LAN by name, by nginx: the public site (built here when it moves) and the Wix copy | the OptiPlex 9020M, beside digitization |
 
 [`cards/`](cards/README.md) are boot cards, not jobs: each carries the checkout, so it can start any job.
 

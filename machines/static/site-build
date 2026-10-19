@@ -1,22 +1,8 @@
 #!/bin/sh
-# site-build -- the public site, built from this checkout, so the LAN has it through a cloud outage:
-# `serve` serves it under the names lan.yml gives it (fcpublicmedia.local, www.), sites.yml's `site`.
-# Every 5 minutes from the static job's `site` line; a build only when the checkout's commit moved.
-# Jekyll is Debian's (gear.yml); the build is the deploy's (deploy.yml) with site-lan.yml's url on top.
+# site-build DEST -- the public site, built from this checkout into DEST, so the LAN has it through a
+# cloud outage. publish.py runs it when site/ or this folder moved (sites.yml's `site`, its `from`),
+# and puts DEST up only if this succeeds. Jekyll is Debian's (gear.yml); the build is the deploy's
+# (deploy.yml) with site-lan.yml's url on top.
 cd "$(dirname "$0")/../.." || exit 1
-out=$HOME/.local/state/fcpm/site
-rev=$(git rev-parse --short HEAD) || exit 1
-[ "$(readlink "$out/current" 2>/dev/null)" = "$rev" ] && exit 0
-mkdir -p "$out"
-rm -rf "$out/$rev.new"
-if ! jekyll build -q -s site -d "$out/$rev.new" --config site/_config.yml,machines/static/site-lan.yml; then
-  echo "site: build of $rev failed; $(readlink "$out/current" 2>/dev/null || echo nothing) stays up" >&2
-  exit 1
-fi
-rm -rf "$out/$rev" && mv "$out/$rev.new" "$out/$rev"
-ln -sfn "$rev" "$out/current.new" && mv -T "$out/current.new" "$out/current"
-for d in "$out"/*/; do
-  d=${d%/}
-  case "${d##*/}" in "$rev"|current*) ;; *) rm -rf "$d" ;; esac
-done
-echo "site: $rev built, served from $out/current"
+[ -n "$1" ] || { echo "site-build DEST" >&2; exit 2; }
+exec jekyll build -q -s site -d "$1" --config site/_config.yml,machines/static/site-lan.yml

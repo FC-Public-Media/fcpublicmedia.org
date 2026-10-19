@@ -1,15 +1,16 @@
 #!/bin/sh
 # at-login -- what digitization's desktop starts (fcpm-digitization.desktop, in /etc/xdg/autostart):
-# the door on port 80, kept up; the screen kept on, resting on the mark when nobody is here (rest);
-# then Vivaldi, maximized, with the door's page as a pinned tab (open-page). In the desktop, so the
-# door can ask on this screen and reach this session's ssh-agent. The door also serves what lan.yml
-# names (../lan.py): the board as helm.fcpublicmedia.local, this machine's directory and its gear;
-# the static sites' names (fcpublicmedia.local, www, wix) it forwards to the static job. See PROFILE.md.
+# the door, kept up, on loopback :8081 behind nginx's port 80 (the static job's, ../static/nginx.conf);
+# the screen kept on, resting on the mark when nobody is here (rest); then Vivaldi, maximized, with
+# the door's page as a pinned tab (open-page). In the desktop, so the door can ask on this screen and
+# reach this session's ssh-agent. The door serves what lan.yml names (../lan.py): the board as
+# helm.fcpublicmedia.local, this machine's directory and its gear; the static sites' names
+# (fcpublicmedia.local, www, wix) nginx serves itself, door or no door. See PROFILE.md.
 cd "$(dirname "$0")/../.." || exit 1
-up() { curl -fsS -o /dev/null http://localhost/revision; }
+up() { curl -fsS -o /dev/null http://127.0.0.1:8081/revision; }
 if ! up; then
   ( while :; do
-      FCPM_DOOR_PORT=80 python3 machines/kiosk/door.py serve
+      FCPM_DOOR_PORT=8081 FCPM_DOOR_BIND=127.0.0.1 FCPM_DOOR_FRONT=80 python3 machines/kiosk/door.py serve
       sleep 5
     done ) &
   for _ in $(seq 60); do up && break; sleep 1; done
