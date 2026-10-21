@@ -4,21 +4,41 @@ version: 1
 platform: linux
 
 gear:
+  - gear: nginx-light
+    for: >
+      Port 80: each site's names served as files, by Host, from /var/lib/fcpm/sites (nginx.conf);
+      every other name handed to the door on loopback. Debian's package, by `install`.
+    package: nginx-light
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own; its one site is nginx.conf, the files are publish.py's"
+
   - gear: jekyll
     for: >
-      The public site, built here from this checkout (site-build). Debian's package: the same
-      Jekyll 4 the deploy runs, no theme gem, no plugins. A site without a build needs nothing.
+      The public site, built here from this checkout (site-build) when follow moves it. Debian's
+      package: the same Jekyll 4 the deploy runs, no theme gem, no plugins. A site without a build
+      needs nothing.
     package: jekyll
     provisioner: apt
     updates: apt
     restart-tier: none
-    holds: "nothing of its own; the builds are in ~/.local/state/fcpm/site"
+    holds: "nothing of its own"
+
+  - gear: rsync
+    for: >
+      publish.py copies a site without a build (the Wix copy) to where nginx serves it.
+    package: rsync
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "nothing of its own"
 
   - gear: python3-yaml
     for: >
-      serve.py reads sites.yml and lan.yml with it, as the crew's supervisor does.
+      publish.py reads sites.yml and lan.yml with it.
     package: python3-yaml
     provisioner: apt
     updates: apt
-    restart-tier: app
+    restart-tier: none
     holds: "nothing of its own"

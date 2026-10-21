@@ -38,13 +38,12 @@ say $? "the clock synchronized from the network" "sudo timedatectl set-ntp true"
 say $? "the clock on Fort Collins time" "sudo timedatectl set-timezone America/Denver"
 [ -f /etc/ssh/sshd_config.d/10-no-passwords.conf ]
 say $? "SSH takes keys only" "/etc/ssh/sshd_config.d/10-no-passwords.conf"
-[ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start)" -le 80 ]
-say $? "the door may take port 80 without root" \
-  "echo net.ipv4.ip_unprivileged_port_start=80 | sudo tee /etc/sysctl.d/50-fcpm-door.conf && sudo sysctl --system"
 cmp -s "$HERE/fcpm-digitization.desktop" /etc/xdg/autostart/fcpm-digitization.desktop
 say $? "the desktop starts the door and its page" "sudo cp $HERE/fcpm-digitization.desktop /etc/xdg/autostart/"
+curl -fsS -o /dev/null http://127.0.0.1:8081/revision
+say $? "the door answers on loopback :8081" "log out and in, or run $HERE/at-login"
 curl -fsS -o /dev/null http://localhost/revision
-say $? "the door answers on port 80" "log out and in, or run $HERE/at-login"
+say $? "nginx hands port 80's other names to the door" "sudo sh machines/static/install"
 cmp -s "$HERE/zram-generator.conf" /etc/systemd/zram-generator.conf && grep -q '^/dev/zram' /proc/swaps
 say $? "swap in compressed RAM" "sudo cp $HERE/zram-generator.conf /etc/systemd/zram-generator.conf && sudo systemctl daemon-reload && sudo systemctl start systemd-zram-setup@zram0"
 cmp -s "$HERE/sysctl-zram.conf" /etc/sysctl.d/60-fcpm-zram.conf && [ "$(cat /proc/sys/vm/swappiness)" = 180 ]

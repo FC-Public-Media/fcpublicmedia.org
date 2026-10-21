@@ -1,0 +1,37 @@
+#!/bin/sh
+# install -- put the static job on this Linux machine: nginx on port 80 (nginx.conf), the sites'
+# folder (/var/lib/fcpm/sites, the user's), and a first publish. Run again whenever nginx.conf
+# changes; what is already right is left be. Asks sudo. See CREW.md.
+#
+# Port 80 is nginx's. Whatever held it before (the door, on digitization) moves behind it: at-login
+# starts the door on loopback :8081, where nginx.conf forwards every name that is not a site's.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+USER_=${SUDO_USER:-$(id -un)}
+[ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+
+if ! dpkg-query -W -f='${Status}' nginx-light 2>/dev/null | grep -q "install ok installed"; then
+  # Not started by the package: Debian's default site would take port 80 before ours is in place.
+  printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod 755 /usr/sbin/policy-rc.d
+  trap 'rm -f /usr/sbin/policy-rc.d' EXIT
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q nginx-light rsync >/dev/null
+  rm -f /usr/sbin/policy-rc.d
+  trap - EXIT
+fi
+install -d -o "$USER_" -g "$USER_" -m 755 /var/lib/fcpm /var/lib/fcpm/sites
+install -m 644 "$HERE/nginx.conf" /etc/nginx/sites-available/fcpm
+ln -sfn ../sites-available/fcpm /etc/nginx/sites-enabled/fcpm
+rm -f /etc/nginx/sites-enabled/default
+runuser -u "$USER_" -- python3 -I "$HERE/publish.py" || echo "install: a site did not publish (above); the rest is up"
+nginx -tq
+systemctl enable -q nginx
+held=$(ss -Hltnp 'sport = :80' | grep -v '"nginx"' || true)
+if [ -n "$held" ]; then
+  echo "install: port 80 is held by something else; nginx starts once it lets go:"
+  echo "$held"
+  exit 1
+fi
+systemctl reload-or-restart nginx
+# The job's old supervisor, from when serve.py was its server.
+systemctl disable -q --now fcpm-crew@static.service 2>/dev/null || true
+echo "static: nginx $(systemctl is-active nginx) on :80; sites in /var/lib/fcpm/sites"

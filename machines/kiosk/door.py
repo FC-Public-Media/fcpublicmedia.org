@@ -1,6 +1,7 @@
 """door — the one address the media node answers on.
 
-    door.py serve              become the door, on [::]:8080 (FCPM_DOOR_PORT moves it: 80 on digitization)
+    door.py serve              become the door, on [::]:8080 (FCPM_DOOR_PORT moves it; FCPM_DOOR_BIND=127.0.0.1
+                               puts it behind a front such as digitization's nginx, FCPM_DOOR_FRONT its port)
     door.py supervise          run `serve`, restart it when it exits, pull in the background, follow its folder if a pull moves it
     door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
@@ -30,9 +31,9 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /host/?room=<room> wizard:kiosk+host, the staff check-in: a reply bottled for a camera, or set down here
     POST /drop             a bottle set down: kept as a file, read later (replies.py); GET /drop/<name> says where it got
     GET /js/qr-encode.mjs  the site's QR encoder, for pages here
-    Host: <a LAN name>     what the profile's lan.yml says the name serves (machines/lan.py): the board, a
-                           static site (forwarded to the static job's serve.py, machines/static/sites.yml), this
-                           machine's directory of its gear, or one piece of gear. Any other name is the board
+    Host: <a LAN name>     what the profile's lan.yml says the name serves (machines/lan.py): the board, this
+                           machine's directory of its gear, or one piece of gear. Any other name is the board.
+                           A static site's names never reach the door: nginx serves them (machines/static)
     GET /ti-89/            the TI-89 runner, from its mirror (node.yml ti89:); /ti-89/local/rom to this box only
     POST /aside            a panel's Minimize: the screens step aside for the desk (see STEPPING ASIDE)
     GET /input             seconds since this computer was last touched, as JSON. Every page polls it (AWAKE_JS)
@@ -68,6 +69,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 PORT = int(os.environ.get("FCPM_DOOR_PORT") or 8080)
+# Behind a front (nginx on digitization, ../static/nginx.conf) the door listens on loopback only, and the
+# LAN reaches it on the front's port: links and its own name say that one.
+BIND = os.environ.get("FCPM_DOOR_BIND") or "::"
+FRONT = int(os.environ.get("FCPM_DOOR_FRONT") or PORT)
+LOOPBACK = ("127.0.0.1", "::1", "::ffff:127.0.0.1")
 BOUNCE = 75          # exit code meaning "my code changed, start me again"
 PULL_EVERY = 300
 STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ
@@ -2372,21 +2378,21 @@ except Exception as exc:                                   # no profile, or no P
     print("door: no LAN names: %r" % exc, file=sys.stderr)
 
 
-def static_job():
-    """(port, sites) of the static job (machines/static/sites.yml): names serving one are forwarded there."""
+def static_sites():
+    """The static job's sites (machines/static/sites.yml): nginx serves their names, never the door."""
     try:
         import yaml
         cfg = yaml.safe_load((ROOT / "machines" / "static" / "sites.yml").read_text(encoding="utf-8")) or {}
-        return int(cfg.get("port") or 8480), set(cfg.get("sites") or {})
+        return set(cfg.get("sites") or {})
     except Exception:
-        return None, set()
+        return set()
 
 
-STATIC_PORT, STATIC_SITES = static_job()
+STATIC_SITES = static_sites()
 
 
 def lan_link(name):
-    return "http://%s%s/" % (name, "" if PORT == 80 else ":%d" % PORT)
+    return "http://%s%s/" % (name, "" if FRONT == 80 else ":%d" % FRONT)
 
 
 def lan_where(names):
@@ -2704,6 +2710,21 @@ def inside(base, rel):
 class Door(BaseHTTPRequestHandler):
     server_version = "media-node-door"
 
+    def peer(self):
+        """Who asked. Through a front on this computer, the address it says (X-Real-IP); a LAN
+        machine cannot say it, since a door behind a front listens on loopback only."""
+        addr = self.client_address[0]
+        headers = getattr(self, "headers", None)       # not yet, for a request line that would not parse
+        real = headers.get("X-Real-IP") if headers else None
+        return real.strip() if real and addr in LOOPBACK else addr
+
+    def here(self):
+        """Whether the asker is this computer."""
+        return self.peer() in LOOPBACK
+
+    def address_string(self):
+        return self.peer()
+
     def log_message(self, fmt, *args):
         if getattr(self, "path", "").split("?", 1)[0] == "/input":
             return   # every panel asks twice a second; the log is for what happens
@@ -2732,7 +2753,7 @@ class Door(BaseHTTPRequestHandler):
 
     def do_POST(self):
         route = self.path.split("?", 1)[0]
-        here = self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+        here = self.here()
         # A panel was touched: the other panels wake on it too (AWAKE_JS).
         if route == "/input" and here:
             touched()
@@ -2754,7 +2775,7 @@ class Door(BaseHTTPRequestHandler):
             if not data.strip():
                 return self.reply(400, json.dumps({"why": "nothing in it"}), TYPES[".json"])
             try:
-                name = replies.drop(data, self.client_address[0])
+                name = replies.drop(data, self.peer())
             except (OSError, ValueError) as exc:
                 log("drop: %r" % exc)
                 return self.reply(500, json.dumps({"why": "not kept: %s" % exc}), TYPES[".json"])
@@ -2791,38 +2812,17 @@ class Door(BaseHTTPRequestHandler):
             return
         return self.reply(404, "", TYPES[".txt"])
 
-    def static(self):
-        """A static site's name: the request as it came, to the static job's serve.py, and its answer back."""
-        import http.client
-        try:
-            conn = http.client.HTTPConnection("127.0.0.1", STATIC_PORT, timeout=30)
-            conn.request(self.command, self.path, headers={"Host": self.headers.get("Host") or ""})
-            r = conn.getresponse()
-            body = r.read()
-        except OSError:
-            return self.reply(502, "The static job is not answering on port %s." % STATIC_PORT, TYPES[".txt"])
-        self.send_response(r.status)
-        for k, v in r.getheaders():
-            if k.lower() not in ("connection", "transfer-encoding", "server", "date"):
-                self.send_header(k, v)
-        self.end_headers()
-        if self.command != "HEAD":
-            self.wfile.write(body)
-
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
         serves, gear = NAMES.get((self.headers.get("Host") or "").split(":")[0].rstrip(".").lower(), (None, None))
-        if serves in STATIC_SITES and STATIC_PORT:
-            return self.static()
         try:
             if route == "/" and serves == "directory":
                 return self.reply(200, directory_page())
             if route == "/" and serves == "gear":
                 return self.reply(200, gear_page(gear))
             if route == "/":
-                return self.reply(200, board_page(
-                    self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")))
+                return self.reply(200, board_page(self.here()))
             if route == "/revision":
                 m = re.search(r"[?&]screen=([\w-]+)", self.path)
                 if m:
@@ -2910,7 +2910,7 @@ class Door(BaseHTTPRequestHandler):
             if route.startswith("/ti-89/"):
                 rest = route[len("/ti-89/"):]
                 if rest == "local/rom":
-                    if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                    if not self.here():
                         return self.reply(403, "", TYPES[".txt"])
                     rom = ti89_path("rom")
                     return self.reply(200, rom.read_bytes(), "application/octet-stream") \
@@ -2939,6 +2939,11 @@ class DualStack(ThreadingHTTPServer):
         super().server_bind()
 
 
+class Loopback(ThreadingHTTPServer):
+    """Behind a front: IPv4 loopback only (FCPM_DOOR_BIND=127.0.0.1)."""
+    daemon_threads = True
+
+
 _logfh = None
 
 
@@ -2965,7 +2970,7 @@ def watch_commit(server):
 
 def serve():
     try:
-        server = DualStack(("::", PORT), Door)
+        server = (DualStack if BIND == "::" else Loopback)((BIND, PORT), Door)
     except OSError as exc:
         log("port %d unavailable, refusing to pick another: %s" % (PORT, exc))
         return 1
@@ -2975,7 +2980,7 @@ def serve():
     threading.Thread(target=watch_wall, daemon=True).start()
     threading.Thread(target=watch_camera, daemon=True).start()
     threading.Thread(target=watch_replies, daemon=True).start()
-    log("door up on [::]:%d from %s at %s%s" % (PORT, ROOT, git("rev-parse", "--short", "HEAD"),
+    log("door up on %s:%d from %s at %s%s" % ("[::]" if BIND == "::" else BIND, PORT, ROOT, git("rev-parse", "--short", "HEAD"),
                                                  "; %d LAN names" % len(NAMES) if NAMES else ""))
     server.serve_forever()
     server.server_close()
@@ -3765,7 +3770,7 @@ def server_status():
 
 
 def door_url():
-    return "http://%s.local:%d/" % (socket.gethostname().lower(), PORT)
+    return "http://%s.local:%d/" % (socket.gethostname().lower(), FRONT)
 
 
 def door_answers():
