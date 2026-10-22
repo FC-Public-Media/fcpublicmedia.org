@@ -22,7 +22,7 @@ one. The home is encrypted under its holder's passphrase, asked in a window, and
 - **reachable**: sshd at boot, keys only, root by key for whoever [`lan/keys`](lan/keys) names, with the card's own
   host keys kept in its settings. So a workstation can drive the card, and install a job from it onto a
   fresh box's own disk (`machines/<job>/install root@card.local DISK SERIAL`). `kit` makes every card so,
-  including one built before this.
+  including one built before this. `shutdown` turns it off (`-r` reboots), as a person expects.
   [`lan/kit DIR`](lan/kit) makes or refreshes one on any Linux; saved settings already there are kept.
 - **code** (ext4) at `/srv/code`: the checkout that built the card, outside the home so a job can
   start before anyone unlocks it.

@@ -70,8 +70,22 @@ chmod 700 "$S/root" "$S/root/.ssh"; chmod 600 "$S/root/.ssh/authorized_keys"
 for t in ed25519 rsa ecdsa; do
   [ -f "$S/etc/ssh/ssh_host_${t}_key" ] || ssh-keygen -q -t "$t" -N '' -C "$(cat "$S/etc/hostname")" -f "$S/etc/ssh/ssh_host_${t}_key"
 done
-# lbu keeps /root from now on too, so a commit on the card does not drop the keys.
-grep -qx "+root" "$S/etc/apk/protected_paths.d/lbu.list" 2>/dev/null || { mkdir -p "$S/etc/apk/protected_paths.d"; echo "+root" >> "$S/etc/apk/protected_paths.d/lbu.list"; }
+# `shutdown` turns the card off, as a person at it expects (Alpine has only poweroff and reboot):
+# shutdown, shutdown now, shutdown -h now power off; shutdown -r reboots. From the seat, by doas.
+mkdir -p "$S/usr/local/bin"
+cat > "$S/usr/local/bin/shutdown" <<'SH'
+#!/bin/sh
+# shutdown [now|-h|-P|-r] ... : power off, or reboot with -r. This card's (machines/cards/lan/kit).
+case " $* " in *" -r "*|*" --reboot "*) a=reboot ;; *) a=poweroff ;; esac
+[ "$(id -u)" = 0 ] && exec "$a"
+exec doas "$a"
+SH
+chmod 755 "$S/usr/local/bin/shutdown"
+# lbu keeps /root and /usr/local/bin from now on too, so a commit on the card does not drop them.
+mkdir -p "$S/etc/apk/protected_paths.d"
+for p in +root +usr/local/bin; do
+  grep -qx "$p" "$S/etc/apk/protected_paths.d/lbu.list" 2>/dev/null || echo "$p" >> "$S/etc/apk/protected_paths.d/lbu.list"
+done
 (cd "$S" && tar -czf "$W/settings.tar.gz" $(ls -A))
 cp "$W/settings.tar.gz" "$O"
 echo "kit: $(basename "$O"): sshd at boot, root by key for $(grep -c . "$S/root/.ssh/authorized_keys") key(s), host key $(ssh-keygen -lf "$S/etc/ssh/ssh_host_ed25519_key.pub" | cut -d' ' -f2)"
