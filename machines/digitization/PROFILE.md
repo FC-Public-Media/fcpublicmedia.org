@@ -67,5 +67,10 @@ repositories fcpublicmedia.org mounts. They live on the card's own `card-origin`
 own merge commit; a conflict is recorded in `/srv/origin/.intake/state.json` and `main` is untouched.
 Nothing is forced or deleted, and every action is appended to `/srv/origin/.intake/actions.ndjson`.
 
+A repository can also begin here, with no GitHub side: intake passes over it (it has no `github`
+remote) and the standby carries it to origin.local like the rest. Making one is a deliberate act, not
+a convenience: `git init --bare -b main`, the two `receive.deny*` settings, a `description`. The
+first is `FC-Public-Media/broadcast` (2026-10-21), the broadcast job's look ([`../broadcast/PROFILE.md`](../broadcast/PROFILE.md)).
+
 The LAN may push only authenticated fast-forwards (`receive.denyNonFastForwards`, `receive.denyDeletes`;
 no pull requests here). The SSH door, keyed from `KEYHOLDERS`, is not open yet.
