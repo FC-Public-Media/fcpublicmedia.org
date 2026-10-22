@@ -1,0 +1,6 @@
+# world -- what a lan card runs on: Alpine package names, the card's whole software. `kit` caches them on
+# the card's kit partition; `settle` installs them at boot from that cache, never from the network. A
+# package added here reaches a card when it is rolled forward to a tag that has it (../sideload, ../roll).
+alpine-base bash doas cryptsetup e2fsprogs dosfstools util-linux tzdata chrony dbus avahi avahi-tools
+openssh-client openssh-server git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less
+rsync nginx

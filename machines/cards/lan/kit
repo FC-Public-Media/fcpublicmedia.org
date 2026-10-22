@@ -8,8 +8,7 @@ OUT="${1:?usage: kit DIR}"; mkdir -p "$OUT/cache" "$OUT/bin"
 ISO="${ISO:-$(ls "${TOOLBOX:-/srv/toolbox}"/isos/alpine-standard-*-x86_64.iso | tail -1)}"
 MIRROR=https://dl-cdn.alpinelinux.org/alpine
 CLAUDE=https://downloads.claude.ai/claude-code-releases
-WORLD="alpine-base bash doas cryptsetup e2fsprogs dosfstools util-linux tzdata chrony dbus avahi
-  avahi-tools openssh-client openssh-server git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less"
+WORLD="$(grep -v '^[[:space:]]*#' "$HERE/world" | tr -s ' \n' ' ')"     # the card's software, one list (./world)
 
 (cd "$(dirname "$ISO")" && sha256sum -c --quiet "$(basename "$ISO").sha256")
 W="$(mktemp -d /var/tmp/kit.XXXXXX)"; R="$W/root"
@@ -81,6 +80,11 @@ case " $* " in *" -r "*|*" --reboot "*) a=reboot ;; *) a=poweroff ;; esac
 exec doas "$a"
 SH
 chmod 755 "$S/usr/local/bin/shutdown"
+# At boot, after the checkout is mounted, the card applies its type from that checkpoint (./settle):
+# what the card does comes from the tag it was rolled to, not from what was baked in here.
+mkdir -p "$S/etc/local.d"
+printf '#!/bin/sh\nS=/srv/code/fcpublicmedia.org/machines/cards/lan/settle\n[ -x "$S" ] && "$S"\n' > "$S/etc/local.d/settle.start"
+chmod 755 "$S/etc/local.d/settle.start"
 # lbu keeps /root and /usr/local/bin from now on too, so a commit on the card does not drop them.
 mkdir -p "$S/etc/apk/protected_paths.d"
 for p in +root +usr/local/bin; do

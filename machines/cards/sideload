@@ -1,0 +1,31 @@
+#!/bin/sh
+# sideload TYPE /dev/sdX [REF] -- roll a card in a reader forward, in place. Never a reformat, never its
+# home, never its boot partitions: its checkout (the `code` partition) moves to REF, by default the
+# newest tag cards/TYPE/* in this repository, and its kit is refreshed by that checkout's own `kit`:
+# its packages (new ones too) and its settings layer. At its next boot the card settles from it.
+# Run as the desktop's user; it asks sudo. ./roll does the same to a card that is running.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+TYPE=${1:?sideload TYPE /dev/sdX [REF]}; DEV=${2:?sideload TYPE /dev/sdX [REF]}
+[ -f "$HERE/$TYPE/card" ] || { echo "no card type $TYPE"; exit 2; }
+. "$HERE/$TYPE/card"
+REPO=$(git -C "$HERE" rev-parse --show-toplevel)
+REF=${3:-$(git -C "$REPO" tag -l "cards/$TYPE/*" --sort=-creatordate | head -1)}
+[ -n "$REF" ] || { echo "sideload: no tag cards/$TYPE/* here; name a REF"; exit 2; }
+SHA=$(git -C "$REPO" rev-parse --verify "$REF^{commit}")
+[ -z "$(lsblk -rno MOUNTPOINTS "$DEV" | grep .)" ] || { echo "sideload: $DEV has something mounted; it must be a card at rest."; exit 1; }
+part() { lsblk -rno PATH,LABEL "$DEV" | awk -v l="$label-$1" '$2 == l { print $1 }'; }
+CODE=$(part code); KIT=$(part kit)
+[ -n "$CODE" ] && [ -n "$KIT" ] || { echo "sideload: $DEV is not a $TYPE card (no $label-code and $label-kit)"; exit 1; }
+W=$(mktemp -d); trap 'sudo umount "$W/code" "$W/kit" 2>/dev/null || true; rmdir "$W/code" "$W/kit" "$W" 2>/dev/null || true' EXIT
+mkdir "$W/code" "$W/kit"
+sudo mount "$CODE" "$W/code"; sudo mount "$KIT" "$W/kit"
+C="$W/code/fcpublicmedia.org"; g() { sudo git -c safe.directory='*' -C "$C" "$@"; }
+[ -z "$(g status --porcelain --untracked-files=no)" ] || { echo "sideload: the card's checkout has changes of its own; not rolling over them."; exit 1; }
+before=$(g describe --tags --always 2>/dev/null)
+g fetch -q "$REPO" "$SHA" "+refs/tags/cards/*:refs/tags/cards/*"
+g checkout -q --detach "$SHA"
+sudo chown -R 1000:1000 "$W/code"
+sudo bash "$C/machines/cards/$TYPE/kit" "$W/kit"
+sync
+echo "sideload: $(lsblk -dno SERIAL "$DEV") rolled from $before to $(g describe --tags --always)"

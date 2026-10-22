@@ -1,0 +1,23 @@
+#!/bin/sh
+# roll root@HOST [REF] -- roll a running lan card forward, from here: its checkout gets REF (by default
+# the newest tag cards/lan/* in this repository) pushed into it, the card settles from it, installs
+# what its world lists and its cache lacks (it is running, so it may fetch), keeps the packages in its
+# cache and saves its settings (lbu). Nothing on the card goes looking for the update: it is brought.
+# ./sideload does the same to a card in a reader.
+set -eu
+TARGET=${1:?roll root@HOST [REF]}
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+REF=${2:-$(git -C "$REPO" tag -l 'cards/lan/*' --sort=-creatordate | head -1)}
+[ -n "$REF" ] || { echo "roll: no tag cards/lan/* here; name a REF"; exit 2; }
+SHA=$(git -C "$REPO" rev-parse --verify "$REF^{commit}")
+C=/srv/code/fcpublicmedia.org
+git -C "$REPO" push -q "$TARGET:$C" "$SHA:refs/heads/roll" "+refs/tags/cards/*:refs/tags/cards/*" 2>/dev/null ||
+  git -C "$REPO" push -q -f "$TARGET:$C" "$SHA:refs/heads/roll"
+ssh -o BatchMode=yes "$TARGET" "set -e
+  git -c safe.directory='*' -C $C checkout -q --detach $SHA
+  chown -R 1000:1000 $C
+  apk add -q \$(grep -v '^[[:space:]]*#' $C/machines/cards/lan/world)
+  $C/machines/cards/lan/settle
+  apk cache -q sync 2>/dev/null || true
+  lbu commit -d
+  echo \"roll: \$(hostname) on \$(git -c safe.directory='*' -C $C describe --tags --always)\""

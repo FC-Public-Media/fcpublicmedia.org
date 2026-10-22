@@ -1,0 +1,34 @@
+#!/bin/sh
+# settle -- a lan card at boot, as root, from the checkpoint it carries (/srv/code/fcpublicmedia.org):
+# its type applied from that checkout, never from the network, so it cannot stall looking for an
+# update. Run by /etc/local.d/settle.start after code.start mounts the checkout. Safe to run again.
+#
+# What it makes so: every package in ./world installed from the card's own cache (one the cache lacks
+# is named, not fetched); sshd, keys only, root by the keys in ./keys; `shutdown` as a person expects;
+# lbu keeping /root and /usr/local/bin. Then it says which checkpoint it is on.
+HERE=$(cd "$(dirname "$0")" && pwd)
+REPO=$(cd "$HERE/../../.." && pwd)
+pkgs=$(grep -v '^[[:space:]]*#' "$HERE/world" | tr -s ' \n' ' ')
+missing=""
+for p in $pkgs; do apk info -e "$p" >/dev/null 2>&1 || missing="$missing $p"; done
+[ -z "$missing" ] || apk add -q --no-network $missing 2>/dev/null || true
+for p in $missing; do apk info -e "$p" >/dev/null 2>&1 || echo "settle: $p is not in this card's cache; roll it forward (machines/cards/sideload)"; done
+
+mkdir -p /etc/ssh/sshd_config.d /root/.ssh /usr/local/bin /etc/apk/protected_paths.d
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/10-fcpm.conf
+grep -v '^[[:space:]]*#' "$HERE/keys" | grep . > /root/.ssh/authorized_keys.new && mv /root/.ssh/authorized_keys.new /root/.ssh/authorized_keys
+chmod 700 /root /root/.ssh; chmod 600 /root/.ssh/authorized_keys
+cat > /usr/local/bin/shutdown <<'SH'
+#!/bin/sh
+# shutdown [now|-h|-P|-r] ... : power off, or reboot with -r. This card's (machines/cards/lan/settle).
+case " $* " in *" -r "*|*" --reboot "*) a=reboot ;; *) a=poweroff ;; esac
+[ "$(id -u)" = 0 ] && exec "$a"
+exec doas "$a"
+SH
+chmod 755 /usr/local/bin/shutdown
+for p in +root +usr/local/bin; do grep -qx "$p" /etc/apk/protected_paths.d/lbu.list 2>/dev/null || echo "$p" >> /etc/apk/protected_paths.d/lbu.list; done
+rc-update -q add sshd default 2>/dev/null || true
+rc-service -q sshd status >/dev/null 2>&1 || rc-service -q sshd start 2>/dev/null || true
+
+at=$(git -c safe.directory='*' -C "$REPO" describe --tags --match 'cards/lan/*' --always 2>/dev/null)
+echo "settle: lan card on $at" | tee /run/fcpm-settle
