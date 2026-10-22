@@ -15,6 +15,7 @@ Gear comes from [`troves/`](../troves/README.md).
 | [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 | [`static`](static/CREW.md) | finished sites to the LAN by name, by nginx: the public site (built here when it moves) and the Wix copy | the OptiPlex 9020M, beside digitization |
+| [`broadcast`](broadcast/PROFILE.md) | channel 97: what plays out and records, its schedule, our fields on its shows, the public Internet Channel. Vendor software we drive by its API ([`cablecast.py`](broadcast/cablecast.py)) | the Cablecast server in the building's server room (`10.1.10.84`) |
 
 [`cards/`](cards/README.md) are boot cards, not jobs: each carries the checkout, so it can start any job.
 

@@ -1,0 +1,22 @@
+# Show fields FCPM keeps on the broadcast box (Cablecast "field definitions", each bound to shows).
+# All optional and empty until our scheduling fills them. None is on the public site: it shows only
+# the fields its own list names (PROFILE.md, "The public site").
+# `cablecast.py fields` creates what is missing here; it never changes or deletes a field.
+fields:
+  - name: FCPM ID
+    type: text
+    widget: inline-text
+    for: "our own id for the episode. Shows are found by it, never by Cablecast's numbers. (`localId` is taken by the upload: it holds the file's name.)"
+  - name: Runtime Category
+    type: tag
+    widget: inline-text
+    for: "the runtime bucket the scheduler places by. Free-form; most are empty for now."
+  - name: Source Repo
+    type: text
+    widget: inline-text
+    for: "the member repository the episode came from (FC-Public-Media/show-<name>)."
+  - name: Rerun Eligible
+    type: select
+    widget: inline-text
+    options: ["yes", "no"]
+    for: "new programming never draws on the archive; a show airs again only when this says yes."
