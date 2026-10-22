@@ -70,13 +70,25 @@ class Door(unittest.TestCase):
         self.assertEqual((push["office"], push["holder"], push["ok"]), ("technology", "Tester", True))
         self.assertEqual(push["moved"]["refs/heads/main"], [None, head])
 
-    def test_a_repository_on_github_takes_no_push_from_the_lan(self):
+    def test_main_of_a_repository_on_github_is_intakes(self):
         work = self.clone("FC-Public-Media/hub")
         self.commit(work, "x")
-        run = self.git("push", "-q", "origin", "HEAD:main", cwd=work, check=False)
-        self.assertNotEqual(run.returncode, 0)
-        self.assertIn("lives on GitHub", run.stderr)
+        for ref in ("main", "github/main"):
+            run = self.git("push", "-q", "origin", f"HEAD:{ref}", cwd=work, check=False)
+            self.assertNotEqual(run.returncode, 0, ref)
+            self.assertIn("by intake", run.stderr)
         self.assertEqual(self.git("-C", str(self.origin / "FC-Public-Media/hub"), "for-each-ref").stdout, "")
+
+    def test_a_branch_waits_at_the_origin_for_github(self):
+        work = self.clone("FC-Public-Media/hub")
+        self.commit(work, "x")
+        self.git("push", "-q", "origin", "HEAD:refs/heads/brand-source", cwd=work)
+        self.git("update-ref", "refs/tags/snapshot-1", "HEAD", cwd=work)
+        self.git("push", "-q", "origin", "snapshot-1", cwd=work)
+        held = self.git("-C", str(self.origin / "FC-Public-Media/hub"), "for-each-ref", "--format=%(refname)").stdout.split()
+        self.assertEqual(held, ["refs/heads/brand-source", "refs/tags/snapshot-1"])
+        push = [r for r in self.log() if r["verb"] == "push"][-1]
+        self.assertIn("refs/tags/snapshot-1", push["moved"])
 
     def test_history_is_never_rewritten(self):
         work = self.clone("FC-Public-Media/lan")

@@ -1,0 +1,15 @@
+#!/bin/sh
+# pre-receive -- the origin door's one rule about refs (origin-door). In a repository that lives on
+# GitHub, main and github/* are intake's: GitHub's main comes in by intake alone. Other branches and
+# tags may wait here for GitHub. A repository that began here takes any ref.
+[ -n "$FCPM_DOOR_GITHUB" ] || exit 0
+status=0
+while read -r old new ref; do
+  case "$ref" in
+    refs/heads/main|refs/heads/github/*)
+      echo "origin: $ref of $FCPM_DOOR_REPO comes from GitHub ($FCPM_DOOR_GITHUB) by intake."
+      echo "origin: push a branch to wait here for GitHub, or open a pull request there."
+      status=1 ;;
+  esac
+done
+exit $status
