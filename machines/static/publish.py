@@ -6,9 +6,10 @@
     python3 machines/static/publish.py push     push every site that is up here to the static host
 
 What moves is pushed to the static host too (./deploy, static.local, FCPM_STATIC_HOST): this machine
-builds, the host serves. A site with `export: owner/repo` is that repository's main as committed, taken
-from the origin (FCPM_ORIGIN_URL) by `git archive`, so a submodule (a private mount) comes out empty by
-construction: nothing is built. A site with none of build, root or export is pushed by its own project.
+builds, the host serves. A site with `export: owner/repo` is that repository's main as committed, by
+`git archive`, so a submodule (a private mount) comes out empty by construction: nothing is built. It
+is taken from the origin (FCPM_ORIGIN_URL), or from GitHub when sites.yml says `export_from: github`
+(a member's own software, which the origin does not keep), asked there at most every 15 minutes. A site with none of build, root or export is pushed by its own project.
 
 Each site goes to <sites>/<site>/<rev>, then <site>/current points at it, and every LAN name
 lan.yml gives the site is a link by-name/<name> -> ../<site>/current, which nginx serves by Host.
@@ -25,6 +26,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
@@ -68,18 +70,32 @@ ORIGIN_URL = os.environ.get("FCPM_ORIGIN_URL") or "fcpm-origin:/srv/origin"
 CACHE = pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache") / "fcpm" / "export"
 
 
-def export_rev(full):
-    """The origin's main for owner/repo (short), fetched into a bare cache here; None if out of reach."""
+GITHUB_EVERY = 15 * 60                  # seconds: GitHub is asked no oftener than the origin asks it
+
+
+def export_rev(full, source="origin"):
+    """owner/repo's main (short), fetched into a bare cache here from the origin, or from GitHub at most
+    every 15 minutes; None if out of reach."""
     bare = CACHE / (full + ".git")
     if not bare.is_dir():
         bare.parent.mkdir(parents=True, exist_ok=True)
         if subprocess.run(["git", "init", "-q", "--bare", str(bare)]).returncode != 0:
             return None
-    r = subprocess.run(["git", "-C", str(bare), "fetch", "-q", "%s/%s" % (ORIGIN_URL, full),
-                        "+refs/heads/main:refs/heads/main"], capture_output=True, text=True)
-    if r.returncode != 0:
-        print("%s: the origin did not answer: %s" % (full, r.stderr.strip()[-200:]), file=sys.stderr)
-        return None
+    if source == "github":
+        asked = bare / "asked"
+        if not (asked.exists() and time.time() - asked.stat().st_mtime < GITHUB_EVERY):
+            r = subprocess.run(["git", "-C", str(bare), "-c", "credential.helper=!gh auth git-credential", "fetch", "-q",
+                                "https://github.com/%s.git" % full, "+refs/heads/main:refs/heads/main"],
+                               capture_output=True, text=True)
+            asked.touch()
+            if r.returncode != 0:
+                print("%s: GitHub did not answer: %s" % (full, r.stderr.strip()[-200:]), file=sys.stderr)
+    else:
+        r = subprocess.run(["git", "-C", str(bare), "fetch", "-q", "%s/%s" % (ORIGIN_URL, full),
+                            "+refs/heads/main:refs/heads/main"], capture_output=True, text=True)
+        if r.returncode != 0:
+            print("%s: the origin did not answer: %s" % (full, r.stderr.strip()[-200:]), file=sys.stderr)
+            return None
     return subprocess.run(["git", "-C", str(bare), "rev-parse", "--short", "main"],
                           capture_output=True, text=True).stdout.strip() or None
 
@@ -111,7 +127,7 @@ def publish(name, site):
         return True                     # pushed by its own project (`fcpm deploy`)
     out = SITES / name
     if site.get("export"):
-        at = export_rev(site["export"])
+        at = export_rev(site["export"], site.get("export_from") or "origin")
     elif site.get("build"):
         at = rev(site.get("from") or ["."])
     else:
