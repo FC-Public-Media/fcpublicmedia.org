@@ -1,6 +1,6 @@
 #!/bin/sh
 # outfit -- the origin job on this box, as root: its accounts and keys, the repositories' rules, its
-# screen on a leash, its services. Alpine. Any box will do; nothing here asks what it is.
+# intake from GitHub, the LAN's dev switch, its screen painted here, its services. Alpine. Any box will do; nothing here asks what it is.
 #
 #   outfit                   this system (a running origin, or a new one from inside, chrooted)
 #   outfit DISK SERIAL       from Alpine's live system: install onto DISK, then outfit it. ERASES DISK.
@@ -8,13 +8,13 @@
 #                            and is never the disk the live system came from.
 #
 # Sent with its files and settings by ./install, which also says where they come from:
-#   FCPM_KEYS  GIT_KEYS  PAGE  PAGE_HOSTKEY  NAME  ROOM_TZ  [NOW=1: start what it sets up]
+#   FCPM_KEYS  NAME  ROOM_TZ  [NOW=1: start what it sets up]
 #   [SCREEN_FONT_PKG SCREEN_FONT: the screen's font, font-jetbrains-mono JetBrainsMono-Bold.ttf]
 # Safe to run again. See PROFILE.md.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 [ -f "$HERE/settings" ] && . "$HERE/settings"
-: "${FCPM_KEYS:?}" "${GIT_KEYS:?}" "${PAGE:?}" "${NAME:=origin}" "${ROOM_TZ:=America/Denver}"
+: "${FCPM_KEYS:?}" "${NAME:=origin}" "${ROOM_TZ:=America/Denver}"
 LIB=/usr/local/lib/fcpm
 
 if [ $# -eq 2 ]; then
@@ -53,13 +53,15 @@ if [ $# -eq 2 ]; then
   exit 0
 fi
 
-apk add -q git sudo avahi avahi-tools dbus python3 chrony openssh
+apk add -q git github-cli sudo avahi avahi-tools dbus python3 chrony openssh
 echo "$NAME" > /etc/hostname
 setup-timezone -z "$ROOM_TZ" >/dev/null
 
-# fcpm: management, by key, with sudo. git: pushes, git-shell only. leash: the screen, nothing else.
+# fcpm: management, by key, with sudo. git: the repositories, intake, and the door every key of its is forced
+# through (KEYHOLDERS). leash: the screen, nothing else.
 id fcpm >/dev/null 2>&1 || adduser -D -s /bin/sh fcpm
-id git >/dev/null 2>&1 || adduser -D -h /srv/git -s /usr/bin/git-shell git
+id git >/dev/null 2>&1 || adduser -D -h /srv/git -s /bin/sh git
+usermod -s /bin/sh git 2>/dev/null || sed -i 's|^\(git:.*:\)/usr/bin/git-shell$|\1/bin/sh|' /etc/passwd
 id leash >/dev/null 2>&1 || adduser -D -s /bin/sh leash
 sed -i -E 's/^(fcpm|git):!:/\1:*:/' /etc/shadow      # sshd refuses a locked account, even by key
 passwd -l root >/dev/null 2>&1 || true
@@ -70,7 +72,6 @@ keys() {
   chown "$1:$1" "$2/.ssh/authorized_keys"; chmod 600 "$2/.ssh/authorized_keys"
 }
 keys fcpm /home/fcpm "$FCPM_KEYS"
-keys git /srv/git "$GIT_KEYS"
 echo 'fcpm ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/fcpm; chmod 440 /etc/sudoers.d/fcpm
 rm -f /etc/sudoers.d/fcpm-standby
 mkdir -p /etc/ssh/sshd_config.d
@@ -89,24 +90,28 @@ grep -q '^Include /etc/ssh/ssh_config.d' /etc/ssh/ssh_config || sed -i '1i Inclu
 install -d -o git -g git /srv/origin
 git config --system receive.denyNonFastForwards true
 git config --system receive.denyDeletes true
-G=/srv/git/git-shell-commands; mkdir -p $G
-cat > $G/init <<'I'
-#!/bin/sh
-# init <owner>/<repo>: an empty bare repository under /srv/origin, if it isn't there yet.
-printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_-][A-Za-z0-9._-]*/[A-Za-z0-9_-][A-Za-z0-9._-]*$' || { echo "init: want <owner>/<repo>" >&2; exit 1; }
-case "$1" in *..*) echo "init: bad name" >&2; exit 1;; esac
-[ -f "/srv/origin/$1/HEAD" ] && exit 0
-exec git init -q --bare "/srv/origin/$1"
-I
-printf '#!/bin/sh\necho "%s: git only." >&2\nexit 128\n' "$NAME" > $G/no-interactive-login
-chmod 755 $G/init $G/no-interactive-login; chown -R git:git $G
+rm -rf /srv/git/git-shell-commands                   # every key is forced through the door now
 
-# The screen: tty1 is the leash, painted by the page at $PAGE; a keyboard login stays on tty2.
-install -d $LIB; install -m 755 "$HERE/leash.py" "$HERE/facts.py" $LIB/
-install -d -m 700 -o leash -g leash /home/leash/.ssh
-[ -f /home/leash/.ssh/id_ed25519 ] || su -s /bin/sh leash -c "ssh-keygen -q -t ed25519 -N '' -C '$NAME screen' -f /home/leash/.ssh/id_ed25519"
-[ -z "${PAGE_HOSTKEY:-}" ] || { printf '%s\n' "$PAGE_HOSTKEY" > /home/leash/.ssh/known_hosts; chown leash:leash /home/leash/.ssh/known_hosts; }
-LINE="tty1::respawn:/bin/su -s /bin/sh leash -c 'exec env TERM=linux LANG=C.UTF-8 /usr/bin/python3 $LIB/leash.py --facts $LIB/facts.py -- /usr/bin/ssh -T -o BatchMode=yes -o ServerAliveInterval=10 -o ServerAliveCountMax=3 $PAGE'"
+# Intake: GitHub's main into every repository, as git, every minute by cron (it paces itself: 10
+# minutes while dev is on, weekly while off). GitHub is asked as the account `gh auth login` gave
+# git (./github-login); until then intake says GitHub is out of reach, on the screen too.
+install -d $LIB; install -m 755 "$HERE/intake" "$HERE/run-intake" "$HERE/door" $LIB/
+install -m 644 "$HERE/KEYHOLDERS" $LIB/KEYHOLDERS
+install -d $LIB/door-hooks; install -m 755 "$HERE/door-hooks/pre-receive" $LIB/door-hooks/
+install -d -o git -g git /var/log/fcpm /srv/origin/.intake
+# The git account's keys: only the door's block, each key forced through it. An unforced key would be
+# a shell, so the file starts empty and only `door keys` writes it (run-intake keeps it as KEYHOLDERS says).
+install -d -m 700 -o git -g git /srv/git/.ssh
+install -m 600 -o git -g git /dev/null /srv/git/.ssh/authorized_keys
+su -s /bin/sh git -c "FCPM_KEYHOLDERS=$LIB/KEYHOLDERS FCPM_AUTHORIZED_KEYS=/srv/git/.ssh/authorized_keys python3 -I $LIB/door keys"
+echo '* * * * * /bin/sh /usr/local/lib/fcpm/run-intake' > /etc/crontabs/git
+chmod 600 /etc/crontabs/git
+
+# The screen: tty1 is the leash, its page painted here, from this box's own origin and intake's log;
+# no other machine holds it. A keyboard login stays on tty2.
+install -m 755 "$HERE/leash.py" "$HERE/facts.py" "$HERE/page.py" $LIB/
+rm -rf /home/leash/.ssh                              # the leash no longer reaches out
+LINE="tty1::respawn:/bin/su -s /bin/sh leash -c 'exec env TERM=linux LANG=C.UTF-8 TZ=$ROOM_TZ FCPM_LOGS=/var/log/fcpm FCPM_ORIGIN_JOB=intake /usr/bin/python3 $LIB/leash.py --facts $LIB/facts.py -- /usr/bin/python3 $LIB/page.py /srv/origin'"
 grep -v '^tty1::' /etc/inittab > /etc/inittab.new
 printf '%s\n' "$LINE" >> /etc/inittab.new; mv /etc/inittab.new /etc/inittab
 
@@ -135,10 +140,10 @@ echo 'consolefont="fcpm-screen.psf"' > /etc/conf.d/consolefont
 rc-update add consolefont boot >/dev/null 2>&1 || true
 [ "${NOW:-}" = 1 ] && setfont -C /dev/tty1 /usr/share/consolefonts/fcpm-screen.psf 2>/dev/null || true
 
-for s in networking sshd chronyd dbus avahi-daemon; do rc-update add $s default >/dev/null 2>&1 || true; done
+for s in networking sshd chronyd dbus avahi-daemon crond; do rc-update add $s default >/dev/null 2>&1 || true; done
 if [ "${NOW:-}" = 1 ]; then
-  for s in sshd chronyd dbus avahi-daemon; do rc-service $s start >/dev/null 2>&1 || true; done
+  for s in sshd chronyd dbus avahi-daemon crond; do rc-service $s start >/dev/null 2>&1 || true; done
   rc-service sshd reload >/dev/null 2>&1 || true
   kill -HUP 1; pkill -f 'getty 38400 tty1' 2>/dev/null || true
 fi
-echo "LEASH-KEY: $(cat /home/leash/.ssh/id_ed25519.pub)"
+echo "OUTFITTED: $NAME"

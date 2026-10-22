@@ -1,0 +1,9 @@
+# KEYHOLDERS: who may reach FCPM's origin (origin.local) by key, and who can be cut off: its door
+# (./door), the only way into its git account. Public halves only; revoking is emptying a line by
+# merged PR. The box reads this file from its own copy of main every minute. See PROFILE.md.
+# A key is its type and its text, from the holder's `.pub` file: ssh-ed25519 AAAA..., or a passkey's
+# sk-ssh-ed25519@openssh.com AAAA..., which asks for the device at every push. `-` is an empty slot.
+
+# office      holder    key type and key                        since
+secretary     Autumn    -                                       -
+workstation   digitization  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDL8JGISv1fAIISOJDQTaV3z/p4ncm1kNuZ/zYecb/fO  2026-10-21

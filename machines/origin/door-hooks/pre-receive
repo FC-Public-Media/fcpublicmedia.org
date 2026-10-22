@@ -1,5 +1,5 @@
 #!/bin/sh
-# pre-receive -- the origin door's one rule about refs (origin-door). In a repository that lives on
+# pre-receive -- the origin door's one rule about refs (../door). In a repository that lives on
 # GitHub, main and github/* are intake's: GitHub's main comes in by intake alone. Other branches and
 # tags may wait here for GitHub. A repository that began here takes any ref.
 [ -n "$FCPM_DOOR_GITHUB" ] || exit 0

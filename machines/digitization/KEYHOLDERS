@@ -1,8 +1,0 @@
-# KEYHOLDERS: who may prove themselves to this machine, by key, and who can be cut off.
-# Public halves only; revoking is emptying a line by merged PR. A key here opens the origin's SSH
-# door (origin-door) within a minute of reaching this checkout. See PROFILE.md, The origin.
-# A key is its type and its text, from the holder's `.pub` file: ssh-ed25519 AAAA..., or a passkey's
-# sk-ssh-ed25519@openssh.com AAAA..., which asks for the device at every push. `-` is an empty slot.
-
-# office      holder    key type and key                        since
-secretary     Autumn    -                                       -

@@ -50,14 +50,21 @@ case "$cmd" in
     "$CODE/bin/refs" pull "$(basename "$REPO")" || exit
     exec "$HERE/sync" install ;;
   dev)
-    # On: the pool pulls GitHub every 5 minutes and places what merged
-    # (Autumn, 2026-10-09), and digitization's origin-intake every 10 minutes.
-    # Off: the weekly pull and people, as before; intake weekly (Autumn, 2026-10-13).
+    # The LAN's switch is the origin's (../origin/dev): while on, its intake
+    # asks GitHub every 10 minutes; off, weekly (Autumn, 2026-10-13, 2026-10-21).
+    # The flag here is this machine's pool's (every 5 minutes while on;
+    # Autumn, 2026-10-09), kept beside it.
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
+    o=${FCPM_ORIGIN_SSH:-origin-standby}
     case "${1:-status}" in
-      on)  mkdir -p "$(dirname "$f")" && : > "$f" && echo "dev: on. GitHub is asked every few minutes: the pool's pull, the origin's intake" ;;
-      off) rm -f "$f" && echo "dev: off. GitHub weekly: the weekly pull, the origin's intake" ;;
-      status) [ -f "$f" ] && echo "dev: on" || echo "dev: off" ;;
+      on|off)
+        if [ "$1" = on ]; then mkdir -p "$(dirname "$f")" && : > "$f"; else rm -f "$f"; fi
+        ssh -o BatchMode=yes -o ConnectTimeout=10 "$o" dev "$1" 2>/dev/null | sed 's/^/origin.local /' ||
+          echo "origin.local did not answer; this machine's pool is $1, the LAN's switch is unchanged" ;;
+      status)
+        ssh -o BatchMode=yes -o ConnectTimeout=10 "$o" dev status 2>/dev/null | sed 's/^/origin.local /' ||
+          echo "origin.local did not answer"
+        [ -f "$f" ] && echo "here: dev on" || echo "here: dev off" ;;
       *) echo "fcpm dev [status|on|off]" >&2; exit 2 ;;
     esac ;;
   pool)

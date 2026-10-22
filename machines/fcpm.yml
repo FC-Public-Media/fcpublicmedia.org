@@ -40,14 +40,14 @@ verbs:
     args: ""
     says: "bring in the latest, once a week (the task runs it)"
     windows: machines/watch weekly
-    linux: "not: no weekly task; origin-intake asks GitHub weekly by itself (fcpm dev)"
+    linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
   - verb: dev
     args: "[status|on|off]"
     says: "on: GitHub is asked every few minutes; off: weekly"
     board: switch
     windows: "the flag %LOCALAPPDATA%\\fcpm\\dev; the pool and the door read it"
-    linux: "the flag ~/.local/state/fcpm/dev; origin-intake and the door read it"
+    linux: "origin.local's switch (`ssh git@origin.local dev on`), which paces its intake; the flag ~/.local/state/fcpm/dev beside it for the door"
 
   - verb: pool
     args: "[status|pass|off|on|install]"

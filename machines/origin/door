@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""origin-door — the origin's SSH door: keyholders fetch and push over the LAN, by key, as their office.
+"""door — the origin's SSH door on origin.local: keyholders fetch and push over the LAN, by key, as
+their office. Every key the git account takes is forced through here.
 
-    origin-door keys                     write KEYHOLDERS into ~/.ssh/authorized_keys (the crew's `keys` line)
-    origin-door keys --check             say what would change, change nothing
-    origin-door serve OFFICE HOLDER      sshd runs this for a keyholder's key; never by hand
+    door keys                     write KEYHOLDERS into the git account's authorized_keys (run-intake, each minute)
+    door keys --check             say what would change, change nothing
+    door serve OFFICE HOLDER      sshd runs this for a keyholder's key; never by hand
 
-A keyholder's remote is `user@digitization.local:<owner>/<repo>`. Every repository can be fetched and
+A keyholder's remote is `git@origin.local:<owner>/<repo>`. Every repository can be fetched and
 pushed to. In one that lives on GitHub (it has a `github` remote), `main` and `github/*` are intake's:
 GitHub's main comes in by intake alone, so the LAN never goes around a merge there. Any other branch,
 and tags, may be pushed, and wait here, in view, for GitHub (door-hooks/pre-receive). The
 repositories themselves refuse rewriting and deleting. `init <owner>/<repo>` makes a new one, and only the
-secretary's office may. Each action is appended to /srv/origin/.door/actions.ndjson, with the
-office, the holder, and for a push every ref before and after.
+secretary's office may. `dev on|off|status` is the LAN's dev switch (intake asks GitHub every 10
+minutes while on, weekly while off), any keyholder's. Each action is appended to
+/srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref before and after.
 
 `keys` keeps one marked block in authorized_keys and leaves every other line as it is. A KEYHOLDERS
 line is `office holder <key type> <key> since`; `-` for a key is an empty slot. A key backed by a
@@ -31,8 +33,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 ORIGIN = pathlib.Path(os.environ.get("FCPM_ORIGIN", "/srv/origin"))
 KEYHOLDERS = pathlib.Path(os.environ.get("FCPM_KEYHOLDERS", HERE / "KEYHOLDERS"))
 AUTHORIZED = pathlib.Path(os.environ.get("FCPM_AUTHORIZED_KEYS", pathlib.Path.home() / ".ssh/authorized_keys"))
-BEGIN = "# BEGIN origin-door: from machines/digitization/KEYHOLDERS, written by `origin-door keys`; edit KEYHOLDERS, not this"
-END = "# END origin-door"
+BEGIN = "# BEGIN origin door: from machines/origin/KEYHOLDERS, written by `door keys`; edit KEYHOLDERS, not this"
+END = "# END origin door"
+DEV = ORIGIN / ".intake/dev"
 TYPES = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "ecdsa-sha2-nistp256", "sk-ecdsa-sha2-nistp256@openssh.com"}
 MAKERS = {"secretary"}
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -121,7 +124,19 @@ def serve(office, holder):
     except ValueError:
         words = []
     if len(words) != 2:
-        refuse("this door only fetches, pushes and makes repositories (git, or `init owner/repo`)", asked=asked, **who)
+        refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`) and flips dev", asked=asked, **who)
+    if words[0] == "dev":
+        if words[1] == "on":
+            DEV.parent.mkdir(exist_ok=True)
+            DEV.touch()
+        elif words[1] == "off":
+            DEV.unlink(missing_ok=True)
+        elif words[1] != "status":
+            refuse("dev on, dev off or dev status", asked=asked, **who)
+        if words[1] != "status":
+            record(verb="dev", state=words[1], **who)
+        print("dev: %s" % ("on" if DEV.exists() else "off"))
+        return
     verb, full = words[0], where(words[1])
     if full is None:
         refuse(f"{words[1]!r} is not owner/repo", asked=asked, **who)

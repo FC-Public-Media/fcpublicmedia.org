@@ -27,10 +27,8 @@ case "$found" in *WANTED*) bad=1 ;; esac
 # Facts the job runs on.
 systemctl is-active -q fcpm-crew@digitization
 say $? "the crew's supervisor, fcpm-crew@digitization" "sudo sh machines/crew.sh install digitization"
-mountpoint -q /srv/origin
-say $? "the origin mounted at /srv/origin"
-python3 -I "$HERE/origin-door" keys --check 2>/dev/null | grep -q "as KEYHOLDERS says"
-say $? "the origin's SSH door holds the keys KEYHOLDERS names" "the crew's keys line writes them within a minute"
+git ls-remote -q "${FCPM_ORIGIN_URL:-origin-standby:/srv/origin}/FC-Public-Media/fcpublicmedia.org" main 2>/dev/null | grep -q .
+say $? "origin.local answers as this checkout's origin" "../origin/PROFILE.md: its git account, this machine's key in ../origin/KEYHOLDERS"
 mountpoint -q /srv/landing
 say $? "the landing mounted at /srv/landing" \
   "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"
