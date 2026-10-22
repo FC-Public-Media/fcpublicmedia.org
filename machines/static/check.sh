@@ -14,7 +14,7 @@ done
 cmp -s "$HERE/nginx.conf" /etc/nginx/sites-available/fcpm && [ -L /etc/nginx/sites-enabled/fcpm ] &&
   [ ! -e /etc/nginx/sites-enabled/default ]
 say $? "nginx carries nginx.conf, and nothing else" "sudo sh $HERE/install"
-systemctl is-active -q nginx && ss -Hltnp 'sport = :80' | grep -q '"nginx"'
+systemctl is-active -q nginx && curl -sI http://localhost/ | grep -qi '^server: nginx'
 say $? "nginx holds port 80" "sudo sh $HERE/install"
 ! systemctl is-active -q fcpm-crew@static
 say $? "serve.py's old supervisor is gone" "sudo systemctl disable --now fcpm-crew@static"

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
-"""origin-intake: GitHub's main -> FCPM's origin, by itself: every minute while `fcpm dev on`,
-weekly while off, so GitHub is not asked from here 1,440 times a day.
+"""origin-intake: GitHub's main -> FCPM's origin, by itself: every 10 minutes while `fcpm dev on`,
+weekly while off, so GitHub is not asked from here 1,440 times a day (Autumn, 2026-10-21: a merge
+showing up within the minute was too eager).
 
     origin-intake            check every repo once, take what moved (if it is time)
     origin-intake --now      check now, whatever the pace
@@ -24,6 +25,7 @@ CRED = ["-c", "credential.helper=!gh auth git-credential"]
 WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@digitization.local"]
 DEV = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.local/state"), "fcpm", "dev")
 WEEK = datetime.timedelta(days=7)
+DEV_EVERY = datetime.timedelta(minutes=10)
 
 
 def now():
@@ -117,14 +119,15 @@ def take(full, theirs_remote):
 
 
 def due():
-    """Every run while `fcpm dev on`; otherwise once a week after GitHub last answered."""
-    if "--now" in sys.argv or os.path.exists(DEV):
+    """Every 10 minutes while `fcpm dev on`; otherwise once a week after GitHub last answered."""
+    if "--now" in sys.argv:
         return True
     try:
         last = json.load(open(STATE))
         if last.get("github") != "ok":
             return True
-        return datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(last["checked"]) >= WEEK
+        since = datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(last["checked"])
+        return since >= (DEV_EVERY if os.path.exists(DEV) else WEEK)
     except (OSError, ValueError, KeyError):
         return True
 
