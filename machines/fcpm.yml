@@ -42,6 +42,12 @@ verbs:
     windows: machines/watch weekly
     linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
+  - verb: deploy
+    args: "SITE DIR [HOST]"
+    says: "a finished site onto the static host (static.local): only what changed crosses"
+    windows: "not yet: no key for the static host"
+    linux: machines/static/deploy
+
   - verb: dev
     args: "[status|on|off]"
     says: "on: GitHub is asked every few minutes; off: weekly"

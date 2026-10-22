@@ -67,6 +67,10 @@ case "$cmd" in
         [ -f "$f" ] && echo "here: dev on" || echo "here: dev off" ;;
       *) echo "fcpm dev [status|on|off]" >&2; exit 2 ;;
     esac ;;
+  deploy)
+    # A finished site onto the static host (static/deploy): only what changed crosses, and
+    # what is up stays up until the push is whole. `fcpm deploy nccv ./_site`.
+    exec "$HERE/static/deploy" "$@" ;;
   pool)
     [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
     ps1 "$CODE/bin/pool.ps1" "$@" ;;
