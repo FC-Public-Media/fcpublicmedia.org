@@ -42,12 +42,15 @@ LONG = {"--server", "--delete", "--delete-before", "--delete-during", "--delete-
 SHORT = re.compile(r"-[A-Za-z.]+|--info=[A-Za-z0-9,]+")    # --info only shapes what the client is told
 
 
+def sites():
+    import yaml
+    return (yaml.safe_load(CATALOG.read_text(encoding="utf-8")) or {}).get("sites") or {}
+
+
 def catalog():
     """{site: [where]}: each site and where it is served, `name` (a label, `@` for the domain) or
     `name/path` (a path under a name, as a member's site under you.)."""
-    import yaml
-    cfg = yaml.safe_load(CATALOG.read_text(encoding="utf-8")) or {}
-    return {s: list((v or {}).get("serve") or []) for s, v in (cfg.get("sites") or {}).items()}
+    return {s: list((v or {}).get("serve") or []) for s, v in sites().items()}
 
 
 def holders():
@@ -143,6 +146,16 @@ def links():
             entry.unlink()
         elif entry.is_dir() and not entry.is_symlink() and not any(entry.iterdir()):
             entry.rmdir()
+    # The names whose site may be framed by itself (`frame: self`), one empty file each, which nginx asks.
+    framed = SITES / "frame-self"
+    framed.mkdir(exist_ok=True)
+    mine = {host(str(w).partition("/")[0]) for s, v in sites().items() if (v or {}).get("frame") == "self"
+            for w in (v or {}).get("serve") or [] if "/" not in str(w)}
+    for name in mine:
+        (framed / name).touch()
+    for f in framed.iterdir():
+        if f.name not in mine:
+            f.unlink()
 
 
 def serve(holder, allowed):
