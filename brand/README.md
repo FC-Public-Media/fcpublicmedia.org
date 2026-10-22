@@ -25,6 +25,19 @@ Other sizes: `--size 2160x3840`; one design: `--design plate`; `--no-text` drops
 **Windows:** Settings → Personalization → Background, fit **Fill** (not Span), add the files, then in *Recent images* right-click each → *Set for monitor N*.
 **macOS:** System Settings → Wallpaper, **Fill Screen**, per display.
 
+## The voted logo, not in use yet
+
+`logo/` holds the logo FCPM voted for: the artist's Lens concept in gold, the FC in a ring. It is here to
+be picked up by hand, from any computer with this repository. Nothing in `site/` or on the screens
+uses it yet: they still show the tilted mark above. The source is `logo/` in `FC-Public-Media/brand`
+on the origin, with the artist's concept sheet; copy changes from there.
+
+| file | what it is |
+| --- | --- |
+| `logo/lens-mark.svg` | the mark alone, transparent, centred on its ring: small sizes, a browser tab |
+| `logo/lens-icon.svg` | the mark on a white square, the ring 80% of the width: phone icons, avatars |
+| `logo/lens-lockup.png` | the mark over PUBLIC MEDIA, 2084 px, on white |
+
 ## The tilt
 
 The mark leans counterclockwise, −8°, as `site/assets/img/icon.svg` and `.wordmark-mark` do. The other way is a mistake

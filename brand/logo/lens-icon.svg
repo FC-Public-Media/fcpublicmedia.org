@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-684 -684 1368 1368" width="1368" height="1368">
+  <!-- lens-mark.svg on a white square, the ring centred and 80% of the width: inside the circle a phone
+       or browser may cut an icon to. Change the mark there, then copy its drawing here. -->
+  <title>FC Public Media</title>
+  <rect x="-684" y="-684" width="1368" height="1368" fill="#FFFFFF"/>
+  <path d="M-477.5,-266.6A546.9,546.9 0 1 1 -483.1,256.4H-395.4A471.3,471.3 0 1 0 -388.7,-266.6Z" fill="#D8A709"/>
+  <path d="M-0.1,-389.7A387.1,387.1 0 0 1 386.9,-2.7" fill="none" stroke="#D8A709" stroke-width="75.7" stroke-linecap="round"/>
+  <path d="M-504.3,-211.6H-276.7V-137.6H-450.8A471.3,471.3 0 0 0 -468.9,-47.6H-275.7V28.4H-470.4A471.3,471.3 0 0 0 -426.1,201.4H-508.5A546.9,546.9 0 0 1 -504.3,-211.6Z" fill="#404041"/>
+  <path d="M145.4,-120A185.3,185.3 0 1 0 145.4,112.5" fill="none" stroke="#404041" stroke-width="74.8" stroke-linecap="round"/>
+</svg>
