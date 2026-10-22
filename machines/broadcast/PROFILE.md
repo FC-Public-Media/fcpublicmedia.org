@@ -80,8 +80,10 @@ has no play.
 ## To YouTube
 
 Channel 97 goes to YouTube all day, everything on it, from our side: [`relay`](relay), the crew's
-`youtube` line wherever this job is worn ([`names`](names)), copies Cablecast's web stream (the
-largest picture, 1080p at about 2 Mbps, and the audio) to YouTube by RTMPS, without re-encoding. The
+`youtube` line wherever this job is worn ([`names`](names)), copies the channel's web stream (the
+largest picture, 1080p at about 2 Mbps, and the audio) to YouTube by RTMPS, without re-encoding. It
+takes it on the LAN, from the Live 350's own copy (`http://10.1.10.62/live/stream-1/`, found by asking
+Cablecast for its Live server), and from the cloud copy only when that one does not answer. The
 key is kept in `~/.config/fcpm/youtube.key` (600). Nothing is pushed until the stream is seen to move,
 and ffmpeg is stopped when its output stops; `~/.local/state/fcpm/broadcast/relay.json` says which:
 `pushing`, `frozen`, `waiting` (no key), `stalled`, `unreachable`. `relay --check` says it without
@@ -90,7 +92,9 @@ pushing. `--backup` feeds YouTube's backup ingest from a second box.
 Cablecast's own way to YouTube is a network broadcast event tied to a scheduled run, one run at a
 time, and a paid add-on; it suits events, not a whole channel.
 
-The web stream stopped on 2026-10-19 at 23:19 here, while Cablecast went on saying BROADCASTING: its
-playlist kept its last four segments and stopped moving. Stopping and starting the live stream in
-Cablecast is what starts it again; the relay says `frozen` until then.
+The web stream stopped on 2026-10-19 at 23:19 here, while Cablecast went on saying BROADCASTING. The
+Live 350's own playlist stopped there (its encoder stopped writing segments; the cloud copy only
+mirrors it), and stopping and starting the live stream or the device in Cablecast's pages did not
+start it again: the 350's encoding needs a restart by Tightrope's support or a reboot. The relay says
+`frozen` until it moves.
 

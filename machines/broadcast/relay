@@ -4,9 +4,10 @@
     python3 -I machines/broadcast/relay            run (the broadcast crew's `youtube` line keeps it up)
     python3 -I machines/broadcast/relay --check    say what it would do now, push nothing
 
-The source is the channel's live stream as Cablecast publishes it (livestreams/1's streamUrl). The
-largest picture and the audio go to YouTube by RTMPS, as they are: what YouTube gets is what the
-website gets. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here prints it.
+The source is the channel's live stream, taken on the LAN from the Live server that encodes it
+(http://<its hostAddress>/live/stream-1/, as Cablecast names it), or else from Cablecast's cloud copy
+(livestreams/1's streamUrl), which mirrors it. The largest picture and the audio go to YouTube by
+RTMPS, as they are: what YouTube gets is what the website gets. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here prints it.
 `--backup` sends to YouTube's backup ingest instead, so a second box can stand beside the first.
 
 Cablecast can say BROADCASTING while its stream has stopped moving (2026-10-19, 23:19 here: two
@@ -58,8 +59,17 @@ def fetch(url):
 
 
 def source():
-    """The channel's stream address, from Cablecast itself."""
-    return cablecast.call("GET", "/livestreams/1")["liveStream"]["streamUrl"]
+    """(where, address) of the channel's stream: the Live server's own copy on the LAN, else the cloud's."""
+    stream = cablecast.call("GET", "/livestreams/1")["liveStream"]
+    for server in cablecast.call("GET", "/servers").get("servers", []):
+        if server.get("serverModel") == "CABLECASTLIVE" and server.get("hostAddress"):
+            local = f"http://{server['hostAddress']}/live/stream-{stream['id']}/live.m3u8"
+            try:
+                fetch(local)
+                return "lan", local
+            except Exception:
+                pass
+    return "cloud", stream["streamUrl"]
 
 
 def largest(master_url):
@@ -96,7 +106,7 @@ def video_track(master_url):
     return max(videos, key=lambda s: s.get("width") or 0)["index"], audio[0]["index"]
 
 
-def push(master_url, target, key):
+def push(master_url, target, key, where):
     v, a = video_track(master_url)
     run = subprocess.Popen(
         ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-rw_timeout", "20000000",
@@ -104,7 +114,7 @@ def push(master_url, target, key):
          "-f", "flv", "-flvflags", "no_duration_filesize", INGEST[target].format(key=key),
          "-progress", "pipe:1", "-nostats"],
         stdout=subprocess.PIPE, text=True)
-    note(state="pushing", why=f"{target} ingest, video track {v}, audio track {a}", target=target)
+    note(state="pushing", why=f"from the {where} copy to the {target} ingest, video track {v}, audio track {a}", target=target)
     seen = {"at": time.time(), "out": None}
 
     def progress():         # ffmpeg says how far its output has got; a new figure is a sign of life
@@ -130,21 +140,21 @@ def main(check, target):
     while True:
         key = KEY.read_text().strip() if KEY.exists() else ""
         try:
-            url = source()
+            where, url = source()
             flowing, stamp = moving(url)
         except Exception as e:  # the box or Reflect not answering is a state, not a crash
             note(state="unreachable", why=f"{type(e).__name__}: {e}"[:200])
-            flowing, stamp, url = False, None, None
+            flowing, stamp, url, where = False, None, None, None
         if url and not flowing:
-            note(state="frozen", why=f"the source's playlist has not moved; its last segment is {stamp}", last=stamp)
+            note(state="frozen", why=f"the {where} source's playlist has not moved; its last segment is {stamp}", last=stamp)
         elif url and not key:
             note(state="waiting", why=f"the source flows (last segment {stamp}); no key in {KEY}")
         if check:
-            print(json.dumps({"source": url, "flowing": flowing, "last_segment": stamp,
+            print(json.dumps({"from": where, "source": url, "flowing": flowing, "last_segment": stamp,
                               "key": bool(key), "target": INGEST[target].format(key="<key>")}, indent=1))
             return
         if url and flowing and key:
-            push(url, target, key)
+            push(url, target, key, where)
             continue
         time.sleep(WAIT)
 
