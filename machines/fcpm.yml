@@ -48,6 +48,12 @@ verbs:
     windows: "not yet: no key for the static host"
     linux: machines/static/deploy
 
+  - verb: relay
+    args: "[status|on|off]"
+    says: "the origin's mode: on, what is pushed there goes out to GitHub every 15 minutes; off, LAN-only"
+    windows: "not yet: no key for the origin"
+    linux: "origin.local's switch (`ssh git@origin.local relay on`)"
+
   - verb: dev
     args: "[status|on|off]"
     says: "on: GitHub is asked every few minutes; off: weekly"

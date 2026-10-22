@@ -2720,7 +2720,7 @@ def origin_dev(state):
     def tell():
         try:
             r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
-                                os.environ.get("FCPM_ORIGIN_SSH") or "origin-standby", "dev", state],
+                                os.environ.get("FCPM_ORIGIN_SSH") or "fcpm-origin", "dev", state],
                                capture_output=True, text=True, timeout=30)
             log("dev: origin.local says %s" % ((r.stdout or r.stderr).strip() or "nothing"))
         except Exception as exc:

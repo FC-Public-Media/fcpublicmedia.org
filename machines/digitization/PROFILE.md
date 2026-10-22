@@ -59,7 +59,7 @@ only the power button helped. Now there is a way out on its own:
 
 FCPM's origin is [origin.local](../origin/PROFILE.md), released to it 2026-10-21: it takes GitHub in,
 keeps the LAN's dev switch and paints its own screen. This machine is a client. `follow` points this
-checkout's `origin` and every submodule at it (`origin-standby:/srv/origin/...`: `~/.ssh/config`'s name
+checkout's `origin` and every submodule at it (`fcpm-origin:/srv/origin/...`: `~/.ssh/config`'s `fcpm-origin`, the name
 for its git account, by this machine's key, a line in [`../origin/KEYHOLDERS`](../origin/KEYHOLDERS)),
 and `fcpm dev on|off` or the board's switch flips its dev.
 

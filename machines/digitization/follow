@@ -4,7 +4,7 @@
 # costs GitHub nothing: the origin's intake, paced by the LAN's dev switch, brings GitHub in; this
 # places it. The checkout's `origin`, every submodule (troves, engines, the Wix copy) and their
 # pushes all point at the origin, by its git account (FCPM_ORIGIN_URL; ~/.ssh/config's
-# origin-standby: git@origin.local by this machine's key, in ../origin/KEYHOLDERS). The door
+# fcpm-origin: git@origin.local by this machine's key, in ../origin/KEYHOLDERS). The door
 # restarts itself when its checkout moves.
 # Troves are submodules (`update = none`): each is checked out at the pin, as bin/refs and the
 # kiosk's door do, so a crew line `from troves/<name>` has its code; a pin already there costs nothing.
@@ -12,7 +12,7 @@
 cd "$(dirname "$0")/../.." || exit 1
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 [ -z "$(git status --porcelain --ignore-submodules=all)" ] || exit 0
-O=${FCPM_ORIGIN_URL:-origin-standby:/srv/origin}
+O=${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}
 git remote set-url origin "$O/FC-Public-Media/fcpublicmedia.org"
 # Each submodule from the origin too: GitHub's owner/repo is the origin's path.
 git config -f .gitmodules --get-regexp '^submodule\..*\.url$' | while read -r key url; do

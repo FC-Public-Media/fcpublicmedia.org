@@ -10,8 +10,15 @@ showing up within the minute was too eager).
 Only main is fetched, into github/main. A failure in one repo is recorded and the next goes on.
 A repository new on GitHub under an owner the origin keeps whole (WHOLE) gets its bare repository
 here first, then comes in like the rest; other owners' repositories are only the ones already here.
-The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`). Runs as
-the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
+The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`).
+
+Relay (.intake/relay, `relay on|off`): on, the origin is a full relay. On the same pass it carries out
+to GitHub each branch and tag a keyholder pushed through the door since the last pass (the door's
+log says which): fast-forward only, never forced, never main or github/*, and never a repository
+that began here. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
+person. Only what was pushed through the door is ever carried, so a branch GitHub merged and
+deleted is not brought back. Off, the origin is LAN-only: it pulls, and what is pushed waits here.
+Runs as the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
 """
 import datetime
 import fcntl
@@ -27,6 +34,9 @@ ACTIONS = os.path.join(STATE_DIR, "actions.ndjson")
 CRED = ["-c", "credential.helper=!gh auth git-credential"]
 WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@%s.local" % os.uname().nodename.split(".")[0]]
 DEV = os.environ.get("FCPM_DEV") or os.path.join(STATE_DIR, "dev")
+RELAY = os.path.join(STATE_DIR, "relay")
+DOOR_LOG = os.path.join(ORIGIN, ".door", "actions.ndjson")
+CARRY = os.path.join(STATE_DIR, "carry.json")
 # Owners whose every repository the origin keeps. FCCN-ANTIBODY's are only the ones FCPM calls on.
 WHOLE = ("FC-Public-Media", "NCCV-OPINION")
 WEEK = datetime.timedelta(days=7)
@@ -171,6 +181,71 @@ def due():
         return True
 
 
+def switched_on(size):
+    """Where in the door's log relay was last switched on (just after that line), else its end."""
+    at, pos = size, 0
+    if os.path.exists(DOOR_LOG):
+        with open(DOOR_LOG, "rb") as f:
+            for line in f:
+                pos += len(line)
+                if b'"verb": "relay"' in line and b'"state": "on"' in line:
+                    at = pos
+    return at
+
+
+def carry():
+    """Branches and tags pushed through the door since the last pass, out to GitHub (relay on)."""
+    try:
+        with open(CARRY) as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        st = {}
+    size = os.path.getsize(DOOR_LOG) if os.path.exists(DOOR_LOG) else 0
+    if "offset" not in st:              # the first pass: from when relay was switched on; what was here before stays here
+        st = {"offset": switched_on(size), "pending": []}
+    pending = {tuple(p) for p in st.get("pending", [])}
+    if os.path.exists(DOOR_LOG) and size >= st["offset"]:
+        with open(DOOR_LOG) as f:
+            f.seek(st["offset"])
+            for line in f:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if row.get("verb") != "push" or not row.get("ok"):
+                    continue
+                for r, (_, after) in (row.get("moved") or {}).items():
+                    if after and (r.startswith("refs/tags/") or (r.startswith("refs/heads/")
+                                  and r != "refs/heads/main" and not r.startswith("refs/heads/github/"))):
+                        pending.add((row["repo"], r))
+        st["offset"] = size
+    rows, left = [], []
+    for full, r in sorted(pending):
+        p = os.path.join(ORIGIN, full)
+        if not git(p, "config", "remote.github.url", check=False).stdout.strip():
+            continue                    # began here: it stays here
+        sha = ref(p, r)
+        if not sha:
+            continue
+        out = git(p, *CRED, "push", "-q", "github", "%s:%s" % (sha, r), check=False, timeout=180)
+        row = {"repo": full, "ref": r, "sha": sha}
+        if out.returncode == 0:
+            row.update(state="carried", did="carried out to GitHub")
+        elif "non-fast-forward" in out.stderr or "fetch first" in out.stderr or "rejected" in out.stderr:
+            row.update(state="diverged", did="GitHub's %s does not fast-forward to ours; left for a person" % r)
+        else:
+            row.update(state="error", error=out.stderr.strip()[-300:])
+            left.append([full, r])      # GitHub out of reach: again next pass
+        rows.append(row)
+    st["pending"] = left
+    os.makedirs(STATE_DIR, exist_ok=True)
+    tmp = CARRY + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(st, f)
+    os.replace(tmp, CARRY)
+    return rows
+
+
 def main():
     if not os.path.isdir(ORIGIN) or not any(not d.startswith(".") for d in os.listdir(ORIGIN)):
         return 0                        # nothing here (an unmounted disk): nothing to take into
@@ -210,15 +285,16 @@ def main():
             except Exception as e:
                 row = {"repo": full, "state": "error", "error": str(e)[-500:]}
             rows.append(row)
+        carried = carry() if os.path.exists(RELAY) and not offline else []
         stamp = now()
         with open(ACTIONS, "a") as log:
-            for row in rows:
+            for row in rows + carried:
                 if row.get("did") or row["state"] == "error":
                     log.write(json.dumps({"at": stamp, **row}) + "\n")
         tmp = STATE + ".tmp"
         with open(tmp, "w") as f:
             json.dump({"checked": stamp, "github": "unreachable: " + offline if offline else "ok",
-                       "repos": rows}, f, indent=1)
+                       "relay": os.path.exists(RELAY), "repos": rows, "carried": carried}, f, indent=1)
         os.replace(tmp, STATE)
     return 0
 
