@@ -1,5 +1,5 @@
 #!/bin/sh
-# install -- the origin job onto a box, run from the machine that keeps its page (today digitization).
+# install -- the origin job onto a box, run from any checkout whose keys manage it (today digitization's).
 #
 #   machines/origin/install root@HOST DISK SERIAL   HOST runs Alpine's live system (the recovery stick:
 #                                                  root, network, sshd, our keys). ERASES DISK, installs
@@ -7,12 +7,11 @@
 #   machines/origin/install fcpm@HOST              outfit an origin that is already running. No disk.
 #
 # Any box that boots Alpine will do. DISK is named and must answer to SERIAL ("none" if it reports
-# none), so the wrong disk is never the one erased; the rest is ./outfit. Afterwards this machine
-# lets the box's screen in (one forced-command line in ~/.ssh/authorized_keys, its page.py) and, for
-# a new install, pins the box's host key for NAME.local. Settings, with what they default to:
+# none), so the wrong disk is never the one erased; the rest is ./outfit. The box paints its own
+# screen and runs its own intake; GitHub is asked as whoever ./github-login signs in. For a new
+# install this machine pins the box's host key for NAME.local. Settings, with what they default to:
 #   FCPM_KEYS  ~/.ssh/id_ed25519.pub        who manages it (fcpm, sudo)
-#   GIT_KEYS   ~/.ssh/origin-standby.pub    who pushes (git, git-shell)
-#   PAGE       $USER@<this host>.local      where its screen is painted
+# Who may push, fetch and flip dev is ./KEYHOLDERS, through ./door; the box rereads it from main.
 #   ROOM_TZ    America/Denver               the room's clock
 # NAME comes from ./names. See PROFILE.md.
 set -eu
@@ -21,22 +20,20 @@ REPO=$(pwd -P)
 TARGET=${1:?root@HOST DISK SERIAL, or fcpm@HOST}
 NAME=$(awk '$1=="linux" && $2=="Hostname" {print $3}' machines/origin/names)
 FCPM_KEYS=${FCPM_KEYS:-$(cat ~/.ssh/id_ed25519.pub)}
-GIT_KEYS=${GIT_KEYS:-$(cat ~/.ssh/origin-standby.pub)}
-PAGE=${PAGE:-$(id -un)@$(hostname).local}
 ROOM_TZ=${ROOM_TZ:-America/Denver}
-PAGE_HOSTKEY="${PAGE#*@} $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"
-for v in "$FCPM_KEYS" "$GIT_KEYS" "$PAGE" "$PAGE_HOSTKEY" "$ROOM_TZ"; do
+for v in "$FCPM_KEYS" "$ROOM_TZ"; do
   case $v in *\'*) echo "A setting holds a quote. Stopping."; exit 1;; esac
 done
 
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 mkdir "$T/fcpm-origin"
-cp machines/leash.py machines/console-font.py machines/origin/facts.py machines/origin/outfit "$T/fcpm-origin/"
+cp machines/leash.py machines/console-font.py machines/origin/facts.py machines/origin/page.py \
+  machines/origin/intake machines/origin/run-intake machines/origin/door machines/origin/KEYHOLDERS \
+  machines/origin/outfit "$T/fcpm-origin/"
+cp -r machines/origin/door-hooks "$T/fcpm-origin/"
+[ ! -f site/_data/brand.json ] || cp site/_data/brand.json "$T/fcpm-origin/"   # the screen's colours, beside page.py
 cat > "$T/fcpm-origin/settings" <<S
 FCPM_KEYS='$FCPM_KEYS'
-GIT_KEYS='$GIT_KEYS'
-PAGE='$PAGE'
-PAGE_HOSTKEY='$PAGE_HOSTKEY'
 NAME='$NAME'
 ROOM_TZ='$ROOM_TZ'
 S
@@ -56,11 +53,11 @@ else
     "$unpack && sudo NOW=1 sh /tmp/fcpm-origin/outfit; rm -rf /tmp/fcpm-origin" | tee /dev/stderr)
 fi
 
-leash=$(printf '%s\n' "$out" | sed -n 's/^LEASH-KEY: //p')
-[ -n "$leash" ] || { echo "No screen key came back."; exit 1; }
-key=$(echo "$leash" | cut -d' ' -f2)
-touch ~/.ssh/authorized_keys
-grep -v -F "$key" ~/.ssh/authorized_keys > "$T/ak" || true
-echo "restrict,command=\"TZ=$ROOM_TZ /usr/bin/python3 $REPO/machines/origin/page.py\" $leash" >> "$T/ak"
-cat "$T/ak" > ~/.ssh/authorized_keys
-echo "The screen of $NAME.local is let in here: its page is $REPO/machines/origin/page.py."
+printf '%s\n' "$out" | grep -q '^OUTFITTED: ' || { echo "The outfit did not finish."; exit 1; }
+# The box paints its own screen now: the grant this machine once held for it goes.
+if [ -f ~/.ssh/authorized_keys ] && grep -q 'machines/origin/page.py' ~/.ssh/authorized_keys; then
+  grep -v 'machines/origin/page.py' ~/.ssh/authorized_keys > "$T/ak" || true
+  cat "$T/ak" > ~/.ssh/authorized_keys
+  echo "The old screen grant for $NAME.local is gone from ~/.ssh/authorized_keys."
+fi
+echo "$NAME.local: outfitted from $REPO at $(git rev-parse --short HEAD)."

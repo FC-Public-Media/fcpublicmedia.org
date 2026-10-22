@@ -1,0 +1,31 @@
+#!/bin/sh
+# github-login [fcpm@HOST] -- sign the origin's git account in to GitHub, so intake can read the
+# private repositories. GitHub's device sign-in: the box asks GitHub for a one-time code, a window on
+# this screen shows it, and whoever approves it at github.com/login/device (on a phone is fine)
+# is the account the origin reads GitHub as. Nothing is pasted anywhere; the token stays on the box,
+# in the git account's own gh config. Run again to change accounts. See PROFILE.md.
+set -eu
+TARGET=${1:-fcpm@origin.local}
+T=$(mktemp -d); trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$T"' EXIT
+ssh -o BatchMode=yes "$TARGET" \
+  'sudo -u git env HOME=/srv/git BROWSER=true GH_PROMPT_DISABLED=1 gh auth login --hostname github.com --git-protocol https --web 2>&1' \
+  > "$T/out" &
+login=$!
+code=
+for _ in $(seq 60); do
+  code=$(grep -o '[A-Z0-9]\{4\}-[A-Z0-9]\{4\}' "$T/out" | head -1 || true)
+  [ -n "$code" ] && break
+  kill -0 $login 2>/dev/null || break
+  sleep 1
+done
+[ -n "$code" ] || { cat "$T/out"; echo "github-login: GitHub gave no code."; exit 1; }
+echo "code $code: approve it at https://github.com/login/device"
+DISPLAY=${DISPLAY:-:0} zenity --info --no-wrap --title "origin.local: GitHub sign-in" \
+  --text "<span size='xx-large'><b>$code</b></span>\n\nOn your phone or any browser, open\n<b>github.com/login/device</b>\nand enter this code, signed in as the account\nthe origin should read GitHub as.\n\nThis window closes by itself when GitHub says yes." \
+  >/dev/null 2>&1 &
+win=$!
+wait $login || true
+kill $win 2>/dev/null || true
+cat "$T/out" | grep -v '^\s*$' | tail -3
+ssh -o BatchMode=yes "$TARGET" 'sudo -u git env HOME=/srv/git gh auth status 2>&1' | grep -i 'logged in' || {
+  echo "github-login: not signed in."; exit 1; }

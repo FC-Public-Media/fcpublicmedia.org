@@ -1,14 +1,17 @@
 #!/usr/bin/python3
-"""origin-intake: GitHub's main -> FCPM's origin, by itself: every 10 minutes while `fcpm dev on`,
-weekly while off, so GitHub is not asked from here 1,440 times a day (Autumn, 2026-10-21: a merge
+"""intake: GitHub's main -> the origin, on the origin's own box: every 10 minutes while the LAN's dev
+is on, weekly while off, so GitHub is not asked 1,440 times a day (Autumn, 2026-10-21: a merge
 showing up within the minute was too eager).
 
-    origin-intake            check every repo once, take what moved (if it is time)
-    origin-intake --now      check now, whatever the pace
-    origin-intake --status   print the last state, change nothing
+    intake            check every repo once, take what moved (if it is time)
+    intake --now      check now, whatever the pace
+    intake --status   print the last state, change nothing
 
-Only main is fetched, into github/main. A failure in one repo is recorded and the
-next goes on. Stdlib, git and gh. See machines/digitization/PROFILE.md.
+Only main is fetched, into github/main. A failure in one repo is recorded and the next goes on.
+A repository new on GitHub under an owner the origin keeps whole (WHOLE) gets its bare repository
+here first, then comes in like the rest; other owners' repositories are only the ones already here.
+The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`). Runs as
+the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
 """
 import datetime
 import fcntl
@@ -22,8 +25,10 @@ STATE_DIR = os.path.join(ORIGIN, ".intake")
 STATE = os.path.join(STATE_DIR, "state.json")
 ACTIONS = os.path.join(STATE_DIR, "actions.ndjson")
 CRED = ["-c", "credential.helper=!gh auth git-credential"]
-WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@digitization.local"]
-DEV = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.local/state"), "fcpm", "dev")
+WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@%s.local" % os.uname().nodename.split(".")[0]]
+DEV = os.environ.get("FCPM_DEV") or os.path.join(STATE_DIR, "dev")
+# Owners whose every repository the origin keeps. FCCN-ANTIBODY's are only the ones FCPM calls on.
+WHOLE = ("FC-Public-Media", "NCCV-OPINION")
 WEEK = datetime.timedelta(days=7)
 DEV_EVERY = datetime.timedelta(minutes=10)
 
@@ -47,7 +52,7 @@ def is_ancestor(repo, a, b):
 
 
 def repos():
-    """owner/repo for every bare repo with a github remote."""
+    """owner/repo for every bare repo here, with a github remote or not (see adopt)."""
     out = []
     for owner in sorted(os.listdir(ORIGIN)):
         d = os.path.join(ORIGIN, owner)
@@ -55,10 +60,21 @@ def repos():
             continue
         for name in sorted(os.listdir(d)):
             p = os.path.join(d, name)
-            if os.path.isfile(os.path.join(p, "HEAD")) and \
-               git(p, "config", "remote.github.url", check=False).stdout.strip():
+            if os.path.isfile(os.path.join(p, "HEAD")):
                 out.append(owner + "/" + name)
     return out
+
+
+def adopt(full):
+    """A repository GitHub has but that came here without a github remote (made by `init` for a
+    push) is given GitHub's by its path, main only. True if it has one now. One that GitHub does not
+    have began here and stays ours alone (FC-Public-Media/broadcast)."""
+    p = os.path.join(ORIGIN, full)
+    if git(p, "config", "remote.github.url", check=False).stdout.strip():
+        return True
+    git(p, "config", "remote.github.url", "https://github.com/%s.git" % full)
+    git(p, "config", "remote.github.fetch", "+refs/heads/main:refs/heads/github/main")
+    return True
 
 
 def github_mains(names):
@@ -79,6 +95,29 @@ def github_mains(names):
         if oid:
             out[full] = oid
     return out
+
+
+def discover(have):
+    """owner/repo on GitHub under WHOLE that the origin lacks, made here as bare repositories."""
+    q = "query { %s }" % " ".join(
+        'o%d: repositoryOwner(login: %s) { repositories(first: 100, isFork: false) { nodes { name } } }'
+        % (i, json.dumps(o)) for i, o in enumerate(WHOLE))
+    r = subprocess.run(["gh", "api", "graphql", "-f", "query=" + q], capture_output=True, text=True, timeout=60)
+    data = json.loads(r.stdout or "{}").get("data") or {}
+    made = []
+    for i, owner in enumerate(WHOLE):
+        for node in ((data.get("o%d" % i) or {}).get("repositories") or {}).get("nodes") or []:
+            full = "%s/%s" % (owner, node["name"])
+            if full in have:
+                continue
+            p = os.path.join(ORIGIN, full)
+            subprocess.run(["git", "init", "-q", "--bare", p], check=True)
+            for k, v in (("receive.denyNonFastForwards", "true"), ("receive.denyDeletes", "true"),
+                         ("remote.github.url", "https://github.com/%s.git" % full),
+                         ("remote.github.fetch", "+refs/heads/main:refs/heads/github/main")):
+                git(p, "config", k, v)
+            made.append(full)
+    return made
 
 
 def take(full, theirs_remote):
@@ -133,8 +172,8 @@ def due():
 
 
 def main():
-    if "FCPM_ORIGIN" not in os.environ and not os.path.ismount(ORIGIN):
-        return 0                        # the origin's disk is not mounted: nothing to take into
+    if not os.path.isdir(ORIGIN) or not any(not d.startswith(".") for d in os.listdir(ORIGIN)):
+        return 0                        # nothing here (an unmounted disk): nothing to take into
     os.makedirs(STATE_DIR, exist_ok=True)
     if "--status" in sys.argv:
         print(open(STATE).read() if os.path.exists(STATE) else "no state yet")
@@ -148,6 +187,10 @@ def main():
             return 0                    # the last run is still going
         names = repos()
         try:
+            names += discover(set(names))
+        except Exception:
+            pass                        # GitHub out of reach: the next run asks again
+        try:
             remote = github_mains(names)
         except Exception as e:          # offline, GitHub down: say so, change nothing
             remote, offline = {}, repr(e)
@@ -155,9 +198,13 @@ def main():
             offline = None if remote else "GitHub did not answer"
         rows = []
         for full in names:
+            p = os.path.join(ORIGIN, full)
             if full not in remote:
-                rows.append({"repo": full, "state": "unchecked", "main": ref(os.path.join(ORIGIN, full), "refs/heads/main")})
+                ours = not git(p, "config", "remote.github.url", check=False).stdout.strip()
+                rows.append({"repo": full, "state": "here only" if ours and not offline else "unchecked",
+                             "main": ref(p, "refs/heads/main")})
                 continue
+            adopt(full)
             try:
                 row = take(full, remote[full])
             except Exception as e:

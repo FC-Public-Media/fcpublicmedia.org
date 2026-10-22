@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""page: the origin's screen, painted from the machine it is kept beside (today digitization). The
-origin's leash (../leash.py) runs this at the far end of its `ssh -T`, a forced command:
+"""page: the origin's screen, painted on the box itself. tty1 runs the leash (../leash.py) with this
+as its command, on the box, not at the end of an ssh (outfit):
 
     page.py [ROOT]     read the leash's lines on stdin, paint its console on stdout. ROOT: the
-                       origin kept here, /srv/origin. Test here: `leash.py --facts facts.py -- page.py`
+                       origin, /srv/origin. FCPM_LOGS, FCPM_ORIGIN_JOB: where the job feeding it logs,
+                       and its name (on the box: /var/log/fcpm, intake). `leash.py --facts facts.py -- page.py`
 
 A pane per owner, a line per repository, in name order so a place on the screen keeps meaning:
 
@@ -31,7 +32,7 @@ softly in blue, and its owner's bar says the step on the right (pools → origin
 github), holding the last one, dimmer, once it is done. The bar at the bottom is the room's: the
 box's disk and memory as gauges (yellow is used, black is free, then how much is free in G), its
 load, the time; red with the trouble. On its left, the origin's own settings: its name, and while
-`fcpm dev on` the pace intake asks GitHub at, called out in ink (weekly, the usual, says nothing).
+the LAN's dev is on the pace intake asks GitHub at, called out in ink (weekly, the usual, says nothing).
 """
 import calendar, importlib.machinery, importlib.util, json, os, re, subprocess, sys, threading, time
 
@@ -61,7 +62,9 @@ FILL, SEAM = "", ""      # one centred square growing: 3, 6, 9, 1
 GAUGE_L, GAUGE_R, GAUGE_USED, GAUGE_FREE = "", "", "", ""
 GAUGE_PART = [chr(0xE024 + k) for k in range(7)]
 ROOT = sys.argv[1] if len(sys.argv) > 1 else "/srv/origin"
-STATE = os.path.expanduser("~/.local/state/fcpm/crew")
+# Where the job that feeds this origin logs, and its name: on the box itself, intake by cron (run-intake).
+STATE = os.environ.get("FCPM_LOGS") or os.path.expanduser("~/.local/state/fcpm/crew")
+JOB = os.environ.get("FCPM_ORIGIN_JOB") or "standby"
 INTAKE = os.path.join(ROOT, ".intake", "state.json")
 QUIET = 90          # seconds without facts before the box counts as not heard from
 STALE = 300         # seconds apart before a line turns to trouble
@@ -71,8 +74,9 @@ RATES = (1, 3, 8)                                       # commits a day where th
 
 
 def intake_pace():
-    """intake's own dev flag and dev pace (../digitization/origin-intake), so the bar says what intake does."""
-    path = os.path.join(HERE, "..", "digitization", "origin-intake")
+    """intake's own dev flag and dev pace (./intake, beside this file here and on the box), so the bar
+    says what intake does."""
+    path = os.path.join(HERE, "intake")
     loader = importlib.machinery.SourceFileLoader("origin_intake", path)
     intake = importlib.util.module_from_spec(importlib.util.spec_from_loader("origin_intake", loader))
     loader.exec_module(intake)
@@ -437,11 +441,11 @@ def paint():
     with S.lock:
         C, R = S.grid
         f, now = S.facts, time.time()
-        when, complaint = last_run("standby")
+        when, complaint = last_run(JOB)
         checked, reach = github()
         trouble = complaint
         if when and now - when > STALE:
-            trouble = trouble or f"standby {ago(now - when)}"
+            trouble = trouble or f"{JOB} {ago(now - when)}"
         if reach and reach != "ok":
             trouble = trouble or f"github: {reach}"
         if f and f.get("synced") is False:

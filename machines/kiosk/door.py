@@ -2707,6 +2707,23 @@ def inside(base, rel):
     return target
 
 
+def origin_dev(state):
+    """The LAN's dev switch is the origin's (machines/origin/dev): flip it there too, by this
+    machine's key for its git account. Not from Windows, which holds no key for it yet."""
+    if os.name == "nt":
+        return
+
+    def tell():
+        try:
+            r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+                                os.environ.get("FCPM_ORIGIN_SSH") or "origin-standby", "dev", state],
+                               capture_output=True, text=True, timeout=30)
+            log("dev: origin.local says %s" % ((r.stdout or r.stderr).strip() or "nothing"))
+        except Exception as exc:
+            log("dev: origin.local did not answer: %r" % exc)
+    threading.Thread(target=tell, daemon=True).start()
+
+
 class Door(BaseHTTPRequestHandler):
     server_version = "media-node-door"
 
@@ -2803,9 +2820,11 @@ class Door(BaseHTTPRequestHandler):
                 DEV.parent.mkdir(parents=True, exist_ok=True)
                 DEV.touch()
                 log("dev: on, from the board")
+                origin_dev("on")
             else:
                 DEV.unlink(missing_ok=True)
                 log("dev: off, from the board")
+                origin_dev("off")
             self.send_response(303)
             self.send_header("Location", "/")
             self.end_headers()

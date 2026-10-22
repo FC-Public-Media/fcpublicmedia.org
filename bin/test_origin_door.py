@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""The origin's SSH door (machines/digitization/origin-door), end to end against a scratch origin.
+"""The origin's SSH door (machines/origin/door), end to end against a scratch origin.
 
 git reaches the door through a stand-in for ssh that does what sshd does with a forced command:
-it puts what git asked for in SSH_ORIGINAL_COMMAND and runs `origin-door serve OFFICE HOLDER`.
+it puts what git asked for in SSH_ORIGINAL_COMMAND and runs `door serve OFFICE HOLDER`.
 """
 import json
 import os
@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DOOR = ROOT / "machines/digitization/origin-door"
+DOOR = ROOT / "machines/origin/door"
 KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrigindoortestkeyonlynotarealkeyatall000"
 
 
@@ -111,6 +111,17 @@ class Door(unittest.TestCase):
         self.assertEqual(self.git("-C", str(made), "config", "receive.denyDeletes").stdout.strip(), "true")
         self.assertIn("secretary (Autumn)", (made / "description").read_text())
 
+    def test_any_keyholder_flips_dev_and_it_is_logged(self):
+        door = lambda *a: subprocess.run([self.env["GIT_SSH_COMMAND"], "door", "dev", *a],
+                                          env=self.env, capture_output=True, text=True)
+        self.assertEqual(door("status").stdout.strip(), "dev: off")
+        self.assertEqual(door("on").stdout.strip(), "dev: on")
+        self.assertTrue((self.origin / ".intake/dev").exists())
+        self.assertEqual(door("off").stdout.strip(), "dev: off")
+        self.assertFalse((self.origin / ".intake/dev").exists())
+        self.assertNotEqual(door("sideways").returncode, 0)
+        self.assertEqual([r.get("state") for r in self.log() if r.get("verb") == "dev"], ["on", "off"])
+
     def test_nothing_outside_the_origin(self):
         for asked in ("git-upload-pack '../../etc'", "git-upload-pack 'a/b/c'", "sh -c id", "git-upload-pack"):
             run = subprocess.run([self.env["GIT_SSH_COMMAND"], "door", asked], env=self.env,
@@ -136,7 +147,7 @@ class Keys(unittest.TestCase):
         self.assertEqual(self.keys().returncode, 0)
         lines = self.authorized.read_text().splitlines()
         self.assertEqual(lines[0], 'restrict,command="eyes" ssh-ed25519 AAAAeyes eyes')
-        door = [line for line in lines if line.startswith("restrict,command=") and "origin-door" in line]
+        door = [line for line in lines if line.startswith("restrict,command=") and " serve " in line]
         self.assertEqual(len(door), 1)
         self.assertIn("serve technology Autumn", door[0])
         self.assertIn(KEY, door[0])
