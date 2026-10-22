@@ -8,7 +8,7 @@ showing up within the minute was too eager).
     intake --status   print the last state, change nothing
 
 Only main is fetched, into github/main. A failure in one repo is recorded and the next goes on.
-A repository new on GitHub under an owner the origin keeps whole (WHOLE) gets its bare repository
+A repository new on GitHub under an owner the origin keeps (KEEP, by name) gets its bare repository
 here first, then comes in like the rest; other owners' repositories are only the ones already here.
 The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`).
 
@@ -38,7 +38,17 @@ RELAY = os.path.join(STATE_DIR, "relay")
 DOOR_LOG = os.path.join(ORIGIN, ".door", "actions.ndjson")
 CARRY = os.path.join(STATE_DIR, "carry.json")
 # Owners whose every repository the origin keeps. FCCN-ANTIBODY's are only the ones FCPM calls on.
-WHOLE = ("FC-Public-Media", "NCCV-OPINION")
+# Owners whose repositories the origin keeps, found by themselves: every one of FC-Public-Media's;
+# of NCCV-OPINION's only `cite-*`, the managed, multi-tenant citations that get passkey-signed
+# commits (Autumn, 2026-10-22). NCCV's own software (platform, editor-app, .github) is theirs and is
+# not kept or updated here; nor are anyone's personal cite repositories outside the org.
+KEEP = {"FC-Public-Media": "", "NCCV-OPINION": "cite-"}
+
+
+def kept(full):
+    """Whether the origin keeps owner/repo: by KEEP's prefix for an owner there, else what is here."""
+    owner, name = full.split("/", 1)
+    return owner not in KEEP or name.startswith(KEEP[owner])
 WEEK = datetime.timedelta(days=7)
 DEV_EVERY = datetime.timedelta(minutes=15)
 
@@ -108,17 +118,17 @@ def github_mains(names):
 
 
 def discover(have):
-    """owner/repo on GitHub under WHOLE that the origin lacks, made here as bare repositories."""
+    """owner/repo on GitHub that KEEP keeps and the origin lacks, made here as bare repositories."""
     q = "query { %s }" % " ".join(
         'o%d: repositoryOwner(login: %s) { repositories(first: 100, isFork: false) { nodes { name } } }'
-        % (i, json.dumps(o)) for i, o in enumerate(WHOLE))
+        % (i, json.dumps(o)) for i, o in enumerate(KEEP))
     r = subprocess.run(["gh", "api", "graphql", "-f", "query=" + q], capture_output=True, text=True, timeout=60)
     data = json.loads(r.stdout or "{}").get("data") or {}
     made = []
-    for i, owner in enumerate(WHOLE):
+    for i, owner in enumerate(KEEP):
         for node in ((data.get("o%d" % i) or {}).get("repositories") or {}).get("nodes") or []:
             full = "%s/%s" % (owner, node["name"])
-            if full in have:
+            if full in have or not kept(full) or os.path.exists(os.path.join(ORIGIN, full)):
                 continue
             p = os.path.join(ORIGIN, full)
             subprocess.run(["git", "init", "-q", "--bare", p], check=True)
@@ -261,6 +271,9 @@ def main():
         except BlockingIOError:
             return 0                    # the last run is still going
         names = repos()
+        rows = [{"repo": n, "state": "not kept", "main": ref(os.path.join(ORIGIN, n), "refs/heads/main")}
+                for n in names if not kept(n)]     # here from before KEEP said otherwise: left as they are
+        names = [n for n in names if kept(n)]
         try:
             names += discover(set(names))
         except Exception:
@@ -271,7 +284,6 @@ def main():
             remote, offline = {}, repr(e)
         else:
             offline = None if remote else "GitHub did not answer"
-        rows = []
         for full in names:
             p = os.path.join(ORIGIN, full)
             if full not in remote:
