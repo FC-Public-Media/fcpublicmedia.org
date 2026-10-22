@@ -39,6 +39,22 @@ when an autopilot send commits them (`autopilotsends`). The vendor's examples, s
 send, are in `github.com/trms/cablecast-api-examples`. Their `cablecast-supercopy` copies a day
 forward.
 
+## The look
+
+How we look on the channel and the website is kept as files in its own repository,
+`FC-Public-Media/broadcast`, on our origin only (`/srv/origin/FC-Public-Media/broadcast`, and
+origin.local by the standby); see its README. `cablecast.py eject <checkout>` copies it out of
+the box: the website's logos, words, colours and home rows (`website/`), what rides on the picture
+(`on-air/`), and the bulletin board's fixed pieces and slides, in order (`bulletin-board/`). It
+writes the same bytes for the same box, so a commit after an eject is exactly what changed in
+Cablecast. Sending the files back into Cablecast is still to come.
+
+The bulletin board is Cablecast CG: 15 zones on one page (`/CablecastCGWebDisplay/WebDisplay.aspx?ChannelID=2`),
+each zone's pictures listed by `?op=getLatestBulletins&ZoneID=`. Nine are fixed art, one is the 28
+slides that take turns, and the rest (two clocks, the North Forty News feed, the schedule, the
+weather) are drawn by the board. The corner logo on the channel points at Cablecast's sample
+picture (`/Carousel/Images/TRMS.png`) and renders as nothing, so the channel carries no logo today.
+
 ## The public site
 
 One record, `publicsites/1`, holds the whole of it: logo, square logo, colours, custom CSS, favicon,
