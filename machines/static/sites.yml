@@ -3,7 +3,7 @@
 # (./receive) serves what is pushed to it, by these; a workstation pushes with `deploy SITE DIR`.
 # A site with a `build` is built by a workstation's publish.py when the last commit touching its
 # `from` changes; one with a `root` is copied as it sits; one with `export` is that repository's
-# main as committed, from the origin (or GitHub: `export_from`), by `git archive` (a private submodule comes out empty, so
+# main as committed, from the origin, by `git archive` (a private submodule comes out empty, so
 # nothing private is published, and nothing is built); one with none of these is pushed by its own
 # project. `frame: self` lets a site frame its own pages (frame-ancestors 'self'); every other site
 # is framed by nobody. Paths are from this checkout's root. See CREW.md.
@@ -19,5 +19,4 @@ sites:
   nccv:
     serve: [nccv.you]                   # a host root of its own: absolute paths, and a passkey binds to an origin
     export: NCCV-OPINION/platform       # the repository is the site (platform #28): its main, as committed
-    export_from: github                 # NCCV's own software: not kept on our origin (only its cite-* are)
     frame: self                         # its include tags open its own intermediates in iframes; no other site is framed
