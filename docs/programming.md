@@ -5,6 +5,7 @@
 The Cablecast API (`https://reflect-fcpublicmedia.cablecast.tv/cablecastapi/v1`) needs no key and
 allows any origin. The site snapshots it at build time into plain, indexable HTML. The one live call
 is the "on now" strip (`site/assets/js/onair.js`), which stays hidden if the request fails.
+Changing anything on the box (our show fields, the schedule) takes a token: [machines/broadcast/PROFILE.md](../machines/broadcast/PROFILE.md).
 
 ## Sync jobs
 
