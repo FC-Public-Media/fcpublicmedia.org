@@ -79,16 +79,25 @@ has no play.
 
 ## To YouTube
 
-Channel 97 goes to YouTube all day, everything on it, from our side: [`relay`](relay), the crew's
-`youtube` line wherever this job is worn ([`names`](names)), copies Cablecast's web stream (the
-largest picture, 1080p at about 2 Mbps, and the audio) to YouTube by RTMPS, without re-encoding. The
-key is kept in `~/.config/fcpm/youtube.key` (600). Nothing is pushed until the stream is seen to move,
-and ffmpeg is stopped when its output stops; `~/.local/state/fcpm/broadcast/relay.json` says which:
-`pushing`, `frozen`, `waiting` (no key), `stalled`, `unreachable`. `relay --check` says it without
-pushing. `--backup` feeds YouTube's backup ingest from a second box.
+Channel 97 goes to YouTube all day, everything on it, from Cablecast itself: the Live 350 pushes it to
+the YouTube network stream destination (`addOutput`), with YouTube's current key. Our part is to be
+under it, never to carry it.
+
+[`relay`](relay) is the emergency tool if the 350 cannot push: it copies the channel's web stream (taken
+on the LAN from the 350, the cloud copy as fallback) to YouTube's primary ingest without re-encoding,
+and pushes only once the source is seen to move. It is not a crew line; `relay --check` says what it
+would do. It carried the channel on 2026-10-22 from 00:03 while the 350's own push could not.
+
+When the channel's stream pauses (a gap in the schedule, an IP-exempt program), YouTube would end the
+broadcast. So [`standby`](standby), the crew's `backup` line, feeds YouTube's backup ingest all the
+time with our own picture: the brand's mark and lockup (from `site/_data/brand.json`) and the room's
+clock, at 1080p30 like the channel, decoded once and encoded by the GPU (about a tenth of a core and
+a few hundred kbit/s). YouTube shows it while the channel is away and goes back when it returns.
 
 Cablecast's own way to YouTube is a network broadcast event tied to a scheduled run, one run at a
-time, and a paid add-on; it suits events, not a whole channel.
+time, and a paid add-on; it suits events, not a whole channel. A Live server can also push to a
+network stream destination by itself (`addOutput`): that wants the destination's key to be YouTube's
+current one, and an encoder that is not stuck.
 
 The web stream stopped on 2026-10-19 at 23:19 here, while Cablecast went on saying BROADCASTING: its
 playlist kept its last four segments and stopped moving. Stopping and starting the live stream in

@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""standby — our own steady picture on YouTube's backup ingest, so channel 97's YouTube stream never ends.
+
+    python3 -I machines/broadcast/standby               run (the broadcast crew's `backup` line keeps it up)
+    python3 -I machines/broadcast/standby --check       draw the slate and say what it would send, send nothing
+    python3 -I machines/broadcast/standby --try FILE    ten seconds of it into FILE, to look at
+
+When the channel's own stream pauses (a gap in the schedule, an IP-exempt program), YouTube ends a
+broadcast that has nothing coming in. Fed on its backup ingest with the same key, YouTube switches
+viewers here instead, and back to the channel when it returns. The picture is the brand's mark and
+lockup (site/_data/brand.json, drawn by rsvg-convert) with the time in the room, at 1080p30 and 48 kHz
+stereo like the channel, so YouTube takes the two as a pair. The slate is decoded once and repeated,
+and encoded by the GPU when it can be: about a tenth of a core. The key is ~/.config/fcpm/youtube.key, as
+the relay's; nothing here prints it. ffmpeg and the system python. See PROFILE.md, "To YouTube".
+"""
+import html
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import time
+
+HERE = pathlib.Path(__file__).resolve().parent
+BRAND = json.loads((HERE.parent.parent / "site/_data/brand.json").read_text())
+KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
+STATE_DIR = pathlib.Path.home() / ".local/state/fcpm/broadcast"
+SLATE = STATE_DIR / "standby-slate.png"
+FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+INGEST = "rtmps://b.rtmp.youtube.com/live2"     # YouTube's backup server; the app carries ?backup=1
+W, H, FPS = 1920, 1080, 30
+ROOM_TZ = "America/Denver"
+GPU = "/dev/dri/renderD128"
+
+
+def slate():
+    """The slate, drawn from the brand: the mark leaning by its tilt over the lockup, on ink."""
+    c, tilt = BRAND["colours"], BRAND["tilt"]
+    first, second = (html.escape(w) for w in BRAND["names"]["lockup"])
+    side, cx, cy = 300, W / 2, H * 0.38
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
+  <rect width="{W}" height="{H}" fill="{c['ink']}"/>
+  <rect x="{cx - side / 2}" y="{cy - side / 2}" width="{side}" height="{side}" fill="{c['signal']}"
+        transform="rotate({tilt} {cx} {cy})"/>
+  <text x="{cx}" y="{H * 0.66}" text-anchor="middle" font-family="DejaVu Serif, Georgia, serif"
+        font-weight="700" font-size="76" fill="{c['paper']}">{first}</text>
+  <text x="{cx}" y="{H * 0.66 + 70}" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+        font-size="40" letter-spacing="10" fill="{c['masthead-soft']}">{second.upper()}</text>
+</svg>"""
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    drawn = subprocess.run(["rsvg-convert", "-w", str(W), "-h", str(H)], input=svg.encode(),
+                           capture_output=True, check=True).stdout
+    if not SLATE.exists() or SLATE.read_bytes() != drawn:
+        SLATE.write_bytes(drawn)
+    return SLATE
+
+
+def command(out, seconds=None):
+    """ffmpeg: the slate decoded once and repeated, the room's clock on it, silence, as the channel's
+    shape. Encoded by the GPU (VAAPI, a tenth of a core) when this account may use it, else by x264."""
+    clock = (f"drawtext=fontfile={FONT}:text='%{{localtime\\:%H\\\\\\:%M}}':fontsize=54"
+             f":fontcolor=0x{BRAND['colours']['masthead-soft'].lstrip('#')}:x=(w-text_w)/2:y=h*0.88")
+    repeat = f"loop=loop=-1:size=1:start=0,fps={FPS},{clock},realtime"
+    if os.access(GPU, os.R_OK | os.W_OK):
+        pre, graph = ["-vaapi_device", GPU], f"[0:v]format=nv12,{repeat},hwupload[v]"
+        video = ["-c:v", "h264_vaapi", "-g", str(FPS * 2), "-b:v", "1500k", "-maxrate", "1500k"]
+    else:
+        pre, graph = [], f"[0:v]format=yuv420p,{repeat}[v]"
+        video = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage", "-g", str(FPS * 2),
+                 "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k"]
+    cmd = (["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning"] + pre
+           + ["-i", str(slate()), "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+              "-filter_complex", graph, "-map", "[v]", "-map", "1:a"] + video
+           + ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"])
+    if seconds:
+        cmd += ["-t", str(seconds)]
+    return cmd + out
+
+
+def note(state, why):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    (STATE_DIR / "standby.json").write_text(json.dumps(
+        {"state": state, "why": why, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}, indent=1) + "\n")
+    print(f"standby: {state}: {why}", flush=True)
+
+
+def main(args):
+    env = dict(os.environ, TZ=ROOM_TZ)
+    if args[:1] == ["--try"] and len(args) == 2:
+        subprocess.run(command(["-y", args[1]], seconds=10), env=env, check=True)
+        print(f"standby: ten seconds in {args[1]}")
+        return
+    key = KEY.read_text().strip() if KEY.exists() else ""
+    out = ["-f", "flv", "-rtmp_app", "live2?backup=1", "-rtmp_playpath", key or "<key>", INGEST]
+    if args == ["--check"]:
+        slate()
+        print(json.dumps({"slate": str(SLATE), "key": bool(key), "to": INGEST + "?backup=1/<key>",
+                          "ffmpeg": " ".join(command(out[:-3] + ["<key>", INGEST]))[:400]}, indent=1))
+        return
+    if args:
+        sys.exit(__doc__)
+    while not key:
+        note("waiting", f"no key in {KEY}")
+        time.sleep(60)
+        key = KEY.read_text().strip() if KEY.exists() else ""
+    out[-2] = key
+    note("sending", "the slate to YouTube's backup ingest")
+    code = subprocess.run(command(out), env=env).returncode
+    note("stopped", f"ffmpeg ended ({code})")
+    sys.exit(code)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

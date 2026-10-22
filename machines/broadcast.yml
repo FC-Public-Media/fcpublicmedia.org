@@ -1,7 +1,7 @@
 # What the broadcast job serves, when it orders it (broadcast/services). See README.md.
 
 serves:
-  - service: youtube
-    for: "channel 97 to YouTube, all day: Cablecast's web stream copied by RTMPS once it is seen to move; see broadcast/PROFILE.md, To YouTube"
-    start: "/usr/bin/python3 -I machines/broadcast/relay"
-    alive: {process: 'machines/broadcast/relay(\s|$)'}
+  - service: backup
+    for: "our own steady picture (the brand's slate and the room's clock) on YouTube's backup ingest, so the YouTube stream never ends in a gap; see broadcast/PROFILE.md, To YouTube"
+    start: "/usr/bin/python3 -I machines/broadcast/standby"
+    alive: {process: 'machines/broadcast/standby(\s|$)'}
