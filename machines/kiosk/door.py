@@ -787,16 +787,21 @@ def with_poll(page):
     return page[:i] + POLL + page[i:] if i >= 0 else page + POLL
 
 
-BRAND = """:root { --signal:#ffc61a; --slate:#232830; --ink:#121417;
-  --paper:#f4f1ea; --dim:#a1a8b2; --soft:#9ba3ad; --rule:#2f363d;
-  --record:#d93a26; }                 /* on-air red, site.css: for what is live */
-html,body { margin:0; background:var(--ink); color:var(--paper);
+# The brand, from site/_data/brand.json (written by FC-Public-Media/brand's render.py): colours, the
+# names and the mark's tilt. Nothing brand is written here by hand.
+BRANDING = json.loads((ROOT / "site" / "_data" / "brand.json").read_text(encoding="utf-8"))
+_C, _D = BRANDING["colours"], BRANDING["dark"]
+LOCKUP = "<span class=words><b>%s</b><span>%s</span></span>" % tuple(html.escape(w) for w in BRANDING["names"]["lockup"])
+BRAND = (":root { --signal:%s; --slate:%s; --ink:%s;\n  --paper:%s; --dim:%s; --soft:%s; --rule:%s;\n"
+         "  --record:%s; --tilt:%sdeg; }  /* on-air red: for what is live */\n" % (
+             _C["signal"], _C["slate"], _C["ink"], _C["paper"], _D["ink-soft"], _C["masthead-soft"], _D["rule"],
+             _C["record"], BRANDING["tilt"])) + """html,body { margin:0; background:var(--ink); color:var(--paper);
   font:18px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; }
 a { color:inherit; }
 /* THE MARK: the brand square, and a shape any page here may reuse. Signal
-   yellow, hard edges, leaning -8deg: counterclockwise, always (brand/README.md,
+   yellow, hard edges, leaning by the brand's tilt: counterclockwise, always (brand/README.md,
    "The tilt"). Unlit it is slate, as in brand/idle. */
-.mark { background:var(--signal); rotate:-8deg; }
+.mark { background:var(--signal); rotate:var(--tilt); }
 .mark.unlit { background:var(--slate); }
 /* The clock mark: the same square with clock hands drawn on top of whatever
    it holds (site/_includes/clock-hands.html). */
@@ -984,10 +989,9 @@ def e(s):
 
 def masthead(where):
     """The board's lockup: the mark and the wordmark, as the site's (site/_includes/header.html).
-    The one place to change when the new logo lands."""
-    return ('<header class=masthead><span class=mark aria-hidden=true></span>'
-            '<span class=words><b>Fort Collins</b><span>Public Media</span></span>'
-            '<span class=where>%s</span></header>' % where)
+    The names come from the brand (site/_data/brand.json); the mark is the CSS .mark above."""
+    return ('<header class=masthead><span class=mark aria-hidden=true></span>' + LOCKUP
+            + '<span class=where>%s</span></header>' % where)
 
 
 def verbs_here():
@@ -2276,7 +2280,7 @@ def turn_file(name):
     mods = turn_modules()
     if name == "index.html":
         cfg = node().get("turn") or {}
-        shell = wall_shell(cfg, mods, head="<h1 class=name>%s</h1>" % e(cfg.get("name", "Fort Collins Public Media")),
+        shell = wall_shell(cfg, mods, head="<h1 class=name>%s</h1>" % e(cfg.get("name", BRANDING["names"]["name"])),
                            css=TURN_CSS % turn_font())
         i = shell.rfind("</body>")
         return shell[:i] + ASIDE_HTML + shell[i:]
@@ -2500,7 +2504,7 @@ def room_page(room):
     body = """
 <main class=room>
   <section class=who>
-    <div class=lockup><span class=mark aria-hidden=true></span><span class=words><b>Fort Collins</b><span>Public Media</span></span></div>
+    <div class=lockup><span class=mark aria-hidden=true></span>%s</div>
     <h1>%s</h1>
     <p class=say>%s</p>
     <div class="host quiet" id=host><b class=label></b><span class=name>%s</span><p class=welcome></p></div>
@@ -2512,7 +2516,7 @@ def room_page(room):
   </section>
 </main>
 <footer><span>%s</span><a href="/host/?room=%s">Staff</a></footer>
-%s""" % (e(cfg.get("title", room)), e(cfg.get("say")), e(cfg.get("quiet")), e(cfg.get("shown") or cfg.get("encodes")),
+%s""" % (LOCKUP, e(cfg.get("title", room)), e(cfg.get("say")), e(cfg.get("quiet")), e(cfg.get("shown") or cfg.get("encodes")),
          e(cfg.get("shown") or cfg.get("encodes")), gear, e(load(ROOT / "site" / "_data" / "org.yml").get("address", {}).get("street", "")),
          e(room), ROOM_JS % json.dumps({"room": room, "encodes": cfg.get("encodes") or "", "quiet": cfg.get("quiet") or "",
                                         "welcome": cfg.get("welcome") or ""}))

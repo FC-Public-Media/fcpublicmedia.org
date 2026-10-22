@@ -40,9 +40,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from facts import refs, repos  # noqa: E402  the same reading on both sides
 
-# The console's 16 colours, all ours: 0-7 as backgrounds too, 8-15 as text only.
-PALETTE = "".join(f"\x1b]P{i:X}{c}" for i, c in enumerate((
-    "121417", "c8372d", "1b2b45", "ffc61a", "24395c", "7fb2ff", "a8841a", "ece8e1",   # ink red work work' yellow github muted paper
+# The console's 16 colours, all ours: 0-7 as backgrounds too, 8-15 as text only. Ink, yellow and paper
+# are the brand's (site/_data/brand.json; on the box, the copy beside this file); the rest are this screen's own.
+BRAND = json.load(open(next(p for p in (os.path.join(HERE, "brand.json"),
+                                        os.path.join(HERE, "..", "..", "site", "_data", "brand.json"))
+                            if os.path.exists(p)), encoding="utf-8"))
+PALETTE = "".join(f"\x1b]P{i:X}{c.lstrip('#')}" for i, c in enumerate((
+    BRAND["colours"]["ink"], "c8372d", "1b2b45", BRAND["colours"]["signal"], "24395c", "7fb2ff", "a8841a", BRAND["dark"]["ink"],   # ink red work work' yellow github muted paper
     "3d5f94", "6b717b", "a3a9b1", "6f8fc4", "f0a35e", "6cc58a", "e889b5", "b59cf0")))  # deep cool, grey, light grey, cool; the kinds
 
 

@@ -6,13 +6,15 @@
 <!-- The idle screen: open it full screen and leave it. No build, no network. brand/README.md. -->
 
 <style>
-  /* site/assets/css/site.css's :root values, copied: this works from a USB stick with no server. */
+  /* The brand's colours, written in by FC-Public-Media/brand's render.py: this works from a USB stick with no server. */
   :root {
+    /* brand:idle: from FC-Public-Media/brand (brand.yml), written by its render.py. Change it there. */
     --ink:    #121417;
     --slate:  #232830;
     --paper:  #f4f1ea;
     --signal: #ffc61a;
     --soft:   #9ba3ad;
+    /* end brand:idle */
 
     --step: 4s;   /* one dwell: slow enough to read as a tally light, not a spinner */
   }
@@ -94,8 +96,10 @@
     <div id="tally"></div>
 
     <p class="lockup">
+      <!-- brand:lockup: from FC-Public-Media/brand (brand.yml), written by its render.py. Change it there. -->
       <b>Fort Collins</b>
       <span>Public Media</span>
+      <!-- end brand:lockup -->
     </p>
   </div>
 

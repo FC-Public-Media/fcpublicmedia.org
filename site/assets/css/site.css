@@ -4,34 +4,26 @@
 /* --- Tokens --------------------------------------------------------------- */
 
 :root {
-  /* Palette. Yellow is a surface, never text on paper (1.4:1); site/bin/test_tokens.py checks. */
-  --ink:        #121417;  /* body text, and the dark surfaces */
-  --slate:      #232830;  /* the second dark surface, one step up from ink */
-  --ink-soft:   #545c66;  /* secondary text */
-  --paper:      #f4f1ea;  /* page background — warm, not white */
-  --paper-alt:  #e8e3d8;  /* banded sections */
-  --rule:       #d5cfc2;  /* hairlines */
-
-  /* The plate: fills, borders, outlines, marks. */
-  --signal:     #ffc61a;
-  --signal-ink: #121417;  /* what sits on top of yellow — 11.7:1 */
-
-  /* On-air red: the first for fills (4.1:1 on paper), the -ink one for text (6.3:1). */
-  --record:     #d93a26;
-  --record-ink: #a52c1d;
-
-  /* The masthead band: dark in both schemes, the one surface that does not flip. */
-  --masthead:      #121417;
-  --masthead-ink:  #f4f1ea;
-  --masthead-soft: #9ba3ad;  /* secondary text on the band — 7.2:1 */
-
-  /* Links: ink, underlined, red on hover. */
-  --accent:     #121417;
-
-  /* Type. Fallbacks lead with the closest metric match, so the swap does not jump. */
-  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --font-body:    Archivo, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Yellow is a surface, never text on paper (1.4:1); site/bin/test_tokens.py checks. */
+  /* brand:light: from FC-Public-Media/brand (brand.yml), written by its render.py. Change it there. */
+  --ink:           #121417;  /* body text, and the dark surfaces */
+  --slate:         #232830;  /* the second dark surface, one step up from ink; unlit marks */
+  --ink-soft:      #545c66;  /* secondary text */
+  --paper:         #f4f1ea;  /* page background: warm, not white */
+  --paper-alt:     #e8e3d8;  /* banded sections */
+  --rule:          #d5cfc2;  /* hairlines */
+  --signal:        #ffc61a;  /* the plate: fills, borders, outlines, marks. A surface, never text on paper (1.4:1) */
+  --signal-ink:    #121417;  /* what sits on top of yellow: 11.7:1 */
+  --record:        #d93a26;  /* on-air red for fills: 4.1:1 on paper */
+  --record-ink:    #a52c1d;  /* on-air red for text: 6.3:1 */
+  --masthead:      #121417;  /* the masthead band: dark in both schemes, the one surface that does not flip */
+  --masthead-ink:  #f4f1ea;  /* text on the band */
+  --masthead-soft: #9ba3ad;  /* secondary text on the band, and on any dark ground: 7.2:1 */
+  --accent:        #121417;  /* links: ink, underlined, red on hover */
+  --font-display:  "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body:     Archivo, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:     ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* end brand:light */
 
   /* Fluid type scale */
   --step--1: clamp(0.86rem, 0.83rem + 0.15vw, 0.94rem);
@@ -53,22 +45,19 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ink:       #ece8e1;
-  --slate:     #2b313a;
-  --ink-soft:  #a1a8b2;
-  --paper:     #121417;
-  --paper-alt: #1c2126;
-  --rule:      #2f363d;
-
-  /* Yellow is unchanged in both schemes, and on this dark paper it is safe as text. */
-  --signal:     #ffc61a;
-  --signal-ink: #121417;
-
-  /* Text red walked light here: the brand red is 4.0:1 on this paper. */
-  --record:     #d93a26;
-  --record-ink: #e16151;
-
-  --accent:     #ece8e1;
+  /* brand:dark: from FC-Public-Media/brand (brand.yml), written by its render.py. Change it there. */
+  --ink:       #ece8e1;  /* body text on the dark paper */
+  --slate:     #2b313a;  /* the second dark surface */
+  --ink-soft:  #a1a8b2;  /* secondary text */
+  --paper:     #121417;  /* the dark page */
+  --paper-alt: #1c2126;  /* banded sections */
+  --rule:      #2f363d;  /* hairlines on dark */
+  --signal:    #ffc61a;  /* unchanged in both schemes; on this dark paper it is safe as text */
+  --signal-ink: #121417;  /* what sits on top of yellow */
+  --record:    #d93a26;  /* on-air red for fills */
+  --record-ink: #e16151;  /* text red walked light: the brand red is 4.0:1 on this paper */
+  --accent:    #ece8e1;  /* links */
+  /* end brand:dark */
 }
 
 /* --- Fonts: self-hosted variable faces, one file covers every weight -------- */
