@@ -64,7 +64,7 @@ def rev(paths, where=ROOT):
     return r.stdout.strip() or None
 
 
-ORIGIN_URL = os.environ.get("FCPM_ORIGIN_URL") or "origin-standby:/srv/origin"
+ORIGIN_URL = os.environ.get("FCPM_ORIGIN_URL") or "fcpm-origin:/srv/origin"
 CACHE = pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache") / "fcpm" / "export"
 
 

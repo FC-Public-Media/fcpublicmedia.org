@@ -55,7 +55,7 @@ case "$cmd" in
     # The flag here is this machine's pool's (every 5 minutes while on;
     # Autumn, 2026-10-09), kept beside it.
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
-    o=${FCPM_ORIGIN_SSH:-origin-standby}
+    o=${FCPM_ORIGIN_SSH:-fcpm-origin}
     case "${1:-status}" in
       on|off)
         if [ "$1" = on ]; then mkdir -p "$(dirname "$f")" && : > "$f"; else rm -f "$f"; fi
@@ -71,6 +71,14 @@ case "$cmd" in
     # A finished site onto the static host (static/deploy): only what changed crosses, and
     # what is up stays up until the push is whole. `fcpm deploy nccv ./_site`.
     exec "$HERE/static/deploy" "$@" ;;
+  relay)
+    # The origin's mode (../origin/door): on, what is pushed there goes out to GitHub on intake's
+    # 15-minute pass; off, LAN-only: it pulls, and what is pushed waits there.
+    case "${1:-status}" in
+      on|off|status) ssh -o BatchMode=yes -o ConnectTimeout=10 "${FCPM_ORIGIN_SSH:-fcpm-origin}" relay "${1:-status}" |
+                       sed 's/^/origin.local /' || echo "origin.local did not answer" ;;
+      *) echo "fcpm relay [status|on|off]" >&2; exit 2 ;;
+    esac ;;
   pool)
     [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
     ps1 "$CODE/bin/pool.ps1" "$@" ;;

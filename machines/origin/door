@@ -12,7 +12,8 @@ GitHub's main comes in by intake alone, so the LAN never goes around a merge the
 and tags, may be pushed, and wait here, in view, for GitHub (door-hooks/pre-receive). The
 repositories themselves refuse rewriting and deleting. `init <owner>/<repo>` makes a new one, and only the
 secretary's office may. `dev on|off|status` is the LAN's dev switch (intake asks GitHub every 15
-minutes while on, weekly while off), any keyholder's. Each action is appended to
+minutes while on, weekly while off), and `relay on|off|status` the origin's mode (on: what is pushed
+here is carried out to GitHub on intake's pass; off: LAN-only, it waits here), any keyholder's. Each action is appended to
 /srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref before and after.
 
 `keys` keeps one marked block in authorized_keys and leaves every other line as it is. A KEYHOLDERS
@@ -36,6 +37,7 @@ AUTHORIZED = pathlib.Path(os.environ.get("FCPM_AUTHORIZED_KEYS", pathlib.Path.ho
 BEGIN = "# BEGIN origin door: from machines/origin/KEYHOLDERS, written by `door keys`; edit KEYHOLDERS, not this"
 END = "# END origin door"
 DEV = ORIGIN / ".intake/dev"
+SWITCHES = {"dev": DEV, "relay": ORIGIN / ".intake/relay"}
 TYPES = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "ecdsa-sha2-nistp256", "sk-ecdsa-sha2-nistp256@openssh.com"}
 MAKERS = {"secretary"}
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -124,18 +126,19 @@ def serve(office, holder):
     except ValueError:
         words = []
     if len(words) != 2:
-        refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`) and flips dev", asked=asked, **who)
-    if words[0] == "dev":
+        refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`) and flips dev or relay", asked=asked, **who)
+    if words[0] in SWITCHES:
+        name, flag = words[0], SWITCHES[words[0]]
         if words[1] == "on":
-            DEV.parent.mkdir(exist_ok=True)
-            DEV.touch()
+            flag.parent.mkdir(exist_ok=True)
+            flag.touch()
         elif words[1] == "off":
-            DEV.unlink(missing_ok=True)
+            flag.unlink(missing_ok=True)
         elif words[1] != "status":
-            refuse("dev on, dev off or dev status", asked=asked, **who)
+            refuse(f"{name} on, {name} off or {name} status", asked=asked, **who)
         if words[1] != "status":
-            record(verb="dev", state=words[1], **who)
-        print("dev: %s" % ("on" if DEV.exists() else "off"))
+            record(verb=name, state=words[1], **who)
+        print("%s: %s" % (name, "on" if flag.exists() else "off"))
         return
     verb, full = words[0], where(words[1])
     if full is None:

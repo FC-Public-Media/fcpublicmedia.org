@@ -298,9 +298,9 @@ def what(argv):
     """The step a crew process is taking: (owner/repo or None, words), or None."""
     line = " ".join(argv)
     m = ORIGIN_PATH.search(line)
-    if "git-receive-pack" in line or ("push" in argv and "origin-standby:" in line):
+    if "git-receive-pack" in line or ("push" in argv and ("fcpm-origin:" in line or "origin-standby:" in line)):
         return (m.group(1) if m else None), "→ origin.local"
-    if "ls-remote" in argv and "origin-standby:" in line:
+    if "ls-remote" in argv and ("fcpm-origin:" in line or "origin-standby:" in line):
         return (m.group(1) if m else None), "… origin.local"
     if "fetch" in argv and "github" in argv:
         i = argv.index("-C") + 1 if "-C" in argv else None
