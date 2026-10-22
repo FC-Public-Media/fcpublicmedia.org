@@ -3,3 +3,4 @@
 
 # platform   key        value
 linux        Hostname   digitization
+linux        Hostname   static

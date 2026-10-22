@@ -1,11 +1,17 @@
-# sites.yml -- what the static job serves: each site a folder of finished files, served by nginx
-# under every LAN name lan.yml gives it (`www: site`). publish.py puts each in /var/lib/fcpm/sites
-# when it moved: a site with a `build` is built when the last commit touching its `from` changes;
-# one without is copied as it sits when its `root` does. Paths are from this checkout's root. See CREW.md.
+# sites.yml -- every site the static job serves, and where: `serve` is a LAN name (`@` the domain, a
+# label under it) or a path under one (`you/nccv`: you.fcpublicmedia.local/nccv/). The static host
+# (./receive) serves what is pushed to it, by these; a workstation pushes with `deploy SITE DIR`.
+# A site with a `build` is built by a workstation's publish.py when the last commit touching its
+# `from` changes; one with a `root` is copied as it sits; one with neither is pushed by its own
+# project (NCCV's). Paths are from this checkout's root. See CREW.md.
 
 sites:
   site:
+    serve: ["@", www]
     build: machines/static/site-build   # Jekyll, from site/
     from: [site, machines/static]
   wix:
+    serve: [wix]
     root: wix/site                      # the Wix site, photocopied (submodule `wix`): no build
+  nccv:
+    serve: [you/nccv]                   # NCCV-OPINION/platform: `fcpm deploy nccv DIR` from its workstation

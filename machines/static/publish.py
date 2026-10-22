@@ -3,6 +3,10 @@
 
     python3 machines/static/publish.py          publish what moved; a site that did not is left be
     python3 machines/static/publish.py list     each name, its site and the folder behind it
+    python3 machines/static/publish.py push     push every site that is up here to the static host
+
+What moves is pushed to the static host too (./deploy, static.local, FCPM_STATIC_HOST): this machine
+builds, the host serves. A site with neither `build` nor `root` is pushed by its own project.
 
 Each site goes to <sites>/<site>/<rev>, then <site>/current points at it, and every LAN name
 lan.yml gives the site is a link by-name/<name> -> ../<site>/current, which nginx serves by Host.
@@ -58,8 +62,21 @@ def rev(paths, where=ROOT):
     return r.stdout.strip() or None
 
 
+def push(name):
+    """The site that is up here, to the static host. Says so if the host does not answer."""
+    cur = SITES / name / "current"
+    if not cur.is_dir():
+        return False
+    r = subprocess.run([str(HERE / "deploy"), name, str(cur.resolve())], capture_output=True, text=True)
+    print("%s: %s" % (name, "pushed to the static host" if r.returncode == 0 else
+                      "not pushed: " + ((r.stderr or r.stdout).strip().splitlines() or ["?"])[-1]))
+    return r.returncode == 0
+
+
 def publish(name, site):
-    """Put one site up if it moved. True when it is up (moved or not), False when it failed."""
+    """Put one site up if it moved, and push it. True when it is up (moved or not), False when it failed."""
+    if not site.get("build") and not site.get("root"):
+        return True                     # pushed by its own project (`fcpm deploy`)
     out = SITES / name
     if site.get("build"):
         at = rev(site.get("from") or ["."])
@@ -95,6 +112,7 @@ def publish(name, site):
         if d.name not in (at, "current"):
             shutil.rmtree(d, ignore_errors=True) if d.is_dir() and not d.is_symlink() else d.unlink()
     print("%s: %s published, %s" % (name, at, current))
+    push(name)
     return True
 
 
@@ -129,6 +147,8 @@ def main(argv):
         for name, site in sorted(by.items()):
             print("%-36s %-6s %s" % (name, site, SITES / site / "current"))
         return 0
+    if argv[:1] == ["push"]:
+        return 0 if all([push(n) for n, s in known.items() if s.get("build") or s.get("root")]) else 1
     if not wears(lan_mod):
         return 0
     SITES.mkdir(parents=True, exist_ok=True)

@@ -1,27 +1,28 @@
 # static
 
-Static serves finished sites to the LAN, each under the names a machine's `lan.yml` gives it, and
-hides any build step behind them. It holds no keys: a site is a folder of files, and nginx serves it.
+Static serves finished sites to the LAN, each under the names its host's `lan.yml` gives it, video and
+all. It holds no keys and builds nothing: a workstation builds a site and pushes it; the static host
+takes the push and serves it. One job on its own box (decided 2026-10-21): its disk holds the sites.
 
 | file | |
 |---|---|
-| `names` | who wears the job: `digitization` today |
-| `sites.yml` | each site: its folder (`root`), or its `build` and what it is built `from` |
-| `nginx.conf` | port 80: a name with a site is files, by Host (the file, then `.html`, then a folder's `index.html`; else the site's `404.html`), with Range, ETag and gzip; any other name goes to the door on loopback :8081 |
-| `publish.py` | each site that moved into `/var/lib/fcpm/sites/<site>/<rev>`, `current` flipped to it, and a `by-name/<name>` link per LAN name. Run by `install` and by `follow` when it moves the checkout; nothing polls |
-| `site-build`, `site-lan.yml` | the public site from `site/` by Debian's Jekyll, only when `site/` or this folder has a new commit |
-| `install` | nginx-light, `nginx.conf` as Debian's one site, the sites' folder, a first publish (sudo) |
-| `check.sh` | the gear, nginx's config and port, each site published, each name served, Range answered |
+| `names` | who wears the job: `static` (the host, its own box); `digitization` until static.local serves |
+| `sites.yml` | every site, where it is served (`serve`: a LAN name, or a path under one), and how a workstation makes it (`build` and `from`, or `root`; neither: its own project pushes it) |
+| `lan.yml` | the names the host holds by mDNS: `fcpublicmedia.local`, `www.`, `wix.`, `you.` |
+| `nginx-host.conf` | the host's port 80: a name with a site is files, by Host (the file, `.html`, a folder's `index.html`, the site's `404.html`), with Range, ETag and gzip; a member's site is a path (`you.fcpublicmedia.local/nccv/`) |
+| `receive` | the host's deploy door, forced on every key of its `deploy` account: rsync into a hard-linked copy of what is up (only what changed crosses; 260 bytes for a one-page change on a 50 MB site), then `current` flips; the one before stays. A key pushes only its sites. `receive status` on its screen |
+| `KEYHOLDERS` | who may push which sites: `sites holder key since`; `*` or `nccv` or `site,wix`. A line by merged PR, then `install fcpm@static.local` |
+| `deploy` | a workstation's push: `fcpm deploy SITE DIR` |
+| `publish.py`, `site-build`, `site-lan.yml` | a workstation's side: each site that moved, built (Jekyll, only when `site/` or this folder has a new commit) or copied, then pushed. `follow` runs it when it moves the checkout; nothing polls |
+| `outfit`, `install` | the host, on Alpine: `install root@HOST DISK SERIAL` from a lan card's live system puts Alpine on the box's own disk and outfits it; `install fcpm@static.local` outfits it again |
+| `install-debian`, `nginx.conf` | digitization's nginx in front of its door, from when it served the sites itself; it goes when digitization releases the job |
+| `check.sh` | the Debian side's gear, nginx, each site published and served |
 
-| site | names (digitization's `lan.yml`) | published from |
+| site | served at | made by |
 |---|---|---|
-| `site` | `fcpublicmedia.local`, `www.fcpublicmedia.local` | `site/`, built |
-| `wix` | `wix.fcpublicmedia.local` | `wix/site`: the Wix site, photocopied ([FC-Public-Media/wix](https://github.com/FC-Public-Media/wix)), copied as it sits |
-
-A machine takes the job by its `names` line and `sudo sh machines/static/install`. Port 80 is
-nginx's; whatever held it moves behind it (on digitization, the door: `../digitization/at-login`).
-A site is never down because the door is: the door bounces on every commit, nginx does not.
-A new site is a `sites.yml` entry and a `lan.yml` name; nginx.conf does not change.
+| `site` | `fcpublicmedia.local`, `www.fcpublicmedia.local` | a workstation, from `site/` |
+| `wix` | `wix.fcpublicmedia.local` | a workstation, `wix/site` as it sits ([FC-Public-Media/wix](https://github.com/FC-Public-Media/wix)) |
+| `nccv` | `you.fcpublicmedia.local/nccv/` | NCCV's own workstation: `fcpm deploy nccv DIR` (its key in `KEYHOLDERS`, `nccv` only) |
 
 Everything is served here first. A site goes to the cloud only once it is right on the LAN, and
-it goes from here.
+it goes from the workstation that built it.

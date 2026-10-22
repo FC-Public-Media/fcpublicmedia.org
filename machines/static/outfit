@@ -1,0 +1,125 @@
+#!/bin/sh
+# outfit -- the static job on this box, as root, on Alpine: nginx on port 80 serving /srv/sites by name
+# (nginx-host.conf), the deploy door (receive, KEYHOLDERS) as the only way to put a site up, its names
+# by mDNS (../lan.py), and its screen. Any box will do; nothing here asks what it is. One job: nothing
+# else goes on this box, and the sites (video too) live on its own disk, never on a card.
+#
+#   outfit                   this system (a running static host, or a new one from inside, chrooted)
+#   outfit DISK SERIAL       from Alpine's live system (a lan card): install onto DISK, then outfit it.
+#                            ERASES DISK. DISK must answer to SERIAL ("none" if it reports none), must not
+#                            be in use, and is never the disk the live system came from.
+#
+# Sent with its files and settings by ./install: FCPM_KEYS NAME ROOM_TZ [NOW=1: start what it sets up].
+# Safe to run again. See CREW.md.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+[ -f "$HERE/settings" ] && . "$HERE/settings"
+: "${FCPM_KEYS:?}" "${NAME:=static}" "${ROOM_TZ:=America/Denver}"
+LIB=/usr/local/lib/fcpm
+
+if [ $# -eq 2 ]; then
+  DISK=$1; SERIAL=$2; d=${DISK#/dev/}
+  [ -d "/sys/block/$d" ] || { echo "$DISK is not a whole disk. Stopping."; exit 1; }
+  apk add -q lsblk >/dev/null 2>&1 || true
+  got=$(lsblk -dno SERIAL "$DISK" 2>/dev/null | tr -d ' '); [ -n "$got" ] || got=none
+  [ "$got" = "$SERIAL" ] || { echo "$DISK answers to serial $got, not $SERIAL. Stopping."; exit 1; }
+  busy=$(grep -c "^$DISK" /proc/mounts || true)
+  for h in /sys/block/$d/holders /sys/block/$d/$d*/holders; do [ -z "$(ls -A "$h" 2>/dev/null)" ] || busy=1; done
+  [ "$busy" = 0 ] || { echo "$DISK is in use (mounted, or held: the live system's own disk?). Stopping."; exit 1; }
+  mb=$(( $(cat /sys/block/$d/size) / 2048 ))
+  echo "Installing the $NAME job onto $DISK: $(cat /sys/block/$d/device/model 2>/dev/null | xargs), ${mb} MB, serial $got."
+
+  v=$(cut -d. -f1,2 /etc/alpine-release)
+  printf 'https://dl-cdn.alpinelinux.org/alpine/v%s/main\nhttps://dl-cdn.alpinelinux.org/alpine/v%s/community\n' "$v" "$v" > /etc/apk/repositories
+  apk update -q
+  setup-hostname "$NAME"; hostname "$NAME"
+  setup-timezone -z "$ROOM_TZ" >/dev/null
+  setup-ntp chrony >/dev/null 2>&1 || true
+  boot=300
+  ERASE_DISKS=$DISK BOOT_SIZE=$boot setup-disk -m sys -s 0 "$DISK" >/dev/null
+
+  case $d in *[0-9]) p=${DISK}p ;; *) p=$DISK ;; esac
+  M=/mnt; mountpoint -q $M || mount "${p}2" $M
+  mountpoint -q $M/boot || mount "${p}1" $M/boot
+  for x in dev proc sys; do mountpoint -q $M/$x || mount --bind /$x $M/$x; done
+  cp /etc/resolv.conf $M/etc/resolv.conf
+  sed -i 's/\(ext4[[:space:]]*\)rw,relatime/\1rw,noatime/' $M/etc/fstab
+  rm -rf $M/tmp/fcpm-static; cp -r "$HERE" $M/tmp/fcpm-static
+  chroot $M /bin/sh /tmp/fcpm-static/outfit
+  echo "HOST-KEY: $(cut -d' ' -f1,2 $M/etc/ssh/ssh_host_ed25519_key.pub)"
+  rm -rf $M/tmp/fcpm-static
+  umount $M/dev $M/proc $M/sys $M/boot $M; sync
+  echo "Installed onto $DISK."
+  exit 0
+fi
+
+apk add -q nginx rsync python3 py3-yaml sudo avahi avahi-tools dbus chrony openssh coreutils
+echo "$NAME" > /etc/hostname
+setup-timezone -z "$ROOM_TZ" >/dev/null
+
+# fcpm: management, by key, with sudo. deploy: the sites, and the door every key of its is forced through.
+id fcpm >/dev/null 2>&1 || adduser -D -s /bin/sh fcpm
+id deploy >/dev/null 2>&1 || adduser -D -h /home/deploy -s /bin/sh deploy
+sed -i -E 's/^(fcpm|deploy):!:/\1:*:/' /etc/shadow      # sshd refuses a locked account, even by key
+passwd -l root >/dev/null 2>&1 || true
+install -d -m 700 -o fcpm -g fcpm /home/fcpm/.ssh
+printf '%s\n' "$FCPM_KEYS" > /home/fcpm/.ssh/authorized_keys
+chown fcpm:fcpm /home/fcpm/.ssh/authorized_keys; chmod 600 /home/fcpm/.ssh/authorized_keys
+echo 'fcpm ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/fcpm; chmod 440 /etc/sudoers.d/fcpm
+mkdir -p /etc/ssh/sshd_config.d
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/10-fcpm.conf
+grep -q '^Include /etc/ssh/sshd_config.d' /etc/ssh/sshd_config || sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config
+ssh-keygen -A >/dev/null
+sshd -t
+
+# The job's files: the door, who may push, the catalog, and the names (lan.py reads its profile here).
+install -d $LIB $LIB/machines/static
+install -m 755 "$HERE/receive" $LIB/
+install -m 644 "$HERE/KEYHOLDERS" "$HERE/sites.yml" $LIB/
+install -m 644 "$HERE/lan.py" $LIB/machines/
+install -m 644 "$HERE/names" "$HERE/lan.yml" $LIB/machines/static/
+install -d -o deploy -g deploy -m 755 /srv/sites
+
+# The deploy account's keys: only the door's block. An unforced key would be a shell, so the file
+# starts empty and only `receive keys` writes it.
+install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+install -m 600 -o deploy -g deploy /dev/null /home/deploy/.ssh/authorized_keys
+su -s /bin/sh deploy -c "python3 -I $LIB/receive keys && python3 -I $LIB/receive links"
+
+# nginx: one site, ours; Alpine's default goes.
+install -m 644 "$HERE/nginx-host.conf" /etc/nginx/http.d/fcpm.conf
+rm -f /etc/nginx/http.d/default.conf
+nginx -tq
+
+# The names, held up while the box runs (../lan.py publish).
+cat > /etc/init.d/fcpm-names <<S
+#!/sbin/openrc-run
+description="FCPM: this box's names under fcpublicmedia.local, by mDNS (lan.yml)"
+supervisor=supervise-daemon
+command=/usr/bin/python3
+command_args="-I $LIB/machines/lan.py publish"
+command_user=deploy
+depend() { need avahi-daemon; }
+S
+chmod 755 /etc/init.d/fcpm-names
+
+# The screen: what is up, refreshed every 30 s; a keyboard login stays on tty2.
+cat > $LIB/screen <<S
+#!/bin/sh
+while :; do
+  clear; printf '\\n  %s.local   sites\\n\\n' "\$(hostname)"
+  TZ=$ROOM_TZ python3 -I $LIB/receive status | sed 's/^/  /'
+  sleep 30
+done
+S
+chmod 755 $LIB/screen
+LINE="tty1::respawn:/bin/su -s /bin/sh deploy -c $LIB/screen"
+grep -v '^tty1::' /etc/inittab > /etc/inittab.new
+printf '%s\n' "$LINE" >> /etc/inittab.new; mv /etc/inittab.new /etc/inittab
+
+for s in networking sshd chronyd dbus avahi-daemon nginx fcpm-names; do rc-update add $s default >/dev/null 2>&1 || true; done
+if [ "${NOW:-}" = 1 ]; then
+  for s in sshd chronyd dbus avahi-daemon nginx fcpm-names; do rc-service $s restart >/dev/null 2>&1 || rc-service $s start >/dev/null 2>&1 || true; done
+  kill -HUP 1; pkill -f 'getty 38400 tty1' 2>/dev/null || true
+fi
+echo "OUTFITTED: $NAME"
