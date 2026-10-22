@@ -51,7 +51,7 @@ case "$cmd" in
     exec "$HERE/sync" install ;;
   dev)
     # On: the pool pulls GitHub every 5 minutes and places what merged
-    # (Autumn, 2026-10-09), and digitization's origin-intake asks every minute.
+    # (Autumn, 2026-10-09), and digitization's origin-intake every 10 minutes.
     # Off: the weekly pull and people, as before; intake weekly (Autumn, 2026-10-13).
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
     case "${1:-status}" in

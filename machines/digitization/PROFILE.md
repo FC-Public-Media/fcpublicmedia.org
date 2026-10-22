@@ -61,7 +61,7 @@ only the power button helped. Now there is a way out on its own:
 Bare repositories at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media, and the four FCCN-ANTIBODY
 repositories fcpublicmedia.org mounts. They live on the card's own `card-origin` partition (ext4, mounted by label), beside the system, not inside it.
 
-`origin-intake` (started every minute by the crew's `intake` line; it asks GitHub every minute only while `fcpm dev on`, otherwise weekly, or now with `--now`; and only while `/srv/origin` is mounted;
+`origin-intake` (started every minute by the crew's `intake` line; it asks GitHub every 10 minutes while `fcpm dev on`, otherwise weekly, or now with `--now`; and only while `/srv/origin` is mounted;
 `--status` prints the last state) tracks GitHub's `main` only, one GraphQL query for every repository,
 `gh` holding the login. Behind: fast-forward. Ahead: left alone. Both moved: a clean merge becomes our
 own merge commit; a conflict is recorded in `/srv/origin/.intake/state.json` and `main` is untouched.
