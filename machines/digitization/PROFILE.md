@@ -17,7 +17,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
 | `check.sh` | each gear present (dpkg), the crew's supervisor up, the origin mounted, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
-| `KEYHOLDERS` | who may prove themselves to this machine by passkey. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is removing the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
+| `KEYHOLDERS` | who may prove themselves to this machine by key: the origin's SSH door. A slot is an office (as `role:` in `site/_data/hosts.yml`) and holds only a public key; revoking is emptying the line by merged PR. The secretary's slot is empty. The GitHub SSH key "FCPM Digitization" is the machine's own, not a keyholder's |
 | role | FCPM's git origin and receiver, so work goes on through a cloud outage |
 
 ## Names
@@ -73,4 +73,10 @@ a convenience: `git init --bare -b main`, the two `receive.deny*` settings, a `d
 first is `FC-Public-Media/broadcast` (2026-10-21), the broadcast job's look ([`../broadcast/PROFILE.md`](../broadcast/PROFILE.md)).
 
 The LAN may push only authenticated fast-forwards (`receive.denyNonFastForwards`, `receive.denyDeletes`;
-no pull requests here). The SSH door, keyed from `KEYHOLDERS`, is not open yet.
+no pull requests here), through the SSH door, [`origin-door`](origin-door). Each key in
+[`KEYHOLDERS`](KEYHOLDERS) is one line in `~/.ssh/authorized_keys`, forced to the door with its office and
+holder (the crew's `keys` line writes them; every other line there is left alone). A keyholder's remote
+is `user@digitization.local:<owner>/<repo>`: every repository fetches; a push lands only in a repository
+that began here, since one that lives on GitHub comes in by intake alone; `init <owner>/<repo>` is the
+secretary's. Every fetch, push (each ref before and after) and refusal goes to
+`/srv/origin/.door/actions.ndjson`. Tests: `bin/test_origin_door.py`.

@@ -13,6 +13,10 @@ serves:
     for: "this checkout follows the origin's main, fast-forward only; see digitization/PROFILE.md"
     start: "/bin/sh machines/digitization/follow"
 
+  - service: keys
+    for: "KEYHOLDERS into ~/.ssh/authorized_keys: the origin's SSH door, one forced line per key; see digitization/PROFILE.md, The origin"
+    start: "/usr/bin/python3 -I machines/digitization/origin-door keys"
+
   - service: names
     for: "this machine's names under fcpublicmedia.local (lan.yml: helm, the site, its directory and gear), by mDNS, while this runs"
     start: "/usr/bin/python3 -I machines/lan.py publish"

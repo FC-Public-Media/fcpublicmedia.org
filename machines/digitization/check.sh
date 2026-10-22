@@ -29,6 +29,8 @@ systemctl is-active -q fcpm-crew@digitization
 say $? "the crew's supervisor, fcpm-crew@digitization" "sudo sh machines/crew.sh install digitization"
 mountpoint -q /srv/origin
 say $? "the origin mounted at /srv/origin"
+python3 -I "$HERE/origin-door" keys --check 2>/dev/null | grep -q "as KEYHOLDERS says"
+say $? "the origin's SSH door holds the keys KEYHOLDERS names" "the crew's keys line writes them within a minute"
 mountpoint -q /srv/landing
 say $? "the landing mounted at /srv/landing" \
   "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"
