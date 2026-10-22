@@ -36,7 +36,7 @@ on the origin, with the artist's concept sheet; copy changes from there.
 | --- | --- |
 | `logo/lens-mark.svg` | the mark alone, transparent, centred on its ring: small sizes, a browser tab |
 | `logo/lens-icon.svg` | the mark on a white square, the ring 80% of the width: phone icons, avatars |
-| `logo/lens-lockup.png` | the mark over PUBLIC MEDIA, 2084 px, on white |
+| `logo/lens-lockup.png` | the mark over PUBLIC MEDIA, 2084 px, transparent |
 
 ## The tilt
 
