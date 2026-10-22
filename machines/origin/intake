@@ -181,6 +181,18 @@ def due():
         return True
 
 
+def switched_on(size):
+    """Where in the door's log relay was last switched on (just after that line), else its end."""
+    at, pos = size, 0
+    if os.path.exists(DOOR_LOG):
+        with open(DOOR_LOG, "rb") as f:
+            for line in f:
+                pos += len(line)
+                if b'"verb": "relay"' in line and b'"state": "on"' in line:
+                    at = pos
+    return at
+
+
 def carry():
     """Branches and tags pushed through the door since the last pass, out to GitHub (relay on)."""
     try:
@@ -189,8 +201,8 @@ def carry():
     except (OSError, ValueError):
         st = {}
     size = os.path.getsize(DOOR_LOG) if os.path.exists(DOOR_LOG) else 0
-    if "offset" not in st:              # the first pass begins now: what is already here stays here
-        st = {"offset": size, "pending": []}
+    if "offset" not in st:              # the first pass: from when relay was switched on; what was here before stays here
+        st = {"offset": switched_on(size), "pending": []}
     pending = {tuple(p) for p in st.get("pending", [])}
     if os.path.exists(DOOR_LOG) and size >= st["offset"]:
         with open(DOOR_LOG) as f:

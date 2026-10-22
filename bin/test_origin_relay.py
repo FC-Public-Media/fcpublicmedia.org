@@ -51,7 +51,17 @@ class Relay(unittest.TestCase):
         loader = importlib.machinery.SourceFileLoader("intake_under_test", str(INTAKE))
         self.intake = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
         loader.exec_module(self.intake)
-        self.intake.carry()                     # relay switched on: the first pass begins now
+        self.door("relay", "on")                # relay switched on: carrying counts from here
+
+    def door(self, *words):
+        return subprocess.run([self.env["GIT_SSH_COMMAND"], "door", *words], env=self.env, capture_output=True, text=True)
+
+    def test_a_push_before_the_first_pass_still_goes_out(self):
+        w = self.work()
+        self.git("checkout", "-qb", "early", cwd=w)
+        self.commit(w, "f")
+        self.git("push", "-q", "origin", "early", cwd=w)       # after `relay on`, before any pass
+        self.assertEqual([r["state"] for r in self.intake.carry()], ["carried"])
 
     def git(self, *args, cwd=None, check=True):
         return subprocess.run(["git", *args], cwd=cwd, env=self.env, capture_output=True, text=True, check=check)
