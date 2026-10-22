@@ -1,0 +1,5 @@
+# keys -- who may log in to a lan card over SSH, as root, by key: the workstations that install jobs
+# from it onto a box's own disk (machines/<job>/install root@card.local DISK SERIAL) or reach it to
+# help. Public halves only, one a line; `kit` writes them into the card's saved settings. A line by
+# merged PR, then `kit` on the card's kit again. A card never takes a password over SSH.
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ+KeFZgZDaSwkpQN7W2ZD/qFJmsoxpA6cdapvxcLaBM digitization (FCPM Digitization)
