@@ -1,0 +1,5 @@
+# Who wears the broadcast job's own work here (the YouTube relay); `../binding` asks it. The Cablecast
+# box itself runs Tightrope's software and wears nothing of ours. Check with `hostname`. See PROFILE.md.
+
+# platform   key        value
+linux        Hostname   digitization

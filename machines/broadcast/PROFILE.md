@@ -33,8 +33,8 @@ slots are unused, and their labels can only be set in Cablecast's own pages, so 
 
 A flat list of airings (`scheduleitems`, by `?channel=1&start=&end=`): show, time, overlay text. The
 day is copied forward and changed by hand on the day it must change, so one day is a fair picture of
-any. Snapshots are kept with `cablecast.py snapshot`. The channel has nothing between airings and
-nothing after the last one: when the list runs out, it goes blank. Edits reach the playout hardware
+any. Snapshots are kept with `cablecast.py snapshot`. Between airings and after the last one, the
+channel shows its output's default input: today CG Player 1, the bulletin board. Edits reach the playout hardware
 when an autopilot send commits them (`autopilotsends`). The vendor's examples, show to schedule to
 send, are in `github.com/trms/cablecast-api-examples`. Their `cablecast-supercopy` copies a day
 forward.
@@ -65,3 +65,32 @@ time, and `comments` ("Description"). A new show field stays off the site until 
 As of 2026-10-21: the old logo throughout; upload filenames as public titles; `/live` errors; `/join`
 is empty (no Stripe table); the bulletin board is 2007-era script on the old logo. The Wix site
 embedded the bulletin board (`community-bulletin-board`) and the public site (`watch-live`).
+
+## The machines and the router
+
+Four Cablecast servers, each with one job: Live 350 (`10.1.10.62`) encodes the channel for the web
+and nothing else; VIOLite-600 (`.86`) plays programs out and records one input; VIOLite CG Server
+(`.87`) runs the bulletin board; ProVOD (`.84`) makes the on-demand copies, and serves Cablecast's own
+pages and API. A Blackmagic 12x12 Videohub (`.83`) routes between them: its outputs are the console's
+Channel Output (the air), Preview Output and VIOLite Encoder. A player that plays network streams
+(CG Player 1, the VIOLite Player) can put a stream from elsewhere on the air; the three Screenweave
+"network streams" are such sources. The console only offers what a server supports, so a Live 350
+has no play.
+
+## To YouTube
+
+Channel 97 goes to YouTube all day, everything on it, from our side: [`relay`](relay), the crew's
+`youtube` line wherever this job is worn ([`names`](names)), copies Cablecast's web stream (the
+largest picture, 1080p at about 2 Mbps, and the audio) to YouTube by RTMPS, without re-encoding. The
+key is kept in `~/.config/fcpm/youtube.key` (600). Nothing is pushed until the stream is seen to move,
+and ffmpeg is stopped when its output stops; `~/.local/state/fcpm/broadcast/relay.json` says which:
+`pushing`, `frozen`, `waiting` (no key), `stalled`, `unreachable`. `relay --check` says it without
+pushing. `--backup` feeds YouTube's backup ingest from a second box.
+
+Cablecast's own way to YouTube is a network broadcast event tied to a scheduled run, one run at a
+time, and a paid add-on; it suits events, not a whole channel.
+
+The web stream stopped on 2026-10-19 at 23:19 here, while Cablecast went on saying BROADCASTING: its
+playlist kept its last four segments and stopped moving. Stopping and starting the live stream in
+Cablecast is what starts it again; the relay says `frozen` until then.
+

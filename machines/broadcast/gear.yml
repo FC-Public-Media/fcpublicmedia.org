@@ -1,0 +1,15 @@
+# gear.yml: what the broadcast job stands on where it is worn, on Debian. `package:` is an apt name.
+
+version: 1
+platform: linux
+
+gear:
+  - gear: ffmpeg
+    for: >
+      The YouTube relay (relay): Cablecast's web stream read and copied to YouTube by RTMPS,
+      never re-encoded; ffprobe picks the largest picture.
+    package: ffmpeg
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"
