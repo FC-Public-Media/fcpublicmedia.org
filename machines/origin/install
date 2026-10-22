@@ -31,6 +31,7 @@ cp machines/leash.py machines/console-font.py machines/origin/facts.py machines/
   machines/origin/intake machines/origin/run-intake machines/origin/door machines/origin/KEYHOLDERS \
   machines/origin/outfit "$T/fcpm-origin/"
 cp -r machines/origin/door-hooks "$T/fcpm-origin/"
+[ ! -f site/_data/brand.json ] || cp site/_data/brand.json "$T/fcpm-origin/"   # the screen's colours, beside page.py
 cat > "$T/fcpm-origin/settings" <<S
 FCPM_KEYS='$FCPM_KEYS'
 NAME='$NAME'

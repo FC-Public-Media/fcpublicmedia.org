@@ -110,6 +110,7 @@ chmod 600 /etc/crontabs/git
 # The screen: tty1 is the leash, its page painted here, from this box's own origin and intake's log;
 # no other machine holds it. A keyboard login stays on tty2.
 install -m 755 "$HERE/leash.py" "$HERE/facts.py" "$HERE/page.py" $LIB/
+[ ! -f "$HERE/brand.json" ] || install -m 644 "$HERE/brand.json" $LIB/          # the brand's colours, if the checkout has them
 rm -rf /home/leash/.ssh                              # the leash no longer reaches out
 LINE="tty1::respawn:/bin/su -s /bin/sh leash -c 'exec env TERM=linux LANG=C.UTF-8 TZ=$ROOM_TZ FCPM_LOGS=/var/log/fcpm FCPM_ORIGIN_JOB=intake /usr/bin/python3 $LIB/leash.py --facts $LIB/facts.py -- /usr/bin/python3 $LIB/page.py /srv/origin'"
 grep -v '^tty1::' /etc/inittab > /etc/inittab.new
