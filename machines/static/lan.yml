@@ -8,4 +8,5 @@ shared:
   "@": site
   www: site
   wix: wix
-  you: members       # member projects, each a path: you.fcpublicmedia.local/<show>/ (sites.yml)
+  you: members       # member projects without a name of their own: you.fcpublicmedia.local/<show>/
+  nccv.you: nccv     # NCCV, a member site with its own origin: nccv.you.fcpublicmedia.local
