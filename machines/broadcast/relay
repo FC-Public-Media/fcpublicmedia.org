@@ -74,7 +74,8 @@ def moving(master_url):
     playlist = largest(master_url)
     def where():
         text = fetch(playlist)
-        seq = int(re.search(r"#EXT-X-MEDIA-SEQUENCE:(\d+)", text).group(1)) + text.count("#EXTINF")
+        first = re.search(r"#EXT-X-MEDIA-SEQUENCE:(\d+)", text)      # absent means 0 (RFC 8216)
+        seq = (int(first.group(1)) if first else 0) + text.count("#EXTINF")
         stamps = re.findall(r"#EXT-X-PROGRAM-DATE-TIME:(\S+)", text)
         return seq, stamps[-1] if stamps else None
     first, _ = where()
