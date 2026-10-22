@@ -11,7 +11,7 @@ pushed to. In one that lives on GitHub (it has a `github` remote), `main` and `g
 GitHub's main comes in by intake alone, so the LAN never goes around a merge there. Any other branch,
 and tags, may be pushed, and wait here, in view, for GitHub (door-hooks/pre-receive). The
 repositories themselves refuse rewriting and deleting. `init <owner>/<repo>` makes a new one, and only the
-secretary's office may. `dev on|off|status` is the LAN's dev switch (intake asks GitHub every 10
+secretary's office may. `dev on|off|status` is the LAN's dev switch (intake asks GitHub every 15
 minutes while on, weekly while off), any keyholder's. Each action is appended to
 /srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref before and after.
 
