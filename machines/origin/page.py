@@ -30,9 +30,10 @@ The crew's git runs here too, so the page watches it: the repository being worke
 softly in blue, and its owner's bar says the step on the right (pools → origin.local, pools ←
 github), holding the last one, dimmer, once it is done. The bar at the bottom is the room's: the
 box's disk and memory as gauges (yellow is used, black is free, then how much is free in G), its
-load, the time; red with the trouble.
+load, the time; red with the trouble. On its left, the origin's own settings: its name, and while
+`fcpm dev on` the pace intake asks GitHub at, called out in ink (weekly, the usual, says nothing).
 """
-import calendar, json, os, re, subprocess, sys, threading, time
+import calendar, importlib.machinery, importlib.util, json, os, re, subprocess, sys, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -53,6 +54,7 @@ INK, GH, MUTED_T, PAPER = fg(0), fg(5), fg(6), fg(7)
 DEEP, DIM, LIGHT, COOL = fg(8), fg(9), fg(10), fg(11)
 KINDS = {"show.yml": fg(14), "instrument.yml": fg(12), "gear.yml": fg(13), "residency.yml": fg(15)}
 ON_YELLOW, ON_MUTED, ON_BAD = "\x1b[22;43;30m", "\x1b[22;46;30m", "\x1b[22;41;37m"
+ON_DEV = "\x1b[22;40;33m"                               # yellow on ink: dev mode, on the bottom bar
 WORK = ("\x1b[42m", "\x1b[44m")                         # the flicker under a repository being worked on
 COMMIT, BRANCH, TAG = "", "", ""     # drawn by ../console-font.py
 FILL, SEAM = "", ""      # one centred square growing: 3, 6, 9, 14 pixels
@@ -66,6 +68,27 @@ STALE = 300         # seconds apart before a line turns to trouble
 LINGER = 1.5        # seconds a repository stays lit after its git is done
 EDGES = [7 * 2 ** (k / 2) for k in range(11)]          # days: 7, 9.9, 14, … 224; ten blocks
 RATES = (1, 3, 8)                                       # commits a day where the mark steps up
+
+
+def intake_pace():
+    """intake's own dev flag and dev pace (../digitization/origin-intake), so the bar says what intake does."""
+    path = os.path.join(HERE, "..", "digitization", "origin-intake")
+    loader = importlib.machinery.SourceFileLoader("origin_intake", path)
+    intake = importlib.util.module_from_spec(importlib.util.spec_from_loader("origin_intake", loader))
+    loader.exec_module(intake)
+    return intake.DEV, int(intake.DEV_EVERY.total_seconds() // 60)
+
+
+NAME = next((w[2] for w in (line.split() for line in open(os.path.join(HERE, "names")))
+             if w[:2] == ["linux", "Hostname"]), "origin") + ".local"
+DEV_FLAG, DEV_MINUTES = intake_pace()
+
+
+def settings(surface):
+    """The left of the bottom bar: this origin's name, and intake's pace while `fcpm dev on`."""
+    if os.path.exists(DEV_FLAG):
+        return f"{NAME}  {ON_DEV} dev {DEV_MINUTES}m {surface}"
+    return NAME
 
 
 def step(rate):
@@ -427,7 +450,7 @@ def paint():
             trouble = trouble or f"{gb(f['free'])} free"
         clock = time.strftime("%H:%M")
         if not f:
-            foot = bar(C, "FC Public Media", clock, ON_MUTED)
+            foot = bar(C, settings(ON_MUTED), clock, ON_MUTED)
         elif now - S.heard > QUIET:
             foot = bar(C, f"— {ago(now - S.heard)}", clock, ON_BAD)
         else:
@@ -439,7 +462,7 @@ def paint():
             if "load" in f:
                 parts.append(f"load {f['load']:.2f}")
             parts.append(clock)
-            foot = bar(C, trouble or "FC Public Media", "   ".join(parts), ON_BAD if trouble else ON_YELLOW)
+            foot = bar(C, trouble or settings(ON_YELLOW), "   ".join(parts), ON_BAD if trouble else ON_YELLOW)
 
         owners = {}
         for row in S.rows:

@@ -76,7 +76,8 @@ The LAN may push only authenticated fast-forwards (`receive.denyNonFastForwards`
 no pull requests here), through the SSH door, [`origin-door`](origin-door). Each key in
 [`KEYHOLDERS`](KEYHOLDERS) is one line in `~/.ssh/authorized_keys`, forced to the door with its office and
 holder (the crew's `keys` line writes them; every other line there is left alone). A keyholder's remote
-is `user@digitization.local:<owner>/<repo>`: every repository fetches; a push lands only in a repository
-that began here, since one that lives on GitHub comes in by intake alone; `init <owner>/<repo>` is the
-secretary's. Every fetch, push (each ref before and after) and refusal goes to
+is `user@digitization.local:<owner>/<repo>`: every repository fetches and takes pushes, but in one that
+lives on GitHub, `main` and `github/*` are intake's alone; any other branch, and tags, wait here in view
+until they go to GitHub (`door-hooks/pre-receive`). That is the seam: what is ready to go to GitHub, and
+what is still to come from it. `init <owner>/<repo>` is the secretary's. Every fetch, push (each ref before and after) and refusal goes to
 `/srv/origin/.door/actions.ndjson`. Tests: `bin/test_origin_door.py`.
