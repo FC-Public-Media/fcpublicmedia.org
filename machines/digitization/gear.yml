@@ -118,6 +118,16 @@ gear:
     restart-tier: app
     holds: "its profile, in ~/.config/vivaldi"
 
+  - gear: librsvg2-bin
+    for: >
+      rsvg-convert: draws the brand's marks and the wallpapers as PNG, for
+      FC-Public-Media/brand's render.py and bin/make-wallpaper.py.
+    package: librsvg2-bin
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"
+
   - gear: firefox
     for: >
       The resting screen (rest): brand/idle full screen, in its own kiosk

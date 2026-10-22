@@ -1,5 +1,12 @@
 # Brand assets for the screens in the building
 
+The brand itself (names, the mark, colours, type) is made in its own repository, `FC-Public-Media/brand`,
+on the studio's origin. Its `render.py` writes what follows from it into this repository:
+`site/_data/brand.json` (read by the site's templates, the kiosk door, `bin/make-wallpaper.py` and
+origin's screen), the `brand:` blocks in `site/assets/css/site.css` and `idle/index.html`, the icons in
+`site/assets/img/`, and these wallpapers. `bin/test_brand.py` fails if a screen spells a brand colour
+itself again.
+
 Desktop backgrounds and the idle screen for the studio panels, outside `site/` so none of it can
 reach a public URL. Screens and dim: [`docs/kiosk.md`](../docs/kiosk.md).
 

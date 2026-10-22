@@ -1,0 +1,46 @@
+{
+ "from": "FC-Public-Media/brand 2042f42",
+ "names": {
+  "name": "Fort Collins Public Media",
+  "lockup": [
+   "Fort Collins",
+   "Public Media"
+  ]
+ },
+ "tilt": -8,
+ "black": "#000000",
+ "colours": {
+  "ink": "#121417",
+  "slate": "#232830",
+  "ink-soft": "#545c66",
+  "paper": "#f4f1ea",
+  "paper-alt": "#e8e3d8",
+  "rule": "#d5cfc2",
+  "signal": "#ffc61a",
+  "signal-ink": "#121417",
+  "record": "#d93a26",
+  "record-ink": "#a52c1d",
+  "masthead": "#121417",
+  "masthead-ink": "#f4f1ea",
+  "masthead-soft": "#9ba3ad",
+  "accent": "#121417"
+ },
+ "dark": {
+  "ink": "#ece8e1",
+  "slate": "#2b313a",
+  "ink-soft": "#a1a8b2",
+  "paper": "#121417",
+  "paper-alt": "#1c2126",
+  "rule": "#2f363d",
+  "signal": "#ffc61a",
+  "signal-ink": "#121417",
+  "record": "#d93a26",
+  "record-ink": "#e16151",
+  "accent": "#ece8e1"
+ },
+ "fonts": {
+  "display": "\"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+  "body": "Archivo, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+  "mono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+ }
+}
