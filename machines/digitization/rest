@@ -23,13 +23,16 @@ QUIET = {"browser.aboutwelcome.enabled": False, "browser.startup.homepage_overri
 
 
 def stay_on():
-    """No blanking and no power-down: X's own, and XFCE's power manager, which would set it again."""
+    """No blanking and no power-down: X's own, and XFCE's power manager, which would set it again.
+    No display dialog either: switching the monitor's input looks like a new display to XFCE."""
     subprocess.run(["xset", "s", "off", "s", "noblank", "-dpms"])
     if shutil.which("xfconf-query"):
         for key, kind, value in (("dpms-enabled", "bool", "false"), ("blank-on-ac", "int", "0"),
                                  ("dpms-on-ac-sleep", "int", "0"), ("dpms-on-ac-off", "int", "0")):
             subprocess.run(["xfconf-query", "-c", "xfce4-power-manager", "-p", "/xfce4-power-manager/" + key,
                             "-n", "-t", kind, "-s", value], stderr=subprocess.DEVNULL)
+        subprocess.run(["xfconf-query", "-c", "displays", "-p", "/Notify", "-n", "-t", "int", "-s", "0"],
+                       stderr=subprocess.DEVNULL)
 
 
 def show():
