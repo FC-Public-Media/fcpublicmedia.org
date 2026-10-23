@@ -1,0 +1,315 @@
+#!/usr/bin/python3
+"""intake: GitHub's main -> the origin, on the origin's own box: every 15 minutes while the LAN's dev
+is on, weekly while off, so GitHub is not asked 1,440 times a day (Autumn, 2026-10-21: a merge
+showing up within the minute was too eager).
+
+    intake            check every repo once, take what moved (if it is time)
+    intake --now      check now, whatever the pace
+    intake --status   print the last state, change nothing
+
+Only main is fetched, into github/main. A failure in one repo is recorded and the next goes on.
+A repository new on GitHub under an owner the origin keeps (KEEP, by name) gets its bare repository
+here first, then comes in like the rest; other owners' repositories are only the ones already here.
+The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`).
+
+Relay (.intake/relay, `relay on|off`): on, the origin is a full relay. On the same pass it carries out
+to GitHub each branch and tag a keyholder pushed through the door since the last pass (the door's
+log says which): fast-forward only, never forced, never main or github/*, and never a repository
+that began here. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
+person. Only what was pushed through the door is ever carried, so a branch GitHub merged and
+deleted is not brought back. Off, the origin is LAN-only: it pulls, and what is pushed waits here.
+Runs as the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
+"""
+import datetime
+import fcntl
+import json
+import os
+import subprocess
+import sys
+
+ORIGIN = os.environ.get("FCPM_ORIGIN", "/srv/origin")
+STATE_DIR = os.path.join(ORIGIN, ".intake")
+STATE = os.path.join(STATE_DIR, "state.json")
+ACTIONS = os.path.join(STATE_DIR, "actions.ndjson")
+CRED = ["-c", "credential.helper=!gh auth git-credential"]
+WHO = ["-c", "user.name=FCPM origin", "-c", "user.email=origin@%s.local" % os.uname().nodename.split(".")[0]]
+DEV = os.environ.get("FCPM_DEV") or os.path.join(STATE_DIR, "dev")
+RELAY = os.path.join(STATE_DIR, "relay")
+DOOR_LOG = os.path.join(ORIGIN, ".door", "actions.ndjson")
+CARRY = os.path.join(STATE_DIR, "carry.json")
+# Owners whose every repository the origin keeps. FCCN-ANTIBODY's are only the ones FCPM calls on.
+# Owners whose repositories the origin keeps, found by themselves: every one of FC-Public-Media's;
+# of NCCV-OPINION's only `cite-*`, the managed, multi-tenant citations that get passkey-signed
+# commits (Autumn, 2026-10-22). NCCV's own software (platform, editor-app, .github) is theirs and is
+# not kept or updated here; nor are anyone's personal cite repositories outside the org.
+KEEP = {"FC-Public-Media": "", "NCCV-OPINION": "cite-"}
+
+
+def kept(full):
+    """Whether the origin keeps owner/repo: by KEEP's prefix for an owner there, else what is here."""
+    owner, name = full.split("/", 1)
+    return owner not in KEEP or name.startswith(KEEP[owner])
+WEEK = datetime.timedelta(days=7)
+DEV_EVERY = datetime.timedelta(minutes=15)
+
+
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def git(repo, *args, check=True, timeout=120):
+    return subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True,
+                          check=check, timeout=timeout)
+
+
+def ref(repo, name):
+    r = git(repo, "rev-parse", "--verify", "-q", name, check=False)
+    return r.stdout.strip() or None
+
+
+def is_ancestor(repo, a, b):
+    return git(repo, "merge-base", "--is-ancestor", a, b, check=False).returncode == 0
+
+
+def repos():
+    """owner/repo for every bare repo here, with a github remote or not (see adopt)."""
+    out = []
+    for owner in sorted(os.listdir(ORIGIN)):
+        d = os.path.join(ORIGIN, owner)
+        if owner.startswith(".") or owner == "lost+found" or not os.path.isdir(d):
+            continue
+        for name in sorted(os.listdir(d)):
+            p = os.path.join(d, name)
+            if os.path.isfile(os.path.join(p, "HEAD")):
+                out.append(owner + "/" + name)
+    return out
+
+
+def adopt(full):
+    """A repository GitHub has but that came here without a github remote (made by `init` for a
+    push) is given GitHub's by its path, main only. True if it has one now. One that GitHub does not
+    have began here and stays ours alone (FC-Public-Media/broadcast)."""
+    p = os.path.join(ORIGIN, full)
+    if git(p, "config", "remote.github.url", check=False).stdout.strip():
+        return True
+    git(p, "config", "remote.github.url", "https://github.com/%s.git" % full)
+    git(p, "config", "remote.github.fetch", "+refs/heads/main:refs/heads/github/main")
+    return True
+
+
+def github_mains(names):
+    """{owner/repo: sha of GitHub's main}, in one query. Missing on any error."""
+    parts = []
+    for i, full in enumerate(names):
+        owner, name = full.split("/", 1)
+        parts.append('r%d: repository(owner: %s, name: %s) { ref(qualifiedName: "refs/heads/main") '
+                     '{ target { oid } } }' % (i, json.dumps(owner), json.dumps(name)))
+    q = "query { %s }" % " ".join(parts)
+    r = subprocess.run(["gh", "api", "graphql", "-f", "query=" + q],
+                       capture_output=True, text=True, timeout=60)
+    data = json.loads(r.stdout or "{}").get("data") or {}
+    out = {}
+    for i, full in enumerate(names):
+        node = data.get("r%d" % i) or {}
+        oid = ((node.get("ref") or {}).get("target") or {}).get("oid")
+        if oid:
+            out[full] = oid
+    return out
+
+
+def discover(have):
+    """owner/repo on GitHub that KEEP keeps and the origin lacks, made here as bare repositories."""
+    q = "query { %s }" % " ".join(
+        'o%d: repositoryOwner(login: %s) { repositories(first: 100, isFork: false) { nodes { name } } }'
+        % (i, json.dumps(o)) for i, o in enumerate(KEEP))
+    r = subprocess.run(["gh", "api", "graphql", "-f", "query=" + q], capture_output=True, text=True, timeout=60)
+    data = json.loads(r.stdout or "{}").get("data") or {}
+    made = []
+    for i, owner in enumerate(KEEP):
+        for node in ((data.get("o%d" % i) or {}).get("repositories") or {}).get("nodes") or []:
+            full = "%s/%s" % (owner, node["name"])
+            if full in have or not kept(full) or os.path.exists(os.path.join(ORIGIN, full)):
+                continue
+            p = os.path.join(ORIGIN, full)
+            subprocess.run(["git", "init", "-q", "--bare", p], check=True)
+            for k, v in (("receive.denyNonFastForwards", "true"), ("receive.denyDeletes", "true"),
+                         ("remote.github.url", "https://github.com/%s.git" % full),
+                         ("remote.github.fetch", "+refs/heads/main:refs/heads/github/main")):
+                git(p, "config", k, v)
+            made.append(full)
+    return made
+
+
+def take(full, theirs_remote):
+    """Bring one repo's origin main up to date with GitHub's. Returns its row."""
+    p = os.path.join(ORIGIN, full)
+    row = {"repo": full}
+    if ref(p, "refs/heads/github/main") != theirs_remote:
+        git(p, *CRED, "fetch", "-q", "github", "+refs/heads/main:refs/heads/github/main", timeout=180)
+        row["fetched"] = True
+    theirs = ref(p, "refs/heads/github/main")
+    ours = ref(p, "refs/heads/main")
+    row.update(github=theirs, main=ours)
+
+    if ours is None:
+        git(p, "update-ref", "refs/heads/main", theirs, "")
+        row.update(state="seeded", main=theirs, did="main created from github/main")
+    elif ours == theirs:
+        row["state"] = "even"
+    elif is_ancestor(p, ours, theirs):
+        git(p, "update-ref", "refs/heads/main", theirs, ours)
+        row.update(state="even", main=theirs, did="fast-forwarded to github/main")
+    elif is_ancestor(p, theirs, ours):
+        row["state"] = "ahead"          # ours has what GitHub has, and more
+    else:
+        m = git(p, "merge-tree", "--write-tree", "--name-only", ours, theirs, check=False)
+        if m.returncode == 0:
+            tree = m.stdout.split("\n", 1)[0].strip()
+            msg = "Merge GitHub's main into origin's main"
+            commit = git(p, *WHO, "commit-tree", tree, "-p", ours, "-p", theirs, "-m", msg).stdout.strip()
+            git(p, "update-ref", "refs/heads/main", commit, ours)
+            row.update(state="ahead", main=commit, did="merged github/main cleanly")
+        else:
+            # after the tree: the conflicted paths, a blank line, then git's messages
+            files = m.stdout.split("\n\n", 1)[0].splitlines()[1:]
+            row.update(state="conflict", conflicts=files[:50],
+                       did="github/main does not merge clean; main left alone")
+    return row
+
+
+def due():
+    """Every 15 minutes while `fcpm dev on`; otherwise once a week after GitHub last answered."""
+    if "--now" in sys.argv:
+        return True
+    try:
+        last = json.load(open(STATE))
+        if last.get("github") != "ok":
+            return True
+        since = datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(last["checked"])
+        return since >= (DEV_EVERY if os.path.exists(DEV) else WEEK)
+    except (OSError, ValueError, KeyError):
+        return True
+
+
+def switched_on(size):
+    """Where in the door's log relay was last switched on (just after that line), else its end."""
+    at, pos = size, 0
+    if os.path.exists(DOOR_LOG):
+        with open(DOOR_LOG, "rb") as f:
+            for line in f:
+                pos += len(line)
+                if b'"verb": "relay"' in line and b'"state": "on"' in line:
+                    at = pos
+    return at
+
+
+def carry():
+    """Branches and tags pushed through the door since the last pass, out to GitHub (relay on)."""
+    try:
+        with open(CARRY) as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        st = {}
+    size = os.path.getsize(DOOR_LOG) if os.path.exists(DOOR_LOG) else 0
+    if "offset" not in st:              # the first pass: from when relay was switched on; what was here before stays here
+        st = {"offset": switched_on(size), "pending": []}
+    pending = {tuple(p) for p in st.get("pending", [])}
+    if os.path.exists(DOOR_LOG) and size >= st["offset"]:
+        with open(DOOR_LOG) as f:
+            f.seek(st["offset"])
+            for line in f:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if row.get("verb") != "push" or not row.get("ok"):
+                    continue
+                for r, (_, after) in (row.get("moved") or {}).items():
+                    if after and (r.startswith("refs/tags/") or (r.startswith("refs/heads/")
+                                  and r != "refs/heads/main" and not r.startswith("refs/heads/github/"))):
+                        pending.add((row["repo"], r))
+        st["offset"] = size
+    rows, left = [], []
+    for full, r in sorted(pending):
+        p = os.path.join(ORIGIN, full)
+        if not git(p, "config", "remote.github.url", check=False).stdout.strip():
+            continue                    # began here: it stays here
+        sha = ref(p, r)
+        if not sha:
+            continue
+        out = git(p, *CRED, "push", "-q", "github", "%s:%s" % (sha, r), check=False, timeout=180)
+        row = {"repo": full, "ref": r, "sha": sha}
+        if out.returncode == 0:
+            row.update(state="carried", did="carried out to GitHub")
+        elif "non-fast-forward" in out.stderr or "fetch first" in out.stderr or "rejected" in out.stderr:
+            row.update(state="diverged", did="GitHub's %s does not fast-forward to ours; left for a person" % r)
+        else:
+            row.update(state="error", error=out.stderr.strip()[-300:])
+            left.append([full, r])      # GitHub out of reach: again next pass
+        rows.append(row)
+    st["pending"] = left
+    os.makedirs(STATE_DIR, exist_ok=True)
+    tmp = CARRY + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(st, f)
+    os.replace(tmp, CARRY)
+    return rows
+
+
+def main():
+    if not os.path.isdir(ORIGIN) or not any(not d.startswith(".") for d in os.listdir(ORIGIN)):
+        return 0                        # nothing here (an unmounted disk): nothing to take into
+    os.makedirs(STATE_DIR, exist_ok=True)
+    if "--status" in sys.argv:
+        print(open(STATE).read() if os.path.exists(STATE) else "no state yet")
+        return 0
+    if not due():
+        return 0
+    with open(os.path.join(STATE_DIR, "lock"), "w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return 0                    # the last run is still going
+        names = repos()
+        rows = [{"repo": n, "state": "not kept", "main": ref(os.path.join(ORIGIN, n), "refs/heads/main")}
+                for n in names if not kept(n)]     # here from before KEEP said otherwise: left as they are
+        names = [n for n in names if kept(n)]
+        try:
+            names += discover(set(names))
+        except Exception:
+            pass                        # GitHub out of reach: the next run asks again
+        try:
+            remote = github_mains(names)
+        except Exception as e:          # offline, GitHub down: say so, change nothing
+            remote, offline = {}, repr(e)
+        else:
+            offline = None if remote else "GitHub did not answer"
+        for full in names:
+            p = os.path.join(ORIGIN, full)
+            if full not in remote:
+                ours = not git(p, "config", "remote.github.url", check=False).stdout.strip()
+                rows.append({"repo": full, "state": "here only" if ours and not offline else "unchecked",
+                             "main": ref(p, "refs/heads/main")})
+                continue
+            adopt(full)
+            try:
+                row = take(full, remote[full])
+            except Exception as e:
+                row = {"repo": full, "state": "error", "error": str(e)[-500:]}
+            rows.append(row)
+        carried = carry() if os.path.exists(RELAY) and not offline else []
+        stamp = now()
+        with open(ACTIONS, "a") as log:
+            for row in rows + carried:
+                if row.get("did") or row["state"] == "error":
+                    log.write(json.dumps({"at": stamp, **row}) + "\n")
+        tmp = STATE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump({"checked": stamp, "github": "unreachable: " + offline if offline else "ok",
+                       "relay": os.path.exists(RELAY), "repos": rows, "carried": carried}, f, indent=1)
+        os.replace(tmp, STATE)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""door — the origin's SSH door on origin.local: keyholders fetch and push over the LAN, by key, as
+their office. Every key the git account takes is forced through here.
+
+    door keys                     write KEYHOLDERS into the git account's authorized_keys (run-intake, each minute)
+    door keys --check             say what would change, change nothing
+    door serve OFFICE HOLDER      sshd runs this for a keyholder's key; never by hand
+
+A keyholder's remote is `git@origin.local:<owner>/<repo>`. Every repository can be fetched and
+pushed to. In one that lives on GitHub (it has a `github` remote), `main` and `github/*` are intake's:
+GitHub's main comes in by intake alone, so the LAN never goes around a merge there. Any other branch,
+and tags, may be pushed, and wait here, in view, for GitHub (door-hooks/pre-receive). The
+repositories themselves refuse rewriting and deleting. `init <owner>/<repo>` makes a new one, and only the
+secretary's office may. `dev on|off|status` is the LAN's dev switch (intake asks GitHub every 15
+minutes while on, weekly while off), and `relay on|off|status` the origin's mode (on: what is pushed
+here is carried out to GitHub on intake's pass; off: LAN-only, it waits here), any keyholder's. Each action is appended to
+/srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref before and after.
+
+`keys` keeps one marked block in authorized_keys and leaves every other line as it is. A KEYHOLDERS
+line is `office holder <key type> <key> since`; `-` for a key is an empty slot. A key backed by a
+passkey (`sk-ssh-ed25519@openssh.com`) needs its device at every push. Standard library only.
+See PROFILE.md, The origin.
+"""
+import datetime
+import json
+import os
+import pathlib
+import re
+import shlex
+import subprocess
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+ORIGIN = pathlib.Path(os.environ.get("FCPM_ORIGIN", "/srv/origin"))
+KEYHOLDERS = pathlib.Path(os.environ.get("FCPM_KEYHOLDERS", HERE / "KEYHOLDERS"))
+AUTHORIZED = pathlib.Path(os.environ.get("FCPM_AUTHORIZED_KEYS", pathlib.Path.home() / ".ssh/authorized_keys"))
+BEGIN = "# BEGIN origin door: from machines/origin/KEYHOLDERS, written by `door keys`; edit KEYHOLDERS, not this"
+END = "# END origin door"
+DEV = ORIGIN / ".intake/dev"
+SWITCHES = {"dev": DEV, "relay": ORIGIN / ".intake/relay"}
+TYPES = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "ecdsa-sha2-nistp256", "sk-ecdsa-sha2-nistp256@openssh.com"}
+MAKERS = {"secretary"}
+NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+VERBS = {"git-upload-pack": "fetch", "git-upload-archive": "fetch", "git-receive-pack": "push"}
+
+
+def holders():
+    """(office, holder, key) for every filled slot in KEYHOLDERS."""
+    out = []
+    for n, line in enumerate(KEYHOLDERS.read_text().splitlines(), 1):
+        words = line.split("#", 1)[0].split()
+        if not words:
+            continue
+        if len(words) < 3 or not NAME.fullmatch(words[0]) or not NAME.fullmatch(words[1]):
+            sys.exit(f"KEYHOLDERS:{n}: want `office holder <key type> <key> since`")
+        if words[2] == "-":
+            continue
+        if words[2] not in TYPES or len(words) < 4:
+            sys.exit(f"KEYHOLDERS:{n}: {words[2]!r} is not a key type the door takes ({', '.join(sorted(TYPES))})")
+        out.append((words[0], words[1], f"{words[2]} {words[3]}"))
+    return out
+
+
+def keys(check):
+    me = pathlib.Path(__file__).resolve()
+    block = [BEGIN] + [
+        f'restrict,command="/usr/bin/python3 -I {me} serve {office} {holder}" {key} {office}:{holder}'
+        for office, holder, key in holders()] + [END]
+    old = AUTHORIZED.read_text().splitlines() if AUTHORIZED.exists() else []
+    if BEGIN in old and END in old:
+        start, stop = old.index(BEGIN), old.index(END)
+        new = old[:start] + block + old[stop + 1:]
+    else:
+        new = old + block
+    if new == old:
+        print(f"keys: as KEYHOLDERS says ({len(block) - 2} keyholder(s))")
+        return
+    if check:
+        print(f"keys: authorized_keys would change to {len(block) - 2} keyholder(s)")
+        return
+    AUTHORIZED.parent.mkdir(mode=0o700, exist_ok=True)
+    tmp = AUTHORIZED.with_name(AUTHORIZED.name + ".door")
+    tmp.write_text("\n".join(new) + "\n")
+    tmp.chmod(0o600)
+    tmp.replace(AUTHORIZED)
+    print(f"keys: wrote {len(block) - 2} keyholder(s) into {AUTHORIZED}")
+
+
+def refs(repo):
+    run = subprocess.run(["git", "-C", str(repo), "for-each-ref", "--format=%(refname) %(objectname)"],
+                         capture_output=True, text=True)
+    return dict(line.split(" ", 1) for line in run.stdout.splitlines() if " " in line)
+
+
+def record(**row):
+    log = ORIGIN / ".door/actions.ndjson"
+    log.parent.mkdir(exist_ok=True)
+    row = {"at": datetime.datetime.now().astimezone().isoformat(timespec="seconds")} | row
+    with log.open("a") as f:
+        f.write(json.dumps(row) + "\n")
+
+
+def refuse(message, **row):
+    record(refused=message, **row)
+    sys.exit(f"origin: {message}")
+
+
+def where(arg):
+    """`owner/repo` from what git sends: 'owner/repo', '/srv/origin/owner/repo', with or without .git."""
+    path = arg.strip().strip("'\"")
+    for lead in (str(ORIGIN) + "/", "/", "~/"):
+        if path.startswith(lead):
+            path = path[len(lead):]
+    path = path.removesuffix("/").removesuffix(".git")
+    parts = path.split("/")
+    if len(parts) != 2 or not all(NAME.fullmatch(p) for p in parts):
+        return None
+    return "/".join(parts)
+
+
+def serve(office, holder):
+    asked = os.environ.get("SSH_ORIGINAL_COMMAND", "")
+    who = {"office": office, "holder": holder}
+    try:
+        words = shlex.split(asked)
+    except ValueError:
+        words = []
+    if len(words) != 2:
+        refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`) and flips dev or relay", asked=asked, **who)
+    if words[0] in SWITCHES:
+        name, flag = words[0], SWITCHES[words[0]]
+        if words[1] == "on":
+            flag.parent.mkdir(exist_ok=True)
+            flag.touch()
+        elif words[1] == "off":
+            flag.unlink(missing_ok=True)
+        elif words[1] != "status":
+            refuse(f"{name} on, {name} off or {name} status", asked=asked, **who)
+        if words[1] != "status":
+            record(verb=name, state=words[1], **who)
+        print("%s: %s" % (name, "on" if flag.exists() else "off"))
+        return
+    verb, full = words[0], where(words[1])
+    if full is None:
+        refuse(f"{words[1]!r} is not owner/repo", asked=asked, **who)
+    repo = ORIGIN / full
+    if verb == "init":
+        if office not in MAKERS:
+            refuse(f"making a repository is the {' or '.join(sorted(MAKERS))}'s to do", verb=verb, repo=full, **who)
+        if repo.exists():
+            refuse(f"{full} is already here", verb=verb, repo=full, **who)
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(repo)], check=True)
+        for key in ("receive.denyNonFastForwards", "receive.denyDeletes"):
+            subprocess.run(["git", "-C", str(repo), "config", key, "true"], check=True)
+        (repo / "description").write_text(f"{full}, made by the {office} ({holder})\n")
+        record(verb=verb, repo=full, **who)
+        print(f"origin: made {full}")
+        return
+    if verb not in VERBS:
+        refuse(f"{verb!r} is not something this door does", asked=asked, **who)
+    if not (repo / "HEAD").is_file():
+        refuse(f"there is no {full} here", verb=VERBS[verb], repo=full, **who)
+    github = subprocess.run(["git", "-C", str(repo), "config", "remote.github.url"],
+                            capture_output=True, text=True).stdout.strip()
+    if VERBS[verb] == "fetch":
+        record(verb="fetch", repo=full, **who)
+        os.execvp(verb, [verb, str(repo)])
+    before = refs(repo)
+    env = dict(os.environ, FCPM_DOOR_GITHUB=github, FCPM_DOOR_REPO=full)
+    code = subprocess.run(["git", "-c", f"core.hooksPath={HERE / 'door-hooks'}", "receive-pack", str(repo)],
+                          env=env).returncode
+    after = refs(repo)
+    moved = {r: [before.get(r), after.get(r)] for r in sorted(set(before) | set(after)) if before.get(r) != after.get(r)}
+    record(verb="push", repo=full, moved=moved, ok=code == 0, **who)
+    sys.exit(code)
+
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    if args[:1] == ["keys"] and args[1:] in ([], ["--check"]):
+        keys(args[1:] == ["--check"])
+    elif args[:1] == ["serve"] and len(args) == 3:
+        serve(args[1], args[2])
+    else:
+        sys.exit(__doc__)

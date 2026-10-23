@@ -1,0 +1,6 @@
+# Every crew this machine wears: `systemctl start|stop|status fcpm.target`. See crew.sh.
+[Unit]
+Description=FCPM: every crew this machine wears
+
+[Install]
+WantedBy=multi-user.target

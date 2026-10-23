@@ -1,0 +1,8 @@
+# MANIFEST: what kiosk carries of its own home, for `../sync`. Modes as in ../production/MANIFEST.
+# The root's instructions are pointers into the mirror (`ref/`), never copies. PROFILE.md, Files.
+mirror  home/code/CLAUDE.md    code/CLAUDE.md
+mirror  home/code/AGENTS.md    code/AGENTS.md
+mirror  code/bin/refs          code/bin/refs
+
+mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
+path      -                      .local/bin

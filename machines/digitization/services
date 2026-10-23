@@ -1,0 +1,5 @@
+# What digitization runs: `name keep from` or `name every Nm from`. See machines/README.md.
+
+follow          every 5m    machines/digitization
+pools           keep        troves/pools
+names           keep        machines/digitization

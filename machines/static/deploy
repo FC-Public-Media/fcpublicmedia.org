@@ -1,0 +1,14 @@
+#!/bin/sh
+# deploy SITE DIR [HOST] -- put a finished site up on the static host: DIR's files become SITE there,
+# by rsync over SSH to its deploy door (./receive). Only what changed crosses; what is up stays up
+# until the push is whole. HOST is static.local (FCPM_STATIC_HOST). By this machine's key
+# (FCPM_DEPLOY_KEY, ~/.ssh/origin-standby on digitization), a line in ./KEYHOLDERS naming SITE.
+# `fcpm deploy` runs this. See CREW.md.
+set -eu
+SITE=${1:?deploy SITE DIR [HOST]}; DIR=${2:?deploy SITE DIR [HOST]}
+HOST=${3:-${FCPM_STATIC_HOST:-static.local}}
+KEY=${FCPM_DEPLOY_KEY:-$HOME/.ssh/origin-standby}
+[ -d "$DIR" ] || { echo "deploy: $DIR is not a folder"; exit 2; }
+SSH=${FCPM_DEPLOY_SSH:-ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i $KEY}
+exec rsync -a --delete --info=stats1 -e "$SSH" \
+  "${DIR%/}/" "deploy@$HOST:$SITE/"

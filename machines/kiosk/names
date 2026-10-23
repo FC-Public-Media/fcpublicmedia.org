@@ -1,0 +1,5 @@
+# What this machine is supposed to answer to, for `../binding` (case-insensitive). PROFILE.md.
+# The old editing bay 2's name, kept: renaming needs an administrator. Check: $env:COMPUTERNAME
+
+# platform   key             value
+windows      ComputerName    200-FCPANEDIT2

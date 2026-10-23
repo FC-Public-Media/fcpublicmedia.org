@@ -110,22 +110,13 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
   </div>
 
   <p class="muted">
-    {%- comment -%}
-      The offset is computed for Colorado rather than for wherever the member
-      is sitting, so a producer submitting from a hotel in another zone does
-      not schedule their own episode an hour out. Shown so it is checkable.
-    {%- endcomment -%}
+    {%- comment -%} Colorado's offset, wherever the member is, shown so it can be checked. {%- endcomment -%}
     Saved as <code id="ep-iso">&mdash;</code>
   </p>
 
   <h3>The file</h3>
 
-  {%- comment -%}
-    There is nowhere to upload to yet, so the picker reads the file rather
-    than sending it — name, size and type fill in the record, and the member
-    is told plainly to send the file the way they already do. When a
-    destination is configured this same control becomes the real upload.
-  {%- endcomment -%}
+  {%- comment -%} With no destination the picker only reads name, size and type. {%- endcomment -%}
   <div class="field">
     <label for="ep-file">Pick the finished file</label>
     <input type="file" id="ep-file" accept="video/*,audio/*">

@@ -1,0 +1,17 @@
+# lan.yml -- what digitization answers to on the LAN, each an mDNS name of its own beside
+# digitization.local (`../lan.py publish`, the crew's `names` line), and what the door serves under
+# each. Names go as deep as DNS does. See PROFILE.md, Names.
+
+domain: fcpublicmedia.local
+
+# Names any machine may hold. The first to claim one has it; another that asks keeps asking every
+# 30 seconds and takes it over when the holder goes. `@` is the domain itself.
+shared:
+  helm: board        # the board: the door's switches, screens and fcpm's verbs
+  "@": site          # the static job's sites (../static/sites.yml): the public site, the same as www
+  www: site
+  wix: wix           # the Wix site, photocopied, until the board retires it
+
+# <hostname>.fcpublicmedia.local is this machine's directory: its gear, each one level deeper
+# (atem-mini-pro.digitization.fcpublicmedia.local), named for its trove, which holds its facts.
+gear: [rodecaster-pro-ii, atem-mini-pro, aja-helo]

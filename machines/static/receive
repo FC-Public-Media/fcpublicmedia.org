@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""receive — the static host's deploy door: a workstation pushes a finished site over SSH, by key.
+
+    receive keys [--check]        write KEYHOLDERS into the deploy account's authorized_keys
+    receive serve HOLDER SITES    sshd runs this for a keyholder's key; never by hand
+    receive links                 the by-name links nginx serves from, as sites.yml says
+    receive status                each site: what is up, its size, when and by whom it came
+
+A push is rsync to `deploy@<host>:<site>/` (`../static/deploy SITE DIR`). The door takes it into a
+copy of what is up, hard-linked, so only what changed crosses the wire and the rest costs no disk;
+when rsync is done the copy becomes <sites>/<site>/<stamp>, `current` points at it, and the one
+before stays for a step back. A key may push only the sites its KEYHOLDERS line names (`*` for all),
+and only a site sites.yml has. Nothing is served half-written: nginx follows `current`. Each push and
+refusal is appended to <sites>/.receive/actions.ndjson. <sites> is /srv/sites (FCPM_SITES).
+System python and PyYAML. See CREW.md.
+"""
+import datetime
+import json
+import os
+import pathlib
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+SITES = pathlib.Path(os.environ.get("FCPM_SITES") or "/srv/sites")
+CATALOG = pathlib.Path(os.environ.get("FCPM_SITES_YML") or HERE / "sites.yml")
+KEYHOLDERS = pathlib.Path(os.environ.get("FCPM_KEYHOLDERS") or HERE / "KEYHOLDERS")
+AUTHORIZED = pathlib.Path(os.environ.get("FCPM_AUTHORIZED_KEYS") or pathlib.Path.home() / ".ssh/authorized_keys")
+DOMAIN = os.environ.get("FCPM_DOMAIN") or "fcpublicmedia.local"
+BEGIN = "# BEGIN static deploy: from machines/static/KEYHOLDERS, written by `receive keys`; edit KEYHOLDERS, not this"
+END = "# END static deploy"
+TYPES = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "ecdsa-sha2-nistp256", "sk-ecdsa-sha2-nistp256@openssh.com"}
+NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
+HOLDER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+# What rsync's client may ask of the server here: its short flags, and these. Anything naming a path
+# of its own (--temp-dir, --backup-dir, --log-file, --link-dest, ...) is refused.
+LONG = {"--server", "--delete", "--delete-before", "--delete-during", "--delete-delay", "--delete-after",
+        "--numeric-ids", "--ignore-errors", "--force", "--no-implied-dirs", "--checksum", "--size-only", "--stats"}
+SHORT = re.compile(r"-[A-Za-z.]+|--info=[A-Za-z0-9,]+")    # --info only shapes what the client is told
+
+
+def sites():
+    import yaml
+    return (yaml.safe_load(CATALOG.read_text(encoding="utf-8")) or {}).get("sites") or {}
+
+
+def catalog():
+    """{site: [where]}: each site and where it is served, `name` (a label, `@` for the domain) or
+    `name/path` (a path under a name, as a member's site under you.)."""
+    return {s: list((v or {}).get("serve") or []) for s, v in sites().items()}
+
+
+def holders():
+    """(sites, holder, key) for every filled slot in KEYHOLDERS."""
+    out = []
+    for n, line in enumerate(KEYHOLDERS.read_text().splitlines(), 1):
+        words = line.split("#", 1)[0].split()
+        if not words:
+            continue
+        if len(words) < 3 or not HOLDER.fullmatch(words[1]) or not (
+                words[0] == "*" or all(NAME.fullmatch(s) for s in words[0].split(","))):
+            sys.exit(f"KEYHOLDERS:{n}: want `sites holder <key type> <key> since` (sites: `*` or a,b)")
+        if words[2] == "-":
+            continue
+        if words[2] not in TYPES or len(words) < 4:
+            sys.exit(f"KEYHOLDERS:{n}: {words[2]!r} is not a key type this door takes")
+        out.append((words[0], words[1], f"{words[2]} {words[3]}"))
+    return out
+
+
+def keys(check):
+    me = pathlib.Path(__file__).resolve()
+    block = [BEGIN] + [f'restrict,command="/usr/bin/python3 -I {me} serve {holder} {shlex.quote(sites)}" {key} {holder}'
+                       for sites, holder, key in holders()] + [END]
+    old = AUTHORIZED.read_text().splitlines() if AUTHORIZED.exists() else []
+    if BEGIN in old and END in old:
+        new = old[:old.index(BEGIN)] + block + old[old.index(END) + 1:]
+    else:
+        new = old + block
+    if new == old:
+        print(f"keys: as KEYHOLDERS says ({len(block) - 2} keyholder(s))")
+        return
+    if check:
+        print(f"keys: authorized_keys would change to {len(block) - 2} keyholder(s)")
+        return
+    AUTHORIZED.parent.mkdir(mode=0o700, exist_ok=True)
+    tmp = AUTHORIZED.with_name(AUTHORIZED.name + ".receive")
+    tmp.write_text("\n".join(new) + "\n")
+    tmp.chmod(0o600)
+    tmp.replace(AUTHORIZED)
+    print(f"keys: wrote {len(block) - 2} keyholder(s) into {AUTHORIZED}")
+
+
+def now():
+    return datetime.datetime.now().astimezone()
+
+
+def record(**row):
+    log = SITES / ".receive/actions.ndjson"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a") as f:
+        f.write(json.dumps({"at": now().isoformat(timespec="seconds")} | row) + "\n")
+
+
+def refuse(message, **row):
+    record(refused=message, **row)
+    sys.exit(f"static: {message}")
+
+
+def host(label):
+    return DOMAIN if label == "@" else f"{label}.{DOMAIN}"
+
+
+def links():
+    """by-name/<host> -> ../<site>/current, or by-name/<host>/<path> for a site under a path."""
+    by = SITES / "by-name"
+    by.mkdir(parents=True, exist_ok=True)
+    want = {}
+    for site, where in catalog().items():
+        if not (SITES / site / "current").is_dir():
+            continue
+        for w in where:
+            label, _, path = str(w).partition("/")
+            if path:
+                want[f"{host(label)}/{path}"] = f"../../{site}/current"
+            else:
+                want[host(label)] = f"../{site}/current"
+    for rel, target in want.items():
+        link = by / rel
+        if "/" in rel:
+            if link.parent.is_symlink():
+                link.parent.unlink()
+            link.parent.mkdir(exist_ok=True)
+        if link.is_symlink() and os.readlink(link) == target:
+            continue
+        tmp = link.with_name(link.name + ".new")
+        tmp.unlink(missing_ok=True)
+        tmp.symlink_to(target)
+        tmp.replace(link)
+    for entry in sorted(by.rglob("*"), key=lambda p: -len(p.parts)):
+        rel = str(entry.relative_to(by))
+        if entry.is_symlink() and rel not in want:
+            entry.unlink()
+        elif entry.is_dir() and not entry.is_symlink() and not any(entry.iterdir()):
+            entry.rmdir()
+    # The names whose site may be framed by itself (`frame: self`), one empty file each, which nginx asks.
+    framed = SITES / "frame-self"
+    framed.mkdir(exist_ok=True)
+    mine = {host(str(w).partition("/")[0]) for s, v in sites().items() if (v or {}).get("frame") == "self"
+            for w in (v or {}).get("serve") or [] if "/" not in str(w)}
+    for name in mine:
+        (framed / name).touch()
+    for f in framed.iterdir():
+        if f.name not in mine:
+            f.unlink()
+
+
+def serve(holder, allowed):
+    asked = os.environ.get("SSH_ORIGINAL_COMMAND", "")
+    who = {"holder": holder}
+    try:
+        words = shlex.split(asked)
+    except ValueError:
+        words = []
+    if words[:1] == ["status"]:
+        return status()
+    if len(words) < 4 or words[:2] != ["rsync", "--server"] or words[-2] != ".":
+        refuse("this door takes a site by rsync (deploy SITE DIR), and says `status`", asked=asked, **who)
+    flags = words[1:-2]
+    bad = [f for f in flags if f not in LONG and not SHORT.fullmatch(f)]
+    if bad or "--sender" in flags:
+        refuse(f"rsync asked for {' '.join(bad) or '--sender'}, which this door does not do", asked=asked, **who)
+    site = words[-1].strip("/")
+    if not NAME.fullmatch(site):
+        refuse(f"{words[-1]!r} is not a site's name", asked=asked, **who)
+    if allowed != "*" and site not in allowed.split(","):
+        refuse(f"{holder}'s key may push {allowed}, not {site}", site=site, **who)
+    if site not in catalog():
+        refuse(f"{site} is not a site here: sites.yml names it first", site=site, **who)
+    base = SITES / site
+    base.mkdir(parents=True, exist_ok=True)
+    incoming = base / ".incoming"
+    shutil.rmtree(incoming, ignore_errors=True)
+    current = base / "current"
+    if current.is_dir():
+        subprocess.run(["cp", "-al", str(current.resolve()), str(incoming)], check=True)
+    else:
+        incoming.mkdir()
+    code = subprocess.run(["rsync", *flags, ".", str(incoming) + "/"]).returncode
+    if code != 0:
+        shutil.rmtree(incoming, ignore_errors=True)
+        record(site=site, ok=False, rsync=code, **who)
+        sys.exit(code)
+    stamp = now().strftime("%Y%m%dT%H%M%S")
+    (base / stamp).exists() and shutil.rmtree(base / stamp)
+    incoming.rename(base / stamp)
+    before = os.readlink(current) if current.is_symlink() else None
+    tmp = base / "current.new"
+    tmp.unlink(missing_ok=True)
+    tmp.symlink_to(stamp)
+    tmp.replace(current)
+    keep = {stamp, before, "current"}
+    for d in base.iterdir():
+        if d.name not in keep and not d.name.startswith("."):
+            shutil.rmtree(d) if d.is_dir() and not d.is_symlink() else d.unlink()
+    (base / ".by").write_text(f"{holder}\n")
+    links()
+    record(site=site, ok=True, now=stamp, was=before, **who)
+
+
+def du(path):
+    r = subprocess.run(["du", "-sh", str(path)], capture_output=True, text=True)
+    return (r.stdout.split() or ["?"])[0]
+
+
+def status():
+    cat = catalog()
+    for site in sorted(cat):
+        cur = SITES / site / "current"
+        if not cur.is_dir():
+            print(f"{site:12} not pushed yet   {' '.join(host(w.split('/')[0]) + ('/' + w.split('/', 1)[1] if '/' in w else '') for w in cat[site])}")
+            continue
+        by = (SITES / site / ".by").read_text().strip() if (SITES / site / ".by").exists() else "?"
+        stamp = os.readlink(cur)
+        try:
+            when = datetime.datetime.strptime(stamp, "%Y%m%dT%H%M%S").strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            when = stamp
+        print(f"{site:12} {du(cur.resolve()):>6}  pushed {when}  by {by}")
+
+
+if __name__ == "__main__":
+    a = sys.argv[1:]
+    if a[:1] == ["keys"] and a[1:] in ([], ["--check"]):
+        keys(a[1:] == ["--check"])
+    elif a[:1] == ["serve"] and len(a) == 3:
+        serve(a[1], a[2])
+    elif a == ["links"]:
+        links()
+    elif a == ["status"]:
+        status()
+    else:
+        sys.exit(__doc__)

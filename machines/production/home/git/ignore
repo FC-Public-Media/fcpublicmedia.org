@@ -1,0 +1,3 @@
+# Git's per-user ignore (~/.config/git/ignore), carried by ../../MANIFEST. `.pr` is a branch's plan:
+# line 1 the PR's title, the rest its body; never committed (code/AGENTS.md, "Working in git").
+.pr

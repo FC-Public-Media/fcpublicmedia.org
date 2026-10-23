@@ -1,0 +1,51 @@
+#!/bin/sh
+# install -- the static job onto its own box, run from a workstation whose key manages it.
+#
+#   machines/static/install root@HOST DISK SERIAL   HOST runs Alpine's live system (a lan card: root,
+#                                                  network, sshd, our keys). ERASES DISK, installs Alpine
+#                                                  there, outfits it, and powers HOST off.
+#   machines/static/install fcpm@HOST              outfit a static host that is already running. No disk.
+#
+# Any box that boots Alpine will do; its disk holds the sites, video and all. DISK is named and must
+# answer to SERIAL ("none" if it reports none), so the wrong disk is never the one erased; the rest is
+# ./outfit. Who may push which site is ./KEYHOLDERS (run this again after it changes); where each is
+# served is ./sites.yml and ./lan.yml. Settings, with what they default to:
+#   FCPM_KEYS  ~/.ssh/id_ed25519.pub        who manages it (fcpm, sudo)
+#   ROOM_TZ    America/Denver               the room's clock
+# NAME is the first `linux Hostname` in ./names that is not this machine. See CREW.md.
+set -eu
+cd "$(dirname "$0")/../.."
+TARGET=${1:?root@HOST DISK SERIAL, or fcpm@HOST}
+NAME=$(awk -v me="$(hostname)" '$1=="linux" && $2=="Hostname" && tolower($3)!=tolower(me) {print $3; exit}' machines/static/names)
+FCPM_KEYS=${FCPM_KEYS:-$(cat ~/.ssh/id_ed25519.pub)}
+ROOM_TZ=${ROOM_TZ:-America/Denver}
+for v in "$FCPM_KEYS" "$ROOM_TZ" "$NAME"; do
+  case $v in *\'*) echo "A setting holds a quote. Stopping."; exit 1;; esac
+done
+
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+mkdir "$T/fcpm-static"
+cp machines/static/outfit machines/static/receive machines/static/KEYHOLDERS machines/static/sites.yml \
+  machines/static/nginx-host.conf machines/static/names machines/static/lan.yml machines/lan.py "$T/fcpm-static/"
+cat > "$T/fcpm-static/settings" <<S
+FCPM_KEYS='$FCPM_KEYS'
+NAME='$NAME'
+ROOM_TZ='$ROOM_TZ'
+S
+unpack='rm -rf /tmp/fcpm-static && tar -xf - -C /tmp'
+
+if [ $# -eq 3 ]; then
+  out=$(tar -C "$T" -cf - fcpm-static | ssh -o BatchMode=yes "$TARGET" \
+    "$unpack && sh /tmp/fcpm-static/outfit '$2' '$3'" | tee /dev/stderr)
+  hostkey=$(printf '%s\n' "$out" | sed -n 's/^HOST-KEY: //p')
+  [ -n "$hostkey" ] || { echo "No host key came back; the install did not finish."; exit 1; }
+  ssh-keygen -R "$NAME.local" >/dev/null 2>&1 || true
+  echo "$NAME.local $hostkey" >> ~/.ssh/known_hosts
+  ssh -o BatchMode=yes "$TARGET" poweroff || true
+  echo "Powered off. Take the lan card out, then power it on: it is $NAME.local."
+else
+  out=$(tar -C "$T" -cf - fcpm-static | ssh -o BatchMode=yes "$TARGET" \
+    "$unpack && sudo NOW=1 sh /tmp/fcpm-static/outfit; rm -rf /tmp/fcpm-static" | tee /dev/stderr)
+  printf '%s\n' "$out" | grep -q '^OUTFITTED: ' || { echo "The outfit did not finish."; exit 1; }
+  echo "$NAME.local: outfitted from $(pwd -P) at $(git rev-parse --short HEAD)."
+fi

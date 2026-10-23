@@ -1,0 +1,4 @@
+# What this machine should answer to. See ../digitization/names.
+
+# platform   key        value
+linux        Hostname   origin

@@ -1,0 +1,4 @@
+# mdns.allow -- /etc/mdns.allow on digitization: every .local name, however deep, is asked of mDNS
+# (lan.yml goes four labels deep). Without it Linux refuses names past two labels. See ../lan.py.
+.local.
+.local

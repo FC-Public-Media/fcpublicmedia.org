@@ -1,0 +1,12 @@
+#!/bin/sh
+# run-intake -- every minute on the origin's box, from the git account's crontab (outfit): the door's
+# keys as KEYHOLDERS says on the origin's own main (the installed copy until main has one), then
+# intake, with a `--- <time>  start` line and what they said in the log page.py reads (its last 2000 lines).
+LIB=/usr/local/lib/fcpm
+LOG=${FCPM_LOGS:-/var/log/fcpm}/intake.log
+K=$HOME/KEYHOLDERS
+git -C /srv/origin/FC-Public-Media/fcpublicmedia.org show main:machines/origin/KEYHOLDERS > "$K.new" 2>/dev/null &&
+  [ -s "$K.new" ] && mv "$K.new" "$K" || { rm -f "$K.new"; cp "$LIB/KEYHOLDERS" "$K"; }
+FCPM_KEYHOLDERS=$K FCPM_AUTHORIZED_KEYS=$HOME/.ssh/authorized_keys python3 -I $LIB/door keys 2>&1 | grep -v 'as KEYHOLDERS says' >> "$LOG"
+{ echo "--- $(date '+%Y-%m-%d %H:%M:%S')  start"; python3 $LIB/intake "$@" 2>&1; } >> "$LOG"
+[ "$(wc -l < "$LOG")" -le 2400 ] || { tail -n 2000 "$LOG" > "$LOG.new" && mv "$LOG.new" "$LOG"; }

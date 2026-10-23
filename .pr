@@ -1,18 +1,18 @@
-digitization: the crew's contract, as it is split up today
+cards: build a boot card from its type; the lan card boots Alpine diskless
 
-crews/digitization/CREW.md, in the shape #238 sets up. Drafted by station-node,
-which wears digitization today. 
+A card boots known-good FCPM code on any machine. `machines/cards/build TYPE /dev/sdX sdX` erases a
+card and lays out its type: Ventoy first (its key is what Secure Boot trusts), then the type's
+partitions. A window on the screen shows the card and waits for an OK; the home's passphrase is asked
+in a window too.
 
-- [x] inputs -> toolchain -> outlets; the depot is the edge with production
-- [x] the roster: plays / uses / relies on (RØDECaster, ATEM, HELO, Integra, roller TV, enhance, Drobo, Audio Hijack, OBS)
-- [x] the depot contract, the spool, the four things a host must give
-- [x] moved from troves/digitization to crews/digitization/CREW.md
-- [x] rebased on #238; linked from crews/README.md's table
-- [x] the pools read every disk in place: capture shares its scratch and grants production read
-- [x] the Debian member (machines/digitization), multitrack, never in place, the silence-split question
-- [ ] Autumn reads the shape
-- [x] the Drobo partition is ours by configuration, hosted by editing bay 1: their part is to attach and share it
-- [x] a crew of roles with plural members: capture (station-node, macOS), tank host and screen (editing bay 1, Windows)
-- [x] members answer, not asked: station-node's capture verbs are written
-- [ ] editing bay 1 writes its answers: tank host and screen
-- [ ] .pr back to main's before merge
+- `steward`: the 256G card's recipe, out of the Buffalo's linux-persist and into git: Debian XFCE
+  live with persistence, SystemRescue, Alpine; home, origin, toolbox.
+- `lan`: leans on the LAN. Alpine diskless from RAM, so a slow card reader only slows the boot. Its
+  kit (FAT, readable anywhere) holds Alpine's package cache, the saved settings (`lbu commit`) and
+  Claude Code; `lan/kit` makes or refreshes it on any Linux. The checkout sits outside the encrypted
+  home, so a job can start before anyone unlocks it. tty1 asks the home's passphrase, then logs in.
+
+Not yet: the checkout follows GitHub until digitization offers git on the LAN; the steward recipe
+has not been rerun from here.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

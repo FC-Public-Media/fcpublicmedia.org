@@ -1,0 +1,44 @@
+# rota.yml: who is on at the studio, by default, as agreed at a board meeting. docs/kiosk.md, Rota.
+# Local time, 24-hour; `days` takes mon..sun; `role` shows beside the name. No Monday.
+
+# Activity tags per person (facilities.yml, or node.yml stations); none means a host. Autumn's to give.
+crew:
+  James: []
+  Morey: []
+  Nate: []
+  Chris: []
+  Autumn: []
+  Josh: []
+
+shifts:
+  - days: [tue]
+    from: "14:30"
+    to: "17:30"
+    who: [James]
+
+  - days: [wed]
+    from: "11:00"
+    to: "16:00"
+    who: [Morey]
+
+  - days: [thu]
+    from: "17:00"
+    to: "19:00"
+    who: [Chris]
+
+  - days: [fri]
+    from: "17:00"
+    to: "19:30"
+    who: [Nate]
+
+  - days: [sat]
+    from: "11:00"
+    to: "16:00"
+    who: [Autumn]
+
+  # Josh hosts a group, and is the one in charge if anyone else comes in.
+  - days: [sun]
+    from: "13:00"
+    to: "22:00"
+    who: [Josh]
+    role: hosting

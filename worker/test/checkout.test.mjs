@@ -1,14 +1,4 @@
-// Taking money.
-//
-// The tests that matter here are the ones about what the browser is NOT
-// allowed to decide. A checkout endpoint is the one place on a static site
-// where believing the page costs real money, and every failure below was
-// reachable from the browser's console before the code stopped it.
-//
-// Stripe is faked, and only Stripe. The catalog is the real generated
-// prices.json, the parameter building is the real code, and the routing goes
-// through the real worker — because a test that mocked the price lookup would
-// be asserting that our fake charges the right amount.
+// /checkout: what the browser may not decide. Only Stripe is faked; the catalog is the real prices.js.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -80,10 +70,7 @@ test('nothing can be bought that is not on the list', async () => {
 });
 
 test('a price nobody has decided yet is not for sale', () => {
-  // site/_data/classes.yml has "TODO" where the drop-in prices will go. The
-  // generator skips those rather than defaulting them, so the failure is a
-  // 400 rather than a class that costs nothing. This is the assertion that
-  // notices if somebody makes the generator "more forgiving".
+  // classes.yml drop-in prices are "TODO", which the generator must skip, not default.
   assert.equal(lookup('class-dropin:public').ok, false);
 
   for (const item of priceList()) {
@@ -93,9 +80,7 @@ test('a price nobody has decided yet is not for sale', () => {
 });
 
 test('the catalog is in cents, and matches the tiers on the page', () => {
-  // Guards the units. A price list that quietly became dollars would charge
-  // everybody one hundredth of what it should, and every other test here
-  // would still pass.
+  // Guards the units: dollars here would charge a hundredth and pass every other test.
   const byName = Object.fromEntries(priceList().map((item) => [item.sku, item.amount]));
   assert.equal(byName['membership:sponsor'], 4000);
   assert.equal(byName['membership:student'], 6000);
@@ -106,11 +91,7 @@ test('the catalog is in cents, and matches the tiers on the page', () => {
 /* ------------------------------------------------------- the nonprofit rate */
 
 test('asking to be a nonprofit does not halve the price', async () => {
-  // The obvious implementation of "nonprofits pay half" is to accept a flag
-  // and halve it, which hands a fifty percent discount to anybody who opens
-  // the console. Verification happens before the money — staff check the EIN
-  // against the IRS list and issue a promotion code — so the flag means
-  // nothing here.
+  // The rate arrives as a staff-issued promotion code; a request flag means nothing.
   const stripe = fakeStripe();
   await broker(stripe).fetch(
     post({ sku: 'membership:producer', nonprofit: true, rate: 0.5, discount: 0.9 })
@@ -138,10 +119,6 @@ test('a single payment covers the year and does not renew', async () => {
 });
 
 test('choosing to renew makes it a yearly subscription at the same amount', async () => {
-  // The choice is the buyer's and changes nothing about what is owed today.
-  // If the recurring option ever charged a different amount, offering it
-  // alongside the one-off would be a way of talking somebody into the pricier
-  // one without saying so.
   const stripe = fakeStripe();
   await broker(stripe).fetch(post({ sku: 'membership:creator', recurring: true }));
 
@@ -153,15 +130,7 @@ test('choosing to renew makes it a yearly subscription at the same amount', asyn
 });
 
 test('a subscription carries its tier, so it can be repriced later', async () => {
-  // Stripe never asks us what a renewal costs — the subscription is pinned to
-  // the amount it was created at and renews at that forever. Moving people
-  // onto a new price is site/bin/reprice-subscriptions.py, and that script has
-  // to know which tier a year-old subscription is for.
-  //
-  // The session's own metadata does NOT survive onto the subscription, which
-  // is why this is set separately. Without it the script would have to guess
-  // the tier from the amount, which stops working the day two tiers cost the
-  // same — and quietly, on somebody's card.
+  // reprice-subscriptions.py reads this; session metadata does not reach the subscription.
   const stripe = fakeStripe();
   await broker(stripe).fetch(post({ sku: 'membership:creator', recurring: true }));
 
@@ -171,8 +140,7 @@ test('a subscription carries its tier, so it can be repriced later', async () =>
 });
 
 test('a one-off payment does not pretend to be a subscription', async () => {
-  // subscription_data is rejected outright by Stripe in payment mode, so this
-  // is not merely tidy — sending it would fail every single-payment checkout.
+  // Stripe rejects subscription_data in payment mode.
   const stripe = fakeStripe();
   await broker(stripe).fetch(post({ sku: 'membership:creator' }));
 
@@ -224,12 +192,7 @@ test('the restricted key is sent to Stripe and never comes back out', async () =
 });
 
 test('the key is read from the variable it actually lives in', async () => {
-  // PUBLIC_STRIPE_API_KEY, where "public" names who causes the key to be used
-  // rather than whether it may be published. This endpoint authenticates
-  // nobody, so a stranger makes this key act — and it is scoped to what a
-  // stranger may cause. Without this test the mismatch would surface as
-  // "payments are not switched on yet" long after somebody was sure they had
-  // switched them on.
+  // PUBLIC_STRIPE_API_KEY: see docs/payments.md#keys.
   const stripe = fakeStripe();
   const service = createBroker(
     {
@@ -262,8 +225,7 @@ test('the obvious name still works, and the real one wins', async () => {
 
   await service.fetch(post({ sku: 'membership:sponsor' }));
 
-  // Whichever the deploy pipeline sets is the one that gets rotated, so a
-  // leftover hand-set secret must not quietly shadow it.
+  // The deploy pipeline's key wins over a leftover hand-set STRIPE_KEY.
   assert.equal(stripe.calls[0].authorization, 'Bearer rk_test_from_github');
 });
 
@@ -277,9 +239,6 @@ test('with no key configured, it says so instead of half-working', async () => {
 });
 
 test('payments being unconfigured does not take the passkey endpoints down', async () => {
-  // These are unrelated systems sharing a worker. Before `stripe` was left out
-  // of readConfig's `missing` list, adding the payment code would have made
-  // every /challenge return 500 until somebody pasted a Stripe key in.
   const service = broker(fakeStripe(), { STRIPE_KEY: '' });
   const response = await service.fetch(
     new Request('https://broker.example/challenge', {
@@ -301,9 +260,7 @@ test('a refusal from Stripe is not dressed up as a checkout page', async () => {
   assert.equal(response.status, 502);
   const payload = await response.json();
   assert.equal(payload.ok, false);
-  // Stripe's message is written for whoever wrote the integration and can name
-  // parameters and ids. The visitor gets told it failed and that it was not
-  // their fault; the detail goes to the log.
+  // Stripe's developer-facing detail goes to the log, not the visitor.
   assert.ok(!JSON.stringify(payload).includes('rk_leak'));
 });
 
@@ -315,9 +272,7 @@ test('a 200 with no checkout URL in it is still a failure', async () => {
 });
 
 test('a repeated tap is not a second charge', async () => {
-  // Stripe replays the first response for a repeated Idempotency-Key, so the
-  // key has to actually be sent — and has to differ between genuinely separate
-  // purchases, which is why it is per request rather than derived from the SKU.
+  // Sent on every request, and different for genuinely separate purchases.
   const stripe = fakeStripe();
   const service = broker(stripe);
   await service.fetch(post({ sku: 'membership:sponsor' }));
@@ -349,9 +304,7 @@ test('an oversized reference is trimmed rather than rejected by Stripe', async (
 });
 
 test('equipment is not for sale here', () => {
-  // Booqable takes rental payments through its own Stripe connection. If this
-  // worker also sold equipment, a booking could be paid for twice — once in
-  // each system — and only one of them would know to release the item.
+  // Booqable charges rentals on its own Stripe connection.
   for (const item of priceList()) {
     assert.notEqual(item.kind, 'equipment', `${item.sku} would double-charge against Booqable`);
   }
@@ -371,9 +324,6 @@ test('a request with no JSON in it is a 400, not a 500', async () => {
 });
 
 test('the parameters are built the same way when called directly', () => {
-  // sessionParams is exported so the shape can be asserted without a fake
-  // service in the way — and so a future caller (a class registration flow,
-  // say) has one place to build a session rather than a second copy of this.
   const params = sessionParams({
     item: { name: 'Thing', amount: 500, interval: 'year', description: 'A thing' },
     sku: 'test:thing',

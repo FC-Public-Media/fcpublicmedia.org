@@ -1,0 +1,21 @@
+# GRANTS: the kiosk's answer to ../RUNNABLES, compiled by `bin/runnables compile kiosk`. DRAFT.
+# A widening lands only by a merged PR; an `allow` reaches settings only for a proven holder.
+# Lines: checkout <path> | runner <run> <tool> [prefix...] (first per run is canonical) | narrow | host
+
+checkout  work/fcpublicmedia.org@media-node
+
+# The venv's python: bare `python` is the Store stub. Every form is listed so the denies reach it.
+runner  python      Bash        {LOCALAPPDATA}/media-node/venv/Scripts/python.exe
+runner  python      PowerShell  & {LOCALAPPDATA}/media-node/venv/Scripts/python.exe
+runner  sh          Bash
+runner  powershell  Bash        powershell -NoProfile -File
+runner  powershell  PowerShell  &
+
+# Restarting the door is somebody's decision, by any route.
+host  ask   PowerShell(Stop-Process *)
+host  ask   PowerShell(Start-ScheduledTask *)
+host  ask   Bash(taskkill *)
+host  ask   Bash(schtasks *)
+
+# A build writes into the live checkout, and the door's rebase skips a dirty tree.
+narrow  ask   bin/build-kiosk.py | -

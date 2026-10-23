@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the check-in QR code as an SVG.
+"""Write site/assets/img/check-in-qr.svg (committed) from `url:` in site/_data/checkin.yml.
 
-Run this only when the check-in URL changes:
-
-    pip install qrcode
-    python3 site/bin/make-qr.py
-
-The output is committed, so building the site needs no QR library and no
-network. This is the one script here that is not standard-library-only, which
-is why it runs by hand rather than in CI.
-
-SVG rather than PNG on purpose: the poster gets printed and taped to a wall,
-and a vector code stays sharp at whatever size it ends up.
+Run by hand when that URL changes: pip install qrcode && python3 site/bin/make-qr.py
 """
 
 import os
@@ -41,8 +31,7 @@ def main():
 
     url = read_url()
 
-    # Error correction H tolerates roughly 30% of the code being obscured,
-    # which is what you want on something taped to a wall in a studio.
+    # Level H survives ~30% obscured, which leaves room for the clock hands drawn over it.
     code = qrcode.QRCode(
         error_correction=qrcode.constants.ERROR_CORRECT_H,
         box_size=10,

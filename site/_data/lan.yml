@@ -1,0 +1,4 @@
+# lan.yml: names the studio's own network answers to (machines/digitization/lan.yml publishes them, docs/
+# kiosk.md). A page links to one where it continues on the LAN: a phone in the building reaches it, the
+# internet does not. Nothing here is a secret: the names are published to the room anyway.
+board: helm.fcpublicmedia.local

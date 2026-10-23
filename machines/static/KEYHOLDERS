@@ -1,0 +1,7 @@
+# KEYHOLDERS: who may put a site up on the static host, and which: the deploy door (./receive), the
+# only way into its deploy account. Public halves only; a line by merged PR, then
+# `machines/static/install fcpm@static.local`; taking one away is the same. A key here never gets a shell.
+# sites: `*`, or the sites this key may push, comma-separated (nccv, or site,wix). `-` is an empty slot.
+
+# sites       holder        key type and key                                                         since
+*             digitization  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDL8JGISv1fAIISOJDQTaV3z/p4ncm1kNuZ/zYecb/fO  2026-10-21

@@ -1,0 +1,10 @@
+# What the digitization job itself serves, when it orders it (digitization/services). See README.md.
+
+serves:
+  - service: follow
+    for: "this checkout follows origin.local's main, fast-forward only, troves and the Wix copy from there too; see digitization/PROFILE.md"
+    start: "/bin/sh machines/digitization/follow"
+
+  - service: names
+    for: "this machine's names under fcpublicmedia.local (lan.yml: helm, the site, its directory and gear), by mDNS, while this runs"
+    start: "/usr/bin/python3 -I machines/lan.py publish"

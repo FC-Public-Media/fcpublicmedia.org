@@ -1,0 +1,57 @@
+# The storage pools production watches, for `fcpm pools`. Doc: troves/pools/README.md.
+
+pools:
+  - name: depot
+    title: The depot
+    kind: smb
+    server: 10.209.1.1
+    user: FCPM
+    shares_from: machines/kiosk/node.yml
+    stage_by_share:
+      TO ENHANCE: to-enhance
+      TO DROPBOX: to-dropbox
+      TO STEM: to-stem
+    stage: landed
+
+  - name: drobo-enhance
+    title: TO ENHANCE, the Drobo
+    kind: folder
+    path: "E:/"              # the 1 TB LUN, iSCSI (fcpm drobo); shared as `enhance` (fcpm share)
+    stage: landed
+
+  - name: emulated
+    title: Emulated pool
+    kind: folder
+    path: ~/code/pools/emulated
+    create: true
+    capacity: 64 GB
+    stage: landed
+
+# How the squares page draws: presentation, not a ruling on what is noise or a take.
+view:
+  debris_seconds: 6     # under this, a recording is a chip in a pile
+  cluster_minutes: 5    # more than this apart starts another heap
+  day_starts_at: 9      # the hour a day begins, on both pages: the studio's quietest (noon cut through debris)
+
+stages:
+  landed:      {label: Landed,       color: "#5b8def"}
+  to-enhance:  {label: To enhance,   color: "#e0a63a"}
+  enhanced:    {label: Enhanced,     color: "#3ec28f"}
+  transcribed: {label: Transcribed,  color: "#b07cf0"}
+  declined:    {label: Not promoted, color: "#5d6470"}
+  to-dropbox:  {label: To Dropbox,   color: "#4fb3d9"}
+  to-stem:     {label: To stem,      color: "#d96b9b"}
+
+# Transcription engine (troves/pools/engines/): whisper or windows-speech. Single quotes keep backslashes.
+transcribe:
+  engine: whisper           # faster-whisper, large-v3, on the RTX 4080 (bay/faster-whisper-1.1.1.yml)
+  whisper:
+    python: '%LOCALAPPDATA%\editing-bay-1\whisper\venv\Scripts\python.exe'
+    models: '%LOCALAPPDATA%\editing-bay-1\whisper\models'
+
+# The default episode pipeline, for a show whose site/_shows/<slug>.md has no `pipeline:`.
+# eject: true writes a released episode's config into the show's private repo. See troves/pools/README.md.
+pipeline:
+  eject: false
+  steps:
+    - transcribe: {engine: whisper}

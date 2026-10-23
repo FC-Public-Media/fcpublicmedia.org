@@ -5,8 +5,7 @@ hosts: "" # TODO
 explicit: false
 partner: AfterSight
 
-# Paste the player embed from wherever the show is hosted.
-# Left empty, the layout simply omits the player.
+# The host's player embed; empty omits the player.
 embed: ""
 
 # Entries without a url are skipped by the layout.

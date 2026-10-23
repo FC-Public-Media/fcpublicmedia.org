@@ -1,0 +1,6 @@
+# Who wears the static job; `../binding` asks it. A machine named here and in another job does both.
+# Check with `hostname`. See CREW.md.
+
+# platform   key        value
+linux        Hostname   digitization
+linux        Hostname   static

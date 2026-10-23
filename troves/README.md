@@ -1,86 +1,46 @@
 # Troves
 
-**A trove is a discipline's gear, packed.** If you have one of these, this is the
-gear that plays it and the configuration that makes the gear fit, per platform.
-The word is station-node's (`docs/instruments.md` there, *Troves: not built,
-written down so it can be*):
-
-> It inverts the usual tree of responsibility. The node does not learn every
-> discipline's gear. The trove says *I know this gear, and here is what it takes
-> to run it.* The crew then assembles gear from prepared troves.
-
-Station-node wrote that down and declined to extract one, because *"one
-discipline is not enough to say where a trove's edges are."* FCPM has two, the
-screens and the recorders, and they share an edge, which is what this directory
-is drafting against. Autumn, 2026-09-25: sometimes a thing is canonical enough
-that you would submodule it to gain an instrument along with its operating gear.
-
-Status: draft. Nothing reads this directory yet.
-
-## Three layers, and a trove is only the first
-
-| layer | says | lives | example |
-|---|---|---|---|
-| **trove** | if you have one of these, here is its gear and config, per platform | here, until a second node wants it; then its own repository, submoduled | `recorder/`: OBS, portable, on Windows; Audio Hijack on macOS |
-| **node** | these are our instruments, and what each one shows or records | `../instruments/` | the rolling TV shows the wall |
-| **metal** | this is plugged into me, so I provide it | nowhere: the host discovers it, every time | editing bay 1 finds the Vizio, so it drives the rolling TV |
-
-The metal layer is never written down, for the reason `machines/README.md`
-gives for names: anything declared is copied by the act that makes it wrong. The
-node layer is intent. Only the host that finds the hardware on its bus or its
-display stack can say it is there.
+A trove is one discipline's gear, packed: the facts about a kind of hardware, the software that
+plays it and its configuration, per platform. Each trove is a private repository of its own in
+FC-Public-Media, mounted here as a submodule at `troves/<repository>`. Jobs
+([`machines/`](../machines/README.md)) assemble gear from troves; what is plugged in is never
+written, the host finds it.
 
 ## Rules
 
-- **One discipline per folder, and the folder can be lifted out whole.** Nothing
-  in a trove reaches outside it except to cite. When a second node wants one,
-  moving it to its own repository is a `git mv` and a submodule, not a rewrite.
-- **A trove's gear lives under its own prefix on the host.** On Windows that is
-  `%LOCALAPPDATA%\<profile>\troves\<trove>\`. The path to the executable then
-  says whose instrument code is running, and so which grant it needs. That is
-  station-node's reason, and it is the whole point of the prefix.
-- **A trove never touches gear a person operates.** The bays are production
-  machines other people sit down to every week. Their OBS, their browsers, and
-  their settings are theirs. A trove brings its own copy, its own profile and its
-  own ports, or it does not run.
-- **A trove's gear comes aboard through the bay** (`../machines/BAY.md`): received,
-  verified, staged, installed at a declared restart tier, confirmed. The trove
-  carries the procedure; the host keeps the record of each arrival.
-
-## Gear that brings its own software
-
-Some gear shows up on the bus as a drive with its own programs on it (the Nest
-Cam did, 2026-10-05). That drive is the instrument's offer, and the bay decides
-whether to take it:
-
-1. copy the drive into the bay's `received\` and run nothing from it;
-2. record each file's hash and signature, as for any payload;
-3. read what each program does before calling it an installer;
-4. check whether the place it sends you still answers;
-5. write the verdict in the trove, per platform.
-
-The programs are the vendor's, so the repository keeps their hashes, not the
-files.
+- One discipline per repository, citing outside itself only. Change it in its own worktree
+  (`bin/refs work <trove> <branch>`), merge it there, then move this repository's pin.
+- `.gitmodules` says `update = none` for every trove, so CI's token never tries a private
+  repository. `bin/refs pull` and the kiosk's door check every trove out anyway (`--checkout`), at
+  the commit this repository pins, as the account origin's URL names, never with a prompt.
+- Its gear lives under its own prefix, `%LOCALAPPDATA%\<profile>\troves\<trove>\` on Windows: the
+  path says whose code runs and which grant it needs.
+- It never touches gear a person operates; it brings its own copy, profile and ports.
+- Its gear comes aboard through the bay ([`docs/station.md`](../docs/station.md)). The trove carries
+  the procedure (`bay/`); the host keeps each arrival's record (`machines/<profile>/bay/`).
+- A setup volume (gear that mounts as a drive of programs) is copied into the bay's `received\` and
+  never run; its hashes, signatures and a reading of each program go in the trove.
 
 ## The troves
 
-| trove | plays | status |
+| trove | plays | where |
 |---|---|---|
-| [`recorder/`](recorder/) | anything that produces files a node catches: capture decks, the RØDECaster | drafting |
-| [`kiosk-screen/`](kiosk-screen/) | a screen that shows a studio page | keeping roller-tv from editing bay 1 |
-| [`camera/`](camera/) | a camera on a USB cable: a console, and operator pages such as presets | the Pocket 6K Pro from editing bay 1 |
-| [`edgerouter-x/`](edgerouter-x/) | an EdgeRouter X made a dumb gigabit switch | three donated units, on the bench from editing bay 1 |
-| [`ti-89/`](ti-89/) | a TI-89 graphing calculator on a GraphLink cable | started on the media node; a black link on COM1, the calculator not answering yet |
-| [`pools/`](pools/) | storage pools, and the recordings moving through them, as one page | the depot and an emulated pool, from production |
-| [`ki-pro/`](ki-pro/) | an AJA Ki Pro: ProRes recorder and player, read over the LAN | Studio Ki Pro, the TriCaster's backup recorder, read from editing bay 1 |
-| [`nest-cam/`](nest-cam/) | a 2015 Nest Cam, and the setup drive it carries | retired 2026-10-06: it won't join any network here. Kept for its notes |
-| [`ptz/`](ptz/) | PTZ cameras on the studio network: presets operators trigger, and behind-the-scenes capture | concept, waiting on the donated cameras |
-
-## Troves in their own repositories
-
-Private in FC-Public-Media until Autumn opens them. Station-node submodules
-them under `library/FCPM/`; `game-intake` is not there yet.
-
-| repository | plays | status |
-|---|---|---|
-| [`game-intake`](https://github.com/FC-Public-Media/game-intake) | game recording intake: consoles, handhelds and YouTube as instruments | started 2026-10-05; researched, not measured |
+| [aja-helo](https://github.com/FC-Public-Media/aja-helo) | an AJA HELO encoder | the media hub |
+| [atem-mini-pro](https://github.com/FC-Public-Media/atem-mini-pro) | a Blackmagic ATEM Mini Pro | the media hub |
+| [buffalo-drivestation](https://github.com/FC-Public-Media/buffalo-drivestation) | a Buffalo DriveStation Ultra | device facts |
+| [camera](https://github.com/FC-Public-Media/camera) | a camera on USB | the Pocket 6K Pro, from production |
+| [drobo](https://github.com/FC-Public-Media/drobo) | the Drobo iSCSI array | the tank, from production |
+| [edgerouter-x](https://github.com/FC-Public-Media/edgerouter-x) | an EdgeRouter X as a switch | three prepared |
+| [etc-colorsource-20](https://github.com/FC-Public-Media/etc-colorsource-20) | the ETC ColorSource 20 lighting console | Export to a stick only |
+| [game-intake](https://github.com/FC-Public-Media/game-intake) | game recording intake | consoles, handhelds, YouTube |
+| [ki-pro](https://github.com/FC-Public-Media/ki-pro) | an AJA Ki Pro over the LAN | Studio Ki Pro |
+| [kiosk-screen](https://github.com/FC-Public-Media/kiosk-screen) | a screen showing a studio page | the roller TV, from production |
+| [nest-cam](https://github.com/FC-Public-Media/nest-cam) | a 2015 Nest Cam's setup drive | retired |
+| [pools](https://github.com/FC-Public-Media/pools) | the storage pools and their recordings | production |
+| [post](https://github.com/FC-Public-Media/post) | a recording after release | production |
+| [ptz](https://github.com/FC-Public-Media/ptz) | PTZ cameras on the studio network | concept |
+| [recorder](https://github.com/FC-Public-Media/recorder) | whatever makes files a node catches | OBS aboard production |
+| [rodecaster-pro-ii](https://github.com/FC-Public-Media/rodecaster-pro-ii) | the RØDECaster Pro II | borrowed by station-node |
+| [roku](https://github.com/FC-Public-Media/roku) | a Roku on the studio network: the FCPM Sling channel, and OBS relayed onto it | the FC Public Roku, from production |
+| [scanner](https://github.com/FC-Public-Media/scanner) | a camera and a screen where codes are redeemed | the qr Pi, the kiosk's pickup point |
+| [ti-89](https://github.com/FC-Public-Media/ti-89) | a TI-89: the browser runner, and `cable/` for the GraphLink | the kiosk |

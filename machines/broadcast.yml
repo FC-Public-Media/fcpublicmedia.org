@@ -1,0 +1,7 @@
+# What the broadcast job serves, when it orders it (broadcast/services). See README.md.
+
+serves:
+  - service: backup
+    for: "our own steady picture (the brand's slate and the room's clock) on YouTube's backup ingest, so the YouTube stream never ends in a gap; see broadcast/PROFILE.md, To YouTube"
+    start: "/usr/bin/python3 -I machines/broadcast/standby"
+    alive: {process: 'machines/broadcast/standby(\s|$)'}

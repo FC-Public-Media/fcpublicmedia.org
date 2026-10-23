@@ -1,0 +1,12 @@
+# lan.yml -- what the static host answers to on the LAN, each an mDNS name beside static.local
+# (`../lan.py publish`, its names service), and which sites.yml site each serves. See CREW.md.
+
+domain: fcpublicmedia.local
+
+# Names any machine may hold; the first to claim one has it, another asks again every 30 s.
+shared:
+  "@": site
+  www: site
+  wix: wix
+  you: members       # member projects without a name of their own: you.fcpublicmedia.local/<show>/
+  nccv.you: nccv     # NCCV, a member site with its own origin: nccv.you.fcpublicmedia.local

@@ -1,0 +1,150 @@
+#!/bin/sh
+# outfit -- the origin job on this box, as root: its accounts and keys, the repositories' rules, its
+# intake from GitHub, the LAN's dev switch, its screen painted here, its services. Alpine. Any box will do; nothing here asks what it is.
+#
+#   outfit                   this system (a running origin, or a new one from inside, chrooted)
+#   outfit DISK SERIAL       from Alpine's live system: install onto DISK, then outfit it. ERASES DISK.
+#                            DISK must answer to SERIAL ("none" if it reports none), must not be in use,
+#                            and is never the disk the live system came from.
+#
+# Sent with its files and settings by ./install, which also says where they come from:
+#   FCPM_KEYS  NAME  ROOM_TZ  [NOW=1: start what it sets up]
+#   [SCREEN_FONT_PKG SCREEN_FONT: the screen's font, font-jetbrains-mono JetBrainsMono-Bold.ttf]
+# Safe to run again. See PROFILE.md.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+[ -f "$HERE/settings" ] && . "$HERE/settings"
+: "${FCPM_KEYS:?}" "${NAME:=origin}" "${ROOM_TZ:=America/Denver}"
+LIB=/usr/local/lib/fcpm
+
+if [ $# -eq 2 ]; then
+  DISK=$1; SERIAL=$2; d=${DISK#/dev/}
+  [ -d "/sys/block/$d" ] || { echo "$DISK is not a whole disk. Stopping."; exit 1; }
+  apk add -q lsblk >/dev/null 2>&1 || true
+  got=$(lsblk -dno SERIAL "$DISK" 2>/dev/null | tr -d ' '); [ -n "$got" ] || got=none
+  [ "$got" = "$SERIAL" ] || { echo "$DISK answers to serial $got, not $SERIAL. Stopping."; exit 1; }
+  busy=$(grep -c "^$DISK" /proc/mounts || true)
+  for h in /sys/block/$d/holders /sys/block/$d/$d*/holders; do [ -z "$(ls -A "$h" 2>/dev/null)" ] || busy=1; done
+  [ "$busy" = 0 ] || { echo "$DISK is in use (mounted, or held: the live system's own disk?). Stopping."; exit 1; }
+  mb=$(( $(cat /sys/block/$d/size) / 2048 ))
+  echo "Installing the $NAME job onto $DISK: $(cat /sys/block/$d/device/model 2>/dev/null | xargs), ${mb} MB, serial $got."
+
+  v=$(cut -d. -f1,2 /etc/alpine-release)
+  printf 'https://dl-cdn.alpinelinux.org/alpine/v%s/main\nhttps://dl-cdn.alpinelinux.org/alpine/v%s/community\n' "$v" "$v" > /etc/apk/repositories
+  apk update -q
+  setup-hostname "$NAME"; hostname "$NAME"
+  setup-timezone -z "$ROOM_TZ" >/dev/null
+  setup-ntp chrony >/dev/null 2>&1 || true
+  boot=300; [ "$mb" -lt 8192 ] && boot=100          # a small disk keeps its room for the repositories
+  ERASE_DISKS=$DISK BOOT_SIZE=$boot setup-disk -m sys -s 0 "$DISK" >/dev/null
+
+  case $d in *[0-9]) p=${DISK}p ;; *) p=$DISK ;; esac
+  M=/mnt; mountpoint -q $M || mount "${p}2" $M
+  mountpoint -q $M/boot || mount "${p}1" $M/boot
+  for x in dev proc sys; do mountpoint -q $M/$x || mount --bind /$x $M/$x; done
+  cp /etc/resolv.conf $M/etc/resolv.conf
+  sed -i 's/\(ext4[[:space:]]*\)rw,relatime/\1rw,noatime/' $M/etc/fstab
+  rm -rf $M/tmp/fcpm-origin; cp -r "$HERE" $M/tmp/fcpm-origin
+  chroot $M /bin/sh /tmp/fcpm-origin/outfit
+  echo "HOST-KEY: $(cut -d' ' -f1,2 $M/etc/ssh/ssh_host_ed25519_key.pub)"
+  rm -rf $M/tmp/fcpm-origin
+  umount $M/dev $M/proc $M/sys $M/boot $M; sync
+  echo "Installed onto $DISK."
+  exit 0
+fi
+
+apk add -q git github-cli sudo avahi avahi-tools dbus python3 chrony openssh
+echo "$NAME" > /etc/hostname
+setup-timezone -z "$ROOM_TZ" >/dev/null
+
+# fcpm: management, by key, with sudo. git: the repositories, intake, and the door every key of its is forced
+# through (KEYHOLDERS). leash: the screen, nothing else.
+id fcpm >/dev/null 2>&1 || adduser -D -s /bin/sh fcpm
+id git >/dev/null 2>&1 || adduser -D -h /srv/git -s /bin/sh git
+usermod -s /bin/sh git 2>/dev/null || sed -i 's|^\(git:.*:\)/usr/bin/git-shell$|\1/bin/sh|' /etc/passwd
+id leash >/dev/null 2>&1 || adduser -D -s /bin/sh leash
+sed -i -E 's/^(fcpm|git):!:/\1:*:/' /etc/shadow      # sshd refuses a locked account, even by key
+passwd -l root >/dev/null 2>&1 || true
+grep -qx /usr/bin/git-shell /etc/shells || echo /usr/bin/git-shell >> /etc/shells
+keys() {
+  install -d -m 700 -o "$1" -g "$1" "$2/.ssh"
+  printf '%s\n' "$3" > "$2/.ssh/authorized_keys"
+  chown "$1:$1" "$2/.ssh/authorized_keys"; chmod 600 "$2/.ssh/authorized_keys"
+}
+keys fcpm /home/fcpm "$FCPM_KEYS"
+echo 'fcpm ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/fcpm; chmod 440 /etc/sudoers.d/fcpm
+rm -f /etc/sudoers.d/fcpm-standby
+mkdir -p /etc/ssh/sshd_config.d
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/10-fcpm.conf
+grep -q '^Include /etc/ssh/sshd_config.d' /etc/ssh/sshd_config || sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' /etc/ssh/sshd_config
+sshd -t
+# musl looks up no .local names; ssh asks avahi for them.
+mkdir -p /etc/ssh/ssh_config.d
+cat > /etc/ssh/ssh_config.d/10-local.conf <<'L'
+Host *.local
+  ProxyCommand /bin/sh -c 'a=$(avahi-resolve -4 -n %h 2>/dev/null | cut -f2); exec nc "${a:-%h}" %p'
+L
+grep -q '^Include /etc/ssh/ssh_config.d' /etc/ssh/ssh_config || sed -i '1i Include /etc/ssh/ssh_config.d/*.conf' /etc/ssh/ssh_config
+
+# The repositories: nothing rewritten, nothing deleted. `ssh git@… init <owner>/<repo>` makes one.
+install -d -o git -g git /srv/origin
+git config --system receive.denyNonFastForwards true
+git config --system receive.denyDeletes true
+rm -rf /srv/git/git-shell-commands                   # every key is forced through the door now
+
+# Intake: GitHub's main into every repository, as git, every minute by cron (it paces itself: 10
+# minutes while dev is on, weekly while off). GitHub is asked as the account `gh auth login` gave
+# git (./github-login); until then intake says GitHub is out of reach, on the screen too.
+install -d $LIB; install -m 755 "$HERE/intake" "$HERE/run-intake" "$HERE/door" $LIB/
+install -m 644 "$HERE/KEYHOLDERS" $LIB/KEYHOLDERS
+install -d $LIB/door-hooks; install -m 755 "$HERE/door-hooks/pre-receive" $LIB/door-hooks/
+install -d -o git -g git /var/log/fcpm /srv/origin/.intake
+# The git account's keys: only the door's block, each key forced through it. An unforced key would be
+# a shell, so the file starts empty and only `door keys` writes it (run-intake keeps it as KEYHOLDERS says).
+install -d -m 700 -o git -g git /srv/git/.ssh
+install -m 600 -o git -g git /dev/null /srv/git/.ssh/authorized_keys
+su -s /bin/sh git -c "FCPM_KEYHOLDERS=$LIB/KEYHOLDERS FCPM_AUTHORIZED_KEYS=/srv/git/.ssh/authorized_keys python3 -I $LIB/door keys"
+echo '* * * * * /bin/sh /usr/local/lib/fcpm/run-intake' > /etc/crontabs/git
+chmod 600 /etc/crontabs/git
+
+# The screen: tty1 is the leash, its page painted here, from this box's own origin and intake's log;
+# no other machine holds it. A keyboard login stays on tty2.
+install -m 755 "$HERE/leash.py" "$HERE/facts.py" "$HERE/page.py" $LIB/
+[ ! -f "$HERE/brand.json" ] || install -m 644 "$HERE/brand.json" $LIB/          # the brand's colours, if the checkout has them
+rm -rf /home/leash/.ssh                              # the leash no longer reaches out
+LINE="tty1::respawn:/bin/su -s /bin/sh leash -c 'exec env TERM=linux LANG=C.UTF-8 TZ=$ROOM_TZ FCPM_LOGS=/var/log/fcpm FCPM_ORIGIN_JOB=intake /usr/bin/python3 $LIB/leash.py --facts $LIB/facts.py -- /usr/bin/python3 $LIB/page.py /srv/origin'"
+grep -v '^tty1::' /etc/inittab > /etc/inittab.new
+printf '%s\n' "$LINE" >> /etc/inittab.new; mv /etc/inittab.new /etc/inittab
+
+# In pixels, not the firmware's 80x25 text, which a monitor stretches into a blur. A box that boots
+# by BIOS gets the largest mode its VESA offers, set at boot for the kernel's simple framebuffer; a
+# graphics driver, if the box has one, takes over from it. UEFI boots in pixels already.
+apk add -q kbd
+apk del -q font-terminus 2>/dev/null || true          # the screen builds its own font (below)
+if [ ! -d /sys/firmware/efi ]; then
+  apk add -q -t .fcpm-probe hwinfo
+  mode=$(hwinfo --framebuffer 2>/dev/null | awk '/Mode 0x.*24 bits/ { split($3, r, "x"); a = r[1] * r[2]; if (a > best) { best = a; m = $2 } } END { sub(":", "", m); print m }')
+  apk del -q .fcpm-probe
+  if [ -n "$mode" ]; then
+    opts=$(sed -n 's/^default_kernel_opts="\(.*\)"/\1/p' /etc/update-extlinux.conf | sed 's/ *vga=[^ ]*//g')
+    sed -i "s/^default_kernel_opts=.*/default_kernel_opts=\"$opts vga=$mode\"/" /etc/update-extlinux.conf
+    update-extlinux >/dev/null 2>&1
+  fi
+fi
+# Its own console font, built here from a TrueType font with the blocks, lines and icons the page
+# draws (../console-font.py); the build's tools leave again.
+apk add -q -t .fcpm-font py3-pillow "${SCREEN_FONT_PKG:-font-jetbrains-mono}"
+ttf=$(find /usr/share/fonts -name "${SCREEN_FONT:-JetBrainsMono-Bold.ttf}" | head -1)
+python3 "$HERE/console-font.py" "$ttf" /usr/share/consolefonts/fcpm-screen.psf
+apk del -q .fcpm-font
+echo 'consolefont="fcpm-screen.psf"' > /etc/conf.d/consolefont
+rc-update add consolefont boot >/dev/null 2>&1 || true
+[ "${NOW:-}" = 1 ] && setfont -C /dev/tty1 /usr/share/consolefonts/fcpm-screen.psf 2>/dev/null || true
+
+for s in networking sshd chronyd dbus avahi-daemon crond; do rc-update add $s default >/dev/null 2>&1 || true; done
+if [ "${NOW:-}" = 1 ]; then
+  for s in sshd chronyd dbus avahi-daemon crond; do rc-service $s start >/dev/null 2>&1 || true; done
+  rc-service sshd reload >/dev/null 2>&1 || true
+  kill -HUP 1; pkill -f 'getty 38400 tty1' 2>/dev/null || true
+fi
+echo "OUTFITTED: $NAME"

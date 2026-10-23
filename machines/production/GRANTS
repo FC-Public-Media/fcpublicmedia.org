@@ -1,0 +1,63 @@
+# GRANTS: editing bay 1's answer to ../RUNNABLES. Line types: docs/station.md, GRANTS.
+# People use this machine every week, and their OBS and its settings are theirs, not ours.
+
+# The read-only mirror: it only fast-forwards to main. This bay keeps no live checkout.
+checkout  refs/fcpublicmedia.org
+
+# The door is the media node's; this bay does not run it.
+wears  troves/recorder/bay/obs-portable.ps1
+wears  bin/runnables
+wears  bin/build-kiosk.py
+wears  bin/build-sites.py
+wears  machines/binding
+wears  machines/fcpm
+
+runner  powershell  Bash        powershell -NoProfile -ExecutionPolicy Bypass -File
+runner  powershell  PowerShell  &
+runner  sh          Bash
+runner  python      Bash        uv run --no-project --python 3.12 --with pyyaml
+
+# Never stop a process by name here: the staff OBS and the members' OBS are both obs64.exe.
+host  deny  PowerShell(Stop-Process -Name *)
+host  deny  PowerShell(Stop-Process -ProcessName *)
+host  deny  PowerShell(kill -Name *)
+host  deny  PowerShell(taskkill /IM *)
+host  deny  Bash(taskkill /IM *)
+host  deny  Bash(taskkill //IM *)
+host  deny  Bash(taskkill -im *)
+host  deny  Bash(pkill *)
+host  deny  Bash(killall *)
+
+# The staff OBS, driven by issued tasks: installed and confirmed by the bay, its cycle exercised
+# here, and this merged. obs.ps1 starts only the obs64.exe whose hash the bay's record names, so
+# the record is part of the proof; a new OBS version means a new record, line and exercise.
+wears      troves/recorder/obs.ps1
+depends    troves/recorder/obs.ps1 | machines/production/bay/obs-portable-32.2.2.yml
+exercise   troves/recorder/obs.ps1 | start ; status ; record start ; status ; record stop ; stop
+untouched  {APPDATA}/obs-studio
+untouched  {USERPROFILE}/Videos
+quiet      obs64
+# The stop must close it: a kill can leave a recording unfinished.
+expect     {LOCALAPPDATA}/editing-bay-1/troves/recorder/obs.ndjson "how":"closed"
+admit allow  troves/recorder/obs.ps1 | start
+admit allow  troves/recorder/obs.ps1 | record start
+admit allow  troves/recorder/obs.ps1 | record stop
+admit allow  troves/recorder/obs.ps1 | stop
+
+# The Roku (troves/roku): driven over ECP, its channel sideloaded, OBS relayed onto it. The relay
+# binary (MediaMTX) comes aboard by its bay procedure; its one grant is an inbound allow on 8888
+# for that exe, from the local subnet only. `off` restores OBS's stream settings and stops only
+# the relay process id `obs` wrote.
+wears      troves/roku/roku.ps1
+wears      troves/roku/bay/mediamtx.ps1
+depends    troves/roku/roku.ps1 | machines/production/bay/mediamtx-1.21.2.yml
+exercise   troves/roku/roku.ps1 | find ; status ; obs ; status ; off ; status
+expect     {LOCALAPPDATA}/editing-bay-1/troves/roku/roku.ndjson "event":"relay-stopped"
+admit allow  troves/roku/roku.ps1 | play
+admit allow  troves/roku/roku.ps1 | obs
+admit allow  troves/roku/roku.ps1 | off
+admit allow  troves/roku/roku.ps1 | home
+
+# Theirs, by path.
+host  deny  PowerShell(Remove-Item *obs-studio*)
+host  deny  Bash(rm *obs-studio*)

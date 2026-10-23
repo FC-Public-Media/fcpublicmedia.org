@@ -1,0 +1,28 @@
+# show.yml — what the rolling TV shows: the page, as config. See README.md.
+# A draft nothing reads: the wall is still built from `wall:` in machines/kiosk/node.yml.
+
+version: 1
+
+# One address, never navigated away from; the shell changes what it shows.
+route: wall
+
+# The door's pages (door.py WALL_PAGES), named, not copied.
+modules:
+  - {name: studio, label: Studio, page: kiosk}
+  - {name: files, label: Files, page: depot}
+
+# One module at a time under the check-in header, no thumbnails; a class soon or on takes over.
+layout:
+  header: checkin            # the check-in block, colours inverted, on a -8deg plane
+  main: rotate
+  every: 45                  # seconds on each module (`rotate:` in node.yml). A guess, to be watched
+  others: none
+  takeover: classes          # docs/kiosk.md
+
+# Pointer at most, so controls are small (door.py WALL_CSS, 1.35vh type).
+controls: small
+
+# Some motion shows it is live; nothing may flash.
+animated: true
+
+# Data refreshes on the wall's own beat (`every:` in node.yml's wall block, 60 s).

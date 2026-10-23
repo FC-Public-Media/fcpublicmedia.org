@@ -1,0 +1,36 @@
+# What the welcome kiosk says. Edit this, run python3 bin/build-kiosk.py, commit both. docs/kiosk.md.
+# Never the Wi-Fi password, here or in any file beside it: this repository is public.
+
+room: the welcome desk
+
+# Two sentences at most. PLACEHOLDER; org.yml's mission is the board's wording, not a greeting.
+greeting: >-
+  Welcome in. Scan the code to check in, and help yourself to the guest
+  Wi-Fi — there is nothing to sign up for.
+
+# The panels, in the order they appear.
+panels:
+  # Takes over the screen from `lead_minutes` before a class until it ends.
+  - panel: On now
+    from: classes
+    takeover: true
+
+  # The guest scans it with their own phone; a kiosk browser never opens /check-in/.
+  - panel: Checking in
+    from: checkin
+    note: >-
+      Scan it with your own phone. Your visits stay on your phone — we don't
+      make you an account.
+
+  # No QR, so never "scan". PLACEHOLDER: where the printed card actually hangs.
+  - panel: Guest Wi-Fi
+    from: wifi
+    note: >-
+      Open Wi-Fi settings and pick this network. The password is on the
+      printed card by the desk, or ask and we'll tell you.
+
+  # PLACEHOLDER: who a guest should ask, by role, never a named person.
+  - panel: Need a hand?
+    say: Ask whoever is at the desk.
+    note: >-
+      If nobody is about, the studio phone and email are on the contact page.

@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""The price generator.
-
-Two things are being guarded, and they fail in opposite directions.
-
-The first is drift: a price edited in site/_data/ that never reaches the broker.
-That one is quiet — the page says $70, the card is charged $60, and nobody
-finds out until somebody reconciles a bank statement. `--check` in CI is the
-guard; the test here is that `--check` actually notices.
-
-The second is a placeholder becoming a charge. Several figures in the data
-files are the literal string "TODO" while the board decides. A generator that
-coerced those to 0, or to 0 cents, or skipped the check and let `float("TODO")`
-raise at some later moment, would either sell something for nothing or take
-the site down. They are skipped, deliberately and loudly.
-"""
+"""The price generator: --check must notice drift, and "TODO" must never become a charge."""
 
 import importlib.util
 import pathlib
@@ -21,8 +7,6 @@ import subprocess
 import sys
 import unittest
 
-# `site/bin/` is inside the Jekyll source, so a path here is relative to the
-# site rather than to the repository. SITE is the build root; REPO is the node.
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 SCRIPT = HERE / "build-prices.py"
@@ -39,14 +23,12 @@ class AmountsAreMoney(unittest.TestCase):
         self.assertEqual(build_prices.amount(12.5), 1250)
 
     def test_a_placeholder_is_not_a_price(self):
-        # The one that would cost real money. Every one of these has to come
-        # back None rather than raising or defaulting.
+        # Each must come back None, never raise or default.
         for value in ("TODO", "", None, "$40", "forty", [], {}):
             self.assertIsNone(build_prices.amount(value), f"{value!r} was treated as a price")
 
     def test_a_boolean_is_not_a_price(self):
-        # bool is a subclass of int in Python, so `isinstance(True, int)` is
-        # True and a stray `price: yes` in YAML would otherwise be one cent.
+        # bool is an int in Python: `price: yes` would otherwise be one cent.
         self.assertIsNone(build_prices.amount(True))
         self.assertIsNone(build_prices.amount(False))
 
@@ -55,8 +37,7 @@ class AmountsAreMoney(unittest.TestCase):
         self.assertIsNone(build_prices.amount(-40))
 
     def test_a_fraction_of_a_cent_is_refused_rather_than_rounded(self):
-        # Rounding somebody's price silently is worse than declining to sell
-        # it, because the difference shows up on their statement and not ours.
+        # Declined rather than silently rounded.
         self.assertIsNone(build_prices.amount(40.001))
 
 
@@ -69,8 +50,7 @@ class TheCatalog(unittest.TestCase):
             self.assertIn(f"membership:{tier}", items)
 
     def test_the_unpriced_are_reported_rather_than_dropped_in_silence(self):
-        # Skipping quietly is how "why is there no buy button" becomes an
-        # afternoon. The script says what it left out and why.
+        # The script says what it left out and why.
         _, skipped = build_prices.build()
         self.assertTrue(any("class-dropin" in note for note in skipped))
 
@@ -89,8 +69,7 @@ class TheCatalog(unittest.TestCase):
 
 class TheCommittedCopy(unittest.TestCase):
     def test_it_is_up_to_date(self):
-        # The same command CI runs. If this fails, run
-        # `python3 site/bin/build-prices.py` and commit the result.
+        # As CI runs it. If this fails, run build-prices.py and commit the result.
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--check"],
             capture_output=True,
@@ -99,8 +78,7 @@ class TheCommittedCopy(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_check_actually_notices_a_difference(self):
-        # A --check that always passed would be worse than none, because it
-        # would be believed. Written to a real edit and put back.
+        # A real edit to prices.js, put back afterwards.
         target = REPO / "worker" / "src" / "prices.js"
         original = target.read_text(encoding="utf-8")
         try:

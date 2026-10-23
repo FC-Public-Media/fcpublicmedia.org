@@ -1,15 +1,10 @@
-// Class mode is entirely a function of the wall clock, so the clock is mocked.
-// Without that these tests would only pass in August 2026 between six and
-// eight in the evening, which is not a test.
-//
-// Session times come from site/_data/classes.yml. Podcasting 101 runs
-// 2026-08-11 18:00–20:00 in Denver, which is 2026-08-12 00:00–02:00 UTC.
-// lead_minutes is 90, late_minutes is 45.
+// The clock is mocked to the class the site bakes in (pages.js bakedClass), a two-hour session.
 
 const { test, expect } = require('@playwright/test');
-const { isThirdParty } = require('./pages');
+const { isThirdParty, bakedClass } = require('./pages');
 
-const START = Date.parse('2026-08-12T00:00:00Z');
+const CLASS = bakedClass();
+const START = CLASS.start;
 const MINUTE = 60000;
 
 const at = (offsetMinutes) => new Date(START + offsetMinutes * MINUTE);
@@ -31,8 +26,7 @@ test.describe('class mode', () => {
     await expect(slot(page)).toBeHidden();
     await expect(card(page)).toHaveAttribute('data-class-mode', 'off');
 
-    // The QR is unconditional. It is the same code for a class and for a bay,
-    // so a day with no class on it is still a day someone walks in and scans.
+    // The QR shows whether or not a class is on.
     await expect(page.locator('.hero-qr img')).toBeVisible();
   });
 
@@ -42,9 +36,9 @@ test.describe('class mode', () => {
     await expect(slot(page)).toBeVisible();
     await expect(card(page)).toHaveAttribute('data-class-mode', 'soon');
     await expect(page.locator('[data-class-eyebrow]')).toHaveText('Starting soon');
-    await expect(page.locator('[data-class-title]')).toHaveText('Podcasting 101');
+    await expect(page.locator('[data-class-title]')).toHaveText(CLASS.title);
     await expect(page.locator('[data-class-when]')).toContainText('Starts at');
-    await expect(page.locator('[data-class-room]')).toHaveText('Podcast Studio');
+    await expect(page.locator('[data-class-room]')).toHaveText(CLASS.room);
   });
 
   test('is quiet before the lead window opens', async ({ page }) => {
@@ -77,11 +71,7 @@ test.describe('class mode', () => {
   });
 
   test('puts a running class above the fold', async ({ page }) => {
-    // The whole reason class mode moved out of a band further down the page.
-    // Someone standing in the doorway holding a phone should not scroll to
-    // learn that the thing they walked in for is running — so this asserts
-    // the position, not just the presence. On a phone the card is ordered
-    // above the headline for the same reason.
+    // Position, not just presence: someone in the doorway should not scroll to find the class.
     await visitAt(page, at(20));
 
     const box = await slot(page).boundingBox();
@@ -94,9 +84,7 @@ test.describe('class mode', () => {
       'the class card runs past the fold',
     ).toBeLessThanOrEqual(fold);
 
-    // And the code goes with it. On a phone the class displaces the headline
-    // rather than the QR — someone who came for the class still has to be
-    // able to check in without scrolling.
+    // On a phone the class displaces the headline, not the QR.
     const qr = await page.locator('a.hero-qr').boundingBox();
     expect(qr, 'the QR has no box').not.toBeNull();
     expect(qr.y + qr.height, 'the QR fell below the fold').toBeLessThanOrEqual(fold);
@@ -105,11 +93,7 @@ test.describe('class mode', () => {
   test('the join link carries no class information', async ({ page }) => {
     await visitAt(page, at(20));
 
-    // Deliberately a bare link. The check-in page reaches the same conclusion
-    // from the same data, so putting the class in the URL would create a
-    // second place for the answer to live — and a link that could be shared
-    // hours later still claiming a class is on. It also means the QR on the
-    // door never has to be reprinted for a class.
+    // A bare link: check-in decides from the same data, and a shared link outlives the class.
     const join = page.locator('[data-class-join]');
     await expect(join).toBeVisible();
     await expect(join).toHaveAttribute('href', '/check-in/');
@@ -145,14 +129,7 @@ test.describe('class mode', () => {
   });
 
   test('decides from the build, without fetching a schedule', async ({ page }) => {
-    // Scoped to the main frame rather than to a list of third-party hosts.
-    //
-    // The Cablecast player iframe pulls in its own dependencies — video.js
-    // from a CDN, and a Stripe pricing script — on hosts nobody here chose or
-    // can predict. Those belong to the embed's frame, not ours. Filtering by
-    // frame captures the real distinction: what *this page* asked for. A
-    // maintained host list would have to be updated every time a vendor adds
-    // a dependency, and would go quietly wrong when it wasn't.
+    // Main frame only: the Cablecast player iframe loads its own third-party scripts.
     const requests = [];
     page.on('request', (request) => {
       let ownFrame = false;
@@ -163,14 +140,11 @@ test.describe('class mode', () => {
       }
       if (!ownFrame) return;
 
-      // The page's own document is not a fetch. Said as "is this the
-      // navigation?" rather than by matching the test server's hostname,
-      // which was how this previously broke when the host changed.
+      // The page's own document is not a fetch.
       if (request.isNavigationRequest()) return;
 
       const url = request.url();
-      // The on-air strip legitimately calls Cablecast from this frame. That is
-      // a different feature; the frame check alone would flag it.
+      // The on-air strip calls Cablecast from this frame; that is another feature.
       if (isThirdParty(url)) return;
       if (url.includes('/assets/')) return;
       requests.push(url);

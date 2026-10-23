@@ -1,40 +1,67 @@
 # digitization
 
-**Status: drafted 2026-10-09, not yet worn.** A Dell OptiPlex 9020M (asset
-200-FCPubMedia), running Debian 13 XFCE live from a USB stick. The first Linux
-profile here.
-
-The name is the crew's on purpose (see `names`): for now this box and the
-[`digitization`](../../crews/README.md) crew share it. It takes the crew over
-from station-node, which can then vacate. The crew's contract
-(`crews/digitization/CREW.md`) has not arrived from station-node yet.
+A Dell OptiPlex 9020M (asset 200-FCPubMedia) running Debian 13 XFCE live from an SD card, the first
+Linux profile. It shares its name with the [`digitization`](CREW.md) crew,
+which it is to take over from station-node. Not worn yet. Machines: [docs/station.md](../../docs/station.md).
 
 | | |
 |---|---|
-| wears | `digitization` (intended) |
-| names | `names`: `linux Hostname digitization`, not applied yet |
-| keyholders | `KEYHOLDERS`: the secretary's passkey slot, empty |
-| role on the LAN | the FCPM git origin and receiver, so work can go on through a cloud outage (below) |
+| `names` | `linux Hostname digitization`. A live boot answers `debian`; the card's one-time setup (`settle-card.sh` on its toolbox partition, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
+| `services` | the crew's order, from its own menu `../digitization.yml`, kept by `fcpm-crew@digitization` (`../crew.sh`): `follow every 5m` keeps this checkout on origin.local's main with every trove at its pin, so a merge reaches the board by itself |
+| `pools.yml` | the landing (`/srv/landing`, label `fcpm-landing`) as a pool, served by the crew's `pools` line on 8091 (`../../troves/pools.yml`); an emulated pool beside it for `pools.py sample` |
+| `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `rsync`, `zenity`, `avahi-utils`, `vivaldi-stable`, `firefox-esr`; Claude Code by hand |
+| the door | `../kiosk/door.py serve` on loopback :8081 behind nginx's port 80 (the `static` job's `nginx.conf`), started at login by `at-login` (`fcpm-digitization.desktop` in `/etc/xdg/autostart`), then Vivaldi opens maximized with its page as a pinned tab, never a window of its own (`open-page`). `digitization.local` on the LAN; at `localhost` the board also offers **Unlock** for the signing key, its passphrase asked on this screen (`../kiosk/askpass`) |
+| `rest` | the screen never blanks or powers down (X and XFCE's power manager both told). Ten minutes without input, `../../brand/idle` comes up full screen, the mark and the clock, read from the checkout; the first touch takes it away. Started by `at-login` beside the door |
+| static sites | the public site and the Wix copy are the [`static`](../static/CREW.md) job's, which this machine also wears; nginx serves their names (`fcpublicmedia.local`, `www.`, `wix.`) itself and hands every other name to the door |
+| `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
+| the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
+| `check.sh` | each gear present (dpkg), the crew's supervisor up, origin.local answering as this checkout's origin, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
+| `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
+| role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
+
+## Names
+
+People reach things here by name, as deep as DNS goes, each an mDNS name of this machine beside
+`digitization.local` (decided 2026-10-17). `lan.yml` says which, and the door serves each:
+
+| name | serves |
+|---|---|
+| `helm.fcpublicmedia.local` | the board. Shared: any machine may hold it; the first to claim it does, and another asks again every 30 s, so it takes over when the holder goes |
+| `fcpublicmedia.local`, `www.fcpublicmedia.local` | the public site, built here (shared the same way; the [`static`](../static/CREW.md) job) |
+| `wix.fcpublicmedia.local` | the Wix site, photocopied, until the board retires it (shared; `static`) |
+| `digitization.fcpublicmedia.local` | this machine's directory: its gear, and the shared names with who holds each |
+| `atem-mini-pro.digitization.fcpublicmedia.local`, `aja-helo.…`, `rodecaster-pro-ii.…` | one piece of gear, named for its trove: its facts (`instrument.yml`) and where it is now, discovered (mDNS or this USB), never declared |
+
+`digitization.local` and every path under it stay as they were (the board, the rooms, the host check-in).
+The machine's part of each name is its `names` line, so a rename moves them all. Linux refuses names
+past two labels by default (nss-mdns's heuristic); here `/etc/mdns.allow` is `mdns.allow`, and the hosts line
+in `/etc/nsswitch.conf` is `files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4`: two-label names
+as before, deeper ones through `mdns4` after unicast DNS says no, so reverse lookups stay fast. Apple's
+resolvers take the deep names as they are. Windows' is not tested yet. `python3 machines/lan.py` says who
+holds each name now.
+
+## Memory
+
+7.7 GB, no disk swap, and a root on an SD card. On 2026-10-17 at 01:38 the box ran short with no swap: the kernel
+evicted the programs' own code and read it back from the card, over and over, so every program stopped while the
+kernel lived (SSH took the connection and said nothing) and the OOM killer never fired. Twenty minutes later
+only the power button helped. Now there is a way out on its own:
+
+- **zram** (`zram-generator.conf` → `/etc/systemd/zram-generator.conf`): half the RAM as compressed swap, zstd,
+  and `sysctl-zram.conf` (`vm.swappiness = 180`, `vm.page-cluster = 0`) so the kernel uses it before evicting code.
+- **earlyoom** (`earlyoom.default` → `/etc/default/earlyoom`): under 5% memory and 15% swap free it sends SIGTERM
+  (SIGKILL at half that) to the biggest process, preferring browser tabs, headless Firefox captures, `node` and
+  Claude's desktop app, and avoiding SSH, X, the session, `python3` (the crew, the door, pools) and Claude Code.
+  The patterns have no spaces or quotes: systemd splits the line at spaces. `journalctl -u earlyoom` says what it
+  ended; `earlyoom --dryrun -m 90 -s 100` shows what it would pick now.
 
 ## The origin
 
-Bare repos at `/srv/origin/<owner>/<repo>`: all of FC-Public-Media plus the
-four FCCN-ANTIBODY repos fcpublicmedia.org mounts. Only FCPM's own things.
-They live on an ext4 image on the RAID, not on the stick: the origin belongs to the box.
+FCPM's origin is [origin.local](../origin/PROFILE.md), released to it 2026-10-21: it takes GitHub in,
+keeps the LAN's dev switch and paints its own screen. This machine is a client. `follow` points this
+checkout's `origin` and every submodule at it (`fcpm-origin:/srv/origin/...`: `~/.ssh/config`'s `fcpm-origin`, the name
+for its git account, by this machine's key, a line in [`../origin/KEYHOLDERS`](../origin/KEYHOLDERS)),
+and `fcpm dev on|off` or the board's switch flips its dev.
 
-**Intake is automatic and tracks `main` only** (`origin-intake`, every minute
-from `systemd/origin-intake.timer`). A merge on GitHub is when we pay
-attention. Behind → fast-forward. Ahead → left alone. Both moved → a clean
-merge becomes our own merge commit; a conflict is recorded in
-`/srv/origin/.intake/state.json` and `main` is not touched. Nothing is forced.
-Periodic until GitHub can call us with a webhook.
-
-**What comes in from the LAN is authenticated fast-forwards only.** Every repo has
-`receive.denyNonFastForwards` and `receive.denyDeletes`. The authenticated
-door (SSH, keys from `KEYHOLDERS`) is not open yet. No pull requests here:
-everyone has the code, so a station sends a fast-forward. If that turns out
-to be a barrier, we'd rather hit it and take it down on purpose.
-
-Not yet: publishing origin → GitHub, and the page. That will be a front end
-for people at a nonprofit, not station-node's 8080 page. Borrowing its raw
-views is fine, but they aren't the default.
+The card's `card-origin` partition at `/srv/origin` is what this machine held until then: nothing
+writes to it now. It stays mounted as a copy until the card is rebuilt.
