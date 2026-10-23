@@ -1,6 +1,6 @@
 #!/bin/sh
 # sideload TYPE /dev/sdX [REF] -- roll a card in a reader forward, in place. Never a reformat, never its
-# home, never its boot partitions: its checkout (the `code` partition) moves to REF, by default the
+# home, never an ISO's bytes (only names on its boot partition, below): its checkout (the `code` partition) moves to REF, by default the
 # newest tag cards/TYPE/* in this repository, and its kit is refreshed by that checkout's own `kit`:
 # its packages (new ones too) and its settings layer. At its next boot the card settles from it.
 # Run as the desktop's user; it asks sudo. ./roll does the same to a card that is running.
@@ -27,5 +27,23 @@ g fetch -q "$REPO" "$SHA" "+refs/tags/cards/*:refs/tags/cards/*"
 g checkout -q --detach "$SHA"
 sudo chown -R 1000:1000 "$W/code"
 sudo bash "$C/machines/cards/$TYPE/kit" "$W/kit"
+# The boot partition: names only, never an ISO's bytes. An ISO the type boots in Ventoy's GRUB2 mode
+# (its card's `grub2`) is renamed _VTGRUB2, with its checksum line and the default image to match.
+grub2=""; . "$C/machines/cards/$TYPE/card"
+VTOY=$(lsblk -rno PATH,LABEL "$DEV" | awk '$2 == "Ventoy" { print $1 }')
+if [ -n "$grub2" ] && [ -n "$VTOY" ]; then
+  mkdir -p "$W/vtoy"; sudo mount -t exfat "$VTOY" "$W/vtoy"
+  for g in $grub2; do
+    for f in "$W"/vtoy/$g; do
+      [ -f "$f" ] || continue
+      n=$(basename "$f"); c="${n%.iso}_VTGRUB2.iso"
+      sudo mv "$f" "$W/vtoy/$c"
+      sudo sed -i "s|  $n\$|  $c|" "$W/vtoy/SHA256SUMS" 2>/dev/null || true
+      [ ! -f "$W/vtoy/ventoy/ventoy.json" ] || sudo sed -i "s|/$n\"|/$c\"|" "$W/vtoy/ventoy/ventoy.json"
+      echo "sideload: $n boots in GRUB2 mode by itself now ($c)"
+    done
+  done
+  sync; sudo umount "$W/vtoy"; rmdir "$W/vtoy"
+fi
 sync
 echo "sideload: $(lsblk -dno SERIAL "$DEV") rolled from $before to $(g describe --tags --always)"

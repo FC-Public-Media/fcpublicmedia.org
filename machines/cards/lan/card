@@ -3,5 +3,7 @@ label=lan
 hostname=card
 ventoy=2G
 isos="alpine-standard-*-x86_64.iso"
-default="alpine-standard-*-x86_64.iso"
+default="alpine-standard-*-x86_64*.iso"
+# Booted in Ventoy's GRUB2 mode (named _VTGRUB2): under Secure Boot, Alpine's own GRUB refuses its kernel.
+grub2="alpine-standard-*-x86_64.iso"
 parts="kit:vfat:2G code:ext4:2G home:luks:rest"

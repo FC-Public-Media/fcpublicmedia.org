@@ -9,7 +9,7 @@ TYPES="$(cd "$HERE" && ls -d */ | tr -d / | tr '\n' ' ')"
 [ "${3:-}" = "$(basename "$DISK")" ] || { echo "Name the disk twice: $DISK $(basename "$DISK")"; exit 1; }
 [ "$(id -u)" != 0 ] || { echo "Run as the desktop's user, not root."; exit 1; }
 case "$(lsblk -dno TYPE "$DISK" 2>/dev/null)" in disk|loop) ;; *) echo "$DISK is not a whole disk."; exit 1;; esac
-persistence=""; default=""; . "$HERE/$TYPE/card"
+persistence=""; default=""; grub2=""; . "$HERE/$TYPE/card"
 TOOLBOX="${TOOLBOX:-/srv/toolbox}"
 export PATH="$PATH:/sbin:/usr/sbin"
 
@@ -80,8 +80,11 @@ for pat in $isos; do
     if [ -f "$f.sha256" ]; then h="$(awk '{print $1; exit}' "$f.sha256")"
     else h="$(awk -v n="$n" '$2==n || $2=="*"n {print $1}' "$TOOLBOX/isos/SHA256SUMS")"; fi
     [ -n "$h" ] || { echo "No published checksum for $n."; exit 1; }
-    echo "$h  $n" >> "$WORK/m/SHA256SUMS"
-    cp "$f" "$WORK/m/"
+    # Named _VTGRUB2, Ventoy boots it in its GRUB2 mode by itself (what Ctrl+R does at its menu): under
+    # Secure Boot an ISO's own GRUB may refuse its kernel (Alpine's does: shim_lock), Ventoy's does not.
+    c="$n"; for g in $grub2; do case "$n" in $g) c="${n%.iso}_VTGRUB2.iso" ;; esac; done
+    echo "$h  $c" >> "$WORK/m/SHA256SUMS"
+    cp "$f" "$WORK/m/$c"
   done
 done
 VJ='{}'
