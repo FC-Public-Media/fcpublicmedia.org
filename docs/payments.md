@@ -90,9 +90,13 @@ is an equal path to a person. Staff verify the EIN and issue a Stripe promotion 
 
 - `booqable.snippet` in `payments.yml` is pasted verbatim from Settings → Online Bookings → Website
   integration. It carries a public company ID; no access token is stored.
-- Browse-only: the datepicker in `booqable.components` is commented out and `site/assets/css/site.css`
-  hides the add-to-cart notice and the cart drawer. Restoring the datepicker means removing both rules.
-- `site.css` restyles their card grid as rows; untested, and a Booqable markup change brings the grid back.
+- Booqable sells: the datepicker, the cart drawer and the checkout are theirs. Checkout leaves our site
+  for `fort-collins-public-media.booqableshop.com` (no `checkoutDomain`, so no custom domain). The
+  Terms checkbox, the security deposit and the members' note are Booqable settings, not page text.
+- Tiles | List (`site/assets/js/booqable-view.js`): tiles are Booqable's markup untouched; list is
+  `site.css` under `.booqable-store.is-list`, the default, remembered per browser. A Booqable markup
+  change can break the list, never the tiles or the checkout.
+- The cart and quickview are portaled to `<body>`; nothing in `site.css` may hide them.
 
 ## Hosted forms
 

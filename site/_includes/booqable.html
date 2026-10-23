@@ -3,7 +3,12 @@
 {%- assign booqable = site.data.payments.booqable -%}
 
 {%- if booqable.snippet and booqable.snippet != "" -%}
-  <div class="booqable-store">
+  {%- comment -%} List first: gear is picked by scanning names. booqable-view.js shows the picker and keeps the choice. {%- endcomment -%}
+  <div class="booqable-view" role="group" aria-label="Show equipment as" hidden>
+    <button type="button" data-view="tiles" aria-pressed="false">Tiles</button>
+    <button type="button" data-view="list" aria-pressed="true">List</button>
+  </div>
+  <div class="booqable-store is-list">
     {%- for component in booqable.components %}
       <div class="{{ component.class }}" {{ component.attributes }}></div>
     {%- endfor %}
@@ -11,10 +16,11 @@
 
   {%- comment -%} Unescaped repository text, last so the page works if Booqable is slow or down. {%- endcomment -%}
   {{ booqable.snippet }}
+  <script src="{{ '/assets/js/booqable-view.js' | relative_url }}?v={{ site.time | date: '%s' }}" defer></script>
 
   <noscript>
     <p class="muted">
-      Browsing availability here needs JavaScript. Email
+      Booking here needs JavaScript. Email
       <a href="mailto:{{ site.data.org.equipment_email }}">{{ site.data.org.equipment_email }}</a>
       and we'll sort it out with you directly &mdash; that route works for
       everything, and for a lot of members it is the easier one anyway.
