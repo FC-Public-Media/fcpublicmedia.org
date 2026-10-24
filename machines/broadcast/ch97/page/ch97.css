@@ -62,4 +62,5 @@ html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink
 .row a:hover { background: var(--signal); }
 .row .n { text-align: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .row.today a { font-weight: 700; }
+.waiting-row span { display: block; height: .8rem; width: 70%; background: var(--paper-alt); animation: breathe 1.6s ease-in-out infinite; animation-delay: inherit; }
 .more { padding: .6rem .8rem; color: var(--ink-soft); font-size: .85rem; }

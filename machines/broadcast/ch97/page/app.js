@@ -13,6 +13,7 @@ const SEAM = 60;               // a gap shorter than this is a seam: drawn, not 
 const LATELY = 60;             // days of airings that say what ran lately
 const LOOK_AGAIN = 5 * 60e3;   // Cablecast's copy is looked at again this often, quietly
 const SHOWN = 150;             // reserve rows drawn at once
+const RESERVE = ["cats", "reserve", "lately"]; // the requests the reserve's pane shows; the rest are the day's
 
 // --- time, on the channel's clock -------------------------------------------------------------
 const fields = new Intl.DateTimeFormat("en-US", { timeZone: ZONE, hourCycle: "h23", year: "numeric",
@@ -182,7 +183,7 @@ function App() {
   const hours = [];
   for (let t = start; t < end; t += 3600e3) hours.push(t);
 
-  const busy = Object.entries(work);
+  const busy = Object.entries(work).filter(([k]) => !RESERVE.includes(k));
   const differs = diff ? diff.marks.size + diff.extra.length : 0;
 
   return html`
@@ -196,7 +197,7 @@ function App() {
         </span>
         <span class="state">
           ${busy.map(([k, w]) => html`<span key=${k} class="busy">${w.label}${w.of ? html` <b>${w.done}/${w.of}</b>` : ""}</span>`)}
-          ${Object.entries(trouble).map(([k, label]) => html`<span key=${k} class="off">${label}: no answer</span>`)}
+          ${Object.entries(trouble).filter(([k]) => !RESERVE.includes(k)).map(([k, label]) => html`<span key=${k} class="off">${label}: no answer</span>`)}
           ${differs > 0 && html`<span class="off">Cablecast differs ${differs}</span>`}
           ${changed && html`<button onClick=${() => { setTheirs(newer); setNewer(null); }}>Cablecast changed ${clock.format(now)}</button>`}
         </span>
@@ -249,11 +250,11 @@ function App() {
         ${days.length > 0 && html`<span>laid through <b>${named(days[days.length - 1])}</b></span>`}
       </div>
     </section>
-    <${Reserve} ...${{ reserve, cats, lately, category, setCategory, fit, setFit, words, setWords, airings }} />
+    <${Reserve} ...${{ reserve, cats, lately, category, setCategory, fit, setFit, words, setWords, airings, work, trouble }} />
   `;
 }
 
-function Reserve({ reserve, cats, lately, category, setCategory, fit, setFit, words, setWords, airings }) {
+function Reserve({ reserve, cats, lately, category, setCategory, fit, setFit, words, setWords, airings, work, trouble }) {
   const onDay = useMemo(() => new Set(airings.map((a) => a.show.id)), [airings]);
 
   // Each category with its hours; a name's size says how much is behind it (four steps, coarse).
@@ -262,7 +263,7 @@ function Reserve({ reserve, cats, lately, category, setCategory, fit, setFit, wo
     const hours = new Map();
     for (const s of reserve) {
       const name = cats[s.category] ?? "";
-      hours.set(name, (hours.get(name) ?? 0) + (s.totalRunTime || 0) / 3600);
+      if (s.totalRunTime > 0) hours.set(name, (hours.get(name) ?? 0) + s.totalRunTime / 3600);
     }
     return [...hours].sort((a, b) => b[1] - a[1]);
   }, [reserve, cats]);
@@ -272,8 +273,9 @@ function Reserve({ reserve, cats, lately, category, setCategory, fit, setFit, wo
     if (!reserve || !cats) return [];
     const find = words.trim().toLowerCase();
     return reserve
+      .filter((s) => s.totalRunTime > 0)              // no media, nothing to air
       .filter((s) => category === null || (cats[s.category] ?? "") === category)
-      .filter((s) => fit === null || (s.totalRunTime > 0 && s.totalRunTime <= fit))
+      .filter((s) => fit === null || s.totalRunTime <= fit)
       .filter((s) => !find || s.title.toLowerCase().includes(find))
       .map((s) => ({ s, last: lately?.get(s.id) ?? 0 }))
       .sort((a, b) => a.last - b.last || a.s.runCount - b.s.runCount);
@@ -283,7 +285,11 @@ function Reserve({ reserve, cats, lately, category, setCategory, fit, setFit, wo
     <section class="pane">
       <div class="bar">
         <span class="what">the reserve${category !== null ? html` · ${category || "no category"}` : ""}</span>
-        <span class="state">${reserve && html`<span>${rows.length} of ${reserve.length}</span>`}</span>
+        <span class="state">
+          ${RESERVE.filter((k) => work[k]).map((k) => html`<span key=${k} class="busy">${work[k].label}${work[k].of ? html` <b>${work[k].done}/${work[k].of}</b>` : ""}</span>`)}
+          ${RESERVE.filter((k) => trouble[k]).map((k) => html`<span key=${k} class="off">${trouble[k]}: no answer</span>`)}
+          ${reserve && cats && html`<span>${rows.length} of ${reserve.filter((s) => s.totalRunTime > 0).length}</span>`}
+        </span>
       </div>
       <div class="cats">
         ${kinds.map(([name, h]) => html`<button key=${name || "-"} class=${`${category === name ? "on" : ""}${name ? "" : " empty"}`}
@@ -295,9 +301,10 @@ function Reserve({ reserve, cats, lately, category, setCategory, fit, setFit, wo
         ${fit !== null && html`<button title="show every length" onClick=${() => setFit(null)}>fits ${span(fit)} ×</button>`}
       </div>
       <div class="scroll">
+        ${!(reserve && cats) && [...Array(12).keys()].map((n) => html`<div key=${n} class="row waiting-row" style=${{ animationDelay: `${n * 90}ms` }}><span></span></div>`)}
         ${rows.slice(0, SHOWN).map(({ s, last }) => html`
           <div key=${s.id} class=${`row${onDay.has(s.id) ? " today" : ""}`}>
-            <a href=${`https://ch97.fcpublicmedia.org/internetchannel/show/${s.id}`} target="_blank" title=${s.title}>${s.title}</a>
+            <a href=${`https://ch97.fcpublicmedia.org/internetchannel/show/${s.id}`} target="_blank" title=${s.title}>${s.title.trim() || html`<i>show ${s.id}</i>`}</a>
             <span class="n">${length(s.totalRunTime || 0)}</span>
             <span class="n">${last ? ago(last) : ""}</span>
             <span class="n" title="times aired">${s.runCount || ""}</span>
