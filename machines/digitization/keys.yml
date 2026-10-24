@@ -39,7 +39,7 @@ groups:
         issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
 
   cloudflare:
-    what: deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV.
+    what: "deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV"
     form: env
     used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout"
     keys:
