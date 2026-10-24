@@ -108,6 +108,20 @@ class Relay(unittest.TestCase):
         self.assertEqual([r["state"] for r in rows], ["diverged"])
         self.assertEqual(self.on_github("refs/heads/topic"), github_topic, "GitHub's topic is never overwritten")
 
+    def test_a_refusal_is_tried_again_not_left_for_a_person(self):
+        hook = self.github / "hub/hooks/pre-receive"
+        hook.write_text("#!/bin/sh\necho 'refusing to allow an OAuth App to create or update workflow "
+                        "`.github/workflows/x.yml` without `workflow` scope' >&2\nexit 1\n")
+        hook.chmod(0o755)
+        w = self.work()
+        self.git("checkout", "-qb", "ci", cwd=w)
+        self.commit(w, "g")
+        self.git("push", "-q", "origin", "ci", cwd=w)
+        self.assertEqual([r["state"] for r in self.intake.carry()], ["error"])
+        hook.unlink()                           # the scope granted
+        self.assertEqual([r["state"] for r in self.intake.carry()], ["carried"])
+        self.assertEqual(self.on_github("refs/heads/ci"), self.git("rev-parse", "HEAD", cwd=w).stdout.strip())
+
     def test_a_repository_that_began_here_is_never_carried(self):
         w = self.tmp / "lanwork"
         self.git("init", "-q", "-b", "main", str(w))
