@@ -3,12 +3,13 @@
 # private repositories. GitHub's device sign-in: the box asks GitHub for a one-time code, a window on
 # this screen shows it, and whoever approves it at github.com/login/device (on a phone is fine)
 # is the account the origin reads GitHub as. Nothing is pasted anywhere; the token stays on the box,
-# in the git account's own gh config. Run again to change accounts. See PROFILE.md.
+# in the git account's own gh config. `workflow` lets the relay carry a branch that touches
+# .github/workflows; GitHub refuses those pushes without it. Run again to change accounts. See PROFILE.md.
 set -eu
 TARGET=${1:-fcpm@origin.local}
 T=$(mktemp -d); trap 'kill $(jobs -p) 2>/dev/null || true; rm -rf "$T"' EXIT
 ssh -o BatchMode=yes "$TARGET" \
-  'sudo -u git env HOME=/srv/git BROWSER=true GH_PROMPT_DISABLED=1 gh auth login --hostname github.com --git-protocol https --web 2>&1' \
+  'sudo -u git env HOME=/srv/git BROWSER=true GH_PROMPT_DISABLED=1 gh auth login --hostname github.com --git-protocol https --scopes workflow --web 2>&1' \
   > "$T/out" &
 login=$!
 code=
