@@ -5,6 +5,7 @@
     python3 machines/broadcast/cablecast.py fields ensure      create the ones that are missing
     python3 machines/broadcast/cablecast.py snapshot [DATE]    a day of channel 1's schedule, kept as it was
     python3 machines/broadcast/cablecast.py eject DIR          the box's look, as plain files, into DIR
+    python3 machines/broadcast/cablecast.py lay DIR [DATE] [DAYS]   lay days of the schedule down as ours
 
 The token is the one made in Cablecast for this work (Settings, API access) and kept in
 ~/.config/fcpm/cablecast.token, mode 600; nothing here prints it. The box is reached by its LAN
@@ -12,7 +13,10 @@ address; its certificate is checked against the public name it carries. Snapshot
 ~/.local/share/fcpm/cablecast/snapshots/. `fields ensure` creates and binds; it never changes or
 deletes a field, and says so when one on the box differs from fields.yml. `eject` writes what the
 box shows people into a checkout of the broadcast repository (PROFILE.md, "The look"): the same
-files each time for the same box, so git shows only what changed there. System python and PyYAML.
+files each time for the same box, so git shows only what changed there. `lay` writes each day, as it
+stands on the box now, into DIR/schedule/<date>.json: the list we say goes on the air, with each
+show's facts written in, so anyone can read the day without asking the box. It never writes over a
+day already laid; that day is ours now, and changing it is an edit to the file. System python and PyYAML.
 See PROFILE.md.
 """
 import datetime
@@ -32,6 +36,8 @@ API = "/CablecastAPI/v1"
 LOCATION = 1
 CHANNEL = 1
 BOARD = 2  # the bulletin board's own channel number, in Cablecast CG
+ZONE = "America/Denver"  # the channel's clock, as the box keeps it
+PUBLIC = "https://ch97.fcpublicmedia.org"  # Cablecast's public pages, under our name
 TOKEN = pathlib.Path.home() / ".config/fcpm/cablecast.token"
 SNAPSHOTS = pathlib.Path.home() / ".local/share/fcpm/cablecast/snapshots"
 
@@ -100,6 +106,63 @@ def snapshot(day):
     out = SNAPSHOTS / f"channel{CHANNEL}_{start}_raw.json"
     out.write_text(json.dumps({"scheduleItems": items}, indent=1))
     print(f"{len(items)} airings, {len({i['show'] for i in items})} shows -> {out}")
+
+def every(path, key):
+    """All of a list, a page at a time (the box's `offset` counts pages, not rows)."""
+    out, page = [], 0
+    while True:
+        sep = "&" if "?" in path else "?"
+        rows = call("GET", f"{path}{sep}page_size=500&offset={page}")[key]
+        out += rows
+        if len(rows) < 500:
+            return out
+        page += 1
+
+
+def lay(into, day, days):
+    """Each day from `day`, as the box has it, into <into>/schedule/<date>.json; laid days are kept."""
+    folder = pathlib.Path(into) / "schedule"
+    folder.mkdir(parents=True, exist_ok=True)
+    names = {kind: {r["id"]: r["name"].strip() for r in every(f"/{kind}", kind)}
+             for kind in ("categories", "producers", "projects")}
+    first = datetime.date.fromisoformat(day)
+    for n in range(days):
+        date = first + datetime.timedelta(days=n)
+        out = folder / f"{date}.json"
+        if out.exists():
+            print(f"{date}: laid already, kept")
+            continue
+        items = call("GET", f"/scheduleitems?channel={CHANNEL}&start={date}T00:00:00"
+                            f"&end={date + datetime.timedelta(days=1)}T00:00:00&page_size=1000")["scheduleItems"]
+        items = sorted((i for i in items if not i.get("deleted")), key=lambda i: i["runDateTimeUtc"])
+        ids = sorted({i["show"] for i in items})
+        shows = {}
+        for k in range(0, len(ids), 50):
+            query = "&".join(f"ids={i}" for i in ids[k:k + 50])
+            shows.update({s["id"]: s for s in call("GET", f"/shows?{query}&page_size=50")["shows"]})
+        airings = []
+        for i in items:
+            s = shows.get(i["show"], {})
+            show = {"id": i["show"], "title": (s.get("title") or "").strip(),
+                    "category": names["categories"].get(s.get("category")),
+                    "producer": names["producers"].get(s.get("producer")),
+                    "project": names["projects"].get(s.get("project")),
+                    "vod": bool(s.get("vods")),
+                    "page": f"{PUBLIC}/internetchannel/show/{i['show']}"}
+            if (s.get("cgTitle") or "").strip() not in ("", show["title"]):
+                show["on_air"] = s["cgTitle"].strip()
+            airing = {"at": i["runDateTimeUtc"].replace(".000Z", "Z"), "local": i["runDateTime"],
+                      "seconds": s.get("totalRunTime") or 0, "show": show, "cablecast": i["id"]}
+            for key in ("bugText", "crawlText"):
+                if i.get(key):
+                    airing[key] = i[key]
+            airings.append(airing)
+        doc = {"day": str(date), "channel": 97, "zone": ZONE,
+               "laid": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "from": f"{NAME}, channel {CHANNEL}, as it stood", "airings": airings}
+        out.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
+        print(f"{date}: {len(airings)} airings, {len(ids)} shows -> {out}")
+
 
 # The bulletin board's zone kinds, as Cablecast names them, in plain words. Pictures and images
 # are files; the rest the board draws itself each time.
@@ -226,6 +289,9 @@ if __name__ == "__main__":
         fields(args[1:] == ["ensure"])
     elif args[:1] == ["eject"] and len(args) == 2:
         eject(args[1])
+    elif args[:1] == ["lay"] and 2 <= len(args) <= 4:
+        lay(args[1], args[2] if len(args) > 2 else datetime.date.today().isoformat(),
+            int(args[3]) if len(args) > 3 else 1)
     elif args[:1] == ["snapshot"]:
         snapshot(args[1] if len(args) > 1 else datetime.date.today().isoformat())
     else:

@@ -39,6 +39,29 @@ when an autopilot send commits them (`autopilotsends`). The vendor's examples, s
 send, are in `github.com/trms/cablecast-api-examples`. Their `cablecast-supercopy` copies a day
 forward.
 
+## ch97
+
+`ch97.fcpublicmedia.local` is our page for the channel, so nobody has to find their way through
+Cablecast's own pages to see the day. Cablecast keeps calling itself `fcpublicmedia.cablecast.tv`,
+and `ch97.fcpublicmedia.org` is its public face under our name; the `.local` name is the one we work
+from.
+
+The day we intend is a file: `schedule/<date>.json` in the broadcast repository, laid down from
+Cablecast once (`cablecast.py lay <checkout> [date] [days]`) and ours from then on. The page draws
+that first: one column, a minute of air to four pixels, each gap left empty at its real size with
+what fills it (the bulletin board). Cablecast's own copy of the day is read beside it, and where the
+two differ is marked at the column's edge; a later change on Cablecast's side is offered in the bar,
+never drawn in under someone's hand. Clicking a gap or an airing opens the reserve: every show,
+narrowed to that category and to what fits, least lately aired first. Each request to the box shows
+in the bar while it runs.
+
+| | |
+|---|---|
+| page | `ch97/page/`: plain files, React by an import map; the libraries are CDN files kept in `ch97/page/vendor/`, listed with their sums in `ch97/vendor.yml` (`python3 ch97/vendor` checks them). Nothing is built |
+| served | nginx (`ch97/nginx.conf`, by `sudo sh machines/broadcast/ch97/install`). `/api/` reads the box's API by its address and name, and turns away anything but GET |
+| published | the crew's `ch97` line (`ch97/publish`): the page, and the days as the broadcast repository's main has them, into `/var/lib/fcpm/ch97` |
+| name | `ch97` in `digitization/lan.yml`, held by the crew's `names` line |
+
 ## The look
 
 How we look on the channel and the website is kept as files in its own repository,

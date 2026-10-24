@@ -24,3 +24,5 @@ __pycache__/
 
 # Carries the guest Wi-Fi password; made locally by site/bin/make-wifi-qr.py. See docs/site.md.
 site/assets/img/wifi-qr.svg
+# the ch97 page's libraries are kept on purpose (machines/broadcast/ch97/vendor.yml)
+!machines/broadcast/ch97/page/vendor/

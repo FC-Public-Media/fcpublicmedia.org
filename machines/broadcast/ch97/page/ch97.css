@@ -1,0 +1,65 @@
+/* ch97 -- the broadcast job's page. Brand colours from site/_data/brand.json; yellow is a surface,
+   colour otherwise only for trouble; size carries how much. */
+@font-face { font-family: Archivo; src: url(/fonts/archivo.woff2) format("woff2"); font-weight: 100 900; }
+:root {
+  --ink: #121417; --ink-soft: #545c66; --paper: #f4f1ea; --paper-alt: #e8e3d8; --rule: #d5cfc2;
+  --signal: #ffc61a; --signal-mute: #a8841a; --record: #d93a26; --slate: #232830;
+  --px: 4px;  /* one minute of air */
+  font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); }
+#ch97 { display: grid; grid-template-columns: minmax(28rem, 1.3fr) minmax(24rem, 1fr); height: 100vh; }
+.pane { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--rule); }
+.bar { display: flex; align-items: baseline; gap: 1rem; padding: .45rem .8rem; background: var(--signal);
+       font-weight: 700; white-space: nowrap; }
+.bar .what { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.bar button { font: inherit; background: none; border: 0; padding: 0 .3rem; cursor: pointer; color: var(--ink); }
+.bar .state { font-weight: 500; display: flex; gap: .9rem; }
+.bar .state .busy { animation: breathe 1.6s ease-in-out infinite; }
+.bar .state .busy b { font-variant-numeric: tabular-nums; }
+.bar .state .off { color: var(--record); }
+@keyframes breathe { 50% { opacity: .45; } }
+.foot { padding: .35rem .8rem; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: .85rem;
+        display: flex; gap: 1.2rem; }
+.foot b { color: var(--ink); font-weight: 600; }
+.scroll { flex: 1; overflow: auto; position: relative; }
+
+/* The day: one column, a minute = --px. */
+.day { position: relative; margin: 0 1rem 2rem 4.2rem; }
+.hour { position: absolute; left: -4.2rem; right: 0; border-top: 1px solid var(--rule); font-size: .75rem;
+        color: var(--ink-soft); padding-left: .2rem; font-variant-numeric: tabular-nums; }
+.airing { position: absolute; left: 0; right: 2.2rem; background: var(--paper-alt); border-top: 1px solid var(--paper);
+          overflow: hidden; cursor: pointer; padding: 0 .5rem; font-size: .8rem; line-height: 1.15;
+          animation: arrive .35s ease-out both; }
+.airing:hover, .airing.chosen { background: var(--signal); }
+.airing .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.airing .c { color: var(--ink-soft); white-space: nowrap; }
+.airing .at { float: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; margin-left: .5rem; }
+.airing.ghost { background: none; border: 1px dashed var(--record); right: 0; left: auto; width: 2rem; padding: 0; }
+.gap { position: absolute; left: 0; right: 2.2rem; cursor: pointer; font-size: .75rem; color: var(--ink-soft);
+       padding: .1rem .5rem; animation: arrive .35s ease-out both; }
+.gap:hover, .gap.chosen { outline: 2px solid var(--signal); outline-offset: -2px; }
+.gap b { color: var(--ink); font-size: 1.05em; }
+.mark { position: absolute; right: 0; width: 2rem; background: var(--record); }
+.now { position: absolute; left: -4.2rem; right: 0; border-top: 2px solid var(--record); pointer-events: none; }
+.waiting { position: absolute; left: 0; right: 2.2rem; background: var(--paper-alt); opacity: .5;
+           animation: breathe 1.6s ease-in-out infinite; }
+.unlaid { padding: 3rem 1rem; font-size: 1.6rem; color: var(--ink-soft); }
+@keyframes arrive { from { opacity: 0; } }
+
+/* The reserve: what could go there. */
+.cats { display: flex; flex-wrap: wrap; gap: .25rem .9rem; padding: .7rem .8rem; border-bottom: 1px solid var(--rule); }
+.cats button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); line-height: 1.1; }
+.cats button.on { background: var(--signal); }
+.cats button.empty { color: var(--ink-soft); }
+.find { display: flex; gap: .6rem; padding: .5rem .8rem; border-bottom: 1px solid var(--rule); align-items: center; font-size: .85rem; }
+.find input { flex: 1; font: inherit; padding: .3rem .4rem; border: 1px solid var(--rule); background: var(--paper); }
+.find button { font: inherit; background: none; border: 0; cursor: pointer; color: var(--ink-soft); }
+.row { display: grid; grid-template-columns: 1fr 4rem 5.5rem 2.5rem; gap: .6rem; padding: .3rem .8rem; font-size: .85rem;
+       border-bottom: 1px solid var(--paper-alt); align-items: baseline; }
+.row a { color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row a:hover { background: var(--signal); }
+.row .n { text-align: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.row.today a { font-weight: 700; }
+.more { padding: .6rem .8rem; color: var(--ink-soft); font-size: .85rem; }

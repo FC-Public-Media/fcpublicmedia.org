@@ -1,3 +1,4 @@
 # What the broadcast job runs where it is worn: `name keep from` or `name every Nm from`. See ../README.md.
 
 backup          keep        machines/broadcast
+ch97            every 5m    machines/broadcast

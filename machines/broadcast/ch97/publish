@@ -1,0 +1,23 @@
+#!/bin/sh
+# publish -- ch97's page, and the days laid as the broadcast repository's main has them, into
+# /var/lib/fcpm/ch97, where nginx serves them (nginx.conf). What is committed is what we said goes on
+# the air, so a day is read from the commit, never from someone's unsaved file. The crew's `ch97`
+# line runs it every few minutes; unchanged files are left alone.
+#
+#   FCPM_BROADCAST   a checkout of FC-Public-Media/broadcast   (default ~/code/ref/broadcast)
+#   FCPM_CH97        where nginx reads from                     (default /var/lib/fcpm/ch97)
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+into=${FCPM_CH97:-/var/lib/fcpm/ch97}
+src=${FCPM_BROADCAST:-$HOME/code/ref/broadcast}
+mkdir -p "$into/schedule"
+rsync -a --delete "$here/page/" "$into/page/"
+
+git -C "$src" fetch -q origin main 2>/dev/null || true      # the origin's main when it answers
+rev=$(git -C "$src" rev-parse -q --verify FETCH_HEAD 2>/dev/null || git -C "$src" rev-parse main)
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+if git -C "$src" cat-file -e "$rev:schedule" 2>/dev/null; then
+    git -C "$src" archive "$rev" schedule | tar -x -C "$tmp"
+    rsync -a --delete --checksum "$tmp/schedule/" "$into/schedule/"
+fi

@@ -1,0 +1,14 @@
+# vendor.yml -- the page's libraries, the files a CDN serves for them, kept in page/vendor/ byte for
+# byte so the page loads them as if from the web, with or without the internet. The page's import map
+# names them; nothing is built. `python3 vendor` fetches any that are missing and checks every sum;
+# after changing a version here, `python3 vendor update` fetches it again and writes the new sum.
+
+- file: react.js
+  from: https://esm.sh/react@19.1.0/es2022/react.bundle.mjs
+  sha256: 2804111482f3e1d443ed0c17b15f821cc25dea7e0682ab631527c476a90f83a8
+- file: react-dom-client.js
+  from: https://esm.sh/react-dom@19.1.0/X-ZXJlYWN0/es2022/client.bundle.mjs   # react left out: the import map gives it
+  sha256: de18884292f1ed485de5501a335b21ce6e155d93ea102eec00520c8db231580f
+- file: htm.js
+  from: https://esm.sh/htm@3.1.1/es2022/htm.mjs   # JSX-like markup in plain JavaScript, so nothing is compiled
+  sha256: 9216e59d4cbaf50b94aaf50540e58a498bc8fc4b865c67ae807b483ed62b2a7d
