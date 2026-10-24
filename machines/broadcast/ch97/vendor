@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""vendor — the page's libraries (vendor.yml), fetched into page/vendor/ and checked.
+
+    python3 vendor            fetch what is missing; check every file against its sha256
+    python3 vendor update     fetch every file again and write its sum into vendor.yml
+
+System python and PyYAML.
+"""
+import hashlib
+import pathlib
+import re
+import sys
+import urllib.request
+
+import yaml
+
+HERE = pathlib.Path(__file__).resolve().parent
+LIST = HERE / "vendor.yml"
+INTO = HERE / "page" / "vendor"
+
+
+def main(update):
+    text = LIST.read_text(encoding="utf-8")
+    wrong = 0
+    for lib in yaml.safe_load(text):
+        path = INTO / lib["file"]
+        if update or not path.exists():
+            path.write_bytes(urllib.request.urlopen(lib["from"], timeout=60).read())
+        sum_ = hashlib.sha256(path.read_bytes()).hexdigest()
+        if update:
+            text = re.sub(r"(- file: %s\n(?:  .*\n)*?  sha256:)[^\n]*" % re.escape(lib["file"]),
+                          r"\g<1> " + sum_, text)
+            print(f"{lib['file']}: {sum_}")
+        elif sum_ != str(lib.get("sha256") or ""):
+            wrong += 1
+            print(f"{lib['file']}: sha256 {sum_}, vendor.yml says {lib.get('sha256')}")
+        else:
+            print(f"{lib['file']}: ok")
+    if update:
+        LIST.write_text(text, encoding="utf-8")
+    sys.exit(1 if wrong else 0)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:] == ["update"])

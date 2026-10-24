@@ -1,0 +1,38 @@
+#!/bin/sh
+# lay -- each night (the crew's `lay` line, at midnight): the channel's days that Cablecast has and the
+# broadcast repository doesn't yet, laid down there (cablecast.py lay), committed and pushed to our
+# origin, then published for ch97. A day already laid is never written over: from then on it is the
+# list we intend, and ch97 shows where Cablecast differs from it. Safe to run any time; a run that
+# finds nothing new commits nothing.
+#
+#   FCPM_BROADCAST   the crew's own checkout of FC-Public-Media/broadcast
+#                    (default ~/.local/share/fcpm/broadcast; cloned from the origin when missing)
+#   FCPM_BROADCAST_ORIGIN  where it is cloned from, when it is (default our origin's)
+#   FCPM_LAY_DAYS    how far ahead to look (default 21; Cablecast is usually filled about two weeks out)
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+src=${FCPM_BROADCAST:-$HOME/.local/share/fcpm/broadcast}
+origin=${FCPM_BROADCAST_ORIGIN:-origin-standby:/srv/origin/FC-Public-Media/broadcast}
+if [ ! -d "$src/.git" ]; then
+    mkdir -p "$(dirname "$src")"
+    git clone -q "$origin" "$src"
+fi
+# This checkout is the crew's alone: it always starts from the origin's main.
+git -C "$src" fetch -q origin main
+git -C "$src" checkout -q -B main FETCH_HEAD
+git -C "$src" clean -qfd schedule 2>/dev/null || true
+
+python3 "$here/cablecast.py" lay "$src" "$(date +%F)" "${FCPM_LAY_DAYS:-21}"
+
+new=$(git -C "$src" status --porcelain -uall -- schedule | sed -n 's|^?? schedule/||p; s|^ *A *schedule/||p' | tr '\n' ' ')
+if [ -n "$new" ]; then
+    git -C "$src" add schedule
+    git -C "$src" -c user.name="broadcast, on $(hostname)" -c user.email=technology@fcpublicmedia.org \
+        commit -q -m "Lay down $(echo $new | sed 's/\.json//g; s/ /, /g')" \
+        -m "As Cablecast had them at $(date '+%Y-%m-%d %H:%M %Z'), by machines/broadcast/lay."
+    git -C "$src" push -q origin main
+    echo "laid and pushed: $new"
+else
+    echo "nothing new to lay"
+fi
+FCPM_BROADCAST="$src" sh "$here/ch97/publish"

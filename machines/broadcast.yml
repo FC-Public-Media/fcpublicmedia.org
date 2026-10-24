@@ -5,3 +5,9 @@ serves:
     for: "our own steady picture (the brand's slate and the room's clock) on YouTube's backup ingest, so the YouTube stream never ends in a gap; see broadcast/PROFILE.md, To YouTube"
     start: "/usr/bin/python3 -I machines/broadcast/standby"
     alive: {process: 'machines/broadcast/standby(\s|$)'}
+  - service: ch97
+    for: "ch97.fcpublicmedia.local: the page and the days laid in the broadcast repository, published where nginx serves them; see broadcast/PROFILE.md, ch97"
+    start: "sh machines/broadcast/ch97/publish"
+  - service: lay
+    for: "each night, the channel's days Cablecast has and the broadcast repository doesn't yet, laid down there, committed and pushed to our origin; see broadcast/PROFILE.md, ch97"
+    start: "sh machines/broadcast/lay"

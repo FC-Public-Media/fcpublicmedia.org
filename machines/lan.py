@@ -8,7 +8,8 @@ The profile whose `names` declares this host carries `lan.yml`: the domain, the 
 may hold (`shared`), and its gear. <hostname>.<domain> is the machine's own directory, and each
 piece of gear is a name one level deeper (atem-mini-pro.digitization.fcpublicmedia.local). Renaming
 the machine is its `names` line; nothing here repeats it. Avahi's avahi-publish holds each name,
-one process apiece; a shared name another machine holds is asked for again every 30 seconds.
+one process apiece; a shared name another machine holds is asked for again every 30 seconds, and
+lan.yml is read again each time, so a name added there goes up without a restart.
 
 Linux clients refuse names deeper than two labels unless told otherwise: /etc/mdns.allow and the
 hosts line in /etc/nsswitch.conf (digitization/check.sh says how). Apple's resolve them as they are.
@@ -33,14 +34,16 @@ def hostname():
 
 
 def profile(host=None):
-    """The profile folder whose `names` declares this host, or None (as ./binding decides)."""
+    """The profile folder whose `names` declares this host and that carries lan.yml, or None. A host
+    wears several jobs (digitization and broadcast both name digitization); the names are the box's."""
     host = (host or hostname()).lower()
+    found = []
     for names in sorted(HERE.glob("*/names")):
         for line in names.read_text(encoding="utf-8").splitlines():
             parts = line.split("#", 1)[0].split()
             if len(parts) == 3 and parts[2].lower() == host:
-                return names.parent
-    return None
+                found.append(names.parent)
+    return next((f for f in found if (f / "lan.yml").is_file()), found[0] if found else None)
 
 
 def load(where=None):
@@ -169,6 +172,10 @@ def publish():
             print("%s: %s" % (name, state), flush=True)
 
     while True:
+        names = load() or names  # lan.yml is read each round: a name added or taken away goes live
+        for name in [n for n in held if n not in names]:
+            held.pop(name).terminate()
+            said.pop(name, None)
         now = address()
         if now != was:
             for p in held.values():

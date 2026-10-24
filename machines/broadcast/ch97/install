@@ -1,0 +1,18 @@
+#!/bin/sh
+# install -- ch97.fcpublicmedia.local on this machine's nginx, then the page published:
+#
+#   sudo sh machines/broadcast/ch97/install
+#
+# The box's address and name come from ../cablecast.py, the one place they are written.
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+read address name <<END
+$(python3 -I -c 'import runpy, sys; g = runpy.run_path(sys.argv[1]); print(g["ADDRESS"], g["NAME"])' "$here/../cablecast.py")
+END
+sed -e "s/@ADDRESS@/$address/g" -e "s/@NAME@/$name/g" "$here/nginx.conf" > /etc/nginx/sites-available/fcpm-ch97
+ln -sf ../sites-available/fcpm-ch97 /etc/nginx/sites-enabled/fcpm-ch97
+nginx -t
+systemctl reload nginx
+install -d -o "${SUDO_USER:-root}" /var/lib/fcpm/ch97
+su "${SUDO_USER:-root}" -c "sh '$here/publish'"
+echo "ch97: nginx serves ch97.fcpublicmedia.local from /var/lib/fcpm/ch97; /api/ reads $name at $address"

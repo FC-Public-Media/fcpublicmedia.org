@@ -78,10 +78,12 @@ def order(crew):
             continue
         if len(t) == 4 and t[1] == "every":
             name, when, source = t[0], ("every", t[2]), t[3]
+        elif len(t) == 4 and t[1] == "at" and re.fullmatch(r"\d?\d:\d\d", t[2]):
+            name, when, source = t[0], ("at", t[2]), t[3]
         elif len(t) == 3 and t[1] == "keep":
             name, when, source = t[0], ("keep", None), t[2]
         else:
-            bad.append(f"{raw.strip()}: not `name keep from` or `name every N from`")
+            bad.append(f"{raw.strip()}: not `name keep from`, `name every N from` or `name at HH:MM from`")
             continue
         svc = menu(source).get(name)
         if not svc:
@@ -96,6 +98,14 @@ def seconds(n):
     if not m:
         raise ValueError(f"not an interval: {n}")
     return int(m.group(1)) * {"s": 1, "m": 60, "h": 3600, "d": 86400}[m.group(2)]
+
+
+def due(hhmm, now):
+    """The last time the clock here read HH:MM, at or before `now`."""
+    h, m = (int(x) for x in hhmm.split(":"))
+    t = time.localtime(now)
+    at = time.mktime((t.tm_year, t.tm_mon, t.tm_mday, h, m, 0, 0, 0, -1))
+    return at if at <= now else at - 86400
 
 
 def argv(svc):
@@ -287,7 +297,13 @@ def serve(crew):
                     last[name] = now; wait[name] = min(300, max(5, wait.get(name, 2.5) * 2))
                     say(f"{name}: could not start: {e}")
             else:
-                if now - last.get(name, 0) < seconds(every):
+                if kind == "at":
+                    if name not in last:   # its log says when it last ran, across restarts
+                        log = STATE / f"{name}.log"
+                        last[name] = log.stat().st_mtime if log.exists() else 0
+                    if last[name] >= due(every, now):
+                        continue           # missed while down: it runs as soon as it can
+                elif now - last.get(name, 0) < seconds(every):
                     continue
                 last[name] = now
                 try:
@@ -328,7 +344,7 @@ def status(crew, strict=False):
         up = alive(svc)
         log = STATE / f"{l['name']}.log"
         ran = time.strftime("%H:%M", time.localtime(log.stat().st_mtime)) if log.exists() else "never"
-        when = "keep" if kind == "keep" else f"every {every}"
+        when = "keep" if kind == "keep" else f"{kind} {every}"
         state = "up" if up else "DOWN" if up is False else f"last {ran}"
         if up is False and kind == "keep":
             down += 1
