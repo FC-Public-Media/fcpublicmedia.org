@@ -39,7 +39,7 @@ A reading pass at least every six months (healthy, acquired, sunsetting, changin
 |---|---|
 | Cablecast | the catalogue, the archive, the live embed, the airing log; no second source |
 | Cloudflare | hosting; recoverable, the site is static files |
-| Booqable | the rental catalogue on `/reserve/` |
+| Booqable | equipment rental on `/reserve/`: dates, cart, checkout, payment |
 | Microsoft 365 | the intended home for booking and membership |
 | Wix | the domain, until it moves |
 
@@ -60,7 +60,7 @@ Decided, with reasons beside the code. Do not tidy them away:
 
 - No `<h1>` on pages under `site/_layouts/page.html`: the masthead prints the menu word.
 - Light is the default even on a dark system; the colour toggle is hidden when the system is light.
-- The Booqable store is browse-only: no datepicker, no cart.
+- The Booqable store on `/reserve/` opens in our list view; Booqable's own tiles are the other choice, and checkout is always theirs.
 - `site/_data/hosts.yml` is rendered by nothing: publishing a name is a decision.
 - Claim links may be forwarded (`site/_data/authorize.yml`) until somebody decides otherwise.
 
