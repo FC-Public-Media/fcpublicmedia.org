@@ -15,7 +15,8 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | static sites | the public site and the Wix copy are the [`static`](../static/CREW.md) job's, which this machine also wears; nginx serves their names (`fcpublicmedia.local`, `www.`, `wix.`) itself and hands every other name to the door |
 | `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
-| `check.sh` | each gear present (dpkg), the crew's supervisor up, origin.local answering as this checkout's origin, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, and deep `.local` names resolving here: `ok` or `WANTED` with the fix. `fcpm check` |
+| `check.sh` | each gear present (dpkg), the crew's supervisor up, origin.local answering as this checkout's origin, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, deep `.local` names resolving here, and every key in `keys.yml` held: `ok` or `WANTED` with the fix. `fcpm check` |
+| `keys.yml`, `keys`, `deploy-broker` | the keychain: every secret FCPM's deploys and jobs use, by group, and where each lives. See Keys |
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
 | role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
 
@@ -39,6 +40,26 @@ in `/etc/nsswitch.conf` is `files myhostname mdns4_minimal [NOTFOUND=return] dns
 as before, deeper ones through `mdns4` after unicast DNS says no, so reverse lookups stay fast. Apple's
 resolvers take the deep names as they are. Windows' is not tested yet. `python3 machines/lan.py` says who
 holds each name now.
+
+## Keys
+
+This machine holds FCPM's secrets for now (decided 2026-10-23), and deploys that need them run here by hand.
+`keys.yml` is the ledger: each group's keys, what each may do, where it came from and how to get another,
+the file it lives in and what reads it. Values never enter the repository. A group is one file, mode 600, in
+`~/.config/fcpm/keys/` on the card's encrypted home (Cablecast's and YouTube's single values keep their own
+files beside it). Keys used together sit in one file, so a test key never meets a live one.
+
+- `keys` lists what is held and what is wanted, never a value; `fcpm check` says the same.
+- `keys take GROUP KEY` asks for a value in a window on this screen and refuses the wrong prefix.
+- `keys run GROUP... -- CMD` hands groups to one command as environment variables.
+- `deploy-broker live` deploys the broker Worker with `cloudflare` and `stripe-live`; the Stripe key goes to
+  wrangler on stdin.
+- `keys run stripe-test -- node worker/try-checkout.mjs` starts one test-mode Checkout Session through the
+  broker's own code, here, and prints its page.
+
+GitHub's repository secrets are not part of it: nothing is kept there that this relies on. Where the keychain
+lives later (a vault on the LAN, a card of its own) is open; moving it is the `dir:` line and the files. The
+card's home is the only copy today, so losing it means issuing each key again, from the `from:` lines.
 
 ## Memory
 

@@ -64,6 +64,9 @@ found=$(python3 -I "$HERE/../lan.py" status | while read -r name serves who; do
 done)
 echo "$found"
 case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
+found=$(python3 -I "$HERE/keys" check)
+echo "$found"
+case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
 own=$(hostname).fcpublicmedia.local
 curl -fsS -H "Host: $own" http://localhost/ 2>/dev/null | grep -q "<title>$own</title>"
 say $? "the door serves this machine's directory as $own" "a door from before lan.yml: it bounces on the next commit"

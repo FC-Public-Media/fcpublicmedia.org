@@ -32,7 +32,7 @@ booking bills somebody twice.
 | Key | Publishable | Lives in | Scope |
 |---|---|---|---|
 | `pk_live_…` / `pk_test_…` | Yes | `site/_data/payments.yml` `stripe.publishable_key` | Starts a payment |
-| `PUBLIC_STRIPE_API_KEY` (`rk_live_…`) | No | GitHub org secret → Cloudflare secret | Write Checkout Sessions only |
+| `PUBLIC_STRIPE_API_KEY` (`rk_live_…`, `rk_test_…`) | No | digitization's keychain → Cloudflare secret | Write Checkout Sessions only |
 | `STAFF_STRIPE_API_KEY` (`rk_live_…`) | No | The staff member's shell | Read and write subscriptions and prices |
 | `sk_live_…` | No | Not used | |
 
@@ -44,9 +44,10 @@ booking bills somebody twice.
 - The two `rk_` values must differ; `site/bin/reprice-subscriptions.py` refuses to run if they match.
 - An `rk_` or `sk_` key that reaches a commit is burned: rotate it in the Stripe dashboard.
 
-The Worker cannot see GitHub secrets: `.github/workflows/broker.yml` pipes the org secret into
-`wrangler secret put PUBLIC_STRIPE_API_KEY` on every deploy, so a rotation in GitHub reaches
-production. By hand: `cd worker && npx wrangler secret put PUBLIC_STRIPE_API_KEY`.
+Secrets are held in digitization's keychain (`machines/digitization/keys.yml`, PROFILE.md, Keys), not in
+GitHub. `machines/digitization/deploy-broker live` deploys the Worker and pipes the key into
+`wrangler secret put PUBLIC_STRIPE_API_KEY` on every run, so a rotation lands. A test key is tried without
+deploying anything: `machines/digitization/keys run stripe-test -- node worker/try-checkout.mjs`.
 
 ## Prices
 
@@ -105,8 +106,8 @@ subdomain goes in `booking.subdomain` in `providers.yml`, mapped by a Cloudflare
 
 | Item | Where | Status |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | GitHub org secret | Missing; the broker does not deploy |
-| `PUBLIC_STRIPE_API_KEY` | GitHub org secret | Missing |
+| `CLOUDFLARE_API_TOKEN` | digitization's keychain, `cloudflare` | Not held; the broker does not deploy |
+| `PUBLIC_STRIPE_API_KEY` | digitization's keychain, `stripe-live` (`stripe-test` beside it) | Live not held |
 | Publishable key | `payments.yml` `stripe.publishable_key` | Empty |
 | Broker URL | `url` in `site/_data/settings.yml`, `authorize.yml`, `upload.yml` | Empty |
 | What each tier includes | `membership.yml` `tiers[].includes` | Board; all `[]` |
