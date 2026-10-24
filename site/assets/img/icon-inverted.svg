@@ -14,8 +14,12 @@
     somebody else's chrome — the GitHub org, a social profile — where the dark
     plate of icon.svg disappears into a dark UI and the yellow needs to be the
     thing you see.
+
+    The plate is square on purpose. Every platform cuts an avatar or app icon
+    to its own shape (circle, squircle, its own radius), so any rounding drawn
+    here would be wrong somewhere. Give them the square; they round it.
   -->
-  <rect width="64" height="64" rx="10" fill="#ffc61a"/>
+  <rect width="64" height="64" fill="#ffc61a"/>
   <rect x="18" y="18" width="28" height="28" fill="#000000"
         transform="rotate(-8 32 32)"/>
 </svg>
