@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""keys -- the keychain digitization holds, read from keys.yml. Never prints a value.
+
+  keys                  each key: held or WANTED, and where it lives
+  keys check            the same in `fcpm check`'s words; exit 1 if any is wanted
+  keys take GROUP KEY   ask for one value in a window on this screen, check its prefix, store it
+  keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment
+"""
+import os
+import re
+import pathlib
+import subprocess
+import sys
+
+import yaml
+
+HERE = pathlib.Path(__file__).resolve().parent
+SHAPES = {"guid": re.compile(r"[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}")}
+LEDGER = HERE / "keys.yml"
+
+
+def home(path):
+    return pathlib.Path(os.path.expanduser(path))
+
+
+def load():
+    ledger = yaml.safe_load(LEDGER.read_text())
+    groups = ledger["groups"]
+    for name, group in groups.items():
+        group["path"] = home(group.get("file") or f"{ledger['dir']}/{name}.env")
+    return ledger, groups
+
+
+def read(group):
+    """{key: value} for what the group's file holds; {} when it does not exist."""
+    path = group["path"]
+    if not path.exists():
+        return {}
+    text = path.read_text()
+    if group["form"] == "raw":
+        value = text.strip()
+        return {next(iter(group["keys"])): value} if value else {}
+    found = {}
+    for line in text.splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            k, v = line.split("=", 1)
+            found[k.strip()] = v.strip()
+    return found
+
+
+def facts(groups):
+    """(ok, what, fix) for every key in the ledger, and for each file's mode."""
+    for name, group in groups.items():
+        held = read(group)
+        path = group["path"]
+        for key, spec in group["keys"].items():
+            value = held.get(key, "")
+            prefix = spec.get("prefix", "")
+            where = f"{name} {key}" + (f" ({prefix}…)" if prefix else "")
+            if not value:
+                yield False, f"key {where} in {short(path)}", f"keys take {name} {key}; get one from {spec['from']}"
+            elif not fits(spec, value):
+                yield False, f"key {where} in {short(path)} has the wrong kind", f"keys take {name} {key}"
+            else:
+                yield True, f"key {where} in {short(path)}", None
+        if path.exists() and path.stat().st_mode & 0o077:
+            yield False, f"key file {short(path)} readable only by its owner", f"chmod 600 {path}"
+
+
+def fits(spec, value):
+    shape = SHAPES.get(spec.get("shape"))
+    return value.startswith(spec.get("prefix", "")) and (not shape or shape.fullmatch(value))
+
+
+def short(path):
+    text = str(path)
+    return "~" + text[len(str(pathlib.Path.home())):] if text.startswith(str(pathlib.Path.home())) else text
+
+
+def ask(title, text):
+    """A hidden entry on this screen; None if the window was closed."""
+    env = dict(os.environ, DISPLAY=os.environ.get("DISPLAY", ":0"))
+    done = subprocess.run(["zenity", "--entry", "--hide-text", "--width", "480", "--title", title, "--text", text],
+                          capture_output=True, text=True, env=env)
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
+def store(group, key, value):
+    """Write the group's file with key set, atomically, mode 600, in a folder only its owner reads."""
+    path = group["path"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(path.parent, 0o700)
+    if group["form"] == "raw":
+        body = value + "\n"
+    else:
+        lines = path.read_text().splitlines() if path.exists() else []
+        lines = [l for l in lines if l.split("=", 1)[0].strip() != key]
+        lines.append(f"{key}={value}")
+        body = "\n".join(lines) + "\n"
+    temp = path.with_name(path.name + ".new")
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as out:
+        out.write(body)
+    os.replace(temp, path)
+
+
+def take(groups, name, key):
+    group = groups.get(name)
+    if not group or key not in group["keys"]:
+        sys.exit(f"keys: no {name} {key} in {LEDGER.name}; add it there first")
+    spec = group["keys"][key]
+    prefix = spec.get("prefix", "")
+    text = f"{group['what']}\n\n{key}: {spec['may']}.\nFrom {spec['from']}."
+    if prefix:
+        text += f"\nIt starts with {prefix}"
+    if spec.get("shape"):
+        text += f"\nIt looks like 00000000-0000-0000-0000-000000000000"
+    for _ in range(3):
+        value = ask(f"Keychain: {name}", text)
+        if value is None:
+            sys.exit("keys: the window was closed; nothing stored")
+        if fits(spec, value):
+            store(group, key, value)
+            print(f"keys: stored {name} {key} in {short(group['path'])}")
+            return
+        kind = f"start with {prefix}" if prefix else f"look like a {spec.get('shape')}"
+        text = f"That one does not {kind}. Paste the {key} again.\n\n" + text
+    sys.exit("keys: three tries without the right kind of key; nothing stored")
+
+
+def run(groups, names, command):
+    env = dict(os.environ)
+    for name in names:
+        group = groups.get(name)
+        if not group:
+            sys.exit(f"keys: no group {name} in {LEDGER.name}")
+        if group["form"] != "env":
+            sys.exit(f"keys: {name} is one raw value; its job reads {short(group['path'])} itself")
+        held = read(group)
+        missing = [k for k in group["keys"] if not held.get(k)]
+        if missing:
+            sys.exit(f"keys: {name} lacks {', '.join(missing)}: keys take {name} {missing[0]}")
+        env.update({k: held[k] for k in group["keys"]})
+    os.execvpe(command[0], command, env)
+
+
+def main(argv):
+    _, groups = load()
+    if argv[:1] == ["take"] and len(argv) == 3:
+        return take(groups, argv[1], argv[2])
+    if argv[:1] == ["run"] and "--" in argv:
+        cut = argv.index("--")
+        if cut > 1 and argv[cut + 1:]:
+            return run(groups, argv[1:cut], argv[cut + 1:])
+    if argv in ([], ["check"]):
+        wanted = 0
+        for ok, what, fix in facts(groups):
+            if ok:
+                print(f"ok      {what}")
+            else:
+                wanted += 1
+                print(f"WANTED  {what}  -> {fix}")
+        return 1 if wanted and argv else 0
+    sys.exit(__doc__.strip())
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

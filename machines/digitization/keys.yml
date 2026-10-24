@@ -1,0 +1,91 @@
+# The keychain digitization holds: every secret FCPM's deploys and jobs use, and where each one is.
+# Values never enter this repository. This file is their shape: the name, what the key may do,
+# where it came from and how to get another, the file it lives in, and what reads it.
+#
+# A group is one file, mode 600, in `dir` (on the card's encrypted home). Its keys are used together
+# and replaced together: a test key beside a live one is how a checkout breaks quietly.
+# `form: env` files hold NAME=value lines; `form: raw` files hold the one value and nothing else.
+#
+#   machines/digitization/keys            what is held and what is wanted; never a value
+#   machines/digitization/keys take G K   asks for G's key K in a window on this screen
+#   machines/digitization/keys run G -- CMD   runs CMD with group G in its environment
+#
+# `fcpm check` reads this file too. GitHub's repository secrets are not part of the keychain:
+# nothing here is kept there, and nothing that deploys relies on them. See PROFILE.md, Keys.
+
+dir: ~/.config/fcpm/keys
+
+groups:
+  stripe-test:
+    what: Stripe in test mode, so checkout can be tried with nothing charged.
+    form: env
+    used by: "keys run stripe-test -- node worker/try-checkout.mjs"
+    keys:
+      PUBLIC_STRIPE_API_KEY:
+        prefix: rk_test_
+        may: create Checkout Sessions, nothing else (a restricted key)
+        from: "Stripe dashboard, test mode: Developers, API keys, Restricted keys"
+        issued: 2026-10-23, by Autumn
+
+  stripe-live:
+    what: Stripe for real money, for the broker's /checkout.
+    form: env
+    used by: "machines/digitization/deploy-broker live"
+    keys:
+      PUBLIC_STRIPE_API_KEY:
+        prefix: rk_live_
+        may: create Checkout Sessions, nothing else (a restricted key)
+        from: "Stripe dashboard, live mode: Developers, API keys, Restricted keys"
+        issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
+
+  cloudflare:
+    what: deploys the broker Worker and sets its secrets.
+    form: env
+    used by: "machines/digitization/deploy-broker"
+    keys:
+      CLOUDFLARE_API_TOKEN:
+        may: edit Workers on FCPM's account (the "Edit Cloudflare Workers" template)
+        from: "Cloudflare dashboard: My Profile, API Tokens, Create Token"
+        issued: not held
+
+  m365:
+    what: the site-worker adds rows to the log, a list on the Operations SharePoint site, and nothing else.
+    form: env
+    used by: "the site-worker's relays (join, rooms, classes, check-in), given to it as secrets"
+    keys:
+      M365_TENANT_ID:
+        shape: guid
+        may: names FCPM's Microsoft 365 tenant (not secret; kept with the other two)
+        from: "entra.microsoft.com: App registrations, FCPM site-worker, Overview, Directory (tenant) ID"
+        issued: not held
+      M365_CLIENT_ID:
+        shape: guid
+        may: names the app registration (not secret; kept with the other two)
+        from: "entra.microsoft.com: App registrations, FCPM site-worker, Overview, Application (client) ID"
+        issued: not held
+      M365_CLIENT_SECRET:
+        may: "sign in as the app; Graph Sites.Selected, granted write on the Operations site only"
+        from: "entra.microsoft.com: App registrations, FCPM site-worker, Certificates & secrets, New client secret (the Value, shown once)"
+        issued: not held. Expires on the date set when it was made; the ledger's issued line carries that date
+
+  cablecast:
+    what: changes to channel 97's Cablecast (reads need no key).
+    form: raw
+    file: ~/.config/fcpm/cablecast.token
+    used by: "machines/broadcast/cablecast.py"
+    keys:
+      token:
+        may: whatever the secretary's Cablecast account may do
+        from: "Cablecast, signed in as the secretary: the account's API tokens"
+        issued: 2026-10-21
+
+  youtube:
+    what: the stream key channel 97's relay sends to.
+    form: raw
+    file: ~/.config/fcpm/youtube.key
+    used by: "machines/broadcast/relay, machines/broadcast/standby"
+    keys:
+      key:
+        may: publish to FCPM's YouTube live stream
+        from: "YouTube Studio: Go live, Stream, Stream key"
+        issued: 2026-10-21
