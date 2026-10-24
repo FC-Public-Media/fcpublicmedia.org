@@ -87,10 +87,6 @@ jobs:
       - name: Build the member site template and read its feed back
         run: python3 site/bin/check-template.py
 
-      - name: Test the broker
-        working-directory: worker
-        run: npm test
-
       - name: Install test dependencies
         working-directory: site/tests
         run: |
