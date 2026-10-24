@@ -10,6 +10,8 @@ A pane per owner, a line per repository, in name order so a place on the screen 
 
     name   history ┊ week  size  ◉score ⑂⑂⑂  last  github  tag  hash
 
+A name past 20 cells keeps its start and end around an ellipsis, so one long name never widens the column.
+
 history is main's commits a day as one centred square that grows: a period under 1 a day, a small
 square from 1, a square from 3, a full square from 8; empty where there were none. Full squares
 fill the cell, so full days meet; inside a run every second one loses its left column, so the run
@@ -383,6 +385,17 @@ def visible(s):
     return out
 
 
+NAME_MAX = 20                  # the name column's widest; a longer name loses its middle
+
+
+def short(name, width=NAME_MAX):
+    """NAME, or its start and end around an ellipsis, so one long name never widens the column."""
+    if len(name) <= width:
+        return name
+    head = width // 2
+    return name[:head] + "…" + name[len(name) - (width - 1 - head):]
+
+
 def fit(s, width):
     """Pad or cut a styled string to WIDTH visible cells."""
     n = visible(s)
@@ -418,7 +431,7 @@ def remote(gh):
 
 def line(C, row, now, w, lit):
     count = len(row["times"])
-    text = (f" {PAPER}{row['name']:<{w}} " + history(row["times"], now, row["kind"])
+    text = (f" {PAPER}{short(row['name']):<{w}} " + history(row["times"], now, row["kind"])
             + f" {DIM if (row['bytes'] or 0) < 1 << 20 else LIGHT}{mb(row['bytes']):>5}"
             + f" {LIGHT}{COMMIT}{PAPER}{count if count else '':<4}"
             + " " + fit("".join(c + BRANCH for c in row["forks"]), 8) + " "
@@ -476,7 +489,7 @@ def paint():
         for row in S.rows:
             owners.setdefault(row["owner"], []).append(row)
         room = R - 1 - len(owners)
-        w = max((len(r["name"]) for r in S.rows), default=10)
+        w = max((len(short(r["name"])) for r in S.rows), default=10)
         body, busy = [], False
         for owner in sorted(owners, key=str.lower):
             rows = owners[owner]
