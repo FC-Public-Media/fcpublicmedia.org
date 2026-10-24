@@ -4,7 +4,7 @@ payload: node
 version: 24.21.0         # LTS "Krypton", released 2026-09-07
 replaces: nothing        # the first Node on this host
 vendor: OpenJS Foundation (nodejs.org), MIT
-role: previewing and testing the site, and the broker's tests
+role: previewing and testing the site, and the site-worker's tests
 asked: Autumn wanted the check-in page reworked, which needs jekyll-enough and Playwright
 
 received: 2026-09-26

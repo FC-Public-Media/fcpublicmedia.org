@@ -18,7 +18,6 @@ machines/kiosk/door.py        | python     | sessions on          | outside | ke
 machines/kiosk/door.py        | python     | serve                | service | become the door, on [::]:8080. The logon task's
 machines/kiosk/door.py        | python     | supervise            | service | run serve, restart it, pull. The logon task's
 machines/kiosk/door.py        | python     | wifi-password *      | secret  | prints a saved network's key
-machines/kiosk/m365-token.ps1 | powershell | *                    | secret  | prints a Microsoft 365 access token. The door calls it
 machines/kiosk/gotcha         | sh         | *                    | inside  | append one line to GOTCHAS.log; commits on media-node only
 
 # Which profile this checkout wears.
@@ -56,3 +55,9 @@ machines/fcpm                   | sh         | status               | read    | 
 machines/fcpm                   | sh         | check                | read    | what files cannot say: gear, settings, the pool
 machines/fcpm                   | sh         | help                 | read    | its verbs
 machines/fcpm                   | sh         | install              | desk    | put the profile on, settings and PATH included. A person's
+
+# The keychain (digitization). keys.yml is the ledger; no verb prints a value.
+machines/digitization/keys      | python     | -                    | read    | which keys are held and which are wanted, and where each lives
+machines/digitization/keys      | python     | check                | read    | the same, in fcpm check's words
+machines/digitization/keys      | python     | take *               | secret  | ask for one key in a window on this screen and store it
+machines/digitization/keys      | python     | run *                | secret  | run one command with key groups in its environment

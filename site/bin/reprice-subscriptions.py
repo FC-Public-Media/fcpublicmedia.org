@@ -18,11 +18,13 @@ import urllib.parse
 import urllib.request
 
 API = "https://api.stripe.com/v1"
-PRICES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "worker", "src", "prices.js")
+# The site-worker checkout (FC-Public-Media/site-worker) beside this repository, or FCPM_SITE_WORKER.
+WORKER = os.environ.get("FCPM_SITE_WORKER") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "site-worker")
+PRICES = os.path.join(WORKER, "src", "prices.js")
 
 
 def catalog():
-    """The price list parsed from worker/src/prices.js, what is actually deployed."""
+    """The price list parsed from the site-worker's src/prices.js, what is actually deployed."""
     with open(PRICES, encoding="utf-8") as handle:
         source = handle.read()
     body = source[source.index("export default ") + len("export default ") :].rstrip().rstrip(";")

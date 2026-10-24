@@ -4,9 +4,6 @@
 # Empty uses the serving domain (previews); must match _data/authorize.yml.
 rp_id: ""
 
-# Broker base URL. Empty (shipped): the page shows the entry for the member to send in.
-url: ""
-
 programs_path: _data/programs.yml
 
 # Where finished files go. Empty: the page reads the file's details and asks the member to send it.

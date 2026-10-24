@@ -1,16 +1,8 @@
-# Microsoft Forms framed in our pages by _includes/hosted-form.html. See docs/payments.md#hosted-forms.
-# Set each form to "Anyone can respond": Safari blocks the sign-in cookie inside a frame.
+# The copy around /book/ and /register/ (_includes/request-form.html). See docs/payments.md#requests.
 
 book:
   title: Book a studio
   lede: Tell us what you need and when. We'll confirm.
-
-  # Paste the src from Forms > Collect responses > Embed.
-  embed: ""
-  # The plain share link. Always shown, so a blocked frame is never a dead end.
-  direct: ""
-
-  requires_signin: false
 
   intro: >-
     Studios and editing bays are for members. Requests aren't confirmed
@@ -24,11 +16,6 @@ book:
 register:
   title: Register for a class
   lede: Save a seat. Classes are open to everyone, member or not.
-
-  embed: ""
-  direct: ""
-
-  requires_signin: false
 
   intro: >-
     Tell us which class and how to reach you. If a class is full we'll let you

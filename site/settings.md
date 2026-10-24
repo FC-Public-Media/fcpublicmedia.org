@@ -8,7 +8,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
 <script type="application/json" id="settings-config">
 {
   "rpId": {{ st.rp_id | jsonify }},
-  "brokerUrl": {{ st.url | jsonify }},
+  "brokerUrl": {{ site.data.site_worker.url | jsonify }},
   "path": {{ st.path | jsonify }}
 }
 </script>

@@ -51,5 +51,4 @@ include:
 exclude:
   - bin
   - tests
-  - wrangler.jsonc
   - README.md

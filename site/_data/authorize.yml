@@ -1,13 +1,10 @@
 # /authorize/ and /devices/: binding a passkey to a member site from a signed claim link.
 # A claim only gets a device listed; publishing is separate. See docs/identity.md#authorize.
 
-# Registrable domain; empty uses the serving domain (previews). Must equal the broker's RP_ID.
+# Registrable domain; empty uses the serving domain (previews). Must equal the site-worker's RP_ID.
 rp_id: ""
-
-# Broker base URL. Empty (shipped): the page shows the device record for the member to send in.
-url: ""
 
 devices_path: .auth/devices.json
 
-# Rendered into the page config but read by nothing; the broker writes device lists directly.
+# Rendered into the page config but read by nothing; the site-worker writes device lists directly.
 write_mode: commit
