@@ -49,18 +49,18 @@ groups:
         issued: not held
 
   cloudflare-pages:
-    what: publishes static sites to Cloudflare Pages on Autumn's business account (autumn-e2c); the Wix copy first (wix.fcpublicmedia.org, later www).
+    what: publishes static sites to Cloudflare Pages on FCPM's Cloudflare account (the org account); the Wix copy first (wix.fcpublicmedia.org, later www).
     form: env
     used by: "wrangler pages deploy for the Wix copy (FC-Public-Media/wix)"
     keys:
       CLOUDFLARE_API_TOKEN:
-        may: edit Cloudflare Pages on Autumn's business account (autumn-e2c), nothing else
-        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit"
+        may: edit Cloudflare Pages on FCPM's Cloudflare account (the org account), nothing else
+        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit"
         issued: not held
       CLOUDFLARE_ACCOUNT_ID:
         shape: hex32
-        may: names Autumn's business account, autumn-e2c (not secret; kept with its token)
-        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): the account's home page, Account ID"
+        may: names FCPM's Cloudflare account, the org account (not secret; kept with its token)
+        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): the account's home page, Account ID"
         issued: not held
 
   cloudflare-dns:
@@ -69,8 +69,8 @@ groups:
     used by: "the zone move off Wix"
     keys:
       CLOUDFLARE_API_TOKEN:
-        may: edit DNS on the fcpublicmedia.org zone only
-        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): My Profile, API Tokens, Create Token, Custom token: Zone, DNS, Edit; Zone Resources: fcpublicmedia.org"
+        may: read the fcpublicmedia.org zone and edit its DNS, that zone only
+        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token: Zone, Zone, Read and Zone, DNS, Edit; Zone Resources: fcpublicmedia.org (add the zone first, pending, no nameserver change)"
         issued: not held
 
   m365:
