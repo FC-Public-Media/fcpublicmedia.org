@@ -59,6 +59,7 @@ in the bar while it runs.
 |---|---|
 | page | `ch97/page/`: plain files, React by an import map; the libraries are CDN files kept in `ch97/page/vendor/`, listed with their sums in `ch97/vendor.yml` (`python3 ch97/vendor` checks them). Nothing is built |
 | served | nginx (`ch97/nginx.conf`, by `sudo sh machines/broadcast/ch97/install`). `/api/` reads the box's API by its address and name, and turns away anything but GET |
+| laid | each night at midnight, the crew's `lay` line (`lay`): every day Cablecast has and the repository doesn't yet is laid down, committed as `technology@fcpublicmedia.org` and pushed to our origin, from the crew's own checkout (`~/.local/share/fcpm/broadcast`). A day is laid only once Cablecast has airings on the day after it, so one still being filled in isn't frozen half-done. Other machines (kiosk screens, websites, the YouTube title) read the days from the repository |
 | published | the crew's `ch97` line (`ch97/publish`): the page, and the days as the broadcast repository's main has them, into `/var/lib/fcpm/ch97` |
 | name | `ch97` in `digitization/lan.yml`, held by the crew's `names` line |
 

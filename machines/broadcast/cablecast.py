@@ -16,7 +16,9 @@ box shows people into a checkout of the broadcast repository (PROFILE.md, "The l
 files each time for the same box, so git shows only what changed there. `lay` writes each day, as it
 stands on the box now, into DIR/schedule/<date>.json: the list we say goes on the air, with each
 show's facts written in, so anyone can read the day without asking the box. It never writes over a
-day already laid; that day is ours now, and changing it is an edit to the file. System python and PyYAML.
+day already laid; that day is ours now, and changing it is an edit to the file. A day is laid only
+once Cablecast has airings on the day after it, so a day still being filled in is never frozen
+half-done. System python and PyYAML.
 See PROFILE.md.
 """
 import datetime
@@ -131,6 +133,11 @@ def lay(into, day, days):
         out = folder / f"{date}.json"
         if out.exists():
             print(f"{date}: laid already, kept")
+            continue
+        after = date + datetime.timedelta(days=1)
+        if not call("GET", f"/scheduleitems?channel={CHANNEL}&start={after}T00:00:00"
+                           f"&end={after + datetime.timedelta(days=1)}T00:00:00&page_size=1")["meta"]["count"]:
+            print(f"{date}: Cablecast has nothing on the day after yet; not laid")
             continue
         items = call("GET", f"/scheduleitems?channel={CHANNEL}&start={date}T00:00:00"
                             f"&end={date + datetime.timedelta(days=1)}T00:00:00&page_size=1000")["scheduleItems"]
