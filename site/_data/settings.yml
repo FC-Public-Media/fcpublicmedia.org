@@ -1,5 +1,5 @@
 # /settings/: a member edits their site's settings file as text, comments kept, after a passkey sign-in.
-# Saving goes through the broker; WRITE_MODE in worker/wrangler.jsonc decides branch or direct. See docs/members.md.
+# Saving goes through the site-worker (its URL: _data/site_worker.yml); WRITE_MODE in site-worker/wrangler.jsonc decides branch or direct. See docs/members.md.
 
 # Must match what /authorize/ registered against. See _data/authorize.yml.
 rp_id: ""
@@ -7,5 +7,3 @@ rp_id: ""
 # Read from the member's repository through the GitHub contents API (60 unauthenticated calls/hour).
 path: _data/site.yml
 
-# The broker's base URL (/challenge, /write). Empty: the page offers the edited file to send in.
-url: ""

@@ -1,4 +1,4 @@
-// The broker: routing, configuration, and every endpoint. See worker/README.md.
+// The broker: routing, configuration, and every endpoint. See site-worker/README.md.
 
 import { appCredential, patCredential } from './app-auth.js';
 import { challengeStore } from './challenges.js';
@@ -126,7 +126,7 @@ async function handleChallenge(request, { config, challenges }) {
   });
 }
 
-/** The one authorization order (worker/README.md#routes); no endpoint re-implements a step. */
+/** The one authorization order (site-worker/README.md#routes); no endpoint re-implements a step. */
 async function authorize(request, { config, challenges, devices }) {
   const refuse = (status, fields) => ({ ok: false, response: json({ ok: false, ...fields }, { status }) });
 
@@ -549,8 +549,9 @@ async function handleCheckout(request, { config, fetchImpl }) {
   const found = lookup(body.sku);
   if (!found.ok) return json({ ok: false, reason: 'sku', detail: found.detail }, { status: 400 });
 
-  const success = returnUrl(config.origins, body.success_path, '/thanks/');
-  const cancel = returnUrl(config.origins, body.cancel_path, '/membership/');
+  const from = request.headers.get('Origin');
+  const success = returnUrl(config.origins, body.success_path, '/thanks/', from);
+  const cancel = returnUrl(config.origins, body.cancel_path, '/membership/', from);
   if (!success || !cancel) {
     return json({ ok: false, detail: 'This broker has no site to return to.' }, { status: 500 });
   }

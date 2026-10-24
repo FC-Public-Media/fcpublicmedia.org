@@ -1,4 +1,4 @@
-// Minting per-repository installation tokens as the GitHub App. Setup: worker/README.md#github-app.
+// Minting per-repository installation tokens as the GitHub App. Setup: site-worker/README.md#github-app.
 
 const API = 'https://api.github.com';
 
@@ -90,7 +90,7 @@ export function appCredential({ appId, privateKey, fetchImpl = fetch, api = API,
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${jwt}`,
         'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'fcpm-broker',
+        'User-Agent': 'fcpm-site-worker',
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(options.body ? { body: JSON.stringify(options.body) } : {}),

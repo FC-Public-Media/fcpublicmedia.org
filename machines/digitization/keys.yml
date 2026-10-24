@@ -19,7 +19,7 @@ groups:
   stripe-test:
     what: Stripe in test mode, so checkout can be tried with nothing charged.
     form: env
-    used by: "keys run stripe-test -- node worker/try-checkout.mjs"
+    used by: "keys run stripe-test -- node site-worker/try-checkout.mjs"
     keys:
       PUBLIC_STRIPE_API_KEY:
         prefix: rk_test_
@@ -28,9 +28,9 @@ groups:
         issued: 2026-10-23, by Autumn
 
   stripe-live:
-    what: Stripe for real money, for the broker's /checkout.
+    what: Stripe for real money, for the site-worker's /checkout.
     form: env
-    used by: "machines/digitization/deploy-broker live"
+    used by: "machines/digitization/deploy-site-worker live"
     keys:
       PUBLIC_STRIPE_API_KEY:
         prefix: rk_live_
@@ -39,9 +39,9 @@ groups:
         issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
 
   cloudflare:
-    what: deploys the broker Worker and sets its secrets; Workers only.
+    what: deploys the site-worker and sets its secrets; Workers only.
     form: env
-    used by: "machines/digitization/deploy-broker"
+    used by: "machines/digitization/deploy-site-worker"
     keys:
       CLOUDFLARE_API_TOKEN:
         may: edit Workers on Autumn's business account (autumn-e2c), the "Edit Cloudflare Workers" template

@@ -16,7 +16,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
     {%- endfor -%}
   ],
   "rpId": {{ az.rp_id | jsonify }},
-  "brokerUrl": {{ az.url | jsonify }},
+  "brokerUrl": {{ site.data.site_worker.url | jsonify }},
   "devicesPath": {{ az.devices_path | jsonify }},
   "writeMode": {{ az.write_mode | jsonify }}
 }
@@ -126,7 +126,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-{%- comment -%} Sent: the broker took it. {%- endcomment -%}
+{%- comment -%} Sent: the site-worker took it. {%- endcomment -%}
 <div class="state" data-state="done" hidden>
   <p class="eyebrow">Done</p>
   <h2>This device is set up</h2>
@@ -137,7 +137,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-{%- comment -%} No broker (shipped): the passkey exists; the member sends the record in. {%- endcomment -%}
+{%- comment -%} No site-worker (shipped): the passkey exists; the member sends the record in. {%- endcomment -%}
 <div class="state" data-state="manual" hidden>
   <p class="eyebrow">Almost there</p>
   <h2>Send us this and you're done</h2>

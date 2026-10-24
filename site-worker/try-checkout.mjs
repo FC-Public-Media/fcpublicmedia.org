@@ -1,7 +1,7 @@
-// Starts one real Checkout Session through the broker's own /checkout, on this machine, with a
+// Starts one real Checkout Session through the site-worker's own /checkout, on this machine, with a
 // test key, and prints the payment page's URL. Nothing deploys; Stripe's test mode charges nothing.
 //
-//   machines/digitization/keys run stripe-test -- node worker/try-checkout.mjs [SKU]
+//   machines/digitization/keys run stripe-test -- node site-worker/try-checkout.mjs [SKU]
 //
 // Refuses a live key. Pay on the page with Stripe's test card 4242 4242 4242 4242. See docs/payments.md#keys.
 

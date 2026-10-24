@@ -9,7 +9,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
 - `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
 - `cablecast.json` `fetched` is always null: the workflow never sets `SYNC_STAMP`. .github/workflows/sync-cablecast.yml
-- Expired `featured.yml` items stay live: the weekly sync dispatches `deploy.yml`, which builds Azure only. .github/workflows/sync-cablecast.yml
+- Expired `featured.yml` items stay live until something rebuilds the site; no public host rebuilds on a schedule. .github/workflows/sync-cablecast.yml
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
@@ -21,7 +21,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
-- `door.py`'s route table omits `/preview/`, `/helo/*`, `/input`, `/heard`, `/wall/`; nothing calls `m365-token.ps1`.
+- `door.py`'s route table omits `/preview/`, `/helo/*`, `/input`, `/heard`, `/wall/`.
 - The kiosk's `code/AGENTS.md` names `docs/CAPTURE.md`, which is not in this repository.
 - `member-site-core/feed.xml` names `script/sync-feeds.py`; `site-template/` points at a README that does not exist.
 - `machines/crew.yml` says there is no supervisor or pool; editing bay 1 runs both.
@@ -32,7 +32,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - station-node's library pin for this repository is 508 commits behind `main`; harmless while station-thaw checks out `main`.
 - `origin/library` has no PR and no owner. Cloudflare builds every branch, so it must stay buildable until that stops.
 - After any change of publisher, a legacy Wix URL must 301 to `/reserve/` with no `x-wix-request-id`; nobody owns the check. site/_redirects
-- Anything running wrangler on a payload needs `site/wrangler.jsonc` beside it.
 - Something moving into `site/` gets an assertion in `site/bin/test_nothing_internal_is_published.py`, not an `exclude:`.
 - How long `/README.md` was public before #81 is unknown.
 - The Slack invite in `community.yml` expires every 30 days; nothing regenerates it. Slack or Teams is unsettled.
@@ -63,14 +62,14 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Deploy and domain
 
 - Ruby 3.2.2 is end of life; 3.3 or 3.4 is a one-line change. site/.ruby-version
-- The live Worker is in a personal Cloudflare account, not FCPM's; moving it and making `new` a Custom Domain is undecided.
+- Two Cloudflare accounts: Pages and the fcpublicmedia.org zone on FCPM's org account; the site-worker and the old `fcpm` Worker on Autumn's business account (autumn-e2c). Once the zone is on the org account, `new` (a CNAME to `fcpm.autumn-e2c.workers.dev`) is cross-account and Cloudflare refuses it (error 1014), so the check-in posters need `new` served from the org account before the nameservers move. A Workers custom domain for the site-worker would need it on the org account too.
 - Nameservers to Cloudflare (apex kept on Wix by pointing), then the www and apex cutover: not scheduled. docs/site.md#domain-and-dns
-- Member subdomains need the zone on Cloudflare, a wildcard and a hostname-to-folder Worker (one Worker with `run_worker_first`, or a second). site/wrangler.jsonc
+- Member subdomains need the zone on Cloudflare, a wildcard and a hostname-to-folder Worker (the site-worker, or a host's own rules). site-worker/
 - Member builds set no `baseurl`, so `/member-sites/<name>/` on www breaks.
 - Org secrets `CLOUDFLARE_PAGES_*` and `CLOUDFLARE_ACCOUNT_ID` are unused here.
 - Rule out two Cloudflare projects building this repository; check whether the "damaged repository" failure is the advocate pin under a shallow clone.
-- `_headers` sends no HSTS; `staticwebapp.config.json` does.
-- Build-less deploys, and Workers relaying registration, class sign-up and reservations to Microsoft 365: planned.
+- `_headers` sends no HSTS.
+- The site-worker relaying join, room and class requests and check-ins to one log, a list on the Operations SharePoint site: planned.
 - Whether Cloudflare stops building at all (the station builds instead) is direction, not done.
 
 ## Programming and classes
@@ -109,21 +108,20 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Payments are not switched on; what remains is the status table. docs/payments.md#before-charging
 - `/membership/` publishes "TODO" under three tiers (`tier.summary` renders unconditionally). site/_data/membership.yml
 - Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
-- `membership.note` (public copy) still describes Entra ID sign-in and a README section that is gone. site/_data/providers.yml
-- No provider for `tickets`, `donate` or `submit`; booking moves to Microsoft 365 (`booking.subdomain` unset). site/_data/providers.yml
-- Form posts have no receiver: an `/api` relay through Graph, or a hosted form service. site/_data/forms.yml
+- No provider for `tickets`, `donate` or `submit`. site/_data/providers.yml
+- `/book/` and `/register/` have no form yet; they are to post to the site-worker, which adds a row to the log. site/_data/forms.yml
 - A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
 - The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
-- The membership record (email, paid-through date) is unbuilt: a SharePoint list written only by the payment webhook.
+- The membership record (email, paid-through date) is unbuilt: a row in the log per paid join, from Stripe's webhook to the site-worker.
 - The claim signing key is not minted and its custody is undecided (`keys: []`, `CLAIM_KEYS` `[]`), so `/bind` refuses every enrolment. site/_data/identity.yml
-- `/upload/` posts to the broker's base URL, which has no such route. site/assets/js/upload.js
+- `/upload/` posts to the site-worker's base URL, which has no such route. site/assets/js/upload.js
 - `write_mode` in `authorize.yml` is rendered but read by nothing. site/_data/authorize.yml
 - Upload destination: bucket, `R2_MAX_BYTES`, retention; Dropbox stays the fallback. site/_data/upload.yml
-- The broker has no rate limit on `/challenge`, and challenges are not strictly single-use (KV read-then-delete). worker/src/
-- Check-ins leaving the device (worker, GitHub App, private repo, SharePoint) is proposed; it waits on the board's retention, readers and privacy notice.
+- The site-worker has no rate limit on `/challenge`, and challenges are not strictly single-use (KV read-then-delete). site-worker/src/
+- Check-ins leaving the device (the site-worker, to the log) is decided in shape (2026-10-23); it waits on the board's retention, readers and privacy notice.
 - The pass is to hold several cards per device, and a check-in to record which.
 - Confirm the venue coordinates and the QR's final URL (`new.` vs `www`) before printing. site/_data/checkin.yml
-- `/reserve/` as a list of hosts booked by shift from one shared M365 calendar, through the Worker, working without JavaScript; open: how hosts are marked, the activity vocabulary, single-use claim links, what a host is called. site/_data/hosts.yml
+- `/reserve/` as a list of hosts booked by shift, working without JavaScript; open: how hosts are marked, the activity vocabulary, single-use claim links, what a host is called. site/_data/hosts.yml
 
 ## Station and machines
 
@@ -154,7 +152,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Instanced configurations for gear several jobs use (ATEM, OBS).
 - Member scheduling: ask Cablecast about a draft `runStatus`, and how staff's tool creates shows. docs/services.md#member-scheduling
 - Depot volume identity (a marker per partition) is not built. docs/services.md#depot-index
-- Mailing a site's owner when a device is added: not built. worker/
+- Mailing a site's owner when a device is added: not built. site-worker/
 - `advocate.yml` puts the journal out of scope; the later decision wants it at the root. A seat naming what it reads (to wake on station-node) is proposed upstream.
 - Attendants: nothing wakes one on an `attendant` channel; recipes are followed by hand; the wall recipe is not in `site/tests/`, misses its reload, and says `page depot` where node.yml has `drive`.
 - `.contact-sheets-engine` deletes the previous sheet before montage runs; it has no library address.
@@ -163,7 +161,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 - Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk/welcome/content.yml
 - The rota's `crew:` tags are Autumn's to give. machines/kiosk/welcome/rota.yml
-- Bookings: Microsoft 365 calendars replace `bookings: sample`; Bookings is ruled out for intake; a second desk monitor for today's bookings waits on its API.
+- Bookings: `bookings: sample` stands in until room requests exist; a second desk monitor for today's bookings waits on them.
 - `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
 - Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.
 - The Dropbox queue is off (no app key, no staff folder). machines/kiosk/node.yml

@@ -1,5 +1,5 @@
 // Presigned R2 upload grants, single PUT or multipart; the bytes never pass through the broker.
-// Bucket CORS and lifecycle requirements: worker/README.md#writes-and-uploads.
+// Bucket CORS and lifecycle requirements: site-worker/README.md#writes-and-uploads.
 
 import { presign } from './sigv4.js';
 

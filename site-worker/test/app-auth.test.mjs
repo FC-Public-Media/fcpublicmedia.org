@@ -1,4 +1,4 @@
-// The broker as a GitHub App; the JWT is signed with a real RSA key and verified. See worker/README.md.
+// The broker as a GitHub App; the JWT is signed with a real RSA key and verified. See site-worker/README.md.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';

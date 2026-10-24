@@ -1,4 +1,4 @@
-// Challenges in KV, keyed by the 32-byte challenge itself. See worker/README.md.
+// Challenges in KV, keyed by the 32-byte challenge itself. See site-worker/README.md.
 // take() reads then deletes; KV's eventual consistency can let the same intent replay once.
 
 const PREFIX = 'challenge:';

@@ -13,7 +13,7 @@ Screens and content: [`docs/kiosk.md`](../../docs/kiosk.md).
 - Tooling from vendor releases, hash- and signature-checked: uv 0.12.18 (`uv python install
   3.13`), Node 24.21.0 LTS in `%LOCALAPPDATA%\media-node\node`, gh 2.101.0 in `~/.local/bin`
   (login in the keyring). No Ruby: CI builds the site.
-- The broker runs here: `node --test worker/test/*.test.mjs`; `npx wrangler@4 dev --ip 127.0.0.1
+- The site-worker runs here: `node --test site-worker/test/*.test.mjs`; `npx wrangler@4 dev --ip 127.0.0.1
   --var RP_ID:fcpm.localhost` on invented `*.localhost` hosts, passkeys from a DevTools virtual
   authenticator. `workerd` crashes on the system's Visual C++ 14.32: copy `msvcp140.dll`,
   `vcruntime140.dll`, `vcruntime140_1.dll` from Edge's application folder next to
@@ -37,8 +37,7 @@ administrator: [`CREW.md`](CREW.md).
 
 `CREW.md` (what it keeps, and how), `door.py`, `node.yml` (what it shows where), `rooms/` (each room as its
 hallway door shows it), `replies.py` (the inbox for what a wizard made), `host.js` (`wizard:kiosk+host`, the
-staff check-in), `verify-bottle.mjs` (the composer reading a bottle), `m365-token.ps1` (a Microsoft 365 token signed by
-the non-exportable certificate in `Cert:\CurrentUser\My`), `bookings.sample.yml` (a made-up
+staff check-in), `verify-bottle.mjs` (the composer reading a bottle), `bookings.sample.yml` (a made-up
 week, every booking "Sample"), `GOTCHAS.log` and `gotcha` (`merge=union`), `names`, `called`,
 `GRANTS` (what sessions may run), `MANIFEST` (what `../sync` places), `code/` and
 `home/code/` (the `~/code` root, its instructions read from the mirror), and `home/bin/fcpm.cmd`

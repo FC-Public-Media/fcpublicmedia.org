@@ -1,4 +1,4 @@
-// Reading and writing a member repository through the Contents API. See worker/README.md.
+// Reading and writing a member repository through the Contents API. See site-worker/README.md.
 
 import { contentHash as hashOf } from './intent.js';
 
@@ -30,7 +30,7 @@ export function github({ credential, fetchImpl = fetch, api = API }) {
         Authorization: `Bearer ${token}`,
         'X-GitHub-Api-Version': '2022-11-28',
         // GitHub rejects requests without one.
-        'User-Agent': 'fcpm-broker',
+        'User-Agent': 'fcpm-site-worker',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),

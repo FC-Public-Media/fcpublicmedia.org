@@ -10,7 +10,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
 <script type="application/json" id="devices-config">
 {
   "rpId": {{ az.rp_id | jsonify }},
-  "brokerUrl": {{ az.url | jsonify }},
+  "brokerUrl": {{ site.data.site_worker.url | jsonify }},
   "devicesPath": {{ az.devices_path | jsonify }}
 }
 </script>

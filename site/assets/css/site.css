@@ -1046,29 +1046,6 @@ label.btn { cursor: pointer; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* --- Hosted forms ---------------------------------------------------------- */
-
-/* Microsoft Forms does not report its height, so this is a tall fixed box that scrolls. */
-.hosted-form {
-  border: 1px solid var(--rule);
-  background: #fff;
-  margin: 1.75rem 0 1rem;
-}
-.hosted-form iframe {
-  display: block;
-  width: 100%;
-  height: min(80vh, 46rem);
-  border: 0;
-}
-
-.hosted-form-escape {
-  font-size: var(--step--1);
-  color: var(--ink-soft);
-  max-width: var(--measure);
-  margin-bottom: 2rem;
-}
-
-
 /* --- The countdown: the plate depleting while media loads, with no numbers ----- */
 
 /* Registered so the sweep can animate; without @property support the plate sits still. */

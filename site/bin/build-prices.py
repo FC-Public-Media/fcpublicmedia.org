@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn the price list people edit into the one the broker charges from.
 
-Writes worker/src/prices.js from site/_data/membership.yml and classes.yml;
+Writes site-worker/src/prices.js from site/_data/membership.yml and classes.yml;
 --check fails on drift. "TODO" prices are left out. See docs/payments.md#prices.
 """
 
@@ -15,7 +15,7 @@ import yaml
 # SITE is the Jekyll source (site/); REPO is the repository root.
 SITE = pathlib.Path(__file__).resolve().parent.parent
 REPO = SITE.parent
-OUT = REPO / "worker" / "src" / "prices.js"
+OUT = REPO / "site-worker" / "src" / "prices.js"
 
 BANNER = """\
 // The price list the broker charges from.
@@ -74,8 +74,9 @@ def build():
         items[sku] = {
             "kind": "membership",
             "name": f"{tier['name']} membership",
-            # Shown on the Stripe page.
-            "description": "One year from today. Renews on the day you joined, not in January.",
+            # Shown on the Stripe page; `renews` only when the buyer chose the yearly subscription.
+            "description": "One year from today.",
+            "renews": "Renews on the day you joined, not in January.",
             "amount": cents,
             # The buyer chooses one payment or a yearly subscription, same amount.
             "interval": "year",

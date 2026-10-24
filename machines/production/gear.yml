@@ -49,7 +49,7 @@ gear:
     # An older shell: %LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe
 
   - gear: node
-    for: the broker's tests and wrangler, as on the media node, and previewing
+    for: the site-worker's tests and wrangler, as on the media node, and previewing
       the site (jekyll-enough, Playwright). Not on PATH: call it by `at:`
     at: "%LOCALAPPDATA%\\editing-bay-1\\node\\node.exe"
     vendor: OpenJS Foundation (nodejs.org), LTS

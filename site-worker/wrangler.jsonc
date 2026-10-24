@@ -1,8 +1,8 @@
-// The broker, its own Worker apart from the site's assets-only one. See worker/README.md.
+// The site-worker: the site's one piece of running code, deployed on its own. See site-worker/README.md.
 // Secrets (wrangler secret put): GITHUB_APP_ID, GITHUB_APP_KEY, R2_ACCESS_KEY_ID,
-// R2_SECRET_ACCESS_KEY, PUBLIC_STRIPE_API_KEY.
+// R2_SECRET_ACCESS_KEY, PUBLIC_STRIPE_API_KEY. Their values: digitization's keychain (machines/digitization/keys.yml).
 {
-  "name": "fcpm-broker",
+  "name": "fcpm-site-worker",
   "main": "src/index.js",
   "compatibility_date": "2026-07-31",
 
@@ -11,7 +11,7 @@
     "RP_ID": "fcpublicmedia.org",
 
     // Exact origins, comma-separated: used for CORS and checked against the signed origin.
-    "ORIGINS": "https://www.fcpublicmedia.org,https://fcpublicmedia.org",
+    "ORIGINS": "https://www.fcpublicmedia.org,https://fcpublicmedia.org,https://wix.fcpublicmedia.org",
 
     "OWNER": "fcpublicmedia",
 

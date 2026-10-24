@@ -21,7 +21,7 @@ Notice whether rotation happens and turn it into a question; never rotate anythi
 
 | credential | stored in |
 |---|---|
-| `AZURE_STATIC_WEB_APPS_API_TOKEN`, `CLOUDFLARE_API_TOKEN`, `PUBLIC_STRIPE_API_KEY` (publishable) | GitHub repository secrets |
+| `CLOUDFLARE_API_TOKEN`, `PUBLIC_STRIPE_API_KEY`, the M365 app's secret | digitization's keychain (`machines/digitization/keys.yml`) |
 | `STRIPE_KEY`, `GITHUB_APP_ID` / `GITHUB_APP_KEY`, `GITHUB_TOKEN`, `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | Worker secrets |
 | claim signing private key | a file kept out of git |
 
@@ -33,14 +33,14 @@ Only Booqable equipment rental can take money. `site/_data/payments.yml` has an 
 
 ## Vendors
 
-A reading pass at least every six months (healthy, acquired, sunsetting, changing terms), not monitoring. The site deploys twice, to Azure Static Web Apps and to Cloudflare Pages, and nobody has decided which is real.
+A reading pass at least every six months (healthy, acquired, sunsetting, changing terms), not monitoring. The site's public host is not chosen ([site.md](site.md#deploy)); the site-worker deploys on its own.
 
 | vendor | if it went away |
 |---|---|
 | Cablecast | the catalogue, the archive, the live embed, the airing log; no second source |
 | Cloudflare | hosting; recoverable, the site is static files |
 | Booqable | the rental catalogue on `/reserve/` |
-| Microsoft 365 | the intended home for booking and membership |
+| Microsoft 365 | mail, and the log: one list on the Operations SharePoint site that the site-worker adds to |
 | Wix | the domain, until it moves |
 
 ## Truthfulness

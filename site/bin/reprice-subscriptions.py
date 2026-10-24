@@ -18,11 +18,11 @@ import urllib.parse
 import urllib.request
 
 API = "https://api.stripe.com/v1"
-PRICES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "worker", "src", "prices.js")
+PRICES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "site-worker", "src", "prices.js")
 
 
 def catalog():
-    """The price list parsed from worker/src/prices.js, what is actually deployed."""
+    """The price list parsed from site-worker/src/prices.js, what is actually deployed."""
     with open(PRICES, encoding="utf-8") as handle:
         source = handle.read()
     body = source[source.index("export default ") + len("export default ") :].rstrip().rstrip(";")

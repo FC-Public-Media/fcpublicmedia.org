@@ -149,13 +149,24 @@ test('a one-off payment does not pretend to be a subscription', async () => {
 
 test('the term is stated where the money is, not only on the page they came from', async () => {
   const stripe = fakeStripe();
-  await broker(stripe).fetch(post({ sku: 'membership:sponsor' }));
+  await broker(stripe).fetch(post({ sku: 'membership:sponsor', recurring: true }));
 
   const description = stripe.calls[0].params.get(
     'line_items[0][price_data][product_data][description]'
   );
   assert.match(description, /year from today/i);
   assert.match(description, /not in January/i);
+});
+
+test('a one-off payment never says it renews', async () => {
+  const stripe = fakeStripe();
+  await broker(stripe).fetch(post({ sku: 'membership:sponsor' }));
+
+  const description = stripe.calls[0].params.get(
+    'line_items[0][price_data][product_data][description]'
+  );
+  assert.match(description, /year from today/i);
+  assert.doesNotMatch(description, /renew/i);
 });
 
 /* ------------------------------------------------------- where you come back to */
@@ -171,6 +182,15 @@ test('the page cannot choose whose site you land on afterwards', () => {
   assert.equal(returnUrl(origins, null, '/x/'), `${ORIGIN}/x/`);
 });
 
+test('you come back to the site you left, if it is one of ours', () => {
+  const origins = [ORIGIN, 'https://wix.example'];
+
+  assert.equal(returnUrl(origins, '/thanks/', '/x/', 'https://wix.example'), 'https://wix.example/thanks/');
+  assert.equal(returnUrl(origins, '/thanks/', '/x/', 'https://evil.example'), `${ORIGIN}/thanks/`);
+  assert.equal(returnUrl(origins, '/thanks/', '/x/', null), `${ORIGIN}/thanks/`);
+  assert.equal(returnUrl(origins, '//evil.example', '/x/', 'https://wix.example'), 'https://wix.example/x/');
+});
+
 test('the redirect Stripe is given is on our own origin', async () => {
   const stripe = fakeStripe();
   await broker(stripe).fetch(
@@ -179,6 +199,21 @@ test('the redirect Stripe is given is on our own origin', async () => {
 
   const success = stripe.calls[0].params.get('success_url');
   assert.ok(success.startsWith(`${ORIGIN}/`), `success_url escaped to ${success}`);
+});
+
+test('a join from the Wix copy returns to the Wix copy', async () => {
+  const stripe = fakeStripe();
+  const WIX = 'https://wix.fcpublicmedia.org';
+  await broker(stripe, { ORIGINS: `${ORIGIN},${WIX}` }).fetch(
+    new Request('https://broker.example/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WIX },
+      body: JSON.stringify({ sku: 'membership:sponsor', success_path: '/thanks', cancel_path: '/membership' }),
+    })
+  );
+
+  assert.equal(stripe.calls[0].params.get('success_url'), `${WIX}/thanks`);
+  assert.equal(stripe.calls[0].params.get('cancel_url'), `${WIX}/membership`);
 });
 
 /* ------------------------------------------------------------------ the key */

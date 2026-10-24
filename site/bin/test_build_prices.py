@@ -79,7 +79,7 @@ class TheCommittedCopy(unittest.TestCase):
 
     def test_check_actually_notices_a_difference(self):
         # A real edit to prices.js, put back afterwards.
-        target = REPO / "worker" / "src" / "prices.js"
+        target = REPO / "site-worker" / "src" / "prices.js"
         original = target.read_text(encoding="utf-8")
         try:
             target.write_text(original.replace("7000", "1"), encoding="utf-8")

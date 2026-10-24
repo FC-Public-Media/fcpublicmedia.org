@@ -1,7 +1,7 @@
 # Site
 
-fcpublicmedia.org is a static Jekyll site built from `site/`, served at `new.fcpublicmedia.org`
-while the apex still serves the old Wix site. Its five transactions (tickets, dues, donations,
+fcpublicmedia.org is a static Jekyll site built from `site/`, served at `new.fcpublicmedia.org` until
+a public host is chosen ([Deploy](#deploy)), while the apex still serves the old Wix site. Its five transactions (tickets, dues, donations,
 booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md](payments.md#transactions)).
 
 ## Layout
@@ -10,7 +10,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 
 | `site/` | |
 |---|---|
-| `_config.yml`, `Gemfile`, `.ruby-version`, `wrangler.jsonc` | build config, read relative to the build root |
+| `_config.yml`, `Gemfile`, `.ruby-version` | build config, read relative to the build root |
 | `*.md`, `index.html`, `404.html` | one file per page; the filename is the URL |
 | `_layouts/` | `default`, `page`, `pass` (`/check-in/`, `/lights/`), `podcast`, `show` |
 | `_includes/` | `head`, `header`, `footer`, `transaction`, `show-card`, `featured` and smaller parts |
@@ -18,13 +18,13 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
 | `member-sites/` | built member sites, committed by the publish workflow ([members.md](members.md)) |
 | `bin/`, `tests/` | tooling, syncs and Python tests; Playwright tests. Both excluded from the build |
-| `_redirects`, `_headers`, `staticwebapp.config.json`, `robots.txt`, `sitemap.xml` | generated for hosts |
+| `_redirects`, `_headers`, `robots.txt`, `sitemap.xml` | generated for hosts |
 
 | Root | |
 |---|---|
 | `AGENTS.md`, `README.md`, `docs/` | standing orders, front page, everything written down |
 | `sites.yml`, `site-template/`, `member-site-core/` | the site list and member sites ([members.md](members.md#sitesyml)) |
-| `worker/` | the broker, its own Worker ([worker/README.md](../worker/README.md)) |
+| `site-worker/` | the site-worker, deployed on its own ([site-worker/README.md](../site-worker/README.md)) |
 | `bin/` | `build-sites.py`, `build-kiosk.py`, `make-wallpaper.py` and their tests |
 | `brand/` | the brand; the studio screens are the kiosk's ([kiosk.md](kiosk.md)) |
 | `machines/`, `troves/`, `attendant/` | the station ([station.md](station.md)) |
@@ -32,7 +32,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 
 - `site/_data` reads only what is inside `site/`; Jekyll's `data_dir` cannot leave the source.
 - The root reaches down: syncs write `site/_data/`, `bin/build-kiosk.py` reads it, and
-  `worker/src/index.js` imports `site/assets/js/claims.js`. `site/` never reaches up.
+  `site-worker/src/index.js` imports `site/assets/js/claims.js`. `site/` never reaches up.
 - No symlinks across the boundary: `jekyll build --safe` silently reads them as empty.
 
 ## Build and run
@@ -130,45 +130,28 @@ npm run test:live                                # against https://www.fcpublicm
 - Every page in `pages.js` must load with a title, at most one `<h1>`, no console errors, no failed
   same-origin request, resolving internal links, labelled links and no sideways scroll.
 - `@external` (`embeds.spec.js`) renders Cablecast pages: its viewer answers 200 for missing shows.
-- `.github/workflows/smoke.yml`, on every push and pull request: build, Python tests, the broker's
+- `.github/workflows/smoke.yml`, on every push and pull request: build, Python tests, the site-worker's
   `npm test`, Playwright. `@external` runs only on the Tuesday schedule or by hand, allowed to fail.
 
 ## Deploy
 
-Cloudflare's git build is the only thing that publishes the site:
+The site is static files: `jekyll build` in `site/` writes `_site`, and any static host can serve it.
+Nothing in `site/` names a host or runs code; the one piece of running code is the
+[site-worker](../site-worker/README.md), deployed on its own, and the site knows it only by
+`site/_data/site_worker.yml` `url`.
 
-| Setting | Value |
-|---|---|
-| Build command | `bundle exec jekyll build` |
-| Deploy command | `npx wrangler deploy` |
-| Non-production branch deploy command | `npx wrangler versions upload` (per-branch preview URL) |
-| Path / root directory | `site` |
-| Build output directory | `_site` (relative to the root directory) |
-| Build watch paths | `site` |
-
-- At any other root directory the build finds no config and publishes a wrong site while
-  reporting success. `worker/` holds the broker's Worker config, not the site's.
-- `site/wrangler.jsonc` is static assets only. Without it `wrangler deploy` auto-configures and
-  fails. Never `wrangler pages deploy`: it creates a second site.
-- Member-site publishing commits into `site/member-sites/`, so it triggers a deploy.
-- Do not add `submodules: true` to the checkout in `deploy.yml`; nothing in `_site` needs one.
-- The fallback is this table on FCPM's own Cloudflare account; it needs no machine of ours.
+- The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
+- A public host is not chosen. Whichever it is builds with root directory `site`, command
+  `bundle exec jekyll build`, output `_site`, and reads `_redirects` and `_headers` (Cloudflare Pages
+  and Netlify do). It must not need a config file in `site/`.
+- `new.fcpublicmedia.org` was served by `fcpm`, an assets-only Worker on Autumn's business
+  Cloudflare account (autumn-e2c), built from `site/wrangler.jsonc`. That file is gone (2026-10-23):
+  the Worker serves its last build until it is deleted, and the check-in posters
+  (`_data/checkin.yml`, the kiosk's `welcome.yml`) point at that address until a public host takes it.
+- Member-site publishing commits into `site/member-sites/`; a host building on push picks it up.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
-  www.fcpublicmedia.org` prints the root directory. Change the dashboard field in the same act.
-- The broker deploys from `.github/workflows/broker.yml` with `CLOUDFLARE_API_TOKEN`.
-
-| Build failure | Cause |
-|---|---|
-| `Could not locate Gemfile`; "Detected the following tools" names Ruby | root directory is not `site` |
-| the same, with that line empty | an empty checkout; check the GitHub App's access |
-| repository reported as damaged | delete and recreate the Cloudflare project |
-| `error occurred while installing tools or dependencies` | a `.tool-versions` file |
-
-A failed build leaves the last good deployment serving.
-
-**Azure.** `.github/workflows/deploy.yml` builds every push and pull request to `main`; it deploys,
-with PR previews, only if `AZURE_STATIC_WEB_APPS_API_TOKEN` is set, and it is not.
+  www.fcpublicmedia.org` prints the root directory.
 
 ## Domain and DNS
 
@@ -178,7 +161,7 @@ change there, with no transfer. Wix's `ns4.wixdns.net` and `ns5.wixdns.net` serv
 | Name | Type | Value |
 |---|---|---|
 | `@` | A | `185.230.63.171`, `185.230.63.107`, `185.230.63.186` |
-| `www`; `new` | CNAME | `cdn3.wixdns.net`; `fcpm.autumn-e2c.workers.dev` (a personal account, not FCPM's) |
+| `www`; `new` | CNAME | `cdn3.wixdns.net`; `fcpm.autumn-e2c.workers.dev` (Autumn's business account, autumn-e2c) |
 | `@` | MX 10; TXT | `fcpublicmedia-org.mail.protection.outlook.com`; `v=spf1 include:spf.protection.outlook.com -all`, `ms15993575` |
 | `autodiscover`, `lyncdiscover`, `sip` | CNAME | `autodiscover.outlook.com`, `webdir.online.lync.com`, `sipdir.online.lync.com` |
 | `enterpriseregistration`, `enterpriseenrollment` | CNAME | `enterpriseregistration.windows.net`, `enterpriseenrollment.manage.microsoft.com` |
@@ -190,11 +173,9 @@ proxying Wix takes the apex down. A Workers Custom Domain needs zone and Worker 
 
 ## Redirects and headers
 
-- `site/_data/redirects.yml` generates `_redirects` (Cloudflare) and the routes of
-  `staticwebapp.config.json` (Azure), all 301. Add entries; never remove one.
+- `site/_data/redirects.yml` generates `_redirects`, all 301. Add entries; never remove one.
 - `_config.yml` lists `_redirects` and `_headers` under `include:` despite the underscore.
-- `_headers`: `nosniff` and `strict-origin-when-cross-origin`; `/assets/*` caches for an hour.
-  Azure's config also sends HSTS.
+- `_headers`: `nosniff` and `strict-origin-when-cross-origin`; `/assets/*` caches for an hour. No HSTS.
 - The unused Wix store (`/product-page/i-m-a-product*`, `/category/all-products`) is left to 404.
 - `site/bin/redirect-report.py` writes `docs/REDIRECTS.md` and exits 1 on any Wix URL with no
   redirect, page or decision.
@@ -203,12 +184,14 @@ proxying Wix takes the apex down. A Workers Custom Domain needs zone and Worker 
 
 - Internal documents live at the root and in `docs/`, outside the build. Never put one in `site/`:
   a `.md` with no front matter is copied verbatim to a public URL.
-- `_config.yml` excludes exactly `bin`, `tests`, `wrangler.jsonc` and `README.md`.
+- `_config.yml` excludes exactly `bin`, `tests` and `README.md`.
+- `site/bin/test_site_runs_no_code.py` fails if `site/` tracks host config or server code (`wrangler.*`,
+  `staticwebapp.config.json`, `_worker.js`, `functions/`).
 - `site/bin/test_nothing_internal_is_published.py` fails if `_site` holds `bin/`, `tests/`, a `.py`,
   `.spec.js`, `playwright.config.js`, `package-lock.json`, `wrangler.jsonc`, `Gemfile`, `_config.yml`
   or any `.md`.
 - `site/bin/test_no_secrets.py` fails on a Stripe secret shape in `_site` or git, a non-`pk_`
   `publishable_key`, a Wi-Fi payload with a password, or a tracked or built `wifi-qr.svg`.
 - The Wi-Fi QR holds the guest password in readable form: made locally, gitignored, printed for
-  the lobby. Delete it and rebuild before any local `wrangler deploy`.
+  the lobby. Delete it and rebuild before publishing `_site` by hand.
 - [review-notes.md](review-notes.md) holds unratified board feedback and stays in `docs/`.

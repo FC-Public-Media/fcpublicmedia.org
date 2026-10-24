@@ -8,8 +8,8 @@ tickets:
   url: ""
   status: placeholder
   note: >-
-    Currently Wix Events. Candidates: Zeffy (no platform fee for nonprofits),
-    Givebutter, or an M365-backed form once sign-in exists.
+    Currently Wix Events. Signups are to go through /register/ to FCPM's
+    log, by the site-worker; not built.
 
 membership:
   label: Membership signup and dues
@@ -17,9 +17,9 @@ membership:
   url: ""
   status: placeholder
   note: >-
-    Currently Wix Pricing Plans. Target state is Entra ID sign-in for identity
-    plus a payment provider for dues; the payment redirect is what promotes an
-    account to the `member` role. See README, "Members and sign-in".
+    Currently Wix Pricing Plans. Joining is to be a Stripe checkout started by
+    the site-worker, each paid join a row in FCPM's log; the button is not
+    built.
 
 donate:
   label: Donations
@@ -30,14 +30,12 @@ donate:
 
 booking:
   label: Studio and bay reservations
-  provider: Booqable
+  provider: ""
   url: ""
-  status: pending
-  # e.g. book.fcpublicmedia.org, once booking has its own host. See docs/payments.md#hosted-forms.
-  subdomain: ""
+  status: placeholder
   note: >-
-    Staying on Booqable for now. Microsoft 365 calendar integration is being
-    developed separately; when it lands, only this entry changes.
+    Room requests are to go through /book/ to FCPM's log, by the site-worker;
+    not built. Equipment is Booqable, further down.
 
 submit:
   label: Program submission

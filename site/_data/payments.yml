@@ -39,7 +39,7 @@ terms:
   # Does not exist yet; required before subscriptions are switched on.
   page: /policies/membership-terms/
 
-# `sku_prefix` matches keys in worker/src/prices.js.
+# `sku_prefix` matches keys in site-worker/src/prices.js.
 sells:
   - what: Membership
     sku_prefix: "membership:"
@@ -61,7 +61,7 @@ sells:
     page: /reserve/
     note: >-
       Booqable's own checkout, on Booqable's own Stripe connection. We
-      deliberately do not sell equipment through our broker — two systems
+      deliberately do not sell equipment through our site-worker — two systems
       charging for one booking is how somebody gets billed twice and only one
       side knows to release the gear.
 

@@ -1,5 +1,5 @@
 {
-  "name": "fcpm-broker",
+  "name": "fcpm-site-worker",
   "private": true,
   "type": "module",
   "description": "The broker. Deliberately NOT at the repository root — a package.json up there changes how Cloudflare and wrangler detect the project, and the site itself is Ruby.",

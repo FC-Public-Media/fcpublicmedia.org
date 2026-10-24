@@ -1,6 +1,19 @@
-# Broker
+# site-worker
 
-`fcpm-broker`, a Cloudflare Worker apart from the site's assets-only one. It verifies passkey
+`fcpm-site-worker`: the site's one piece of running code, a Cloudflare Worker on its own beat. It is
+interchangeable: the site is static files that can be published anywhere (the LAN's static host, a
+public host), and this can run anywhere a fetch handler runs. Neither deploys with the other.
+
+The seam is two lines. The site knows this worker's address from `site/_data/site_worker.yml` `url`;
+this worker knows the site's address from `ORIGINS` in `wrangler.jsonc` (CORS, and the only origins a
+checkout returns to). Moving either half is the other's one line.
+
+Deploys: Cloudflare's git build for this Worker, root directory `site-worker`, watching `site-worker`
+only, so a site change never rebuilds it. Its secrets come from digitization's keychain
+(`machines/digitization/keys.yml`); `machines/digitization/deploy-site-worker live` sets them, and can
+deploy by hand.
+
+It verifies passkey
 signatures over challenges it issued, writes to member repositories as a GitHub App, signs upload URLs
 and starts Stripe checkouts. No user table: see [`docs/identity.md`](../docs/identity.md) and
 [`docs/payments.md`](../docs/payments.md).
@@ -20,7 +33,7 @@ All `POST` with JSON (`OPTIONS` answers CORS for `ORIGINS` only).
 | `/checkout` | `{ sku, recurring, success_path, cancel_path, reference, email }` → `{ ok, url, id }` | `PUBLIC_STRIPE_API_KEY`; else 503 |
 
 `/checkout` prices the SKU from `src/prices.js` (unknown: 400) and returns only to paths on the first
-of `ORIGINS` (defaults `/thanks/` and `/membership/`). No card data passes through the broker.
+of `ORIGINS` (defaults `/thanks/` and `/membership/`). No card data passes through the site-worker.
 
 Every route but `/challenge`, `/bind` and `/checkout` runs `authorize()` in `src/index.js`, in this
 order: spend the challenge (read from the signed client data); find the device in the repository the
@@ -52,7 +65,7 @@ already there (a retry). `403` carries a `reason` (`challenge`, `unknown-device`
 - `/bind`: the first device on a site with no publisher arrives with `may_publish: true`; later ones
   wait for `/device`. The last publisher cannot be revoked.
 - `/upload` binds the grant (repo, object key, size), not the bytes, which go straight to R2. Keys are
-  `<site>/<year>/<slug>-<random>.<ext>`, chosen at challenge time. Above 4 GiB the broker starts a
+  `<site>/<year>/<slug>-<random>.<ext>`, chosen at challenge time. Above 4 GiB the site-worker starts a
   multipart upload and presigns every part (64 MiB default, at most 1000), `complete` and `abort`.
 - The bucket needs CORS allowing PUT, POST and DELETE from `ORIGINS` and exposing `ETag`, and a
   lifecycle rule aborting incomplete multipart uploads.
@@ -62,7 +75,7 @@ already there (a retry). `403` carries a `reason` (`challenge`, `unknown-device`
 Vars in `wrangler.jsonc`: `RP_ID` (registrable domain; equals `rp_id` in `site/_data/authorize.yml`),
 `ORIGINS` (exact, comma-separated; CORS and the signed origin), `OWNER`, `CHALLENGE_TTL` (300),
 `WRITE_MODE` (`branch`), `CLAIM_KEYS` (JSON public keys, same as `site/_data/identity.yml`),
-`R2_ENDPOINT`, `R2_BUCKET`, `R2_MAX_BYTES` (`0` = no cap), `UPLOAD_TTL` (21600). The broker refuses
+`R2_ENDPOINT`, `R2_BUCKET`, `R2_MAX_BYTES` (`0` = no cap), `UPLOAD_TTL` (21600). The site-worker refuses
 every request until `RP_ID`, `ORIGINS` and the `CHALLENGES` KV binding exist.
 
 The `CHALLENGES` namespace id is committed. Never set it to `""`: wrangler then refuses every command,
@@ -83,8 +96,8 @@ device lists are read through the API; without one, from raw.githubusercontent, 
 
 ## Run
 
-In `worker/`: `npm test` (`node --test`, no dependencies, no network), `npx wrangler dev`,
+In `site-worker/`: `npm test` (`node --test`, no dependencies, no network), `npx wrangler dev`,
 `npx wrangler deploy`. The tests sign with real P-256 and RSA keys, encode DER independently of the
 decoder, and check SigV4 against AWS's published example. `.github/workflows/broker.yml` runs them on
-every push to `main` touching `worker/`, then deploys and sets `PUBLIC_STRIPE_API_KEY` once
+every push to `main` touching `site-worker/`, then deploys and sets `PUBLIC_STRIPE_API_KEY` once
 `CLOUDFLARE_API_TOKEN` exists (Cloudflare → My Profile → API Tokens → *Edit Cloudflare Workers*).

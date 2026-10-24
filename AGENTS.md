@@ -17,6 +17,11 @@ only to augment our capabilities on the LAN.
 - **FC Public Media Helm**: Joined to the private inner switched network.
 - **FC Public Media Guest**: Isolated with viewing access.
 
+## The site and its worker
+
+`site/` is static files: it never runs code or names a host.
+The one running piece is `site-worker/`, deployed on its own.
+
 ## Wix
 
 Without exception, any Wix connectors or ready authorizations shall be

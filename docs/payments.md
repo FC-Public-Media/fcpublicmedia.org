@@ -1,7 +1,7 @@
 # Payments
 
 Who takes which payment, how prices are built, the rules about keys, and what has to be true before
-anyone is charged. The broker itself is [`worker/README.md`](../worker/README.md).
+anyone is charged. The site-worker itself is [`site-worker/README.md`](../site-worker/README.md).
 
 ## Transactions
 
@@ -20,11 +20,11 @@ Every hand-off to a paid or stateful service is an entry in `site/_data/provider
 
 | What | Charged by | Price from |
 |---|---|---|
-| Membership | Stripe, through the broker's `POST /checkout` | `site/_data/membership.yml` |
-| Class drop-in | Stripe, through the broker | `site/_data/classes.yml` `dropin` |
+| Membership | Stripe, through the site-worker's `POST /checkout` | `site/_data/membership.yml` |
+| Class drop-in | Stripe, through the site-worker | `site/_data/classes.yml` `dropin` |
 | Equipment rental | Booqable, on its own Stripe connection | Booqable |
 
-One Stripe account, two credentials. The broker sells no equipment: two systems charging for one
+One Stripe account, two credentials. The site-worker sells no equipment: two systems charging for one
 booking bills somebody twice.
 
 ## Keys
@@ -45,14 +45,14 @@ booking bills somebody twice.
 - An `rk_` or `sk_` key that reaches a commit is burned: rotate it in the Stripe dashboard.
 
 Secrets are held in digitization's keychain (`machines/digitization/keys.yml`, PROFILE.md, Keys), not in
-GitHub. `machines/digitization/deploy-broker live` deploys the Worker and pipes the key into
+GitHub. `machines/digitization/deploy-site-worker live` deploys the Worker and pipes the key into
 `wrangler secret put PUBLIC_STRIPE_API_KEY` on every run, so a rotation lands. A test key is tried without
-deploying anything: `machines/digitization/keys run stripe-test -- node worker/try-checkout.mjs`.
+deploying anything: `machines/digitization/keys run stripe-test -- node site-worker/try-checkout.mjs`.
 
 ## Prices
 
-The browser posts a SKU (`membership:creator`), never an amount; the broker looks the amount up in
-`worker/src/prices.js`.
+The browser posts a SKU (`membership:creator`), never an amount; the site-worker looks the amount up in
+`site-worker/src/prices.js`.
 
 - `site/bin/build-prices.py` generates `prices.js` (cents) from `membership.yml` and `classes.yml`.
   It is committed, because Cloudflare's build runs no Python; `.github/workflows/smoke.yml` runs
@@ -83,7 +83,7 @@ Nonprofits pay half (`nonprofit.rate`), settled before payment. `site/bin/sync-n
 Larimer County 501(c)(3)s from the IRS master file to `site/assets/nonprofits.json` (monthly, by
 `.github/workflows/sync-nonprofits.yml`). The organization picks itself on `/membership/`; "not listed"
 is an equal path to a person. Staff verify the EIN and issue a Stripe promotion code
-(`allow_promotion_codes` is on every session). The broker ignores any `nonprofit` field in a request.
+(`allow_promotion_codes` is on every session). The site-worker ignores any `nonprofit` field in a request.
 
 ## Booqable
 
@@ -95,21 +95,21 @@ is an equal path to a person. Staff verify the EIN and issue a Stripe promotion 
   hides the add-to-cart notice and the cart drawer. Restoring the datepicker means removing both rules.
 - `site.css` restyles their card grid as rows; untested, and a Booqable markup change brings the grid back.
 
-## Hosted forms
+## Requests
 
-`/book/` and `/register/` frame a Microsoft Form (`site/_includes/hosted-form.html`,
-`site/_data/forms.yml`). Set each form to "Anyone can respond": Safari blocks the Entra sign-in cookie
-in a frame. `requires_signin: true` links out instead. The direct link is always shown. A booking
-subdomain goes in `booking.subdomain` in `providers.yml`, mapped by a Cloudflare Redirect Rule.
+Join (a paid checkout), a room request (`/book/`), a class signup (`/register/`) and a check-in each
+become one row in one log: a list on the Operations SharePoint site, added to by the site-worker and
+by nothing else. Not built: the pages say so (`site/_includes/request-form.html`, copy in
+`site/_data/forms.yml`). The site-worker's access is the `m365` group in digitization's keychain.
 
 ## Before charging
 
 | Item | Where | Status |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | digitization's keychain, `cloudflare` | Not held; the broker does not deploy |
+| `CLOUDFLARE_API_TOKEN` | digitization's keychain, `cloudflare` | Not held; the site-worker does not deploy |
 | `PUBLIC_STRIPE_API_KEY` | digitization's keychain, `stripe-live` (`stripe-test` beside it) | Live not held |
 | Publishable key | `payments.yml` `stripe.publishable_key` | Empty |
-| Broker URL | `url` in `site/_data/settings.yml`, `authorize.yml`, `upload.yml` | Empty |
+| Site-worker URL | `url` in `site/_data/settings.yml`, `authorize.yml`, `upload.yml` | Empty |
 | What each tier includes | `membership.yml` `tiers[].includes` | Board; all `[]` |
 | Student, Creator, Producer summaries | `membership.yml` `tiers[].summary` | Board; `TODO` |
 | Class drop-in prices | `classes.yml` `dropin` | Board; `TODO` |

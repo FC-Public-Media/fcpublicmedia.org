@@ -1,7 +1,7 @@
 # Identity
 
 Who somebody is, how they prove it, and check-in at the door. There are no accounts or passwords.
-Only the broker ([`worker/README.md`](../worker/README.md)) checks proof for FCPM; a check in the
+Only the site-worker ([`site-worker/README.md`](../site-worker/README.md)) checks proof for FCPM; a check in the
 visitor's own browser is wayfinding.
 
 | Mechanism | Proves | Checked by |
@@ -9,7 +9,7 @@ visitor's own browser is wayfinding.
 | Typed email | Nothing; recorded as unconfirmed | Nobody |
 | Email claim | The holder received mail at an address | The browser (`site/assets/js/claims.js`), and anything downstream |
 | Cloudflare Access | An address, at the edge | Cloudflare |
-| Passkey | A device holds a private key | The broker, against `.auth/devices.json` |
+| Passkey | A device holds a private key | The site-worker, against `.auth/devices.json` |
 
 ## Email claims
 
@@ -35,12 +35,12 @@ python3 site/bin/mint-claim.py --email someone@example.com [--repo owner/site] [
 ## Passkeys and devices
 
 `site/assets/js/passkey.js` makes and uses passkeys. The relying party is the registrable domain
-(`rp_id` in `site/_data/authorize.yml` and `upload.yml`; the broker's `RP_ID` must match). Member sites
+(`rp_id` in `site/_data/authorize.yml` and `upload.yml`; the site-worker's `RP_ID` must match). Member sites
 on github.io (a public suffix) cannot host a ceremony, so every passkey page is on fcpublicmedia.org.
 
 - The user handle is `v1|owner/repository|<digest>`: the site in clear so a sign-in says which site, a
   per-person digest so a second person's registration does not replace the first's.
-- Without a broker URL the page makes its own challenge and returns `verified: false`; it proves
+- Without a site-worker URL the page makes its own challenge and returns `verified: false`; it proves
   nothing to anyone.
 
 A site's devices are `.auth/devices.json` in the member's own repository, public:
@@ -50,7 +50,7 @@ revoked (records are kept). Listed is not allowed: only `may_publish: true` chan
 | Rule | Where enforced |
 |---|---|
 | A claim with `repo` enrols a device: listed, not publishing | `/bind` |
-| The first device on a site with no publisher is trusted | `worker/src/enroll.js` |
+| The first device on a site with no publisher is trusted | `site-worker/src/enroll.js` |
 | A publishing device approves or revokes others | `/device`, from `/devices/` |
 | A device cannot approve itself | `authorize()` checks `may_publish` first |
 | The last publishing device cannot be revoked | `revokeDevice()` |
@@ -65,10 +65,10 @@ short `--days`. Restoring a site with no publisher means staff editing the file 
 1. Read the claim from the fragment, check its signature, and strip it from the address bar. A claim
    without `repo` (the check-in kind) is refused before any ceremony.
 2. Create a passkey labelled by the visitor.
-3. With a broker: request a `device.add` challenge for the new credential, sign it with that passkey
+3. With a site-worker: request a `device.add` challenge for the new credential, sign it with that passkey
    (proving possession), and `POST /bind` with the claim. The answer says whether the device may
    publish yet.
-4. Without a broker, or if delivery fails: show the device record for the member to send to staff.
+4. Without a site-worker, or if delivery fails: show the device record for the member to send to staff.
 
 `/devices/` lists the site's devices (read from raw.githubusercontent) and runs one ceremony per
 approval or removal. `/settings/` signs in to find the site, then signs each save separately.

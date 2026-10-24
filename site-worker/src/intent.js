@@ -1,5 +1,5 @@
 // Intents: what a challenge is issued for, so a signature authorizes one action, not any.
-// See worker/README.md#routes.
+// See site-worker/README.md#routes.
 
 const HASH_ALGORITHM = 'SHA-256';
 

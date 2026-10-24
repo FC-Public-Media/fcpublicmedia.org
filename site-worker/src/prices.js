@@ -15,31 +15,35 @@ export default {
   "items": {
     "membership:creator": {
       "amount": 7000,
-      "description": "One year from today. Renews on the day you joined, not in January.",
+      "description": "One year from today.",
       "interval": "year",
       "kind": "membership",
-      "name": "Creator membership"
+      "name": "Creator membership",
+      "renews": "Renews on the day you joined, not in January."
     },
     "membership:producer": {
       "amount": 14000,
-      "description": "One year from today. Renews on the day you joined, not in January.",
+      "description": "One year from today.",
       "interval": "year",
       "kind": "membership",
-      "name": "Producer membership"
+      "name": "Producer membership",
+      "renews": "Renews on the day you joined, not in January."
     },
     "membership:sponsor": {
       "amount": 4000,
-      "description": "One year from today. Renews on the day you joined, not in January.",
+      "description": "One year from today.",
       "interval": "year",
       "kind": "membership",
-      "name": "Sponsor membership"
+      "name": "Sponsor membership",
+      "renews": "Renews on the day you joined, not in January."
     },
     "membership:student": {
       "amount": 6000,
-      "description": "One year from today. Renews on the day you joined, not in January.",
+      "description": "One year from today.",
       "interval": "year",
       "kind": "membership",
-      "name": "Student membership"
+      "name": "Student membership",
+      "renews": "Renews on the day you joined, not in January."
     }
   }
 };

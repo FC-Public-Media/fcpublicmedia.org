@@ -118,9 +118,8 @@ same address, {counts['dropped']} deliberately dropped, {len(gaps)} unaccounted 
 Redirects are permanent (HTTP 301), which tells search engines to move their
 records across rather than treat the new address as a duplicate.
 
-They are generated from one file, `site/_data/redirects.yml`, into both the
-Cloudflare and Azure formats — so whichever host the site ends up on, the list
-cannot drift.
+They are generated from one file, `site/_data/redirects.yml`, into `_redirects`,
+which static hosts read as it is.
 
 ## The store pages
 

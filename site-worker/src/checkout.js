@@ -16,9 +16,9 @@ export function lookup(sku) {
   return { ok: true, item, sku };
 }
 
-/** A return URL: the path from the request, the origin always ours (no open redirect). */
-export function returnUrl(origins, path, fallback) {
-  const origin = origins[0];
+/** A return URL: the path from the request, on the site it came from if that is one of ours, else our first (no open redirect). */
+export function returnUrl(origins, path, fallback, from) {
+  const origin = from && origins.includes(from) ? from : origins[0];
   if (!origin) return null;
   const wanted = typeof path === 'string' && path.startsWith('/') ? path : fallback;
   // "//evil.example" starts with '/' but is protocol-relative.
@@ -38,8 +38,9 @@ export function sessionParams({ item, sku, recurring, success, cancel, reference
   params.set('line_items[0][price_data][currency]', catalog.currency);
   params.set('line_items[0][price_data][unit_amount]', String(item.amount));
   params.set('line_items[0][price_data][product_data][name]', item.name);
-  if (item.description) {
-    params.set('line_items[0][price_data][product_data][description]', item.description);
+  const description = [item.description, asSubscription && item.renews].filter(Boolean).join(' ');
+  if (description) {
+    params.set('line_items[0][price_data][product_data][description]', description);
   }
   if (asSubscription) {
     params.set('line_items[0][price_data][recurring][interval]', item.interval);
