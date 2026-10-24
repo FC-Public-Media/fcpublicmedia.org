@@ -23,7 +23,7 @@ includes the working copy people edit in and a weekly pull. From then on, type
 
 ## Site
 
-We use Ruby and Jekyll to construct our flat site, and Cloudflare to host.
+We use Ruby and Jekyll to construct our flat site, and Cloudflare to host. 
 
 The site deploys QR and passkey technology to support site functions without the presence
 of any backend. This is significant as a driver for our behavior: Cloud Companies want money
