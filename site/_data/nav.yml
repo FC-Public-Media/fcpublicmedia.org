@@ -1,18 +1,25 @@
 # Header (`primary`), the Donate button (`cta`) and the footer. A `label` with `items` makes a group.
+# `icon` names a drawing in _includes/nav-icon.html, shown beside the word.
 # See docs/site.md#data-files.
 
 primary:
   - title: Watch
+    icon: watch
     url: /watch/
   - title: Learn
+    icon: learn
     url: /classes/
   - title: Meet
+    icon: meet
     url: /meet/
   - title: Reserve
+    icon: reserve
     url: /reserve/
   - title: Join
+    icon: join
     url: /membership/
   - title: Submit
+    icon: submit
     url: /submit/
 
 cta:
