@@ -17,8 +17,7 @@ Changing anything on the box (our show fields, the schedule) takes a token: [mac
 | `sync-calendar.py` | a published ICS calendar | `site/_data/calendar.json` | by hand |
 | `propose-shows.py` | `cablecast.json`, `site/_shows/` | `site/_shows/<slug>.md` | `propose-shows.yml`, monthly |
 
-Standard-library Python except `sync-feeds.py` (PyYAML). Jobs commit only a changed file; when
-nothing changed, `sync-cablecast.yml` dispatches `deploy.yml` so expired features drop off.
+Standard-library Python except `sync-feeds.py` (PyYAML). Jobs commit only a changed file.
 
 - **cablecast.json**: titled programs, newest first; untitled records are only counted
   (`untitled_omitted`); programs without a VOD stay as `watchable: false`. `local` marks categories

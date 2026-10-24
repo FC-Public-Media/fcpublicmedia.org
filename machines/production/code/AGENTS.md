@@ -65,8 +65,7 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
   until `on` or a restart: the bay always comes on with Remote Control. More:
   `docs/station.md`. The depot (`10.209.1.1`) is unreachable from here; joining is Autumn's call.
 - We commit source; station-node builds and deploys. Build only with jekyll-enough in a browser.
-- Secrets never go in files or repos (Credential Manager; the certificate store for the Microsoft 365
-  key). The site repo is public: no personal data, names from bookings included.
+- Secrets never go in files or repos (Credential Manager). The site repo is public: no personal data, names from bookings included.
 - The board's wording is authoritative. `python` is the Store stub: use `uv run --no-project --python
   3.12 --with pyyaml ...`. Windows bites (read `GOTCHAS.log` first): CRLF from generators, Git Bash
   rewriting `/flags` and `a:b` (`MSYS_NO_PATHCONV=1`), tool calls eating backslashes in UNC paths.

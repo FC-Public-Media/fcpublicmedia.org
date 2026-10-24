@@ -19,7 +19,7 @@ nonprofit:
     refund.
 
 tiers:
-  - name: Sponsor
+  - name: Supporter
     price: 40
     summary: Support the organization without needing studio access.
     includes: [] # TODO

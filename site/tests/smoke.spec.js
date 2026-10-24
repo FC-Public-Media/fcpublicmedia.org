@@ -1,4 +1,4 @@
-// Every page in pages.js loads cleanly, plus navigation, the archive and the hosted-form pages.
+// Every page in pages.js loads cleanly, plus navigation, the archive and the request-form pages.
 // Needs no network. See docs/site.md.
 
 const { test, expect } = require('@playwright/test');
@@ -216,8 +216,8 @@ test.describe('archive', () => {
   });
 });
 
-// /book/ and /register/ frame a hosted form; both are unconfigured.
-test.describe('hosted forms', () => {
+// /book/ and /register/ will post to the site-worker; neither is built.
+test.describe('request forms', () => {
   for (const path of ['/book/', '/register/']) {
     test(`${path} says plainly that it is not set up yet`, async ({ page }) => {
       await page.goto(path);
@@ -225,9 +225,6 @@ test.describe('hosted forms', () => {
       const notice = page.locator('.transaction-todo');
       await expect(notice).toBeVisible();
       await expect(notice).toContainText('not set up yet');
-
-      // The setup instruction that keeps the form working on iPhones.
-      await expect(notice).toContainText('Anyone can respond');
     });
 
     test(`${path} still offers somewhere to go`, async ({ page }) => {
@@ -243,9 +240,9 @@ test.describe('hosted forms', () => {
       expect(contact, 'no way to reach a person').toBeGreaterThan(0);
     });
 
-    test(`${path} does not frame anything before it is configured`, async ({ page }) => {
+    test(`${path} frames nothing`, async ({ page }) => {
       await page.goto(path);
-      await expect(page.locator('.hosted-form iframe')).toHaveCount(0);
+      await expect(page.locator('main iframe')).toHaveCount(0);
     });
   }
 });

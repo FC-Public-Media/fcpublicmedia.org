@@ -70,8 +70,8 @@ gear:
 
   - gear: npm
     for: >
-      Deploys run here by hand: deploy-broker fetches wrangler with npx to
-      put the broker Worker up and give it its Stripe key.
+      Deploys run here by hand: the site-worker's bin/deploy fetches wrangler with npx to
+      put the site-worker Worker up and give it its Stripe key.
     package: npm
     provisioner: apt
     updates: apt

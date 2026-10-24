@@ -82,7 +82,7 @@ advocates:
       - id: G1
         says: Each vendor in the docs/advocate.md vendor table has a paragraph and a date somebody could read at a meeting.
       - id: G2
-        says: A decision is recorded about deploying twice, to Azure and to Cloudflare, rather than it continuing by default.
+        says: The site's public host is chosen and recorded in docs/site.md#deploy.
     out-of-scope:
       - Migrating off anything. That is a board decision with a budget attached.
       - Uptime monitoring. This is a reading pass, not a probe.

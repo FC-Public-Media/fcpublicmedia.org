@@ -3,6 +3,7 @@
 
 import importlib.util
 import pathlib
+import os
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parent / "reprice-subscriptions.py"
@@ -13,7 +14,7 @@ spec.loader.exec_module(reprice)
 
 ITEMS = {
     "membership:creator": {"amount": 7000, "interval": "year", "name": "Creator membership"},
-    "membership:sponsor": {"amount": 4000, "interval": "year", "name": "Sponsor membership"},
+    "membership:supporter": {"amount": 4000, "interval": "year", "name": "Supporter membership"},
 }
 
 
@@ -44,7 +45,7 @@ class WhoMoves(unittest.TestCase):
 
     def test_a_price_that_went_down_is_moved_too(self):
         # No grandfathering applies downward too.
-        move, _, _ = reprice.plan([subscription("sub_1", "membership:sponsor", 5000)], ITEMS)
+        move, _, _ = reprice.plan([subscription("sub_1", "membership:supporter", 5000)], ITEMS)
 
         self.assertEqual(len(move), 1)
         self.assertEqual(move[0]["to"], 4000)
@@ -147,6 +148,7 @@ class WhatIsSentToStripe(unittest.TestCase):
         self.assertEqual(done[0]["id"], "sub_good")
 
 
+@unittest.skipUnless(os.path.exists(reprice.PRICES), "no site-worker checkout beside this repository (or FCPM_SITE_WORKER)")
 class TheCatalogItReadsFrom(unittest.TestCase):
     def test_it_parses_the_generated_module(self):
         # Parses the real generated prices.js, banner and all.

@@ -4,7 +4,7 @@ lede: Save a seat. Classes are open to everyone, member or not.
 permalink: /register/
 ---
 
-{% include hosted-form.html key="register" %}
+{% include request-form.html key="register" %}
 
 ## What's coming up
 

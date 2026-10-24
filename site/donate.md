@@ -12,7 +12,7 @@ TODO &mdash; the case for support.
 
 ## Other ways to give
 
-- [Become a member]({{ '/membership/' | relative_url }}) &mdash; the Sponsor
+- [Become a member]({{ '/membership/' | relative_url }}) &mdash; the Supporter
   tier supports the organization without needing studio access
 - TODO &mdash; Colorado Gives Day, employer matching, in-kind equipment
   donations, planned giving

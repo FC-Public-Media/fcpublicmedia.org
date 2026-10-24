@@ -1,0 +1,5 @@
+# The site-worker (FC-Public-Media/site-worker, its own repository): the site's one seam with it.
+# Its base URL, the same for every page that talks to it. Empty (shipped): each page shows the record
+# for the member to send in instead. The site-worker's own side of the seam is ORIGINS in
+# its wrangler.jsonc. Either half moves by changing the other's one line.
+url: ""

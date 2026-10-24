@@ -8,7 +8,7 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
 <script type="application/json" id="upload-config">
 {
   "rpId": {{ up.rp_id | jsonify }},
-  "brokerUrl": {{ up.url | jsonify }},
+  "brokerUrl": {{ site.data.site_worker.url | jsonify }},
   "programsPath": {{ up.programs_path | jsonify }},
   "destination": {{ up.destination | jsonify }},
   "timezone": {{ up.timezone | jsonify }},

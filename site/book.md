@@ -4,15 +4,15 @@ lede: Tell us what you need and when. We'll confirm.
 permalink: /book/
 ---
 
-{% include hosted-form.html key="book" %}
+{% include request-form.html key="book" %}
 
 ## Before you book
 
 - Studios and bays are for [members]({{ '/membership/' | relative_url }}).
 - See [what's available]({{ '/reserve/' | relative_url }}) — the video
   studio, the podcast studio, and three editing bays.
-- Equipment is separate. That goes through
-  [email]({{ '/reserve/' | relative_url }}), not this form.
+- Equipment is separate: it is booked and paid for on
+  [Reserve]({{ '/reserve/' | relative_url }}#equipment), not here.
 
 Questions: {{ site.data.org.phone }} or
 [{{ site.data.org.email }}](mailto:{{ site.data.org.email }}).

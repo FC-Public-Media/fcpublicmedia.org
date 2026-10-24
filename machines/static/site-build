@@ -1,8 +1,8 @@
 #!/bin/sh
 # site-build DEST -- the public site, built from this checkout into DEST, so the LAN has it through a
 # cloud outage. publish.py runs it when site/ or this folder moved (sites.yml's `site`, its `from`),
-# and puts DEST up only if this succeeds. Jekyll is Debian's (gear.yml); the build is the deploy's
-# (deploy.yml) with site-lan.yml's url on top.
+# and puts DEST up only if this succeeds. Jekyll is Debian's (gear.yml); the build is smoke.yml's
+# with site-lan.yml's url on top.
 cd "$(dirname "$0")/../.." || exit 1
 [ -n "$1" ] || { echo "site-build DEST" >&2; exit 2; }
 exec jekyll build -q -s site -d "$1" --config site/_config.yml,machines/static/site-lan.yml
