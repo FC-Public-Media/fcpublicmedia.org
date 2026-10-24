@@ -11,8 +11,8 @@ Every hand-off to a paid or stateful service is an entry in `site/_data/provider
 | Key | What | Today |
 |---|---|---|
 | `tickets` | Class registration | Wix Events |
-| `membership` | Dues | Wix Pricing Plans |
-| `donate` | Donations | Wix Donations |
+| `membership` | Dues | The Wix membership form's tier field |
+| `donate` | Donations | Nothing (Wix's page is empty) |
 | `booking` | Studio and bay reservations | Booqable |
 | `submit` | Program submissions | Wix form and Dropbox |
 

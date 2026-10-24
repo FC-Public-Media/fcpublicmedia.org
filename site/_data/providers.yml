@@ -17,16 +17,16 @@ membership:
   url: ""
   status: placeholder
   note: >-
-    Currently Wix Pricing Plans. Joining is to be a Stripe checkout started by
-    the site-worker, each paid join a row in FCPM's log; the button is not
-    built.
+    Currently the Wix membership form's tier field. Joining is to be a Stripe
+    checkout started by the site-worker, each paid join a row in FCPM's log;
+    the button is not built.
 
 donate:
   label: Donations
   provider: ""
   url: ""
   status: placeholder
-  note: Currently a Wix Donations widget. Needs a decision.
+  note: Wix never took donations (its /donate page is empty). Stripe, like dues, is the likely answer.
 
 booking:
   label: Studio and bay reservations
