@@ -62,7 +62,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Deploy and domain
 
 - Ruby 3.2.2 is end of life; 3.3 or 3.4 is a one-line change. site/.ruby-version
-- Two Cloudflare accounts: Pages and the fcpublicmedia.org zone on FCPM's org account; the site-worker and the old `fcpm` Worker on Autumn's business account (autumn-e2c). Once the zone is on the org account, `new` (a CNAME to `fcpm.autumn-e2c.workers.dev`) is cross-account and Cloudflare refuses it (error 1014), so the check-in posters need `new` served from the org account before the nameservers move. A Workers custom domain for the site-worker would need it on the org account too.
+- FCPM's org Cloudflare account holds Pages (fcpm-new, fcpm-wix), the site-worker and, after the zone move, fcpublicmedia.org; one deploy token (the keychain's `cloudflare`), DNS its own (`cloudflare-dns`). Only the old `fcpm` Worker behind `new` is on Autumn's business account (autumn-e2c) until `new` moves to fcpm-new at the zone cutover.
 - Nameservers to Cloudflare (apex kept on Wix by pointing), then the www and apex cutover: not scheduled. docs/site.md#domain-and-dns
 - Member subdomains need the zone on Cloudflare, a wildcard and a hostname-to-folder Worker (the site-worker, or a host's own rules). FC-Public-Media/site-worker
 - Member builds set no `baseurl`, so `/member-sites/<name>/` on www breaks.

@@ -39,29 +39,19 @@ groups:
         issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
 
   cloudflare:
-    what: deploys the site-worker and sets its secrets; Workers only.
+    what: deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV.
     form: env
-    used by: "the site-worker's bin/deploy (FC-Public-Media/site-worker)"
+    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout"
     keys:
       CLOUDFLARE_API_TOKEN:
-        may: edit Workers on Autumn's business account (autumn-e2c), the "Edit Cloudflare Workers" template
-        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): My Profile, API Tokens, Create Token"
-        issued: not held
-
-  cloudflare-pages:
-    what: publishes static sites to Cloudflare Pages on FCPM's Cloudflare account (the org account); the Wix copy first (wix.fcpublicmedia.org, later www).
-    form: env
-    used by: "wrangler pages deploy for the Wix copy (FC-Public-Media/wix)"
-    keys:
-      CLOUDFLARE_API_TOKEN:
-        may: edit Cloudflare Pages on FCPM's Cloudflare account (the org account), nothing else
-        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit"
-        issued: not held
+        may: "Account: Cloudflare Pages Edit, Workers Scripts Edit, Workers KV Storage Edit; FCPM's org account only"
+        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token, those three permissions (or edit the Pages token to add the two Workers ones; its value stays)"
+        issued: 2026-10-24 as the Pages token; Workers permissions added later
       CLOUDFLARE_ACCOUNT_ID:
         shape: hex32
         may: names FCPM's Cloudflare account, the org account (not secret; kept with its token)
         from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): the account's home page, Account ID"
-        issued: not held
+        issued: 2026-10-24
 
   cloudflare-dns:
     what: moves fcpublicmedia.org's zone off Wix and keeps its records; every row in docs/site.md's zone table, mail first.
