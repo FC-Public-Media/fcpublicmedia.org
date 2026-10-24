@@ -44,23 +44,23 @@ groups:
     used by: "machines/digitization/deploy-broker"
     keys:
       CLOUDFLARE_API_TOKEN:
-        may: edit Workers on FCPM's account (the "Edit Cloudflare Workers" template)
-        from: "Cloudflare dashboard: My Profile, API Tokens, Create Token"
+        may: edit Workers on Autumn's business account (autumn-e2c), the "Edit Cloudflare Workers" template
+        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): My Profile, API Tokens, Create Token"
         issued: not held
 
   cloudflare-pages:
-    what: publishes static sites to Cloudflare Pages on FCPM's account; the Wix copy first (wix.fcpublicmedia.org, later www).
+    what: publishes static sites to Cloudflare Pages on Autumn's business account (autumn-e2c); the Wix copy first (wix.fcpublicmedia.org, later www).
     form: env
     used by: "wrangler pages deploy for the Wix copy (FC-Public-Media/wix)"
     keys:
       CLOUDFLARE_API_TOKEN:
-        may: edit Cloudflare Pages on FCPM's account, nothing else
-        from: "Cloudflare dashboard, FCPM's account: My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit"
+        may: edit Cloudflare Pages on Autumn's business account (autumn-e2c), nothing else
+        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit"
         issued: not held
       CLOUDFLARE_ACCOUNT_ID:
         shape: hex32
-        may: names FCPM's Cloudflare account (not secret; kept with its token)
-        from: "Cloudflare dashboard, FCPM's account: the account's home page, Account ID"
+        may: names Autumn's business account, autumn-e2c (not secret; kept with its token)
+        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): the account's home page, Account ID"
         issued: not held
 
   cloudflare-dns:
@@ -70,7 +70,7 @@ groups:
     keys:
       CLOUDFLARE_API_TOKEN:
         may: edit DNS on the fcpublicmedia.org zone only
-        from: "Cloudflare dashboard, FCPM's account: My Profile, API Tokens, Create Token, Custom token: Zone, DNS, Edit; Zone Resources: fcpublicmedia.org"
+        from: "Cloudflare dashboard, Autumn's business account (autumn-e2c): My Profile, API Tokens, Create Token, Custom token: Zone, DNS, Edit; Zone Resources: fcpublicmedia.org"
         issued: not held
 
   m365:
