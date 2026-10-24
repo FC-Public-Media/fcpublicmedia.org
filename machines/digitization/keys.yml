@@ -36,7 +36,7 @@ groups:
         prefix: rk_live_
         may: create Checkout Sessions, nothing else (a restricted key)
         from: "Stripe dashboard, live mode: Developers, API keys, Restricted keys"
-        issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
+        issued: 2026-10-24, by Autumn; on the site-worker from the live switch (planned Wednesday 2026-10-28)
 
   cloudflare:
     what: "deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV"
