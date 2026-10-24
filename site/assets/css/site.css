@@ -195,6 +195,10 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   --ink-soft: color-mix(in srgb, var(--paper) 66%, transparent);
   --rule: color-mix(in srgb, var(--paper) 24%, transparent);
 }
+/* Without color-mix() (Safari before 16.2) the two above are unusable: full-strength stand-ins. */
+@supports not (color: color-mix(in srgb, red, red)) {
+  .band-ink { --ink-soft: var(--paper); --rule: currentColor; }
+}
 .band-ink h2 { color: var(--paper); }
 .band-ink a { color: var(--paper); }
 
@@ -204,9 +208,16 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .site-head {
   border-bottom: 1px solid var(--slate);
   position: sticky; top: 0; z-index: 20;
-  background: color-mix(in srgb, var(--masthead) 94%, transparent);
+  background: var(--masthead);
   color: var(--masthead-ink);
-  backdrop-filter: blur(8px);
+}
+/* Behind @supports, not a second declaration: with var() inside, Safari before 16.2 (the iPad Air 2's
+   iOS 15) would accept the line and then paint nothing, leaving light text on the light page. */
+@supports (color: color-mix(in srgb, red, red)) {
+  .site-head {
+    background: color-mix(in srgb, var(--masthead) 94%, transparent);
+    backdrop-filter: blur(8px);
+  }
 }
 /* :not(.btn): `.site-head a` outranks `.btn-cta` and would put light text on yellow. */
 .site-head a:not(.btn) { color: inherit; }
