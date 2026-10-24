@@ -39,13 +39,38 @@ groups:
         issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
 
   cloudflare:
-    what: deploys the broker Worker and sets its secrets.
+    what: deploys the broker Worker and sets its secrets; Workers only.
     form: env
     used by: "machines/digitization/deploy-broker"
     keys:
       CLOUDFLARE_API_TOKEN:
         may: edit Workers on FCPM's account (the "Edit Cloudflare Workers" template)
         from: "Cloudflare dashboard: My Profile, API Tokens, Create Token"
+        issued: not held
+
+  cloudflare-pages:
+    what: publishes static sites to Cloudflare Pages on FCPM's account; the Wix copy first (wix.fcpublicmedia.org, later www).
+    form: env
+    used by: "wrangler pages deploy for the Wix copy (FC-Public-Media/wix)"
+    keys:
+      CLOUDFLARE_API_TOKEN:
+        may: edit Cloudflare Pages on FCPM's account, nothing else
+        from: "Cloudflare dashboard, FCPM's account: My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit"
+        issued: not held
+      CLOUDFLARE_ACCOUNT_ID:
+        shape: hex32
+        may: names FCPM's Cloudflare account (not secret; kept with its token)
+        from: "Cloudflare dashboard, FCPM's account: the account's home page, Account ID"
+        issued: not held
+
+  cloudflare-dns:
+    what: moves fcpublicmedia.org's zone off Wix and keeps its records; every row in docs/site.md's zone table, mail first.
+    form: env
+    used by: "the zone move off Wix"
+    keys:
+      CLOUDFLARE_API_TOKEN:
+        may: edit DNS on the fcpublicmedia.org zone only
+        from: "Cloudflare dashboard, FCPM's account: My Profile, API Tokens, Create Token, Custom token: Zone, DNS, Edit; Zone Resources: fcpublicmedia.org"
         issued: not held
 
   m365:
