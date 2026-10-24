@@ -13,8 +13,9 @@ case "${1:-}" in
     exit 2 ;;
   *) echo "usage: deploy-broker live" >&2; exit 2 ;;
 esac
+command -v npx >/dev/null || { echo "deploy-broker: no npx here: sudo apt-get install npm (gear.yml)" >&2; exit 2; }
 cd "$WORKER"
-npm test
+node --test test/*.test.mjs
 exec python3 -I "$HERE/keys" run cloudflare stripe-live -- sh -c '
   npx --yes wrangler deploy &&
   printf "%s" "$PUBLIC_STRIPE_API_KEY" | npx --yes wrangler secret put PUBLIC_STRIPE_API_KEY'

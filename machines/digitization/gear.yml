@@ -68,10 +68,21 @@ gear:
     restart-tier: none
     holds: "nothing of its own"
 
+  - gear: npm
+    for: >
+      Deploys run here by hand: deploy-broker fetches wrangler with npx to
+      put the broker Worker up and give it its Stripe key.
+    package: npm
+    provisioner: apt
+    updates: apt
+    restart-tier: none
+    holds: "wrangler's cache in ~/.npm; its login is the keychain's cloudflare group, not ~/.wrangler"
+
   - gear: zenity
     for: >
       The door's one question on this screen: the signing key's passphrase
-      (machines/kiosk/askpass), so it never passes through a page.
+      (machines/kiosk/askpass), so it never passes through a page; and the
+      keychain's (keys take), so a key is never typed into a chat or a log.
     package: zenity
     provisioner: apt
     updates: apt
