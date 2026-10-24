@@ -11,7 +11,9 @@ viewers here instead, and back to the channel when it returns. The picture is th
 lockup (site/_data/brand.json, drawn by rsvg-convert) with the time in the room, at 1080p30 and 48 kHz
 stereo like the channel, so YouTube takes the two as a pair. The slate is decoded once and repeated,
 and encoded by the GPU when it can be: about a tenth of a core. The key is ~/.config/fcpm/youtube.key, as
-the relay's; nothing here prints it. ffmpeg and the system python. See PROFILE.md, "To YouTube".
+the relay's; nothing here prints it. If ffmpeg sends nothing for a minute (YouTube dropped the
+connection and ffmpeg hung on it, as on 2026-10-22), it is ended and this exits, so the crew starts it
+again. ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import html
 import json
@@ -19,6 +21,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import threading
 import time
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -31,6 +34,7 @@ INGEST = "rtmps://b.rtmp.youtube.com/live2"     # YouTube's backup server; the a
 W, H, FPS = 1920, 1080, 30
 ROOM_TZ = "America/Denver"
 GPU = "/dev/dri/renderD128"
+STALL = 60                                      # seconds with nothing sent before ffmpeg is ended
 
 
 def slate():
@@ -105,9 +109,30 @@ def main(args):
         key = KEY.read_text().strip() if KEY.exists() else ""
     out[-2] = key
     note("sending", "the slate to YouTube's backup ingest")
-    code = subprocess.run(command(out), env=env).returncode
-    note("stopped", f"ffmpeg ended ({code})")
-    sys.exit(code)
+    sys.exit(send(out, env))
+
+
+def send(out, env):
+    """ffmpeg to `out` until it ends, or until it has sent nothing for STALL seconds; its exit code."""
+    p = subprocess.Popen(command(["-progress", "pipe:1", "-stats_period", "5"] + out), env=env,
+                         stdout=subprocess.PIPE, text=True)
+    sent = {"bytes": -1, "at": time.time()}
+
+    def watch():
+        for line in p.stdout:
+            k, _, v = line.strip().partition("=")
+            if k == "total_size" and v.isdigit() and int(v) > sent["bytes"]:
+                sent.update(bytes=int(v), at=time.time())
+    threading.Thread(target=watch, daemon=True).start()
+    while p.poll() is None:
+        time.sleep(5)
+        if time.time() - sent["at"] > STALL:
+            note("stalled", f"nothing sent for {STALL} s; ffmpeg ended, to be started again")
+            p.kill()
+            p.wait()
+            return 1
+    note("stopped", f"ffmpeg ended ({p.returncode})")
+    return p.returncode or 1
 
 
 if __name__ == "__main__":
