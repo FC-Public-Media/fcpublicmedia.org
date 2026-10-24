@@ -16,7 +16,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/production/bay/runnables.proven
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
-- Page copy: `/contact/` cites a deleted `/api`; `/donate/` says it is not in the nav, and it is. site/contact.md, site/donate.md
+- Page copy: `/contact/` cites a deleted `/api`. site/contact.md
 - Unused: `_includes/community.html`, `countdown.html`, `checkin-card.html`; `watch.yml` `live_url`, `live_provider`, `categories`.
 - `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.

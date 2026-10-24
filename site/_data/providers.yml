@@ -17,7 +17,7 @@ membership:
   url: ""
   status: placeholder
   note: >-
-    Currently Wix Pricing Plans. Target state is Entra ID sign-in for identity
+    Currently the Wix membership form's tier field. Target state is Entra ID sign-in for identity
     plus a payment provider for dues; the payment redirect is what promotes an
     account to the `member` role. See README, "Members and sign-in".
 
@@ -26,7 +26,7 @@ donate:
   provider: ""
   url: ""
   status: placeholder
-  note: Currently a Wix Donations widget. Needs a decision.
+  note: Wix never took donations (its /donate page is empty). Stripe, like dues, is the likely answer.
 
 booking:
   label: Studio and bay reservations
