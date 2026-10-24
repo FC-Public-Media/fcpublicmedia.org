@@ -48,6 +48,26 @@ groups:
         from: "Cloudflare dashboard: My Profile, API Tokens, Create Token"
         issued: not held
 
+  m365:
+    what: the site-worker adds rows to the log, a list on the Operations SharePoint site, and nothing else.
+    form: env
+    used by: "the site-worker's relays (join, rooms, classes, check-in), given to it as secrets"
+    keys:
+      M365_TENANT_ID:
+        shape: guid
+        may: names FCPM's Microsoft 365 tenant (not secret; kept with the other two)
+        from: "entra.microsoft.com: App registrations, FCPM site-worker, Overview, Directory (tenant) ID"
+        issued: not held
+      M365_CLIENT_ID:
+        shape: guid
+        may: names the app registration (not secret; kept with the other two)
+        from: "entra.microsoft.com: App registrations, FCPM site-worker, Overview, Application (client) ID"
+        issued: not held
+      M365_CLIENT_SECRET:
+        may: "sign in as the app; Graph Sites.Selected, granted write on the Operations site only"
+        from: "entra.microsoft.com: App registrations, FCPM site-worker, Certificates & secrets, New client secret (the Value, shown once)"
+        issued: not held. Expires on the date set when it was made; the ledger's issued line carries that date
+
   cablecast:
     what: changes to channel 97's Cablecast (reads need no key).
     form: raw

@@ -7,6 +7,7 @@
   keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment
 """
 import os
+import re
 import pathlib
 import subprocess
 import sys
@@ -14,6 +15,7 @@ import sys
 import yaml
 
 HERE = pathlib.Path(__file__).resolve().parent
+SHAPES = {"guid": re.compile(r"[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}")}
 LEDGER = HERE / "keys.yml"
 
 
@@ -57,12 +59,17 @@ def facts(groups):
             where = f"{name} {key}" + (f" ({prefix}…)" if prefix else "")
             if not value:
                 yield False, f"key {where} in {short(path)}", f"keys take {name} {key}; get one from {spec['from']}"
-            elif prefix and not value.startswith(prefix):
+            elif not fits(spec, value):
                 yield False, f"key {where} in {short(path)} has the wrong kind", f"keys take {name} {key}"
             else:
                 yield True, f"key {where} in {short(path)}", None
         if path.exists() and path.stat().st_mode & 0o077:
             yield False, f"key file {short(path)} readable only by its owner", f"chmod 600 {path}"
+
+
+def fits(spec, value):
+    shape = SHAPES.get(spec.get("shape"))
+    return value.startswith(spec.get("prefix", "")) and (not shape or shape.fullmatch(value))
 
 
 def short(path):
@@ -106,15 +113,18 @@ def take(groups, name, key):
     text = f"{group['what']}\n\n{key}: {spec['may']}.\nFrom {spec['from']}."
     if prefix:
         text += f"\nIt starts with {prefix}"
+    if spec.get("shape"):
+        text += f"\nIt looks like 00000000-0000-0000-0000-000000000000"
     for _ in range(3):
         value = ask(f"Keychain: {name}", text)
         if value is None:
             sys.exit("keys: the window was closed; nothing stored")
-        if not prefix or value.startswith(prefix):
+        if fits(spec, value):
             store(group, key, value)
             print(f"keys: stored {name} {key} in {short(group['path'])}")
             return
-        text = f"That one does not start with {prefix}. Paste the {key} again.\n\n" + text
+        kind = f"start with {prefix}" if prefix else f"look like a {spec.get('shape')}"
+        text = f"That one does not {kind}. Paste the {key} again.\n\n" + text
     sys.exit("keys: three tries without the right kind of key; nothing stored")
 
 
