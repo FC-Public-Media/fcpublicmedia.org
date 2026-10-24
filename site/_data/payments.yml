@@ -72,10 +72,10 @@ booqable:
   # The dashboard subdomain for the API, not the snippet's UUID. Only for a build-time catalog sync.
   company_slug: ""
 
-  # Mount points Booqable's script hydrates. Restoring the datepicker means removing two site.css rules.
+  # Mount points Booqable's script hydrates, in page order. Booqable's own checkout takes the money.
   components:
-    # - class: booqable-datepicker
-    #   what: Pick the dates first, so everything below shows real availability.
+    - class: booqable-datepicker
+      what: Pick the dates first, so everything below shows real availability.
     - class: booqable-product-list
-      attributes: 'data-per="12" data-show-search="true"'
-      what: Every product, twelve to a page, with the search field built in.
+      attributes: 'data-per="24" data-show-search="true"'
+      what: Every product, twenty-four to a page (one page today), with the search field built in.

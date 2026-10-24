@@ -318,3 +318,33 @@ test.describe('archive airing history', () => {
     await expect(page.locator('[data-archive] li:not([hidden])')).toHaveCount(0);
   });
 });
+
+// The picker is ours and works without Booqable answering; the store's contents are theirs.
+test.describe('reserve', () => {
+  test('equipment opens as a list and switches to tiles', async ({ page }) => {
+    await page.goto('/reserve/');
+
+    const store = page.locator('.booqable-store');
+    const tiles = page.locator('.booqable-view button[data-view="tiles"]');
+    const list = page.locator('.booqable-view button[data-view="list"]');
+
+    // Visible only once booqable-view.js has run.
+    await expect(tiles).toBeVisible();
+    await expect(store).toHaveClass(/\bis-list\b/);
+    await expect(list).toHaveAttribute('aria-pressed', 'true');
+
+    await tiles.click();
+    await expect(store).not.toHaveClass(/\bis-list\b/);
+    await expect(tiles).toHaveAttribute('aria-pressed', 'true');
+    await expect(list).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('the equipment view is remembered', async ({ page }) => {
+    await page.goto('/reserve/');
+    await page.locator('.booqable-view button[data-view="tiles"]').click();
+
+    await page.reload();
+    await expect(page.locator('.booqable-view button[data-view="tiles"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.booqable-store')).not.toHaveClass(/\bis-list\b/);
+  });
+});

@@ -35,5 +35,4 @@
 - name: Equipment Checkout
   activities: [video, audio, photo]
   summary: >-
-    Arranged by email rather than through the booking calendar. The catalogue
-    is further down this page.
+    Booked and checked out online, further down this page.

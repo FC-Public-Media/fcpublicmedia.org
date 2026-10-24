@@ -241,11 +241,11 @@ def carry():
         row = {"repo": full, "ref": r, "sha": sha}
         if out.returncode == 0:
             row.update(state="carried", did="carried out to GitHub")
-        elif "non-fast-forward" in out.stderr or "fetch first" in out.stderr or "rejected" in out.stderr:
+        elif "non-fast-forward" in out.stderr or "fetch first" in out.stderr:   # not a bare "rejected": GitHub's refusals say that too
             row.update(state="diverged", did="GitHub's %s does not fast-forward to ours; left for a person" % r)
         else:
             row.update(state="error", error=out.stderr.strip()[-300:])
-            left.append([full, r])      # GitHub out of reach: again next pass
+            left.append([full, r])      # out of reach, or refused (a missing `workflow` scope): again next pass
         rows.append(row)
     st["pending"] = left
     os.makedirs(STATE_DIR, exist_ok=True)

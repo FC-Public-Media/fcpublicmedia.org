@@ -1105,58 +1105,73 @@ label.btn { cursor: pointer; }
 }
 
 /* --- The Booqable store on /reserve/ -------------------------------------- */
-/* #main .booqable-store outranks their later-injected sheet. Never target hashed class names. */
+/* Tiles are Booqable's own and untouched. List is ours, only under .is-list, so a markup change
+   on their side breaks the list and never the checkout. #main outranks their later-injected
+   sheet. Never target hashed class names. See docs/payments.md#booqable. */
 
 #main .booqable-store { padding-bottom: 1rem; }
 
-/* Their cart, portaled to <body>; the store is inside <main>, so only the portal matches. */
-body > div:has(.booqable-component) { display: none !important; }
+/* Tiles | List, set by assets/js/booqable-view.js; hidden until that script runs. */
+.booqable-view {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin: 1.5rem 0 0.75rem;
+}
+.booqable-view button {
+  font: inherit;
+  font-size: var(--step--1);
+  font-weight: 650;
+  padding: 0.4rem 0.9rem;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.booqable-view button:hover { background: var(--ink); color: var(--paper); }
+.booqable-view button[aria-pressed="true"] {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--signal-ink);
+}
 
-/* The rental-period notice and cart buttons: no datepicker on the page, so no checkout. */
-#main .booqable-store .booqable-product-list-notice,
-#main .booqable-store .booqable-product-inner .bq-button,
-#main .booqable-store .bq-cart-button,
-#main .booqable-store [class*="CartButton"],
-#main .booqable-store [class*="cart-launcher"] { display: none !important; }
+/* List: their grid of cards becomes one column of rows. */
+#main .booqable-store.is-list .booqable-product-list-grid { display: block !important; padding: 0; }
 
-/* Their grid of cards becomes one column of rows. */
-#main .booqable-store .booqable-product-list-grid { display: block !important; padding: 0; }
-
-#main .booqable-store .booqable-product,
-#main .booqable-store .booqable-product-wrapper {
+#main .booqable-store.is-list .booqable-product,
+#main .booqable-store.is-list .booqable-product-wrapper {
   min-width: 0 !important; max-width: none !important; width: auto !important; margin: 0;
 }
 
-#main .booqable-store .booqable-product-inner {
+#main .booqable-store.is-list .booqable-product-inner {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.9rem;
   border-radius: 0;
   box-shadow: none;
-  background: transparent;
   border: 0;
   border-bottom: 1px solid var(--rule);
   padding: 0.6rem 0.2rem;
   height: auto;
 }
-#main .booqable-store .booqable-product:first-child .booqable-product-inner {
+#main .booqable-store.is-list .booqable-product:first-child .booqable-product-inner {
   border-top: 1px solid var(--rule);
 }
 
 /* The thumbnail: matched by structure, since the only classes here are hashed. */
-#main .booqable-store .booqable-product-inner > div:first-child {
+#main .booqable-store.is-list .booqable-product-inner > div:first-child {
   flex: 0 0 auto;
   width: 3.2rem;
   height: 3.2rem;
   border: 1px solid var(--rule);
   border-radius: 3px;
   overflow: hidden;
-  background: var(--paper);
+  background: #fff;
   position: relative;
 }
-
-#main .booqable-store .booqable-product-inner > div:first-child > span > * {
+#main .booqable-store.is-list .booqable-product-inner > div:first-child > span > * {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1166,9 +1181,7 @@ body > div:has(.booqable-component) { display: none !important; }
   margin: 0;
   border: 0;
 }
-
-/* Placeholder and photo stacked, so the blurry one shows until the lazy one loads. */
-#main .booqable-store .booqable-product-inner > div:first-child img {
+#main .booqable-store.is-list .booqable-product-inner > div:first-child img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1176,44 +1189,31 @@ body > div:has(.booqable-component) { display: none !important; }
   object-fit: cover;
 }
 
-/* No photo: their icon, re-centred in this smaller box. */
-#main .booqable-store .booqable-product-inner span.bq-no-photo {
-  display: grid;
-  place-items: center;
-  padding-bottom: 0;
-  border-bottom: 0;
-  background: var(--paper-alt);
-}
-#main .booqable-store .booqable-product-inner i.bq-no-photo {
-  position: static;
-  font-size: 14px;
-  margin: 0;
-  transform: none;
-  color: var(--ink-soft);
-  opacity: 0.5;
-}
-
-/* The flexible middle of the row: name and price. */
-#main .booqable-store .bq-details {
+/* The rest of the row: name, availability, price, then their cart button last. */
+#main .booqable-store.is-list .bq-details {
   flex: 1 1 auto;
   min-width: 0;
   height: auto;
   padding: 0;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.9rem;
 }
-
-#main .booqable-store .bq-product-title-wrapper,
-#main .booqable-store .bq-product-title-wrapper.bq-has-prices {
+#main .booqable-store.is-list .bq-details > div:first-child { order: 2; flex: 0 0 auto; position: static; }
+#main .booqable-store.is-list .bq-details .bq-status { position: static; margin: 0; }
+#main .booqable-store.is-list .bq-product-title-wrapper,
+#main .booqable-store.is-list .bq-product-title-wrapper.bq-has-prices {
+  order: 1;
   flex: 1 1 auto;
   min-width: 0;
   height: auto;
   padding-right: 0;
 }
+#main .booqable-store.is-list .bq-price-details { order: 3; }
+#main .booqable-store.is-list .bq-details > .bq-button { order: 4; position: static; flex: 0 0 auto; margin: 0; }
 
 /* Names wrap to two lines: the end tells them apart ("...for Sony E", "...for Canon"). */
-#main .booqable-store .bq-product-name {
+#main .booqable-store.is-list .bq-product-name {
   white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1227,117 +1227,28 @@ body > div:has(.booqable-component) { display: none !important; }
 }
 
 /* Prices right-aligned and unwrapped, so they line up down the page. */
-#main .booqable-store .bq-price-details {
+#main .booqable-store.is-list .bq-price-details {
   flex: 0 0 auto;
+  min-width: 8.5rem;
   margin-top: 0;
   text-align: right;
   white-space: nowrap;
   font-size: var(--step--1);
   color: var(--ink-soft);
 }
-#main .booqable-store .bq-price-details .bq-price {
+#main .booqable-store.is-list .bq-price-details .bq-price {
+  margin-left: 0.4em;
   color: var(--ink);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
-/* Search: the site's own field; the icon is a label, not a button. */
-#main .booqable-store .bq-product-search-component {
-  display: flex;
-  align-items: stretch;
-  margin-bottom: 1.25rem;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-}
-#main .booqable-store .bq-product-search-icon {
-  /* Theirs is absolute, over the placeholder text. */
-  position: static !important;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  border: 0;
-  border-radius: 0;
-  pointer-events: none;
-}
-#main .booqable-store .bq-product-search-icon i { color: var(--ink-soft) !important; }
-#main .booqable-store .bq-product-search-input {
-  flex: 1 1 auto;
-  font: inherit;
-  font-size: var(--step-0);
-  padding: 0.6rem 0.75rem 0.6rem 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  /* Theirs is #213b47 — near-black, on our near-black. */
-  color: var(--ink) !important;
-  box-shadow: none;
-  outline: 0;
-}
-#main .booqable-store .bq-product-search-component:focus-within {
-  outline: 3px solid var(--signal);
-  outline-offset: 2px;
-}
-
-/* Pagination: the site's button; the current page is not pressable. */
-#main .booqable-store .booqable-pagination { margin-top: 1.5rem; }
-#main .booqable-store .bq-pagination-inner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: flex-start;
-}
-#main .booqable-store .bq-pagination-page,
-#main .booqable-store .bq-pagination-next {
-  min-width: 2.4rem;
-  padding: 0.45rem 0.6rem;
-  border: 2px solid var(--ink);
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: var(--step--1);
-  font-weight: 650;
-  text-align: center;
-  box-shadow: none;
-}
-#main .booqable-store .bq-pagination-page:hover,
-#main .booqable-store .bq-pagination-next:hover {
-  background: var(--ink);
-  color: var(--paper);
-}
-#main .booqable-store .bq-pagination-page button {
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-
-/* The current page carries .bq-branded; !important and one more class beat that rule below. */
-#main .booqable-store .bq-pagination-page.bq-pagination-current {
-  background-color: var(--signal) !important;
-  border-color: var(--signal);
-  color: var(--signal-ink) !important;
-}
-
-/* Their brand blue is set on .bq-branded with !important (Booqable: Settings, Online Bookings). */
-#main .booqable-store .bq-branded,
-#main .booqable-store .bq-branded-font-color {
-  background-color: transparent !important;
-  color: var(--ink) !important;
-}
-
-/* Narrow rows: name above price. */
+/* Narrow rows: name on its own line, the rest beneath it. */
 @media (max-width: 30rem) {
-  #main .booqable-store .bq-details {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0.1rem 0.9rem;
-  }
-  #main .booqable-store .bq-product-title-wrapper,
-  #main .booqable-store .bq-product-title-wrapper.bq-has-prices { flex: 1 1 100%; }
-  #main .booqable-store .bq-price-details { text-align: left; }
+  #main .booqable-store.is-list .bq-details { flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  #main .booqable-store.is-list .bq-product-title-wrapper,
+  #main .booqable-store.is-list .bq-product-title-wrapper.bq-has-prices { flex: 1 1 100%; }
+  #main .booqable-store.is-list .bq-price-details { min-width: 0; margin-left: auto; }
 }
 
 /* --- The pass (/check-in/, _layouts/pass.html): fills the screen, never scrolls --- */

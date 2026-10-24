@@ -27,18 +27,12 @@ By phone: {{ site.data.org.phone }}
 
 ## Equipment
 
-By email: [{{ site.data.org.equipment_email }}](mailto:{{ site.data.org.equipment_email }})
+Pick your dates, add what you need, and check out. Checkout asks you to
+accept FC Public Media's Equipment Terms and Conditions and takes a
+refundable security deposit.
 
-In your email please include:
-
-1. Your contact information.
-2. What equipment you will need or are looking for.
-3. The dates of your production.
-
-All equipment requests must be submitted at least one week in advance. All
-users must provide a valid credit card for late fees and incidentals. Any User
-of FC Public Media equipment must agree to FC Public Media's Equipment Terms
-and Conditions.
+Anything unusual, or would rather not book online? Email
+[{{ site.data.org.equipment_email }}](mailto:{{ site.data.org.equipment_email }}).
 
 {% include booqable.html %}
 
