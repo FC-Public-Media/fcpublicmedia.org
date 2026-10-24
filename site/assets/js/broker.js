@@ -1,8 +1,8 @@
-// Hash, sign and post one broker action, so no page can skip the intent binding. See site-worker/README.md.
+// Hash, sign and post one broker action, so no page can skip the intent binding. See FC-Public-Media/site-worker.
 
 import { signIn } from './passkey.js';
 
-/** SHA-256 of the UTF-8 bytes, base64url unpadded; must match contentHash in site-worker/src/intent.js. */
+/** SHA-256 of the UTF-8 bytes, base64url unpadded; must match contentHash in the site-worker's src/intent.js. */
 export async function contentHash(text) {
   const bytes = new TextEncoder().encode(String(text));
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));

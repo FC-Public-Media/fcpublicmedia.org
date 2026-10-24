@@ -16,7 +16,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
 | `check.sh` | each gear present (dpkg), the crew's supervisor up, origin.local answering as this checkout's origin, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, deep `.local` names resolving here, and every key in `keys.yml` held: `ok` or `WANTED` with the fix. `fcpm check` |
-| `keys.yml`, `keys`, `deploy-site-worker` | the keychain: every secret FCPM's deploys and jobs use, by group, and where each lives. See Keys |
+| `keys.yml`, `keys` | the keychain: every secret FCPM's deploys and jobs use, by group, and where each lives. See Keys |
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
 | role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
 
@@ -52,10 +52,9 @@ files beside it). Keys used together sit in one file, so a test key never meets 
 - `keys` lists what is held and what is wanted, never a value; `fcpm check` says the same.
 - `keys take GROUP KEY` asks for a value in a window on this screen and refuses the wrong prefix.
 - `keys run GROUP... -- CMD` hands groups to one command as environment variables.
-- `deploy-site-worker live` deploys the site-worker Worker with `cloudflare` and `stripe-live`; the Stripe key goes to
-  wrangler on stdin.
-- `keys run stripe-test -- node site-worker/try-checkout.mjs` starts one test-mode Checkout Session through the
-  site-worker's own code, here, and prints its page.
+- In a site-worker checkout (FC-Public-Media/site-worker): `keys run cloudflare stripe-live -- sh bin/deploy`
+  deploys it, the Stripe key to wrangler on stdin; `keys run stripe-test -- node try-checkout.mjs` starts one
+  test-mode Checkout Session through its own code, here, and prints its page.
 
 GitHub's repository secrets are not part of it: nothing is kept there that this relies on. Where the keychain
 lives later (a vault on the LAN, a card of its own) is open; moving it is the `dir:` line and the files. The

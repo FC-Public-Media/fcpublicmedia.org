@@ -1,4 +1,4 @@
-// Verifies a v1.<payload>.<signature> email claim; also imported by the broker, so no DOM globals.
+// Verifies a v1.<payload>.<signature> email claim. The site-worker carries a copy (src/claims.js), so no DOM globals; change both.
 // In the browser this catches mangled links; trust lives in the whole token. See docs/identity.md.
 
 const VERSION = 'v1';

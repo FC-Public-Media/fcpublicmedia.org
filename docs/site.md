@@ -24,7 +24,6 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 |---|---|
 | `AGENTS.md`, `README.md`, `docs/` | standing orders, front page, everything written down |
 | `sites.yml`, `site-template/`, `member-site-core/` | the site list and member sites ([members.md](members.md#sitesyml)) |
-| `site-worker/` | the site-worker, deployed on its own ([site-worker/README.md](../site-worker/README.md)) |
 | `bin/` | `build-sites.py`, `build-kiosk.py`, `make-wallpaper.py` and their tests |
 | `brand/` | the brand; the studio screens are the kiosk's ([kiosk.md](kiosk.md)) |
 | `machines/`, `troves/`, `attendant/` | the station ([station.md](station.md)) |
@@ -32,7 +31,9 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 
 - `site/_data` reads only what is inside `site/`; Jekyll's `data_dir` cannot leave the source.
 - The root reaches down: syncs write `site/_data/`, `bin/build-kiosk.py` reads it, and
-  `site-worker/src/index.js` imports `site/assets/js/claims.js`. `site/` never reaches up.
+  `site/bin/build-prices.py` writes the site-worker's price list. `site/` never reaches up.
+- The site-worker is its own repository ([FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker));
+  its `src/claims.js` is a copy of `site/assets/js/claims.js`: change both.
 - No symlinks across the boundary: `jekyll build --safe` silently reads them as empty.
 
 ## Build and run
@@ -137,7 +138,7 @@ npm run test:live                                # against https://www.fcpublicm
 
 The site is static files: `jekyll build` in `site/` writes `_site`, and any static host can serve it.
 Nothing in `site/` names a host or runs code; the one piece of running code is the
-[site-worker](../site-worker/README.md), deployed on its own, and the site knows it only by
+[site-worker](https://github.com/FC-Public-Media/site-worker), a repository deployed on its own, and the site knows it only by
 `site/_data/site_worker.yml` `url`.
 
 - The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.

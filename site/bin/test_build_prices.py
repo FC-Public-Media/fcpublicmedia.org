@@ -67,6 +67,8 @@ class TheCatalog(unittest.TestCase):
                 self.assertEqual(item["interval"], "year", sku)
 
 
+@unittest.skipUnless((build_prices.WORKER / "wrangler.jsonc").exists(),
+                     "no site-worker checkout beside this repository (or FCPM_SITE_WORKER)")
 class TheCommittedCopy(unittest.TestCase):
     def test_it_is_up_to_date(self):
         # As CI runs it. If this fails, run build-prices.py and commit the result.
@@ -79,7 +81,7 @@ class TheCommittedCopy(unittest.TestCase):
 
     def test_check_actually_notices_a_difference(self):
         # A real edit to prices.js, put back afterwards.
-        target = REPO / "site-worker" / "src" / "prices.js"
+        target = build_prices.OUT
         original = target.read_text(encoding="utf-8")
         try:
             target.write_text(original.replace("7000", "1"), encoding="utf-8")

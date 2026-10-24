@@ -22,7 +22,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 
 | doc | |
 |---|---|
-| [`../site-worker/README.md`](../site-worker/README.md) | the site-worker |
+| [FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker) | the site-worker, a repository of its own |
 | [`../machines/production/PROFILE.md`](../machines/production/PROFILE.md), [`code/AGENTS.md`](../machines/production/code/AGENTS.md) | production (`EDIT2`) and its root instructions |
 | [`../machines/kiosk/PROFILE.md`](../machines/kiosk/PROFILE.md), [`code/AGENTS.md`](../machines/kiosk/code/AGENTS.md) | kiosk (`200-FCPANEDIT2`) and its root instructions |
 | [`../machines/editing-bay-2/PROFILE.md`](../machines/editing-bay-2/PROFILE.md), [`digitization`](../machines/digitization/PROFILE.md), [`thin-client`](../machines/thin-client/PROFILE.md) | the other machines |

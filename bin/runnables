@@ -22,7 +22,7 @@ cd "$ROOT" || exit 1
 
 # Where runnables live.
 discover() {
-  git ls-files -- bin site/bin machines troves site-worker/bin 2>/dev/null |
+  git ls-files -- bin site/bin machines troves 2>/dev/null |
   while IFS= read -r f; do
     case "$f" in
       *.py|*.ps1|*.sh) echo "$f" ;;

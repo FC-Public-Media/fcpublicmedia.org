@@ -64,7 +64,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Ruby 3.2.2 is end of life; 3.3 or 3.4 is a one-line change. site/.ruby-version
 - Two Cloudflare accounts: Pages and the fcpublicmedia.org zone on FCPM's org account; the site-worker and the old `fcpm` Worker on Autumn's business account (autumn-e2c). Once the zone is on the org account, `new` (a CNAME to `fcpm.autumn-e2c.workers.dev`) is cross-account and Cloudflare refuses it (error 1014), so the check-in posters need `new` served from the org account before the nameservers move. A Workers custom domain for the site-worker would need it on the org account too.
 - Nameservers to Cloudflare (apex kept on Wix by pointing), then the www and apex cutover: not scheduled. docs/site.md#domain-and-dns
-- Member subdomains need the zone on Cloudflare, a wildcard and a hostname-to-folder Worker (the site-worker, or a host's own rules). site-worker/
+- Member subdomains need the zone on Cloudflare, a wildcard and a hostname-to-folder Worker (the site-worker, or a host's own rules). FC-Public-Media/site-worker
 - Member builds set no `baseurl`, so `/member-sites/<name>/` on www breaks.
 - Org secrets `CLOUDFLARE_PAGES_*` and `CLOUDFLARE_ACCOUNT_ID` are unused here.
 - Rule out two Cloudflare projects building this repository; check whether the "damaged repository" failure is the advocate pin under a shallow clone.
@@ -117,7 +117,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `/upload/` posts to the site-worker's base URL, which has no such route. site/assets/js/upload.js
 - `write_mode` in `authorize.yml` is rendered but read by nothing. site/_data/authorize.yml
 - Upload destination: bucket, `R2_MAX_BYTES`, retention; Dropbox stays the fallback. site/_data/upload.yml
-- The site-worker has no rate limit on `/challenge`, and challenges are not strictly single-use (KV read-then-delete). site-worker/src/
+- The site-worker has no rate limit on `/challenge`, and challenges are not strictly single-use (KV read-then-delete). FC-Public-Media/site-worker
 - Check-ins leaving the device (the site-worker, to the log) is decided in shape (2026-10-23); it waits on the board's retention, readers and privacy notice.
 - The pass is to hold several cards per device, and a check-in to record which.
 - Confirm the venue coordinates and the QR's final URL (`new.` vs `www`) before printing. site/_data/checkin.yml
@@ -152,7 +152,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Instanced configurations for gear several jobs use (ATEM, OBS).
 - Member scheduling: ask Cablecast about a draft `runStatus`, and how staff's tool creates shows. docs/services.md#member-scheduling
 - Depot volume identity (a marker per partition) is not built. docs/services.md#depot-index
-- Mailing a site's owner when a device is added: not built. site-worker/
+- Mailing a site's owner when a device is added: not built. FC-Public-Media/site-worker
 - `advocate.yml` puts the journal out of scope; the later decision wants it at the root. A seat naming what it reads (to wake on station-node) is proposed upstream.
 - Attendants: nothing wakes one on an `attendant` channel; recipes are followed by hand; the wall recipe is not in `site/tests/`, misses its reload, and says `page depot` where node.yml has `drive`.
 - `.contact-sheets-engine` deletes the previous sheet before montage runs; it has no library address.

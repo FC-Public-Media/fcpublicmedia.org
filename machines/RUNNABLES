@@ -61,4 +61,3 @@ machines/digitization/keys      | python     | -                    | read    | 
 machines/digitization/keys      | python     | check                | read    | the same, in fcpm check's words
 machines/digitization/keys      | python     | take *               | secret  | ask for one key in a window on this screen and store it
 machines/digitization/keys      | python     | run *                | secret  | run one command with key groups in its environment
-machines/digitization/deploy-site-worker | sh | live               | outside | deploy the site-worker and give it its Stripe key

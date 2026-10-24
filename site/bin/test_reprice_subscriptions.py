@@ -3,6 +3,7 @@
 
 import importlib.util
 import pathlib
+import os
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parent / "reprice-subscriptions.py"
@@ -147,6 +148,7 @@ class WhatIsSentToStripe(unittest.TestCase):
         self.assertEqual(done[0]["id"], "sub_good")
 
 
+@unittest.skipUnless(os.path.exists(reprice.PRICES), "no site-worker checkout beside this repository (or FCPM_SITE_WORKER)")
 class TheCatalogItReadsFrom(unittest.TestCase):
     def test_it_parses_the_generated_module(self):
         # Parses the real generated prices.js, banner and all.

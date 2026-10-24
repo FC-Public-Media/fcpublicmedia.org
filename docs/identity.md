@@ -1,7 +1,7 @@
 # Identity
 
 Who somebody is, how they prove it, and check-in at the door. There are no accounts or passwords.
-Only the site-worker ([`site-worker/README.md`](../site-worker/README.md)) checks proof for FCPM; a check in the
+Only the site-worker ([FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker)) checks proof for FCPM; a check in the
 visitor's own browser is wayfinding.
 
 | Mechanism | Proves | Checked by |
@@ -50,7 +50,7 @@ revoked (records are kept). Listed is not allowed: only `may_publish: true` chan
 | Rule | Where enforced |
 |---|---|
 | A claim with `repo` enrols a device: listed, not publishing | `/bind` |
-| The first device on a site with no publisher is trusted | `site-worker/src/enroll.js` |
+| The first device on a site with no publisher is trusted | the site-worker's `src/enroll.js` |
 | A publishing device approves or revokes others | `/device`, from `/devices/` |
 | A device cannot approve itself | `authorize()` checks `may_publish` first |
 | The last publishing device cannot be revoked | `revokeDevice()` |

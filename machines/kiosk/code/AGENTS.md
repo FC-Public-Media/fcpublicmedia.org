@@ -38,7 +38,7 @@ Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.m
 - **The weekly pull is the gate, and sessions here run it.** Nobody types `fcpm` at this box; sessions do (`~/.local/bin/fcpm.cmd`, on PATH). Keep `fcpm weekly` registered (`machines/watch weekly install`); if it can't run, do the pull yourself. Steps other machines leave to a person at the desk are a session's here, when Autumn asks. Don't hedge them back to her.
 - Clear merged worktrees out of `work/`. Keep `media-node` clean, or the door stops rebasing. Waiting on IT: automatic sign-in, and inbound :8080.
 - Surprises: `machines/kiosk/gotcha <tag> "assumed -> true"`, run from `media-node` (it commits there). Bring those lines to `main` by PR now and then.
-- Building: Node 24 LTS (`%LOCALAPPDATA%\media-node\node`), `gh` and `uv` (`~/.local/bin`). `node --test site-worker/test/*.test.mjs`; `npx wrangler@4 dev --ip 127.0.0.1` serves the Worker on loopback; integration tests use invented `*.localhost` hosts and a DevTools virtual passkey authenticator. No production secrets. The Visual C++ fix is in the profile.
+- Building: Node 24 LTS (`%LOCALAPPDATA%\media-node\node`), `gh` and `uv` (`~/.local/bin`). `node --test test/*.test.mjs` in a site-worker checkout (FC-Public-Media/site-worker); `npx wrangler@4 dev --ip 127.0.0.1` serves the Worker on loopback; integration tests use invented `*.localhost` hosts and a DevTools virtual passkey authenticator. No production secrets. The Visual C++ fix is in the profile.
 
 ## Rules that bite
 

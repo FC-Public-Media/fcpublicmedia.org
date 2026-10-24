@@ -20,7 +20,7 @@ only to augment our capabilities on the LAN.
 ## The site and its worker
 
 `site/` is static files: it never runs code or names a host.
-The one running piece is `site-worker/`, deployed on its own.
+The one running piece is the site-worker, a repository of its own (FC-Public-Media/site-worker).
 
 ## Wix
 

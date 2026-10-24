@@ -1,7 +1,7 @@
 # Payments
 
 Who takes which payment, how prices are built, the rules about keys, and what has to be true before
-anyone is charged. The site-worker itself is [`site-worker/README.md`](../site-worker/README.md).
+anyone is charged. The site-worker itself is [FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker).
 
 ## Transactions
 
@@ -45,14 +45,15 @@ booking bills somebody twice.
 - An `rk_` or `sk_` key that reaches a commit is burned: rotate it in the Stripe dashboard.
 
 Secrets are held in digitization's keychain (`machines/digitization/keys.yml`, PROFILE.md, Keys), not in
-GitHub. `machines/digitization/deploy-site-worker live` deploys the Worker and pipes the key into
-`wrangler secret put PUBLIC_STRIPE_API_KEY` on every run, so a rotation lands. A test key is tried without
-deploying anything: `machines/digitization/keys run stripe-test -- node site-worker/try-checkout.mjs`.
+GitHub. The site-worker's `bin/deploy`, run under `keys run cloudflare stripe-live`, deploys it and pipes
+the key into `wrangler secret put PUBLIC_STRIPE_API_KEY` on every run, so a rotation lands. A test key is
+tried without deploying anything: `keys run stripe-test -- node try-checkout.mjs` in a site-worker checkout.
 
 ## Prices
 
 The browser posts a SKU (`membership:creator`), never an amount; the site-worker looks the amount up in
-`site-worker/src/prices.js`.
+its `src/prices.js`, which `site/bin/build-prices.py` writes into a site-worker checkout beside this one
+(or `FCPM_SITE_WORKER`); commit it in both repositories.
 
 - `site/bin/build-prices.py` generates `prices.js` (cents) from `membership.yml` and `classes.yml`.
   It is committed, because Cloudflare's build runs no Python; `.github/workflows/smoke.yml` runs

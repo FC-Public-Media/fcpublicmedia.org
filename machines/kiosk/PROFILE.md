@@ -13,7 +13,7 @@ Screens and content: [`docs/kiosk.md`](../../docs/kiosk.md).
 - Tooling from vendor releases, hash- and signature-checked: uv 0.12.18 (`uv python install
   3.13`), Node 24.21.0 LTS in `%LOCALAPPDATA%\media-node\node`, gh 2.101.0 in `~/.local/bin`
   (login in the keyring). No Ruby: CI builds the site.
-- The site-worker runs here: `node --test site-worker/test/*.test.mjs`; `npx wrangler@4 dev --ip 127.0.0.1
+- The site-worker runs here: `node --test test/*.test.mjs` in a site-worker checkout; `npx wrangler@4 dev --ip 127.0.0.1
   --var RP_ID:fcpm.localhost` on invented `*.localhost` hosts, passkeys from a DevTools virtual
   authenticator. `workerd` crashes on the system's Visual C++ 14.32: copy `msvcp140.dll`,
   `vcruntime140.dll`, `vcruntime140_1.dll` from Edge's application folder next to

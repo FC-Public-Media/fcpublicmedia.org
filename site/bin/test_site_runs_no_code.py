@@ -1,4 +1,4 @@
-"""site/ is static files: no host config and no server code may live in it. The running code is site-worker/."""
+"""site/ is static files: no host config and no server code may live in it. The running code is FC-Public-Media/site-worker."""
 import pathlib
 import subprocess
 import unittest
@@ -23,7 +23,7 @@ def offenders(paths):
 
 class SiteRunsNoCode(unittest.TestCase):
     def test_site_holds_no_host_config_or_server_code(self):
-        self.assertEqual(offenders(tracked()), [], "site/ is static; running code belongs in site-worker/")
+        self.assertEqual(offenders(tracked()), [], "site/ is static; running code belongs in FC-Public-Media/site-worker")
 
     def test_the_check_would_notice(self):
         for sample in ("site/wrangler.jsonc", "site/staticwebapp.config.json", "site/functions/checkout.js",

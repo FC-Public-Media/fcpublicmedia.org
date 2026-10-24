@@ -5,4 +5,4 @@
 ruby         bundler     # unestablished — see `machines/kiosk/PROFILE.md`
 python       python3     # unestablished; the winget id is probably Python.Python.3.x
 node         npm         # kiosk: the nodejs.org LTS zip, sha256-checked against SHASUMS256.txt, in
-                         # %LOCALAPPDATA%\media-node\node; winget cannot install zips. site-worker/, site/tests/
+                         # %LOCALAPPDATA%\media-node\node; winget cannot install zips. site-worker, site/tests/

@@ -19,12 +19,12 @@ Decisions:
 - First version: members create the show, not the schedule item; staff schedule it.
 - If Cablecast has a draft `runStatus`, use it and keep Cablecast the source of truth. Holding requests outside Cablecast is the last resort: two systems would disagree about one week.
 - No locking. Staff approval settles two members picking the same gap.
-- The member proves who they are with the member-site passkey (`/authorize/`, the site-worker in `site-worker/`).
+- The member proves who they are with the member-site passkey (`/authorize/`, the site-worker, FC-Public-Media/site-worker).
 - Dropbox stays as the fallback intake. A direct upload arrives as a record with its own metadata.
 
 ## Publishing without staff
 
-Approval moves from once per submission to once per device: an approved device publishes to its site every week with nobody in the middle. Built in the site-worker (`site-worker/src/enroll.js`, `/bind`, `/device`; [`site-worker/README.md`](../site-worker/README.md)) and its pages (`/authorize/`, `/devices/`, `/upload/`); the site-worker is not deployed (`url` is empty in `site/_data/authorize.yml`).
+Approval moves from once per submission to once per device: an approved device publishes to its site every week with nobody in the middle. Built in the site-worker (its `src/enroll.js`, `/bind`, `/device`; [FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker)) and its pages (`/authorize/`, `/devices/`, `/upload/`); the site-worker is not deployed (`url` is empty in `site/_data/authorize.yml`).
 
 - **Enrollment** (a claim link binds a device to a site) is separate from **authority** (`may_publish` on the device record in `.auth/devices.json`). A forwarded claim can only get a device listed.
 - The first device to bind is trusted. Every later device arrives listed and not allowed, and an existing publisher approves it. If no active device may publish, the next to bind counts as first.
@@ -72,7 +72,7 @@ Completeness comes from the writer, never from inspection:
 
 A phone signs a person in to a shared workstation by a QR code on its screen, so the studio knows who is there without accounts on the device. Today a bay has one shared Windows account, and identity is whichever browser profile was clicked. Not built.
 
-- It is a new consumer of the site-worker, check-in with a different consequence: passkeys (`site-worker/`: `/bind`, `/device`), signed claims (`site/bin/mint-claim.py`, `site/_data/identity.yml`, `site/assets/js/claims.js`), a QR code standing in for a session (`/check-in/`, `site/bin/make-qr.py`, `site/_data/checkin.yml`), and policy (`site/_data/authorize.yml`).
+- It is a new consumer of the site-worker, check-in with a different consequence: passkeys (the site-worker: `/bind`, `/device`), signed claims (`site/bin/mint-claim.py`, `site/_data/identity.yml`, `site/assets/js/claims.js`), a QR code standing in for a session (`/check-in/`, `site/bin/make-qr.py`, `site/_data/checkin.yml`), and policy (`site/_data/authorize.yml`).
 - The phone is one way in, never the only one: nobody is kept from working for want of a smartphone.
 - A link that opens a workstation needs one-to-one claims, against the forwarding `site/_data/authorize.yml` allows.
 - Production's service starts with the computer, before anyone signs in, which makes room for a welcome: a check-in code (on the lock screen, through a welcome account, or on the rolling TV), identifying yourself as the grant for one sitting, and a space of your own (your page, your browser profile) put away when it ends. No program draws on the lock screen, the machine-wide lock-screen picture setting is for business editions (the bay runs Home), and the guest Wi-Fi cannot reach the LAN.
