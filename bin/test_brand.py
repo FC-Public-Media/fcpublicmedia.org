@@ -45,10 +45,13 @@ class Brand(unittest.TestCase):
 
     def test_the_marks_are_the_brand(self):
         for name, fills in (("icon.svg", {BRAND["colours"]["masthead"], BRAND["colours"]["signal"]}),
-                            ("icon-inverted.svg", {BRAND["colours"]["signal"], BRAND["black"]})):
+                            ("icon-inverted.svg", {BRAND["colours"]["signal"], BRAND["black"]}),
+                            ("square-signal.svg", {BRAND["colours"]["signal"]}),
+                            ("square-black.svg", {BRAND["black"]})):
             svg = (ROOT / "site/assets/img" / name).read_text()
             self.assertEqual({c.lower() for c in re.findall(r'fill="(#[0-9a-fA-F]{6})"', svg)},
                              {c.lower() for c in fills}, name)
+            self.assertNotRegex(svg, r'\brx="', f"{name}: plates are square; platforms cut their own shape")
             self.assertIn(f"rotate({BRAND['tilt']} ", svg, name)
 
     def test_no_screen_keeps_a_brand_colour_of_its_own(self):

@@ -11,8 +11,12 @@
 
     64x64 with a viewBox, so this one file is the 16px favicon, the 180px
     touch icon and anything else that gets asked for.
+
+    The plate is square on purpose. Every platform cuts an avatar or app icon
+    to its own shape (circle, squircle, its own radius), so any rounding drawn
+    here would be wrong somewhere. Give them the square; they round it.
   -->
-  <rect width="64" height="64" rx="10" fill="#121417"/>
+  <rect width="64" height="64" fill="#121417"/>
   <rect x="18" y="18" width="28" height="28" fill="#ffc61a"
         transform="rotate(-8 32 32)"/>
 </svg>

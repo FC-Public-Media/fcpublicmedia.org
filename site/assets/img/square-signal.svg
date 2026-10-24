@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fort Collins Public Media">
+  <!--
+    The square alone, in the signal yellow, with no plate: transparent around it. For when
+    the ground is already there and you choose the colour on top of it:
+    bullets, list marks, a mark on a page or a photo that is dark enough for yellow.
+
+    Same 64x64 box, same square, same place and the same -8deg as icon.svg and
+    icon-inverted.svg, so this file swaps for either and nothing moves.
+    Secondary: the plated marks are the brand's icons.
+  -->
+  <rect x="18" y="18" width="28" height="28" fill="#ffc61a"
+        transform="rotate(-8 32 32)"/>
+</svg>
