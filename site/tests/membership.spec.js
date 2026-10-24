@@ -54,7 +54,7 @@ test.describe('the rules', () => {
     for (const card of await cards.all()) {
       await expect(card).toContainText(/Nonprofits \$\d+/);
     }
-    await expect(page.locator('.card', { hasText: 'Sponsor' })).toContainText('Nonprofits $20');
+    await expect(page.locator('.card', { hasText: 'Supporter' })).toContainText('Nonprofits $20');
     await expect(page.locator('.card', { hasText: 'Producer' })).toContainText('Nonprofits $70');
   });
 });

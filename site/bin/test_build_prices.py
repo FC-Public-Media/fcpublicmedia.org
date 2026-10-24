@@ -46,7 +46,7 @@ class TheCatalog(unittest.TestCase):
         catalog, _ = build_prices.build()
         items = catalog["items"]
 
-        for tier in ("sponsor", "student", "creator", "producer"):
+        for tier in ("supporter", "student", "creator", "producer"):
             self.assertIn(f"membership:{tier}", items)
 
     def test_the_unpriced_are_reported_rather_than_dropped_in_silence(self):
