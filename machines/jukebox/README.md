@@ -44,6 +44,11 @@ queued or held with the reason. Not built yet.
 
 ## Who shows it
 
+Not to be confused with the floor's own music ([`broadcast/jukebox`](../broadcast/jukebox)): that one
+plays `/srv/landing/jukebox` into digitization's floor, under everything. This role is the layer on top:
+the machine that puts the standby page on the air mixes it in, keeping the floor's sound or muting it.
+
+
 The standby page ([`broadcast/ch97/page/standby/`](../broadcast/ch97/page/standby/)) reads
 `/now.json` and puts the music on its slant. The machine that puts the page on the air mixes in
 `/stream.mp3`; see [`broadcast/PROFILE.md`](../broadcast/PROFILE.md), "To YouTube".

@@ -1,6 +1,7 @@
 // standby.js -- our page between programs: panels taking turns, the jukebox on the slant. Plain files.
 //
-//   ?jukebox=URL   where the jukebox is (default http://jukebox.fcpublicmedia.local:8093); none: the slant invites
+//   ?jukebox=URL   a jukebox to show and play (bay 1's OBS: http://127.0.0.1:8093). Without it, the slant shows
+//                  what the floor's own jukebox is playing (/floor/now.json); with no music at all, it invites
 //   ?holder=NAME   inside OBS, while OBS streams: the name it takes the air under (POST /air, ../../standby)
 //   ?listen        play the music here too (a person can also press listen, where there is a pointer)
 //
@@ -9,7 +10,8 @@
 (function () {
   "use strict";
   var q = new URLSearchParams(location.search);
-  var JUKEBOX = (q.get("jukebox") || "http://jukebox.fcpublicmedia.local:8093").replace(/\/$/, "");
+  var JUKEBOX = (q.get("jukebox") || "").replace(/\/$/, "");
+  var NOW = JUKEBOX ? JUKEBOX + "/now.json" : "/floor/now.json";
   var ROOM = "America/Denver", PILLS = 12, NEXT_EVERY = 4, PITCH_EVERY = 3;   // a pitch every third "next"
   var stage = document.getElementById("stage"), panels = document.getElementById("panels");
   var slant = document.getElementById("slant"), track = slant.querySelector(".track");
@@ -130,6 +132,7 @@
 
   function paint() {
     slant.classList.toggle("silent", !playing);
+    track.classList.toggle("solo", !!playing && !playing.artist);
     if (!playing) {
       who.textContent = "Your music here.";
       what.textContent = "Members put their music on this stream";
@@ -139,14 +142,14 @@
     }
     var pos = Math.min(playing.length, playing.position + (Date.now() - heardAt) / 1000);
     var at = Math.min(PILLS - 1, Math.floor(pos / playing.length * PILLS));
-    who.textContent = playing.artist;
-    what.textContent = playing.title;
+    who.textContent = playing.artist || playing.title;
+    what.textContent = playing.artist ? playing.title : "";
     pills.forEach(function (p, n) { p.className = n < at ? "then" : n === at ? "on" : ""; });
     time.textContent = mmss(pos) + " / " + mmss(playing.length);
   }
 
   function ask() {
-    getJSON(JUKEBOX + "/now.json").then(function (now) {
+    getJSON(NOW).then(function (now) {
       var next = now && now.playing;
       if (next && playing && next.id !== playing.id) {     // a new track: the slant turns over
         track.classList.add("quiet");
@@ -172,6 +175,7 @@
   document.getElementById("hands").addEventListener("click", function (e) {
     var b = e.target.closest("button");
     if (!b) return;
+    if (!JUKEBOX) return;
     if (b.dataset.do === "listen") listen(!audio);
     if (b.dataset.do === "skip") fetch(JUKEBOX + "/skip", { method: "POST" }).then(ask, function () {});
   });
@@ -180,7 +184,8 @@
     clearTimeout(still);
     still = setTimeout(function () { document.body.classList.remove("pointing"); }, 2500);
   });
-  if (q.has("listen")) listen(true);
+  if (!JUKEBOX) document.getElementById("hands").hidden = true;   // the floor's music is the floor's to play
+  if (q.has("listen") && JUKEBOX) listen(true);
 
   // ---------------------------------------------------------------- the air, from inside OBS
 

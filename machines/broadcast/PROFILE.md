@@ -122,8 +122,18 @@ the GPU (about a tenth of a core) into HLS in memory, served on the LAN as
 ingest. YouTube shows it while the channel is away and goes back when it returns. The floor never
 tries to be the show.
 
+The floor's sound is a bus, `fcpm-standby`: a null sink standby makes in the desktop's PulseAudio, sent from
+its monitor. Anything played into it is on YouTube's backup stream; with nothing playing, it is
+silence, as before. Until PulseAudio is up (the desktop's login), standby sends silence, and once the
+bus can be made it starts again with it. [`jukebox`](jukebox), the crew's `jukebox` line, is the first
+thing played into it: every sound file in `/srv/landing/jukebox`, by name, A to Z and round again, the
+folder read afresh each round. Only music FCPM has the rights to goes in that folder. What it plays is
+in `~/.local/state/fcpm/broadcast/jukebox.json`, served as `ch97…/floor/now.json`, which the standby
+page shows when it has no jukebox of its own. `jukebox --check`
+says what it would play and whether the bus is there.
+
 **On top**, a machine that can do more (editing bay 1, with OBS) lays the floor underneath (a media
-source), the standby page over it, and the jukebox's music, and takes the air: while it streams it says
+source, its sound kept or muted), the standby page over it, and the jukebox role's music, and takes the air: while it streams it says
 so, `POST /air {"holder": "bay 1"}` to ch97, every few seconds; the standby page does that by itself
 inside OBS. While a claim is fresh (15 s) the floor's copy to YouTube stops; when the claims lapse it
 starts again on its own, so a machine that stops, crashes or is switched off never leaves YouTube with
@@ -140,9 +150,11 @@ days we laid, and now and then the invitation to members. Below, the brand's sla
 kiosk's (`kiosk/door.py`) turned to the bottom: the mark and the lockup where the band is tallest, and
 along its edge the jukebox ([`../jukebox/`](../jukebox/README.md)): the artist in the serif, the title,
 a pill for each twelfth of the track, the time, and "become a member". With no jukebox, the slant says
-"Your music here." `?jukebox=` says where the jukebox is (default `jukebox.fcpublicmedia.local:8093`;
-in the bay's OBS, `http://127.0.0.1:8093`), `?holder=` the name OBS takes the air under, `?listen`
-plays the music in the page too. A pointer brings up listen and skip; on the air there is none.
+"Your music here." Two places music comes in: without `?jukebox=`, the slant shows what the floor's
+own jukebox is playing (`/floor/now.json`), which is what the floor sounds like; with `?jukebox=URL` (in
+the bay's OBS, `http://127.0.0.1:8093`), that jukebox, whose stream the machine on top mixes in, muting
+the floor's or not. `?holder=` is the name OBS takes the air under; `?listen` plays the music in the page
+too. A pointer brings up listen and skip, with a jukebox of the page's own; on the air there is none.
 
 Cablecast's own way to YouTube is a network broadcast event tied to a scheduled run, one run at a
 time, and a paid add-on; it suits events, not a whole channel. A Live server can also push to a

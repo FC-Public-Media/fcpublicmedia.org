@@ -51,6 +51,7 @@ html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; 
   rotate: var(--tilt); }
 #slant .track { transition: opacity 600ms ease; }
 #slant .track.quiet { opacity: 0; }
+#slant .track.solo .who { bottom: 18px; }   /* a title with no artist: one line, on the edge */
 #slant .who { position: absolute; left: 96px; bottom: 62px; margin: 0; white-space: nowrap;
   font: 600 54px/1 "Source Serif 4", Georgia, serif; }
 #slant .what { position: absolute; left: 98px; bottom: 18px; margin: 0; max-width: 1100px; white-space: nowrap;

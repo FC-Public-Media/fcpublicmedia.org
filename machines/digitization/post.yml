@@ -1,0 +1,6 @@
+# Digitization's post root: where the bays deliver finished post work, beside the raws on the landing.
+# Nothing runs here (no steps); `post.py status` shows each take's request, what is in, and `fulfilled`.
+# Receiver: machines/digitization/post-receive (forced command). Doc: troves/post/README.md, Delivery.
+
+crews: []
+root: /srv/landing/post

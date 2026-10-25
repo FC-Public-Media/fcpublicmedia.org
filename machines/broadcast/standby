@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """standby — the floor: our own steady picture, always on, so channel 97's YouTube stream never ends.
 
     python3 -I machines/broadcast/standby               run (the broadcast crew's `backup` line keeps it up)
@@ -6,7 +5,10 @@
     python3 -I machines/broadcast/standby --try FILE    ten seconds of it into FILE, to look at
 
 The picture is the brand's mark and lockup (site/_data/brand.json, drawn by rsvg-convert) with the time
-in the room, at 1080p30 and 48 kHz stereo like the channel. It is encoded once, by the GPU when it can
+in the room, at 1080p30 and 48 kHz stereo like the channel. The sound is standby's bus, a PulseAudio
+null sink (`fcpm-standby`) made here, which the floor's jukebox (./jukebox) plays into: the floor's own
+music, one place to put sound in. Silence while there is no PulseAudio to make it in; once it can be
+made, this exits so the crew starts the floor with the bus. It is encoded once, by the GPU when it can
 be (about a tenth of a core), into the floor: HLS in memory (FCPM_FLOOR, /dev/shm/fcpm-floor), served
 on the LAN as ch97.fcpublicmedia.local/floor/index.m3u8, so a machine on top can lay it underneath.
 
@@ -16,7 +18,7 @@ machine that puts on more (the standby page, the jukebox) takes the air by sayin
 {"holder": "..."} to ch97.fcpublicmedia.local, again every few seconds. While a claim is fresh (HOLD
 seconds) the copy to YouTube stops; when the claims lapse, it starts again by itself, so a machine
 that stops, crashes or is switched off never leaves YouTube with nothing. The floor itself never
-stops. GET /air says who has it.
+stops. GET /air says who has it; /floor/now.json, what the floor is playing.
 
 The key is ~/.config/fcpm/youtube.key, as the relay's; nothing here prints it. If ffmpeg sends nothing
 for a minute (YouTube dropped the connection and ffmpeg hung on it, as on 2026-10-22), the copy is
@@ -47,6 +49,9 @@ STALL = 60                                      # seconds with nothing sent befo
 FLOOR = pathlib.Path(os.environ.get("FCPM_FLOOR", "/dev/shm/fcpm-floor"))   # memory: no wear on the card
 AIR = int(os.environ.get("FCPM_AIR_PORT", "8482"))  # the claims, on loopback; nginx passes /air to it
 HOLD = 15                                       # seconds a claim on the air lasts unless said again
+MUSIC = pathlib.Path(os.environ.get("FCPM_JUKEBOX", "/srv/landing/jukebox"))   # the floor's jukebox's folder
+BUS = "fcpm-standby"                            # the null sink whose monitor is the sound we send
+os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
 
 
 def slate():
@@ -71,9 +76,24 @@ def slate():
     return SLATE
 
 
-def command(out, seconds=None):
-    """ffmpeg: the slate decoded once and repeated, the room's clock on it, silence, as the channel's
-    shape. Encoded by the GPU (VAAPI, a tenth of a core) when this account may use it, else by x264."""
+def bus():
+    """Standby's bus, made if PulseAudio is up and it isn't there yet; whether we can send from it."""
+    def there():
+        r = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True, text=True)
+        return r.returncode == 0, any(l.split("\t")[1:2] == [BUS] for l in r.stdout.splitlines())
+    up, made = there()
+    if up and not made:
+        subprocess.run(["pactl", "load-module", "module-null-sink", f"sink_name={BUS}", "rate=48000",
+                        "channels=2", f"sink_properties=device.description={BUS}"], capture_output=True)
+        up, made = there()
+    return made
+
+
+def command(out, seconds=None, sound=False):
+    """ffmpeg: the slate decoded once and repeated, the room's clock on it, and the bus's sound (or
+    silence), as the channel's shape. The bus's samples are counted from zero, to run beside the
+    repeated slate. Encoded by the GPU (VAAPI, a tenth of a core) when this account may use it, else
+    by x264."""
     clock = (f"drawtext=fontfile={FONT}:text='%{{localtime\\:%H\\\\\\:%M}}':fontsize=54"
              f":fontcolor=0x{BRAND['colours']['masthead-soft'].lstrip('#')}:x=(w-text_w)/2:y=h*0.88")
     repeat = f"loop=loop=-1:size=1:start=0,fps={FPS},{clock},realtime"
@@ -84,9 +104,11 @@ def command(out, seconds=None):
         pre, graph = [], f"[0:v]format=yuv420p,{repeat}[v]"
         video = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage", "-g", str(FPS * 2),
                  "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k"]
+    audio = (["-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", f"{BUS}.monitor"] if sound
+             else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
     cmd = (["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning"] + pre
-           + ["-i", str(slate()), "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-              "-filter_complex", graph, "-map", "[v]", "-map", "1:a"] + video
+           + ["-i", str(slate())] + audio
+           + ["-filter_complex", graph + ";[1:a]asetpts=N/SR/TB[a]", "-map", "[v]", "-map", "[a]"] + video
            + ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"])
     if seconds:
         cmd += ["-t", str(seconds)]
@@ -104,6 +126,33 @@ def bound():
 FLOOR_OUT = ["-f", "hls", "-hls_time", "2", "-hls_list_size", "6",
              "-hls_flags", "delete_segments+omit_endlist+temp_file",
              "-hls_segment_filename", str(FLOOR / "s%06d.ts"), str(FLOOR / "index.m3u8")]
+
+
+PROBED = {}
+
+
+def floor_now():
+    """What the floor's jukebox (./jukebox) is playing, in the shape the jukebox role's /now.json has,
+    so the standby page reads either: title from the file's tag or its name, artist from its tag."""
+    try:
+        said = json.loads((STATE_DIR / "jukebox.json").read_text())
+    except (OSError, ValueError):
+        said = {}
+    if said.get("state") != "playing" or not said.get("file"):
+        return {"playing": None, "next": [], "from": "floor"}
+    path = MUSIC / said["file"]
+    if path not in PROBED:
+        r = subprocess.run(["ffprobe", "-v", "error", "-of", "json", "-show_format", str(path)],
+                           capture_output=True, text=True)
+        fmt = json.loads(r.stdout or "{}").get("format", {})
+        tags = {k.lower(): v for k, v in (fmt.get("tags") or {}).items()}
+        name = path.stem.lstrip("0123456789").lstrip(" .-_") or path.stem
+        PROBED[path] = {"artist": tags.get("artist") or "", "title": tags.get("title") or name,
+                        "length": float(fmt.get("duration") or 0)}
+    facts = PROBED[path]
+    started = time.mktime(time.strptime(said["at"], "%Y-%m-%dT%H:%M:%S%z"))
+    return {"playing": dict(facts, id=said["file"], position=round(max(0, time.time() - started), 1)),
+            "next": [], "from": "floor"}
 
 
 class Air:
@@ -141,6 +190,8 @@ class Air:
                 self.wfile.write(data)
 
             def do_GET(self):
+                if self.path.split("?")[0] == "/now.json":
+                    return self.reply(200, floor_now())
                 self.reply(200, {"holder": air.holder(), "hold": HOLD})
 
             def do_POST(self):
@@ -170,15 +221,16 @@ def note(state, why, **more):
 def main(args):
     env = dict(os.environ, TZ=ROOM_TZ)
     if args[:1] == ["--try"] and len(args) == 2:
-        subprocess.run(command(["-y", args[1]], seconds=10), env=env, check=True)
+        subprocess.run(command(["-y", args[1]], seconds=10, sound=bus()), env=env, check=True)
         print(f"standby: ten seconds in {args[1]}")
         return
     if args == ["--check"]:
         slate()
-        key = KEY.read_text().strip() if KEY.exists() else ""
+        key, sound = (KEY.read_text().strip() if KEY.exists() else ""), bus()
         print(json.dumps({"slate": str(SLATE), "key": bool(key), "floor": str(FLOOR / "index.m3u8"),
+                          "sound": f"{BUS}.monitor" if sound else "silence",
                           "air": f"127.0.0.1:{AIR}", "to": INGEST + "?backup=1/<key>",
-                          "ffmpeg": " ".join(command(FLOOR_OUT))[:400]}, indent=1))
+                          "ffmpeg": " ".join(command(FLOOR_OUT, sound=sound))[:600]}, indent=1))
         return
     if args:
         sys.exit(__doc__)
@@ -187,8 +239,9 @@ def main(args):
     FLOOR.mkdir(parents=True, exist_ok=True)
     for old in FLOOR.iterdir():
         old.unlink()
-    floor = subprocess.Popen(command(FLOOR_OUT), env=env, preexec_fn=bound)
-    copy, said = None, None
+    sound = bus()
+    floor = subprocess.Popen(command(FLOOR_OUT, sound=sound), env=env, preexec_fn=bound)
+    copy, said, asked = None, None, time.time()
     try:
         while floor.poll() is None:
             time.sleep(2)
@@ -196,6 +249,11 @@ def main(args):
             if playlist.exists() and time.time() - playlist.stat().st_mtime > STALL:
                 note("stalled", f"the floor has not moved for {STALL} s; to be started again")
                 return 1
+            if not sound and time.time() - asked > 30:
+                asked = time.time()
+                if bus():
+                    note("restarting", f"{BUS} is there now; the floor is started again with its sound")
+                    return 1
             holder = air.holder()
             key = KEY.read_text().strip() if KEY.exists() else ""
             if copy and copy.done():
@@ -207,7 +265,8 @@ def main(args):
                 copy = Copy(key, env)
             now = ("yielded", f"{holder} has the air", holder) if holder else \
                   ("waiting", f"no key in {KEY}", None) if not key else \
-                  ("sending", "the floor to YouTube's backup ingest", None) if copy else \
+                  ("sending", "the floor to YouTube's backup ingest, with "
+                   + (f"{BUS}'s sound" if sound else "silence"), None) if copy else \
                   ("starting", "the floor is not playing yet", None)
             if now != said:
                 note(now[0], now[1], holder=now[2])
