@@ -25,6 +25,8 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /kiosk/now         who is on, and the studio map, as JSON. The page polls it
     GET /depot/            what is on the studio drive, for the third panel
     GET /depot/now         the drive's index, as JSON. The page polls it
+    GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
+    GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, from that page only
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
     GET /room/<room>/      a room's hallway door, any shape (rooms/<room>.yml): who is hosting, what is coming, what is in
     GET /room/<room>/now   the same as JSON. The page polls it
@@ -1012,6 +1014,7 @@ def board_page(here=False):
     """The board: this machine's switches, then fcpm's verbs as machines/fcpm.yml defines them."""
     rows = [("/kiosk/", "Welcome screen", "check-in, Wi-Fi, who is on"),
             ("/depot/", "Depot", "what is on the studio drive"),
+            ("/broadcast/", "Channel 97, out", "where the Live 350 pushes the channel: each destination, on or off"),
             ("/idle/", "Idle screen", "brand/idle: the lamp pointed at the room"),
             ("/idle/?say=On+air+now", "Idle, with its slot filled", "?say= fills the marked slot")]
     for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png")):
@@ -2813,6 +2816,18 @@ class Door(BaseHTTPRequestHandler):
         if route == "/camera/disarm" and here:
             camera_disarm()
             return self.reply(200, json.dumps(camera_state()), TYPES[".json"])
+        # Channel 97's destinations: switched by whoever is on Helm (the Guest network can't reach this),
+        # from this page only: a browser names the page that asks, and it must be one of ours.
+        if route == "/broadcast/push":
+            if (self.headers.get("Origin") or "") != "http://%s" % (self.headers.get("Host") or ""):
+                return self.reply(403, json.dumps({"why": "asked from another page"}), TYPES[".json"])
+            try:
+                ask = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024)))
+                name, on = str(ask["name"]), bool(ask["on"])
+            except (ValueError, KeyError, TypeError):
+                return self.reply(400, json.dumps({"why": "asks for a name and on"}), TYPES[".json"])
+            log("broadcast: %s %s, from %s" % (name, "on" if on else "off", self.peer()))
+            return self.reply(200, json.dumps(broadcast_now(name, on)), TYPES[".json"])
         # The board's switches: asked here, by this computer's own page. A page from elsewhere may not ask.
         mine = here and (self.headers.get("Origin") or "null") in (
             "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
@@ -2892,6 +2907,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200 if got else 404, json.dumps(got or {"name": tail, "state": None}), TYPES[".json"])
             if route in ("/depot", "/depot/"):
                 return self.reply(200, depot_page())
+            if route in ("/broadcast", "/broadcast/"):
+                return self.reply(200, broadcast_page())
+            if route == "/broadcast/now":
+                return self.reply(200, json.dumps(broadcast_now()), TYPES[".json"])
             if route in ("/preview", "/preview/"):
                 return self.reply(200, preview_page())
             if route == "/helo/feed.jpg":
@@ -3814,6 +3833,84 @@ def status():
     print("down  %s" % door_url())
     print("log   %s" % (STATE / "door.log"))
     return 1
+
+
+# ----------------------------------------------------------------- broadcast --
+# CHANNEL 97, OUT: each place the Live 350 may push the channel, as a switch (machines/broadcast).
+def broadcast_hand():
+    """cablecast.py, the hand on the box. Reading needs no token; switching needs the one it keeps."""
+    sys.path.insert(0, str(ROOT / "machines" / "broadcast"))
+    import cablecast
+    return cablecast
+
+
+def broadcast_now(name=None, on=None):
+    """{"destinations": [{id, name, on}], "keyed": bool}, or {"why": ...} when the box can't say."""
+    try:
+        hand = broadcast_hand()
+        return {"destinations": hand.push(name, on), "keyed": hand.TOKEN.exists()}
+    except SystemExit as exc:                    # cablecast.py says what went wrong, then exits
+        return {"why": str(exc.code)}
+    except Exception as exc:
+        log("broadcast: %r" % exc)
+        return {"why": "the box is not answering"}
+
+
+BROADCAST_JS = """<script>
+(function () {
+  var list = document.getElementById('dests'), said = document.getElementById('said'), busy = false, was = '';
+  function show(d) {
+    if (!d || d.why) { said.textContent = (d && d.why) || 'The box is not answering'; return; }
+    said.textContent = d.keyed ? '' : 'Switching needs the Cablecast key, which this machine does not hold.';
+    if (JSON.stringify(d) + busy === was) return;   // redrawn only on a change, so a tap is never lost
+    was = JSON.stringify(d) + busy;
+    list.textContent = '';
+    d.destinations.forEach(function (x) {
+      var card = document.createElement('div'), b = document.createElement('b'),
+          p = document.createElement('p'), go = document.createElement('button');
+      card.className = 'card' + (x.on ? ' on' : '');
+      b.textContent = x.name;
+      p.textContent = x.on ? 'Streaming' : 'Not streaming';
+      go.textContent = x.on ? 'Stop' : 'Start';
+      go.disabled = busy || !d.keyed;
+      go.onclick = function () { flip(x.name, !x.on); };
+      card.append(b, p, go);
+      list.append(card);
+    });
+  }
+  function now() {
+    if (busy) return;
+    fetch('/broadcast/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(show)
+      .catch(function () { said.textContent = 'This machine is not answering'; });
+  }
+  function flip(name, on) {
+    busy = true;
+    list.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    said.textContent = (on ? 'Starting ' : 'Stopping ') + name + '...';
+    fetch('/broadcast/push', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                              body: JSON.stringify({name: name, on: on})})
+      .then(function (r) { return r.json(); })
+      .then(function (d) { busy = false; show(d); setTimeout(now, 4000); })
+      .catch(function () { busy = false; now(); });
+  }
+  now(); setInterval(now, 5000);
+})();
+</script>"""
+
+BROADCAST_CSS = BOARD_CSS + """
+.card.on { border-left-color:#3fb950; } .card button:disabled { opacity:.4; cursor:default; }
+#said { min-height:1.4em; }
+"""
+
+
+def broadcast_page():
+    """Channel 97, out: each network stream destination in Cablecast, streaming or not, with its switch."""
+    body = """%s<main>
+<h2>Channel 97, out</h2>
+<p class=dim>The Live 350 pushes the channel to each destination that is on. Stopping one is an outage there.</p>
+<section class=here id=dests></section>
+<p class=dim id=said></p></main>%s""" % (masthead("%s &middot; broadcast" % e(socket.gethostname().lower())), BROADCAST_JS)
+    return page("Channel 97, out", body, BROADCAST_CSS)
 
 
 # ---------------------------------------------------------------------- helo --

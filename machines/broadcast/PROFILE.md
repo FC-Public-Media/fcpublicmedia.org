@@ -107,6 +107,12 @@ Channel 97 goes to YouTube all day, everything on it, from Cablecast itself: the
 the YouTube network stream destination (`addOutput`), with YouTube's current key. Our part is to be
 under it, never to carry it.
 
+Whether the 350 pushes to a destination is a switch: attaching it (`addOutput`, a forced event) starts
+the push and detaching it (`removeOutput`) stops it. The box's automation status lists what is attached,
+and reading it needs no key. `cablecast.py push [NAME on|off]` says or switches, and the door's
+`/broadcast/` page (`helm.fcpublicmedia.local/broadcast/`) shows each destination with its switch, for
+whoever is on Helm; switching needs the token, so it works where the token is kept.
+
 [`relay`](relay) is the emergency tool if the 350 cannot push: it copies the channel's web stream (taken
 on the LAN from the 350, the cloud copy as fallback) to YouTube's primary ingest without re-encoding,
 and pushes only once the source is seen to move. It is not a crew line; `relay --check` says what it
