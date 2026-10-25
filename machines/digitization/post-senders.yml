@@ -1,0 +1,9 @@
+# Who may deliver finished post work to this landing (machines/digitization/post-receive): one sealed
+# folder at a time, nothing else, from these addresses only. A key merged here is let in within a
+# minute by the crew's `senders` line; a key removed here is shut out the same way. Public keys only.
+
+senders:
+  - name: production
+    key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPxYLmwhY43IaLsIX9yt8UyX2m+BR5v4aDHzLJhJjDGw production post-deliver
+    from: 10.209.1.0/24,2603:300b:9cc:8080::/64     # the studio LAN, IPv4 and IPv6 (Edit2 picks IPv6 first)
+    made: 2026-10-24 on Edit2, C:\Users\fcpub\.ssh\fcpm-post, SHA256:xv5dwqdoOlW8sgSU5vYxsLApBXvWjbK36RmZh2EgjTI

@@ -11,8 +11,8 @@ steps:
     lease: 7d
 
 # Every sealed folder goes to digitization's landing when a run ends; the work stays on E:\POST.
-# The key is this bay's own (ssh-keygen -t ed25519 -f ~/.ssh/fcpm-post -N ""), let in on digitization by
-# `machines/digitization/post-receive authorize production KEY.pub`; until it exists nothing is sent.
+# The key is this bay's own (ssh-keygen -t ed25519 -f ~/.ssh/fcpm-post -N ""); its public half, merged into
+# machines/digitization/post-senders.yml, is what lets it in. Until the key exists nothing is sent.
 deliver:
   to: user@digitization.local
   key: ~/.ssh/fcpm-post
