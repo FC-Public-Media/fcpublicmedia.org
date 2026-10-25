@@ -129,6 +129,27 @@ class Receive(unittest.TestCase):
                                                                      FCPM_POST_ROOT=str(self.landing)), capture_output=True)
         self.assertEqual(r.returncode, 2)
 
+    def test_senders_keep_authorized_keys_to_the_list(self):
+        home = self.tmp / "home"
+        (home / ".ssh").mkdir(parents=True)
+        ak = home / ".ssh" / "authorized_keys"
+        other = "restrict,command=\"something else\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOtherkeyotherkeyotherkeyotherkeyotherkey qr eyes"
+        ak.write_text(other + "\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGonekeygonekeygonekeygonekeygonekeygonek post-deliver:gone\n")
+        run = lambda: subprocess.run([sys.executable, str(RECEIVE), "senders"], env=dict(os.environ, HOME=str(home)),
+                                     capture_output=True, text=True)
+        self.assertEqual(run().returncode, 0)
+        lines = ak.read_text().splitlines()
+        self.assertEqual(lines[0], other)                                   # every other line untouched
+        self.assertFalse(any(l.endswith("post-deliver:gone") for l in lines))   # off the list: shut out
+        mine = [l for l in lines if l.endswith("post-deliver:production")]
+        self.assertEqual(len(mine), 1)
+        self.assertTrue(mine[0].startswith('restrict,from="10.209.1.0/24,'))
+        self.assertIn(f'command="FCPM_POST_KEY=production /usr/bin/python3 {RECEIVE.resolve()}"', mine[0])
+        self.assertEqual(oct(ak.stat().st_mode & 0o777), "0o600")
+        before = ak.read_text()
+        self.assertEqual(run().stdout, "")                                  # already right: nothing written
+        self.assertEqual(ak.read_text(), before)
+
     def test_not_mounted_keeps_nothing(self):
         r = subprocess.run([sys.executable, str(RECEIVE), "receive", "t.0123abcd", "route.json"], input=b"",
                            env=dict(os.environ, FCPM_POST_ROOT=str(self.landing), FCPM_POST_MOUNT=str(self.tmp / "nowhere")),

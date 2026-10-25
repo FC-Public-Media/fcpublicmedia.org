@@ -9,7 +9,8 @@ a bay's state, it only holds what was submitted whole. Nothing kept is ever over
   post-receive                       the forced command: SSH_ORIGINAL_COMMAND is `receive TAKE ITEM`,
                                      stdin a tar of ITEM; prints `kept|already TAKE ITEM SHA256`
   post-receive receive TAKE ITEM     the same, from this machine (a crew delivering to its own landing)
-  post-receive authorize NAME PUB [FROM]   let a bay's key submit (a marked line in authorized_keys)
+  post-receive senders               make authorized_keys's marked lines match post-senders.yml (crew line
+                                     `senders`): a key merged there may deliver; removed, it may not
 
 Root: FCPM_POST_ROOT, else /srv/landing/post, kept only while /srv/landing is mounted. Log: <root>/.receive.ndjson. Doc: troves/post/README.md.
 """
@@ -164,30 +165,39 @@ def receive(take, item, stream):
         shutil.rmtree(stage, ignore_errors=True)
 
 
-def authorize(name, pub, frm=None):
-    """One line per bay, marked by its comment; rewritten in place, every other line untouched."""
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
-        sys.exit("post-receive: a bay's name is lowercase letters, digits and dashes")
-    key = Path(pub).read_text().split()
-    if len(key) < 2 or not key[0].startswith(("ssh-", "ecdsa-")):
-        sys.exit(f"post-receive: {pub} is not a public key")
-    mark = f"post-deliver:{name}"
-    opts = ["restrict", f'from="{frm}"' if frm else None,
-            f'command="FCPM_POST_KEY={name} /usr/bin/python3 {Path(__file__).resolve()}"']
-    line = ",".join(o for o in opts if o) + f" {key[0]} {key[1]} {mark}"
+SENDERS = Path(__file__).resolve().with_name("post-senders.yml")
+MARK = "post-deliver:"
+
+
+def senders():
+    """One restricted line per sender in post-senders.yml, marked by its comment; every other line untouched."""
+    import yaml
+    want = []
+    for x in (yaml.safe_load(SENDERS.read_text()) or {}).get("senders") or []:
+        name, key, frm = str(x.get("name", "")), str(x.get("key", "")).split(), str(x.get("from") or "")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name) or len(key) < 2 or key[0] not in ("ssh-ed25519", "ecdsa-sha2-nistp256") \
+                or not re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", key[1]) or not re.fullmatch(r"[0-9A-Fa-f:.,/]*", frm):
+            print(f"post-receive: skipped a sender that does not read right: {name or '?'}", file=sys.stderr)
+            continue
+        opts = ["restrict", f'from="{frm}"' if frm else None,
+                f'command="FCPM_POST_KEY={name} /usr/bin/python3 {Path(__file__).resolve()}"']
+        want.append(",".join(o for o in opts if o) + f" {key[0]} {key[1]} {MARK}{name}")
     ak = Path.home() / ".ssh" / "authorized_keys"
     old = ak.read_text().splitlines() if ak.exists() else []
-    new = [l for l in old if not l.endswith(" " + mark)] + [line]
+    new = [l for l in old if not l.rsplit(" ", 1)[-1].startswith(MARK)] + want
+    if new == old:
+        return 0
     tmp = ak.with_name("authorized_keys.post-receive")
     tmp.write_text("\n".join(new) + "\n")
     os.chmod(tmp, 0o600)
     os.replace(tmp, ak)
-    print(f"{'replaced' if len(new) == len(old) else 'added'} {mark}" + (f" from {frm}" if frm else ""))
+    print(f"post-receive: senders now {', '.join(l.rsplit(MARK, 1)[1] for l in want) or 'none'}")
+    return 0
 
 
 def main():
-    if sys.argv[1:2] == ["authorize"] and len(sys.argv) in (4, 5):
-        return authorize(*sys.argv[2:])
+    if sys.argv[1:] == ["senders"] and "SSH_ORIGINAL_COMMAND" not in os.environ:
+        return senders()
     # Over SSH the forced command's SSH_ORIGINAL_COMMAND is all a bay can say; on this machine, the arguments.
     words = (os.environ["SSH_ORIGINAL_COMMAND"].split() if "SSH_ORIGINAL_COMMAND" in os.environ else sys.argv[1:])
     if len(words) != 3 or words[0] != "receive":

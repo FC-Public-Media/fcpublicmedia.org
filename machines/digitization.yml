@@ -8,3 +8,7 @@ serves:
   - service: names
     for: "this machine's names under fcpublicmedia.local (lan.yml: helm, the site, its directory and gear), by mDNS, while this runs"
     start: "/usr/bin/python3 -I machines/lan.py publish"
+
+  - service: senders
+    for: "who may deliver finished post work to the landing: authorized_keys's marked lines kept to post-senders.yml"
+    start: "/usr/bin/python3 machines/digitization/post-receive senders"
