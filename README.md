@@ -8,7 +8,7 @@ Generated 2026-10-25 by `.advocate-engine/bin/digest.mjs`. Do not edit it — ed
 | seat | last spoke | sessions | draft | ready | state |
 | --- | --- | --- | --- | --- | --- |
 | [`payments`](payments.md) | 2026-10-25 | 24 | 7 | 0 | up to date |
-| [`credentials`](credentials.md) | 2026-10-24 | 30 | 8 | 0 | up to date |
+| [`credentials`](credentials.md) | 2026-10-25 | 31 | 8 | 0 | up to date |
 | [`vendors`](vendors.md) | 2026-10-24 | 20 | 5 | 1 | up to date |
 | [`truthfulness`](truthfulness.md) | 2026-10-25 | 23 | 13 | 0 | up to date |
 | [`node`](node.md) | 2026-10-24 | 17 | 6 | 0 | up to date |
