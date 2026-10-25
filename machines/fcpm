@@ -84,6 +84,7 @@ case "$cmd" in
     ps1 "$CODE/bin/pool.ps1" "$@" ;;
   runnables) exec "$REPO/bin/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
+  env)       ps1 "$REPO/troves/recorder/env.ps1" "$@" ;;
   roku)      ps1 "$REPO/troves/roku/roku.ps1" "$@" ;;
   screen)    ps1 "$REPO/troves/kiosk-screen/screen.ps1" "$@" ;;
   audition)

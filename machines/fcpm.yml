@@ -85,6 +85,12 @@ verbs:
     windows: troves/recorder/obs.ps1
     linux: "not: Windows gear (OBS on the bays)"
 
+  - verb: env
+    args: "[list|status|start NAME|stop NAME|secret TARGET]"
+    says: "OBS environments, beside the recorder (air: YouTube's primary; secret fcpm-youtube-key stores its key)"
+    windows: troves/recorder/env.ps1
+    linux: "not: Windows gear (OBS on the bays)"
+
   - verb: screen
     args: "[status|on|off|reset|class|wall|toggle]"
     says: "the rolling TV (toggle: class mode <-> the wall)"
