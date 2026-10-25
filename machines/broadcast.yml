@@ -2,7 +2,7 @@
 
 serves:
   - service: backup
-    for: "our own steady picture (the brand's slate and the room's clock) on YouTube's backup ingest, so the YouTube stream never ends in a gap; see broadcast/PROFILE.md, To YouTube"
+    for: "the floor: our own steady picture (the brand's slate and the room's clock) on the LAN and on YouTube's backup ingest, stepping off YouTube while a machine on top has the air; see broadcast/PROFILE.md, To YouTube"
     start: "/usr/bin/python3 -I machines/broadcast/standby"
     alive: {process: 'machines/broadcast/standby(\s|$)'}
   - service: ch97

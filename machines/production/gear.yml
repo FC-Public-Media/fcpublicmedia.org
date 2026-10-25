@@ -48,6 +48,15 @@ gear:
     restart-tier: none
     # An older shell: %LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe
 
+  - gear: ffmpeg
+    for: the jukebox (machines/jukebox), which decodes, evens out and streams the music on this
+      bay's disks; ffprobe beside it reads each file's title and length
+    package: Gyan.FFmpeg
+    vendor: Gyan Doshi's builds of FFmpeg (gyan.dev), GPL-3.0
+    provisioner: winget       # --scope user, no administrator
+    updates: winget
+    restart-tier: none
+
   - gear: node
     for: the site-worker's tests and wrangler, as on the media node, and previewing
       the site (jekyll-enough, Playwright). Not on PATH: call it by `at:`

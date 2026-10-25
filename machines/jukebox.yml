@@ -1,0 +1,8 @@
+# What the jukebox serves, when a job orders it (`jukebox keep machines/jukebox` in its services).
+# Any job may: the machine that wears it plays its own storage. See jukebox/README.md.
+
+serves:
+  - service: jukebox
+    for: "the house's music: cleared music on this machine's own disks, one stream on port 8093, for the standby page and whatever puts it on the air"
+    start: "{python} machines/jukebox/jukebox"
+    alive: {port: 8093}

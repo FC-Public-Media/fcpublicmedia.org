@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
-"""standby — our own steady picture on YouTube's backup ingest, so channel 97's YouTube stream never ends.
+"""standby — the floor: our own steady picture, always on, so channel 97's YouTube stream never ends.
 
     python3 -I machines/broadcast/standby               run (the broadcast crew's `backup` line keeps it up)
     python3 -I machines/broadcast/standby --check       draw the slate and say what it would send, send nothing
     python3 -I machines/broadcast/standby --try FILE    ten seconds of it into FILE, to look at
 
-When the channel's own stream pauses (a gap in the schedule, an IP-exempt program), YouTube ends a
-broadcast that has nothing coming in. Fed on its backup ingest with the same key, YouTube switches
-viewers here instead, and back to the channel when it returns. The picture is the brand's mark and
-lockup (site/_data/brand.json, drawn by rsvg-convert) with the time in the room, at 1080p30 and 48 kHz
-stereo like the channel, so YouTube takes the two as a pair. The slate is decoded once and repeated,
-and encoded by the GPU when it can be: about a tenth of a core. The key is ~/.config/fcpm/youtube.key, as
-the relay's; nothing here prints it. If ffmpeg sends nothing for a minute (YouTube dropped the
-connection and ffmpeg hung on it, as on 2026-10-22), it is ended and this exits, so the crew starts it
-again. ffmpeg and the system python. See PROFILE.md, "To YouTube".
+The picture is the brand's mark and lockup (site/_data/brand.json, drawn by rsvg-convert) with the time
+in the room, at 1080p30 and 48 kHz stereo like the channel. It is encoded once, by the GPU when it can
+be (about a tenth of a core), into the floor: HLS in memory (FCPM_FLOOR, /dev/shm/fcpm-floor), served
+on the LAN as ch97.fcpublicmedia.local/floor/index.m3u8, so a machine on top can lay it underneath.
+
+From the floor a copy, never a second encode, goes to YouTube's backup ingest with the channel's key:
+when the channel's own stream pauses, YouTube shows this, and goes back when the channel returns. A
+machine that puts on more (the standby page, the jukebox) takes the air by saying so: POST /air
+{"holder": "..."} to ch97.fcpublicmedia.local, again every few seconds. While a claim is fresh (HOLD
+seconds) the copy to YouTube stops; when the claims lapse, it starts again by itself, so a machine
+that stops, crashes or is switched off never leaves YouTube with nothing. The floor itself never
+stops. GET /air says who has it.
+
+The key is ~/.config/fcpm/youtube.key, as the relay's; nothing here prints it. If ffmpeg sends nothing
+for a minute (YouTube dropped the connection and ffmpeg hung on it, as on 2026-10-22), the copy is
+ended and started again; if the floor stops moving, this exits and the crew starts it again. ffmpeg
+and the system python. See PROFILE.md, "To YouTube".
 """
 import html
 import json
@@ -23,6 +31,7 @@ import subprocess
 import sys
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = pathlib.Path(__file__).resolve().parent
 BRAND = json.loads((HERE.parent.parent / "site/_data/brand.json").read_text())
@@ -35,6 +44,9 @@ W, H, FPS = 1920, 1080, 30
 ROOM_TZ = "America/Denver"
 GPU = "/dev/dri/renderD128"
 STALL = 60                                      # seconds with nothing sent before ffmpeg is ended
+FLOOR = pathlib.Path(os.environ.get("FCPM_FLOOR", "/dev/shm/fcpm-floor"))   # memory: no wear on the card
+AIR = int(os.environ.get("FCPM_AIR_PORT", "8482"))  # the claims, on loopback; nginx passes /air to it
+HOLD = 15                                       # seconds a claim on the air lasts unless said again
 
 
 def slate():
@@ -81,10 +93,77 @@ def command(out, seconds=None):
     return cmd + out
 
 
-def note(state, why):
+def bound():
+    """In the child, before ffmpeg: end with this process. Without it a killed standby left its ffmpeg
+    running for two days (2026-10-22), holding the GPU's encoder and YouTube's backup."""
+    import ctypes
+    import signal
+    ctypes.CDLL(None).prctl(1, signal.SIGKILL)  # PR_SET_PDEATHSIG
+
+
+FLOOR_OUT = ["-f", "hls", "-hls_time", "2", "-hls_list_size", "6",
+             "-hls_flags", "delete_segments+omit_endlist+temp_file",
+             "-hls_segment_filename", str(FLOOR / "s%06d.ts"), str(FLOOR / "index.m3u8")]
+
+
+class Air:
+    """Who has said they have the air, and until when."""
+
+    def __init__(self):
+        self.lock, self.claims = threading.Lock(), {}
+
+    def claim(self, holder, release=False):
+        with self.lock:
+            if release:
+                self.claims.pop(holder, None)
+            else:
+                self.claims[holder] = time.time() + HOLD
+
+    def holder(self):
+        with self.lock:
+            self.claims = {h: t for h, t in self.claims.items() if t > time.time()}
+            return min(self.claims, key=self.claims.get) if self.claims else None
+
+    def serve(self):
+        air = self
+
+        class Door(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def reply(self, code, body):
+                data = (json.dumps(body) + "\n").encode()
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(data)
+
+            def do_GET(self):
+                self.reply(200, {"holder": air.holder(), "hold": HOLD})
+
+            def do_POST(self):
+                try:
+                    n = int(self.headers.get("Content-Length") or 0)
+                    body = json.loads(self.rfile.read(n) or b"{}") if n else {}
+                    holder = str(body.get("holder") or "").strip()[:60]
+                except ValueError:
+                    holder = ""
+                if not holder:
+                    return self.reply(400, {"error": 'say {"holder": "who"}'})
+                air.claim(holder, release=bool(body.get("release")))
+                self.reply(200, {"holder": air.holder(), "hold": HOLD})
+        server = ThreadingHTTPServer(("127.0.0.1", AIR), Door)
+        server.daemon_threads = True
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+
+
+def note(state, why, **more):
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     (STATE_DIR / "standby.json").write_text(json.dumps(
-        {"state": state, "why": why, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}, indent=1) + "\n")
+        dict({"state": state, "why": why, "floor": str(FLOOR / "index.m3u8")}, **more,
+             at=time.strftime("%Y-%m-%dT%H:%M:%S%z")), indent=1) + "\n")
     print(f"standby: {state}: {why}", flush=True)
 
 
@@ -94,46 +173,92 @@ def main(args):
         subprocess.run(command(["-y", args[1]], seconds=10), env=env, check=True)
         print(f"standby: ten seconds in {args[1]}")
         return
-    key = KEY.read_text().strip() if KEY.exists() else ""
-    out = ["-f", "flv", "-rtmp_app", "live2?backup=1", "-rtmp_playpath", key or "<key>", INGEST]
     if args == ["--check"]:
         slate()
-        print(json.dumps({"slate": str(SLATE), "key": bool(key), "to": INGEST + "?backup=1/<key>",
-                          "ffmpeg": " ".join(command(out[:-3] + ["<key>", INGEST]))[:400]}, indent=1))
+        key = KEY.read_text().strip() if KEY.exists() else ""
+        print(json.dumps({"slate": str(SLATE), "key": bool(key), "floor": str(FLOOR / "index.m3u8"),
+                          "air": f"127.0.0.1:{AIR}", "to": INGEST + "?backup=1/<key>",
+                          "ffmpeg": " ".join(command(FLOOR_OUT))[:400]}, indent=1))
         return
     if args:
         sys.exit(__doc__)
-    while not key:
-        note("waiting", f"no key in {KEY}")
-        time.sleep(60)
-        key = KEY.read_text().strip() if KEY.exists() else ""
-    out[-2] = key
-    note("sending", "the slate to YouTube's backup ingest")
-    sys.exit(send(out, env))
+    air = Air()
+    air.serve()
+    FLOOR.mkdir(parents=True, exist_ok=True)
+    for old in FLOOR.iterdir():
+        old.unlink()
+    floor = subprocess.Popen(command(FLOOR_OUT), env=env, preexec_fn=bound)
+    copy, said = None, None
+    try:
+        while floor.poll() is None:
+            time.sleep(2)
+            playlist = FLOOR / "index.m3u8"
+            if playlist.exists() and time.time() - playlist.stat().st_mtime > STALL:
+                note("stalled", f"the floor has not moved for {STALL} s; to be started again")
+                return 1
+            holder = air.holder()
+            key = KEY.read_text().strip() if KEY.exists() else ""
+            if copy and copy.done():
+                copy = None
+            if holder and copy:
+                copy.stop()
+                copy = None
+            if not holder and not copy and key and playlist.exists():
+                copy = Copy(key, env)
+            now = ("yielded", f"{holder} has the air", holder) if holder else \
+                  ("waiting", f"no key in {KEY}", None) if not key else \
+                  ("sending", "the floor to YouTube's backup ingest", None) if copy else \
+                  ("starting", "the floor is not playing yet", None)
+            if now != said:
+                note(now[0], now[1], holder=now[2])
+                said = now
+        note("stopped", f"the floor's ffmpeg ended ({floor.returncode})")
+        return 1
+    finally:
+        if copy:
+            copy.stop()
+        if floor.poll() is None:
+            floor.kill()
 
 
-def send(out, env):
-    """ffmpeg to `out` until it ends, or until it has sent nothing for STALL seconds; its exit code."""
-    p = subprocess.Popen(command(["-progress", "pipe:1", "-stats_period", "5"] + out), env=env,
-                         stdout=subprocess.PIPE, text=True)
-    sent = {"bytes": -1, "at": time.time()}
+class Copy:
+    """The floor to YouTube's backup ingest, as it is (no second encode), until stopped or stuck."""
 
-    def watch():
-        for line in p.stdout:
+    def __init__(self, key, env):
+        out = ["-f", "flv", "-rtmp_app", "live2?backup=1", "-rtmp_playpath", key, INGEST]
+        self.p = subprocess.Popen(
+            ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-live_start_index", "-1",
+             "-i", str(FLOOR / "index.m3u8"), "-c", "copy", "-progress", "pipe:1", "-stats_period", "5"]
+            + out, env=env, stdout=subprocess.PIPE, text=True, preexec_fn=bound)
+        self.sent = {"bytes": -1, "at": time.time()}
+        threading.Thread(target=self.watch, daemon=True).start()
+
+    def watch(self):
+        for line in self.p.stdout:
             k, _, v = line.strip().partition("=")
-            if k == "total_size" and v.isdigit() and int(v) > sent["bytes"]:
-                sent.update(bytes=int(v), at=time.time())
-    threading.Thread(target=watch, daemon=True).start()
-    while p.poll() is None:
-        time.sleep(5)
-        if time.time() - sent["at"] > STALL:
-            note("stalled", f"nothing sent for {STALL} s; ffmpeg ended, to be started again")
-            p.kill()
-            p.wait()
-            return 1
-    note("stopped", f"ffmpeg ended ({p.returncode})")
-    return p.returncode or 1
+            if k == "total_size" and v.isdigit() and int(v) > self.sent["bytes"]:
+                self.sent.update(bytes=int(v), at=time.time())
+
+    def done(self):
+        """Ended, or stuck sending nothing (then ended here, to be started again)."""
+        if self.p.poll() is not None:
+            note("stopped", f"the copy to YouTube ended ({self.p.returncode}); starting it again")
+            return True
+        if time.time() - self.sent["at"] > STALL:
+            note("stalled", f"nothing sent for {STALL} s; the copy is ended, to be started again")
+            self.stop()
+            return True
+        return False
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.p.terminate()
+            try:
+                self.p.wait(5)
+            except subprocess.TimeoutExpired:
+                self.p.kill()
+                self.p.wait()
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))
