@@ -29,7 +29,7 @@ name.
 ## The stream
 
 Shuffled, every track once before any again, no artist twice running where it can be helped, every
-track to one loudness, gapless. On port 8093 (`FCPM_JUKEBOX_PORT`), open to the LAN:
+track to one loudness, gapless. On port 8095 (`FCPM_JUKEBOX_PORT`), open to the LAN:
 
 | | |
 |---|---|
@@ -55,4 +55,4 @@ The standby page ([`broadcast/ch97/page/standby/`](../broadcast/ch97/page/standb
 
 `python3 -I machines/jukebox/jukebox --check` says what it finds. ffmpeg and ffprobe, and a Python
 with yaml (the crew's). On Windows the first listen from another machine needs an inbound rule for
-port 8093; the bay's own OBS reaches it without one.
+port 8095; the bay's own OBS reaches it without one.

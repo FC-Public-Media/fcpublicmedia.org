@@ -11,7 +11,7 @@ one folder per artist; a folder plays only when it carries `artist.yml` with `na
 air) and `cleared:` (who cleared it for the air, and when). Anything else is held, with the reason.
 
 One stream, gapless, shuffled, no track again until every track has played, no artist twice in a row
-where it can be helped, loudness evened out. Served on FCPM_JUKEBOX_PORT (8093), open to the LAN:
+where it can be helped, loudness evened out. Served on FCPM_JUKEBOX_PORT (8095), open to the LAN:
 
     GET  /stream.mp3     the music, 128 kbit/s MP3, endless
     GET  /now.json       what is playing (artist, title, position, length), the next five, what is held
@@ -38,7 +38,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import yaml
 
-PORT = int(os.environ.get("FCPM_JUKEBOX_PORT", "8093"))
+PORT = int(os.environ.get("FCPM_JUKEBOX_PORT", "8095"))
 AUDIO = {".mp3", ".flac", ".wav", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff"}
 RATE, CH = 44100, 2
 SECOND = RATE * CH * 2                       # bytes of s16le PCM in a second

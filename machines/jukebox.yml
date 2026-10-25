@@ -3,6 +3,6 @@
 
 serves:
   - service: jukebox
-    for: "the house's music: cleared music on this machine's own disks, one stream on port 8093, for the standby page and whatever puts it on the air"
+    for: "the house's music: cleared music on this machine's own disks, one stream on port 8095, for the standby page and whatever puts it on the air"
     start: "{python} machines/jukebox/jukebox"
-    alive: {port: 8093}
+    alive: {port: 8095}

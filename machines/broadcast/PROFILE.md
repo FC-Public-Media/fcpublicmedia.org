@@ -152,7 +152,7 @@ along its edge the jukebox ([`../jukebox/`](../jukebox/README.md)): the artist i
 a pill for each twelfth of the track, the time, and "become a member". With no jukebox, the slant says
 "Your music here." Two places music comes in: without `?jukebox=`, the slant shows what the floor's
 own jukebox is playing (`/floor/now.json`), which is what the floor sounds like; with `?jukebox=URL` (in
-the bay's OBS, `http://127.0.0.1:8093`), that jukebox, whose stream the machine on top mixes in, muting
+the bay's OBS, `http://127.0.0.1:8095`), that jukebox, whose stream the machine on top mixes in, muting
 the floor's or not. `?holder=` is the name OBS takes the air under; `?listen` plays the music in the page
 too. A pointer brings up listen and skip, with a jukebox of the page's own; on the air there is none.
 

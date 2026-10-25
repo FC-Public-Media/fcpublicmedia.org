@@ -1,6 +1,6 @@
 // standby.js -- our page between programs: panels taking turns, the jukebox on the slant. Plain files.
 //
-//   ?jukebox=URL   a jukebox to show and play (bay 1's OBS: http://127.0.0.1:8093). Without it, the slant shows
+//   ?jukebox=URL   a jukebox to show and play (bay 1's OBS: http://127.0.0.1:8095). Without it, the slant shows
 //                  what the floor's own jukebox is playing (/floor/now.json); with no music at all, it invites
 //   ?holder=NAME   inside OBS, while OBS streams: the name it takes the air under (POST /air, ../../standby)
 //   ?listen        play the music here too (a person can also press listen, where there is a pointer)
