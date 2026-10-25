@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""jukebox — a folder of music played over and over into standby's sound, so the backup stream isn't silent.
+
+    python3 -I machines/broadcast/jukebox           run (the broadcast crew's `jukebox` line keeps it up)
+    python3 -I machines/broadcast/jukebox --check   say the folder, what it holds, and whether the bus is there
+
+The folder is /srv/landing/jukebox (FCPM_JUKEBOX to point elsewhere). Its files play by name, A to Z,
+and again from the top; the folder is read afresh each time round, so a file dropped in or taken out
+counts from the next round. Only music FCPM has the rights to goes in: what is in the folder is on
+YouTube. Each file is played by mpv into standby's bus (a PulseAudio null sink, `fcpm-standby`, that
+standby makes and sends from); while the bus isn't there, nothing plays, and mpv never falls back to
+the room's speakers. What is playing is written to ~/.local/state/fcpm/broadcast/jukebox.json, for
+a screen to show later. mpv and the system python. See PROFILE.md, "To YouTube".
+"""
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import time
+
+FOLDER = pathlib.Path(os.environ.get("FCPM_JUKEBOX", "/srv/landing/jukebox"))
+STATE_DIR = pathlib.Path.home() / ".local/state/fcpm/broadcast"
+BUS = "fcpm-standby"                            # standby's null sink; standby makes it
+SOUND = {".flac", ".wav", ".mp3", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aiff"}
+os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
+
+
+def tracks():
+    """The folder's sound files, by name; hidden files and anything else are left alone."""
+    if not FOLDER.is_dir():
+        return []
+    return sorted((p for p in FOLDER.rglob("*") if p.is_file() and p.suffix.lower() in SOUND
+                   and not any(part.startswith(".") for part in p.relative_to(FOLDER).parts)),
+                  key=lambda p: str(p.relative_to(FOLDER)).lower())
+
+
+def bus():
+    """Whether standby's bus is there to play into."""
+    r = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True, text=True)
+    return any(line.split("\t")[1:2] == [BUS] for line in r.stdout.splitlines())
+
+
+def note(state, why, track=None):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    now = {"state": state, "why": why, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+    if track:
+        now.update(file=str(track.relative_to(FOLDER)), title=track.stem)
+    (STATE_DIR / "jukebox.json").write_text(json.dumps(now, indent=1) + "\n")
+    print(f"jukebox: {state}: {why}", flush=True)
+
+
+def play(track):
+    """One file through mpv into the bus; whether it played to its end."""
+    r = subprocess.run(["mpv", "--no-config", "--no-video", "--no-terminal", "--really-quiet",
+                        f"--audio-device=pulse/{BUS}", "--", str(track)], stdin=subprocess.DEVNULL)
+    return r.returncode == 0
+
+
+def main(args):
+    if args == ["--check"]:
+        found = tracks()
+        print(json.dumps({"folder": str(FOLDER), "there": FOLDER.is_dir(), "tracks": len(found),
+                          "first": [str(p.relative_to(FOLDER)) for p in found[:10]], "bus": bus()}, indent=1))
+        return
+    if args:
+        sys.exit(__doc__)
+    while True:
+        found = tracks()
+        if not found:
+            note("waiting", f"nothing to play in {FOLDER}")
+            time.sleep(30)
+            continue
+        played = 0
+        for track in found:
+            if not bus():
+                note("waiting", f"standby's bus ({BUS}) isn't there")
+                time.sleep(10)
+                break
+            if not track.exists():
+                continue
+            note("playing", track.name, track)
+            played += play(track)
+        if not played:
+            time.sleep(30)                      # a round with nothing played: don't spin on bad files
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -118,6 +118,15 @@ time with our own picture: the brand's mark and lockup (from `site/_data/brand.j
 clock, at 1080p30 like the channel, decoded once and encoded by the GPU (about a tenth of a core and
 a few hundred kbit/s). YouTube shows it while the channel is away and goes back when it returns.
 
+Its sound is a bus, `fcpm-standby`: a null sink standby makes in the desktop's PulseAudio, sent from
+its monitor. Anything played into it is on YouTube's backup stream; with nothing playing, it is
+silence, as before. Until PulseAudio is up (the desktop's login), standby sends silence, and once the
+bus can be made it starts again with it. [`jukebox`](jukebox), the crew's `jukebox` line, is the first
+thing played into it: every sound file in `/srv/landing/jukebox`, by name, A to Z and round again, the
+folder read afresh each round. Only music FCPM has the rights to goes in that folder. What it plays is
+in `~/.local/state/fcpm/broadcast/jukebox.json`; nothing shows it on the picture yet. `jukebox --check`
+says what it would play and whether the bus is there.
+
 Cablecast's own way to YouTube is a network broadcast event tied to a scheduled run, one run at a
 time, and a paid add-on; it suits events, not a whole channel. A Live server can also push to a
 network stream destination by itself (`addOutput`): that wants the destination's key to be YouTube's

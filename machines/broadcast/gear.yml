@@ -13,3 +13,23 @@ gear:
     updates: apt
     restart-tier: app
     holds: "nothing of its own"
+
+  - gear: mpv
+    for: >
+      The jukebox (jukebox): plays each file of the jukebox folder into standby's bus, and only
+      there; a missing bus is an error to it, never the room's speakers.
+    package: mpv
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"
+
+  - gear: pulseaudio-utils
+    for: >
+      pactl: standby makes its bus (a null sink, fcpm-standby) in the desktop's PulseAudio, and the
+      jukebox asks whether it is there. ffmpeg reads the bus's monitor through the same server.
+    package: pulseaudio-utils
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"
