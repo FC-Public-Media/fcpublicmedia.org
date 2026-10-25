@@ -1,5 +1,6 @@
 # What the broadcast job runs where it is worn: `name keep from` or `name every Nm from`. See ../README.md.
 
 backup          keep        machines/broadcast
+jukebox         keep        machines/broadcast
 ch97            every 5m    machines/broadcast
 lay             at 00:00    machines/broadcast

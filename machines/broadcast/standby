@@ -9,7 +9,10 @@ When the channel's own stream pauses (a gap in the schedule, an IP-exempt progra
 broadcast that has nothing coming in. Fed on its backup ingest with the same key, YouTube switches
 viewers here instead, and back to the channel when it returns. The picture is the brand's mark and
 lockup (site/_data/brand.json, drawn by rsvg-convert) with the time in the room, at 1080p30 and 48 kHz
-stereo like the channel, so YouTube takes the two as a pair. The slate is decoded once and repeated,
+stereo like the channel, so YouTube takes the two as a pair. The sound is standby's bus, a PulseAudio
+null sink (`fcpm-standby`) made here, which the jukebox plays into; silence while there is no
+PulseAudio to make it in, and once it can be made, ffmpeg is ended so the crew starts it with the bus.
+The slate is decoded once and repeated,
 and encoded by the GPU when it can be: about a tenth of a core. The key is ~/.config/fcpm/youtube.key, as
 the relay's; nothing here prints it. If ffmpeg sends nothing for a minute (YouTube dropped the
 connection and ffmpeg hung on it, as on 2026-10-22), it is ended and this exits, so the crew starts it
@@ -35,6 +38,8 @@ W, H, FPS = 1920, 1080, 30
 ROOM_TZ = "America/Denver"
 GPU = "/dev/dri/renderD128"
 STALL = 60                                      # seconds with nothing sent before ffmpeg is ended
+BUS = "fcpm-standby"                            # the null sink whose monitor is the sound we send
+os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
 
 
 def slate():
@@ -59,9 +64,24 @@ def slate():
     return SLATE
 
 
-def command(out, seconds=None):
-    """ffmpeg: the slate decoded once and repeated, the room's clock on it, silence, as the channel's
-    shape. Encoded by the GPU (VAAPI, a tenth of a core) when this account may use it, else by x264."""
+def bus():
+    """Standby's bus, made if PulseAudio is up and it isn't there yet; whether we can send from it."""
+    def there():
+        r = subprocess.run(["pactl", "list", "short", "sinks"], capture_output=True, text=True)
+        return r.returncode == 0, any(l.split("\t")[1:2] == [BUS] for l in r.stdout.splitlines())
+    up, made = there()
+    if up and not made:
+        subprocess.run(["pactl", "load-module", "module-null-sink", f"sink_name={BUS}", "rate=48000",
+                        "channels=2", f"sink_properties=device.description={BUS}"], capture_output=True)
+        up, made = there()
+    return made
+
+
+def command(out, seconds=None, sound=False):
+    """ffmpeg: the slate decoded once and repeated, the room's clock on it, and the bus's sound (or
+    silence), as the channel's shape. The bus's samples are counted from zero, to run beside the
+    repeated slate. Encoded by the GPU (VAAPI, a tenth of a core) when this account may use it, else
+    by x264."""
     clock = (f"drawtext=fontfile={FONT}:text='%{{localtime\\:%H\\\\\\:%M}}':fontsize=54"
              f":fontcolor=0x{BRAND['colours']['masthead-soft'].lstrip('#')}:x=(w-text_w)/2:y=h*0.88")
     repeat = f"loop=loop=-1:size=1:start=0,fps={FPS},{clock},realtime"
@@ -72,9 +92,11 @@ def command(out, seconds=None):
         pre, graph = [], f"[0:v]format=yuv420p,{repeat}[v]"
         video = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage", "-g", str(FPS * 2),
                  "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k"]
+    audio = (["-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", f"{BUS}.monitor"] if sound
+             else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
     cmd = (["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning"] + pre
-           + ["-i", str(slate()), "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-              "-filter_complex", graph, "-map", "[v]", "-map", "1:a"] + video
+           + ["-i", str(slate())] + audio
+           + ["-filter_complex", graph + ";[1:a]asetpts=N/SR/TB[a]", "-map", "[v]", "-map", "[a]"] + video
            + ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"])
     if seconds:
         cmd += ["-t", str(seconds)]
@@ -91,15 +113,17 @@ def note(state, why):
 def main(args):
     env = dict(os.environ, TZ=ROOM_TZ)
     if args[:1] == ["--try"] and len(args) == 2:
-        subprocess.run(command(["-y", args[1]], seconds=10), env=env, check=True)
+        subprocess.run(command(["-y", args[1]], seconds=10, sound=bus()), env=env, check=True)
         print(f"standby: ten seconds in {args[1]}")
         return
     key = KEY.read_text().strip() if KEY.exists() else ""
     out = ["-f", "flv", "-rtmp_app", "live2?backup=1", "-rtmp_playpath", key or "<key>", INGEST]
     if args == ["--check"]:
         slate()
+        sound = bus()
         print(json.dumps({"slate": str(SLATE), "key": bool(key), "to": INGEST + "?backup=1/<key>",
-                          "ffmpeg": " ".join(command(out[:-3] + ["<key>", INGEST]))[:400]}, indent=1))
+                          "sound": f"{BUS}.monitor" if sound else "silence",
+                          "ffmpeg": " ".join(command(out[:-3] + ["<key>", INGEST], sound=sound))[:600]}, indent=1))
         return
     if args:
         sys.exit(__doc__)
@@ -108,13 +132,15 @@ def main(args):
         time.sleep(60)
         key = KEY.read_text().strip() if KEY.exists() else ""
     out[-2] = key
-    note("sending", "the slate to YouTube's backup ingest")
-    sys.exit(send(out, env))
+    sound = bus()
+    note("sending", "the slate to YouTube's backup ingest, with " + (f"{BUS}'s sound" if sound else "silence"))
+    sys.exit(send(out, env, sound))
 
 
-def send(out, env):
-    """ffmpeg to `out` until it ends, or until it has sent nothing for STALL seconds; its exit code."""
-    p = subprocess.Popen(command(["-progress", "pipe:1", "-stats_period", "5"] + out), env=env,
+def send(out, env, sound):
+    """ffmpeg to `out` until it ends, or until it has sent nothing for STALL seconds, or (sending
+    silence) until the bus can be made; its exit code."""
+    p = subprocess.Popen(command(["-progress", "pipe:1", "-stats_period", "5"] + out, sound=sound), env=env,
                          stdout=subprocess.PIPE, text=True)
     sent = {"bytes": -1, "at": time.time()}
 
@@ -124,8 +150,16 @@ def send(out, env):
             if k == "total_size" and v.isdigit() and int(v) > sent["bytes"]:
                 sent.update(bytes=int(v), at=time.time())
     threading.Thread(target=watch, daemon=True).start()
+    asked = time.time()
     while p.poll() is None:
         time.sleep(5)
+        if not sound and time.time() - asked > 30:
+            asked = time.time()
+            if bus():
+                note("restarting", f"{BUS} is there now; ffmpeg ended, to be started with its sound")
+                p.kill()
+                p.wait()
+                return 1
         if time.time() - sent["at"] > STALL:
             note("stalled", f"nothing sent for {STALL} s; ffmpeg ended, to be started again")
             p.kill()
