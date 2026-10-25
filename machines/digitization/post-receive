@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""post-receive -- where the bays submit finished post work: one sealed folder per connection.
+
+A bay works a take on its own partition (troves/post); each folder it seals there (route.json,
+0-source, N-step) it then submits here, and this keeps it under the landing's post root only if
+every byte is what its SHA256SUMS says. Keeping it is the finished signal: nothing here guesses at
+a bay's state, it only holds what was submitted whole. Nothing kept is ever overwritten.
+
+  post-receive                       the forced command: SSH_ORIGINAL_COMMAND is `receive TAKE ITEM`,
+                                     stdin a tar of ITEM; prints `kept|already TAKE ITEM SHA256`
+  post-receive receive TAKE ITEM     the same, from this machine (a crew delivering to its own landing)
+  post-receive authorize NAME PUB [FROM]   let a bay's key submit (a marked line in authorized_keys)
+
+Root: FCPM_POST_ROOT, else /srv/landing/post, kept only while /srv/landing is mounted. Log: <root>/.receive.ndjson. Doc: troves/post/README.md.
+"""
+import hashlib
+import json
+import os
+import re
+import shutil
+import sys
+import tarfile
+import time
+from pathlib import Path
+
+ROOT = Path(os.environ.get("FCPM_POST_ROOT") or "/srv/landing/post")
+MOUNT = os.environ.get("FCPM_POST_MOUNT", "/srv/landing" if not os.environ.get("FCPM_POST_ROOT") else "")
+RESERVE = 2 << 30                      # leave the landing this much, whatever is submitted
+TAKE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.[0-9a-f]{8}")
+STEP = re.compile(r"([1-9][0-9]*)-([a-z0-9][a-z0-9-]*)")
+
+
+class Refused(Exception):
+    pass
+
+
+def sha256_bytes(b):
+    return hashlib.sha256(b).hexdigest()
+
+
+def sha256_file(f):
+    h = hashlib.sha256()
+    with open(f, "rb") as r:
+        for b in iter(lambda: r.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def log(**row):
+    try:
+        ROOT.mkdir(parents=True, exist_ok=True)
+        with open(ROOT / ".receive.ndjson", "a", encoding="utf-8") as w:
+            w.write(json.dumps({"at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                                "from": (os.environ.get("SSH_CONNECTION") or "").split(" ")[0] or None,
+                                "key": os.environ.get("FCPM_POST_KEY"), **row}) + "\n")
+    except OSError:
+        pass
+
+
+def unpack(stream, item, into):
+    """The tar's members, all under ITEM, regular files and folders only, into `into`."""
+    total = 0
+    with tarfile.open(fileobj=stream, mode="r|") as t:
+        for m in t:
+            name = m.name.replace("\\", "/").rstrip("/")
+            parts = name.split("/")
+            if parts[0] != item or any(p in ("", ".", "..") for p in parts) or name.startswith("/"):
+                raise Refused(f"outside {item}: {m.name}")
+            dst = into.joinpath(*parts)
+            if m.isdir():
+                dst.mkdir(parents=True, exist_ok=True)
+                continue
+            if not m.isreg():
+                raise Refused(f"not a plain file: {m.name}")
+            if shutil.disk_usage(into).free - m.size < RESERVE:
+                raise Refused("the landing is too full for this")
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            with t.extractfile(m) as r, open(dst, "wb") as w:
+                shutil.copyfileobj(r, w, 1 << 20)
+            total += m.size
+    return total
+
+
+def check_sums(d):
+    """Every file listed in SHA256SUMS, every listed hash right; returns the SHA256SUMS's own hash."""
+    sums = d / "SHA256SUMS"
+    if not sums.is_file():
+        raise Refused("no SHA256SUMS: the folder was not sealed")
+    listed = {}
+    for line in sums.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            h, _, rel = line.partition("  ")
+            if not re.fullmatch(r"[0-9a-f]{64}", h) or not rel:
+                raise Refused(f"SHA256SUMS line unreadable: {line[:80]}")
+            listed[rel] = h
+    have = {f.relative_to(d).as_posix() for f in d.rglob("*") if f.is_file() and f.name != "SHA256SUMS"}
+    if have != set(listed):
+        raise Refused(f"SHA256SUMS and the files differ: {sorted(have ^ set(listed))[:5]}")
+    for rel, h in listed.items():
+        if sha256_file(d / rel) != h:
+            raise Refused(f"{rel} is not the file that was sealed")
+    return sha256_bytes(sums.read_bytes()), listed
+
+
+def check_route(raw, take):
+    """route.json is the take's request: its id must be its out name and the hash of what it asks."""
+    r = json.loads(raw)
+    asked = {k: r.get(k) for k in ("out", "show", "for", "steps", "source", "settings")}
+    asked["source"] = [{k: v for k, v in c.items() if k != "as"} for c in asked["source"] or []]   # named after hashing
+    digest = hashlib.sha256(json.dumps(asked, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if r.get("id") != take or take != f"{r.get('out')}.{digest[:8]}" or r.get("sha256") != digest:
+        raise Refused("route.json does not hash to its take's name")
+    return r
+
+
+def receive(take, item, stream):
+    if not TAKE.fullmatch(take):
+        raise Refused(f"not a take's name: {take}")
+    if MOUNT and not os.path.ismount(MOUNT):
+        raise Refused(f"{MOUNT} is not mounted: nothing is kept on the boot card")
+    d = ROOT / take
+    ROOT.mkdir(parents=True, exist_ok=True)
+    stage = ROOT / f".{take}.{item}.incoming-{os.getpid()}"
+    shutil.rmtree(stage, ignore_errors=True)
+    stage.mkdir()
+    try:
+        size = unpack(stream, item, stage)
+        got = stage / item
+        if item == "route.json":
+            if not got.is_file():
+                raise Refused("no route.json in what was sent")
+            raw = got.read_bytes()
+            check_route(raw, take)
+            sha = sha256_bytes(raw)
+            if (d / "route.json").is_file():
+                if (d / "route.json").read_bytes() != raw:
+                    raise Refused("this take's route.json is already kept, and differs")
+                return "already", sha, size
+            d.mkdir(exist_ok=True)
+            os.replace(got, d / "route.json")
+            return "kept", sha, size
+        if not (d / "route.json").is_file():
+            raise Refused("route.json first: this take's pipeline is not open here")
+        route = json.loads((d / "route.json").read_text(encoding="utf-8"))
+        m = STEP.fullmatch(item)
+        if item == "0-source":
+            want = {s.get("as") or s["name"]: s["sha256"] for s in route.get("source") or []}
+        elif m and int(m.group(1)) <= len(route["steps"]) and route["steps"][int(m.group(1)) - 1]["step"] == m.group(2):
+            want = None
+        else:
+            raise Refused(f"{item} is not a step of this take's route")
+        if not got.is_dir():
+            raise Refused(f"no {item} folder in what was sent")
+        sha, listed = check_sums(got)
+        if want is not None and listed != want:
+            raise Refused("0-source is not the recordings route.json names")
+        if (d / item).is_dir():
+            if sha256_bytes((d / item / "SHA256SUMS").read_bytes()) != sha:
+                raise Refused(f"{item} is already kept, and differs")
+            return "already", sha, size
+        os.replace(got, d / item)
+        return "kept", sha, size
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+
+
+def authorize(name, pub, frm=None):
+    """One line per bay, marked by its comment; rewritten in place, every other line untouched."""
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name):
+        sys.exit("post-receive: a bay's name is lowercase letters, digits and dashes")
+    key = Path(pub).read_text().split()
+    if len(key) < 2 or not key[0].startswith(("ssh-", "ecdsa-")):
+        sys.exit(f"post-receive: {pub} is not a public key")
+    mark = f"post-deliver:{name}"
+    opts = ["restrict", f'from="{frm}"' if frm else None,
+            f'command="FCPM_POST_KEY={name} /usr/bin/python3 {Path(__file__).resolve()}"']
+    line = ",".join(o for o in opts if o) + f" {key[0]} {key[1]} {mark}"
+    ak = Path.home() / ".ssh" / "authorized_keys"
+    old = ak.read_text().splitlines() if ak.exists() else []
+    new = [l for l in old if not l.endswith(" " + mark)] + [line]
+    tmp = ak.with_name("authorized_keys.post-receive")
+    tmp.write_text("\n".join(new) + "\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, ak)
+    print(f"{'replaced' if len(new) == len(old) else 'added'} {mark}" + (f" from {frm}" if frm else ""))
+
+
+def main():
+    if sys.argv[1:2] == ["authorize"] and len(sys.argv) in (4, 5):
+        return authorize(*sys.argv[2:])
+    # Over SSH the forced command's SSH_ORIGINAL_COMMAND is all a bay can say; on this machine, the arguments.
+    words = (os.environ["SSH_ORIGINAL_COMMAND"].split() if "SSH_ORIGINAL_COMMAND" in os.environ else sys.argv[1:])
+    if len(words) != 3 or words[0] != "receive":
+        print("post-receive: this key may only `receive TAKE ITEM`, a tar of ITEM on stdin", file=sys.stderr)
+        return 2
+    _, take, item = words
+    try:
+        result, sha, size = receive(take, item, sys.stdin.buffer)
+    except (Refused, tarfile.TarError, ValueError, KeyError, OSError) as e:
+        log(take=take, item=item, result="refused", why=str(e))
+        print(f"refused {take} {item}: {e}", file=sys.stderr)
+        return 1
+    log(take=take, item=item, result=result, sha256=sha, bytes=size)
+    print(f"{result} {take} {item} {sha}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
