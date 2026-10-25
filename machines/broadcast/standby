@@ -16,7 +16,9 @@ The slate is decoded once and repeated,
 and encoded by the GPU when it can be: about a tenth of a core. The key is ~/.config/fcpm/youtube.key, as
 the relay's; nothing here prints it. If ffmpeg sends nothing for a minute (YouTube dropped the
 connection and ffmpeg hung on it, as on 2026-10-22), it is ended and this exits, so the crew starts it
-again. ffmpeg and the system python. See PROFILE.md, "To YouTube".
+again. While Cablecast itself pushes to the backup ingest (a destination on `b.rtmp.youtube.com`,
+attached on the board's /broadcast/), the ingest is Cablecast's: standby says `yielding`, sends
+nothing, and takes it back when that is detached. ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import html
 import json
@@ -38,6 +40,18 @@ W, H, FPS = 1920, 1080, 30
 ROOM_TZ = "America/Denver"
 GPU = "/dev/dri/renderD128"
 STALL = 60                                      # seconds with nothing sent before ffmpeg is ended
+YIELD = 20                                      # seconds between asks whether Cablecast holds the ingest
+sys.path.insert(0, str(HERE))
+import cablecast  # noqa: E402  the same hand on the box
+
+
+def cablecast_on_backup():
+    """Whether Cablecast pushes to the backup ingest. A box that can't be asked is taken as no: then
+    standby keeps the stream from ending, as it did before it asked."""
+    try:
+        return cablecast.on_backup()
+    except (Exception, SystemExit):
+        return False
 BUS = "fcpm-standby"                            # the null sink whose monitor is the sound we send
 os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
 
@@ -132,6 +146,10 @@ def main(args):
         time.sleep(60)
         key = KEY.read_text().strip() if KEY.exists() else ""
     out[-2] = key
+    if cablecast_on_backup():
+        note("yielding", "Cablecast is pushing to YouTube's backup ingest")
+        while cablecast_on_backup():
+            time.sleep(YIELD)
     sound = bus()
     note("sending", "the slate to YouTube's backup ingest, with " + (f"{BUS}'s sound" if sound else "silence"))
     sys.exit(send(out, env, sound))
@@ -150,9 +168,16 @@ def send(out, env, sound):
             if k == "total_size" and v.isdigit() and int(v) > sent["bytes"]:
                 sent.update(bytes=int(v), at=time.time())
     threading.Thread(target=watch, daemon=True).start()
-    asked = time.time()
+    asked = yielded = time.time()
     while p.poll() is None:
         time.sleep(5)
+        if time.time() - yielded > YIELD:
+            yielded = time.time()
+            if cablecast_on_backup():
+                note("yielding", "Cablecast is pushing to YouTube's backup ingest; ffmpeg ended")
+                p.kill()
+                p.wait()
+                return 1
         if not sound and time.time() - asked > 30:
             asked = time.time()
             if bus():

@@ -113,6 +113,11 @@ and reading it needs no key. `cablecast.py push [NAME on|off]` says or switches,
 `/broadcast/` page (`helm.fcpublicmedia.local/broadcast/`) shows each destination with its switch, for
 whoever is on Helm; switching needs the token, so it works where the token is kept.
 
+YouTube's backup ingest is a second destination, made in Cablecast's own pages (the API can't make
+one): server `rtmp://b.rtmp.youtube.com/live2?backup=1`, the same key. The two can be on together,
+or either alone. The ingest takes one sender, so `standby` steps aside while Cablecast is on it and
+takes it back when it is detached; the page shows which.
+
 [`relay`](relay) is the emergency tool if the 350 cannot push: it copies the channel's web stream (taken
 on the LAN from the 350, the cloud copy as fallback) to YouTube's primary ingest without re-encoding,
 and pushes only once the source is seen to move. It is not a crew line; `relay --check` says what it

@@ -3848,7 +3848,11 @@ def broadcast_now(name=None, on=None):
     """{"destinations": [{id, name, on}], "keyed": bool}, or {"why": ...} when the box can't say."""
     try:
         hand = broadcast_hand()
-        return {"destinations": hand.push(name, on), "keyed": hand.TOKEN.exists()}
+        now = {"destinations": hand.push(name, on), "keyed": hand.TOKEN.exists()}
+        kept = pathlib.Path.home() / ".local/state/fcpm/broadcast/standby.json"   # where standby runs
+        if kept.exists():
+            now["standby"] = json.loads(kept.read_text()).get("state")
+        return now
     except SystemExit as exc:                    # cablecast.py says what went wrong, then exits
         return {"why": str(exc.code)}
     except Exception as exc:
@@ -3877,6 +3881,15 @@ BROADCAST_JS = """<script>
       card.append(b, p, go);
       list.append(card);
     });
+    if (d.standby) {   // standby's slate, on YouTube's backup ingest unless Cablecast is there
+      var s = document.createElement('div'), sb = document.createElement('b'), sp = document.createElement('p');
+      s.className = 'card' + (d.standby === 'sending' ? ' on' : '');
+      sb.textContent = 'Standby slate';
+      sp.textContent = d.standby === 'sending' ? 'Streaming, on the backup ingest'
+        : d.standby === 'yielding' ? 'Stepped aside for Cablecast' : d.standby;
+      s.append(sb, sp);
+      list.append(s);
+    }
   }
   function now() {
     if (busy) return;

@@ -40,6 +40,7 @@ LOCATION = 1
 CHANNEL = 1
 BOARD = 2  # the bulletin board's own channel number, in Cablecast CG
 LIVE = 5  # the Live 350's device: it encodes the channel and pushes it to each destination attached
+BACKUP = "b.rtmp.youtube.com"  # YouTube's backup ingest; standby's, unless Cablecast is pushing there
 ZONE = "America/Denver"  # the channel's clock, as the box keeps it
 PUBLIC = "https://ch97.fcpublicmedia.org"  # Cablecast's public pages, under our name
 TOKEN = pathlib.Path.home() / ".config/fcpm/cablecast.token"
@@ -294,10 +295,11 @@ def eject(into):
     print(f"ejected into {out}: website, on-air, bulletin board ({len(zones)} zones)")
 
 
-def destinations():
-    """{id: name} of each network stream destination. The box lists their keys too; none leave here."""
+def destinations(where=False):
+    """{id: name} of each network stream destination, or {id: its server URL}. The box lists their
+    keys too; none leave here."""
     got = call("GET", f"/networkstreamdestinations?location={LOCATION}")["networkStreamDestinations"]
-    return {d["id"]: d["name"] for d in got}
+    return {d["id"]: d["rtmpStreamUrl"] if where else d["name"] for d in got}
 
 
 def pushing():
@@ -306,6 +308,12 @@ def pushing():
     live = next((d for d in status if d.get("device") == LIVE), {})
     return {int(o["internalId"]) for o in live.get("outputs") or []
             if o.get("type") == "RTMP" and str(o.get("internalId") or "").isdigit()}
+
+
+def on_backup():
+    """Whether the Live 350 pushes to YouTube's backup ingest now: standby steps aside while it does."""
+    fed = pushing()
+    return any(BACKUP in (url or "") for i, url in destinations(where=True).items() if i in fed)
 
 
 def push(name=None, on=None):
