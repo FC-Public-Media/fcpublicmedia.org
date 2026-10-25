@@ -3,3 +3,4 @@
 follow          every 5m    machines/digitization
 pools           keep        troves/pools
 names           keep        machines/digitization
+senders         every 1m    machines/digitization
