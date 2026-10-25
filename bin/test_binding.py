@@ -58,7 +58,8 @@ def run(system, fact):
     return code, buf.getvalue()
 
 
-NOT_JOBS = {"cards"}     # boot cards (machines/cards), worn by no machine
+NOT_JOBS = {"cards",       # boot cards (machines/cards), worn by no machine
+            "jukebox"}     # a role a job orders in its services (machines/jukebox), not a profile
 
 
 class TheFormatChange(unittest.TestCase):

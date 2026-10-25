@@ -4,6 +4,7 @@ pools           keep        troves/pools
 episodes        every 5m    troves/pools
 post            keep        troves/post
 screen          every 1m    troves/kiosk-screen
+jukebox         keep        machines/jukebox
 
 # Held off: no Claude at startup. Uncomment to keep it.
 # remote-control  keep        machines/production

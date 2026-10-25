@@ -1,0 +1,75 @@
+/* standby -- our page between programs: a stage of 1920 x 1080, scaled to whatever shows it. Brand
+   colours and tilt from site/_data/brand.json; yellow is a surface; size carries how much. The class
+   kiosk's slant (machines/kiosk/door.py), turned to the bottom for a landscape picture. */
+@font-face { font-family: Archivo; src: url(/fonts/archivo.woff2) format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Source Serif 4"; src: url(/fonts/source-serif-4.woff2) format("woff2"); font-weight: 200 900; }
+:root {
+  --ink: #121417; --slate: #232830; --paper: #f4f1ea; --soft: #9ba3ad; --rule: #2f363d;
+  --signal: #ffc61a; --then: #6b737d; --tilt: -8deg;
+  /* The band's top edge, at the tilt: it rises 270px (1920 x tan 8deg) from left to right. */
+  --edge-left: 964px; --edge-right: 694px;
+}
+html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; margin: -540px 0 0 -960px;
+  background: var(--ink); color: var(--paper); font-family: Archivo, system-ui, sans-serif; overflow: hidden; }
+
+/* The panels: fixed bounds above the slant; one shows at a time, the next fades in over it. */
+#panels { position: absolute; left: 96px; top: 56px; width: 1728px; height: 624px; }
+.panel { position: absolute; inset: 0; opacity: 0; transition: opacity 900ms ease; display: flex; }
+.panel.on { opacity: 1; }
+.panel.slide { align-items: center; justify-content: center; }
+.panel.slide img { width: 100%; height: 100%; object-fit: contain; }
+.panel h2 { margin: 0 0 40px; font: 700 34px/1 Archivo, sans-serif; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--soft); }
+.panel.text { flex-direction: column; justify-content: center; padding: 0 40px; }
+.panel.next ol { list-style: none; margin: 0; padding: 0; }
+.panel.next li { display: grid; grid-template-columns: 220px 1fr; align-items: baseline; margin-bottom: 34px; }
+.panel.next .at { font: 600 44px/1 Archivo, sans-serif; font-variant-numeric: tabular-nums; color: var(--soft); }
+.panel.next .p { font: 700 60px/1.05 "Source Serif 4", Georgia, serif; }
+.panel.next .t { grid-column: 2; margin-top: 10px; font-size: 30px; color: var(--soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel.next li:first-child .p { font-size: 84px; }
+.panel.pitch .big { margin: 0; font: 700 132px/1 "Source Serif 4", Georgia, serif; }
+.panel.pitch .small { margin: 36px 0 0; font-size: 40px; color: var(--soft); max-width: 1300px; line-height: 1.3; }
+.panel.pitch .small b { color: var(--paper); }
+
+/* The band: slate below the slant, hard-edged; the mark and the lockup where it is tallest. */
+#band { position: absolute; inset: 0; background: var(--slate);
+  clip-path: polygon(0 var(--edge-left), 100% var(--edge-right), 100% 100%, 0 100%); }
+#band .mark { position: absolute; right: 120px; bottom: 96px; width: 132px; height: 132px; background: var(--signal);
+  rotate: var(--tilt); }
+#band .lockup { position: absolute; right: 300px; bottom: 98px; margin: 0; text-align: right; }
+#band .lockup b { display: block; font: 700 54px/1 "Source Serif 4", Georgia, serif; }
+#band .lockup span { display: block; margin-top: 12px; font-size: 26px; letter-spacing: .38em; text-transform: uppercase;
+  color: var(--soft); }
+
+/* On the slant: a line along the band's edge, leaning with it. Above the edge, what is playing (the
+   artist in the serif, as the class kiosk's presenter); under it, a pill for each twelfth of the track
+   (passed ones dim, the one we are in lit, ones not reached not drawn, their places kept), the time
+   for the edge of the eye, and the invitation. */
+#slant { position: absolute; left: 0; top: var(--edge-left); width: 1940px; height: 0; transform-origin: 0 0;
+  rotate: var(--tilt); }
+#slant .track { transition: opacity 600ms ease; }
+#slant .track.quiet { opacity: 0; }
+#slant .track.solo .who { bottom: 18px; }   /* a title with no artist: one line, on the edge */
+#slant .who { position: absolute; left: 96px; bottom: 62px; margin: 0; white-space: nowrap;
+  font: 600 54px/1 "Source Serif 4", Georgia, serif; }
+#slant .what { position: absolute; left: 98px; bottom: 18px; margin: 0; max-width: 1100px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; font-size: 32px; line-height: 1; color: var(--soft); }
+#slant .bar { position: absolute; left: 98px; top: 20px; display: flex; gap: 10px; }
+#slant .bar i { width: 52px; height: 9px; border-radius: 99px; background: transparent; }
+#slant .bar i.then { background: var(--then); }
+#slant .bar i.on { background: var(--signal); }
+#slant .time { position: absolute; left: 860px; top: 12px; margin: 0; font-size: 24px; line-height: 1; color: var(--then);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+#slant .pitch { position: absolute; left: 98px; top: 52px; margin: 0; font-size: 24px; line-height: 1; color: var(--soft);
+  white-space: nowrap; }
+#slant .pitch b { color: var(--paper); font-weight: 600; }
+#slant.silent .pitch .lead { display: none; }   /* the slant itself is saying it */
+
+/* Hands: only where there is a pointer, only while it moves. On the air there is none. */
+#hands { position: absolute; right: 96px; top: 24px; display: flex; gap: 12px; opacity: 0; transition: opacity 300ms; }
+body.pointing #hands { opacity: 1; }
+#hands button { font: 600 22px Archivo, sans-serif; padding: 8px 18px; border: 0; border-radius: 4px; cursor: pointer;
+  background: var(--slate); color: var(--paper); }
+#hands button:hover, #hands button.on { background: var(--signal); color: var(--ink); }

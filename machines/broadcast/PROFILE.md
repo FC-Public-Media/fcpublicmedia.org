@@ -113,19 +113,48 @@ and pushes only once the source is seen to move. It is not a crew line; `relay -
 would do. It carried the channel on 2026-10-22 from 00:03 while the 350's own push could not.
 
 When the channel's stream pauses (a gap in the schedule, an IP-exempt program), YouTube would end the
-broadcast. So [`standby`](standby), the crew's `backup` line, feeds YouTube's backup ingest all the
-time with our own picture: the brand's mark and lockup (from `site/_data/brand.json`) and the room's
-clock, at 1080p30 like the channel, decoded once and encoded by the GPU (about a tenth of a core and
-a few hundred kbit/s). YouTube shows it while the channel is away and goes back when it returns.
+broadcast. So YouTube's backup ingest is fed in layers, each one able to stand alone.
 
-Its sound is a bus, `fcpm-standby`: a null sink standby makes in the desktop's PulseAudio, sent from
+**The floor** is [`standby`](standby), the crew's `backup` line, on digitization: the brand's mark and
+lockup (from `site/_data/brand.json`) and the room's clock, at 1080p30 like the channel, encoded once by
+the GPU (about a tenth of a core) into HLS in memory, served on the LAN as
+`ch97.fcpublicmedia.local/floor/index.m3u8`. A copy of it, not a second encode, goes to the backup
+ingest. YouTube shows it while the channel is away and goes back when it returns. The floor never
+tries to be the show.
+
+The floor's sound is a bus, `fcpm-standby`: a null sink standby makes in the desktop's PulseAudio, sent from
 its monitor. Anything played into it is on YouTube's backup stream; with nothing playing, it is
 silence, as before. Until PulseAudio is up (the desktop's login), standby sends silence, and once the
 bus can be made it starts again with it. [`jukebox`](jukebox), the crew's `jukebox` line, is the first
 thing played into it: every sound file in `/srv/landing/jukebox`, by name, A to Z and round again, the
 folder read afresh each round. Only music FCPM has the rights to goes in that folder. What it plays is
-in `~/.local/state/fcpm/broadcast/jukebox.json`; nothing shows it on the picture yet. `jukebox --check`
+in `~/.local/state/fcpm/broadcast/jukebox.json`, served as `ch97…/floor/now.json`, which the standby
+page shows when it has no jukebox of its own. `jukebox --check`
 says what it would play and whether the bus is there.
+
+**On top**, a machine that can do more (editing bay 1, with OBS) lays the floor underneath (a media
+source, its sound kept or muted), the standby page over it, and the jukebox role's music, and takes the air: while it streams it says
+so, `POST /air {"holder": "bay 1"}` to ch97, every few seconds; the standby page does that by itself
+inside OBS. While a claim is fresh (15 s) the floor's copy to YouTube stops; when the claims lapse it
+starts again on its own, so a machine that stops, crashes or is switched off never leaves YouTube with
+nothing, and the floor needs to know nothing about what is on top. `GET /air` says who has it. Any
+machine on the LAN can claim; the channel's own stream rides the primary ingest either way.
+
+## The standby page
+
+`ch97.fcpublicmedia.local/standby/` (`ch97/page/standby/`): our own page between programs, in the
+place of Cablecast's bulletin board. A stage of 1920 x 1080, scaled to whatever shows it. Panels take
+turns in fixed bounds above the slant: the bulletin board's slides in their order and seconds (from the
+broadcast repository's `bulletin-board/`, published to `/slides/`), every fourth "Next on 97" from the
+days we laid, and now and then the invitation to members. Below, the brand's slant, as the class
+kiosk's (`kiosk/door.py`) turned to the bottom: the mark and the lockup where the band is tallest, and
+along its edge the jukebox ([`../jukebox/`](../jukebox/README.md)): the artist in the serif, the title,
+a pill for each twelfth of the track, the time, and "become a member". With no jukebox, the slant says
+"Your music here." Two places music comes in: without `?jukebox=`, the slant shows what the floor's
+own jukebox is playing (`/floor/now.json`), which is what the floor sounds like; with `?jukebox=URL` (in
+the bay's OBS, `http://127.0.0.1:8095`), that jukebox, whose stream the machine on top mixes in, muting
+the floor's or not. `?holder=` is the name OBS takes the air under; `?listen` plays the music in the page
+too. A pointer brings up listen and skip, with a jukebox of the page's own; on the air there is none.
 
 Cablecast's own way to YouTube is a network broadcast event tied to a scheduled run, one run at a
 time, and a paid add-on; it suits events, not a whole channel. A Live server can also push to a

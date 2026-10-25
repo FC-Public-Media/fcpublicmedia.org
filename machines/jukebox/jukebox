@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+"""jukebox — the house's music: the cleared music this machine can reach, played as one stream.
+
+    python3 -I machines/jukebox/jukebox            run (a job's `jukebox` line keeps it up)
+    python3 -I machines/jukebox/jukebox --check    say what it finds and what it holds, play nothing
+
+Whoever wears the job plays its own storage: a folder named `jukebox` at the top of any disk this
+machine has mounted (every drive letter on Windows, every real mount on Linux, /Volumes on a Mac),
+and ~/Music/jukebox. FCPM_JUKEBOX names the folders instead (os.pathsep between them). In a library,
+one folder per artist; a folder plays only when it carries `artist.yml` with `name:` (as said on the
+air) and `cleared:` (who cleared it for the air, and when). Anything else is held, with the reason.
+
+One stream, gapless, shuffled, no track again until every track has played, no artist twice in a row
+where it can be helped, loudness evened out. Served on FCPM_JUKEBOX_PORT (8095), open to the LAN:
+
+    GET  /stream.mp3     the music, 128 kbit/s MP3, endless
+    GET  /now.json       what is playing (artist, title, position, length), the next five, what is held
+    GET  /tracks.json    every track that may play
+    POST /skip           end this track
+    POST /up             {"track": id}: play it next
+
+ffmpeg and ffprobe, and a Python with yaml (the crew's). See README.md.
+"""
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import platform
+import queue
+import random
+import shutil
+import subprocess
+import sys
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import yaml
+
+PORT = int(os.environ.get("FCPM_JUKEBOX_PORT", "8095"))
+AUDIO = {".mp3", ".flac", ".wav", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff"}
+RATE, CH = 44100, 2
+SECOND = RATE * CH * 2                       # bytes of s16le PCM in a second
+CHUNK = SECOND // 10
+LEAD = 0.5                                   # seconds kept ahead of the clock, in the encoder's hands
+RESCAN = 60                                  # seconds between two looks at the storage
+EVEN = "loudnorm=I=-16:TP=-1.5:LRA=11"       # every track to one loudness, as it plays
+QUIET = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
+if platform.system() == "Windows":
+    STATE = pathlib.Path(os.environ.get("LOCALAPPDATA", pathlib.Path.home())) / "fcpm" / "jukebox"
+else:
+    STATE = pathlib.Path.home() / ".local/state/fcpm/jukebox"
+REAL = {"ext2", "ext3", "ext4", "xfs", "btrfs", "vfat", "exfat", "ntfs", "ntfs3", "fuseblk", "hfsplus",
+        "apfs", "cifs", "smb3", "nfs", "nfs4", "zfs", "f2fs"}
+
+
+def now():
+    return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def say(msg):
+    print(f"jukebox: {msg}", flush=True)
+
+
+def tool(name):
+    found = shutil.which(name)
+    if not found:
+        sys.exit(f"jukebox: no {name} on this machine's PATH")
+    return found
+
+
+# ---------------------------------------------------------------- the storage this machine has
+
+def mounts():
+    """The top of every disk this machine has, by its own platform's way of saying so."""
+    system = platform.system()
+    if system == "Windows":
+        return [pathlib.Path(d) for d in os.listdrives()]
+    if system == "Darwin":
+        return [pathlib.Path("/Volumes") / v for v in os.listdir("/Volumes")]
+    tops = []
+    for line in pathlib.Path("/proc/mounts").read_text().splitlines():
+        dev, at, kind = line.split()[:3]
+        at = at.replace("\\040", " ")
+        if kind in REAL and at != "/" and not at.startswith(("/boot", "/proc", "/sys", "/run/live")):
+            tops.append(pathlib.Path(at))
+    return tops
+
+
+def libraries():
+    named = os.environ.get("FCPM_JUKEBOX")
+    if named:
+        return [pathlib.Path(p).expanduser() for p in named.split(os.pathsep) if p]
+    found = [pathlib.Path.home() / "Music" / "jukebox"] + [top / "jukebox" for top in mounts()]
+    seen, out = set(), []
+    for lib in found:
+        try:
+            real = lib.resolve()
+            if real not in seen and lib.is_dir():
+                seen.add(real)
+                out.append(lib)
+        except OSError:
+            pass                                       # a drive that is gone, or not ready
+    return out
+
+
+class Library:
+    """What may play, from the storage, looked at again every RESCAN seconds. ffprobe once per file."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.tracks, self.held, self.roots = {}, [], []
+        self.cache_file = STATE / "probed.json"
+        try:
+            self.cache = json.loads(self.cache_file.read_text())
+        except (OSError, ValueError):
+            self.cache = {}
+
+    def probe(self, path):
+        st = path.stat()
+        key = f"{path}|{st.st_size}|{int(st.st_mtime)}"
+        if key not in self.cache:
+            out = subprocess.run([tool("ffprobe"), "-v", "error", "-of", "json", "-show_format", str(path)],
+                                 capture_output=True, text=True, **QUIET)
+            fmt = json.loads(out.stdout or "{}").get("format", {})
+            tags = {k.lower(): v for k, v in (fmt.get("tags") or {}).items()}
+            self.cache[key] = {"title": tags.get("title"), "length": float(fmt.get("duration") or 0)}
+        return self.cache[key]
+
+    def scan(self):
+        tracks, held, roots = {}, [], libraries()
+        for root in roots:
+            for folder in sorted(p for p in root.iterdir() if p.is_dir()):
+                why, artist = cleared(folder)
+                if why:
+                    held.append({"folder": str(folder), "why": why})
+                    continue
+                for path in sorted(folder.rglob("*")):
+                    if path.suffix.lower() not in AUDIO or not path.is_file():
+                        continue
+                    try:
+                        facts = self.probe(path)
+                    except (OSError, ValueError) as e:
+                        held.append({"folder": str(path), "why": f"unreadable: {e}"})
+                        continue
+                    if facts["length"] < 1:
+                        held.append({"folder": str(path), "why": "no length: not audio ffmpeg can play"})
+                        continue
+                    tid = hashlib.sha1(str(path).encode()).hexdigest()[:10]
+                    tracks[tid] = {"id": tid, "artist": artist["name"], "title": facts["title"] or path.stem,
+                                   "link": artist.get("link"), "length": round(facts["length"], 1),
+                                   "path": str(path)}
+        STATE.mkdir(parents=True, exist_ok=True)
+        self.cache_file.write_text(json.dumps(self.cache))
+        with self.lock:
+            changed = set(tracks) != set(self.tracks)
+            self.tracks, self.held, self.roots = tracks, held, roots
+        if changed:
+            say(f"{len(tracks)} tracks by {len({t['artist'] for t in tracks.values()})} artists "
+                f"in {', '.join(map(str, roots)) or 'no library'}; {len(held)} held")
+
+    def keep_looking(self):
+        while True:
+            time.sleep(RESCAN)
+            try:
+                self.scan()
+            except Exception as e:                    # a disk gone mid-walk: look again next time
+                say(f"scan: {e}")
+
+
+def cleared(folder):
+    """(why it is held, or None; the artist's facts). A folder says who it is and that it may air."""
+    card = folder / "artist.yml"
+    if not card.is_file():
+        return "no artist.yml", None
+    try:
+        artist = yaml.safe_load(card.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as e:
+        return f"artist.yml unreadable: {e}", None
+    if not isinstance(artist, dict) or not str(artist.get("name") or "").strip():
+        return "artist.yml has no name", None
+    if not str(artist.get("cleared") or "").strip():
+        return "artist.yml has no cleared: (who cleared it for the air, and when)", None
+    return None, {"name": str(artist["name"]).strip(), "link": artist.get("link")}
+
+
+# ---------------------------------------------------------------- the order
+
+class Queue:
+    """A shuffled bag, refilled once empty; /up puts a track at the front."""
+
+    def __init__(self, library):
+        self.library, self.lock = library, threading.Lock()
+        self.bag, self.up, self.last = [], [], None
+
+    def refill(self, tracks):
+        ids = list(tracks)
+        random.shuffle(ids)
+        for i in range(1, len(ids)):                  # no artist twice running, where it can be helped
+            if tracks[ids[i]]["artist"] == tracks[ids[i - 1]]["artist"]:
+                for j in range(i + 1, len(ids)):
+                    if tracks[ids[j]]["artist"] != tracks[ids[i - 1]]["artist"]:
+                        ids[i], ids[j] = ids[j], ids[i]
+                        break
+        last = tracks.get(self.last, {}).get("artist")      # nor across the turn of the bag
+        for j, tid in enumerate(ids):
+            if tracks[tid]["artist"] != last:
+                ids = ids[j:] + ids[:j]
+                break
+        self.bag = ids
+
+    def coming(self, n):
+        with self.library.lock, self.lock:
+            tracks = self.library.tracks
+            self.up = [t for t in self.up if t in tracks]
+            self.bag = [t for t in self.bag if t in tracks]
+            if not self.bag and tracks:
+                self.refill(tracks)
+            return [tracks[t] for t in (self.up + [b for b in self.bag if b not in self.up])[:n]]
+
+    def take(self):
+        ahead = self.coming(1)
+        if not ahead:
+            return None
+        t = ahead[0]
+        with self.lock:
+            if t["id"] in self.up:
+                self.up.remove(t["id"])
+            if t["id"] in self.bag:
+                self.bag.remove(t["id"])
+            self.last = t["id"]
+        return t
+
+    def put_up(self, tid):
+        with self.library.lock, self.lock:
+            if tid not in self.library.tracks:
+                return False
+            self.up = [tid] + [t for t in self.up if t != tid]
+            return True
+
+
+# ---------------------------------------------------------------- the stream
+
+class Hub:
+    """The encoder's bytes to every listener; one too slow to keep up is let go."""
+
+    def __init__(self):
+        self.lock, self.listeners, self.recent = threading.Lock(), set(), b""
+
+    def publish(self, data):
+        with self.lock:
+            self.recent = (self.recent + data)[-32 * 1024:]     # about two seconds, for a quick start
+            for q in list(self.listeners):
+                try:
+                    q.put_nowait(data)
+                except queue.Full:
+                    self.listeners.discard(q)
+
+    def listen(self):
+        q = queue.Queue(maxsize=512)
+        with self.lock:
+            q.put_nowait(self.recent)
+            self.listeners.add(q)
+        return q
+
+    def leave(self, q):
+        with self.lock:
+            self.listeners.discard(q)
+
+
+class Player:
+    def __init__(self, library, order, hub):
+        self.library, self.order, self.hub = library, order, hub
+        self.playing, self.skip = None, threading.Event()
+        self.t0, self.sent = 0.0, 0                    # the stream's clock: when it began, bytes given
+
+    def encoder(self):
+        enc = subprocess.Popen([tool("ffmpeg"), "-nostdin", "-hide_banner", "-loglevel", "error",
+                                "-f", "s16le", "-ar", str(RATE), "-ac", str(CH), "-i", "pipe:0",
+                                "-c:a", "libmp3lame", "-b:a", "128k", "-f", "mp3", "pipe:1"],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, **QUIET)
+
+        def pump():
+            while True:
+                data = enc.stdout.read1(4096) if hasattr(enc.stdout, "read1") else enc.stdout.read(4096)
+                if not data:
+                    break
+                self.hub.publish(data)
+            say("the encoder ended")
+            os._exit(1)                                # the crew starts us again
+        threading.Thread(target=pump, daemon=True).start()
+        return enc
+
+    def give(self, enc, data):
+        """Hand PCM to the encoder at the pace of the clock, LEAD seconds ahead of it."""
+        self.sent += len(data)
+        wait = self.t0 + self.sent / SECOND - LEAD - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        enc.stdin.write(data)
+
+    def position(self):
+        p = self.playing
+        if not p:
+            return None
+        return max(0.0, min(p["length"], time.monotonic() - p["_at"]))
+
+    def run(self):
+        enc = self.encoder()
+        self.t0 = time.monotonic()
+        silence = bytes(CHUNK)
+        while True:
+            track = self.order.take()
+            if not track:
+                self.playing = None
+                for _ in range(10):
+                    self.give(enc, silence)
+                continue
+            dec = subprocess.Popen([tool("ffmpeg"), "-nostdin", "-hide_banner", "-loglevel", "error",
+                                    "-i", track["path"], "-vn", "-af", EVEN, "-ar", str(RATE),
+                                    "-ac", str(CH), "-f", "s16le", "pipe:1"], stdout=subprocess.PIPE, **QUIET)
+            # Heard from the moment the encoder is handed it, which is LEAD before the clock reaches it.
+            self.playing = dict(track, _at=self.t0 + self.sent / SECOND, started=now())
+            self.skip.clear()
+            say(f"playing {track['artist']}: {track['title']}")
+            while not self.skip.is_set():
+                data = dec.stdout.read(CHUNK)
+                if not data:
+                    break
+                self.give(enc, data)
+            dec.kill()
+            dec.wait()
+
+    def now(self):
+        p = self.playing
+        with self.library.lock:
+            held, roots, count = list(self.library.held), list(self.library.roots), len(self.library.tracks)
+        public = ("id", "artist", "title", "link", "length")
+        return {"playing": dict({k: p[k] for k in public}, position=round(self.position(), 1),
+                                started=p["started"]) if p else None,
+                "next": [{k: t[k] for k in public} for t in self.order.coming(6)
+                         if not p or t["id"] != p["id"]][:5],
+                "tracks": count, "libraries": [str(r) for r in roots], "held": held,
+                "host": platform.node(), "at": now()}
+
+
+# ---------------------------------------------------------------- the door
+
+def handler(player):
+    class Door(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, *a):
+            pass
+
+        def open_to_all(self):
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Private-Network", "true")
+            self.send_header("Cache-Control", "no-cache")
+
+        def reply(self, code, body):
+            data = (json.dumps(body, indent=1) + "\n").encode()
+            self.send_response(code)
+            self.open_to_all()
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_OPTIONS(self):
+            self.send_response(204)
+            self.open_to_all()
+            self.send_header("Access-Control-Allow-Methods", "GET, POST")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def do_GET(self):
+            path = self.path.split("?")[0]
+            if path in ("/", "/now.json"):
+                return self.reply(200, player.now())
+            if path == "/tracks.json":
+                with player.library.lock:
+                    tracks = sorted(player.library.tracks.values(), key=lambda t: (t["artist"], t["title"]))
+                return self.reply(200, [{k: t[k] for k in ("id", "artist", "title", "length")} for t in tracks])
+            if path != "/stream.mp3":
+                return self.reply(404, {"error": "no such thing here"})
+            self.send_response(200)
+            self.open_to_all()
+            self.send_header("Content-Type", "audio/mpeg")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            q = player.hub.listen()
+            try:
+                while True:
+                    self.wfile.write(q.get(timeout=10))
+            except (OSError, queue.Empty):
+                pass
+            finally:
+                player.hub.leave(q)
+                self.close_connection = True
+
+        def do_POST(self):
+            path = self.path.split("?")[0]
+            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                body = json.loads(self.rfile.read(n) or b"{}") if n else {}
+            except ValueError:
+                return self.reply(400, {"error": "not JSON"})
+            if path == "/skip":
+                player.skip.set()
+                return self.reply(200, {"skipped": (player.playing or {}).get("id")})
+            if path == "/up":
+                tid = str(body.get("track") or "")
+                if player.order.put_up(tid):
+                    return self.reply(200, {"next": tid})
+                return self.reply(404, {"error": f"no track {tid!r} here"})
+            return self.reply(404, {"error": "no such thing here"})
+    return Door
+
+
+def main(args):
+    library = Library()
+    if args == ["--check"]:
+        library.scan()
+        print(json.dumps({"libraries": [str(r) for r in library.roots], "tracks": len(library.tracks),
+                          "artists": sorted({t["artist"] for t in library.tracks.values()}),
+                          "held": library.held, "ffmpeg": shutil.which("ffmpeg"), "port": PORT}, indent=1))
+        return
+    if args:
+        sys.exit(__doc__)
+    tool("ffmpeg")
+    library.scan()
+    threading.Thread(target=library.keep_looking, daemon=True).start()
+    player = Player(library, Queue(library), Hub())
+    server = ThreadingHTTPServer(("", PORT), handler(player))
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    say(f"on port {PORT}")
+    player.run()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

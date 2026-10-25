@@ -2,7 +2,8 @@
 # publish -- ch97's page, and the days laid as the broadcast repository's main has them, into
 # /var/lib/fcpm/ch97, where nginx serves them (nginx.conf). What is committed is what we said goes on
 # the air, so a day is read from the commit, never from someone's unsaved file. The crew's `ch97`
-# line runs it every few minutes; unchanged files are left alone.
+# line runs it every few minutes; unchanged files are left alone. The bulletin board's slides go too,
+# with slides.json (their order and seconds, from board.yml), for the standby page (page/standby/).
 #
 #   FCPM_BROADCAST   a checkout of FC-Public-Media/broadcast   (default ~/.local/share/fcpm/broadcast, as `../lay` keeps it)
 #   FCPM_CH97        where nginx reads from                     (default /var/lib/fcpm/ch97)
@@ -20,4 +21,16 @@ trap 'rm -rf "$tmp"' EXIT
 if git -C "$src" cat-file -e "$rev:schedule" 2>/dev/null; then
     git -C "$src" archive "$rev" schedule | tar -x -C "$tmp"
     rsync -a --delete --checksum "$tmp/schedule/" "$into/schedule/"
+fi
+if git -C "$src" cat-file -e "$rev:bulletin-board/board.yml" 2>/dev/null; then
+    git -C "$src" archive "$rev" bulletin-board | tar -x -C "$tmp"
+    python3 -I -c '
+import json, sys, yaml
+board = yaml.safe_load(open(sys.argv[1]))
+slides = [s for z in board if z.get("kind") == "slides" for s in z.get("slides", [])]
+print(json.dumps([{"file": s["file"], "seconds": s.get("seconds", 10)} for s in slides], indent=1))
+' "$tmp/bulletin-board/board.yml" > "$tmp/bulletin-board/slides.json"
+    mkdir -p "$into/slides"
+    rsync -a --delete --checksum --include='slides.json' --include='slides/***' --exclude='*' \
+        "$tmp/bulletin-board/" "$into/slides/"
 fi
