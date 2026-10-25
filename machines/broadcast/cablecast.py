@@ -5,6 +5,7 @@
     python3 machines/broadcast/cablecast.py fields ensure      create the ones that are missing
     python3 machines/broadcast/cablecast.py snapshot [DATE]    a day of channel 1's schedule, kept as it was
     python3 machines/broadcast/cablecast.py eject DIR          the box's look, as plain files, into DIR
+    python3 machines/broadcast/cablecast.py push [NAME on|off] where the Live 350 pushes; attach or detach NAME
     python3 machines/broadcast/cablecast.py lay DIR [DATE] [DAYS]   lay days of the schedule down as ours
 
 The token is the one made in Cablecast for this work (Settings, API access) and kept in
@@ -38,6 +39,7 @@ API = "/CablecastAPI/v1"
 LOCATION = 1
 CHANNEL = 1
 BOARD = 2  # the bulletin board's own channel number, in Cablecast CG
+LIVE = 5  # the Live 350's device: it encodes the channel and pushes it to each destination attached
 ZONE = "America/Denver"  # the channel's clock, as the box keeps it
 PUBLIC = "https://ch97.fcpublicmedia.org"  # Cablecast's public pages, under our name
 TOKEN = pathlib.Path.home() / ".config/fcpm/cablecast.token"
@@ -49,7 +51,9 @@ def fetch(method, path, body=None):
     context = ssl.create_default_context()
     context.check_hostname = False  # reached by address; the name is checked below
     conn = http.client.HTTPSConnection(ADDRESS, context=context, timeout=60)
-    headers = {"Authorization": f"Bearer {TOKEN.read_text().strip()}", "Host": NAME}
+    headers = {"Host": NAME}
+    if TOKEN.exists():  # reading needs none; without it a change is refused by the box
+        headers["Authorization"] = f"Bearer {TOKEN.read_text().strip()}"
     if body is not None:
         headers["Content-Type"] = "application/json"
     conn.request(method, path, json.dumps(body) if body is not None else None, headers)
@@ -290,6 +294,35 @@ def eject(into):
     print(f"ejected into {out}: website, on-air, bulletin board ({len(zones)} zones)")
 
 
+def destinations():
+    """{id: name} of each network stream destination. The box lists their keys too; none leave here."""
+    got = call("GET", f"/networkstreamdestinations?location={LOCATION}")["networkStreamDestinations"]
+    return {d["id"]: d["name"] for d in got}
+
+
+def pushing():
+    """The destination ids the Live 350 pushes to now: its RTMP outputs, as automation reports them."""
+    status = call("GET", f"/automationstatus?location={LOCATION}")["deviceStatus"]
+    live = next((d for d in status if d.get("device") == LIVE), {})
+    return {int(o["internalId"]) for o in live.get("outputs") or []
+            if o.get("type") == "RTMP" and str(o.get("internalId") or "").isdigit()}
+
+
+def push(name=None, on=None):
+    """Each destination and whether it is fed; given a name, attach (on) or detach (off) it first.
+    Attaching is how Cablecast starts the Live 350's push there, and detaching stops it."""
+    dests = destinations()
+    if name is not None:
+        ids = [i for i, n in dests.items() if n.casefold() == name.casefold()]
+        if not ids:
+            sys.exit(f"no destination named {name!r}; there are: {', '.join(dests.values())}")
+        action = {"device": LIVE, "action": "addOutput" if on else "removeOutput",
+                  "networkStreamDestination": ids[0], "outputInternalId": str(ids[0])}
+        call("POST", "/forceevents", {"forceEvents": [{"deviceAction": action}]})
+    fed = pushing()
+    return [{"id": i, "name": n, "on": i in fed} for i, n in sorted(dests.items())]
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["fields"]:
@@ -299,6 +332,9 @@ if __name__ == "__main__":
     elif args[:1] == ["lay"] and 2 <= len(args) <= 4:
         lay(args[1], args[2] if len(args) > 2 else datetime.date.today().isoformat(),
             int(args[3]) if len(args) > 3 else 1)
+    elif args[:1] == ["push"] and (len(args) == 1 or (len(args) == 3 and args[2] in ("on", "off"))):
+        for d in push(*(args[1:2] + [args[2] == "on"] if len(args) == 3 else [])):
+            print(f"{d['name']}: {'pushing' if d['on'] else 'not pushing'}")
     elif args[:1] == ["snapshot"]:
         snapshot(args[1] if len(args) > 1 else datetime.date.today().isoformat())
     else:
