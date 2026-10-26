@@ -8,7 +8,9 @@ The folder is /srv/landing/jukebox (FCPM_JUKEBOX to point elsewhere). Its files 
 in the folder, so a subfolder's files play together, where its name falls), A to Z, and again from the
 top. The folder is read afresh after every track, and the next is the first whose name comes after the
 one just played: a file dropped in, taken out or renamed counts from the next track, and renaming is
-how the order is changed. Started again, it plays on from the track it was playing. Only music FCPM has the rights to goes in: what is in the folder is on
+how the order is changed. Started again, it plays on from the track it was playing. The list's buttons
+(ch97…/jukebox/, through standby's /jukebox) skip, stop and play, or play a track by name and go on
+from it; they leave their word in jukebox.ask beside jukebox.json, read here every 0.3 s. Only music FCPM has the rights to goes in: what is in the folder is on
 YouTube. Each file is played by mpv into standby's bus (a PulseAudio null sink, `fcpm-standby`, that
 standby makes and sends from); while the bus isn't there, nothing plays, and mpv never falls back to
 the room's speakers. What is playing, and the whole order it is in, is written to
@@ -58,11 +60,32 @@ def note(state, why, track=None, order=()):
     print(f"jukebox: {state}: {why}", flush=True)
 
 
+ASK = STATE_DIR / "jukebox.ask"                 # what a person asked, from the list's buttons (standby's /jukebox)
+
+
+def asked():
+    """What the list's buttons asked for, once: {"do": "skip" | "stop" | "play", "file": ...}, or None."""
+    try:
+        said = json.loads(ASK.read_text())
+        ASK.unlink()
+        return said if said.get("do") in ("skip", "stop", "play") else None
+    except (OSError, ValueError):
+        return None
+
+
 def play(track):
-    """One file through mpv into the bus; whether it played to its end."""
-    r = subprocess.run(["mpv", "--no-config", "--no-video", "--no-terminal", "--really-quiet",
-                        f"--audio-device=pulse/{BUS}", "--", str(track)], stdin=subprocess.DEVNULL)
-    return r.returncode == 0
+    """One file through mpv into the bus, until its end or a person's say: (whether it played to its end,
+    what was asked, if anything)."""
+    p = subprocess.Popen(["mpv", "--no-config", "--no-video", "--no-terminal", "--really-quiet",
+                          f"--audio-device=pulse/{BUS}", "--", str(track)], stdin=subprocess.DEVNULL)
+    while p.poll() is None:
+        said = asked()
+        if said and (said["do"] != "play" or said.get("file")):
+            p.terminate()
+            p.wait()
+            return False, said
+        time.sleep(0.3)
+    return p.returncode == 0, None
 
 
 def main(args):
@@ -75,7 +98,7 @@ def main(args):
         sys.exit(__doc__)
     try:                                        # started again: on from the track it was playing
         said = json.loads((STATE_DIR / "jukebox.json").read_text())
-        last = said["file"].lower() if said.get("state") == "playing" else None
+        last = said["file"].lower() if said.get("state") in ("playing", "stopped") else None
     except (OSError, ValueError, KeyError):
         last = None
     resume, failed = last is not None, 0
@@ -93,7 +116,16 @@ def main(args):
                      found[0])
         note("playing", track.name, track, found)
         last, resume = name(track), False
-        failed = 0 if play(track) else failed + 1
+        ended, said = play(track)
+        failed = 0 if ended or said else failed + 1
+        if said and said["do"] == "stop":       # stopped by a person: silence until play is pressed
+            note("stopped", f"stopped at {track.name}", track, found)
+            while not said or said["do"] != "play":
+                time.sleep(0.5)
+                said = asked()
+            last, resume = name(track), True    # play again: this track, from its start
+        if said and said.get("file"):           # a track asked for by name: it, then on from it
+            last, resume = said["file"].lower(), True
         if failed >= len(found):
             failed = 0
             time.sleep(30)                      # a round with nothing played: don't spin on bad files
