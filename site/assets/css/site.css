@@ -19,11 +19,23 @@
   --masthead:      #121417;  /* the masthead band: dark in both schemes, the one surface that does not flip */
   --masthead-ink:  #f4f1ea;  /* text on the band */
   --masthead-soft: #9ba3ad;  /* secondary text on the band, and on any dark ground: 7.2:1 */
-  --accent:        #121417;  /* links: ink, underlined, red on hover */
+  --accent:        #e5af00;  /* links: ink, underlined, red on hover */
   --font-display:  "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-body:     Archivo, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono:     ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   /* end brand:light */
+
+  --stable-glass: #e8e3d8;
+  --stable-glass-inv: #1c2126;
+  --brand-tilt: -4deg;
+
+  /* What the glass panels become where backdrop-filter is unavailable or unwanted: one solid, dark
+     and slightly warm, so --stable-glass text stays at about 11:1 instead of sitting on 15% yellow
+     over a photograph. */
+  --glass-solid: color-mix(in srgb, var(--masthead) 88%, var(--signal));
+
+  /* The masthead's height, so the hero can fill exactly what is left of the viewport. */
+  --head-h: 4.25rem;
 
   /* Fluid type scale */
   --step--1: clamp(0.86rem, 0.83rem + 0.15vw, 0.94rem);
@@ -56,7 +68,7 @@
   --signal-ink: #121417;  /* what sits on top of yellow */
   --record:    #d93a26;  /* on-air red for fills */
   --record-ink: #e16151;  /* text red walked light: the brand red is 4.0:1 on this paper */
-  --accent:    #ece8e1;  /* links */
+  --accent:    #ffc61a;  /* links */
   /* end brand:dark */
 }
 
@@ -153,6 +165,28 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 .skip-link:focus { left: 0; }
 
+/* --- The brand plane ------------------------------------------------------ */
+
+/* The mark sits at an angle, and so can anything else. `.plane` is the whole vocabulary:
+ *
+ *   .plane            put this box on the angle
+ *   .plane > *        its children stand back up, automatically
+ *   .plane > .tilted  except this one, which rides the angle with the box
+ *
+ * So there is no adding a rotation and then subtracting it by hand, and no wrapper element per
+ * child whose only job is to be straightened. One element with `.plane` and no children is simply
+ * a thing on the angle — which is how the reel's pause button is attached.
+ *
+ * `rotate` and not `transform`, so a translate or a scale on the same element composes instead of
+ * overwriting. Change the angle in one place: --brand-tilt. */
+.plane { rotate: var(--brand-tilt); }
+.plane > * { rotate: calc(-1 * var(--brand-tilt)); }
+.plane > .tilted { rotate: 0deg; }
+
+/* A rotated box still reserves its unrotated space, so its corners can cross a neighbour. Give the
+ * parent room rather than pushing the angle down to the children. */
+.plane-room { padding: 1.5rem; }
+
 /* --- Layout --------------------------------------------------------------- */
 
 .wrap {
@@ -227,9 +261,19 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   min-height: 4.25rem;
 }
 
+/* The name and what is on now, read as one group. `margin-right: auto` lives here rather than on
+   .wordmark so the on-air title stays beside the name instead of being pushed against the menu.
+   min-width: 0 is what lets the title inside shrink far enough to ellipsise. */
+.site-head-brand {
+  display: flex; align-items: center; gap: 1rem;
+  margin-right: auto; min-width: 0;
+}
+
 .wordmark {
   display: flex; align-items: center; gap: 0.6rem;
-  text-decoration: none; color: inherit; margin-right: auto;
+  text-decoration: none; color: inherit;
+  /* The name never gives up space; the programme title absorbs the squeeze. */
+  flex: none;
 }
 
 /* The mark: the plate, set at -8deg. */
@@ -394,6 +438,49 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 /* Tight, so identity, channels, the check-in code and a live class fit above the fold. */
 .hero { padding: clamp(1.75rem, 3vw, 2.5rem) 0 clamp(1.5rem, 2.5vw, 2rem); }
 
+/* `oneview` (set by `oneview: true` in a page's front matter): one screen, footer included.
+ *
+ * The shell is the viewport and the hero takes whatever the masthead and the footer leave. The hero
+ * is deliberately NOT given a height of its own: `100svh - header` is how the footer ends up just
+ * below the fold, because it does not account for the footer. Letting the hero be the flexible row
+ * means the three parts always add up to exactly one screen.
+ *
+ * `svh` and not `vh`: on a phone `vh` is the height with the browser chrome retracted, so a 100vh
+ * shell is taller than the screen until you scroll. `min-height`, not `height`, so content that
+ * genuinely does not fit scrolls rather than being clipped. */
+.oneview {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+.oneview > main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.oneview .hero {
+  flex: 1 1 auto;
+  display: grid;
+  & > .wrap {
+    padding-top: 4rem;
+  }
+}
+
+/* The footer's usual 5rem of air is there to separate it from a page that has ended. On a fitted
+   page it is the bottom of the screen, so it only needs its rule. */
+.oneview .site-foot { margin-top: 0; }
+
+/* The hero is the row that gives. `min-height: 0` is the part that is easy to miss: a flex item
+   will not shrink below its content without it, so the page would grow past the screen instead.
+   And its own padding-block goes, because on a fitted page the shell is already supplying the
+   height — keeping both counts the same space twice, which is what pushed the footer under. */
+.oneview .hero { min-height: 0; }
+.oneview .hero-photo { padding-block: 0; }
+
+/* An empty section still occupies its margins. Nothing to show, nothing to space. */
+.oneview > main > section:empty,
+.oneview > main > div:empty { display: none; margin: 0; }
+
 /* Named areas reorder on a phone; the auto column collapses when the class card is hidden. */
 .hero .wrap {
   display: grid;
@@ -416,11 +503,46 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   background-position: center;
   padding-block: clamp(3rem, 6vw, 5rem);
 }
+/* The tilt and the straightening are `.plane` now; see the brand plane, above. This only adds the
+   breathing room the angle needs. */
+.hero-photo .hero-panel > * { padding: 1em; }
+
 .hero-photo .hero-panel,
-.hero-photo .hero-class,
-.hero-photo .hero-qr {
-  background: var(--paper);
+.hero-photo .hero-class {
+  color: var(--stable-glass);
+    background-color: color-mix(in srgb, var(--signal) 35%, transparent);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    /*border-radius: 16px;*/
+    border: 1px solid color-mix(in srgb, var(--signal) 50%, transparent);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
   padding: clamp(1.5rem, 3vw, 2.25rem);
+
+  span {
+     text-shadow: 0 2px 1px var(--stable-glass-inv);
+  }
+}
+
+/* The fallback the glass needs. Without backdrop-filter the panel is 15% yellow over a photograph,
+   which is not a tint — it is unreadable text on whatever happens to be behind it. So: one solid.
+   Two reasons to take it, and the same answer for both.
+
+   `prefers-reduced-transparency` comes first because it is a preference, not a capability: a
+   browser that supports the blur must still drop it when the reader has asked for less. */
+@media (prefers-reduced-transparency: reduce) {
+  .hero-photo .hero-panel,
+  .hero-photo .hero-class {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: var(--glass-solid);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hero-photo .hero-panel,
+  .hero-photo .hero-class {
+    background-color: var(--glass-solid);
+  }
 }
 /* The QR's own panel only needs to be as wide as the code. */
 .hero-photo .hero-qr { padding: 1rem; width: fit-content; }
@@ -433,10 +555,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* The line under the slogan (front matter `tagline`), set tight and dark, not as a .lede. */
 .hero-tagline {
-  font-size: var(--step-1);
-  font-weight: 650;
-  max-width: 30ch;
   margin-bottom: 0;
+  color: var(--stable-glass);
 }
 
 .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
@@ -451,8 +571,14 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   justify-self: start;
   gap: 0.35rem;
 }
-.hero-qr img { width: clamp(5.5rem, 11vw, 7rem); padding: 0.4rem; }
-.hero-qr span { font-size: 0.66rem; }
+.hero-qr img { width: clamp(5.5rem, 11vw, 7rem); }
+.hero-qr span { font-size: 0.66rem; color: var(--stable-glass); }
+
+.hero .btn {
+  border: 2px solid var(--signal);
+  color: var(--signal);
+  text-shadow: 0 2px 1px var(--stable-glass-inv);
+}
 
 /* --- A class, in the hero ------------------------------------------------- */
 
@@ -665,6 +791,51 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .transaction-todo b { display: block; margin-bottom: 0.25rem; font-size: var(--step-0); }
 .transaction-todo .muted { display: block; margin-top: 0.4rem; }
 
+/* --- The reel: the hero photograph, moving --------------------------------- */
+
+/* Behind the hero's panels, covering the section, with the still image underneath it. `object-fit`
+   so a 16:9 clip fills a hero of any shape without stretching. */
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  /* Behind the panels, above .hero-photo's background-image. */
+  z-index: 0;
+  /* Until it plays, the still behind it is what shows rather than a black rectangle. */
+  background: transparent;
+}
+
+/* The hero becomes the positioning context, and its content has to sit above the video. */
+.hero { position: relative; isolation: isolate; }
+.hero .wrap { position: relative; z-index: 1; }
+
+/* The control, mounted on the panel rather than on the video: the panel is already on the brand
+   plane, and `.tilted` is what keeps this riding the angle instead of being stood back up with the
+   panel's other children. Pulled out of the panel's flow so it sits in the corner. */
+.reel-toggle {
+  position: absolute;
+  top: 0; right: 0;
+  translate: -35% 35%;
+  display: grid; place-items: center;
+  width: 2.5rem; height: 2.5rem;
+  padding: 0;
+  background: none;
+  color: var(--stable-glass);
+  border: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+.reel-toggle[hidden] { display: none; }
+.hero-panel { position: relative; }
+
+.reel-icon { width: 0.9rem; height: 0.9rem; fill: currentColor; }
+
+/* One button, two glyphs: show the one that says what the click will do. */
+.reel-icon-pause { display: none; }
+.hero-video.is-playing ~ .wrap .reel-icon-play { display: none; }
+.hero-video.is-playing ~ .wrap .reel-icon-pause { display: block; }
+
 /* --- Embeds --------------------------------------------------------------- */
 
 .embed { margin: 2rem 0; }
@@ -706,23 +877,21 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* Directly under the hero; a ticker that does not move. */
 .onair-bar {
-  background: var(--ink);
-  color: var(--paper);
   font-size: var(--step--1);
 }
 .onair-bar[hidden] { display: none; }
 .onair-bar > * { display: inline; }
 
-.onair-bar {
-  padding: 0.85rem clamp(1.25rem, 4vw, 3rem);
-  display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; align-items: baseline;
+/* In the masthead the programme title is whatever Cablecast says it is, so it takes the room that
+   is left and ellipsises rather than shoving the menu. Not a flex container: text-overflow needs a
+   block with the text directly in it. */
+.site-head-brand .onair-bar {
+  display: block; min-width: 0;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 
 .onair-label {
-  text-transform: uppercase; letter-spacing: 0.1em;
-  font-weight: 700; font-size: 0.72rem;
-  color: var(--record-ink);
-  margin-right: 0.35rem;
+  font-weight: 700;
 }
 .onair-next { color: var(--ink-soft); }
 
@@ -877,6 +1046,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border-top: 3px solid var(--ink);
   padding-top: 3rem;
   font-size: var(--step--1);
+
+  &.flush { border-top: none; }
 }
 
 .site-foot-inner {
@@ -893,10 +1064,6 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .foot-links li { margin-bottom: 0.45rem; }
 
 .foot-legal {
-  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
-  justify-content: space-between;
-  margin-top: 3rem; padding: 1.25rem 0 2.5rem;
-  border-top: 1px solid var(--rule);
   color: var(--ink-soft);
 }
 .foot-legal p { margin: 0; }
@@ -1025,12 +1192,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 .checkin-card-qr img {
   width: clamp(8rem, 22vw, 11rem); height: auto;
-  background: #fff; padding: 0.6rem;
+  background: #fff;
   border: 1px solid var(--rule);
 }
 .checkin-card-qr span {
   font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em;
-  font-weight: 700; color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .rows input[type="text"] {

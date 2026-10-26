@@ -1,11 +1,10 @@
 ---
 title: Devices
-lede: See which phones and laptops can manage your site, and approve or remove them.
 ---
 
 {%- assign az = site.data.authorize -%}
 
-{%- comment -%} Approve or remove a site's devices; reachable without a link. See docs/identity.md. {%- endcomment -%}
+{%- comment -%} Approve or remove a site's devices; reachable without a link. See docs/identity.md. {%- endcomment %}
 
 <script type="application/json" id="devices-config">
 {
@@ -19,7 +18,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <p class="transaction transaction-todo">
     <b>This page needs JavaScript.</b>
     <span class="muted">Signing in with a passkey happens in your browser.
-    <a href="mailto:{{ site.data.org.email }}">Ask us</a> and we'll make the change for you.</span>
+    <a href="mailto:{{ site.fcpm.email.info }}">Ask us</a> and we'll make the change for you.</span>
   </p>
 </noscript>
 
@@ -29,7 +28,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <p><button class="btn btn-primary btn-big" id="sign-in" type="button">Sign in</button></p>
   <p class="muted">
     Setting up a new device instead? That starts from the link we email you
-    &mdash; <a href="mailto:{{ site.data.org.email }}">ask us</a> for one.
+    &mdash; <a href="mailto:{{ site.fcpm.email.info }}">ask us</a> for one.
   </p>
 </div>
 
@@ -37,7 +36,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <h2>This browser can't use passkeys</h2>
   <p>On a phone, opening this in Safari or Chrome rather than inside another
   app's browser usually fixes it.</p>
-  <p class="muted"><a href="mailto:{{ site.data.org.email }}">Tell us</a> and we'll make the change for you.</p>
+  <p class="muted"><a href="mailto:{{ site.fcpm.email.info }}">Tell us</a> and we'll make the change for you.</p>
 </div>
 
 <div class="state" data-state="sign-in-failed" hidden>
@@ -60,7 +59,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <p class="eyebrow">Signed in</p>
   <h2 id="devices-site"></h2>
 
-  {%- comment -%} Waiting devices get their own list so they are not buried. {%- endcomment -%}
+  {%- comment -%} Waiting devices get their own list so they are not buried. {%- endcomment %}
   <div id="waiting-section" hidden>
     <h3>Waiting for you</h3>
     <p class="muted">
@@ -73,7 +72,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
 
   <h3>Can publish</h3>
   <ul class="rows" id="allowed-list"></ul>
-  {%- comment -%} Separate from the status line, which a redraw would otherwise wipe. {%- endcomment -%}
+  {%- comment -%} Separate from the status line, which a redraw would otherwise wipe. {%- endcomment %}
   <p class="muted" id="allowed-note"></p>
 
   <p class="muted" id="devices-status" role="status" aria-live="polite"></p>
@@ -95,4 +94,4 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   </p>
 </div>
 
-<script type="module" src="{{ '/assets/js/devices.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/devices.js' }}?v={{ site.time | date: '%s' }}"></script>

@@ -12,9 +12,9 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 |---|---|
 | `_config.yml`, `Gemfile`, `.ruby-version` | build config, read relative to the build root |
 | `*.md`, `index.html`, `404.html` | one file per page; the filename is the URL |
-| `_layouts/` | `default`, `page`, `pass` (`/check-in/`, `/lights/`), `podcast`, `show` |
-| `_includes/` | `head`, `header`, `footer`, `transaction`, `show-card`, `featured` and smaller parts |
-| `_podcasts/`, `_shows/` | collections at `/podcasts/:name/` and `/watch/:name/` |
+| `_layouts/` | `default`, `page`, `pass` (`/check-in/`, `/lights/`) |
+| `_includes/` | `head`, `header`, `footer`, `transaction`, `show-card` and smaller parts |
+| `you/` | the member's own pages. `/check-in/`, `/authorize/` and `/lights/` keep their old URLs by `permalink` (a printed QR, an issued claim link, the kiosk camera); the rest are `/you/:name/` |
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
 | `member-sites/` | built member sites, committed by the publish workflow ([members.md](members.md)) |
 | `bin/`, `tests/` | tooling, syncs and Python tests; Playwright tests. Both excluded from the build |
@@ -61,7 +61,12 @@ CSS preprocessor, no theme gem, no plugins; try a `_data` file and a Liquid loop
 ## Pages
 
 Create `site/something.md` with front matter (`title:` at least); it is live at `/something/`.
-Add it to `site/_data/nav.yml` to put it in a menu. A podcast: copy a file in `site/_podcasts/`.
+Add it to `site/_data/nav.yml` to put it in a menu.
+
+There are no collections. `_podcasts/` and `_shows/` left `site/` (2026-10-25): everything the site
+lists has to come from Cablecast first, and a purposeful listing is for the outer repository to
+build into `site/`. So `site.podcasts` and `site.shows` are nil — a `sort` or `concat` on either is
+a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 
 - `page`, the default layout, prints no `<h1>` and no lede; pages start at `<h2>`.
 - `sitemap: false` keeps a page out of `/sitemap.xml`, which lists every URL ending in `/`.
@@ -106,7 +111,7 @@ Other data files name their doc in their first line.
 
 | | |
 |---|---|
-| `assets/js/nav.js`, `archive-filter.js` | mobile menu; filter and sort on `/watch/archive/` |
+| `assets/js/nav.js`, `archive-filter.js` | mobile menu; filter and sort on the archive, now part of `/watch/` |
 | `assets/js/onair.js` | "On now" and "Next at" from Cablecast's API, on pages with `data-onair`; removed on failure |
 | `assets/js/lights.js` | `/lights/`: the lights reply code for the kiosk camera ([kiosk.md](kiosk.md)) |
 | `assets/js/qr-*.mjs` | vendored from anecdote.channel, unchanged; `machines/kiosk/door.py` serves them, so never move them |
@@ -174,7 +179,8 @@ proxying Wix takes the apex down. A Workers Custom Domain needs zone and Worker 
 
 ## Redirects and headers
 
-- `site/_data/redirects.yml` generates `_redirects`, all 301. Add entries; never remove one.
+- `site/_data/redirects.yml` generates `_redirects`, all 301. Add entries; never remove one. A
+  `from` is either a live Wix URL or one of ours that moved.
 - `_config.yml` lists `_redirects` and `_headers` under `include:` despite the underscore.
 - `_headers`: `nosniff` and `strict-origin-when-cross-origin`; `/assets/*` caches for an hour. No HSTS.
 - The unused Wix store (`/product-page/i-m-a-product*`, `/category/all-products`) is left to 404.

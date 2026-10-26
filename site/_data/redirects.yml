@@ -1,10 +1,10 @@
-# Old Wix URLs and where they go. Builds _redirects. See docs/site.md#redirects-and-headers.
-# Each `from` is a live Wix URL: add entries, do not remove them.
+# Where an old URL goes. Builds _redirects, all 301. See docs/site.md#redirects-and-headers.
+# Two kinds of `from`: a live Wix URL, and one of ours that moved. Add entries, do not remove them.
 
 - from: /podcasts-1
-  to: /podcasts/
+  to: /watch/
 - from: /podcasts-1/podcastarchives
-  to: /podcasts/
+  to: /watch/
 - from: /submit-a-program-1
   to: /submit/
 - from: /watch-live
@@ -17,43 +17,45 @@
   to: /reserve/
 - from: /book-online
   to: /reserve/
+# The nonprofit production page is dropped; /join/ is where a nonprofit's rate is settled.
 - from: /for-nonprofits
-  to: /nonprofits/
+  to: /join/
 # No contact page: the footer carries the address on every page, and /meet/ is how to take part.
 - from: /connect
   to: /meet/
 - from: /event-list
-  to: /classes/
+  to: /learn/
 - from: /innstructor-application
-  to: /classes/
+  to: /learn/
+# The policy page is dropped and the statement was never copied over; /meet/ carries governance.
 - from: /non-discrimination-policy
-  to: /policies/non-discrimination/
+  to: /meet/
 
-# Each podcast had its own top-level slug on Wix.
+# Each podcast had its own top-level slug on Wix. The collections left site/ (the outer repository
+# will build a purposeful listing in); until then everything the channel knows is on /watch/.
 - from: /throughanotherlens
-  to: /podcasts/throughanotherlens/
+  to: /watch/
 - from: /lcsnapshotnews
-  to: /podcasts/lcsnapshotnews/
+  to: /watch/
 - from: /shakenandunfiltered
-  to: /podcasts/shakenandunfiltered/
+  to: /watch/
 - from: /spillingmidlifetea
-  to: /podcasts/spillingmidlifetea/
+  to: /watch/
 - from: /springboard
-  to: /podcasts/springboard/
+  to: /watch/
 - from: /theblindchick
-  to: /podcasts/theblindchick/
+  to: /watch/
 - from: /thetandaparty
-  to: /podcasts/thetandaparty/
+  to: /watch/
 - from: /veteranslifemagazine
-  to: /podcasts/veteranslifemagazine/
+  to: /watch/
 
-# Shows not in the Wix menu. A page in _podcasts/ would replace the index target.
 - from: /weirdwildwonderfulco
-  to: /podcasts/
+  to: /watch/
 - from: /gamerz
-  to: /podcasts/
+  to: /watch/
 - from: /wherethemindgoes
-  to: /podcasts/
+  to: /watch/
 
 # Wix booking service pages.
 - from: /service-page/equipment-checkout
@@ -73,37 +75,37 @@
 
 # Wix event pages, one per class run.
 - from: /event-details/adobe-lightroom
-  to: /classes/
+  to: /learn/
 - from: /event-details/audio-training-101
-  to: /classes/
+  to: /learn/
 - from: /event-details/beginner-photoshop-class
-  to: /classes/
+  to: /learn/
 - from: /event-details/camera-operation-basics
-  to: /classes/
+  to: /learn/
 - from: /event-details/digital-camera-and-cinematography
-  to: /classes/
+  to: /learn/
 - from: /event-details/digital-camera-and-cinematography-1
-  to: /classes/
+  to: /learn/
 - from: /event-details/digital-camera-and-cinematography-2
-  to: /classes/
+  to: /learn/
 - from: /event-details/introducing-fcpms-new-studio-light-board
-  to: /classes/
+  to: /learn/
 - from: /event-details/introduction-to-video-editing-with-adobe-premiere
-  to: /classes/
+  to: /learn/
 - from: /event-details/introductory-screenwriting
-  to: /classes/
+  to: /learn/
 - from: /event-details/lighting-basics-for-beginners
-  to: /classes/
+  to: /learn/
 - from: /event-details/podcasting-101
-  to: /classes/
+  to: /learn/
 - from: /event-details/podcasting-basics
-  to: /classes/
+  to: /learn/
 - from: /event-details/social-media-marketing-101
-  to: /classes/
+  to: /learn/
 - from: /event-details/social-media-marketing-101-1
-  to: /classes/
+  to: /learn/
 - from: /event-details/social-media-marketing-101-2
-  to: /classes/
+  to: /learn/
 
 # Not redirected: the unused Wix store (/product-page/i-m-a-product*, /category/all-products) is left to 404.
 
@@ -111,6 +113,23 @@
 - from: /booking
   to: /reserve/
 - from: /registration
-  to: /classes/
+  to: /learn/
 - from: /sign-up
-  to: /classes/
+  to: /learn/
+
+# Ours, moved. A printed QR or an issued claim link must keep working, so /check-in/, /authorize/
+# and /lights/ did not move and are not here.
+- from: /classes/
+  to: /learn/
+- from: /membership/
+  to: /join/
+- from: /watch/archive/
+  to: /watch/
+- from: /podcasts/
+  to: /watch/
+- from: /devices/
+  to: /you/devices/
+- from: /settings/
+  to: /you/settings/
+- from: /upload/
+  to: /you/upload/

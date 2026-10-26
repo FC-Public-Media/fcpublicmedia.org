@@ -1,6 +1,6 @@
 ---
 title: Authorize this device
-lede: Set up the phone or laptop you'll use to manage your site.
+permalink: /authorize/
 ---
 
 {%- assign az = site.data.authorize -%}
@@ -32,13 +32,13 @@ lede: Set up the phone or laptop you'll use to manage your site.
 
 {% comment %} ------------------------------------------------------- states {% endcomment %}
 
-{%- comment -%} Each state is a sibling panel toggled by authorize.js. {%- endcomment -%}
+{%- comment -%} Each state is a sibling panel toggled by authorize.js. {%- endcomment %}
 
 <div class="state" data-state="checking" hidden>
   <p class="lede">Checking your link&hellip;</p>
 </div>
 
-{%- comment -%} Arrived with no link, from a footer or a search. {%- endcomment -%}
+{%- comment -%} Arrived with no link, from a footer or a search. {%- endcomment %}
 <div class="state" data-state="no-link" hidden>
   <h2>You'll need the link we emailed you</h2>
   <p>
@@ -46,7 +46,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
     link we send &mdash; that link is what says which site you're setting up.
   </p>
   <p class="muted">
-    Haven't got one, or it's expired? <a href="mailto:{{ site.data.org.email }}">Ask us</a> and we'll
+    Haven't got one, or it's expired? <a href="mailto:{{ site.fcpm.email.info }}">Ask us</a> and we'll
     send another.
   </p>
 </div>
@@ -55,7 +55,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   <h2>That link didn't work</h2>
   <p class="lede" id="bad-link-detail"></p>
   <p class="muted">
-    <a href="mailto:{{ site.data.org.email }}">Ask us</a> for a new one &mdash; they're quick to send
+    <a href="mailto:{{ site.fcpm.email.info }}">Ask us</a> for a new one &mdash; they're quick to send
     and they expire on purpose.
   </p>
 </div>
@@ -114,7 +114,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
     Safari or Chrome rather than inside another app's browser usually fixes it.
   </p>
   <p class="muted">
-    Still stuck? <a href="mailto:{{ site.data.org.email }}">Tell us</a> and we'll sort it another way.
+    Still stuck? <a href="mailto:{{ site.fcpm.email.info }}">Tell us</a> and we'll sort it another way.
   </p>
 </div>
 
@@ -126,7 +126,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-{%- comment -%} Sent: the site-worker took it. {%- endcomment -%}
+{%- comment -%} Sent: the site-worker took it. {%- endcomment %}
 <div class="state" data-state="done" hidden>
   <p class="eyebrow">Done</p>
   <h2>This device is set up</h2>
@@ -137,7 +137,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-{%- comment -%} No site-worker (shipped): the passkey exists; the member sends the record in. {%- endcomment -%}
+{%- comment -%} No site-worker (shipped): the passkey exists; the member sends the record in. {%- endcomment %}
 <div class="state" data-state="manual" hidden>
   <p class="eyebrow">Almost there</p>
   <h2>Send us this and you're done</h2>
@@ -162,4 +162,4 @@ lede: Set up the phone or laptop you'll use to manage your site.
   </p>
 </div>
 
-<script type="module" src="{{ '/assets/js/authorize.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/authorize.js' }}?v={{ site.time | date: '%s' }}"></script>

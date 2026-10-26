@@ -1,6 +1,5 @@
 ---
 title: Your site's settings
-lede: Sign in with the device you set up, and edit your settings file directly.
 ---
 
 {%- assign st = site.data.settings -%}
@@ -33,7 +32,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
     <button class="btn btn-primary btn-big" id="sign-in" type="button">Sign in</button>
   </p>
   <p class="muted">
-    Never set one up, or on a new device? <a href="mailto:{{ site.data.org.email }}">Ask us</a> for a
+    Never set one up, or on a new device? <a href="mailto:{{ site.fcpm.email.info }}">Ask us</a> for a
     link.
   </p>
 </div>
@@ -44,14 +43,14 @@ lede: Sign in with the device you set up, and edit your settings file directly.
     On a phone, opening this in Safari or Chrome rather than inside another
     app's browser usually fixes it.
   </p>
-  <p class="muted"><a href="mailto:{{ site.data.org.email }}">Tell us</a> and we'll make the change for you.</p>
+  <p class="muted"><a href="mailto:{{ site.fcpm.email.info }}">Tell us</a> and we'll make the change for you.</p>
 </div>
 
 <div class="state" data-state="sign-in-failed" hidden>
   <h2>That didn't sign you in</h2>
   <p class="muted" id="sign-in-detail"></p>
   <p><button class="btn" data-action="retry" type="button">Try again</button></p>
-  <p class="muted"><a href="mailto:{{ site.data.org.email }}">Ask us</a> if this device has never been set up.</p>
+  <p class="muted"><a href="mailto:{{ site.fcpm.email.info }}">Ask us</a> if this device has never been set up.</p>
 </div>
 
 <div class="state" data-state="loading" hidden>
@@ -70,7 +69,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <p class="eyebrow">Signed in</p>
   <h2 id="editing-site"></h2>
 
-  {%- comment -%} The file is edited whole so its comments survive a save. See _data/settings.yml. {%- endcomment -%}
+  {%- comment -%} The file is edited whole so its comments survive a save. See _data/settings.yml. {%- endcomment %}
   <p>
     This is your <code id="editing-path"></code>, exactly as it is on your
     site. The lines starting with <code>#</code> are notes explaining what each
@@ -107,7 +106,7 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <p class="lede" id="saved-detail"></p>
   <p class="hero-actions">
     <button class="btn" data-action="reload" type="button">Keep editing</button>
-    {%- comment -%} Links to where the change went: by default, a pull request. {%- endcomment -%}
+    {%- comment -%} Links to where the change went: by default, a pull request. {%- endcomment %}
     <a class="btn" id="saved-link" href="#" hidden>See the change</a>
   </p>
 </div>
@@ -131,4 +130,4 @@ lede: Sign in with the device you set up, and edit your settings file directly.
   <pre class="code-block"><code id="settings-output"></code></pre>
 </div>
 
-<script type="module" src="{{ '/assets/js/settings.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/settings.js' }}?v={{ site.time | date: '%s' }}"></script>

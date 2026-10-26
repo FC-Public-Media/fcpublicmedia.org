@@ -1,6 +1,5 @@
 ---
 title: Guest Wi-Fi Poster
-lede: Print this and put it where guests sit.
 permalink: /wifi/poster/
 sitemap: false
 ---
@@ -8,15 +7,15 @@ sitemap: false
 {%- assign wifi = site.data.wifi -%}
 {%- assign qr = site.static_files | where: "path", "/assets/img/wifi-qr.svg" | first -%}
 
-{%- comment -%} The QR is never committed, so the deployed page shows no image. See docs/site.md. {%- endcomment -%}
+{%- comment -%} The QR is never committed, so the deployed page shows no image. See docs/site.md. {%- endcomment %}
 
 {% if qr %}
 <div class="poster">
-  <p class="poster-eyebrow">{{ site.data.org.name }}</p>
+  <p class="poster-eyebrow">{{ site.title }}</p>
   <h2 class="poster-title">{{ wifi.poster.title }}</h2>
 
   <img class="poster-qr"
-       src="{{ '/assets/img/wifi-qr.svg' | relative_url }}"
+       src="{{ '/assets/img/wifi-qr.svg' }}"
        alt="QR code that joins the {{ wifi.network.ssid }} network"
        width="320" height="320">
 

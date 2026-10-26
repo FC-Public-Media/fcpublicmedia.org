@@ -21,12 +21,12 @@ shifts:
     to: "16:00"
     who: [Morey]
 
-  - days: [thu]
+  - days: [fri]
     from: "17:00"
     to: "19:00"
     who: [Chris]
 
-  - days: [fri]
+  - days: [thu]
     from: "17:00"
     to: "19:30"
     who: [Nate]

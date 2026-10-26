@@ -1,9 +1,9 @@
 {%- comment -%}
   One program from the Cablecast catalog.
   Usage: {% include show-card.html show=item %}
-{%- endcomment -%}
+{%- endcomment %}
 {%- assign s = include.show -%}
-{%- comment -%} Optional `aired` shows the last airing date instead of the catalog date. {%- endcomment -%}
+{%- comment -%} Optional `aired` shows the last airing date instead of the catalog date. {%- endcomment %}
 {%- assign shown_date = include.aired | default: s.date -%}
 <li class="card card-show">
   {% if s.thumb and s.thumb != "" %}

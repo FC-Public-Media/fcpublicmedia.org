@@ -1,25 +1,36 @@
 <header class="site-head">
   <div class="wrap site-head-inner">
 
-    <a class="wordmark" href="{{ '/' | relative_url }}">
-      <span class="wordmark-mark" aria-hidden="true"></span>
-      <span class="wordmark-text">
-        <b>{{ site.data.brand.names.lockup[0] }}</b>
-        <span>{{ site.data.brand.names.lockup[1] }}</span>
-      </span>
-    </a>
+    {%- comment -%}
+      The name and what is on now, as one group: "FC Public Media — the thing currently on". They
+      are wrapped together so the bar sits beside the name instead of being pushed over to the menu.
+    {%- endcomment %}
+    <div class="site-head-brand">
+      <a class="wordmark" href="{{ '/' }}">
+        <span class="wordmark-mark" aria-hidden="true"></span>
+        <span class="wordmark-text">
+          <b>{{ site.data.brand.names.lockup[0] }}</b>
+          <span>{{ site.data.brand.names.lockup[1] }}</span>
+        </span>
+      </a>
 
-    {%- comment -%} Where you are: the menu label, else `elsewhere` in nav.yml (not page.title);
-    blank for a page named in neither. {%- endcomment -%}
+      {%- comment -%} Filled in by assets/js/onair.js; hidden until it succeeds. {%- endcomment %}
+      <div class="onair-bar" data-onair hidden></div>
+    </div>
+
     {%- assign here = "" -%}
-    {%- for item in site.data.nav.primary -%}
-      {%- if item.url and page.url contains item.url -%}{%- assign here = item.title -%}{%- endif -%}
+    {%- for item in site.fcpm.menu -%}
+      {%- assign _url = "/" | append: item | downcase | append: "/" -%}
+      {%- if page.url contains _url -%}{%- assign here = item -%}{%- endif -%}
     {%- endfor -%}
+
     {%- if here == "" -%}
-      {%- for item in site.data.nav.elsewhere -%}
-        {%- if item.url and page.url contains item.url -%}{%- assign here = item.title -%}{%- endif -%}
+      {%- for item in site.fcpm.elsewhere -%}
+        {%- assign _url = "/" | append: item | downcase | append: "/" -%}
+        {%- if page.url contains _url -%}{%- assign here = item -%}{%- endif -%}
       {%- endfor -%}
     {%- endif -%}
+
     {%- if here != "" -%}
       <p class="site-head-here">{{ here }}</p>
     {%- endif -%}
@@ -31,32 +42,17 @@
 
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <ul>
-        {%- for item in site.data.nav.primary -%}
-          {%- if item.label -%}
-            {%- comment -%} A group: the label (not a link) names the nested list. {%- endcomment -%}
-            {%- assign group = item.label | slugify -%}
-            <li class="nav-group">
-              <span class="nav-group-label" id="nav-{{ group }}">{{ item.label }}</span>
-              <ul aria-labelledby="nav-{{ group }}">
-                {%- for child in item.items -%}
-                  <li>
-                    <a href="{{ child.url | relative_url }}"
-                       {% if page.url contains child.url %}aria-current="page"{% endif %}>{{ child.title }}</a>
-                  </li>
-                {%- endfor -%}
-              </ul>
-            </li>
-          {%- else -%}
-            <li>
-              <a href="{{ item.url | relative_url }}"
-                 {% if page.url contains item.url %}aria-current="page"{% endif %}>
-                {%- if item.icon %}{% include nav-icon.html name=item.icon %}{% endif -%}
-                <span>{{ item.title }}</span></a>
-            </li>
-          {%- endif -%}
+        {%- for item in site.fcpm.menu -%}
+          {%- assign _url = "/" | append: item | downcase | append: "/" -%}
+          <li>
+            <a href="{{ _url }}"
+                {% if page.url contains _url %}aria-current="page"{% endif %}>
+              {% include nav-icon.html name=item %}
+              <span>{{ item }}</span></a>
+          </li>
         {%- endfor -%}
       </ul>
-      <a class="btn btn-cta" href="{{ site.data.nav.cta.url | relative_url }}">{{ site.data.nav.cta.title }}</a>
+      <a class="btn btn-cta" href="{{ site.fcpm.donate }}" rel="noopener">Donate</a>
     </nav>
 
   </div>

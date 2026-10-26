@@ -116,7 +116,7 @@ async function signedIn(page, { devices, broker = null, decision } = {}) {
   await page.locator('#create-passkey').click();
   await expect(page.locator('[data-state="manual"]')).toBeVisible();
 
-  await page.goto('/devices/');
+  await page.goto('/you/devices/');
   await page.locator('#sign-in').click();
 
   return seen;
@@ -142,14 +142,14 @@ const waiting = (extra = {}) => ({
 
 test.describe('arriving', () => {
   test('asks you to sign in rather than showing a list', async ({ page }) => {
-    await page.goto('/devices/');
+    await page.goto('/you/devices/');
 
     await expect(page.locator('[data-state="signed-out"]')).toBeVisible();
     await expect(page.locator('[data-state="listing"]')).toBeHidden();
   });
 
   test('no failure state is a dead end', async ({ page }) => {
-    await page.goto('/devices/');
+    await page.goto('/you/devices/');
 
     for (const state of ['unsupported', 'sign-in-failed', 'load-failed']) {
       const panel = page.locator(`[data-state="${state}"]`);

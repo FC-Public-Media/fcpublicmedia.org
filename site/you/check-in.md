@@ -2,14 +2,14 @@
 title: Check In
 layout: pass
 theme_color: "#121417"
-lede: One tap when you get here. Your visits stay on your own phone.
+permalink: /check-in/
 ---
 
 {%- assign ci = site.data.checkin -%}
 {%- assign loc = ci.location -%}
 {%- assign cl = site.data.classes -%}
 
-{%- comment -%} The homepage's schedule, read by the same assets/js/classes.js. {%- endcomment -%}
+{%- comment -%} The homepage's schedule, read by the same assets/js/classes.js. {%- endcomment %}
 {% include class-config.html %}
 
 {%- assign id = site.data.identity -%}
@@ -17,7 +17,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
 <script type="application/json" id="checkin-config">
 {
   "identityMode": {{ ci.identity.mode | jsonify }},
-  {%- comment -%} Public halves only, from _data/identity.yml. {%- endcomment -%}
+  {%- comment -%} Public halves only, from _data/identity.yml. {%- endcomment %}
   "identity": {
     "issuer": {{ id.issuer | jsonify }},
     "keys": [
@@ -50,11 +50,11 @@ lede: One tap when you get here. Your visits stay on your own phone.
 </noscript>
 
 
-{%- comment -%} Three one-screen views by #: (none) the pass, #visits, #device. See docs/identity.md#check-in. {%- endcomment -%}
+{%- comment -%} Three one-screen views by #: (none) the pass, #visits, #device. See docs/identity.md#check-in. {%- endcomment %}
 
 {% comment %} ------------------------------------------------------ the pass {% endcomment %}
 
-{%- comment -%} Everything typed into stays above the halfway fold, clear of the keyboard. {%- endcomment -%}
+{%- comment -%} Everything typed into stays above the halfway fold, clear of the keyboard. {%- endcomment %}
 
 <section class="pass-view pass" data-view="pass" aria-label="Your pass">
 
@@ -88,7 +88,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
     </button>
   </div>
 
-  {%- comment -%} Staff, in the building: the host wizard on the board's LAN name, the name carried along (docs/kiosk.md, Replies). {%- endcomment -%}
+  {%- comment -%} Staff, in the building: the host wizard on the board's LAN name, the name carried along (docs/kiosk.md, Replies). {%- endcomment %}
   <p class="pass-staff"><a id="staff-link" href="http://{{ site.data.lan.board }}/host/">Hosting a room? Check in as staff</a>
     <span class="muted">· in the building</span></p>
 
@@ -194,7 +194,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
       </p>
     </div>
     <p class="muted" data-claim="none" hidden>
-      <a href="mailto:{{ site.data.org.email }}">Ask us</a> to confirm your email.
+      <a href="mailto:{{ site.fcpm.email.info }}">Ask us</a> to confirm your email.
     </p>
 
     <p class="pass-actions">
@@ -203,4 +203,4 @@ lede: One tap when you get here. Your visits stay on your own phone.
   </div>
 </section>
 
-<script type="module" src="{{ '/assets/js/checkin.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/checkin.js' }}?v={{ site.time | date: '%s' }}"></script>

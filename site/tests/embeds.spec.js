@@ -25,7 +25,7 @@ test.describe('embeds @external', () => {
   });
 
   test('archive links open a real show page @external', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     const hrefs = await page.$$eval('[data-archive] li a', (links) =>
       links.map((a) => a.href).filter((href) => href.includes('/internetchannel/show/'))

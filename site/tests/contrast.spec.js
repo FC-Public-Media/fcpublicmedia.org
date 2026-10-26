@@ -62,7 +62,7 @@ const CHECKED = [
   { path: '/', what: 'the masthead', selector: '.site-head a, .nav-group-label, .wordmark-text span' },
   { path: '/', what: 'the home page', selector: 'h1, h2, p, .lede, .muted, .eyebrow' },
   { path: '/watch/', what: 'listings', selector: 'h2, h3, .show-meta, .muted, .tag' },
-  { path: '/membership/', what: 'membership', selector: 'h2, h3, p, .muted, .price' },
+  { path: '/join/', what: 'membership', selector: 'h2, h3, p, .muted, .price' },
   { path: '/meet/', what: 'the calendar', selector: 'h2, .rows li, .muted, .coming' },
 ];
 
@@ -88,7 +88,7 @@ test.describe('contrast', () => {
   }
 
   test('the navigation is visible, including behind the toggle', async ({ page }) => {
-    for (const [path, name] of [['/', 'home'], ['/watch/', 'watch'], ['/membership/', 'membership']]) {
+    for (const [path, name] of [['/', 'home'], ['/watch/', 'watch'], ['/join/', 'membership']]) {
       await page.goto(path);
 
       // On a phone the sampler skips hidden links, so open the menu first.

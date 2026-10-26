@@ -3,10 +3,11 @@ permalink: /sitemap.xml
 layout: null
 sitemap: false
 ---
-{%- comment -%} Every page whose URL ends in a slash; opt out with `sitemap: false`. {%- endcomment -%}
+{%- comment -%} Every page whose URL ends in a slash; opt out with `sitemap: false`. {%- endcomment %}
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-{%- assign pages = site.pages | concat: site.podcasts | sort: "url" -%}
+{%- comment -%} Pages only: the collections the outer repository will build in are not here yet. {%- endcomment %}
+{%- assign pages = site.pages | sort: "url" -%}
 {%- for page in pages -%}
 {%- assign tail = page.url | slice: -1 -%}
 {%- if page.sitemap != false and tail == "/" %}

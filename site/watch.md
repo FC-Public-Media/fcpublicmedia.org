@@ -1,9 +1,9 @@
 ---
 title: Watch
-lede: Live on cable and online, plus every program we have on record.
 ---
 
 {% assign cc = site.data.cablecast %}
+{% assign air = site.data.airings %}
 
 ## Live right now
 
@@ -22,7 +22,7 @@ lede: Live on cable and online, plus every program we have on record.
 
 <ul class="rows">
 {% for channel in site.data.watch.carriage %}
-  <li><b>{{ channel.name }}</b> <span>{{ channel.detail }}</span></li>
+  {{ channel.name }} <span>{{ channel.detail }}</span>
 {% endfor %}
 </ul>
 
@@ -46,34 +46,80 @@ locally.
 {% endfor %}
 </ul>
 
-{%- comment -%} Podcasts sit here, above the archive, not in the header. {%- endcomment -%}
-## Podcasts
-
-<p class="muted">Made in our studios, by people from around Larimer County.</p>
-
-<ul class="grid grid-show">
-{% assign podcasts = site.podcasts | sort: "title" %}
-{% for show in podcasts %}
-  <li class="card">
-    <h3><a href="{{ show.url | relative_url }}">{{ show.title }}</a></h3>
-    {% if show.explicit %}<p><span class="tag tag-warn">Explicit language</span></p>{% endif %}
-    {% if show.lede and show.lede != "" %}<p class="show-meta muted">{{ show.lede }}</p>{% endif %}
-  </li>
-{% endfor %}
-</ul>
-
 ## The archive
 
-<p><a class="btn btn-primary" href="{{ '/watch/archive/' | relative_url }}">Browse the full archive</a></p>
+{{ cc.total }} programs on record, {{ cc.watchable }} of them watchable online.
 
-{% comment %} Slugify the name alone, not after append. Untrimmed and above the heading, or kramdown joins lines. {% endcomment %}
+{%- comment -%} Airing history from _data/airings.json, joined on the Cablecast show id. {%- endcomment %}
+{% if air and air.totals.distinct > 0 %}
+<p class="lede">
+  In the last year, <b>{{ air.totals.slots }}</b> airings covered
+  <b>{{ air.totals.distinct }}</b> programs.
+</p>
+{% endif %}
 
-## By category
+### By category
 
 <ul class="rows rows-tight">
 {% for category in cc.categories %}
   {%- assign anchor = category.name | slugify -%}
-  <li><b><a href="{{ '/watch/archive/' | relative_url }}#{{ anchor }}">{{ category.name }}</a></b> <span>{{ category.count }}</span></li>
+  <a href="#{{ anchor }}">{{ category.name }} (<span>{{ category.count }}</span>)</a>
 {% endfor %}
 </ul>
+
+<div class="filter" data-filter hidden>
+  <label for="archive-filter">Filter</label>
+  <input type="search" id="archive-filter" placeholder="Title, producer, or category" autocomplete="off">
+
+  {%- comment -%} Any sort but Category flattens the groups; archive-filter.js restores them. {%- endcomment %}
+  <label for="archive-sort">Sort</label>
+  <select id="archive-sort">
+    <option value="category">Category</option>
+    <option value="least">Least aired</option>
+    <option value="most">Most aired</option>
+    <option value="stale">Longest since aired</option>
+    <option value="recent">Aired most recently</option>
+    <option value="title">Title A&ndash;Z</option>
+  </select>
+
+  <p class="filter-count" data-filter-count></p>
+</div>
+
+{% assign by_category = cc.shows | group_by: "category" | sort: "name" %}
+
+{% for group in by_category %}
+  {% assign label = group.name %}
+  {% if label == "" %}{% assign label = "Uncategorized" %}{% endif %}
+
+  <h3 id="{{ label | slugify }}">{{ label }} <span class="muted">{{ group.size }}</span></h3>
+
+  <ul class="rows rows-archive" data-archive>
+    {% for show in group.items %}
+      {%- comment -%} Stringify the id: an integer silently fails to index the JSON object. {%- endcomment %}
+      {%- assign key = show.id | append: "" -%}
+      {%- assign a = air.shows[key] -%}
+      <li data-search="{{ show.title | downcase | escape }} {{ show.producer | downcase | escape }} {{ label | downcase }}"
+          data-title="{{ show.title | downcase | escape }}"
+          data-airings="{{ a.airings | default: 0 }}"
+          data-last="{{ a.last | default: '' }}">
+        <b><a href="{{ show.watch_url }}">{{ show.title }}</a></b>
+        <span>
+          {% if show.date and show.date != "" %}{{ show.date }}{% endif %}
+          {% if show.producer and show.producer != "" %} &middot; {{ show.producer }}{% endif %}
+          {% unless show.watchable %} &middot; cable only{% endunless %}
+          {%- if air and air.totals.distinct > 0 -%}
+            {%- if a %}
+              &middot; <b class="airings">{{ a.airings }} airing{% unless a.airings == 1 %}s{% endunless %}</b>,
+              last {{ a.last | date: "%b %Y" }}
+            {%- else %}
+              &middot; <b class="airings airings-none">not aired this year</b>
+            {%- endif -%}
+          {%- endif -%}
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+{% endfor %}
+
+<script src="{{ '/assets/js/archive-filter.js' }}?v={{ site.time | date: '%s' }}" defer></script>
 {% endif %}

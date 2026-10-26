@@ -164,7 +164,7 @@ async function signedIn(page, options) {
   await page.locator('#create-passkey').click();
   await expect(page.locator('[data-state="manual"]')).toBeVisible();
 
-  await page.goto('/settings/');
+  await page.goto('/you/settings/');
   await page.locator('#sign-in').click();
 
   if (!options || !options.status || options.status === 200) {
@@ -175,14 +175,14 @@ async function signedIn(page, options) {
 
 test.describe('arriving at /settings/', () => {
   test('asks you to sign in rather than showing an editor', async ({ page }) => {
-    await page.goto('/settings/');
+    await page.goto('/you/settings/');
 
     await expect(page.locator('[data-state="signed-out"]')).toBeVisible();
     await expect(page.locator('[data-state="editing"]')).toBeHidden();
   });
 
   test('no failure state is a dead end', async ({ page }) => {
-    await page.goto('/settings/');
+    await page.goto('/you/settings/');
 
     for (const state of ['unsupported', 'sign-in-failed', 'load-failed']) {
       const panel = page.locator(`[data-state="${state}"]`);

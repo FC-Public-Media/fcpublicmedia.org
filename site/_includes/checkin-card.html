@@ -25,13 +25,13 @@
         Dropping in without signing up costs
         <b>{{ cl.dropin.public }}</b>{% if cl.dropin.member %},
         or <b>{{ cl.dropin.member }}</b> for members{% endif %}.
-        <a href="{{ '/membership/' | relative_url }}">Membership</a> pays for
+        <a href="{{ '/join/' }}">Membership</a> pays for
         itself quickly if you plan to come back.
       </p>
 
       <p class="hero-actions">
-        <a class="btn btn-primary btn-big" data-class-join href="{{ '/check-in/' | relative_url }}">Check in for this class</a>
-        <a class="btn" data-class-signup href="{{ '/classes/' | relative_url }}">Other classes</a>
+        <a class="btn btn-primary btn-big" data-class-join href="{{ '/check-in/' }}">Check in for this class</a>
+        <a class="btn" data-class-signup href="{{ '/learn/' }}">Other classes</a>
       </p>
 
       <hr>
@@ -47,15 +47,15 @@
           you an account.
         </p>
         <p class="hero-actions">
-          <a class="btn btn-primary btn-big" href="{{ '/check-in/' | relative_url }}">Check in now</a>
+          <a class="btn btn-primary btn-big" href="{{ '/check-in/' }}">Check in now</a>
         </p>
         <p class="muted">
           Not here yet? Tap anyway &mdash; it will finish when you arrive.
         </p>
       </div>
 
-      <a class="checkin-card-qr" href="{{ '/check-in/' | relative_url }}" aria-label="Check in">
-        <img src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
+      <a class="checkin-card-qr" href="{{ '/check-in/' }}" aria-label="Check in">
+        <img src="{{ '/assets/img/check-in-qr.svg' }}"
              alt="" width="200" height="200" loading="lazy">
         <span>or scan</span>
       </a>
@@ -64,4 +64,4 @@
   </div>
 </section>
 
-<script type="module" src="{{ '/assets/js/classmode.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/classmode.js' }}?v={{ site.time | date: '%s' }}"></script>

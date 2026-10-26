@@ -186,7 +186,7 @@ test.describe('navigation', () => {
 
 test.describe('archive', () => {
   test('lists programs and filters them', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     const rows = page.locator('[data-archive] li');
     const total = await rows.count();
@@ -204,7 +204,7 @@ test.describe('archive', () => {
   });
 
   test('every program links somewhere', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     const bad = await page.$$eval('[data-archive] li a', (links) =>
       links
@@ -219,12 +219,12 @@ test.describe('archive', () => {
 // A room request and a class signup will post to the site-worker; neither is built. They ask on
 // the page that owns the thing, not on a page of their own: /book/ and /register/ are gone.
 test.describe('requests', () => {
-  for (const path of ['/reserve/', '/classes/']) {
-    test(`${path} says plainly that it is not wired up yet`, async ({ page }) => {
+  for (const path of ['/reserve/', '/learn/']) {
+    test(`${path} says plainly that it is not set up online yet`, async ({ page }) => {
       await page.goto(path);
 
       // Not `.first()`: /classes/ opens with a different todo block about where listings live.
-      const notice = page.locator('.transaction-todo', { hasText: 'not wired up yet' });
+      const notice = page.locator('.transaction-todo', { hasText: 'not set up online yet' });
       await expect(notice).toHaveCount(1);
       await expect(notice).toBeVisible();
     });
@@ -244,7 +244,7 @@ test.describe('requests', () => {
 test.describe('archive airing history', () => {
   test('shows how often programs have aired', async ({ page }) => {
     // The Liquid join keys airings by stringified id; a wrong key type zeroes every row.
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     const withAirings = await page.$$eval(
       '[data-archive] li[data-airings]',
@@ -256,7 +256,7 @@ test.describe('archive airing history', () => {
   });
 
   test('sorting by least aired puts unaired programs first', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     await page.locator('#archive-sort').selectOption('least');
 
@@ -267,7 +267,7 @@ test.describe('archive airing history', () => {
   });
 
   test('sorting by most aired puts the heaviest rotation first', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     await page.locator('#archive-sort').selectOption('most');
 
@@ -279,7 +279,7 @@ test.describe('archive airing history', () => {
   });
 
   test('sorting flattens the category headings', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     const before = await page.locator('h2[id]:not([hidden])').count();
     expect(before).toBeGreaterThan(1);
@@ -289,7 +289,7 @@ test.describe('archive airing history', () => {
   });
 
   test('returning to category puts every row back', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     const total = await page.locator('[data-archive] li').count();
     const firstTitle = await page.locator('[data-archive] li').first().getAttribute('data-title');
@@ -304,7 +304,7 @@ test.describe('archive airing history', () => {
   });
 
   test('filtering still works while sorted', async ({ page }) => {
-    await page.goto('/watch/archive/');
+    await page.goto('/watch/');
 
     await page.locator('#archive-sort').selectOption('least');
     await page.locator('#archive-filter').fill('zzzzzznotathing');

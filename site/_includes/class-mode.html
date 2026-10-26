@@ -1,0 +1,24 @@
+{%- comment -%} A class in progress; shown by assets/js/classmode.js data. {%- endcomment %}
+<aside class="hero-class" data-class-slot hidden>
+  <p class="eyebrow" data-class-eyebrow></p>
+  <h2 data-class-title></h2>
+  <p class="hero-class-when">
+    <span data-class-when></span><span class="muted" data-class-room></span>
+  </p>
+  <p class="hero-class-summary" data-class-summary></p>
+
+  <p class="class-late" data-class-late hidden>
+    Running late? Come anyway &mdash; you can still join.
+  </p>
+
+  <p class="class-price" data-class-price hidden>
+    Dropping in without signing up costs
+    <b>{{ site.data.classes.dropin.public }}</b>{% if site.data.classes.dropin.member %},
+    or <b>{{ site.data.classes.dropin.member }}</b> for members{% endif %}.
+  </p>
+
+  <p class="hero-actions">
+    <a class="btn btn-primary" data-class-join href="{{ '/check-in/' }}">Check in for this class</a>
+    <a class="btn btn-link" data-class-signup href="{{ '/learn/' }}">Other classes</a>
+  </p>
+</aside>

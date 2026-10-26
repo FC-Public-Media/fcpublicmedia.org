@@ -1,39 +1,58 @@
-# Fort Collins Public Media: Jekyll config. This directory is the build root, so no `source:`.
-# See docs/site.md.
-
-title: Fort Collins Public Media
-tagline: Gear, training, and studio space for Fort Collins storytellers.
-description: >-
-  Fort Collins Public Media is a 501(c)(3) community media resource providing
-  creators with equipment, training, studio space, and a channel to broadcast on.
-
+title: FC Public Media
 url: https://www.fcpublicmedia.org
 baseurl: ""
+
+fcpm:
+  hero_image: /assets/img/studio.avif
+  slogan_1: Don't Just View It.
+  slogan_2: Do It.
+  tagline: You are PUBLIC MEDIA.
+  mission: >-
+    FC Public Media is a 501(c)(3) broadcasting the community of Fort Collins and its immediate area.
+  email:
+    info: info@fcpublicmedia.org
+    equipment: equipment@fcpublicmedia.org
+    bookings: bookings@fcpublicmedia.org
+    donations: donations@fcpublicmedia.org
+    non-profits: nonprofits@fcpublicmedia.org
+  phone: 970-818-2490
+
+  # The old front page's own video. It belongs to the Wix photocopy and would be better served from
+  # there, but the zone has no `wix` record yet (docs/site.md#domain-and-dns names only @, www and
+  # new), so it is served from here until that exists. Made from
+  # wix/site/_wix/video.wixstatic.com/4dbbfd6f6fe0a3a7.mp4 with the audio dropped and scaled to
+  # 1280: 12.3MB to 928K. _includes/reel.html renders nothing without `hero_video`.
+  hero_video: /assets/video/wix-was.mp4
+  hero_video_poster: /assets/img/wix-was-poster.jpg
+  hero_video_caption: fcpublicmedia.org as it was, until this replaced it.
+
+  address:
+    venue: Center for Creativity
+    street: 200 Mathews Street
+    city: Fort Collins
+    state: CO
+    zip: "80524"
+    note: Open by appointment
+
+  menu:
+    - Watch
+    - Learn
+    - Meet
+    - Reserve
+    - Join
+    - Submit
+
+  channels:
+    On-site: /reserve/
+    In town: /meet/
+    YouTube: https://www.youtube.com/@fcpublicmedia
+    Instagram: https://www.instagram.com/fcpublicmedia/
+    Newsletter: https://conta.cc/3G5YyWi
 
 permalink: pretty
 markdown: kramdown
 
-collections:
-  podcasts:
-    output: true
-    permalink: /podcasts/:name/
-
-  # One file per show: its name, how its episodes match in the Cablecast catalog, its prose.
-  shows:
-    output: true
-    permalink: /watch/:name/
-
 defaults:
-  - scope:
-      path: ""
-      type: podcasts
-    values:
-      layout: podcast
-  - scope:
-      path: ""
-      type: shows
-    values:
-      layout: show
   - scope:
       path: ""
     values:

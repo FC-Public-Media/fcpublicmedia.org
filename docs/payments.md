@@ -12,7 +12,7 @@ Every hand-off to a paid or stateful service is an entry in `site/_data/provider
 |---|---|---|
 | `tickets` | Class registration | Wix Events |
 | `membership` | Dues | The Wix membership form's tier field |
-| `donate` | Donations | Nothing (Wix's page is empty) |
+| `donate` | Donations | Nothing. Off-site entirely: `donate.url` is the header's button, and there is no `/donate/` page |
 | `booking` | Studio and bay reservations | Booqable |
 | `submit` | Program submissions | Wix form and Dropbox |
 
@@ -102,7 +102,7 @@ is an equal path to a person. Staff verify the EIN and issue a Stripe promotion 
 
 ## Requests
 
-Join (a paid checkout), a room request (`/reserve/`), a class signup (`/classes/`) and a check-in each
+Join (a paid checkout), a room request (`/reserve/`), a class signup (`/learn/`) and a check-in each
 become one row in one log: a list on the Operations SharePoint site, added to by the site-worker and
 by nothing else. Not built: each page says so where it would ask, through
 `site/_includes/transaction.html` and the `note` in `site/_data/providers.yml`. A request asks on the

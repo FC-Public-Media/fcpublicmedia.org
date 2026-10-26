@@ -107,7 +107,7 @@ test.describe('class mode', () => {
 
   test('offers other classes rather than only this one', async ({ page }) => {
     await visitAt(page, at(20));
-    await expect(page.locator('[data-class-signup]')).toHaveAttribute('href', '/classes/');
+    await expect(page.locator('[data-class-signup]')).toHaveAttribute('href', '/learn/');
   });
 
   test('switches on by itself as the class begins', async ({ page }) => {

@@ -1,0 +1,31 @@
+{%- comment -%}
+  {% include reel.html src=site.fcpm.hero_video %}
+
+  The hero's background, as video. Not a section of its own: it sits behind the hero's panels, where
+  the hero photograph sits, and `hero_image` stays as the still that is already painted underneath —
+  so there is something to look at before a single video byte arrives, and something to look at if
+  none ever does.
+
+  Renders nothing at all without `src`, so the key in _config.yml is the whole switch.
+
+  Lazy here means it does not compete with first paint: `preload="none"` and no `autoplay`, so the
+  browser fetches nothing until assets/js/reel.js asks, which it does once the page has gone idle.
+  The control for it lives in the hero panel, on the brand plane — see index.html.
+{%- endcomment %}
+
+{%- if include.src and include.src != "" %}
+<video
+  class="hero-video"
+  data-reel-video
+  src="{{ include.src }}"
+  {% if include.poster and include.poster != "" %}poster="{{ include.poster }}"{% endif %}
+  preload="none"
+  muted
+  loop
+  playsinline
+  disablepictureinpicture
+  tabindex="-1"
+  aria-hidden="true"></video>
+
+<script src="{{ '/assets/js/reel.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
+{%- endif %}

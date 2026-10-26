@@ -82,7 +82,7 @@ async function register(page, email, repo) {
 
 test.describe('arriving at /upload/', () => {
   test('asks you to sign in rather than showing a form', async ({ page }) => {
-    await page.goto('/upload/');
+    await page.goto('/you/upload/');
 
     await expect(page.locator('[data-state="signed-out"]')).toBeVisible();
     await expect(page.locator('[data-state="ready"]')).toBeHidden();
@@ -92,14 +92,14 @@ test.describe('arriving at /upload/', () => {
     await page.addInitScript(() => {
       delete window.PublicKeyCredential;
     });
-    await page.goto('/upload/');
+    await page.goto('/you/upload/');
     await page.locator('#sign-in').click();
 
     await expect(page.locator('[data-state="unsupported"]')).toBeVisible();
   });
 
   test('no failure state is a dead end', async ({ page }) => {
-    await page.goto('/upload/');
+    await page.goto('/you/upload/');
 
     for (const state of ['unsupported', 'sign-in-failed']) {
       const panel = page.locator(`[data-state="${state}"]`);
@@ -119,7 +119,7 @@ test.describe('signing in with a registered passkey', () => {
     await virtualAuthenticator(page);
     await register(page, 'jane@example.com', SITE);
 
-    await page.goto('/upload/');
+    await page.goto('/you/upload/');
     await page.locator('#sign-in').click();
 
     await expect(page.locator('[data-state="ready"]')).toBeVisible();
@@ -149,7 +149,7 @@ test.describe('describing an episode', () => {
     await withKey(page);
     await virtualAuthenticator(page);
     await register(page, 'jane@example.com', SITE);
-    await page.goto('/upload/');
+    await page.goto('/you/upload/');
     await page.locator('#sign-in').click();
     await expect(page.locator('[data-state="ready"]')).toBeVisible();
   }

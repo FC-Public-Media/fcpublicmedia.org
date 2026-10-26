@@ -244,7 +244,7 @@ test.describe('community wayfinding', () => {
   test('offers concrete ways to take part', async ({ page }) => {
     await page.goto('/meet/');
 
-    for (const href of ['/membership/', '/classes/', '#the-board']) {
+    for (const href of ['/join/', '/learn/', '#the-board']) {
       await expect(
         page.locator(`main a[href="${href}"]`).first(),
         `no route to ${href}`

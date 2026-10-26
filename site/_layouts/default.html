@@ -1,18 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 {% include head.html %}
-<body>
+<body{% if page.oneview %} class="oneview"{% endif %}>
   <a class="skip-link" href="#main">Skip to content</a>
   {% include header.html %}
+
   <main id="main">
     {{ content }}
   </main>
-  {% include footer.html %}
-  <script src="{{ '/assets/js/nav.js' | relative_url }}?v={{ site.time | date: '%s' }}" defer></script>
-  <script src="{{ '/assets/js/theme.js' | relative_url }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
-  {%- comment -%} Only pages with an on-air slot load the schedule. {%- endcomment -%}
-  {% if content contains 'data-onair' %}
-    <script src="{{ '/assets/js/onair.js' | relative_url }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
-  {% endif %}
+
+  <footer class="site-foot {% if page.flush %}flush{% endif %}">
+    <div class="wrap site-foot-inner">
+
+      <address>
+        {{ site.fcpm.address.venue }}<br>
+        {{ site.fcpm.address.street }}<br>
+        {{ site.fcpm.address.city }}
+        {{ site.fcpm.address.state }}
+        {{ site.fcpm.address.zip }}
+      </address>
+      <p>
+        {%- for day_span in site.data.hosts.days -%}
+          {%- if day_span[1][0] -%}
+            {{ day_span[0] }}: {{ day_span[1][0] | modulo: 12 }}
+            {%- unless forloop.last -%},&nbsp;{%- endunless -%}
+          {%- else -%}
+            {{ day_span[0] }}: {{ day_span[1] }}
+            <br>
+          {%- endif -%}
+        {%- endfor -%}
+        <br>
+        <br>
+        {%- assign email = site.fcpm.email -%}
+        <a href="mailto:{{ email.info }}">{{ email.info }}</a><br>
+        <a href="mailto:{{ email.equipment }}">{{ email.equipment }}</a><br>
+        <a href="mailto:{{ email.bookings }}">{{ email.bookings }}</a><br>
+        <a href="mailto:{{ email.donations }}">{{ email.donations }}</a><br>
+        <a href="mailto:{{ email.nonprofits }}">{{ email.nonprofits }}</a><br>
+        <a href="tel:{{ site.fcpm.phone | remove: '-' }}">{{ site.fcpm.phone }}</a>
+      </p>
+
+      <p class="theme-toggle" data-theme-toggle hidden>
+        <label>
+          <input type="checkbox" data-theme-input>
+          <span>Match system colours</span>
+        </label>
+      </p>
+
+      <div class="foot-legal">
+        <p>&copy; 2004&ndash;{{ site.time | date: '%Y' }}</p>
+        <p>{{ site.title }} is a 501(c)(3) nonprofit public charity.</p>
+        <p>Broadcasts are not the opinions of staff or vendors.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ '/assets/js/nav.js' }}?v={{ site.time | date: '%s' }}" defer></script>
+  <script src="{{ '/assets/js/theme.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
+  {%- comment -%}
+    Every page: the on-air bar is in the header now, so the test this used to make against `content`
+    (the page body) was false everywhere but /watch/, and the bar never primed. The script does
+    nothing when it finds no bar.
+  {%- endcomment %}
+  <script src="{{ '/assets/js/onair.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
 </body>
 </html>

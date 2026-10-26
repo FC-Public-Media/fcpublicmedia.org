@@ -16,7 +16,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/production/bay/runnables.proven
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
-- Unused: `_includes/community.html`, `countdown.html`, `checkin-card.html`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url` since the footer stopped listing channels. Facebook is only in `org.social`, so it is now on no page; `community.yml` `channels` is the live list and does not carry it.
+- Unused after the 2026-10-25 reduction, the whole list so it can go in one cut: includes `community.html`, `countdown.html`, `checkin-card.html`, `featured.html` (the homepage stopped including it); data `hosts.yml`, `member_sites.json`, `featured.yml`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url`. Facebook is only in `org.social`, so it is on no page; `community.yml` `channels` is the live list and does not carry it.
 - `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
@@ -39,8 +39,13 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Site content
 
-- Missing copy: `/donate` (amounts, recurring, the case, the processor), the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, the instructor application's questions (`/classes/#teach-with-us`). `org.mission` renders on the homepage; the history that `/about/` was holding a place for lands in `/meet/`, which is where that page's board and governance material was already pointing.
-- Four Wix carryovers dropped 2026-10-25 (`/book/`, `/register/`, `/teach/`, `/bulletin-board/`): the first three fold into `/reserve/` and `/classes/`; the fourth embedded Cablecast CG's board, so `/community-bulletin-board` goes to `/watch/`. Whether FCPM wants a community notice board of its own, on the site rather than on the channel, is undecided and unowned.
+- Donating goes off-site: there is no `/donate/` page (dropped 2026-10-25). The header reads `donate.url` in `providers.yml` and renders no button while it is empty, which it is, so no Donate button is on the site right now. site/_data/providers.yml
+- The 2026-10-25 reduction: `site/` is `/`, `/watch/`, `/learn/`, `/join/`, `/reserve/`, `/submit/`, `/meet/` and `you/`. `/watch/archive/` folded into `/watch/` (one catalog, no reason for the split); `classes.md` became `learn.md` and `membership.md` became `join.md` to match the menu; `_podcasts/` and `_shows/` left `site/`. Everything a page lists comes from Cablecast first; shows that never touch our Cablecast are a later question.
+- Two Wix URLs now land somewhere that is not their replacement, because the replacement is gone: `/for-nonprofits` to `/join/`, `/non-discrimination-policy` to `/meet/`. The DEI statement still has to be copied from Wix and now has nowhere to live.
+- `you/` pages split their URLs: `/check-in/`, `/authorize/` and `/lights/` keep the old ones (a printed door QR encodes `/check-in/`, `bin/mint-claim.py` hands out both, `machines/kiosk/door.py` reads `/lights/`), while `/you/devices/`, `/you/settings/` and `/you/upload/` moved with redirects. Moving all five is possible, but only once the QR is reprinted and no issued claim link is still in the wild.
+
+- Missing copy: the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, the instructor application's questions (`/learn/#teach-with-us`). `org.mission` renders on the homepage; the history that `/about/` was holding a place for lands in `/meet/`, which is where that page's board and governance material was already pointing.
+- Four Wix carryovers dropped 2026-10-25 (`/book/`, `/register/`, `/teach/`, `/bulletin-board/`): the first three fold into `/reserve/` and `/learn/`; the fourth embedded Cablecast CG's board, so `/community-bulletin-board` goes to `/watch/`. Whether FCPM wants a community notice board of its own, on the site rather than on the channel, is undecided and unowned.
 - The footer carries the address block and the legal line, nothing else (2026-10-25): no page list, no channels. `nav.yml` `elsewhere` is not a menu and renders nowhere; it only lets the header name a page, since `page` prints no `<h1>`.
 - `/about/` and `/contact/` are dropped (2026-10-25). The 22 "ask us" links that pointed at `/contact/` are now `mailto:` on `org.email`. Autumn wants a further pass: 22 prompts to email us across the station pages is too many, and the number, not the target, is the problem.
 - Standing but unreviewed: `/nonprofits/` publishes a client list and no rates, and `/policies/non-discrimination/` is a TODO. Both are linked from nothing and still in `/sitemap.xml`, which is the honest state of a page nobody has decided to carry.
@@ -112,7 +117,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `/membership/` publishes "TODO" under three tiers (`tier.summary` renders unconditionally). site/_data/membership.yml
 - Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
 - No provider for `tickets`, `donate` or `submit`. site/_data/providers.yml
-- The room request on `/reserve/` and the class signup on `/classes/` have no form yet; they are to post to the site-worker, which adds a row to the log. site/_data/providers.yml
+- The room request on `/reserve/` and the class signup on `/learn/` have no form yet; they are to post to the site-worker, which adds a row to the log. site/_data/providers.yml
 - A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
 - The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
 - The membership record (email, paid-through date) is unbuilt: a row in the log per paid join, from Stripe's webhook to the site-worker.

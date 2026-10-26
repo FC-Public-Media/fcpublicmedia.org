@@ -1,6 +1,5 @@
 ---
 title: Check-In Poster
-lede: Print this and put it by the door.
 permalink: /check-in/poster/
 sitemap: false
 ---
@@ -15,11 +14,11 @@ sitemap: false
 </p>
 
 <div class="poster">
-  <p class="poster-eyebrow">{{ site.data.org.name }}</p>
+  <p class="poster-eyebrow">{{ site.title }}</p>
   <h2 class="poster-title">Checking in?</h2>
 
   <img class="poster-qr"
-       src="{{ '/assets/img/check-in-qr.svg' | relative_url }}"
+       src="{{ '/assets/img/check-in-qr.svg' }}"
        alt="QR code linking to the check-in page"
        width="320" height="320">
 

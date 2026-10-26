@@ -32,7 +32,7 @@
       "ends": {{ s.ends | date_to_xmlschema | jsonify }},
       "room": {{ s.room | default: "" | jsonify }},
       "summary": {{ s.summary | default: "" | strip_newlines | strip | jsonify }},
-      "signup": {{ s.signup | default: "/classes/" | jsonify }}
+      "signup": {{ s.signup | default: "/learn/" | jsonify }}
     }{% unless forloop.last %},{% endunless %}
     {%- endfor -%}
   ]

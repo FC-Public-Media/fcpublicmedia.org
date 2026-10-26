@@ -2,6 +2,6 @@
 layout: null
 sitemap: false
 ---
-{%- comment -%} Generated from _data/redirects.yml: edit that. See docs/site.md. {%- endcomment -%}
+{%- comment -%} Generated from _data/redirects.yml: edit that. See docs/site.md. {%- endcomment %}
 {% for r in site.data.redirects %}{{ r.from }} {{ r.to }} 301
 {% endfor %}

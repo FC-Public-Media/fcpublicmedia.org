@@ -1,4 +1,4 @@
-// /membership/: the rules are stated, and the nonprofit lookup always leaves a way through.
+// /join/: the rules are stated, and the nonprofit lookup always leaves a way through.
 
 const { test, expect } = require('@playwright/test');
 
@@ -28,7 +28,7 @@ async function withList(page, { status = 200, body = ORGS } = {}) {
 test.describe('the rules', () => {
   test('says the year starts when you join, not in January', async ({ page }) => {
     // One year from sign-up, not the calendar year.
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     const rules = page.locator('h2', { hasText: 'How it works' }).locator('+ ul');
     await expect(rules).toContainText('A full year from the day you join');
@@ -37,7 +37,7 @@ test.describe('the rules', () => {
 
   test('says the two things that no longer exist', async ({ page }) => {
     // Retired rules people remember are stated as gone.
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     const rules = page.locator('h2', { hasText: 'How it works' }).locator('+ ul');
     await expect(rules).toContainText('No half-year price');
@@ -46,7 +46,7 @@ test.describe('the rules', () => {
 
   test('the nonprofit rate is on every tier, not hidden in a paragraph', async ({ page }) => {
     // The nonprofit rate is on the page for everyone.
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     const cards = page.locator('.grid-4 .card');
     await expect(cards).toHaveCount(4);
@@ -68,7 +68,7 @@ test.describe('finding your organization', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ORGS) });
     });
 
-    await page.goto('/membership/');
+    await page.goto('/join/');
     await expect(page.locator('#nonprofit-search')).toBeVisible();
     expect(fetched).toBe(0);
 
@@ -80,7 +80,7 @@ test.describe('finding your organization', () => {
   test('words in any order still find it', async ({ page }) => {
     // Any remembered words, in any order.
     await withList(page);
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     await page.locator('#nonprofit-search').fill('trust library');
 
@@ -90,7 +90,7 @@ test.describe('finding your organization', () => {
   test('punctuation you would type does not stop a match', async ({ page }) => {
     // The IRS file has no apostrophes. People do.
     await withList(page);
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     await page.locator('#nonprofit-search').fill("st. mary's");
 
@@ -99,7 +99,7 @@ test.describe('finding your organization', () => {
 
   test('choosing one hands over the EIN, which is the point', async ({ page }) => {
     await withList(page);
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     await page.locator('#nonprofit-search').fill('museum');
     await page.locator('#nonprofit-results button').first().click();
@@ -116,7 +116,7 @@ test.describe('finding your organization', () => {
   test('no match is not a refusal', async ({ page }) => {
     // Legitimate organizations can be absent; "not listed" is never a no.
     await withList(page);
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     await page.locator('#nonprofit-search').fill('an organization that is not there');
 
@@ -125,7 +125,7 @@ test.describe('finding your organization', () => {
   });
 
   test('a way through is always visible, not something you reach by failing', async ({ page }) => {
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     // Present before anybody has typed anything.
     const out = page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' });
@@ -134,7 +134,7 @@ test.describe('finding your organization', () => {
 
   test('the list failing to load does not strand anybody', async ({ page }) => {
     await withList(page, { status: 500 });
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     await page.locator('#nonprofit-search').fill('poudre');
 
@@ -146,7 +146,7 @@ test.describe('finding your organization', () => {
     // No dead search box; the plain-HTML way out (a mailto) survives.
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
-    await page.goto('/membership/');
+    await page.goto('/join/');
 
     await expect(page.locator('#nonprofit-search')).toBeHidden();
     await expect(page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' })).toBeVisible();

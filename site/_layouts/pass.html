@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en" class="is-pass">
 {% include head.html %}
-{%- comment -%} The pass: no header, footer or menu, one screen that never scrolls. See docs/identity.md. {%- endcomment -%}
+{%- comment -%} The pass: no header, footer or menu, one screen that never scrolls. See docs/identity.md. {%- endcomment %}
 <body class="pass-body">
   <main id="main">
     {{ content }}
   </main>
-  <script src="{{ '/assets/js/theme.js' | relative_url }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
+  <script src="{{ '/assets/js/theme.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
 </body>
 </html>

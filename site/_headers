@@ -2,7 +2,7 @@
 layout: null
 sitemap: false
 ---
-{%- comment -%} Headers for a static host that reads _headers. See docs/site.md#redirects-and-headers. {%- endcomment -%}
+{%- comment -%} Headers for a static host that reads _headers. See docs/site.md#redirects-and-headers. {%- endcomment %}
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

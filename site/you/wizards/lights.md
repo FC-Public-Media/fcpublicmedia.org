@@ -3,9 +3,10 @@ title: Lights
 layout: pass
 theme_color: "#ffffff"
 sitemap: false
+permalink: /lights/
 ---
 
-{%- comment -%} A code shown to the kiosk camera: keep screens awake until a time. See docs/kiosk.md. {%- endcomment -%}
+{%- comment -%} A code shown to the kiosk camera: keep screens awake until a time. See docs/kiosk.md. {%- endcomment %}
 
 <style>
   .lights { position: fixed; inset: 0; display: flex; flex-direction: column; background: #fff; color: #111;
@@ -38,4 +39,4 @@ sitemap: false
   </form>
 </div>
 
-<script type="module" src="{{ '/assets/js/lights.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/lights.js' }}?v={{ site.time | date: '%s' }}"></script>

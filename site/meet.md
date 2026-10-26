@@ -8,7 +8,7 @@ title: Meet
 {%- comment -%}
   Classes, board meetings and community events merged into one list: rows are "%%"-delimited
   strings keyed by epoch seconds (DST-safe), sorted, split back. Past events are dropped here.
-{%- endcomment -%}
+{%- endcomment %}
 
 {%- assign rows = "" | split: "" -%}
 
@@ -16,7 +16,7 @@ title: Meet
   {%- assign at = s.starts | date: "%s" -%}
   {%- if at >= now -%}
     {%- capture row -%}
-      {{ at }}%%Class%%{{ s.title }}%%{{ s.starts }}%%{{ s.room }}%%/classes/%%{{ s.note }}
+      {{ at }}%%Class%%{{ s.title }}%%{{ s.starts }}%%{{ s.room }}%%/learn/%%{{ s.note }}
     {%- endcapture -%}
     {%- assign rows = rows | push: row -%}
   {%- endif -%}
@@ -78,7 +78,7 @@ title: Meet
 <p>
   That happens &mdash; we're small, and things go up when they're ready. The
   studio is still open by appointment, and the
-  <a href="/classes/">classes page</a> is the first place a new session
+  <a href="/learn/">classes page</a> is the first place a new session
   appears.
 </p>
 
@@ -86,7 +86,7 @@ title: Meet
 
 <p class="muted">
   Classes, board meetings, and everything else, in one list. Sessions also
-  show on the <a href="/classes/">classes page</a>; board meetings are
+  show on the <a href="/learn/">classes page</a>; board meetings are
   <a href="#the-board">further down</a>, and anyone can come to one.
 </p>
 
@@ -96,7 +96,7 @@ title: Meet
 
 <p class="lede">{{ com.blurb | strip_newlines | strip }}</p>
 
-{%- comment -%} Channels with no url are skipped; `primary` is the one to try first. {%- endcomment -%}
+{%- comment -%} Channels with no url are skipped; `primary` is the one to try first. {%- endcomment %}
 
 {%- assign live = com.channels | where_exp: "c", "c.url != ''" -%}
 {%- assign primary = live | where: "primary", true | first -%}
@@ -131,21 +131,21 @@ title: Meet
 {% endif %}
 
 <p class="muted">
-  Somewhere else you think people should be? <a href="mailto:{{ site.data.org.email }}">Tell us</a>.
+  Somewhere else you think people should be? <a href="mailto:{{ site.fcpm.email.info }}">Tell us</a>.
   This list is short on purpose &mdash; a channel nobody reads is worse than
   no channel.
 </p>
 
 {% comment %} ------------------------------------------------ made by members {% endcomment %}
 
-{%- comment -%} From _data/member_programs.json (sync-feeds.py). Strings are members': keep `| escape`. {%- endcomment -%}
+{%- comment -%} From _data/member_programs.json (sync-feeds.py). Strings are members': keep `| escape`. {%- endcomment %}
 
 {%- assign made = site.data.member_programs -%}
 
 {%- comment -%}
   A future pubDate is a member's scheduled drop: listed under "Coming up", not "Made by members".
   `plus: 0` makes integers; `now` above is a string, and mixing the two raises.
-{%- endcomment -%}
+{%- endcomment %}
 {%- assign nowsec = site.time | date: "%s" | plus: 0 -%}
 {%- assign coming = "" | split: "" -%}
 {%- assign published = "" | split: "" -%}
@@ -159,7 +159,7 @@ title: Meet
       {%- assign published = published | push: item -%}
     {%- endif -%}
   {%- else -%}
-    {%- comment -%} Undated counts as published, not forthcoming. {%- endcomment -%}
+    {%- comment -%} Undated counts as published, not forthcoming. {%- endcomment %}
     {%- assign published = published | push: item -%}
   {%- endif -%}
 {%- endfor -%}
@@ -172,7 +172,7 @@ title: Meet
   Announced by members on their own channels, not yet out.
 </p>
 
-{%- comment -%} No artifact link: the feed's pointer to the master file is not for publishing. {%- endcomment -%}
+{%- comment -%} No artifact link: the feed's pointer to the master file is not for publishing. {%- endcomment %}
 <ul class="feed">
 {% for item in coming %}
   <li>
@@ -248,7 +248,7 @@ title: Meet
 </ul>
 
 <p class="muted">
-  Publish something you'd like listed here? <a href="mailto:{{ site.data.org.email }}">Send us the
+  Publish something you'd like listed here? <a href="mailto:{{ site.fcpm.email.info }}">Send us the
   feed</a> &mdash; a podcast RSS URL, a YouTube channel, a blog. You keep the
   work wherever it already lives.
 </p>
@@ -260,7 +260,7 @@ title: Meet
 <p>
   If you publish a podcast, a channel, or a blog, we can list what you put out
   here &mdash; you keep it wherever it already lives and we just read the feed.
-  <a href="mailto:{{ site.data.org.email }}">Send us the link</a> and it starts showing up.
+  <a href="mailto:{{ site.fcpm.email.info }}">Send us the link</a> and it starts showing up.
 </p>
 
 {% endif %}
@@ -271,15 +271,15 @@ title: Meet
 
 <ul class="rows">
   <li>
-    <b><a href="/membership/">Become a member</a></b>
+    <b><a href="/join/">Become a member</a></b>
     <span>Access to gear, studios, and the rest of it.</span>
   </li>
   <li>
-    <b><a href="/classes/">Take a class</a></b>
+    <b><a href="/learn/">Take a class</a></b>
     <span>Most people start here, member or not.</span>
   </li>
   <li>
-    <b><a href="/classes/#teach-with-us">Teach one</a></b>
+    <b><a href="/learn/#teach-with-us">Teach one</a></b>
     <span>If you know a thing, there's someone here who wants to learn it.</span>
   </li>
   <li>
@@ -296,7 +296,7 @@ title: Meet
 
 {%- assign gov = site.data.governance -%}
 {%- assign m = gov.meetings -%}
-{%- assign org = site.data.org -%}
+{%- assign org = site.fcpm -%}
 
 ## The board
 
@@ -345,7 +345,7 @@ first &mdash; though it's a small room, so it's kind to.
 {% endif %}
 
 <p>
-  If you want to raise something, <a href="mailto:{{ site.data.org.email }}">get in touch</a> ahead of
+  If you want to raise something, <a href="mailto:{{ site.fcpm.email.info }}">get in touch</a> ahead of
   time and we'll make room for it.
 </p>
 
@@ -353,7 +353,7 @@ first &mdash; though it's a small room, so it's kind to.
 
 ### Meetings
 
-Board meetings are not currently open to the public. <a href="mailto:{{ site.data.org.email }}">Get in
+Board meetings are not currently open to the public. <a href="mailto:{{ site.fcpm.email.info }}">Get in
 touch</a> if there's something you'd like the board to consider.
 
 {% endif %}
@@ -380,7 +380,7 @@ touch</a> if there's something you'd like the board to consider.
 
 ### Who's on it
 
-{%- comment -%} Office hours are per person and render before the bio. {%- endcomment -%}
+{%- comment -%} Office hours are per person and render before the bio. {%- endcomment %}
 
 {% assign roster = site.data.board | where_exp: "p", "p.name" %}
 {% if roster.size > 0 %}

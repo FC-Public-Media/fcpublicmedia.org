@@ -1,6 +1,5 @@
 ---
-title: Submit a Program
-lede: Get your work on cable, streaming, and video on demand.
+title: Submit
 ---
 
 Community members can submit video for broadcast on our cable channels,
@@ -27,7 +26,8 @@ commercial call to action. Political advertisements are not permitted.
 
 ## Submit
 
-{% include transaction.html key="submit" text="Start a submission" %}
+{% include transaction.html key="submit" text="Start a submission"
+   todo="Email us about the programme and we'll take it from there." %}
 
 The submission form collects your contact information, the program title and
 description, a category, your requested first run date, and four ranked
