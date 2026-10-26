@@ -9,13 +9,14 @@
       </span>
     </a>
 
-    {%- comment -%} Where you are: the menu label (not page.title); blank for pages in no menu. {%- endcomment -%}
+    {%- comment -%} Where you are: the menu label, else `elsewhere` in nav.yml (not page.title);
+    blank for a page named in neither. {%- endcomment -%}
     {%- assign here = "" -%}
     {%- for item in site.data.nav.primary -%}
       {%- if item.url and page.url contains item.url -%}{%- assign here = item.title -%}{%- endif -%}
     {%- endfor -%}
     {%- if here == "" -%}
-      {%- for item in site.data.nav.footer -%}
+      {%- for item in site.data.nav.elsewhere -%}
         {%- if item.url and page.url contains item.url -%}{%- assign here = item.title -%}{%- endif -%}
       {%- endfor -%}
     {%- endif -%}
