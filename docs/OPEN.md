@@ -8,8 +8,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
 - `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
-- `cablecast.json` `fetched` is always null: the workflow never sets `SYNC_STAMP`. .github/workflows/sync-cablecast.yml
-- Expired `featured.yml` items stay live until something rebuilds the site; no public host rebuilds on a schedule. .github/workflows/sync-cablecast.yml
+- Nothing deploys on a schedule: the catalog, airings, feeds and nonprofit list are as fresh as the last `bin/deploy-site`, and the committed copies (the LAN build's) age until someone commits a refresh. bin/deploy-site
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js

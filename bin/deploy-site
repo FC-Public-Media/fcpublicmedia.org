@@ -1,22 +1,42 @@
 #!/bin/sh
-# deploy-site: build site/ and upload it to Cloudflare Pages, project fcpm-new (new.fcpublicmedia.org).
-# That is the whole deploy: a direct upload of _site, from a checkout on a box holding the keychain's
-# `cloudflare` group. No CI, no git-connected build, no other host. See docs/site.md#deploy.
+# deploy-site: refresh the site's data, build site/ and upload it to Cloudflare Pages, project fcpm-new
+# (new.fcpublicmedia.org). That is the whole deploy: a direct upload of _site, from a checkout on a box
+# holding the keychain's `cloudflare` group. No CI, no git-connected build, no other host. See docs/site.md#deploy.
 #
-#   bin/deploy-site            build HEAD's site/ and upload it as fcpm-new's production (branch main)
-#   bin/deploy-site --build    build and run the publish checks only; upload nothing
+#   bin/deploy-site            refresh, build HEAD's site/ and upload it as fcpm-new's production (branch main)
+#   bin/deploy-site --build    refresh, build and run the publish checks; upload nothing, keep the copy and say where
+#
+# It works in a throwaway copy of HEAD, so this checkout is never touched. The refresh is what GitHub's
+# scheduled workflows used to commit: the Cablecast catalog and airings, member feeds, the IRS nonprofit
+# list, member sites. A refresh that fails keeps the committed copy and says so; the deploy goes on.
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT/site"
-JEKYLL_ENV=production jekyll build
+COPY="$(mktemp -d)/site-deploy"
+git -C "$ROOT" worktree add --quiet --detach "$COPY" HEAD
+done_with_copy() { git -C "$ROOT" worktree remove --force "$COPY"; rmdir "$(dirname "$COPY")"; }
+[ "${1:-}" = --build ] || trap done_with_copy EXIT
+
+cd "$COPY"
+export SYNC_STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"    # cablecast.json `fetched`
+for step in "site/bin/sync-cablecast.py" "site/bin/sync-schedule.py" "site/bin/sync-feeds.py" \
+            "site/bin/sync-nonprofits.py" "bin/build-sites.py --publish"; do
+  # shellcheck disable=SC2086
+  python3 $step >/dev/null 2>&1 && echo "refreshed: $step" || echo "kept the committed copy: $step failed"
+done
+
+cd "$COPY/site"
+JEKYLL_ENV=production jekyll build --quiet
 python3 bin/test_nothing_internal_is_published.py
 python3 bin/test_site_runs_no_code.py
-[ "${1:-}" = --build ] && exit 0
+if [ "${1:-}" = --build ]; then
+  echo "built: $COPY/site/_site (remove with: git worktree remove --force $COPY)"
+  exit 0
+fi
 
-cd "$ROOT"
-dirty=false
-git diff --quiet HEAD -- site || dirty=true
-exec machines/digitization/keys run cloudflare -- npx --yes wrangler@4 pages deploy site/_site \
+cd "$COPY"
+fresh=false
+git diff --quiet HEAD || fresh=true
+machines/digitization/keys run cloudflare -- npx --yes wrangler@4 pages deploy site/_site \
   --project-name fcpm-new --branch main \
-  --commit-hash "$(git rev-parse HEAD)" --commit-message "$(git log -1 --format=%s)" --commit-dirty="$dirty"
+  --commit-hash "$(git rev-parse HEAD)" --commit-message "$(git log -1 --format=%s)" --commit-dirty="$fresh"

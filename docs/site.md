@@ -16,7 +16,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `_includes/` | `head`, `header`, `footer`, `transaction`, `show-card` and smaller parts |
 | `you/` | the member's own pages. `/check-in/`, `/authorize/` and `/lights/` keep their old URLs by `permalink` (a printed QR, an issued claim link, the kiosk camera); the rest are `/you/:name/` |
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
-| `member-sites/` | built member sites, committed by the publish workflow ([members.md](members.md)) |
+| `member-sites/` | built member sites, by `bin/build-sites.py --publish` ([members.md](members.md)); `bin/deploy-site` runs it |
 | `bin/`, `tests/` | tooling, syncs and Python tests; Playwright tests. Both excluded from the build |
 | `_redirects`, `_headers`, `robots.txt`, `sitemap.xml` | generated for hosts |
 
@@ -138,20 +138,23 @@ npm run test:live                                # against https://www.fcpublicm
 
 ## Deploy
 
-Deploying is one thing: `bin/deploy-site`. It runs `jekyll build` in `site/` and uploads `_site` to
+Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it refreshes the site's data
+([the sync jobs](programming.md#sync-jobs) and member sites), runs `jekyll build` in `site/` and uploads `_site` to
 the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
 side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
 
 - It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
-  `bin/deploy-site --build` builds and checks without uploading.
+  `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
+- The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
+  `airings.json`, `member_programs.json` and `nonprofits.json` are what the LAN build and the tests
+  use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.
 - A push to GitHub deploys nothing. No GitHub Actions workflow deploys the site, and no other host
   serves it.
 - Pages reads `_redirects` and `_headers` from `_site`. Nothing in `site/` names the host or runs code.
   The one piece of running code is the [site-worker](https://github.com/FC-Public-Media/site-worker),
   deployed on its own; the site knows it only by `site/_data/site_worker.yml` `url`.
 - The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
-- Member-site publishing commits into `site/member-sites/`; the next `bin/deploy-site` carries it.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
   www.fcpublicmedia.org` prints the root directory.

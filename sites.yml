@@ -12,7 +12,7 @@ sites:
     domain: www.fcpublicmedia.org
     # The switch every host reads; `--deploy-root www.fcpublicmedia.org` prints its root.
     deliver: source
-    why: fcpublicmedia.org itself. Cloudflare builds this one from the git connection.
+    why: fcpublicmedia.org itself. bin/deploy-site builds it and uploads it to Cloudflare Pages (fcpm-new).
 
   - path: site-template
     role: scaffold
