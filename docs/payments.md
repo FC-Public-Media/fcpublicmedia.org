@@ -102,10 +102,12 @@ is an equal path to a person. Staff verify the EIN and issue a Stripe promotion 
 
 ## Requests
 
-Join (a paid checkout), a room request (`/book/`), a class signup (`/register/`) and a check-in each
+Join (a paid checkout), a room request (`/reserve/`), a class signup (`/classes/`) and a check-in each
 become one row in one log: a list on the Operations SharePoint site, added to by the site-worker and
-by nothing else. Not built: the pages say so (`site/_includes/request-form.html`, copy in
-`site/_data/forms.yml`). The site-worker's access is the `m365` group in digitization's keychain.
+by nothing else. Not built: each page says so where it would ask, through
+`site/_includes/transaction.html` and the `note` in `site/_data/providers.yml`. A request asks on the
+page that owns the thing; `/book/` and `/register/` were Wix's separate pages and are dropped
+(2026-10-25). The site-worker's access is the `m365` group in digitization's keychain.
 
 ## Before charging
 

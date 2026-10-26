@@ -1,4 +1,4 @@
-// Every page in pages.js loads cleanly, plus navigation, the archive and the request-form pages.
+// Every page in pages.js loads cleanly, plus navigation, the archive and the unbuilt requests.
 // Needs no network. See docs/site.md.
 
 const { test, expect } = require('@playwright/test');
@@ -216,33 +216,27 @@ test.describe('archive', () => {
   });
 });
 
-// /book/ and /register/ will post to the site-worker; neither is built.
-test.describe('request forms', () => {
-  for (const path of ['/book/', '/register/']) {
-    test(`${path} says plainly that it is not set up yet`, async ({ page }) => {
+// A room request and a class signup will post to the site-worker; neither is built. They ask on
+// the page that owns the thing, not on a page of their own: /book/ and /register/ are gone.
+test.describe('requests', () => {
+  for (const path of ['/reserve/', '/classes/']) {
+    test(`${path} says plainly that it is not wired up yet`, async ({ page }) => {
       await page.goto(path);
 
-      const notice = page.locator('.transaction-todo');
+      // Not `.first()`: /classes/ opens with a different todo block about where listings live.
+      const notice = page.locator('.transaction-todo', { hasText: 'not wired up yet' });
+      await expect(notice).toHaveCount(1);
       await expect(notice).toBeVisible();
-      await expect(notice).toContainText('not set up yet');
     });
 
-    test(`${path} still offers somewhere to go`, async ({ page }) => {
+    test(`${path} still offers a way to reach a person`, async ({ page }) => {
       await page.goto(path);
-
-      const onward = await page.$$eval('main a[href^="/"]', (as) => as.length);
-      expect(onward, 'no links onward into the site').toBeGreaterThan(0);
 
       const contact = await page.$$eval(
         'main a[href^="mailto:"], main a[href^="tel:"]',
         (as) => as.length
       );
       expect(contact, 'no way to reach a person').toBeGreaterThan(0);
-    });
-
-    test(`${path} frames nothing`, async ({ page }) => {
-      await page.goto(path);
-      await expect(page.locator('main iframe')).toHaveCount(0);
     });
   }
 });

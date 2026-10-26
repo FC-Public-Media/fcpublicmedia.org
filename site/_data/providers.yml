@@ -8,7 +8,7 @@ tickets:
   url: ""
   status: placeholder
   note: >-
-    Currently Wix Events. Signups are to go through /register/ to FCPM's
+    Currently Wix Events. Signups are to go through /classes/ to FCPM's
     log, by the site-worker; not built.
 
 membership:
@@ -34,8 +34,8 @@ booking:
   url: ""
   status: placeholder
   note: >-
-    Room requests are to go through /book/ to FCPM's log, by the site-worker;
-    not built. Equipment is Booqable, further down.
+    Room requests are to go through /reserve/ to FCPM's log, by the
+    site-worker; not built. Equipment is Booqable, further down.
 
 submit:
   label: Program submission

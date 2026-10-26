@@ -25,6 +25,10 @@ By phone: {{ site.data.org.phone }}
 </ul>
 {% include transaction.html key="booking" text="Check availability" %}
 
+A room isn't confirmed straight away: someone has to check it is free and that a host can be
+there, so expect a reply rather than an instant booking. We'll email once it's confirmed &mdash;
+if you need it sooner than that, call.
+
 ## Equipment
 
 Pick your dates, add what you need, and check out. Checkout asks you to
