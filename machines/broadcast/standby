@@ -381,12 +381,14 @@ def main(args):
 
 
 class Copy:
-    """The floor to YouTube's backup ingest, as it is (no second encode), until stopped or stuck."""
+    """The floor to YouTube's backup ingest, as it is (no second encode), until stopped or stuck. Read at the
+    pace of its own clock (-readrate 1), never a segment at a time as it lands: sent in bursts, YouTube
+    played the backup's sound slowed and rattling (2026-10-26), and paced, the same bytes played right."""
 
     def __init__(self, key, env):
         out = ["-f", "flv", "-rtmp_app", "live2?backup=1", "-rtmp_playpath", key, INGEST]
         self.p = subprocess.Popen(
-            ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-live_start_index", "-1",
+            ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-readrate", "1", "-live_start_index", "-2",
              "-i", str(FLOOR / "index.m3u8"), "-c", "copy", "-progress", "pipe:1", "-stats_period", "5"]
             + out, env=env, stdout=subprocess.PIPE, text=True, preexec_fn=bound)
         self.sent = {"bytes": -1, "at": time.time()}
