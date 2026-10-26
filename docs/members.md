@@ -197,10 +197,9 @@ when bundler is absent.
 
 ## Publish workflow
 
-`.github/workflows/publish-member-sites.yml` keeps the cadence: Thursdays at
-13:00 UTC (07:00 in Denver in summer, 06:00 in winter), and on demand. FCPM
-promises a day it can keep, not real time; a member who commits on a Friday
-appears the next Thursday.
+`bin/deploy-site` runs `build-sites.py --publish` on every deploy, in its copy
+of HEAD, and uploads the result with the site; it commits nothing. FCPM promises
+a deploy, not real time. What follows is how the old GitHub workflow did it.
 
 1. Checks out with `submodules: recursive`, so pinned tenants are present.
 2. Sets up Ruby in `site/` and installs PyYAML. `ruby-version: .ruby-version`

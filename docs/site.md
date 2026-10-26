@@ -1,7 +1,7 @@
 # Site
 
-fcpublicmedia.org is a static Jekyll site built from `site/`, served at `new.fcpublicmedia.org` until
-a public host is chosen ([Deploy](#deploy)), while the apex still serves the old Wix site. Its five transactions (tickets, dues, donations,
+fcpublicmedia.org is a static Jekyll site built from `site/` and uploaded to one Cloudflare Pages project,
+`fcpm-new`, at `new.fcpublicmedia.org` ([Deploy](#deploy)), while the apex and `www` serve the photocopy of the old Wix site. Its five transactions (tickets, dues, donations,
 booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md](payments.md#transactions)).
 
 ## Layout
@@ -16,7 +16,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `_includes/` | `head`, `header`, `footer`, `transaction`, `show-card` and smaller parts |
 | `you/` | the member's own pages. `/check-in/`, `/authorize/` and `/lights/` keep their old URLs by `permalink` (a printed QR, an issued claim link, the kiosk camera); the rest are `/you/:name/` |
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
-| `member-sites/` | built member sites, committed by the publish workflow ([members.md](members.md)) |
+| `member-sites/` | built member sites, by `bin/build-sites.py --publish` ([members.md](members.md)); `bin/deploy-site` runs it |
 | `bin/`, `tests/` | tooling, syncs and Python tests; Playwright tests. Both excluded from the build |
 | `_redirects`, `_headers`, `robots.txt`, `sitemap.xml` | generated for hosts |
 
@@ -141,20 +141,23 @@ npm run test:live                                # against https://www.fcpublicm
 
 ## Deploy
 
-The site is static files: `jekyll build` in `site/` writes `_site`, and any static host can serve it.
-Nothing in `site/` names a host or runs code; the one piece of running code is the
-[site-worker](https://github.com/FC-Public-Media/site-worker), a repository deployed on its own, and the site knows it only by
-`site/_data/site_worker.yml` `url`.
+Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it refreshes the site's data
+([the sync jobs](programming.md#sync-jobs) and member sites), runs `jekyll build` in `site/` and uploads `_site` to
+the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
+`main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
+side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
 
+- It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
+  `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
+- The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
+  `airings.json` and `nonprofits.json` are what the LAN build and the tests
+  use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.
+- A push to GitHub deploys nothing. No GitHub Actions workflow deploys the site, and no other host
+  serves it.
+- Pages reads `_redirects` and `_headers` from `_site`. Nothing in `site/` names the host or runs code.
+  The one piece of running code is the [site-worker](https://github.com/FC-Public-Media/site-worker),
+  deployed on its own; the site knows it only by `site/_data/site_worker.yml` `url`.
 - The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
-- A public host is not chosen. Whichever it is builds with root directory `site`, command
-  `bundle exec jekyll build`, output `_site`, and reads `_redirects` and `_headers` (Cloudflare Pages
-  and Netlify do). It must not need a config file in `site/`.
-- `new.fcpublicmedia.org` was served by `fcpm`, an assets-only Worker on Autumn's business
-  Cloudflare account (autumn-e2c), built from `site/wrangler.jsonc`. That file is gone (2026-10-23):
-  the Worker serves its last build until it is deleted, and the check-in posters
-  (`_data/checkin.yml`, the kiosk's `welcome.yml`) point at that address until a public host takes it.
-- Member-site publishing commits into `site/member-sites/`; a host building on push picks it up.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
   www.fcpublicmedia.org` prints the root directory.

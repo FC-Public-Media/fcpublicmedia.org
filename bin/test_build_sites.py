@@ -116,7 +116,7 @@ class DeliveryTests(unittest.TestCase):
     def test_the_source_root_is_self_describing(self):
         """A host pointed at the root finds everything it needs there."""
         root = bs.REPO / "site"
-        for needed in ("_config.yml", "Gemfile", ".ruby-version", "wrangler.jsonc"):
+        for needed in ("_config.yml", "Gemfile", ".ruby-version"):
             self.assertTrue((root / needed).is_file(), f"site/{needed} is missing")
 
     def test_every_intermediate_delivery_has_a_servable_root(self):

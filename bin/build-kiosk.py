@@ -5,7 +5,7 @@
     python3 bin/build-kiosk.py --check    fail if either committed file is stale
     python3 bin/build-kiosk.py --print    write nothing, show both
 
-Joins machines/kiosk/welcome/content.yml to site/_data/. No password, no address, no timestamp. See docs/kiosk.md.
+Joins machines/kiosk/welcome/content.yml to site/_data/ and site/_config.yml. No password, no address, no timestamp. See docs/kiosk.md.
 """
 
 import argparse
@@ -61,7 +61,7 @@ def read_sources():
         raise SystemExit("error: %s is missing" % ", ".join(missing))
     return {
         "content": load(CONTENT),
-        "org": load(DATA / "org.yml"),
+        "config": load(REPO / "site" / "_config.yml"),
         "wifi": load(DATA / "wifi.yml"),
         "checkin": load(DATA / "checkin.yml"),
         "classes": load(DATA / "classes.yml"),
@@ -216,20 +216,20 @@ def build_panel(src, panel):
 
 def build(src):
     content = src["content"]
-    org = src["org"]
+    config = src["config"]
 
     panels = content.get("panels") or []
     if not panels:
         raise SystemExit("error: machines/kiosk/welcome/content.yml lists no panels")
 
     artifact = {
-        "place": org.get("name"),
+        "place": config.get("title"),
         "room": content.get("room"),
         "greeting": " ".join((content.get("greeting") or "").split()),
         "panels": [build_panel(src, p) for p in panels],
     }
     if not artifact["place"]:
-        raise SystemExit("error: site/_data/org.yml has no name")
+        raise SystemExit("error: site/_config.yml has no title")
     return artifact
 
 

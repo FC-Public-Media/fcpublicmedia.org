@@ -156,7 +156,7 @@ async function dropIt() {
 }
 
 // Names: the one the public check-in handed over (?name=), else the one this phone used last; the
-// rota's crew as one-tap picks.
+// hosts.yml's people as one-tap picks.
 const given = (new URLSearchParams(location.search).get("name") || "").trim().slice(0, 40);
 el("name").value = given || profile().name || "";
 const picks = el("picks");

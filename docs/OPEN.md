@@ -8,8 +8,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
 - `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
-- `cablecast.json` `fetched` is always null: the workflow never sets `SYNC_STAMP`. .github/workflows/sync-cablecast.yml
-- Expired `featured.yml` items stay live until something rebuilds the site; no public host rebuilds on a schedule. .github/workflows/sync-cablecast.yml
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
@@ -88,7 +86,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Check-ins and RSVPs stay on the visitor's phone until retention and access rules exist; the paper log stays. Flagging a check-in without a booking needs the calendar.
 - Cloudflare Access for verified email at check-in: free to 50 users, then about $7 per user per month.
 - Retired podcasts: own entries or one archive listing. site/podcasts.md
-- The artificially pipeline's Audition steps wait on its panel proving out. site/_shows/artificially.md
+- The artificially pipeline's Audition steps wait on its panel proving out. _shows/artificially.md
 - Class mode: grade the lit hour pill; take class and presenter from the calendar; an admin or teacher view; an attendant recipe.
 - The roller TV: which panels a shared host sets aside; swapping two pages in one action; macOS and Linux drivers; whether an instrument can be a sink (with station-node).
 - A view of what the roller TV shows when it faces away; bay OBS is not ours to change.
@@ -168,7 +166,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Kiosk
 
 - Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk/welcome/content.yml
-- The rota's `crew:` tags are Autumn's to give. machines/kiosk/welcome/rota.yml
 - Bookings: `bookings: sample` stands in until room requests exist; a second desk monitor for today's bookings waits on them.
 - `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
 - Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.

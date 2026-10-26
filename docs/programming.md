@@ -11,13 +11,14 @@ Changing anything on the box (our show fields, the schedule) takes a token: [mac
 
 | script in `site/bin/` | reads | writes | run by |
 |---|---|---|---|
-| `sync-cablecast.py` | Cablecast catalog | `site/_data/cablecast.json` | `sync-cablecast.yml`, Mondays 13:00 UTC |
+| `sync-cablecast.py` | Cablecast catalog | `site/_data/cablecast.json` | `bin/deploy-site`, every deploy |
 | `sync-schedule.py` | Cablecast schedule, 365 days | `site/_data/airings.json` | the same job |
 | `sync-feeds.py` | `site/_data/feeds.yml` | `site/_data/member_programs.json` | `sync-feeds.yml`, daily and on `feeds.yml` push |
 | `sync-calendar.py` | a published ICS calendar | `site/_data/calendar.json` | by hand |
-| `propose-shows.py` | `cablecast.json`, `site/_shows/` | `site/_shows/<slug>.md` | `propose-shows.yml`, monthly |
+| `propose-shows.py` | `cablecast.json`, `_shows/` | `_shows/<slug>.md` | `propose-shows.yml`, monthly (GitHub; opens pull requests) |
 
-Standard-library Python except `sync-feeds.py` (PyYAML). Jobs commit only a changed file.
+Standard-library Python except `sync-feeds.py` (PyYAML). `bin/deploy-site` runs the first two, and
+`sync-nonprofits.py` (`site/assets/nonprofits.json`), in its copy of HEAD; nothing commits what they fetch.
 
 - **cablecast.json**: titled programs, newest first; untitled records are only counted
   (`untitled_omitted`); programs without a VOD stay as `watchable: false`. `local` marks categories
@@ -39,12 +40,9 @@ Atom feed works. Items show on `/meet/` under "made by members".
   fails keeps its last items, unmarked. The job fails only if every feed failed and none was kept.
 - The file is rewritten only when items change. `enclosure` is the media file, `image` a thumbnail.
 
-Podcasts are `site/_podcasts/<name>.md` at `/podcasts/<name>/`: `title`, `lede`, `hosts`, `explicit`,
-`partner`, `embed` (the host's player) and `listen` links, empty ones skipped.
-
 ## Shows
 
-A show is `site/_shows/<slug>.md` at `/watch/<slug>/`: `title`, `slug`, `kind`, `match.prefixes`,
+A show is `_shows/<slug>.md` at the repository root (no pages since 2026-10-25): `title`, `slug`, `kind`, `match.prefixes`,
 `match.producers`, `producer`, `local`, and optionally `proposed`, `catalog_first`/`catalog_last`
 (Cablecast record dates, not airings), `repository` (its own repository) and `pipeline`
 (per-episode steps, see [troves/pools/README.md](../troves/pools/README.md)). Its episodes are

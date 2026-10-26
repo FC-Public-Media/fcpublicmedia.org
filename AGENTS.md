@@ -20,6 +20,7 @@ only to augment our capabilities on the LAN.
 ## The site and its worker
 
 `site/` is static files: it never runs code or names a host.
+Deploying it means `bin/deploy-site`: build `site/`, upload `_site` to the Cloudflare Pages project `fcpm-new`. Nothing else deploys it.
 The one running piece is the site-worker, a repository of its own (FC-Public-Media/site-worker).
 
 ## Wix

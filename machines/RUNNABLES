@@ -29,6 +29,8 @@ bin/build-kiosk.py              | python     | --print              | read    | 
 bin/build-kiosk.py              | python     | -                    | inside  | write machines/kiosk/welcome/welcome.yml and welcome.js
 bin/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
 bin/runnables                   | sh         | *                    | read    | this census
+bin/deploy-site                 | sh         | --build              | outside | refresh the data, build site/ in a copy of HEAD and run the publish checks; upload nothing
+bin/deploy-site                 | sh         | -                    | outside | refresh the data, build site/ and upload it to Cloudflare Pages fcpm-new (new.fcpublicmedia.org)
 
 # The recorder trove's bay procedure (troves/recorder/README.md). Every step but check logs to bay.ndjson.
 troves/recorder/bay/obs-portable.ps1 | powershell | check    | read    | what is received, staged, installed; the grant; changes nothing

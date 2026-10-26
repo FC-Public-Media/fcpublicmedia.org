@@ -49,7 +49,7 @@ transcribe:
     python: '%LOCALAPPDATA%\editing-bay-1\whisper\venv\Scripts\python.exe'
     models: '%LOCALAPPDATA%\editing-bay-1\whisper\models'
 
-# The default episode pipeline, for a show whose site/_shows/<slug>.md has no `pipeline:`.
+# The default episode pipeline, for a show whose _shows/<slug>.md has no `pipeline:`.
 # eject: true writes a released episode's config into the show's private repo. See troves/pools/README.md.
 pipeline:
   eject: false
