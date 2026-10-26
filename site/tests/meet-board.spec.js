@@ -36,14 +36,14 @@ test.describe('board and meetings', () => {
   });
 
   test('always offers a way to get the minutes', async ({ page }) => {
-    // With no minutes folder linked, a mailto or /contact/ link must remain.
+    // With no minutes folder linked, a mailto must remain.
     await page.goto('/meet/');
 
     const minutes = page.locator('main');
     await expect(minutes).toContainText('minutes');
 
     const contactable = await page.$$eval(
-      'main a[href^="mailto:"], main a[href^="/contact/"]',
+      'main a[href^="mailto:"]',
       (as) => as.length
     );
     expect(contactable, 'no way to ask for the minutes').toBeGreaterThan(0);
@@ -72,12 +72,6 @@ test.describe('board and meetings', () => {
     );
     expect(headings).not.toContain('Coming up');
     expect(headings).not.toContain('Documents');
-  });
-
-  test('the about page hands off to it', async ({ page }) => {
-    await page.goto('/about/');
-
-    await expect(page.locator('main a[href="/meet/#the-board"]')).toHaveCount(1);
   });
 
   test('is reachable from the main menu', async ({ page }) => {

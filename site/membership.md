@@ -91,7 +91,7 @@ somewhere to make work and somewhere to put it.
 <p class="muted">
   Not listed? That happens &mdash; new organizations, chapters, and anyone
   working under a fiscal sponsor often aren't.
-  <a href="/contact/">Tell us who you are</a> and we'll sort it out.
+  <a href="mailto:{{ site.data.org.email }}">Tell us who you are</a> and we'll sort it out.
 </p>
 
 ## Join

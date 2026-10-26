@@ -128,7 +128,7 @@ test.describe('finding your organization', () => {
     await page.goto('/membership/');
 
     // Present before anybody has typed anything.
-    const out = page.locator('a[href="/contact/"]', { hasText: 'Tell us who you are' });
+    const out = page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' });
     await expect(out).toBeVisible();
   });
 
@@ -139,17 +139,17 @@ test.describe('finding your organization', () => {
     await page.locator('#nonprofit-search').fill('poudre');
 
     await expect(page.locator('#nonprofit-status')).toContainText('Get in touch');
-    await expect(page.locator('a[href="/contact/"]', { hasText: 'Tell us who you are' })).toBeVisible();
+    await expect(page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' })).toBeVisible();
   });
 
   test('with no JavaScript the search box is not offered at all', async ({ browser }) => {
-    // No dead search box; the plain-HTML contact route survives.
+    // No dead search box; the plain-HTML way out (a mailto) survives.
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto('/membership/');
 
     await expect(page.locator('#nonprofit-search')).toBeHidden();
-    await expect(page.locator('a[href="/contact/"]', { hasText: 'Tell us who you are' })).toBeVisible();
+    await expect(page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' })).toBeVisible();
 
     await context.close();
   });

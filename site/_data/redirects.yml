@@ -19,8 +19,9 @@
   to: /reserve/
 - from: /for-nonprofits
   to: /nonprofits/
+# No contact page: the footer carries the address on every page, and /meet/ is how to take part.
 - from: /connect
-  to: /contact/
+  to: /meet/
 - from: /event-list
   to: /classes/
 - from: /innstructor-application

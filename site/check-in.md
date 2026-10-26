@@ -194,7 +194,7 @@ lede: One tap when you get here. Your visits stay on your own phone.
       </p>
     </div>
     <p class="muted" data-claim="none" hidden>
-      <a href="/contact/">Ask us</a> to confirm your email.
+      <a href="mailto:{{ site.data.org.email }}">Ask us</a> to confirm your email.
     </p>
 
     <p class="pass-actions">

@@ -16,8 +16,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/production/bay/runnables.proven
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
-- Page copy: `/contact/` cites a deleted `/api`. site/contact.md
-- Unused: `_includes/community.html`, `countdown.html`, `checkin-card.html`; `watch.yml` `live_url`, `live_provider`, `categories`.
+- Unused: `_includes/community.html`, `countdown.html`, `checkin-card.html`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url` since the footer stopped listing channels. Facebook is only in `org.social`, so it is now on no page; `community.yml` `channels` is the live list and does not carry it.
 - `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
@@ -40,10 +39,11 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Site content
 
-- Missing copy: `/donate` (amounts, recurring, the case, the processor), the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, the instructor application's questions (`/classes/#teach-with-us`), an `/about/` history (render `org.mission`).
+- Missing copy: `/donate` (amounts, recurring, the case, the processor), the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, the instructor application's questions (`/classes/#teach-with-us`). `org.mission` renders on the homepage; the history that `/about/` was holding a place for lands in `/meet/`, which is where that page's board and governance material was already pointing.
 - Four Wix carryovers dropped 2026-10-25 (`/book/`, `/register/`, `/teach/`, `/bulletin-board/`): the first three fold into `/reserve/` and `/classes/`; the fourth embedded Cablecast CG's board, so `/community-bulletin-board` goes to `/watch/`. Whether FCPM wants a community notice board of its own, on the site rather than on the channel, is undecided and unowned.
-- The footer lists no pages as of 2026-10-25: the header menu is the whole menu. `nav.yml` keeps them under `elsewhere` only so the header can name the page (`page` prints no `<h1>`). So `/about/`, `/nonprofits/` and `/policies/non-discrimination/` are now linked from nothing, still in `/sitemap.xml`, and awaiting the decision below. `/contact/` and `/check-in/` are still reached from inside pages.
-- Standing but unreviewed, for a second pass: `/about/` and `/policies/non-discrimination/` are TODO only; `/nonprofits/` publishes a client list and no rates; `/contact/` restates the footer's address block but is the "ask us" target of some twenty in-site links, so dropping it is a rewrite of those links, not a deletion.
+- The footer carries the address block and the legal line, nothing else (2026-10-25): no page list, no channels. `nav.yml` `elsewhere` is not a menu and renders nowhere; it only lets the header name a page, since `page` prints no `<h1>`.
+- `/about/` and `/contact/` are dropped (2026-10-25). The 22 "ask us" links that pointed at `/contact/` are now `mailto:` on `org.email`. Autumn wants a further pass: 22 prompts to email us across the station pages is too many, and the number, not the target, is the problem.
+- Standing but unreviewed: `/nonprofits/` publishes a client list and no rates, and `/policies/non-discrimination/` is a TODO. Both are linked from nothing and still in `/sitemap.xml`, which is the honest state of a page nobody has decided to carry.
 - Membership tier benefits, nonprofit production pricing and drop-in prices (`TODO`, and whether members attend free) await the board.
 - Financials (EIN, 990, annual report) are a board decision; published ones go in `governance.yml` `documents`.
 - Retired Wix shows redirect to `/podcasts/`; Wix `/equipment` has no redirect or decision. site/_data/redirects.yml
