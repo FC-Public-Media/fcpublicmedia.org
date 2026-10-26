@@ -510,11 +510,11 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .hero-photo .hero-panel,
 .hero-photo .hero-class {
   color: var(--stable-glass);
-    background-color: color-mix(in srgb, var(--signal) 35%, transparent);
+    background-color: color-mix(in srgb, var(--signal) 15%, transparent);
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
     /*border-radius: 16px;*/
-    border: 1px solid color-mix(in srgb, var(--signal) 50%, transparent);
+    border: 1px solid color-mix(in srgb, var(--signal) 20%, transparent);
   padding: clamp(1.5rem, 3vw, 2.25rem);
 
   span {
@@ -680,7 +680,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border: 1px solid var(--rule);
   padding: 1.4rem;
   background: var(--paper);
-  display: flex; flex-direction: column; gap: 0.5rem;
+  display: flex; flex-direction: column;
 }
 .card h3 { margin: 0; font-size: var(--step-1); }
 .card p { margin: 0; color: var(--ink-soft); font-size: var(--step--1); }
@@ -1581,3 +1581,10 @@ html.is-pass,
 .pass-back { font-weight: 650; text-decoration: none; color: var(--ink-soft); }
 .pass-back::before { content: "\2190\00a0"; }
 .pass-scroll { min-height: 0; overflow: auto; padding: 1rem 1.5rem; }
+
+
+.supports {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  b { font-size: 0.9em; }
+}
