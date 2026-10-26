@@ -18,10 +18,11 @@ No `from` leaves `redirects.yml`; five are retargeted. `_includes/request-form.h
 `_data/forms.yml` had no other reader and go with the two request pages.
 
 Merge qualifications:
-- [ ] `bundle exec jekyll build` clean
-- [ ] Python tests, Playwright (`--grep-invert @external`)
-- [ ] no internal link resolves to a dropped page
-- [ ] every Wix `from` still has a live target
+- [x] `bundle exec jekyll build` clean
+- [x] Playwright `--grep-invert @external`: 553 passed, 1 skipped, 0 failed
+- [x] token, secret and internal-publish tests pass
+- [x] no internal link in `_site` resolves to a dropped page
+- [x] every Wix `from` still has a built target
 
 Left standing, named for a second pass: `/about/`, `/contact/`, `/nonprofits/`,
 `/policies/non-discrimination/`.
