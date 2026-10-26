@@ -1,24 +1,36 @@
-site: the footer lists no pages; the header menu is the whole menu
+site: contract the footer, and drop the pages it used to carry
 
-The footer's "More" block restated the menu for pages the menu had already declined to carry.
-What is left is what a footer is for: who we are, where, how to reach us, then Follow and the
-legal line.
+One pass, one kind of cut: a page or a block that restated something the site already says
+somewhere better.
 
-- `_includes/footer.html`: the page list goes.
-- `_data/nav.yml`: `footer` becomes `elsewhere`, which renders nowhere. The `page` layout prints
-  no `<h1>`, so it is the only way the header can still name the page you are on.
+The footer is now the address block and the legal line.
 
-Consequence, written down rather than hidden: `/about/`, `/nonprofits/` and
-`/policies/non-discrimination/` are now linked from nothing and still sit in `/sitemap.xml`.
-That is the honest state of a page nobody has decided to carry. `/contact/` and `/check-in/` are
-still reached from inside pages.
+- No page list. The header menu is the whole menu.
+- No channels. The hero leads with them and `/meet/` carries the full list from `community.yml`.
+- `nav.yml` `footer` becomes `elsewhere`, which renders nowhere: `page` prints no `<h1>`, so it is
+  the only way the header can still name the page you are on.
+
+Two pages dropped.
+
+- `/about/`, which handed its board and governance material to `/meet/` already. The history it
+  held a place for lands there too; `org.mission` renders on the homepage.
+- `/contact/`, and the 22 links at it become `mailto:` on `org.email`. All 22 already meant
+  "email us". On a phone the station pages now open a composed email, not a page load.
+  `/connect` goes to `/meet/`.
 
 Merge qualifications:
 - [x] `bundle exec jekyll build` clean
-- [x] Playwright `--grep-invert @external`: 553 passed, 1 skipped, 0 failed
-- [x] the header still names `/about/` and the other `elsewhere` pages
-- [x] no new broken link; the three orphans are named in `docs/OPEN.md`
+- [x] Playwright `--grep-invert @external`: 535 passed, 1 skipped, 0 failed
+- [x] secrets, internal-publish and token guards pass
+- [x] no internal link 404s; every Wix `from` still resolves
+- [x] the header still names the `elsewhere` pages
 
-Next, not in this branch: all 23 links pointing at `/contact/` mean "email us". See the report.
+Carried, not decided:
+- Facebook was only in `org.yml` `social`, which nothing renders now, so it is on no page.
+  `community.yml` `channels` is the live list and does not carry it. OPEN.md says so.
+- `/nonprofits/` and `/policies/non-discrimination/` are linked from nothing and still in the
+  sitemap — the honest state of a page nobody has decided to carry.
+- 22 prompts to email us across the station pages is too many. Autumn's next pass; the number is
+  the problem, not the target.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
