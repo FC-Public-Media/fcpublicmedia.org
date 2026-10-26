@@ -575,9 +575,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .hero-qr span { font-size: 0.66rem; color: var(--stable-glass); }
 
 .hero .btn {
-  border: 2px solid var(--signal);
-  color: var(--signal);
-  text-shadow: 0 2px 1px var(--stable-glass-inv);
+  border: 2px solid var(--stable-glass);
+  color: var(--stable-glass);
 }
 
 /* --- A class, in the hero ------------------------------------------------- */
