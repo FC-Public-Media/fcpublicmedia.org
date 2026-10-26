@@ -1,0 +1,24 @@
+/* jukebox -- the floor's jukebox as its list: every track in the order it plays, the one playing lit. Brand
+   colours from site/_data/brand.json; yellow is a surface, never text. */
+@font-face { font-family: Archivo; src: url(/fonts/archivo.woff2) format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Source Serif 4"; src: url(/fonts/source-serif-4.woff2) format("woff2"); font-weight: 200 900; }
+:root { --ink: #121417; --slate: #232830; --paper: #f4f1ea; --soft: #9ba3ad; --then: #6b737d; --signal: #ffc61a; }
+html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper); font: 400 26px/1.2 Archivo, system-ui, sans-serif; }
+body { display: grid; grid-template-rows: 1fr auto; }
+
+/* One line a track: the title, where it sits in the folder (which is why it plays where it does), the length. */
+#order { list-style: none; margin: 0; padding: 32px 0; overflow-y: auto; scrollbar-width: none; }
+#order li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 9ch; gap: 40px; align-items: baseline;
+  padding: 10px 56px; white-space: nowrap; }
+#order li > * { overflow: hidden; text-overflow: ellipsis; }
+#order .title { font: 600 30px/1.2 "Source Serif 4", Georgia, serif; }
+#order .file { color: var(--soft); font-size: 22px; }
+#order .len { color: var(--soft); text-align: right; font-variant-numeric: tabular-nums; }
+#order li.then .title, #order li.then .file, #order li.then .len { color: var(--then); }   /* played, this time round */
+#order li.on { background: var(--signal); color: var(--ink); padding-top: 22px; padding-bottom: 22px; }
+#order li.on .title { font-size: 44px; font-weight: 700; }
+#order li.on .file, #order li.on .len { color: var(--ink); }
+
+/* The one bar: the folder to change it in, and the round. */
+footer { display: flex; justify-content: space-between; gap: 40px; padding: 14px 56px; background: var(--slate);
+  color: var(--soft); font-size: 22px; font-variant-numeric: tabular-nums; }

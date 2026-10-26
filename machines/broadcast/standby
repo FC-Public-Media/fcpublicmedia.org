@@ -4,12 +4,13 @@
     python3 -I machines/broadcast/standby --check       draw the slate and say what it would send, send nothing
     python3 -I machines/broadcast/standby --try FILE    ten seconds of it into FILE, to look at
 
-The picture is the brand's mark and lockup (site/_data/brand.json, drawn by rsvg-convert) with the time
-in the room, at 1080p30 and 48 kHz stereo like the channel. The sound is standby's bus, a PulseAudio
+The picture is the brand's lockup (site/_data/brand.json, drawn by rsvg-convert) under its mark, the one
+every studio screen dims to (brand/idle/dim.js) laid on its side: three squares in a row, a split clock
+in the room's time and the lit one walking, drawn a frame a second, at 1080p30 and 48 kHz stereo like the channel. The sound is standby's bus, a PulseAudio
 null sink (`fcpm-standby`) made here, which the floor's jukebox (./jukebox) plays into: the floor's own
 music, one place to put sound in. Silence while there is no PulseAudio to make it in; once it can be
 made, this exits so the crew starts the floor with the bus. It is encoded once, by the GPU when it can
-be (about a tenth of a core), into the floor: HLS in memory (FCPM_FLOOR, /dev/shm/fcpm-floor), served
+be (about a fifth of a core, with the drawing), into the floor: HLS in memory (FCPM_FLOOR, /dev/shm/fcpm-floor), served
 on the LAN as ch97.fcpublicmedia.local/floor/index.m3u8, so a machine on top can lay it underneath.
 
 From the floor a copy, never a second encode, goes to YouTube's backup ingest with the channel's key:
@@ -40,9 +41,10 @@ BRAND = json.loads((HERE.parent.parent / "site/_data/brand.json").read_text())
 KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
 STATE_DIR = pathlib.Path.home() / ".local/state/fcpm/broadcast"
 SLATE = STATE_DIR / "standby-slate.png"
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 INGEST = "rtmps://b.rtmp.youtube.com/live2"     # YouTube's backup server; the app carries ?backup=1
 W, H, FPS = 1920, 1080, 30
+SIDE, GAP = 200, 70                             # the mark's squares and the room between, as dim.css's 12 to 4.2
+ROW, MARK_Y = (800, 280), 0.40                  # the mark's frame (the row with its lean), its centre down the slate
 ROOM_TZ = "America/Denver"
 GPU = "/dev/dri/renderD128"
 STALL = 60                                      # seconds with nothing sent before ffmpeg is ended
@@ -55,17 +57,14 @@ os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/nativ
 
 
 def slate():
-    """The slate, drawn from the brand: the mark leaning by its tilt over the lockup, on ink."""
-    c, tilt = BRAND["colours"], BRAND["tilt"]
+    """The slate under the mark, drawn from the brand: the lockup on ink, where the mark's row leaves room."""
+    c = BRAND["colours"]
     first, second = (html.escape(w) for w in BRAND["names"]["lockup"])
-    side, cx, cy = 300, W / 2, H * 0.38
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">
   <rect width="{W}" height="{H}" fill="{c['ink']}"/>
-  <rect x="{cx - side / 2}" y="{cy - side / 2}" width="{side}" height="{side}" fill="{c['signal']}"
-        transform="rotate({tilt} {cx} {cy})"/>
-  <text x="{cx}" y="{H * 0.66}" text-anchor="middle" font-family="DejaVu Serif, Georgia, serif"
+  <text x="{W / 2}" y="{H * 0.66}" text-anchor="middle" font-family="DejaVu Serif, Georgia, serif"
         font-weight="700" font-size="76" fill="{c['paper']}">{first}</text>
-  <text x="{cx}" y="{H * 0.66 + 70}" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+  <text x="{W / 2}" y="{H * 0.66 + 70}" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
         font-size="40" letter-spacing="10" fill="{c['masthead-soft']}">{second.upper()}</text>
 </svg>"""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -74,6 +73,61 @@ def slate():
     if not SLATE.exists() or SLATE.read_bytes() != drawn:
         SLATE.write_bytes(drawn)
     return SLATE
+
+
+def hand(y1, y2, width, turn, colour):
+    return (f'<line x1="50" y1="{y1}" x2="50" y2="{y2}" stroke="{colour}" stroke-width="{width}" '
+            f'stroke-linecap="square" transform="rotate({turn:.2f} 50 50)"/>')
+
+
+def mark(at):
+    """The mark at a moment, as brand/idle/dim.js draws it, laid on its side for a landscape picture:
+    three squares in a row, each leaning by the tilt, a split clock (the hour hand, the seconds, the
+    minute hand) and the lit one walking the row and back, a step every four seconds. PNG, ROW in size."""
+    c, tilt = BRAND["colours"], BRAND["tilt"]
+    s = at.second
+    m = at.minute + s / 60
+    h = at.hour % 12 + m / 60
+    lit = (1, 2, 1, 0)[int(at.timestamp()) // 4 % 4]
+    width, height = ROW
+    cy, step = height / 2, SIDE + GAP
+    left = (width - (3 * SIDE + 2 * GAP)) / 2
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
+           f'<rect x="{left}" y="{cy - SIDE / 60}" width="{3 * SIDE + 2 * GAP}" height="{SIDE / 30}" '
+           f'fill="{c["slate"]}"/>']
+    for i in range(3):
+        face, ink = (c["signal"], c["ink"]) if i == lit else (c["slate"], c["masthead-soft"])
+        out.append(f'<g transform="translate({left + SIDE / 2 + i * step} {cy}) rotate({tilt}) '
+                   f'scale({SIDE / 100}) translate(-50 -50)"><rect width="100" height="100" fill="{face}"/>')
+        if i == 0:
+            out.append(hand(54, 29, 6, h * 30, ink))
+        if i == 1:
+            out.append(f'<g opacity="0.35">' + "".join(
+                hand(11, 15, 1.6 if n % 3 else 3, n * 30, ink) for n in range(12)) + "</g>")
+            out.append(hand(8, 18, 4, s * 6, ink))
+        if i == 2:
+            out.append(hand(55, 17, 4, m * 6, ink))
+        out.append("</g>")
+    out.append("</svg>")
+    return subprocess.run(["rsvg-convert"], input="".join(out).encode(), capture_output=True, check=True).stdout
+
+
+def paint(pipe):
+    """The mark into ffmpeg, a frame on each second of the room's clock, until ffmpeg goes. Late (a slow
+    draw, a busy box), the frame is said again until it has caught up, so the picture keeps time."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    room, start, n = ZoneInfo(ROOM_TZ), int(time.time()) + 1, 0
+    try:
+        while True:
+            time.sleep(max(0, start + n - time.time()))
+            frame = mark(datetime.fromtimestamp(start + n, room))
+            while start + n <= time.time():
+                pipe.write(frame)
+                n += 1
+            pipe.flush()
+    except (BrokenPipeError, ValueError, OSError):
+        pass
 
 
 def bus():
@@ -90,29 +144,36 @@ def bus():
 
 
 def command(out, seconds=None, sound=False):
-    """ffmpeg: the slate decoded once and repeated, the room's clock on it, and the bus's sound (or
-    silence), as the channel's shape. The bus's samples are counted from zero, to run beside the
-    repeated slate. Encoded by the GPU (VAAPI, a tenth of a core) when this account may use it, else
-    by x264."""
-    clock = (f"drawtext=fontfile={FONT}:text='%{{localtime\\:%H\\\\\\:%M}}':fontsize=54"
-             f":fontcolor=0x{BRAND['colours']['masthead-soft'].lstrip('#')}:x=(w-text_w)/2:y=h*0.88")
-    repeat = f"loop=loop=-1:size=1:start=0,fps={FPS},{clock},realtime"
+    """ffmpeg: the slate decoded once and repeated, the mark over it (a frame a second, from paint() on
+    stdin, which also keeps the pace), and the bus's sound (or silence), as the channel's shape. The
+    bus's samples are counted from zero, to run beside the picture. Encoded by the GPU (VAAPI, a tenth
+    of a core) when this account may use it, else by x264."""
+    x, y = (W - ROW[0]) // 2, int(H * MARK_Y - ROW[1] / 2)
+    lay = (f"[0:v]format=yuv420p,loop=loop=-1:size=1:start=0,fps={FPS}[slate];"
+           f"[1:v]format=yuva420p,fps={FPS}[mark];[slate][mark]overlay={x}:{y}:format=yuv420")
     if os.access(GPU, os.R_OK | os.W_OK):
-        pre, graph = ["-vaapi_device", GPU], f"[0:v]format=nv12,{repeat},hwupload[v]"
+        pre, graph = ["-vaapi_device", GPU], f"{lay},format=nv12,hwupload[v]"
         video = ["-c:v", "h264_vaapi", "-g", str(FPS * 2), "-b:v", "1500k", "-maxrate", "1500k"]
     else:
-        pre, graph = [], f"[0:v]format=yuv420p,{repeat}[v]"
+        pre, graph = [], f"{lay},format=yuv420p[v]"
         video = ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "stillimage", "-g", str(FPS * 2),
                  "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k"]
-    audio = (["-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", f"{BUS}.monitor"] if sound
-             else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
+    audio = (["-thread_queue_size", "1024", "-f", "pulse", "-sample_rate", "48000", "-channels", "2",
+              "-i", f"{BUS}.monitor"] if sound else ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
     cmd = (["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning"] + pre
-           + ["-i", str(slate())] + audio
-           + ["-filter_complex", graph + ";[1:a]asetpts=N/SR/TB[a]", "-map", "[v]", "-map", "[a]"] + video
+           + ["-i", str(slate()), "-f", "image2pipe", "-c:v", "png", "-framerate", "1", "-i", "pipe:0"] + audio
+           + ["-filter_complex", graph + ";[2:a]asetpts=N/SR/TB[a]", "-map", "[v]", "-map", "[a]"] + video
            + ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"])
     if seconds:
         cmd += ["-t", str(seconds)]
     return cmd + out
+
+
+def encode(out, env, seconds=None, sound=False):
+    """ffmpeg started on `out`, with the mark painted into it from a thread of its own."""
+    p = subprocess.Popen(command(out, seconds, sound), env=env, stdin=subprocess.PIPE, preexec_fn=bound)
+    threading.Thread(target=paint, args=(p.stdin,), daemon=True).start()
+    return p
 
 
 def bound():
@@ -131,28 +192,36 @@ FLOOR_OUT = ["-f", "hls", "-hls_time", "2", "-hls_list_size", "6",
 PROBED = {}
 
 
-def floor_now():
-    """What the floor's jukebox (./jukebox) is playing, in the shape the jukebox role's /now.json has,
-    so the standby page reads either: title from the file's tag or its name, artist from its tag."""
-    try:
-        said = json.loads((STATE_DIR / "jukebox.json").read_text())
-    except (OSError, ValueError):
-        said = {}
-    if said.get("state") != "playing" or not said.get("file"):
-        return {"playing": None, "next": [], "from": "floor"}
-    path = MUSIC / said["file"]
+def facts(file):
+    """A track's title (its tag, or its name without the track number), artist (its tag) and length."""
+    path = MUSIC / file
     if path not in PROBED:
         r = subprocess.run(["ffprobe", "-v", "error", "-of", "json", "-show_format", str(path)],
                            capture_output=True, text=True)
         fmt = json.loads(r.stdout or "{}").get("format", {})
         tags = {k.lower(): v for k, v in (fmt.get("tags") or {}).items()}
         name = path.stem.lstrip("0123456789").lstrip(" .-_") or path.stem
-        PROBED[path] = {"artist": tags.get("artist") or "", "title": tags.get("title") or name,
-                        "length": float(fmt.get("duration") or 0)}
-    facts = PROBED[path]
+        PROBED[path] = {"id": file, "artist": tags.get("artist") or "", "title": tags.get("title") or name,
+                        "length": round(float(fmt.get("duration") or 0), 1)}
+    return PROBED[path]
+
+
+def floor_now():
+    """What the floor's jukebox (./jukebox) is playing, in the shape the jukebox role's /now.json has,
+    so the standby page reads either, and what comes after it: the rest of the folder in the order it
+    plays, round to the one before this, and where this one is in the folder's order (`at`)."""
+    try:
+        said = json.loads((STATE_DIR / "jukebox.json").read_text())
+    except (OSError, ValueError):
+        said = {}
+    if said.get("state") != "playing" or not said.get("file"):
+        return {"playing": None, "next": [], "from": "floor", "folder": str(MUSIC)}
+    order = said.get("order") or [said["file"]]
+    at = order.index(said["file"]) if said["file"] in order else -1
     started = time.mktime(time.strptime(said["at"], "%Y-%m-%dT%H:%M:%S%z"))
-    return {"playing": dict(facts, id=said["file"], position=round(max(0, time.time() - started), 1)),
-            "next": [], "from": "floor"}
+    return {"playing": dict(facts(said["file"]), position=round(max(0, time.time() - started), 1)),
+            "next": [facts(f) for f in order[at + 1:] + order[:max(at, 0)]],
+            "at": max(at, 0), "from": "floor", "folder": str(MUSIC)}
 
 
 class Air:
@@ -221,7 +290,8 @@ def note(state, why, **more):
 def main(args):
     env = dict(os.environ, TZ=ROOM_TZ)
     if args[:1] == ["--try"] and len(args) == 2:
-        subprocess.run(command(["-y", args[1]], seconds=10, sound=bus()), env=env, check=True)
+        if encode(["-y", args[1]], env, seconds=10, sound=bus()).wait():
+            sys.exit("standby: ffmpeg failed")
         print(f"standby: ten seconds in {args[1]}")
         return
     if args == ["--check"]:
@@ -236,11 +306,12 @@ def main(args):
         sys.exit(__doc__)
     air = Air()
     air.serve()
+    threading.Thread(target=floor_now, daemon=True).start()   # the folder's tracks probed before anyone asks
     FLOOR.mkdir(parents=True, exist_ok=True)
     for old in FLOOR.iterdir():
         old.unlink()
     sound = bus()
-    floor = subprocess.Popen(command(FLOOR_OUT, sound=sound), env=env, preexec_fn=bound)
+    floor = encode(FLOOR_OUT, env, sound=sound)
     copy, said, asked = None, None, time.time()
     try:
         while floor.poll() is None:

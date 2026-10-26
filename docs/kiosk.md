@@ -128,7 +128,7 @@ files (rewritten every 60 s). No list, an empty list, or past its last end: awak
 
 **Dim, drawn.** Pure black over the page, the page at 10%, and over it the three squares: the
 lit one walking the column, a split clock (hour hand top, seconds middle, minute hand bottom),
-and the column gliding at a calm speed and bouncing off the edges, against burn-in. Fade in
+on a landscape screen a row (hour, seconds, minute, left to right), and the column gliding at a calm speed and bouncing off the edges, against burn-in. Fade in
 over 30 s, wake in under a second. Reduced motion: no fade, no glide, the middle square lit,
 and the column moves once an hour. The page dims, not the backlight: the kiosk has no DDC/CI
 tooling and no administrator.
