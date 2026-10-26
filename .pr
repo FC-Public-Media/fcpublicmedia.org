@@ -1,30 +1,18 @@
-site: drop four Wix carryover pages the landing page never claimed
+cards: build a boot card from its type; the lan card boots Alpine diskless
 
-A first pass over pages that came across from Wix and were never sculpted into the new site. Each
-one here either said what the footer already says, or existed separately only because Wix had a
-separate URL for it. Nothing is lost: wix.fcpublicmedia.local holds the snapshot.
+A card boots known-good FCPM code on any machine. `machines/cards/build TYPE /dev/sdX sdX` erases a
+card and lays out its type: Ventoy first (its key is what Secure Boot trusts), then the type's
+partitions. A window on the screen shows the card and waits for an OK; the home's passphrase is asked
+in a window too.
 
-- `/book/` → `/reserve/`. Both rendered the same "not wired up yet" notice for the same room
-  request; `/reserve/` is the one in the header menu. Its waiting-for-a-reply copy moves there.
-- `/register/` → `/classes/`. Same, for the same class signup. `/classes/` is "Learn" in the menu.
-- `/teach/` → `/classes/#teach-with-us`. A TODO asking for the instructor application's questions,
-  on a page whose only inbound link was the sentence on `/classes/` pointing at it.
-- `/bulletin-board/` → dropped. The Wix page embedded Cablecast CG's bulletin board
-  (`machines/broadcast/PROFILE.md`), which is the channel's own between-programs page and is
-  already ejected as slides and rendered on ch97 standby. `/community-bulletin-board` now goes to
-  `/watch/`.
+- `steward`: the 256G card's recipe, out of the Buffalo's linux-persist and into git: Debian XFCE
+  live with persistence, SystemRescue, Alpine; home, origin, toolbox.
+- `lan`: leans on the LAN. Alpine diskless from RAM, so a slow card reader only slows the boot. Its
+  kit (FAT, readable anywhere) holds Alpine's package cache, the saved settings (`lbu commit`) and
+  Claude Code; `lan/kit` makes or refreshes it on any Linux. The checkout sits outside the encrypted
+  home, so a job can start before anyone unlocks it. tty1 asks the home's passphrase, then logs in.
 
-No `from` leaves `redirects.yml`; five are retargeted. `_includes/request-form.html` and
-`_data/forms.yml` had no other reader and go with the two request pages.
-
-Merge qualifications:
-- [x] `bundle exec jekyll build` clean
-- [x] Playwright `--grep-invert @external`: 553 passed, 1 skipped, 0 failed
-- [x] token, secret and internal-publish tests pass
-- [x] no internal link in `_site` resolves to a dropped page
-- [x] every Wix `from` still has a built target
-
-Left standing, named for a second pass: `/about/`, `/contact/`, `/nonprofits/`,
-`/policies/non-discrimination/`.
+Not yet: the checkout follows GitHub until digitization offers git on the LAN; the steward recipe
+has not been rerun from here.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
