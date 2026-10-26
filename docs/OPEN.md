@@ -8,7 +8,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
 - `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
-- Nothing deploys on a schedule: the catalog, airings, feeds and nonprofit list are as fresh as the last `bin/deploy-site`, and the committed copies (the LAN build's) age until someone commits a refresh. bin/deploy-site
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
@@ -167,7 +166,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Kiosk
 
 - Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk/welcome/content.yml
-- Josh's Sunday session (13:00–22:00, hosting) was on the old rota; hosts.yml has him `scheduled: false` with no day, so the kiosk no longer shows it. site/_data/hosts.yml
 - Bookings: `bookings: sample` stands in until room requests exist; a second desk monitor for today's bookings waits on them.
 - `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
 - Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.

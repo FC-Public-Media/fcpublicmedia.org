@@ -21,8 +21,17 @@ networks:
   # AirPlay needs no network of its own: the Apple TV is on the guest network.
 
 # ---------------------------------------------------------------------------
-# STATIONS on the studio map, from _data/facilities.yml (`couples_with` share a square).
-facilities: [Video Studio, Podcast Studio, Editing Bays]
+# STATIONS on the studio map: `couples_with` share a square, `stations` splits a room into numbered ones.
+facilities:
+  - name: Video Studio
+    couples_with: Podcast Studio
+    activities: [video, green-screen, lighting]
+  - name: Podcast Studio
+    couples_with: Video Studio
+    activities: [podcast, audio]
+  - name: Editing Bays
+    stations: 2
+    activities: [video, audio, editing]
 
 # Stations the public site does not list yet.
 stations:

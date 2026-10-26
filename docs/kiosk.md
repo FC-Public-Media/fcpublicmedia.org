@@ -107,8 +107,7 @@ letter (`M T W R F S U`), a three-letter name (`Mon`…`Sun`, any case) or a ran
 person off the schedule but among the host picks. Names show as their first word. The top-level
 `days` is the studio's hours, which the site's footer prints; the kiosk does not read it.
 
-`supports` tags people with activities (`_data/facilities.yml` at the root, or `node.yml`
-stations); a station with nothing booked this week lists up to three who can help, at their next
+`supports` tags people with activities (`node.yml` `facilities` and `stations`); a station with nothing booked this week lists up to three who can help, at their next
 shift. `orientation`, or no tags, helps with anything.
 
 ## Dim

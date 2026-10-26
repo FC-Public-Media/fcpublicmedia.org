@@ -7,8 +7,8 @@
 #   bin/deploy-site --build    refresh, build and run the publish checks; upload nothing, keep the copy and say where
 #
 # It works in a throwaway copy of HEAD, so this checkout is never touched. The refresh is what GitHub's
-# scheduled workflows used to commit: the Cablecast catalog and airings, member feeds, the IRS nonprofit
-# list, member sites. A refresh that fails keeps the committed copy and says so; the deploy goes on.
+# scheduled workflows used to commit: the Cablecast catalog and airings, the IRS nonprofit list, member
+# sites. A refresh that fails keeps the committed copy and says so; the deploy goes on.
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,7 +19,7 @@ done_with_copy() { git -C "$ROOT" worktree remove --force "$COPY"; rmdir "$(dirn
 
 cd "$COPY"
 export SYNC_STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"    # cablecast.json `fetched`
-for step in "site/bin/sync-cablecast.py" "site/bin/sync-schedule.py" "site/bin/sync-feeds.py" \
+for step in "site/bin/sync-cablecast.py" "site/bin/sync-schedule.py" \
             "site/bin/sync-nonprofits.py" "bin/build-sites.py --publish"; do
   # shellcheck disable=SC2086
   python3 $step >/dev/null 2>&1 && echo "refreshed: $step" || echo "kept the committed copy: $step failed"

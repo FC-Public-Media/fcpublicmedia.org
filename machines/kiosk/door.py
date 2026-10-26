@@ -287,8 +287,8 @@ def stations(now=None):
     """The studio map, lit while in use; bookings ranked across the whole map: solid, outline, soft."""
     now = now or datetime.datetime.now()
     cfg = node()
-    wanted = cfg.get("facilities") or []
-    facilities = {f["name"]: f for f in load(ROOT / "_data" / "facilities.yml") or []}
+    facilities = {f["name"]: f for f in cfg.get("facilities") or []}
+    wanted = list(facilities)
     groups, placed = [], set()
     for name in wanted:
         f = facilities.get(name)

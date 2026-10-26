@@ -13,11 +13,11 @@ Changing anything on the box (our show fields, the schedule) takes a token: [mac
 |---|---|---|---|
 | `sync-cablecast.py` | Cablecast catalog | `site/_data/cablecast.json` | `bin/deploy-site`, every deploy |
 | `sync-schedule.py` | Cablecast schedule, 365 days | `site/_data/airings.json` | the same job |
-| `sync-feeds.py` | `site/_data/feeds.yml` | `site/_data/member_programs.json` | `bin/deploy-site`, every deploy |
+| `sync-feeds.py` | `site/_data/feeds.yml` | `site/_data/member_programs.json` | `sync-feeds.yml`, daily and on `feeds.yml` push |
 | `sync-calendar.py` | a published ICS calendar | `site/_data/calendar.json` | by hand |
 | `propose-shows.py` | `cablecast.json`, `_shows/` | `_shows/<slug>.md` | `propose-shows.yml`, monthly (GitHub; opens pull requests) |
 
-Standard-library Python except `sync-feeds.py` (PyYAML). `bin/deploy-site` runs the first three, and
+Standard-library Python except `sync-feeds.py` (PyYAML). `bin/deploy-site` runs the first two, and
 `sync-nonprofits.py` (`site/assets/nonprofits.json`), in its copy of HEAD; nothing commits what they fetch.
 
 - **cablecast.json**: titled programs, newest first; untitled records are only counted
@@ -39,9 +39,6 @@ Atom feed works. Items show on `/meet/` under "made by members".
 - Each feed is retried five times, 404 included (YouTube sends spurious ones). A feed that still
   fails keeps its last items, unmarked. The job fails only if every feed failed and none was kept.
 - The file is rewritten only when items change. `enclosure` is the media file, `image` a thumbnail.
-
-Podcasts are `_podcasts/<name>.md` at the repository root (no pages since 2026-10-25): `title`, `lede`, `hosts`, `explicit`,
-`partner`, `embed` (the host's player) and `listen` links, empty ones skipped.
 
 ## Shows
 

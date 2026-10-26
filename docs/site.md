@@ -63,7 +63,7 @@ CSS preprocessor, no theme gem, no plugins; try a `_data` file and a Liquid loop
 Create `site/something.md` with front matter (`title:` at least); it is live at `/something/`.
 Add it to `site/_data/nav.yml` to put it in a menu.
 
-There are no collections. `_podcasts/` and `_shows/` left `site/` for the repository root (2026-10-25): everything the site
+There are no collections. `_podcasts/` and `_shows/` left `site/` (2026-10-25): everything the site
 lists has to come from Cablecast first, and a purposeful listing is for the outer repository to
 build into `site/`. So `site.podcasts` and `site.shows` are nil — a `sort` or `concat` on either is
 a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
@@ -77,11 +77,13 @@ a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 
 | `site/_data/` | Holds |
 |---|---|
+| `org.yml` | name, founding year, emails, phone, address, `legal`, `mission`, `hero_image`, `social` |
+| `nav.yml` | `primary` (header), `cta` (Donate); `label` with `items` makes a group. `elsewhere` is no menu: it names pages nothing links, so the header can still say which one you are on |
+| `featured.yml` | homepage cards: `kind`, `title`, `blurb`, `when`, `url`, `cta`, `starts`, `ends`; first is largest |
 | `community.yml` | `/meet/` `events` and `channels` (`primary: true` leads) |
 | `governance.yml` | board `meetings`, `minutes`, `documents` |
-| `membership.yml`, `providers.yml`, `payments.yml` | `/join/`'s tiers (and the site-worker's prices, `bin/build-prices.py`); each hand-off's URL; Stripe's publishable side ([payments.md](payments.md)) |
 | `board.yml` | roster: `name`, `role`, optional `office_hours`, `bio`, `photo` |
-| `hosts.yml` | `days`: the studio's hours by day (the footer); `people`: each host's `supports` and standing shift by day key, `W: ["11:00", "16:00"]`. The kiosk reads who is on and who is next from it ([kiosk.md](kiosk.md#hosts)) |
+| `facilities.yml` | bookable spaces; Video and Podcast Studio are coupled, so booking one blocks both |
 | `redirects.yml`, `wifi.yml`, `settings.yml` | [redirects](#redirects-and-headers); the guest network, never its password; [members.md](members.md) |
 
 Other data files name their doc in their first line.
@@ -90,7 +92,8 @@ Other data files name their doc in their first line.
 - Entries with no `url` (channels, socials, documents) are skipped.
 - `/meet/` "What's on" merges `classes.yml` sessions, `governance.yml` meetings and
   `community.yml` events (`kind` is a free label, default "Event"). Past items drop out.
-- `fcpm.mission` in `_config.yml` and the `_data/facilities.yml` summaries (the kiosk's, at the root) are the board's wording: never rewrite them.
+- `featured.yml` items drop off only when the site rebuilds.
+- `org.mission` and the `facilities.yml` summaries are the board's wording: never rewrite them.
 
 ## Design tokens
 
@@ -147,7 +150,7 @@ side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
 - It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
   `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
 - The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
-  `airings.json`, `member_programs.json` and `nonprofits.json` are what the LAN build and the tests
+  `airings.json` and `nonprofits.json` are what the LAN build and the tests
   use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.
 - A push to GitHub deploys nothing. No GitHub Actions workflow deploys the site, and no other host
   serves it.
