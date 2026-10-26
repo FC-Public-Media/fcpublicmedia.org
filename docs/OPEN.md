@@ -88,7 +88,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Check-ins and RSVPs stay on the visitor's phone until retention and access rules exist; the paper log stays. Flagging a check-in without a booking needs the calendar.
 - Cloudflare Access for verified email at check-in: free to 50 users, then about $7 per user per month.
 - Retired podcasts: own entries or one archive listing. site/podcasts.md
-- The artificially pipeline's Audition steps wait on its panel proving out. site/_shows/artificially.md
+- The artificially pipeline's Audition steps wait on its panel proving out. _shows/artificially.md
 - Class mode: grade the lit hour pill; take class and presenter from the calendar; an admin or teacher view; an attendant recipe.
 - The roller TV: which panels a shared host sets aside; swapping two pages in one action; macOS and Linux drivers; whether an instrument can be a sink (with station-node).
 - A view of what the roller TV shows when it faces away; bay OBS is not ours to change.

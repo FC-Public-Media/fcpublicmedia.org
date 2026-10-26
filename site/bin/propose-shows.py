@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Propose a `site/_shows/` entry for anything in the catalog that looks like a series.
+"""Propose a `_shows/` entry for anything in the catalog that looks like a series.
 
 Cablecast titles are episode titles, so no rule can say what a show is: this
 finds the clusters and a person names them. See docs/programming.md.
@@ -13,7 +13,7 @@ import re
 import sys
 
 DEFAULT_CATALOG = "site/_data/cablecast.json"
-DEFAULT_SHOWS = "site/_shows"
+DEFAULT_SHOWS = "_shows"
 
 # Fewest titles that make a series.
 MIN_EPISODES = 3
