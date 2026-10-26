@@ -143,7 +143,9 @@ rights to goes in that folder. What it plays, and the order, is in
 the round after it, and `at`, its place in the folder), which the standby page shows when it has no
 jukebox of its own. `ch97.fcpublicmedia.local/jukebox/` is the list, for a screen in the building, not
 the air: every track in the order it plays, the one playing lit with how far in it is, the ones played
-this time round dimmed, and the folder and the round's length in the bar. `jukebox --check` says what
+this time round dimmed, and the folder and the round's length in the bar. Its hands: stop (and play
+again, from the start of that track), skip, and a row pressed plays that track now, the order going on
+from it. They go by `POST /floor/jukebox`, taken from that page only (its Origin must be its Host). `jukebox --check` says what
 it would play and whether the bus is there.
 
 **On top**, a machine that can do more (editing bay 1, with OBS) lays the floor underneath (a media

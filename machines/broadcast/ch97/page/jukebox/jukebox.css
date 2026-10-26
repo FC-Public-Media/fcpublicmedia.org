@@ -22,3 +22,13 @@ body { display: grid; grid-template-rows: 1fr auto; }
 /* The one bar: the folder to change it in, and the round. */
 footer { display: flex; justify-content: space-between; gap: 40px; padding: 14px 56px; background: var(--slate);
   color: var(--soft); font-size: 22px; font-variant-numeric: tabular-nums; }
+
+/* The hands: stop or play, skip; a row pressed is played now, and the order goes on from it. */
+#hands { display: flex; gap: 12px; }
+#hands button { font: 600 22px Archivo, sans-serif; padding: 6px 22px; border: 0; border-radius: 4px; cursor: pointer;
+  background: var(--ink); color: var(--paper); }
+#hands button:hover { background: var(--signal); color: var(--ink); }
+#hands button:disabled { opacity: .4; cursor: default; }
+#order li { cursor: pointer; }
+#order li:not(.on):hover { background: var(--slate); }
+#order li.asked { outline: 3px solid var(--signal); outline-offset: -3px; }

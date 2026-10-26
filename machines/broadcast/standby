@@ -19,7 +19,8 @@ machine that puts on more (the standby page, the jukebox) takes the air by sayin
 {"holder": "..."} to ch97.fcpublicmedia.local, again every few seconds. While a claim is fresh (HOLD
 seconds) the copy to YouTube stops; when the claims lapse, it starts again by itself, so a machine
 that stops, crashes or is switched off never leaves YouTube with nothing. The floor itself never
-stops. GET /air says who has it; /floor/now.json, what the floor is playing.
+stops. GET /air says who has it; /floor/now.json, what the floor is playing; POST /floor/jukebox, from the
+jukebox's list page only, skips, stops or plays it (ask_jukebox).
 
 The key is ~/.config/fcpm/youtube.key, as the relay's; nothing here prints it. If ffmpeg sends nothing
 for a minute (YouTube dropped the connection and ffmpeg hung on it, as on 2026-10-22), the copy is
@@ -214,14 +215,35 @@ def floor_now():
         said = json.loads((STATE_DIR / "jukebox.json").read_text())
     except (OSError, ValueError):
         said = {}
-    if said.get("state") != "playing" or not said.get("file"):
-        return {"playing": None, "next": [], "from": "floor", "folder": str(MUSIC)}
+    state = said.get("state") or "waiting"
+    if state not in ("playing", "stopped") or not said.get("file"):
+        return {"playing": None, "next": [], "state": state, "from": "floor", "folder": str(MUSIC)}
     order = said.get("order") or [said["file"]]
     at = order.index(said["file"]) if said["file"] in order else -1
     started = time.mktime(time.strptime(said["at"], "%Y-%m-%dT%H:%M:%S%z"))
-    return {"playing": dict(facts(said["file"]), position=round(max(0, time.time() - started), 1)),
+    here = dict(facts(said["file"]), position=round(max(0, time.time() - started), 1) if state == "playing" else 0)
+    return {"playing": here if state == "playing" else None, "stopped": here if state == "stopped" else None,
             "next": [facts(f) for f in order[at + 1:] + order[:max(at, 0)]],
-            "at": max(at, 0), "from": "floor", "folder": str(MUSIC)}
+            "at": max(at, 0), "state": state, "from": "floor", "folder": str(MUSIC)}
+
+
+def ask_jukebox(body):
+    """A person's word to the floor's jukebox, from the list's buttons: skip, stop, play, or play a track
+    of the order by name. Left in jukebox.ask, which the jukebox reads; an error message, or None."""
+    do, file = body.get("do"), body.get("file")
+    if do not in ("skip", "stop", "play"):
+        return 'say {"do": "skip" | "stop" | "play"}, with "file" to play one'
+    if file is not None:
+        try:
+            order = json.loads((STATE_DIR / "jukebox.json").read_text()).get("order") or []
+        except (OSError, ValueError):
+            order = []
+        if do != "play" or file not in order:
+            return "only a track in the jukebox's order can be played by name"
+    ask = STATE_DIR / "jukebox.ask"
+    (STATE_DIR / "jukebox.ask.tmp").write_text(json.dumps({"do": do, "file": file}))
+    (STATE_DIR / "jukebox.ask.tmp").replace(ask)
+    return None
 
 
 class Air:
@@ -269,7 +291,14 @@ class Air:
                     body = json.loads(self.rfile.read(n) or b"{}") if n else {}
                     holder = str(body.get("holder") or "").strip()[:60]
                 except ValueError:
-                    holder = ""
+                    body, holder = {}, ""
+                if self.path.split("?")[0] == "/jukebox":
+                    # From the list's own page only: a browser says where the page came from.
+                    origin = (self.headers.get("Origin") or "").split("://")[-1]
+                    if origin != self.headers.get("Host"):
+                        return self.reply(403, {"error": "from the jukebox's own page only"})
+                    wrong = ask_jukebox(body if isinstance(body, dict) else {})
+                    return self.reply(400 if wrong else 200, {"error": wrong} if wrong else {"asked": body.get("do")})
                 if not holder:
                     return self.reply(400, {"error": 'say {"holder": "who"}'})
                 air.claim(holder, release=bool(body.get("release")))
