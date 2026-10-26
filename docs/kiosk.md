@@ -10,7 +10,6 @@ every studio screen shares (`brand/idle/`). The kiosk's door draws the pages.
 | `welcome/content.yml` | hand-written: the room, the greeting, the panels' wording |
 | `welcome/welcome.yml` | generated, committed, canonical |
 | `welcome/welcome.js` | generated, committed: the same content as `window.FCPM_KIOSK`, for `file://` pages |
-| `welcome/rota.yml` | hand-written: who is on, by default ([Rota](#rota)) |
 | `bin/build-kiosk.py` | joins `content.yml` to `site/_data/` and writes both artifacts |
 
 ```sh
@@ -98,13 +97,19 @@ under the check-in header; on the desk it takes the check-in words. `?at=<ISO ti
 page pretends it is then. `classes: sample` in `machines/kiosk/node.yml` invents three
 sessions, marked as samples.
 
-## Rota
+## Hosts
 
-`welcome/rota.yml` is the standing host rotation: the welcome screen's footer (on now, next) and,
-with classes, the awake windows. Times are local, 24-hour; `days` takes `mon`…`sun`; `role`
-shows beside the name. `crew:` tags people with activities (`site/_data/facilities.yml`, or
-`node.yml` stations); a station with nothing booked this week lists up to three who can help,
-at their next shift. No tags means a host, who helps with anything.
+`site/_data/hosts.yml` is who is on: the welcome screen's footer (on now, next), the room pages,
+the host wizard's one-tap names and, with classes, the awake windows (`hosts()` in `door.py`).
+Each person's day keys are their standing shift, `[from, to]`, local and 24-hour. A day key is a
+letter (`M T W R F S U`), a three-letter name (`Mon`…`Sun`, any case) or a range of either
+(`Sun-M`); a shift that starts and ends at the same time is none. `scheduled: false` keeps a
+person off the schedule but among the host picks. Names show as their first word. The top-level
+`days` is the studio's hours, which the site's footer prints; the kiosk does not read it.
+
+`supports` tags people with activities (`_data/facilities.yml` at the root, or `node.yml`
+stations); a station with nothing booked this week lists up to three who can help, at their next
+shift. `orientation`, or no tags, helps with anything.
 
 ## Dim
 
@@ -116,7 +121,7 @@ Every page on a studio screen falls to the same dim, in any orientation.
 | `brand/idle/dim.js`, `dim.css` | the verdict from the page's own clock, and the dim | an idle timer |
 | the page | nothing (`page()` inlines both); it may hold the screen awake | its own rule for "awake" |
 
-**Awake windows.** Each rota shift and each class (by `pickSession`'s sessions), from 60
+**Awake windows.** Each host shift and each class (by `pickSession`'s sessions), from 60
 minutes before it starts to its end, merged, for 7 days, plus the camera's lights window. Not
 bookings: a booking is always inside host hours. Delivered three ways: baked into every page,
 in the `awake` field of `/kiosk/now` (60 s) and `/depot/now` (10 s), and baked into the wall's
@@ -180,7 +185,7 @@ first (an iPad Air 2 at the podcast studio, on `digitization.local`). `machines/
 the room: its title, two sentences for somebody passing, the code (the site, not check-in), its name in the
 classes list, and its gear (`id`, `name`, `say`, `count`, `trove`, `usually`). The page never dims: the
 tablet is put away when nobody is in. It shows who is hosting (the last host reply, while its `until`
-holds), else who is at the desk or next (the rota), this room's next classes, and the gear lit as the last
+holds), else who is at the desk or next (hosts.yml), this room's next classes, and the gear lit as the last
 reply left it, or as `usually:` says while no reply has spoken. The small `Staff` link opens the wizard.
 
 ## Replies
@@ -204,7 +209,7 @@ this. `trust` is recorded (`friend`, `signed`, `unsigned`, `unverified`), and `r
 
 ### wizard:kiosk+host
 
-`/host/?room=<room>` on a staff phone: your name (the rota's crew as one-tap picks, remembered on the
+`/host/?room=<room>` on a staff phone: your name (hosts.yml's people as one-tap picks, remembered on the
 phone), Hosting or Left, until (23:59 by default), and what is in the room.
 
 ```json
@@ -216,4 +221,4 @@ phone), Hosting or Left, until (23:59 by default), and what is in the room.
 
 `hosting: false` is leaving. `present` is the whole list each time; gear the room does not list is
 ignored and noted in the verdict. The public check-in's pass offers *Hosting a room? Check in as
-staff*: the wizard on the board's LAN name (`site/_data/lan.yml`), the typed name carried in `?name=`.
+staff*: the wizard on the board's LAN name (`_data/lan.yml`, at the root), the typed name carried in `?name=`.

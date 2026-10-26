@@ -1,0 +1,12 @@
+# Member feeds (RSS 2.0 or Atom), read by site/bin/sync-feeds.py. See docs/programming.md.
+
+# Items kept per feed and overall, and their maximum age in months.
+per_source: 6
+total: 24
+months: 18
+
+sources: []
+ # - name: AutumnTaughtEm
+ #   url:  https://www.youtube.com/feeds/videos.xml?channel_id=UCCPJ-2ga6qYBhJ259lNzXKA
+ #   kind: video          # podcast | video | writing
+ #   owner: Autumn Valenta        # optional — who makes it

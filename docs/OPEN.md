@@ -168,7 +168,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Kiosk
 
 - Placeholder wording: the greeting, where the Wi-Fi card hangs, whom to ask; the desk page reads `node.yml` `wording:`, which belongs in `welcome/content.yml`. machines/kiosk/welcome/content.yml
-- The rota's `crew:` tags are Autumn's to give. machines/kiosk/welcome/rota.yml
+- Josh's Sunday session (13:00–22:00, hosting) was on the old rota; hosts.yml has him `scheduled: false` with no day, so the kiosk no longer shows it. site/_data/hosts.yml
 - Bookings: `bookings: sample` stands in until room requests exist; a second desk monitor for today's bookings waits on them.
 - `brand/idle`'s `#slot` is not wired to `welcome.js`. brand/idle/index.html
 - Dim: an attendant recipe; on the roller with the TV switched off and on, unconfirmed.

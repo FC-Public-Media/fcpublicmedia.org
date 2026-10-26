@@ -1,0 +1,48 @@
+# Membership tiers and their rules, for /membership/; prices feed site/bin/build-prices.py.
+# See docs/payments.md. Prices are from the current site; `includes` waits on the board.
+
+# A year from joining, not the calendar year; no half-year price, no monthly option.
+term:
+  summary: A full year from the day you join.
+  notes:
+    - Not the calendar year. Join in November and you are covered until the following November.
+    - No half-year price any more, because there is no half year to buy — everyone gets twelve months.
+    - No monthly option.
+
+# `rate` applies to every tier, settled before payment. See docs/payments.md#nonprofit-rate.
+nonprofit:
+  rate: 0.5
+  summary: Nonprofits pay half, on every tier.
+  before_you_pay: >-
+    Tell us which organization you're with before you pay, and we'll set the
+    rate. You should never have to buy the wrong membership and wait for a
+    refund.
+
+tiers:
+  - name: Supporter
+    price: 40
+    summary: Support the organization without needing studio access.
+    includes: [] # TODO
+
+  - name: Student
+    price: 60
+    summary: TODO — confirm eligibility and what proof is required.
+    includes: [] # TODO
+
+  - name: Creator
+    price: 70
+    summary: TODO
+    includes: [] # TODO
+
+  - name: Producer
+    price: 140
+    summary: TODO
+    includes: [] # TODO
+
+# Applies to every tier, per the current site copy.
+shared_benefits:
+  - Studio space
+  - Equipment for video, photography, audio, and podcasting
+  - Editing software and editing bays
+  - Training classes
+  - Community support and connection

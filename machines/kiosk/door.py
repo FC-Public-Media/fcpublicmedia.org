@@ -177,13 +177,48 @@ def occurrences(entries, now, days_ahead=8):
     return sorted(out, key=lambda o: o[0])
 
 
+# site/_data/hosts.yml is who is on: each person's day keys are their standing shift, `[from, to]`, local
+# and 24-hour. A day key is a letter (M T W R F S U), a name (Mon..Sun, any case, three letters), or a
+# range of either (`Sun-M`). docs/kiosk.md, Hosts.
+DAY_KEYS = {"m": "mon", "t": "tue", "w": "wed", "r": "thu", "f": "fri", "s": "sat", "u": "sun"}
+DAY_KEYS.update({d: d for d in DAYS})
+
+
+def day_key(key):
+    """The days a hosts.yml key names, in order: `W` is wed, `Sun-M` is sun and mon. None if it names none."""
+    ends = [DAY_KEYS.get(part.strip().lower()) for part in str(key).split("-")]
+    if not 1 <= len(ends) <= 2 or None in ends:
+        return None
+    first, last = DAYS.index(ends[0]), DAYS.index(ends[-1])
+    return [DAYS[(first + i) % 7] for i in range((last - first) % 7 + 1)]
+
+
+def first_name(person):
+    return str(person.get("name") or "").split(" ")[0]
+
+
+def hosts():
+    """hosts.yml, read as the schedule: its people, and their shifts as (days, from, to, who) entries."""
+    data = load(ROOT / "site" / "_data" / "hosts.yml")
+    people = [p for p in data.get("people") or [] if first_name(p)]
+    shifts = []
+    for p in people:
+        if p.get("scheduled") is False:
+            continue
+        for key, span in p.items():
+            days = day_key(key)
+            if days and isinstance(span, list) and len(span) == 2 and str(span[0]) != str(span[1]):
+                shifts.append({"days": days, "from": span[0], "to": span[1], "who": [first_name(p)]})
+    return {"people": people, "shifts": shifts}
+
+
 AWAKE_LEAD = datetime.timedelta(minutes=60)
 
 
 def awake_windows(now=None, days=7):
-    """Awake windows as [startMs, endMs]: rota shifts, classes and lights (docs/kiosk.md, Dim)."""
+    """Awake windows as [startMs, endMs]: host shifts, classes and lights (docs/kiosk.md, Dim)."""
     now = now or datetime.datetime.now()
-    spans = [(b, e) for b, e, _ in occurrences(load(HERE / "welcome" / "rota.yml").get("shifts") or [], now, days + 1)]
+    spans = [(b, e) for b, e, _ in occurrences(hosts()["shifts"], now, days + 1)]
     for c in class_config().get("sessions") or []:
         try:
             b = datetime.datetime.fromisoformat(c["starts"]).astimezone().replace(tzinfo=None)
@@ -212,33 +247,33 @@ def when(t, now):
 
 
 def on_now(now=None):
-    """Who is on now, and who is next, from the rota."""
+    """Who is on now, and who is next, from hosts.yml."""
     now = now or datetime.datetime.now()
-    spans = occurrences(load(HERE / "welcome" / "rota.yml").get("shifts") or [], now)
+    spans = occurrences(hosts()["shifts"], now)
 
     def who(s):
-        names = ", ".join(s.get("who") or [])
-        return names + (" · " + s["role"] if s.get("role") else "")
+        return ", ".join(s.get("who") or [])
     current = [who(s) for b, _, s in spans if b <= now]
     later = [(b, s) for b, _, s in spans if b > now]
     nxt = {"who": who(later[0][1]), "when": when(later[0][0], now)} if later else None
-    return {"now": current, "next": nxt, "source": "rota"}
+    return {"now": current, "next": nxt, "source": "hosts"}
 
 
 WEEK = datetime.timedelta(days=7)
 
 
 def helpers(activities, now):
-    """Up to three people on the rota this week whose `crew:` tags (or none) meet these activities."""
-    rota = load(HERE / "welcome" / "rota.yml")
-    crew = rota.get("crew") or {}
+    """Up to three people on this week whose `supports` meet these activities. `orientation`, or no
+    tags at all, meets any: getting someone started is every host's."""
+    h = hosts()
+    supports = {first_name(p): set(p.get("supports") or []) for p in h["people"]}
     seen, out = set(), []
-    for begins, _, s in occurrences(rota.get("shifts") or [], now):
+    for begins, _, s in occurrences(h["shifts"], now):
         if begins > now + WEEK:
             break
         for person in s.get("who") or []:
-            tags = set(crew.get(person) or [])
-            if person in seen or (tags and not tags & set(activities)):
+            tags = supports.get(person) or set()
+            if person in seen or (tags and "orientation" not in tags and not tags & set(activities)):
                 continue
             seen.add(person)
             # Non-breaking spaces: wrap between people, never between a name and its time.
@@ -253,7 +288,7 @@ def stations(now=None):
     now = now or datetime.datetime.now()
     cfg = node()
     wanted = cfg.get("facilities") or []
-    facilities = {f["name"]: f for f in load(ROOT / "site" / "_data" / "facilities.yml") or []}
+    facilities = {f["name"]: f for f in load(ROOT / "_data" / "facilities.yml") or []}
     groups, placed = [], set()
     for name in wanted:
         f = facilities.get(name)
@@ -2360,7 +2395,7 @@ def watch_wall():
 # -------------------------------------------------------------------- server --
 # ROOMS: a room's hallway door, a tablet in a holder, any shape (rooms/<room>.yml). It never dims:
 # the tablet is put away when nobody is in. Who is hosting and what is in the room are the last
-# host reply's (replies.py); the rota and the classes say what is coming. docs/kiosk.md, Rooms.
+# host reply's (replies.py); hosts.yml and the classes say what is coming. docs/kiosk.md, Rooms.
 COMPOSER = ROOT / "troves" / "scanner" / "composer"        # the bottle codec, when the scanner trove is checked out
 COMPOSER_FILES = ("sign.mjs", "transfer.mjs", "carrier.mjs", "fountain.mjs", "anecdote.mjs")
 
@@ -2482,7 +2517,7 @@ def room_classes(cfg, now, limit=3):
 
 
 def room_now(room):
-    """What the room's page polls: hosting as the last reply left it, the rota, this room's classes, the gear."""
+    """What the room's page polls: hosting as the last reply left it, who is on (hosts.yml), this room's classes, the gear."""
     import replies
     cfg = room_cfg(room)
     if not cfg:
@@ -2520,7 +2555,7 @@ def room_page(room):
 </main>
 <footer><span>%s</span><a href="/host/?room=%s">Staff</a></footer>
 %s""" % (LOCKUP, e(cfg.get("title", room)), e(cfg.get("say")), e(cfg.get("quiet")), e(cfg.get("shown") or cfg.get("encodes")),
-         e(cfg.get("shown") or cfg.get("encodes")), gear, e(load(ROOT / "site" / "_data" / "org.yml").get("address", {}).get("street", "")),
+         e(cfg.get("shown") or cfg.get("encodes")), gear, e(((load(ROOT / "site" / "_config.yml").get("fcpm") or {}).get("address") or {}).get("street", "")),
          e(room), ROOM_JS % json.dumps({"room": room, "encodes": cfg.get("encodes") or "", "quiet": cfg.get("quiet") or "",
                                         "welcome": cfg.get("welcome") or ""}))
     return shell(cfg.get("title", room), body, ROOM_CSS)
@@ -2621,7 +2656,7 @@ def host_page(room):
         return None
     state = replies.room_now(room, cfg)
     lit = {g["id"] for g in state["gear"] if g["lit"]}
-    crew = list((load(HERE / "welcome" / "rota.yml").get("crew") or {}).keys())
+    crew = [first_name(p) for p in hosts()["people"]]
     gear = "".join('<label><input type=checkbox name=present value="%s"%s><span class=mark></span><span>%s</span></label>' % (
         e(g["id"]), " checked" if g["id"] in lit else "", e(g.get("name", g["id"]))) for g in cfg.get("gear") or [])
     body = """

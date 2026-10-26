@@ -10,7 +10,7 @@ say: >-
   open to everyone.
 # Under the host's name while somebody has checked in as the host (wizard:kiosk+host).
 welcome: Come in and have a look.
-# When nobody has: the rota says who is next (welcome/rota.yml).
+# When nobody has: site/_data/hosts.yml says who is next.
 quiet: Nobody is in right now.
 
 # The code: the site, not check-in. A passer-by is not here for a reservation.

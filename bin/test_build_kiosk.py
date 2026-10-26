@@ -44,7 +44,7 @@ def sources(**overrides):
                 {"panel": "Need a hand?", "say": "Ask at the desk."},
             ],
         },
-        "org": {"name": "Fort Collins Public Media"},
+        "config": {"title": "Fort Collins Public Media"},
         "wifi": {
             "network": {"ssid": "FC Public Media Guest", "confirmed": True},
             "poster": {"note": "Point your camera at the code and tap it."},
