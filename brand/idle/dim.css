@@ -17,6 +17,11 @@
   translate: -50% 0;
   background: var(--slate, #232830);
 }
+/* Landscape: the column lies on its side, a row along the long edge; hour, seconds, minute, left to right. */
+@media (orientation: landscape) {
+  .fcpm-tally { grid-auto-flow: column; width: auto; height: 12vmin; align-items: center; }
+  .fcpm-tally::before { left: 0; right: 0; top: 50%; bottom: auto; width: auto; height: 0.4vmin; translate: 0 -50%; }
+}
 .fcpm-tally .fcpm-mark {
   width: 12vmin; height: 12vmin;
   background: var(--slate, #232830);

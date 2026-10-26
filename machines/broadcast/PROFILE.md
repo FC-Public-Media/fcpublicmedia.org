@@ -121,9 +121,11 @@ would do. It carried the channel on 2026-10-22 from 00:03 while the 350's own pu
 When the channel's stream pauses (a gap in the schedule, an IP-exempt program), YouTube would end the
 broadcast. So YouTube's backup ingest is fed in layers, each one able to stand alone.
 
-**The floor** is [`standby`](standby), the crew's `backup` line, on digitization: the brand's mark and
-lockup (from `site/_data/brand.json`) and the room's clock, at 1080p30 like the channel, encoded once by
-the GPU (about a tenth of a core) into HLS in memory, served on the LAN as
+**The floor** is [`standby`](standby), the crew's `backup` line, on digitization: the brand's mark over
+the lockup (from `site/_data/brand.json`), the mark as every studio screen dims to (`brand/idle/dim.js`)
+laid on its side: three squares in a row, a split clock in the room's time (the hour hand, the seconds,
+the minute hand) and the lit one walking the row. It is drawn a frame a second (rsvg-convert) over the
+slate, at 1080p30 like the channel, encoded once by the GPU (about a fifth of a core) into HLS in memory, served on the LAN as
 `ch97.fcpublicmedia.local/floor/index.m3u8`. A copy of it, not a second encode, goes to the backup
 ingest. YouTube shows it while the channel is away and goes back when it returns. The floor never
 tries to be the show.
@@ -132,11 +134,17 @@ The floor's sound is a bus, `fcpm-standby`: a null sink standby makes in the des
 its monitor. Anything played into it is on YouTube's backup stream; with nothing playing, it is
 silence, as before. Until PulseAudio is up (the desktop's login), standby sends silence, and once the
 bus can be made it starts again with it. [`jukebox`](jukebox), the crew's `jukebox` line, is the first
-thing played into it: every sound file in `/srv/landing/jukebox`, by name, A to Z and round again, the
-folder read afresh each round. Only music FCPM has the rights to goes in that folder. What it plays is
-in `~/.local/state/fcpm/broadcast/jukebox.json`, served as `ch97…/floor/now.json`, which the standby
-page shows when it has no jukebox of its own. `jukebox --check`
-says what it would play and whether the bus is there.
+thing played into it: every sound file in `/srv/landing/jukebox`, by its path in the folder (a
+subfolder's files together, where its name falls), A to Z and round again. The folder is read again
+after every track and the next is the first name after the one just played, so a file added, taken
+out or renamed counts from the next track; renaming is how the order changes. Only music FCPM has the
+rights to goes in that folder. What it plays, and the order, is in
+`~/.local/state/fcpm/broadcast/jukebox.json`, served as `ch97…/floor/now.json` (the track, the rest of
+the round after it, and `at`, its place in the folder), which the standby page shows when it has no
+jukebox of its own. `ch97.fcpublicmedia.local/jukebox/` is the list, for a screen in the building, not
+the air: every track in the order it plays, the one playing lit with how far in it is, the ones played
+this time round dimmed, and the folder and the round's length in the bar. `jukebox --check` says what
+it would play and whether the bus is there.
 
 **On top**, a machine that can do more (editing bay 1, with OBS) lays the floor underneath (a media
 source, its sound kept or muted), the standby page over it, and the jukebox role's music, and takes the air: while it streams it says

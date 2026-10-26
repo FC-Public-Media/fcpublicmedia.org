@@ -89,7 +89,7 @@
     t.mm.setAttribute('transform', 'rotate(' + m * 6 + ' 50 50)');
     t.ss.setAttribute('transform', 'rotate(' + s * 6 + ' 50 50)');
   }
-  // Down the column and back up, never wrapping; reduced motion keeps the middle square.
+  // Along the column (a row, on a landscape screen) and back, never wrapping; reduced motion keeps the middle square.
   function walk(t) {
     if (still.matches) { t.at = 1; }
     else {

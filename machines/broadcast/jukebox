@@ -4,13 +4,16 @@
     python3 -I machines/broadcast/jukebox           run (the broadcast crew's `jukebox` line keeps it up)
     python3 -I machines/broadcast/jukebox --check   say the folder, what it holds, and whether the bus is there
 
-The folder is /srv/landing/jukebox (FCPM_JUKEBOX to point elsewhere). Its files play by name, A to Z,
-and again from the top; the folder is read afresh each time round, so a file dropped in or taken out
-counts from the next round. Only music FCPM has the rights to goes in: what is in the folder is on
+The folder is /srv/landing/jukebox (FCPM_JUKEBOX to point elsewhere). Its files play by name (the path
+in the folder, so a subfolder's files play together, where its name falls), A to Z, and again from the
+top. The folder is read afresh after every track, and the next is the first whose name comes after the
+one just played: a file dropped in, taken out or renamed counts from the next track, and renaming is
+how the order is changed. Started again, it plays on from the track it was playing. Only music FCPM has the rights to goes in: what is in the folder is on
 YouTube. Each file is played by mpv into standby's bus (a PulseAudio null sink, `fcpm-standby`, that
 standby makes and sends from); while the bus isn't there, nothing plays, and mpv never falls back to
-the room's speakers. What is playing is written to ~/.local/state/fcpm/broadcast/jukebox.json, for
-a screen to show later. mpv and the system python. See PROFILE.md, "To YouTube".
+the room's speakers. What is playing, and the whole order it is in, is written to
+~/.local/state/fcpm/broadcast/jukebox.json; standby serves it as ch97…/floor/now.json, and
+ch97.fcpublicmedia.local/jukebox/ shows it as the list. mpv and the system python. See PROFILE.md, "To YouTube".
 """
 import json
 import os
@@ -26,13 +29,17 @@ SOUND = {".flac", ".wav", ".mp3", ".m4a", ".aac", ".ogg", ".opus", ".aif", ".aif
 os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
 
 
+def name(p):
+    """Where a file falls in the order: its path in the folder, regardless of case."""
+    return str(p.relative_to(FOLDER)).lower()
+
+
 def tracks():
     """The folder's sound files, by name; hidden files and anything else are left alone."""
     if not FOLDER.is_dir():
         return []
     return sorted((p for p in FOLDER.rglob("*") if p.is_file() and p.suffix.lower() in SOUND
-                   and not any(part.startswith(".") for part in p.relative_to(FOLDER).parts)),
-                  key=lambda p: str(p.relative_to(FOLDER)).lower())
+                   and not any(part.startswith(".") for part in p.relative_to(FOLDER).parts)), key=name)
 
 
 def bus():
@@ -41,11 +48,12 @@ def bus():
     return any(line.split("\t")[1:2] == [BUS] for line in r.stdout.splitlines())
 
 
-def note(state, why, track=None):
+def note(state, why, track=None, order=()):
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     now = {"state": state, "why": why, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     if track:
-        now.update(file=str(track.relative_to(FOLDER)), title=track.stem)
+        now.update(file=str(track.relative_to(FOLDER)), title=track.stem,
+                   order=[str(p.relative_to(FOLDER)) for p in order])
     (STATE_DIR / "jukebox.json").write_text(json.dumps(now, indent=1) + "\n")
     print(f"jukebox: {state}: {why}", flush=True)
 
@@ -65,23 +73,29 @@ def main(args):
         return
     if args:
         sys.exit(__doc__)
+    try:                                        # started again: on from the track it was playing
+        said = json.loads((STATE_DIR / "jukebox.json").read_text())
+        last = said["file"].lower() if said.get("state") == "playing" else None
+    except (OSError, ValueError, KeyError):
+        last = None
+    resume, failed = last is not None, 0
     while True:
         found = tracks()
         if not found:
             note("waiting", f"nothing to play in {FOLDER}")
             time.sleep(30)
             continue
-        played = 0
-        for track in found:
-            if not bus():
-                note("waiting", f"standby's bus ({BUS}) isn't there")
-                time.sleep(10)
-                break
-            if not track.exists():
-                continue
-            note("playing", track.name, track)
-            played += play(track)
-        if not played:
+        if not bus():
+            note("waiting", f"standby's bus ({BUS}) isn't there")
+            time.sleep(10)
+            continue
+        track = next((p for p in found if last is not None and (name(p) >= last if resume else name(p) > last)),
+                     found[0])
+        note("playing", track.name, track, found)
+        last, resume = name(track), False
+        failed = 0 if play(track) else failed + 1
+        if failed >= len(found):
+            failed = 0
             time.sleep(30)                      # a round with nothing played: don't spin on bad files
 
 
