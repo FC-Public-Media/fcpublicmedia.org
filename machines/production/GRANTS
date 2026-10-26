@@ -44,6 +44,13 @@ admit allow  troves/recorder/obs.ps1 | record start
 admit allow  troves/recorder/obs.ps1 | record stop
 admit allow  troves/recorder/obs.ps1 | stop
 
+# OBS environments (troves/recorder/env.ps1): configs pushed into clean boots of the same OBS, each
+# in its own shell. `air` sends YouTube's primary with a key from Credential Manager, so starting it
+# is a person's act, and so is `secret`, which opens Windows' credential dialog. Nothing is admitted.
+wears      troves/recorder/env.ps1
+depends    troves/recorder/env.ps1 | machines/production/bay/obs-portable-32.2.2.yml
+untouched  {APPDATA}/obs-studio
+
 # The Roku (troves/roku): driven over ECP, its channel sideloaded, OBS relayed onto it. The relay
 # binary (MediaMTX) comes aboard by its bay procedure; its one grant is an inbound allow on 8888
 # for that exe, from the local subnet only. `off` restores OBS's stream settings and stops only
