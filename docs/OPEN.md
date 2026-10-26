@@ -40,7 +40,9 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Site content
 
-- Missing copy: `/donate` (amounts, recurring, the case, the processor), `/bulletin-board`, the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, `/teach` application questions, an `/about/` history (render `org.mission`).
+- Missing copy: `/donate` (amounts, recurring, the case, the processor), the eight podcasts, the verbatim DEI statement from Wix, the `/submit` agreement, the instructor application's questions (`/classes/#teach-with-us`), an `/about/` history (render `org.mission`).
+- Four Wix carryovers dropped 2026-10-25 (`/book/`, `/register/`, `/teach/`, `/bulletin-board/`): the first three fold into `/reserve/` and `/classes/`; the fourth embedded Cablecast CG's board, so `/community-bulletin-board` goes to `/watch/`. Whether FCPM wants a community notice board of its own, on the site rather than on the channel, is undecided and unowned.
+- Standing but unreviewed, for a second pass: `/about/` and `/policies/non-discrimination/` are TODO only; `/nonprofits/` publishes a client list and no rates; `/contact/` largely restates the footer but is the "ask us" target of some twenty in-site links.
 - Membership tier benefits, nonprofit production pricing and drop-in prices (`TODO`, and whether members attend free) await the board.
 - Financials (EIN, 990, annual report) are a board decision; published ones go in `governance.yml` `documents`.
 - Retired Wix shows redirect to `/podcasts/`; Wix `/equipment` has no redirect or decision. site/_data/redirects.yml
@@ -109,7 +111,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `/membership/` publishes "TODO" under three tiers (`tier.summary` renders unconditionally). site/_data/membership.yml
 - Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
 - No provider for `tickets`, `donate` or `submit`. site/_data/providers.yml
-- `/book/` and `/register/` have no form yet; they are to post to the site-worker, which adds a row to the log. site/_data/forms.yml
+- The room request on `/reserve/` and the class signup on `/classes/` have no form yet; they are to post to the site-worker, which adds a row to the log. site/_data/providers.yml
 - A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
 - The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
 - The membership record (email, paid-through date) is unbuilt: a row in the log per paid join, from Stripe's webhook to the site-worker.

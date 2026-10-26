@@ -9,8 +9,10 @@
   to: /submit/
 - from: /watch-live
   to: /watch/
+# The Wix page embedded Cablecast CG's bulletin board, which is the channel's own between-programs
+# page: machines/broadcast/PROFILE.md. So the channel, not a page of our own.
 - from: /community-bulletin-board
-  to: /bulletin-board/
+  to: /watch/
 - from: /membership/reservations
   to: /reserve/
 - from: /book-online
@@ -22,7 +24,7 @@
 - from: /event-list
   to: /classes/
 - from: /innstructor-application
-  to: /teach/
+  to: /classes/
 - from: /non-discrimination-policy
   to: /policies/non-discrimination/
 
@@ -104,10 +106,10 @@
 
 # Not redirected: the unused Wix store (/product-page/i-m-a-product*, /category/all-products) is left to 404.
 
-# Alternates for the two request-form pages.
+# Wix had a separate page per request; the room and the class each ask on their own page now.
 - from: /booking
-  to: /book/
+  to: /reserve/
 - from: /registration
-  to: /register/
+  to: /classes/
 - from: /sign-up
-  to: /register/
+  to: /classes/

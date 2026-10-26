@@ -279,7 +279,7 @@ title: Meet
     <span>Most people start here, member or not.</span>
   </li>
   <li>
-    <b><a href="/teach/">Teach one</a></b>
+    <b><a href="/classes/#teach-with-us">Teach one</a></b>
     <span>If you know a thing, there's someone here who wants to learn it.</span>
   </li>
   <li>

@@ -28,6 +28,12 @@ lede: Short, hands-on training at the studio. Open to the public.
 
 {% include transaction.html key="tickets" text="Register for a class" %}
 
+Classes are open to everyone, member or not. Members pay a reduced rate, and some tiers include
+classes &mdash; [membership]({{ '/membership/' | relative_url }}) pays for itself quickly if you
+plan to come back. If a class is full we'll say so and put you first in line for the next one.
+Turning up on the day without registering is usually fine too; registering just means we know to
+expect you.
+
 ## Past classes
 
 Recent sessions have included Podcasting 101, Social Media Marketing 101,
@@ -36,4 +42,12 @@ Basics for Beginners.
 
 ## Teach with us
 
-We're always looking for instructors. See [Teach a Class]({{ '/teach/' | relative_url }}).
+We're always looking for instructors. If you know something worth teaching &mdash; production,
+editing, audio, distribution, the business side &mdash; we want to hear about it. Email
+[{{ site.data.org.email }}](mailto:{{ site.data.org.email }}).
+
+<p class="transaction transaction-todo">
+  <b>Instructor application.</b>
+  <span class="muted">The current application asks a specific set of questions; they have not been
+  copied over. Same forms decision as the contact page.</span>
+</p>
