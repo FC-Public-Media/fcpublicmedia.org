@@ -1,18 +1,24 @@
-cards: build a boot card from its type; the lan card boots Alpine diskless
+site: the footer lists no pages; the header menu is the whole menu
 
-A card boots known-good FCPM code on any machine. `machines/cards/build TYPE /dev/sdX sdX` erases a
-card and lays out its type: Ventoy first (its key is what Secure Boot trusts), then the type's
-partitions. A window on the screen shows the card and waits for an OK; the home's passphrase is asked
-in a window too.
+The footer's "More" block restated the menu for pages the menu had already declined to carry.
+What is left is what a footer is for: who we are, where, how to reach us, then Follow and the
+legal line.
 
-- `steward`: the 256G card's recipe, out of the Buffalo's linux-persist and into git: Debian XFCE
-  live with persistence, SystemRescue, Alpine; home, origin, toolbox.
-- `lan`: leans on the LAN. Alpine diskless from RAM, so a slow card reader only slows the boot. Its
-  kit (FAT, readable anywhere) holds Alpine's package cache, the saved settings (`lbu commit`) and
-  Claude Code; `lan/kit` makes or refreshes it on any Linux. The checkout sits outside the encrypted
-  home, so a job can start before anyone unlocks it. tty1 asks the home's passphrase, then logs in.
+- `_includes/footer.html`: the page list goes.
+- `_data/nav.yml`: `footer` becomes `elsewhere`, which renders nowhere. The `page` layout prints
+  no `<h1>`, so it is the only way the header can still name the page you are on.
 
-Not yet: the checkout follows GitHub until digitization offers git on the LAN; the steward recipe
-has not been rerun from here.
+Consequence, written down rather than hidden: `/about/`, `/nonprofits/` and
+`/policies/non-discrimination/` are now linked from nothing and still sit in `/sitemap.xml`.
+That is the honest state of a page nobody has decided to carry. `/contact/` and `/check-in/` are
+still reached from inside pages.
+
+Merge qualifications:
+- [x] `bundle exec jekyll build` clean
+- [x] Playwright `--grep-invert @external`: 553 passed, 1 skipped, 0 failed
+- [x] the header still names `/about/` and the other `elsewhere` pages
+- [x] no new broken link; the three orphans are named in `docs/OPEN.md`
+
+Next, not in this branch: all 23 links pointing at `/contact/` mean "email us". See the report.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
