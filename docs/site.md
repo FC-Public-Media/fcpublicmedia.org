@@ -77,13 +77,11 @@ a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 
 | `site/_data/` | Holds |
 |---|---|
-| `org.yml` | name, founding year, emails, phone, address, `legal`, `mission`, `hero_image`, `social` |
-| `nav.yml` | `primary` (header), `cta` (Donate); `label` with `items` makes a group. `elsewhere` is no menu: it names pages nothing links, so the header can still say which one you are on |
-| `featured.yml` | homepage cards: `kind`, `title`, `blurb`, `when`, `url`, `cta`, `starts`, `ends`; first is largest |
 | `community.yml` | `/meet/` `events` and `channels` (`primary: true` leads) |
 | `governance.yml` | board `meetings`, `minutes`, `documents` |
+| `membership.yml`, `providers.yml`, `payments.yml` | `/join/`'s tiers (and the site-worker's prices, `bin/build-prices.py`); each hand-off's URL; Stripe's publishable side ([payments.md](payments.md)) |
 | `board.yml` | roster: `name`, `role`, optional `office_hours`, `bio`, `photo` |
-| `facilities.yml` | bookable spaces; Video and Podcast Studio are coupled, so booking one blocks both |
+| `hosts.yml` | `days`: the studio's hours by day (the footer); `people`: each host's `supports` and standing shift by day key, `W: ["11:00", "16:00"]`. The kiosk reads who is on and who is next from it ([kiosk.md](kiosk.md#hosts)) |
 | `redirects.yml`, `wifi.yml`, `settings.yml` | [redirects](#redirects-and-headers); the guest network, never its password; [members.md](members.md) |
 
 Other data files name their doc in their first line.
@@ -92,8 +90,7 @@ Other data files name their doc in their first line.
 - Entries with no `url` (channels, socials, documents) are skipped.
 - `/meet/` "What's on" merges `classes.yml` sessions, `governance.yml` meetings and
   `community.yml` events (`kind` is a free label, default "Event"). Past items drop out.
-- `featured.yml` items drop off only when the site rebuilds.
-- `org.mission` and the `facilities.yml` summaries are the board's wording: never rewrite them.
+- `fcpm.mission` in `_config.yml` and the `_data/facilities.yml` summaries (the kiosk's, at the root) are the board's wording: never rewrite them.
 
 ## Design tokens
 
