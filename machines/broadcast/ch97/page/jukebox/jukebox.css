@@ -8,7 +8,7 @@ body { display: grid; grid-template-rows: 1fr auto; }
 
 /* One line a track: the title, where it sits in the folder (which is why it plays where it does), the length. */
 #order { list-style: none; margin: 0; padding: 32px 0; overflow-y: auto; scrollbar-width: none; }
-#order li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 9ch; gap: 40px; align-items: baseline;
+#order li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 17ch; gap: 40px; align-items: baseline;
   padding: 10px 56px; white-space: nowrap; }
 #order li > * { overflow: hidden; text-overflow: ellipsis; }
 #order .title { font: 600 30px/1.2 "Source Serif 4", Georgia, serif; }
