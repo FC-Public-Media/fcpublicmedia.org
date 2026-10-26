@@ -16,28 +16,11 @@
       </p>
     </div>
 
-    <div class="foot-block">
-      <h2 class="foot-title">More</h2>
-      <ul class="foot-links">
-        {% for item in site.data.nav.footer %}
-          <li><a href="{{ item.url | relative_url }}">{{ item.title }}</a></li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div class="foot-block">
-      <h2 class="foot-title">Follow</h2>
-      <ul class="foot-links">
-        {% for channel in org.social %}
-          {% if channel.url and channel.url != "" %}
-            <li><a href="{{ channel.url }}">{{ channel.name }}</a></li>
-          {% endif %}
-        {% endfor %}
-        {% if org.newsletter_url and org.newsletter_url != "" %}
-          <li><a href="{{ org.newsletter_url }}">Newsletter</a></li>
-        {% endif %}
-      </ul>
-    </div>
+    {%- comment -%}
+      Nothing else here. No list of pages: the header menu is the whole menu. No channels either:
+      the hero leads with them and /meet/ carries the full list from _data/community.yml, so a
+      third copy under the fold was the conventional one, not the useful one.
+    {%- endcomment -%}
 
   </div>
 

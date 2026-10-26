@@ -131,7 +131,7 @@ title: Meet
 {% endif %}
 
 <p class="muted">
-  Somewhere else you think people should be? <a href="/contact/">Tell us</a>.
+  Somewhere else you think people should be? <a href="mailto:{{ site.data.org.email }}">Tell us</a>.
   This list is short on purpose &mdash; a channel nobody reads is worse than
   no channel.
 </p>
@@ -248,7 +248,7 @@ title: Meet
 </ul>
 
 <p class="muted">
-  Publish something you'd like listed here? <a href="/contact/">Send us the
+  Publish something you'd like listed here? <a href="mailto:{{ site.data.org.email }}">Send us the
   feed</a> &mdash; a podcast RSS URL, a YouTube channel, a blog. You keep the
   work wherever it already lives.
 </p>
@@ -260,7 +260,7 @@ title: Meet
 <p>
   If you publish a podcast, a channel, or a blog, we can list what you put out
   here &mdash; you keep it wherever it already lives and we just read the feed.
-  <a href="/contact/">Send us the link</a> and it starts showing up.
+  <a href="mailto:{{ site.data.org.email }}">Send us the link</a> and it starts showing up.
 </p>
 
 {% endif %}
@@ -345,7 +345,7 @@ first &mdash; though it's a small room, so it's kind to.
 {% endif %}
 
 <p>
-  If you want to raise something, <a href="/contact/">get in touch</a> ahead of
+  If you want to raise something, <a href="mailto:{{ site.data.org.email }}">get in touch</a> ahead of
   time and we'll make room for it.
 </p>
 
@@ -353,7 +353,7 @@ first &mdash; though it's a small room, so it's kind to.
 
 ### Meetings
 
-Board meetings are not currently open to the public. <a href="/contact/">Get in
+Board meetings are not currently open to the public. <a href="mailto:{{ site.data.org.email }}">Get in
 touch</a> if there's something you'd like the board to consider.
 
 {% endif %}

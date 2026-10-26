@@ -46,7 +46,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
     link we send &mdash; that link is what says which site you're setting up.
   </p>
   <p class="muted">
-    Haven't got one, or it's expired? <a href="/contact/">Ask us</a> and we'll
+    Haven't got one, or it's expired? <a href="mailto:{{ site.data.org.email }}">Ask us</a> and we'll
     send another.
   </p>
 </div>
@@ -55,7 +55,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
   <h2>That link didn't work</h2>
   <p class="lede" id="bad-link-detail"></p>
   <p class="muted">
-    <a href="/contact/">Ask us</a> for a new one &mdash; they're quick to send
+    <a href="mailto:{{ site.data.org.email }}">Ask us</a> for a new one &mdash; they're quick to send
     and they expire on purpose.
   </p>
 </div>
@@ -114,7 +114,7 @@ lede: Set up the phone or laptop you'll use to manage your site.
     Safari or Chrome rather than inside another app's browser usually fixes it.
   </p>
   <p class="muted">
-    Still stuck? <a href="/contact/">Tell us</a> and we'll sort it another way.
+    Still stuck? <a href="mailto:{{ site.data.org.email }}">Tell us</a> and we'll sort it another way.
   </p>
 </div>
 

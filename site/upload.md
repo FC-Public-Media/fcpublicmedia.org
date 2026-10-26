@@ -21,7 +21,7 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
     <b>This page needs JavaScript.</b>
     <span class="muted">Signing in with a passkey happens in your browser, so
     there is nothing for the page to do without it.
-    <a href="/contact/">Get in touch</a> and we'll take the details
+    <a href="mailto:{{ site.data.org.email }}">Get in touch</a> and we'll take the details
     directly.</span>
   </p>
 </noscript>
@@ -42,7 +42,7 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
     <button class="btn btn-primary btn-big" id="sign-in" type="button">Sign in</button>
   </p>
   <p class="muted">
-    Never set one up, or using a new device? <a href="/contact/">Ask us</a> and
+    Never set one up, or using a new device? <a href="mailto:{{ site.data.org.email }}">Ask us</a> and
     we'll email a link that takes a minute.
   </p>
 </div>
@@ -54,7 +54,7 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
     another app's browser usually fixes it.
   </p>
   <p class="muted">
-    Otherwise <a href="/contact/">tell us what you've got</a> and we'll take
+    Otherwise <a href="mailto:{{ site.data.org.email }}">tell us what you've got</a> and we'll take
     the details another way. Nothing here is mandatory.
   </p>
 </div>
@@ -66,7 +66,7 @@ lede: Sign in with the device you set up, describe the episode, and tell us wher
     <button class="btn" data-action="retry" type="button">Try again</button>
   </p>
   <p class="muted">
-    If this device has never been set up, <a href="/contact/">ask us</a> for a
+    If this device has never been set up, <a href="mailto:{{ site.data.org.email }}">ask us</a> for a
     link rather than fighting with it.
   </p>
 </div>

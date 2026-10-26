@@ -14,7 +14,7 @@ is ideal, and the events calendar goes on `/meet/`, not the homepage.
 |---|---|
 | ~~Suggestion: replace the tagline **"PUBLIC MEDIA is made of You."** with **"You are PUBLIC MEDIA"**~~ | `tagline:` in `site/index.html` |
 | ~~*"I'd like a mission statement before scrolling down to the Watch Page. Maybe in front of a photo of the studio."*~~ Shipped without the photo, which waits on photography | `site/index.html`, between the on-air bar and Watch |
-| ~~*"Fort Collins Public Media offers the equipment, training, and artistic space for Northern Coloradans to craft their visions into reality."*~~ | `org.mission` in `site/_data/org.yml`; `/about/` does not render it yet |
+| ~~*"Fort Collins Public Media offers the equipment, training, and artistic space for Northern Coloradans to craft their visions into reality."*~~ | `org.mission` in `site/_data/org.yml`; it renders on the homepage. `/about/` is dropped |
 | *"After the Mission Statement I think it'd be beneficial to have an Events Calendar"*: Classes, Meetups, Video Events *("E.G. Comic Con")* | `/meet/` "What's on": `site/_data/community.yml` events with `kind: Meetup` or `kind: Video event`. Built; no entries yet |
 | *"After this I think the rest of the home page looks great!"* | none |
 | ~~*"At any tier of FC Public Media Membership you can reserve both the video and podcast studios, edit with the full Adobe Creative Suite, and check out production equipment"*~~ | intro of `site/reserve.md` |

@@ -19,7 +19,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <p class="transaction transaction-todo">
     <b>This page needs JavaScript.</b>
     <span class="muted">Signing in with a passkey happens in your browser.
-    <a href="/contact/">Ask us</a> and we'll make the change for you.</span>
+    <a href="mailto:{{ site.data.org.email }}">Ask us</a> and we'll make the change for you.</span>
   </p>
 </noscript>
 
@@ -29,7 +29,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <p><button class="btn btn-primary btn-big" id="sign-in" type="button">Sign in</button></p>
   <p class="muted">
     Setting up a new device instead? That starts from the link we email you
-    &mdash; <a href="/contact/">ask us</a> for one.
+    &mdash; <a href="mailto:{{ site.data.org.email }}">ask us</a> for one.
   </p>
 </div>
 
@@ -37,7 +37,7 @@ lede: See which phones and laptops can manage your site, and approve or remove t
   <h2>This browser can't use passkeys</h2>
   <p>On a phone, opening this in Safari or Chrome rather than inside another
   app's browser usually fixes it.</p>
-  <p class="muted"><a href="/contact/">Tell us</a> and we'll make the change for you.</p>
+  <p class="muted"><a href="mailto:{{ site.data.org.email }}">Tell us</a> and we'll make the change for you.</p>
 </div>
 
 <div class="state" data-state="sign-in-failed" hidden>

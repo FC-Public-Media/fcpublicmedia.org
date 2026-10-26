@@ -22,8 +22,8 @@ postproduction, and delivery of the final file.
 
 ## Get in touch
 
-Email [{{ site.data.org.email }}](mailto:{{ site.data.org.email }}) or use the
-[contact form]({{ '/contact/' | relative_url }}).
+Email [{{ site.data.org.email }}](mailto:{{ site.data.org.email }}) or call
+{{ site.data.org.phone }}.
 
 TODO &mdash; pricing. The current site does not publish rates for nonprofit
 production work. Decide whether to.
