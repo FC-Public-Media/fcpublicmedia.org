@@ -1,7 +1,7 @@
 # Site
 
-fcpublicmedia.org is a static Jekyll site built from `site/`, served at `new.fcpublicmedia.org` until
-a public host is chosen ([Deploy](#deploy)), while the apex still serves the old Wix site. Its five transactions (tickets, dues, donations,
+fcpublicmedia.org is a static Jekyll site built from `site/` and uploaded to one Cloudflare Pages project,
+`fcpm-new`, at `new.fcpublicmedia.org` ([Deploy](#deploy)), while the apex and `www` serve the photocopy of the old Wix site. Its five transactions (tickets, dues, donations,
 booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md](payments.md#transactions)).
 
 ## Layout
@@ -63,7 +63,7 @@ CSS preprocessor, no theme gem, no plugins; try a `_data` file and a Liquid loop
 Create `site/something.md` with front matter (`title:` at least); it is live at `/something/`.
 Add it to `site/_data/nav.yml` to put it in a menu.
 
-There are no collections. `_podcasts/` and `_shows/` left `site/` (2026-10-25): everything the site
+There are no collections. `_podcasts/` and `_shows/` left `site/` for the repository root (2026-10-25): everything the site
 lists has to come from Cablecast first, and a purposeful listing is for the outer repository to
 build into `site/`. So `site.podcasts` and `site.shows` are nil — a `sort` or `concat` on either is
 a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
@@ -141,20 +141,20 @@ npm run test:live                                # against https://www.fcpublicm
 
 ## Deploy
 
-The site is static files: `jekyll build` in `site/` writes `_site`, and any static host can serve it.
-Nothing in `site/` names a host or runs code; the one piece of running code is the
-[site-worker](https://github.com/FC-Public-Media/site-worker), a repository deployed on its own, and the site knows it only by
-`site/_data/site_worker.yml` `url`.
+Deploying is one thing: `bin/deploy-site`. It runs `jekyll build` in `site/` and uploads `_site` to
+the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
+`main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
+side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
 
+- It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
+  `bin/deploy-site --build` builds and checks without uploading.
+- A push to GitHub deploys nothing. No GitHub Actions workflow deploys the site, and no other host
+  serves it.
+- Pages reads `_redirects` and `_headers` from `_site`. Nothing in `site/` names the host or runs code.
+  The one piece of running code is the [site-worker](https://github.com/FC-Public-Media/site-worker),
+  deployed on its own; the site knows it only by `site/_data/site_worker.yml` `url`.
 - The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
-- A public host is not chosen. Whichever it is builds with root directory `site`, command
-  `bundle exec jekyll build`, output `_site`, and reads `_redirects` and `_headers` (Cloudflare Pages
-  and Netlify do). It must not need a config file in `site/`.
-- `new.fcpublicmedia.org` was served by `fcpm`, an assets-only Worker on Autumn's business
-  Cloudflare account (autumn-e2c), built from `site/wrangler.jsonc`. That file is gone (2026-10-23):
-  the Worker serves its last build until it is deleted, and the check-in posters
-  (`_data/checkin.yml`, the kiosk's `welcome.yml`) point at that address until a public host takes it.
-- Member-site publishing commits into `site/member-sites/`; a host building on push picks it up.
+- Member-site publishing commits into `site/member-sites/`; the next `bin/deploy-site` carries it.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
   www.fcpublicmedia.org` prints the root directory.
