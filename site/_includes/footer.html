@@ -16,14 +16,7 @@
       </p>
     </div>
 
-    <div class="foot-block">
-      <h2 class="foot-title">More</h2>
-      <ul class="foot-links">
-        {% for item in site.data.nav.footer %}
-          <li><a href="{{ item.url | relative_url }}">{{ item.title }}</a></li>
-        {% endfor %}
-      </ul>
-    </div>
+    {%- comment -%} No list of pages here: the header menu is the whole menu. {%- endcomment -%}
 
     <div class="foot-block">
       <h2 class="foot-title">Follow</h2>

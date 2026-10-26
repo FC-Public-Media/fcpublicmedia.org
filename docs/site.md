@@ -73,7 +73,7 @@ Add it to `site/_data/nav.yml` to put it in a menu. A podcast: copy a file in `s
 | `site/_data/` | Holds |
 |---|---|
 | `org.yml` | name, founding year, emails, phone, address, `legal`, `mission`, `hero_image`, `social` |
-| `nav.yml` | `primary` (header), `cta` (Donate), `footer`; `label` with `items` makes a group |
+| `nav.yml` | `primary` (header), `cta` (Donate); `label` with `items` makes a group. `elsewhere` is no menu: it names pages nothing links, so the header can still say which one you are on |
 | `featured.yml` | homepage cards: `kind`, `title`, `blurb`, `when`, `url`, `cta`, `starts`, `ends`; first is largest |
 | `community.yml` | `/meet/` `events` and `channels` (`primary: true` leads) |
 | `governance.yml` | board `meetings`, `minutes`, `documents` |
