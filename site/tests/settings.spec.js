@@ -1,7 +1,8 @@
 // /settings/: sign-in, raw-text editing that keeps the file's comments, and broker saves.
 // GitHub and the broker are stubbed; passkeys use a CDP virtual authenticator. See docs/site.md.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect, brokerUrl, withBroker: brokerIn } = require('./fixtures');
+
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -42,6 +43,9 @@ function parseKeyBlock(output) {
   return { id: grab('id'), x: grab('x'), y: grab('y') };
 }
 
+// No worker unless a test plants one (later routes win), whatever site_worker.yml says.
+test.beforeEach(async ({ page }) => { await brokerUrl(page, '**/settings/', ''); });
+
 test.beforeAll(() => {
   workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fcpm-settings-'));
   keyPath = path.join(workdir, 'key.pem');
@@ -53,7 +57,7 @@ test.afterAll(() => fs.rmSync(workdir, { recursive: true, force: true }));
 async function withKey(page) {
   await page.route('**/authorize/', async (route) => {
     const response = await route.fetch();
-    const body = (await response.text()).replace(
+    const body = brokerIn(await response.text()).replace(
       '"keys": []',
       `"keys": [${JSON.stringify(publicKey)}]`
     );
@@ -104,11 +108,7 @@ const hashOf = (text) => b64u(crypto.createHash('sha256').update(text, 'utf8').d
 async function withBroker(page, { write } = {}) {
   const seen = { challenges: [], writes: [] };
 
-  await page.route('**/settings/', async (route) => {
-    const response = await route.fetch();
-    const body = (await response.text()).replace('"brokerUrl": ""', `"brokerUrl": "${BROKER}"`);
-    await route.fulfill({ response, body });
-  });
+  await brokerUrl(page, '**/settings/', BROKER);
 
   const cors = {
     'Access-Control-Allow-Origin': '*',

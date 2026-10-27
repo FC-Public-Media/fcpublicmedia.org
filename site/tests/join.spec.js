@@ -1,6 +1,6 @@
 // /join/: the membership tank, then Stripe for the tier picked. Answers never stand in the way of paying.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const WORKER = 'https://worker.test';
 const STRIPE = 'https://checkout.stripe.test/session';

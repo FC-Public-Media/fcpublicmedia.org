@@ -1,7 +1,7 @@
 // The board section of /meet/ (#the-board), including its empty states: no schedule, roster
 // or minutes link. See docs/site.md.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 test.describe('board and meetings', () => {
   test('says the meetings are open', async ({ page }) => {

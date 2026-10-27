@@ -1,6 +1,6 @@
 // /check-in/, with geolocation mocked through Playwright's permissions and setGeolocation.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const PATH = '/check-in/';
 

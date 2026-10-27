@@ -1,7 +1,7 @@
 // Colour scheme: light by default even on a dark system; one "follow the system" toggle,
 // no explicit dark. See docs/site.md.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const PAPER = 'rgb(244, 241, 234)';
 const INK = 'rgb(18, 20, 23)';
