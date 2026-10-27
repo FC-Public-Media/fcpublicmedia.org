@@ -1,11 +1,4 @@
-{%- comment -%} Booqable rendered inline, not in an iframe; include only where needed. See docs/payments.md#booqable. {%- endcomment -%}
-
 {%- if include.config.snippet and include.config.snippet != "" -%}
-  {%- comment -%} List first: gear is picked by scanning names. booqable-view.js shows the picker and keeps the choice. {%- endcomment %}
-  <div class="booqable-view" role="group" aria-label="Show equipment as" hidden>
-    <button type="button" data-view="tiles" aria-pressed="false">Tiles</button>
-    <button type="button" data-view="list" aria-pressed="true">List</button>
-  </div>
   <div class="booqable-store is-list">
     {%- for component in include.config.components %}
       <div class="{{ component.class }}" {{ component.attributes }}></div>
