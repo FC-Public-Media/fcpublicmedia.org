@@ -8,6 +8,9 @@
 
   Renders nothing at all without `src`, so the key in _config.yml is the whole switch.
 
+  No poster: the video is invisible until frames are actually moving (.is-playing, from reel.js), so
+  a phone that declines to autoplay shows the photograph, never a frozen first frame.
+
   Lazy here means it does not compete with first paint: `preload="none"` and no `autoplay`, so the
   browser fetches nothing until assets/js/reel.js asks, which it does once the page has gone idle.
   The control for it lives in the hero panel, on the brand plane — see index.html.
@@ -18,7 +21,6 @@
   class="hero-video"
   data-reel-video
   src="{{ include.src }}"
-  {% if include.poster and include.poster != "" %}poster="{{ include.poster }}"{% endif %}
   preload="none"
   muted
   loop
