@@ -29,7 +29,7 @@ Notice whether rotation happens and turn it into a question; never rotate anythi
 
 ## Payments
 
-Only Booqable equipment rental can take money. `site/_data/payments.yml` has an empty Stripe publishable key and `live: false`; every entry in `site/_data/providers.yml` is `placeholder` or `pending`. Membership and class drop-ins are meant to sell through Stripe; drop-in prices are `TODO`, so class mode hides pricing. PEG funding is being wound down. Watch that every provider is live or has a person and a reason. **Never set a price or pick a provider:** those are board decisions.
+Only Booqable equipment rental can take money. `site/_data/payments.yml` has an empty Stripe publishable key and `live: false`; no page hands off to a provider yet. Membership and class drop-ins are meant to sell through Stripe; drop-in prices are undecided and have no home, so class mode shows none. PEG funding is being wound down. Watch that every provider is live or has a person and a reason. **Never set a price or pick a provider:** those are board decisions.
 
 ## Vendors
 
@@ -47,8 +47,8 @@ A reading pass at least every six months (healthy, acquired, sunsetting, changin
 
 Pages that keep building and passing tests while saying something untrue:
 
-- Stale content: every class in `site/_data/classes.yml` is past, so `/meet/` and the front page's "Coming up" render empty.
-- `TODO` reaching a public page through a `transaction-todo` block.
+- Stale content: `site/_data/calendar.json` holds only past sessions until the M365 calendar is synced, so class mode never shows.
+- `TODO` reaching a public page.
 - Links that outlived their target, including in `site/bin/` Python. `site/bin/redirect-report.py` reports `/equipment` unaccounted for.
 - Third-party CSS that stopped applying: Booqable injects its stylesheet at runtime and wins equal-specificity ties. Read the computed style.
 - Liquid failing silently: an empty string is truthy; `contains … == false` does not negate; an include parameter cannot be an indexed expression; a hash key must be a string; a wrapped line starting `2004.` is an ordered-list marker.

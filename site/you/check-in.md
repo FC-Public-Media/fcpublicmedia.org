@@ -7,7 +7,6 @@ permalink: /check-in/
 
 {%- assign ci = site.data.checkin -%}
 {%- assign loc = ci.location -%}
-{%- assign cl = site.data.classes -%}
 
 {%- comment -%} The homepage's schedule, read by the same assets/js/classes.js. {%- endcomment %}
 {% include class-config.html %}

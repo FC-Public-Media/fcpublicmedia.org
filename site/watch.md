@@ -5,29 +5,22 @@ title: Watch
 {% assign cc = site.data.cablecast %}
 {% assign air = site.data.airings %}
 
-## Live right now
+## Live
+
+[Cablecast]({{ site.fcpm.stream.cablecast }}), [YouTube]({{ site.fcpm.stream.youtube }})
+
+<div class="onair-bar onair-inline" data-onair hidden></div>
 
 <div class="embed embed-live">
   <iframe
-    src="https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-live-embed?streamId=1"
+    src="{{ site.fcpm.stream.cablecast }}"
     title="Fort Collins Public Media live stream"
     loading="lazy"
     allow="fullscreen"
     allowfullscreen></iframe>
 </div>
 
-<div class="onair-bar onair-inline" data-onair hidden></div>
-
-## Where to find the channel
-
-<ul class="rows">
-{% for channel in site.data.watch.carriage %}
-  {{ channel.name }} <span>{{ channel.detail }}</span>
-{% endfor %}
-</ul>
-
-{% if cc %}
-## Recently on the air
+## Recently aired
 
 <ul class="grid grid-show">
 {% for show in cc.recent limit: 12 %}
@@ -35,35 +28,24 @@ title: Watch
 {% endfor %}
 </ul>
 
-## Made in Fort Collins
+<br>
 
-{{ cc.local_total }} of the {{ cc.total }} programs on record were produced
-locally.
-
-<ul class="grid grid-show">
-{% for show in cc.recent_local limit: 12 %}
-  {% include show-card.html show=show %}
-{% endfor %}
-</ul>
-
-## The archive
+## Archive
 
 {{ cc.total }} programs on record, {{ cc.watchable }} of them watchable online.
 
 {%- comment -%} Airing history from _data/airings.json, joined on the Cablecast show id. {%- endcomment %}
-{% if air and air.totals.distinct > 0 %}
-<p class="lede">
+<p>
   In the last year, <b>{{ air.totals.slots }}</b> airings covered
   <b>{{ air.totals.distinct }}</b> programs.
 </p>
-{% endif %}
 
-### By category
+**By category:**
 
 <ul class="rows rows-tight">
 {% for category in cc.categories %}
   {%- assign anchor = category.name | slugify -%}
-  <a href="#{{ anchor }}">{{ category.name }} (<span>{{ category.count }}</span>)</a>
+  <a href="#{{ anchor }}" style="color: var(--record-ink)">{{ category.name }} <span style="color: var(--ink)">({{ category.count }})</span></a>
 {% endfor %}
 </ul>
 
@@ -122,4 +104,3 @@ locally.
 {% endfor %}
 
 <script src="{{ '/assets/js/archive-filter.js' }}?v={{ site.time | date: '%s' }}" defer></script>
-{% endif %}

@@ -6,25 +6,22 @@ booqable:
 
   # Booqable's script hydrates, in page order.
   components:
-  - class: booqable-datepicker
-    what: Pick the dates first, so everything below shows real availability.
   - class: booqable-product-list
     attributes: 'data-per="24" data-show-search="true"'
-    what: Every product with the search field built in.
 ---
 
-At any tier of
-[FC Public Media Membership]({{ '/join/' }})
-you can reserve both the video and podcast studios, edit with the full Adobe
-Creative Suite, and check out production equipment.
+<div class="halves" data-halves>
+<div class="halves-tabs" role="tablist" hidden>
+  <button type="button" role="tab" data-half="spaces" aria-selected="false">Spaces</button>
+  <button type="button" role="tab" data-half="equipment" aria-selected="true">Equipment</button>
+</div>
 
-## Spaces
+<section class="half" data-half="spaces" markdown="1">
 
-By email: [{{ site.fcpm.email.info }}](mailto:{{ site.fcpm.email.info }})
-By phone: {{ site.fcpm.phone }}
+## Studio
 
-{%- comment -%} The descriptions are the board's wording, verbatim: do not rewrite them.
-{%- endcomment %}
+[{{ site.fcpm.email.bookings }}](mailto:{{ site.fcpm.email.bookings }})
+
 <ul class="rows rows-spaces">
   <li>
     <b>Video Studio</b>
@@ -46,33 +43,24 @@ By phone: {{ site.fcpm.phone }}
     <p>Booked and checked out online, further down this page.</p>
   </li>
 </ul>
-{% include transaction.html key="booking" text="Check availability"
-   todo="Email or call and we'll check the room and a host for you." %}
 
-A room isn't confirmed straight away: someone has to check it is free and that a host can be
-there, so expect a reply rather than an instant booking. We'll email once it's confirmed &mdash;
-if you need it sooner than that, call.
+<figure class="floor-plan">
+  <img src="{{ '/assets/img/floor-plan.png' }}"
+       alt="Floorplan of studio space, demonstrating the control room, video studio, podcasting room, and restroom."
+       loading="lazy" decoding="async">
+</figure>
+
+</section>
+
+<section class="half" data-half="equipment" markdown="1">
 
 ## Equipment
 
-Pick your dates, add what you need, and check out. Checkout asks you to
-accept FC Public Media's Equipment Terms and Conditions and takes a
-refundable security deposit.
-
-Anything unusual, or would rather not book online? Email
-[{{ site.fcpm.equipment_email }}](mailto:{{ site.fcpm.equipment_email }}).
+[{{ site.fcpm.email.equipment }}](mailto:{{ site.fcpm.email.equipment }})
 
 {% include booqable.html config=page.booqable %}
 
-{%- comment -%} Floor plan at the bottom, per the board president's review; `plan_label` maps its room names. {%- endcomment %}
-<figure class="floor-plan">
-  <img src="{{ '/assets/img/floor-plan.png' }}"
-       alt="Floor plan. The video studio is the large room at the centre, with
-            the editing bays along its left wall and the podcast studio below,
-            off the corner."
-       width="381" height="381" loading="lazy" decoding="async">
-  <figcaption>
-    The plan uses the building's labels: <b>studio</b> is the video studio,
-    <b>office</b> is the podcast studio, <b>control room</b> is the editing bays.
-  </figcaption>
-</figure>
+</section>
+</div>
+
+<script type="module" src="{{ '/assets/js/halves.js' }}?v={{ site.time | date: '%s' }}"></script>

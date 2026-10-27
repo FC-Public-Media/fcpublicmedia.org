@@ -158,13 +158,6 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-.skip-link {
-  position: absolute; left: -9999px; top: 0; z-index: 100;
-  background: var(--signal); color: var(--signal-ink);
-  padding: 0.75rem 1.25rem; font-weight: 600;
-}
-.skip-link:focus { left: 0; }
-
 /* --- The brand plane ------------------------------------------------------ */
 
 /* The mark sits at an angle, and so can anything else. `.plane` is the whole vocabulary:
@@ -205,7 +198,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .prose > ol { max-width: var(--measure); }
 
 .prose > :last-child { margin-bottom: 0; }
-.prose h2 { margin-top: 2em; }
+.prose h2 { margin-top: 0; }
 .prose h3 { margin-top: 1.6em; }
 .prose li { margin-bottom: 0.35em; }
 
@@ -461,9 +454,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .oneview .hero {
   flex: 1 1 auto;
   display: grid;
-  & > .wrap {
-    padding-top: 4rem;
-  }
+  /*align-items: center;*/
+  &> .wrap { padding: 3rem 0; }
 }
 
 /* The footer's usual 5rem of air is there to separate it from a page that has ended. On a fitted
@@ -485,15 +477,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .hero .wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "panel class"
-    "qr    class";
+  grid-template-areas: "panel class";
   column-gap: clamp(1.5rem, 4vw, 3rem);
   row-gap: 1rem;
   align-items: start;
 }
 .hero-panel { grid-area: panel; }
-.hero-qr    { grid-area: qr; }
 .hero-class { grid-area: class; }
 
 /* With a photo, the type sits on opaque panels rather than on the image. */
@@ -511,9 +500,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .hero-photo .hero-class {
   color: var(--stable-glass);
     background-color: color-mix(in srgb, var(--signal) 15%, transparent);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    /*border-radius: 16px;*/
+    backdrop-filter: blur(120px) saturate(180%);
+    -webkit-backdrop-filter: blur(120px) saturate(180%);
     border: 1px solid color-mix(in srgb, var(--signal) 20%, transparent);
   padding: clamp(1.5rem, 3vw, 2.25rem);
 
@@ -560,6 +548,32 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
 
+/* Slogan, check-in code, channels. The code stands beside the slogan only; on a wide panel it may
+   run down beside the buttons too, but on a narrow one the buttons take the full width back
+   rather than wrapping one to a line in the code's shadow. */
+.hero-lockup {
+  display: grid;
+  /* min-content: the label wraps to the code's width instead of widening the column. */
+  grid-template-columns: minmax(0, 1fr) min-content;
+  grid-template-areas:
+    "title    qr"
+    "channels qr";
+  column-gap: clamp(1rem, 3vw, 2rem);
+  align-items: start;
+}
+.hero-lockup h1 { grid-area: title; }
+.hero-lockup .hero-qr { grid-area: qr; }
+.hero-lockup .hero-channels { grid-area: channels; }
+@media (max-width: 56rem) {
+  .hero-lockup {
+    grid-template-areas:
+      "title    qr"
+      "channels channels";
+  }
+  .hero .hero-channels { gap: 0.5rem; }
+  .hero .hero-channels .btn { padding: 0.5rem 0.8rem; }
+}
+
 /* Where to find us: text buttons, never icons. */
 .hero-channels { margin-top: 1.1rem; }
 
@@ -570,7 +584,9 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   justify-self: start;
   gap: 0.35rem;
 }
-.hero-qr img { width: clamp(5.5rem, 11vw, 7rem); }
+/* max-width off: in the lockup's min-content column a percentage cap lets the code shrink to the
+   width of the word CHECK. The code sets the column; the label wraps to it. */
+.checkin-card-qr.hero-qr img { max-width: none; }
 .hero-qr span { font-size: 0.66rem; color: var(--stable-glass); }
 
 .hero .btn {
@@ -597,9 +613,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 @media (max-width: 56rem) {
   .hero .wrap {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "panel"
-      "qr";
+    grid-template-areas: "panel";
     row-gap: 1.5rem;
   }
   .hero-class { width: 100%; }
@@ -610,7 +624,6 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   .hero[data-class-mode="late"] .wrap {
     grid-template-areas:
       "class"
-      "qr"
       "panel";
   }
 }
@@ -645,21 +658,13 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 
 /* The floor plan: an appendix at the foot of the page, set apart by a rule. */
-.floor-plan {
-  margin: clamp(3rem, 6vw, 5rem) 0 1.25rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--rule);
-  max-width: 22rem;
-}
 .floor-plan img {
   display: block;
   width: 100%;
   height: auto;
-  background: #fff;
   border: 1px solid var(--rule);
 }
 .floor-plan figcaption {
-  margin-top: 0.5rem;
   font-size: var(--step--1);
   color: var(--ink-soft);
 }
@@ -708,7 +713,6 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border-color: var(--signal);
   box-shadow: 0 0 0 3px var(--signal), 0 10px 24px rgb(0 0 0 / 0.18);
 }
-.tier-next { margin: 1.4rem 0 0; }
 @media (prefers-reduced-motion: reduce) {
   .tier { transition: none; }
 }
@@ -757,7 +761,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   grid-column: 1 / -1;
   margin: 0.3rem 0 0;
   color: var(--ink-soft);
-  max-width: var(--measure);
+  /*max-width: var(--measure);*/
 }
 .rows li span { color: var(--ink-soft); font-size: var(--step--1); }
 
@@ -774,12 +778,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 /* --- Transactions --------------------------------------------------------- */
 
 .transaction { margin: 1.75rem 0; }
-.transaction-provider {
-  display: block; margin-top: 0.5rem;
-  font-size: var(--step--1); color: var(--ink-soft);
-}
 
-/* An unconfigured transaction, made loud so it is noticed before production. */
+/* Something not set up yet, made loud so it is noticed before production. */
 .transaction-todo {
   border-left: 4px solid var(--signal);
   background: var(--paper-alt);
@@ -836,15 +836,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* --- Embeds --------------------------------------------------------------- */
 
-.embed { margin: 2rem 0; }
+.embed { margin: 0 0 1.5rem; width: 100%; }
 .embed iframe { width: 100%; border: 0; aspect-ratio: 16 / 9; }
 .embed-audio iframe { aspect-ratio: auto; height: 180px; }
 
 .embed-live {
-  border: 1px solid var(--rule);
   background: #000;
-  margin-block: 1.5rem;
-  max-width: 56rem;
 }
 .embed-live iframe { display: block; }
 
@@ -897,7 +894,6 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border: 1px solid var(--rule);
   background: var(--paper-alt);
   color: var(--ink);
-  margin-bottom: 2rem;
 }
 
 /* --- Featured ------------------------------------------------------------- */
@@ -951,7 +947,9 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* Short fields that belong together (date, time, runtime) on one line. */
 .field-row { display: flex; flex-wrap: wrap; gap: 0 1rem; }
-.field-row .field { flex: 1 1 8rem; }
+.field-row .field { flex: 1 1 8rem; display: flex; flex-direction: column; }
+/* A select draws shorter than an input; side by side, the row evens them. */
+.field-row .field > :is(input, select) { flex: 1; }
 
 .field textarea {
   width: 100%; font: inherit; padding: 0.6rem 0.7rem;
@@ -1154,11 +1152,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .band[data-class-mode="late"],
 .band[data-class-mode="soon"] { border-left: 5px solid var(--signal); }
 
-.class-now[hidden] { display: none; }
-.class-now h2 { margin-bottom: 0.3em; }
-.class-now [data-class-room]::before,
 .hero-class [data-class-room]::before { content: " · "; }
-.class-now hr { margin: 2.5rem 0 2rem; }
 
 .class-late {
   border-left: 3px solid var(--signal);
@@ -1166,22 +1160,6 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   font-weight: 600;
 }
 .class-late[hidden] { display: none; }
-
-.class-price {
-  font-size: var(--step--1);
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  padding: 0.8rem 1rem;
-  max-width: var(--measure);
-}
-.class-price[hidden] { display: none; }
-
-.checkin-card {
-  display: flex; flex-wrap: wrap; gap: var(--gap);
-  align-items: center; justify-content: space-between;
-}
-.checkin-card-text { flex: 1 1 22rem; }
-.checkin-card-text h2 { margin-bottom: 0.3em; }
 
 .checkin-card-qr {
   flex: 0 0 auto;
@@ -1587,4 +1565,68 @@ html.is-pass,
   color: var(--ink-soft);
   font-size: var(--step--1);
   b { font-size: 0.9em; }
+}
+
+blockquote {
+  border-left: 3px solid var(--signal);
+  margin-left: 1rem;
+  padding-left: 1rem;
+  color: var(--record-ink)
+}
+
+/* --- Split: the page's reading on the left, its form on the right (stacked on a phone) --- */
+
+.split { display: grid; gap: clamp(2rem, 5vw, 4rem); }
+.split > * > :first-child { margin-top: 0; }
+.split-main > :is(p, h2, h3, blockquote, ul, ol) { max-width: var(--measure); }
+@media (min-width: 56rem) {
+  .split { grid-template-columns: minmax(0, 1fr) minmax(20rem, 28rem); align-items: start; }
+}
+
+/* The way to Dropbox: a link to its upload page in a new tab, since Dropbox will not be framed. */
+.dropbox {
+  display: block; padding: 0 1.25rem 1rem;
+  text-align: center;
+}
+.dropbox b { display: block; font-size: var(--step-1); }
+.dropbox span { color: var(--ink-soft); font-size: var(--step--1); }
+
+.check { display: flex; gap: 0.6rem; align-items: flex-start; margin-bottom: 0.9rem; cursor: pointer; }
+.check input { margin-top: 0.3rem; flex: none; }
+
+/* Filled in by robots only. Off-screen rather than display:none, which some skip. */
+.trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* /join/'s survey: the experience questions fold away; their options run in columns. */
+.join-more { margin: 0.5rem 0 1.5rem; }
+.join-more summary { cursor: pointer; font-weight: 600; margin-bottom: 1rem; }
+.checks { border: 0; padding: 0; margin: 0 0 1.25rem; }
+.checks legend { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); margin-bottom: 0.6rem; }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); column-gap: 1rem; }
+.checks .check { margin-bottom: 0.5rem; }
+
+/* The organization field's suggestions from the IRS list. */
+[data-org-results]:empty { display: none; }
+[data-org-results] { margin: 0.4rem 0 0; }
+
+/* --- Halves: two parts of a page side by side; tabs on a phone (assets/js/halves.js) --- */
+
+.halves { display: grid; gap: clamp(2rem, 5vw, 4rem); }
+.half > :first-child { margin-top: 0; }
+.halves-tabs { display: none; }
+@media (min-width: 56rem) {
+  .halves { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+@media (max-width: 55.99rem) {
+  .halves { gap: 1.5rem; }
+  .halves-tabs:not([hidden]) {
+    display: flex; gap: 0; border-bottom: 1px solid var(--rule);
+    position: sticky; top: 0; z-index: 2; background: var(--paper);
+  }
+  .halves-tabs button {
+    flex: 1; font: inherit; font-weight: 700; padding: 0.8rem 1rem; cursor: pointer;
+    background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink-soft);
+  }
+  .halves-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--signal); }
+  .half.is-away { display: none; }
 }

@@ -325,25 +325,17 @@ class TestTheClassesPanel(unittest.TestCase):
     def test_it_is_the_config_classes_js_reads(self):
         """pickSession(config) takes exactly this, so screen and site agree."""
         out = self.build(
-            classes={"lead_minutes": 60, "late_minutes": 30,
-                     "sessions": [session("A", "2026-10-06T18:00:00-06:00")]}
+            config={"title": "FC Public Media", "fcpm": {"classes": {"lead_minutes": 60, "late_minutes": 30}}},
+            calendar={"sessions": [session("A", "2026-10-06T18:00:00-06:00")]},
         )
         self.assertTrue(out["takeover"])
-        self.assertEqual(
-            set(out["classes"]), {"source", "leadMinutes", "lateMinutes", "sessions"}
-        )
+        self.assertEqual(set(out["classes"]), {"leadMinutes", "lateMinutes", "sessions"})
         self.assertEqual((out["classes"]["leadMinutes"], out["classes"]["lateMinutes"]), (60, 30))
 
-    def test_calendar_wins_when_it_has_sessions(self):
-        """Same order as site/_includes/class-config.html."""
-        cal = {"sessions": [session("From M365", "2026-10-06T18:00:00-06:00")]}
-        cls = {"sessions": [session("By hand", "2026-10-07T18:00:00-06:00")]}
-        out = self.build(calendar=cal, classes=cls)
-        self.assertEqual(out["classes"]["source"], "calendar")
-        self.assertEqual([s["title"] for s in out["classes"]["sessions"]], ["From M365"])
-
-        out = self.build(calendar={"sessions": []}, classes=cls)
-        self.assertEqual(out["classes"]["source"], "file")
+    def test_no_calendar_is_no_classes(self):
+        """Nothing falls back to a hand-kept list; an empty calendar is an empty panel."""
+        self.assertEqual(self.build(calendar={})["classes"]["sessions"], [])
+        self.assertEqual(self.build()["classes"]["leadMinutes"], 90)
 
     def test_only_what_the_website_already_shows(self):
         """Whatever the calendar grows, a stranger reads four fields."""
@@ -360,16 +352,7 @@ class TestTheClassesPanel(unittest.TestCase):
         for bad in ("2026-10-06T18:00:00", "2026-10-06 18:00"):
             with self.subTest(bad=bad):
                 with self.assertRaises(SystemExit):
-                    self.build(classes={"sessions": [session("A", bad)]})
-
-    def test_yaml_datetimes_keep_their_offset(self):
-        """classes.yml's bare timestamps arrive as datetimes, not strings."""
-        cls = yaml.safe_load(
-            "sessions:\n  - title: A\n    starts: 2026-10-06T18:00:00-06:00\n"
-            "    ends: 2026-10-06T20:00:00-06:00\n"
-        )
-        (s,) = self.build(classes=cls)["classes"]["sessions"]
-        self.assertEqual(s["starts"], "2026-10-06T18:00:00-06:00")
+                    self.build(calendar={"sessions": [session("A", bad)]})
 
     def test_cancelled_sessions_are_left_off_and_the_rest_sorted(self):
         cal = {"sessions": [

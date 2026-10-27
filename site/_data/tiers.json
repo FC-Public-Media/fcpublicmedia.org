@@ -1,0 +1,32 @@
+{
+ "tiers": [
+  {
+   "amount": 4000,
+   "currency": "usd",
+   "name": "Supporter",
+   "price": "40",
+   "sku": "membership:supporter"
+  },
+  {
+   "amount": 6000,
+   "currency": "usd",
+   "name": "Student",
+   "price": "60",
+   "sku": "membership:student"
+  },
+  {
+   "amount": 7000,
+   "currency": "usd",
+   "name": "Creator",
+   "price": "70",
+   "sku": "membership:creator"
+  },
+  {
+   "amount": 14000,
+   "currency": "usd",
+   "name": "Producer",
+   "price": "140",
+   "sku": "membership:producer"
+  }
+ ]
+}

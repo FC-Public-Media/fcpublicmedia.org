@@ -13,7 +13,7 @@ fallback_note: >-
   Send the finished file the way you normally do &mdash; the shared Dropbox
   folder, or ask us and we'll sort it out. Nothing about that has changed yet.
 
-# Times carry Colorado's offset wherever the member is (as in _data/classes.yml).
+# Times carry Colorado's offset wherever the member is.
 timezone: America/Denver
 
 # Default drop time, when the evening block starts.

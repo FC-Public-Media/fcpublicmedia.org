@@ -38,13 +38,24 @@ groups:
         from: "Stripe dashboard, live mode: Developers, API keys, Restricted keys"
         issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
 
+  stripe-sync:
+    what: Reads the membership tiers out of Stripe for /join/; changes nothing.
+    form: env
+    used by: "keys run stripe-sync -- python3 site/bin/sync-tiers.py"
+    keys:
+      SYNC_STRIPE_API_KEY:
+        prefix: rk_live_
+        may: "read Products and Prices, nothing else (a restricted key: Products Read, Prices Read)"
+        from: "Stripe dashboard, live mode: Developers, API keys, Restricted keys"
+        issued: not held
+
   cloudflare:
     what: "deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV"
     form: env
     used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout"
     keys:
       CLOUDFLARE_API_TOKEN:
-        may: "Account: Cloudflare Pages Edit, Workers Scripts Edit, Workers KV Storage Edit; FCPM's org account only"
+        may: "Account: Cloudflare Pages Edit, Workers Scripts Edit, Workers KV Storage Edit; Zone (fcpublicmedia.org, once it is on the account): Zone Read, DNS Edit, Workers Routes Edit, for cloud.fcpublicmedia.org; FCPM's org account only"
         from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token, those three permissions (or edit the Pages token to add the two Workers ones; its value stays)"
         issued: 2026-10-24 as the Pages token; Workers permissions added later
       CLOUDFLARE_ACCOUNT_ID:

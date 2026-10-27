@@ -42,6 +42,4 @@ function paint(session) {
   el('[data-class-join]').textContent = session.running
     ? "I'm here for the class"
     : 'Check in for this class';
-
-  el('[data-class-price]').hidden = !config.dropin?.public || config.dropin.public === 'TODO';
 }

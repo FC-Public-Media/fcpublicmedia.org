@@ -1,25 +1,14 @@
-// Membership tiles: adds Continue and keeps ?tier= in the address (replaced, never pushed).
+// Membership tiles: keeps ?tier= in the address (replaced, never pushed), and picks it again on arrival.
 
 const radios = [...document.querySelectorAll('.tiers input[name="tier"]')];
-const next = document.getElementById('tier-next');
-const chosen = document.getElementById('tier-chosen');
-const go = document.getElementById('tier-continue');
+const slug = (radio) => radio.value.replace(/^membership:/, '');
 
-function show(radio) {
-  if (!radio) return;
-  chosen.textContent = `${radio.dataset.name}, $${radio.dataset.price} a year`;
-  go.dataset.sku = radio.value;          // what the passkey-then-checkout step will send
-  next.hidden = false;
+radios.forEach((radio) => radio.addEventListener('change', () => {
   const url = new URL(location.href);
-  url.searchParams.set('tier', radio.dataset.name.toLowerCase());
+  url.searchParams.set('tier', slug(radio));
   history.replaceState(null, '', url);
-}
-
-radios.forEach((r) => r.addEventListener('change', () => show(r)));
+}));
 
 const asked = new URLSearchParams(location.search).get('tier');
-const start = radios.find((r) => r.dataset.name.toLowerCase() === asked) || radios.find((r) => r.checked);
-if (start) {
-  start.checked = true;
-  show(start);
-}
+const start = radios.find((radio) => slug(radio) === asked);
+if (start) start.checked = true;

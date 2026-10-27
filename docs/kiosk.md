@@ -74,12 +74,11 @@ fetch. Read `welcome.yml` when you can.
 | `bin/build-kiosk.py` | the `classes` panel: the schedule and the two windows | a verdict on what is on now |
 | a renderer | the verdict, from its own clock, with `pickSession` | a second rule for "now" |
 
-The schedule is `calendar.json` when it has sessions, else `site/_data/classes.yml`, as the
-website does (`site/_includes/class-config.html`). Each session carries `title`, `starts`,
+The schedule is `calendar.json`, as the website's (`site/_includes/class-config.html`). Each session carries `title`, `starts`,
 `ends`, `room`, `summary`, and may carry `cancelled: true` (kept in the file, off every screen).
 Every time carries its UTC offset or the build refuses; sessions sort by instant. Nothing about
 people is copied, whatever the file holds. `leadMinutes` (90) and `lateMinutes` (45) come from
-`classes.yml`.
+`site/_config.yml` (`fcpm.classes.lead_minutes`, `fcpm.classes.late_minutes`).
 
 The panel is exactly the config `pickSession` in `site/assets/js/classes.js` takes. Import it
 or copy it byte for byte.

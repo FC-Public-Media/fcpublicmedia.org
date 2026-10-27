@@ -1,10 +1,11 @@
-// Picking your organization off the IRS 501(c)(3) list for an EIN; never a gate.
-// Fetched only when someone says they are a nonprofit. See docs/payments.md#nonprofit-rate.
+// The organization field doubles as a search of the IRS 501(c)(3) list: picking one fills the field with
+// its name and EIN. Never a gate: whatever is typed is kept as typed. The list is fetched only once someone
+// types there. See docs/payments.md#nonprofit-rate.
+// The words are the page's: this shows the field's [data-org="…"] lines and fills [data-count] and [data-ein].
 
-const config = JSON.parse(document.getElementById('nonprofit-config').textContent);
-
-const el = (id) => document.getElementById(id);
-
+const box = document.querySelector('[data-org-search]');
+const field = box && box.querySelector('input');
+const results = box && box.querySelector('[data-org-results]');
 const LIMIT = 8;
 
 let orgs = null;
@@ -22,136 +23,75 @@ const fold = (text) =>
 async function load() {
   if (orgs) return orgs;
   if (!loading) {
-    loading = fetch(config.data)
+    loading = fetch(box.dataset.list)
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       })
       .then((payload) => {
-        orgs = (payload.orgs || []).map(([ein, name, city]) => ({
-          ein,
-          name,
-          city,
-          folded: fold(name),
-        }));
+        orgs = (payload.orgs || []).map(([ein, name, city]) => ({ ein, name, city, folded: fold(name) }));
         return orgs;
       });
   }
   return loading;
 }
 
-/** Every typed word must appear, in any order. */
+/** Every typed word must appear, in any order; prefix matches first. */
 function search(query) {
   const words = fold(query).split(' ').filter(Boolean);
   if (!words.length) return [];
-
-  const hits = orgs.filter((org) => words.every((word) => org.folded.includes(word)));
-
-  // Prefix matches first.
   const start = fold(query);
-  hits.sort((a, b) => {
-    const lead = b.folded.startsWith(start) - a.folded.startsWith(start);
-    return lead || a.name.length - b.name.length;
-  });
-  return hits;
+  return orgs
+    .filter((org) => words.every((word) => org.folded.includes(word)))
+    .sort((a, b) => (b.folded.startsWith(start) - a.folded.startsWith(start)) || a.name.length - b.name.length);
 }
 
-/* --------------------------------------------------------------------- view */
+function show(key) {
+  for (const line of box.querySelectorAll('[data-org]')) line.hidden = line.dataset.org !== key;
+}
 
 function choose(org) {
-  el('nonprofit-name').textContent = org.name;
-  el('nonprofit-ein').textContent = org.ein;
-
-  const subject = `Nonprofit membership rate for ${org.name}`;
-  const body =
-    `We'd like the nonprofit rate.\n\n` +
-    `Organization: ${org.name}\n` +
-    `EIN: ${org.ein}\n` +
-    `City: ${org.city}\n\n` +
-    `(Found on the IRS 501(c)(3) list via your membership page.)\n`;
-  el('nonprofit-email').href =
-    `mailto:${config.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-  el('nonprofit-results').replaceChildren();
-  el('nonprofit-search').value = org.name;
-  el('nonprofit-status').textContent = '';
-  el('nonprofit-chosen').hidden = false;
+  field.value = `${org.name} (EIN ${org.ein})`;
+  results.replaceChildren();
+  box.querySelector('[data-ein]').textContent = org.ein;
+  show('chosen');
 }
 
-function render(hits, query) {
-  const list = el('nonprofit-results');
-  list.replaceChildren();
-
-  if (!query.trim()) {
-    el('nonprofit-status').textContent = '';
-    return;
-  }
-  if (!hits.length) {
-    // Not an error: the way forward is already on the page.
-    el('nonprofit-status').textContent =
-      "Nothing matching that. Plenty of organizations aren't on the IRS list — just tell us who you are.";
-    return;
-  }
-
+function render(hits) {
+  results.replaceChildren();
   const shown = hits.slice(0, LIMIT);
-  el('nonprofit-status').textContent =
-    hits.length > shown.length ? `${hits.length} matches — keep typing to narrow it.` : '';
-
+  box.querySelector('[data-count]').textContent = hits.length;
+  show(hits.length > shown.length ? 'many' : null);
   for (const org of shown) {
     const item = document.createElement('li');
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn-link';
     button.textContent = org.name;
+    // Before the field's blur clears the list.
+    button.addEventListener('pointerdown', (event) => event.preventDefault());
     button.addEventListener('click', () => choose(org));
-
     const where = document.createElement('span');
     where.className = 'muted';
     where.textContent = ` ${org.city}`;
-
     item.append(button, where);
-    list.append(item);
+    results.append(item);
   }
 }
 
-/* --------------------------------------------------------------------- init */
-
-async function onInput(event) {
-  const query = event.target.value;
-  el('nonprofit-chosen').hidden = true;
-
-  if (!query.trim()) {
-    render([], query);
-    return;
-  }
-
-  try {
-    await load();
-  } catch (error) {
-    // The contact route below is still there.
-    el('nonprofit-status').textContent =
-      "We couldn't load the organization list. Get in touch and we'll sort your rate out directly.";
-    return;
-  }
-
-  render(search(query), query);
-}
-
-function init() {
-  const panel = el('nonprofit-lookup');
-  if (!panel) return;
-
-  el('nonprofit-search').addEventListener('input', onInput);
-  el('nonprofit-clear').addEventListener('click', () => {
-    el('nonprofit-search').value = '';
-    el('nonprofit-chosen').hidden = true;
-    el('nonprofit-results').replaceChildren();
-    el('nonprofit-status').textContent = '';
-    el('nonprofit-search').focus();
+if (box) {
+  field.addEventListener('input', async () => {
+    show(null);
+    if (fold(field.value).length < 2) {
+      results.replaceChildren();
+      return;
+    }
+    try {
+      await load();
+    } catch {
+      return; // No suggestions; the field still takes whatever is typed.
+    }
+    render(search(field.value));
   });
-
-  // Revealed by script, so without JavaScript there is no dead search box.
-  panel.hidden = false;
+  field.addEventListener('blur', () => results.replaceChildren());
 }
-
-init();

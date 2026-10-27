@@ -1,31 +1,15 @@
 {%- comment -%}
-  The class schedule as JSON for assets/js/classes.js: _data/calendar.json if it has sessions,
-  else _data/classes.yml. Times go through date_to_xmlschema; jsonify alone is not ISO 8601.
+  The class schedule as JSON for assets/js/classes.js: _data/calendar.json's sessions, with the
+  windows from _config.yml. Times go through date_to_xmlschema; jsonify alone is not ISO 8601.
   See docs/programming.md.
 {%- endcomment -%}
 
-{%- assign cal = site.data.calendar -%}
-{%- assign cl = site.data.classes -%}
-
-{%- if cal.sessions and cal.sessions.size > 0 -%}
-  {%- assign sessions = cal.sessions -%}
-  {%- assign origin = "calendar" -%}
-{%- else -%}
-  {%- assign sessions = cl.sessions -%}
-  {%- assign origin = "file" -%}
-{%- endif -%}
-
 <script type="application/json" id="class-config">
 {
-  "source": {{ origin | jsonify }},
-  "leadMinutes": {{ cl.lead_minutes | default: 90 }},
-  "lateMinutes": {{ cl.late_minutes | default: 45 }},
-  "dropin": {
-    "public": {{ cl.dropin.public | jsonify }},
-    "member": {{ cl.dropin.member | jsonify }}
-  },
+  "leadMinutes": {{ site.fcpm.classes.lead_minutes | default: 90 }},
+  "lateMinutes": {{ site.fcpm.classes.late_minutes | default: 45 }},
   "sessions": [
-    {%- for s in sessions -%}
+    {%- for s in site.data.calendar.sessions -%}
     {
       "title": {{ s.title | jsonify }},
       "starts": {{ s.starts | date_to_xmlschema | jsonify }},

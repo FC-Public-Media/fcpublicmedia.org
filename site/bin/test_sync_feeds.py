@@ -570,24 +570,5 @@ class Output(unittest.TestCase):
                 self.assertEqual(len(json.load(handle)["items"]), 1)
 
 
-class TemplateGuard(unittest.TestCase):
-    """The template's escaping is the other half of the sanitizing. Keep both."""
-
-    def test_member_program_fields_are_escaped_in_the_template(self):
-        page = (HERE.parent / "meet.md").read_text(encoding="utf-8")
-
-        section = page.split("made by members", 1)
-        self.assertEqual(len(section), 2, "the member programs section moved or was renamed")
-        body = section[1]
-
-        for field in ("item.title", "item.summary", "item.source", "item.owner", "item.link"):
-            for use in re.findall(r"\{\{\s*" + re.escape(field) + r"\s*([^}]*)\}\}", body):
-                self.assertIn(
-                    "escape",
-                    use,
-                    f"{{{{ {field} }}}} is rendered without | escape — feed content is untrusted",
-                )
-
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)

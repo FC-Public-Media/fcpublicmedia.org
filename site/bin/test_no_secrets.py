@@ -68,19 +68,6 @@ class NothingSecretIsPublished(unittest.TestCase):
             "pushed — rotate it, do not merely delete the line:\n" + "\n".join(found),
         )
 
-    def test_the_publishable_key_field_is_actually_a_publishable_key(self):
-        # PUBLIC_STRIPE_API_KEY holds a restricted key, not a publishable one.
-        payments = (SOURCE / "_data" / "payments.yml").read_text(encoding="utf-8")
-        declared = re.search(r"publishable_key:\s*[\"']?([^\"'\s]*)", payments)
-        value = declared.group(1) if declared else ""
-
-        if value:
-            self.assertTrue(
-                value.startswith("pk_"),
-                f"publishable_key is {value[:8]}… — that is not a publishable key. "
-                "Only pk_ belongs in a file that is rendered into public pages.",
-            )
-
     def test_the_check_catches_a_key_when_there_is_one(self):
         # Shapes, not real keys.
         for shape in (

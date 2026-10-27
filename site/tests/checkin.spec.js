@@ -385,7 +385,7 @@ test.describe('check-in entry points', () => {
 // Class mode: the homepage's class logic, worked out on arrival.
 
 const BAKED = require('./pages').bakedClass();
-const CLASS_START = BAKED.start;
+const CLASS_START = BAKED?.start;
 const classAt = (minutes) => new Date(CLASS_START + minutes * 60000);
 
 async function visitDuringClass(page, context, minutes, coords = STUDIO) {
@@ -399,6 +399,8 @@ async function visitDuringClass(page, context, minutes, coords = STUDIO) {
 }
 
 test.describe('check-in during a class', () => {
+  test.skip(!BAKED, 'calendar.json has no sessions');
+
   test('says nothing about classes outside a class window', async ({ page, context }) => {
     await visitDuringClass(page, context, -24 * 60);
     await expect(page.locator('#class-banner-root')).toBeHidden();

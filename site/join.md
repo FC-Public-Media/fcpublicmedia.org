@@ -1,121 +1,123 @@
 ---
-title: Membership
+title: Join
 ---
 
-{%- assign m = site.data.membership -%}
+{%- assign tiers = site.data.tiers.tiers -%}
 
-Access to local news and local perspectives keeps shrinking. FCPM exists so
-that creators, producers, artists, and students in Fort Collins still have
-somewhere to make work and somewhere to put it.
+## Don't Just View It. Do It.
 
-{% comment %} The rules come before the prices: the rules are what readers find hard. {% endcomment %}
-
-## Tiers
-
-{%- comment -%} Each tile is a native radio stretched over the card; its value is the checkout SKU. {%- endcomment %}
+Membership is annual from the date of your payment.
 
 <fieldset class="tiers">
 <legend class="visually-hidden">Choose a tier</legend>
 <ul class="grid grid-4">
-{% for tier in m.tiers %}
-  {%- assign slug = tier.name | downcase -%}
+{% for tier in tiers %}
+  {%- assign slug = tier.sku | remove_first: "membership:" -%}
   <li class="card tier">
-    <input type="radio" name="tier" id="tier-{{ slug }}" value="membership:{{ slug }}"
+    <input type="radio" name="tier" id="tier-{{ slug }}" value="{{ tier.sku }}"
            data-name="{{ tier.name }}" data-price="{{ tier.price }}"
            aria-labelledby="tier-{{ slug }}-name tier-{{ slug }}-price">
     <h3 id="tier-{{ slug }}-name">{{ tier.name }}</h3>
     <p class="price" id="tier-{{ slug }}-price">${{ tier.price }}</p>
-    {%- comment -%} `times` by a float yields "20.0"; `round` makes it 20. {%- endcomment %}
-    <p class="muted">Nonprofits ${{ tier.price | times: m.nonprofit.rate | round }}</p>
+    <p class="muted">Nonprofits ${{
+      tier.amount
+        | times: site.fcpm.membership.nonprofit_rate
+        | divided_by: 100
+        | round
+    }}</p>
   </li>
 {% endfor %}
 </ul>
 </fieldset>
 
-Supporter is for backing the organization without needing studio access. The other three open
-the building; what separates them is still being settled by the board.
-
-{%- comment -%} Shown once a tier is chosen; leads to Join until a checkout step exists. {%- endcomment %}
-<p class="tier-next" id="tier-next" aria-live="polite" hidden>
-  <a class="btn btn-primary" id="tier-continue" href="#join">Continue with <span id="tier-chosen"></span></a>
-</p>
-
-## How it works
-
-<ul class="rows">
-  <li><b>A full year from the day you join.</b></li>
-  <li>Not the calendar year. Join in November and you are covered until the following November.</li>
-  <li>No half-year price any more, because there is no half year to buy &mdash; everyone gets
-      twelve months.</li>
-  <li>No monthly option.</li>
-  <li><b>Nonprofits pay half, on every tier.</b></li>
-</ul>
-
-## What every membership includes
-
-- Studio space
-- Equipment for video, photography, audio, and podcasting
-- Editing software and editing bays
-- Training classes
-- Community support and connection
-
-## If you're with a nonprofit
-
-<p>
-  Tell us which organization you're with before you pay, and we'll set the rate. You should never
-  have to buy the wrong membership and wait for a refund.
-</p>
-
-<div id="nonprofit-lookup" hidden>
-  <div class="field">
-    <label for="nonprofit-search">Find your organization</label>
-    <input type="search" id="nonprofit-search" autocomplete="off"
-           spellcheck="false" placeholder="Start typing the name">
+{%- comment -%} Names are the site-worker's `membership` tank; join.js sends it, then Stripe's page for
+  the tier picked above. See assets/js/join.js. {%- endcomment %}
+<form class="join-form" data-tank="membership" data-checkout data-subject="Membership"
+      data-worker="{{ site.data.site_worker.url }}" data-email="{{ site.fcpm.email.info }}">
+  <div class="field-row">
+    <div class="field"><label for="first_name">First</label><input id="first_name" name="first_name" autocomplete="given-name"></div>
+    <div class="field"><label for="last_name">Last</label><input id="last_name" name="last_name" autocomplete="family-name"></div>
   </div>
-
-  <p class="muted" id="nonprofit-status" role="status" aria-live="polite"></p>
-  <ul class="rows" id="nonprofit-results"></ul>
-
-  <div id="nonprofit-chosen" hidden>
-    <p class="transaction transaction-todo">
-      <b id="nonprofit-name"></b>
-      <span class="muted">EIN <span id="nonprofit-ein"></span> &mdash;
-      listed with the IRS as a 501(c)(3). Send us this when you get in touch
-      and we'll set your rate before you pay.</span>
-    </p>
-    <p class="hero-actions">
-      <a class="btn btn-primary" id="nonprofit-email" href="#">Email us this</a>
-      <button class="btn" id="nonprofit-clear" type="button">Choose a different one</button>
-    </p>
+  <div class="field-row">
+    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email"></div>
+    <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div>
   </div>
+  <div class="field-row">
+    <div class="field"><label for="address">Address</label><input id="address" name="address" autocomplete="street-address"></div>
+    <div class="field" data-org-search data-list="{{ '/assets/nonprofits.json' }}">
+      <label for="organization">Organization, if you're joining for one</label>
+      <input id="organization" name="organization" autocomplete="organization" placeholder="Name search">
+      <ul class="rows" data-org-results></ul>
+      <p class="muted" data-org="many" hidden><span data-count></span> matches; keep typing to narrow it.</p>
+      <p class="muted" data-org="chosen" hidden>Listed with the IRS as a 501(c)(3), EIN <span data-ein></span>.</p>
+    </div>
+  </div>
+  <label class="check">
+    <input type="checkbox" name="agree_terms" required>
+    <span>I have read and agree to the <a href="{{ '/assets/docs/studio-terms.pdf' }}">Studio</a> and
+      <a href="{{ '/assets/docs/equipment-terms.pdf' }}">Equipment</a> Terms and Conditions.</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" name="submit_terms" required>
+    <span>I understand the public media <a href="/submit/">Submission</a> requirements.</span>
+  </label>
+
+  <!--<details class="join-more">
+    <summary>Your production experience, if you like</summary>
+    <fieldset class="checks">
+      <legend>Any media production experience?</legend>
+      <label class="check"><input type="checkbox" name="experience" value="Producing" data-list><span>Producing</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Directing" data-list><span>Directing</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Technical Directing" data-list><span>Technical Directing</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Audio Board" data-list><span>Audio Board</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Studio Camera" data-list><span>Studio Camera</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Field Production" data-list><span>Field Production</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Set Design" data-list><span>Set Design</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Lighting" data-list><span>Lighting</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Editing" data-list><span>Editing</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="On-Air Talent" data-list><span>On-Air Talent</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Still Photography" data-list><span>Still Photography</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Podcasting" data-list><span>Podcasting</span></label>
+      <label class="check"><input type="checkbox" name="experience" value="Other" data-list><span>Other</span></label>
+    </fieldset>
+    <div class="field"><label for="experience_other">Other experience</label><input id="experience_other" name="experience_other"></div>
+    <fieldset class="checks">
+      <legend>Where?</legend>
+      <label class="check"><input type="checkbox" name="experience_where" value="Home Equipment" data-list><span>Home Equipment</span></label>
+      <label class="check"><input type="checkbox" name="experience_where" value="Other Access Facilities" data-list><span>Other Access Facilities</span></label>
+      <label class="check"><input type="checkbox" name="experience_where" value="Corporate Communications Company" data-list><span>Corporate Communications Company</span></label>
+      <label class="check"><input type="checkbox" name="experience_where" value="Video Production Company" data-list><span>Video Production Company</span></label>
+      <label class="check"><input type="checkbox" name="experience_where" value="School and/or College" data-list><span>School and/or College</span></label>
+      <label class="check"><input type="checkbox" name="experience_where" value="Other" data-list><span>Other</span></label>
+    </fieldset>
+    <div class="field"><label for="experience_where_other">Other places</label><input id="experience_where_other" name="experience_where_other"></div>
+    <div class="field"><label for="heard_from">How did you hear about us?</label><input id="heard_from" name="heard_from"></div>
+  </details>-->
+
+  <div class="trap" aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+
+  <p class="hero-actions">
+    <button class="btn btn-primary" type="submit" data-pay>Join and pay with Stripe</button>
+    <button class="btn" type="button" data-keep>I represent a nonprofit or cannot complete payment in advance</button>
+  </p>
+  <div class="muted" role="status" aria-live="polite">
+    <p data-say="pick-tier" hidden>Pick a tier first.</p>
+    <p data-say="opening" hidden>Opening the payment page…</p>
+    <p data-say="sending" hidden>Sending…</p>
+    <p data-say="empty" hidden>Nothing is filled in yet.</p>
+    <p data-say="unsent" hidden>Joining can't take payment online yet. <a data-mailto href="#">Email this to us</a>; it's all filled in, and a person will sort out paying with you.</p>
+    <p data-say="unpaid-kept" hidden>The payment page couldn't open. We have your answers and the tier you picked, and a person will write to you about paying.</p>
+    <p data-say="unpaid" hidden>The payment page couldn't open. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
+    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
+  </div>
+</form>
+<div data-receipt="sent" tabindex="-1" hidden>
+  <p><b>Received.</b> Reference <code data-reference></code>. A person will write to you about paying.</p>
+</div>
+<div data-receipt="joined" tabindex="-1" hidden>
+  <p><b>Thank you for joining.</b> Your payment went through, and Stripe is emailing you a receipt. A person will be in touch about your membership.</p>
 </div>
 
-{%- comment -%} Never a gate: "not listed" is always visible. See docs/payments.md#nonprofit-rate. {%- endcomment %}
-<p class="muted">
-  Not listed? That happens &mdash; new organizations, chapters, and anyone
-  working under a fiscal sponsor often aren't.
-  <a href="mailto:{{ site.fcpm.email.info }}">Tell us who you are</a> and we'll sort it out.
-</p>
-
-## Join
-
-{% include transaction.html key="membership" text="Join or renew"
-   todo="Email or call and we'll set you up by hand, including the nonprofit rate." %}
-
-Signing up asks for your contact information and a little about your production
-experience, and requires agreeing to the studio and equipment terms and
-conditions.
-
-## Questions
-
-Email [{{ site.fcpm.email.info }}](mailto:{{ site.fcpm.email.info }}) or call
-{{ site.fcpm.phone }}.
-
-<script type="application/json" id="nonprofit-config">
-{
-  "data": {{ '/assets/nonprofits.json' | jsonify }},
-  "email": {{ site.fcpm.email | jsonify }}
-}
-</script>
 <script type="module" src="{{ '/assets/js/nonprofit.js' }}?v={{ site.time | date: '%s' }}"></script>
 <script type="module" src="{{ '/assets/js/tiers.js' }}?v={{ site.time | date: '%s' }}"></script>
+<script type="module" src="{{ '/assets/js/join.js' }}?v={{ site.time | date: '%s' }}"></script>

@@ -2,7 +2,6 @@
 <html lang="en">
 {% include head.html %}
 <body{% if page.oneview %} class="oneview"{% endif %}>
-  <a class="skip-link" href="#main">Skip to content</a>
   {% include header.html %}
 
   <main id="main">
@@ -36,7 +35,7 @@
         <a href="mailto:{{ email.equipment }}">{{ email.equipment }}</a><br>
         <a href="mailto:{{ email.bookings }}">{{ email.bookings }}</a><br>
         <a href="mailto:{{ email.donations }}">{{ email.donations }}</a><br>
-        <a href="mailto:{{ email.nonprofits }}">{{ email.nonprofits }}</a><br>
+        <a href="mailto:{{ email['non-profits'] }}">{{ email['non-profits'] }}</a><br>
         <a href="tel:{{ site.fcpm.phone | remove: '-' }}">{{ site.fcpm.phone }}</a>
       </p>
 

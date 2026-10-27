@@ -17,14 +17,8 @@ fcpm:
     non-profits: nonprofits@fcpublicmedia.org
   phone: 970-818-2490
 
-  # The old front page's own video. It belongs to the Wix photocopy and would be better served from
-  # there, but the zone has no `wix` record yet (docs/site.md#domain-and-dns names only @, www and
-  # new), so it is served from here until that exists. Made from
-  # wix/site/_wix/video.wixstatic.com/4dbbfd6f6fe0a3a7.mp4 with the audio dropped and scaled to
-  # 1280: 12.3MB to 928K. _includes/reel.html renders nothing without `hero_video`.
   hero_video: /assets/video/wix-was.mp4
   hero_video_poster: /assets/img/wix-was-poster.jpg
-  hero_video_caption: fcpublicmedia.org as it was, until this replaced it.
 
   address:
     venue: Center for Creativity
@@ -45,9 +39,24 @@ fcpm:
   channels:
     On-site: /reserve/
     In town: /meet/
+    Comcast 97: /watch/
     YouTube: https://www.youtube.com/@fcpublicmedia
     Instagram: https://www.instagram.com/fcpublicmedia/
     Newsletter: https://conta.cc/3G5YyWi
+
+  stream:
+    cablecast: https://ch97.fcpublicmedia.org/internetchannel/watch-live-embed?streamId=1
+    cablecast2: https://ch97.fcpublicmedia.org/internetchannel/watch-live-embed?streamId=2
+    cablecast3: https://ch97.fcpublicmedia.org/internetchannel/watch-live-embed?streamId=3
+    youtube: https://www.youtube.com/watch?v=pKj9zdsTV0A
+
+  classes:
+    rate: $50/hr
+    lead_minutes: 90
+    late_minutes: 45
+
+  membership:
+    nonprofit_rate: 0.5
 
 permalink: pretty
 markdown: kramdown

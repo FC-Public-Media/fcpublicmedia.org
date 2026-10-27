@@ -20,7 +20,7 @@ is ideal, and the events calendar goes on `/meet/`, not the homepage.
 | ~~*"At any tier of FC Public Media Membership you can reserve both the video and podcast studios, edit with the full Adobe Creative Suite, and check out production equipment"*~~ | intro of `site/reserve.md` |
 | ~~*"I like having the floorplan on the page. However I don't think it needs to be at the top... The floor plan might be better at the bottom as extra information"*~~ The video or slideshow half waits on footage | `site/reserve.md` |
 | *"I'd like a picture for every option/offering. I can take and send you the pictures. There may also be some old ones on Wix."* Accepted | `image:` per entry in `site/_data/facilities.yml`, rendered in `rows-spaces`, once photos exist |
-| *"On Nov 1, 2026 I'll officially switch equipment requests to this email. I'll make an announcement in the October Newsletter so people are aware. In the meantime we can still use the fcpmequipment@gmail.com email."* | `org.equipment_email` in `site/_data/org.yml` becomes `equipment@fcpublicmedia.org` on 2026-11-01 |
+| *"On Nov 1, 2026 I'll officially switch equipment requests to this email. I'll make an announcement in the October Newsletter so people are aware. In the meantime we can still use the fcpmequipment@gmail.com email."* | `fcpm.email.equipment` in `site/_config.yml`, already `equipment@fcpublicmedia.org` |
 | ~~*"In your email please include: 1. Your contact information. 2. What equipment you will need or are looking for. 3. The dates of your production."*~~ | Equipment section of `site/reserve.md` |
 | ~~*"All equipment requests must be submitted at least one week in advance. All users must provide a valid credit card for late fees and incidentals. Any User of FC Public Media equipment must agree to FC Public Media's Equipment Terms and Conditions."*~~ | Equipment section of `site/reserve.md`; the Terms are named but unlinked, since no such document exists |
 
@@ -36,6 +36,6 @@ shows until content is supplied.
 |---|---|
 | *"I'd like to see office hours posted on the page."* | through the next note |
 | *"If we have a board directors section, we can post each board member's office hours in their mini-bios."* | `office_hours` per person in `site/_data/board.yml`, shown in the roster card on `/meet/` (The board, Who's on it) |
-| *"Only note, picture on the page of people teaching classes."* | `photo.src` and `photo.alt` in `site/_data/classes.yml`, at the top of `/classes/`. It renders only with `alt` |
+| *"Only note, picture on the page of people teaching classes."* | Was `photo` in `site/_data/classes.yml`, never filled; dropped with that file. Open in [OPEN.md](OPEN.md) |
 
 What is still open from both rounds is in [OPEN.md](OPEN.md).

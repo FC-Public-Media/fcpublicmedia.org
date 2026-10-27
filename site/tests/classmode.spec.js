@@ -4,7 +4,7 @@ const { test, expect } = require('@playwright/test');
 const { isThirdParty, bakedClass } = require('./pages');
 
 const CLASS = bakedClass();
-const START = CLASS.start;
+const START = CLASS?.start;
 const MINUTE = 60000;
 
 const at = (offsetMinutes) => new Date(START + offsetMinutes * MINUTE);
@@ -20,6 +20,8 @@ async function visitAt(page, when) {
 }
 
 test.describe('class mode', () => {
+  test.skip(!CLASS, 'calendar.json has no sessions');
+
   test('stays out of the way when no class is running', async ({ page }) => {
     await visitAt(page, at(-24 * 60)); // a day before
 

@@ -56,21 +56,21 @@ unclaimed titles by first word, names a group by the longest word prefix 80% of 
 ## Class mode
 
 `site/_includes/class-config.html`, in `site/index.html` and `site/check-in.md`, bakes the schedule
-in as JSON: `site/_data/calendar.json` if it has sessions, else `site/_data/classes.yml`.
+in as JSON: the sessions in `site/_data/calendar.json`, the windows in `site/_config.yml`.
 `pickSession` (`site/assets/js/classes.js`) checks it against the clock, without a request, every
-minute while the page is visible. Windows: `soon` (`lead_minutes`, 90, before the start), `late`
-(the first `late_minutes`, 45), `now` (the rest).
+minute while the page is visible. Windows: `soon` (`fcpm.classes.lead_minutes`, 90, before the start),
+`late` (the first `fcpm.classes.late_minutes`, 45), `now` (the rest).
 
-- Homepage (`classmode.js`): the class panel appears; its drop-in price stays hidden while `TODO`.
+- Homepage (`classmode.js`): the class panel appears.
 - Check-in (`checkin.js`): a class banner; the reason is `Class` unless the URL's `?reason=` names
   another listed reason; the button reads "I'm here for the class". Before the start, "I'm planning
   to come" stores the session in `fcpm.rsvp`, on the device only.
 - The QR on the door always links to `/check-in/`; the page works out the class on arrival.
 
-`classes.yml` also holds `photo` (top of `/classes/`, never shown without `alt`), `dropin` and
-`sessions` (`title`, `starts`, `ends`, `room`, `summary`, `signup`). Times carry an offset
-(`2026-08-11T18:00:00-06:00`); a bare time is read in the visitor's zone. A new class appears at
-the next build. On the roller TV: [roller-tv/README.md](../machines/kiosk/roller-tv/README.md#class-mode).
+A session is `title`, `starts`, `ends`, `room`, `summary`, and optionally `signup` (default
+`/learn/`), as `sync-calendar.py` writes them; nobody edits `calendar.json` by hand. A new class
+appears at the next build after the calendar is synced. No calendar, no class mode: there is no
+hand-kept fallback. On the roller TV: [roller-tv/README.md](../machines/kiosk/roller-tv/README.md#class-mode).
 
 ## Calendar
 

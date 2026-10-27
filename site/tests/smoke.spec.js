@@ -216,19 +216,10 @@ test.describe('archive', () => {
   });
 });
 
-// A room request and a class signup will post to the site-worker; neither is built. They ask on
-// the page that owns the thing, not on a page of their own: /book/ and /register/ are gone.
+// A room request and a class signup will post to the site-worker; neither is built. Until then the
+// page that owns the thing gives a person to reach: /book/ and /register/ are gone.
 test.describe('requests', () => {
   for (const path of ['/reserve/', '/learn/']) {
-    test(`${path} says plainly that it is not set up online yet`, async ({ page }) => {
-      await page.goto(path);
-
-      // Not `.first()`: /classes/ opens with a different todo block about where listings live.
-      const notice = page.locator('.transaction-todo', { hasText: 'not set up online yet' });
-      await expect(notice).toHaveCount(1);
-      await expect(notice).toBeVisible();
-    });
-
     test(`${path} still offers a way to reach a person`, async ({ page }) => {
       await page.goto(path);
 

@@ -2,45 +2,100 @@
 title: Submit
 ---
 
-Community members can submit video for broadcast on our cable channels,
-streaming platforms, and social media.
+<div class="split">
+<div class="split-main" markdown="1">
 
-## What we need
+## Acceptance
 
-Every submission needs:
+Media will broadcast to **Comcast 97**, **Connexion 22**, **Roku**, **AppleTV**, **YouTube**, the **{{ site.title }} website** and associated **cablecast.tv** outlet.
 
-- An identifying title
-- Ending credits
-- A content warning disclaimer, if the program contains material some viewers
-  may find offensive
+Submissions must:
 
-Video files must be HD quality.
+1. be accompanied by the completed form below.
+1. be released for broadcast by the copyright manager's permission.
+2. be "HD" (720p or better).
+3. be uploaded to our Dropbox.
 
-## What we can't run
+## Disclaimers
 
-Programs may not include material that is libelous, slanderous, or defamatory,
-that is an unlawful invasion of privacy, or that violates copyright.
+Member-made media is not the opinion of staff or technology vendors.
 
-Public access programs must not be primarily advertising and must not contain a
-commercial call to action. Political advertisements are not permitted.
+Submissions must:
 
-## Submit
+1. **not** be a vehicle for a <u>call to action</u>.
+2. **not** be <u>primarily advertising</u>.
+3. **not** be <u>paid political endorsement</u> in other media.
+3. **not** be libelous, slanderous or defamatory, that is an unlawful invasion of privacy or violates state, federal or copyright laws.
 
-{% include transaction.html key="submit" text="Start a submission"
-   todo="Email us about the programme and we'll take it from there." %}
+Media that is offensive or inappropriate for unsolicited or underage viewing should present a discretion disclaimer, such as:
 
-The submission form collects your contact information, the program title and
-description, a category, your requested first run date, and four ranked
-day-and-time preferences. You'll confirm that you hold the necessary rights and
-that your file has been uploaded.
+> The following program contains material that may be offensive to some viewers or inappropriate for viewing by children. Viewer discretion is advise.
 
-## Agreement
+</div>
+<aside class="split-side" aria-labelledby="submit">
+<h2 id="submit">Submit</h2>
 
-By submitting, you agree to indemnify Fort Collins Public Media and the City of
-Fort Collins against claims arising from the broadcast, and you authorize
-publication across all of our platforms &mdash; cable channels 97 and 22, Roku,
-Apple TV, this website, and YouTube.
+<a class="dropbox" href="https://www.dropbox.com/request/ex9K5a8TvCI8SrFRy8Vz" target="_blank" rel="noopener">
+  <b>Open our Dropbox</b>
+</a>
 
-TODO &mdash; reproduce the full agreement text here. It is currently embedded
-in the Wix form and is the most legally significant content on the site; it
-should live in version control where changes are reviewable.
+{%- comment -%} Names are the site-worker's `program` tank. See assets/js/answers.js. {%- endcomment %}
+<form data-tank="program" data-subject="Program submission"
+      data-worker="{{ site.data.site_worker.url }}" data-email="{{ site.fcpm.email.info }}">
+  <label class="check">
+    <input type="checkbox" name="copyright" required>
+    <span>I consent and am authorized to release this media for broadcast.</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" name="uploaded">
+    <span>I have confirmed the success of my upload.</span>
+  </label>
+
+  <div class="field-row">
+    <div class="field"><label for="first_name">First</label><input id="first_name" name="first_name" autocomplete="given-name"></div>
+    <div class="field"><label for="last_name">Last</label><input id="last_name" name="last_name" autocomplete="family-name"></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+    <div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label for="title">Title</label><input id="title" name="title"></div>
+    <div class="field">
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        <option value=""></option>
+        <option>Art &amp; Literature</option>
+        <option>Classic Films Show</option>
+        <option>Comedy</option>
+        <option>Film &amp; Animation</option>
+        <option>Food &amp; Drink</option>
+        <option>Gaming</option>
+        <option>Music</option>
+        <option>News &amp; Information</option>
+        <option>Non-Profit Awareness</option>
+        <option>Sports</option>
+        <option>Theatre &amp; Dance</option>
+        <option>Other</option>
+      </select>
+    </div>
+  </div>
+  <div class="field"><label for="description">Description &amp; credits</label><textarea id="description" name="description" rows="5"></textarea></div>
+  <div class="field"><label for="schedule">Scheduling (optional)</label><textarea id="schedule" name="schedule" rows="3"></textarea></div>
+
+  <div class="trap" aria-hidden="true"><label for="website">Website</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+
+  <p><button class="btn btn-primary" type="submit">Submit</button></p>
+  <div class="muted" role="status" aria-live="polite">
+    <p data-say="sending" hidden>Sending…</p>
+    <p data-say="unsent" hidden>This form can't send on its own yet. <a data-mailto href="#">Email it to us</a> instead; it's all filled in.</p>
+    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email it to us</a> instead; it's all filled in.</p>
+  </div>
+</form>
+<div data-receipt="sent" tabindex="-1" hidden>
+  <p><b>Received.</b> Reference <code data-reference></code>.</p>
+</div>
+</aside>
+</div>
+
+<script type="module" src="{{ '/assets/js/answers.js' }}?v={{ site.time | date: '%s' }}"></script>

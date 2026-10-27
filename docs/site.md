@@ -2,7 +2,7 @@
 
 fcpublicmedia.org is a static Jekyll site built from `site/` and uploaded to one Cloudflare Pages project,
 `fcpm-new`, at `new.fcpublicmedia.org` ([Deploy](#deploy)), while the apex and `www` serve the photocopy of the old Wix site. Its five transactions (tickets, dues, donations,
-booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md](payments.md#transactions)).
+booking, submissions) are hand-offs to other services ([payments.md](payments.md#transactions)).
 
 ## Layout
 
@@ -13,7 +13,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `_config.yml`, `Gemfile`, `.ruby-version` | build config, read relative to the build root |
 | `*.md`, `index.html`, `404.html` | one file per page; the filename is the URL |
 | `_layouts/` | `default`, `page`, `pass` (`/check-in/`, `/lights/`) |
-| `_includes/` | `head`, `header`, `footer`, `transaction`, `show-card` and smaller parts |
+| `_includes/` | `head`, `header`, `footer`, `show-card` and smaller parts |
 | `you/` | the member's own pages. `/check-in/`, `/authorize/` and `/lights/` keep their old URLs by `permalink` (a printed QR, an issued claim link, the kiosk camera); the rest are `/you/:name/` |
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
 | `member-sites/` | built member sites, by `bin/build-sites.py --publish` ([members.md](members.md)); `bin/deploy-site` runs it |
@@ -30,8 +30,7 @@ booking, submissions) are hand-offs in `site/_data/providers.yml` ([payments.md]
 | `advocate.yml`, `tell.yml`, `atlas.yml`, `keys/`, `_data/`, `.<name>-engine/` | seats, directory, submodules |
 
 - `site/_data` reads only what is inside `site/`; Jekyll's `data_dir` cannot leave the source.
-- The root reaches down: syncs write `site/_data/`, `bin/build-kiosk.py` reads it, and
-  `site/bin/build-prices.py` writes the site-worker's price list. `site/` never reaches up.
+- The root reaches down: syncs write `site/_data/` and `bin/build-kiosk.py` reads it. `site/` never reaches up.
 - The site-worker is its own repository ([FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker));
   its `src/claims.js` is a copy of `site/assets/js/claims.js`: change both.
 - No symlinks across the boundary: `jekyll build --safe` silently reads them as empty.
@@ -90,8 +89,6 @@ Other data files name their doc in their first line.
 
 - Every time carries a UTC offset, `"2026-09-15T18:30:00-06:00"`, or a browser reads it as local.
 - Entries with no `url` (channels, socials, documents) are skipped.
-- `/meet/` "What's on" merges `classes.yml` sessions, `governance.yml` meetings and
-  `community.yml` events (`kind` is a free label, default "Event"). Past items drop out.
 - `featured.yml` items drop off only when the site rebuilds.
 - `org.mission` and the `facilities.yml` summaries are the board's wording: never rewrite them.
 

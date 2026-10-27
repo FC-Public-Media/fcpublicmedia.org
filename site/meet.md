@@ -2,7 +2,17 @@
 title: Meet
 ---
 
-## The board
+## In Town
+
+Let's do coffee and keep it going.
+
+**Next:** _TBD_
+
+## Before Now
+
+_Coming soon!_
+
+## The Board
 
 <ul class="grid" style="gap: 0; padding: 0; margin: 0">
 {%- assign _people = site.data.hosts.people | where_exp: "p", "p.role != nil" -%}

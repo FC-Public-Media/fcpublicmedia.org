@@ -2499,7 +2499,7 @@ def room_cfg(room):
 
 
 def room_classes(cfg, now, limit=3):
-    """This room's next classes (site/_data/classes.yml, by the room's name), the one on now first."""
+    """This room's next classes (site/_data/calendar.json, by the room's name), the one on now first."""
     want = str(cfg.get("classes") or "")
     out = []
     for c in class_config(now).get("sessions") or []:

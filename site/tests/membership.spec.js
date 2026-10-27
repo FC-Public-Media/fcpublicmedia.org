@@ -4,6 +4,15 @@ const { test, expect } = require('@playwright/test');
 
 const DATA = '**/assets/nonprofits.json';
 
+// The tiers as sync-tiers.py last pulled them from Stripe; none until it has run.
+const TIERS = (() => {
+  try {
+    return require('../_data/tiers.json').tiers || [];
+  } catch {
+    return [];
+  }
+})();
+
 /** A small stand-in, so matching is tested rather than the size of the file. */
 const ORGS = {
   county: 'Larimer',
@@ -25,42 +34,34 @@ async function withList(page, { status = 200, body = ORGS } = {}) {
   });
 }
 
-test.describe('the rules', () => {
-  test('says the year starts when you join, not in January', async ({ page }) => {
-    // One year from sign-up, not the calendar year.
-    await page.goto('/join/');
-
-    const rules = page.locator('h2', { hasText: 'How it works' }).locator('+ ul');
-    await expect(rules).toContainText('A full year from the day you join');
-    await expect(rules).toContainText('Not the calendar year');
-  });
-
-  test('says the two things that no longer exist', async ({ page }) => {
-    // Retired rules people remember are stated as gone.
-    await page.goto('/join/');
-
-    const rules = page.locator('h2', { hasText: 'How it works' }).locator('+ ul');
-    await expect(rules).toContainText('No half-year price');
-    await expect(rules).toContainText('No monthly option');
-  });
-
+test.describe('the tiers', () => {
   test('the nonprofit rate is on every tier, not hidden in a paragraph', async ({ page }) => {
-    // The nonprofit rate is on the page for everyone.
+    // The nonprofit rate is on the page for everyone: half, to the dollar.
+    test.skip(!TIERS.length, 'site/_data/tiers.json has no tiers; run sync-tiers.py');
     await page.goto('/join/');
 
     const cards = page.locator('.grid-4 .card');
-    await expect(cards).toHaveCount(4);
+    await expect(cards).toHaveCount(TIERS.length);
 
-    for (const card of await cards.all()) {
-      await expect(card).toContainText(/Nonprofits \$\d+/);
+    for (const tier of TIERS) {
+      const card = page.locator('.card', { hasText: tier.name });
+      await expect(card).toContainText(`$${tier.price}`);
+      await expect(card).toContainText(`Nonprofits $${Math.round(tier.amount / 200)}`);
     }
-    await expect(page.locator('.card', { hasText: 'Supporter' })).toContainText('Nonprofits $20');
-    await expect(page.locator('.card', { hasText: 'Producer' })).toContainText('Nonprofits $70');
+  });
+
+  test('with no tiers pulled, no empty grid', async ({ page }) => {
+    test.skip(TIERS.length > 0, 'tiers are pulled');
+    await page.goto('/join/');
+    await expect(page.locator('.tiers')).toHaveCount(0);
   });
 });
 
 test.describe('finding your organization', () => {
-  test('the list is not fetched until somebody needs it', async ({ page }) => {
+  const field = (page) => page.locator('#organization');
+  const results = (page) => page.locator('[data-org-results] li');
+
+  test('the list is not fetched until somebody types there', async ({ page }) => {
     // A hundred and sixteen kilobytes that most visitors have no use for.
     let fetched = 0;
     await page.route(DATA, async (route) => {
@@ -69,89 +70,56 @@ test.describe('finding your organization', () => {
     });
 
     await page.goto('/join/');
-    await expect(page.locator('#nonprofit-search')).toBeVisible();
+    await expect(field(page)).toBeVisible();
     expect(fetched).toBe(0);
 
-    await page.locator('#nonprofit-search').fill('poudre');
-    await expect(page.locator('#nonprofit-results li')).toHaveCount(1);
+    await field(page).fill('poudre');
+    await expect(results(page)).toHaveCount(1);
     expect(fetched).toBe(1);
   });
 
   test('words in any order still find it', async ({ page }) => {
-    // Any remembered words, in any order.
     await withList(page);
     await page.goto('/join/');
-
-    await page.locator('#nonprofit-search').fill('trust library');
-
-    await expect(page.locator('#nonprofit-results li')).toContainText('POUDRE RIVER LIBRARY TRUST');
+    await field(page).fill('trust library');
+    await expect(results(page)).toContainText('POUDRE RIVER LIBRARY TRUST');
   });
 
   test('punctuation you would type does not stop a match', async ({ page }) => {
     // The IRS file has no apostrophes. People do.
     await withList(page);
     await page.goto('/join/');
-
-    await page.locator('#nonprofit-search').fill("st. mary's");
-
-    await expect(page.locator('#nonprofit-results li')).toContainText('ST MARYS COMMUNITY KITCHEN');
+    await field(page).fill("st. mary's");
+    await expect(results(page)).toContainText('ST MARYS COMMUNITY KITCHEN');
   });
 
-  test('choosing one hands over the EIN, which is the point', async ({ page }) => {
+  test('choosing one fills the field with its name and EIN, which is the point', async ({ page }) => {
     await withList(page);
     await page.goto('/join/');
+    await field(page).fill('museum');
+    await page.locator('[data-org-results] button').first().click();
 
-    await page.locator('#nonprofit-search').fill('museum');
-    await page.locator('#nonprofit-results button').first().click();
-
-    await expect(page.locator('#nonprofit-chosen')).toBeVisible();
-    await expect(page.locator('#nonprofit-ein')).toHaveText('841112223');
-
-    const href = await page.locator('#nonprofit-email').getAttribute('href');
-    expect(href).toMatch(/^mailto:/);
-    expect(decodeURIComponent(href)).toContain('841112223');
-    expect(decodeURIComponent(href)).toContain('FORT COLLINS MUSEUM OF DISCOVERY');
+    await expect(field(page)).toHaveValue('FORT COLLINS MUSEUM OF DISCOVERY (EIN 841112223)');
+    await expect(page.locator('[data-org="chosen"]')).toBeVisible();
+    await expect(page.locator('[data-org="chosen"] [data-ein]')).toHaveText('841112223');
+    await expect(results(page)).toHaveCount(0);
   });
 
-  test('no match is not a refusal', async ({ page }) => {
-    // Legitimate organizations can be absent; "not listed" is never a no.
+  test('an organization not on the list is kept as typed', async ({ page }) => {
+    // Plenty of organizations, and every business, are not on it; nothing says no.
     await withList(page);
     await page.goto('/join/');
-
-    await page.locator('#nonprofit-search').fill('an organization that is not there');
-
-    await expect(page.locator('#nonprofit-status')).toContainText("aren't on the IRS list");
-    await expect(page.locator('#nonprofit-results li')).toHaveCount(0);
+    await field(page).fill('Acme Video Cooperative');
+    await expect(results(page)).toHaveCount(0);
+    await expect(field(page)).toHaveValue('Acme Video Cooperative');
   });
 
-  test('a way through is always visible, not something you reach by failing', async ({ page }) => {
-    await page.goto('/join/');
-
-    // Present before anybody has typed anything.
-    const out = page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' });
-    await expect(out).toBeVisible();
-  });
-
-  test('the list failing to load does not strand anybody', async ({ page }) => {
+  test('the list failing to load leaves an ordinary field', async ({ page }) => {
     await withList(page, { status: 500 });
     await page.goto('/join/');
-
-    await page.locator('#nonprofit-search').fill('poudre');
-
-    await expect(page.locator('#nonprofit-status')).toContainText('Get in touch');
-    await expect(page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' })).toBeVisible();
-  });
-
-  test('with no JavaScript the search box is not offered at all', async ({ browser }) => {
-    // No dead search box; the plain-HTML way out (a mailto) survives.
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-    await page.goto('/join/');
-
-    await expect(page.locator('#nonprofit-search')).toBeHidden();
-    await expect(page.locator('a[href^="mailto:"]', { hasText: 'Tell us who you are' })).toBeVisible();
-
-    await context.close();
+    await field(page).fill('poudre');
+    await expect(results(page)).toHaveCount(0);
+    await expect(field(page)).toHaveValue('poudre');
   });
 });
 

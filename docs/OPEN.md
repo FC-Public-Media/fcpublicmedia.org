@@ -14,7 +14,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/production/bay/runnables.proven
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
-- Unused after the 2026-10-25 reduction, the whole list so it can go in one cut: includes `community.html`, `countdown.html`, `checkin-card.html`, `featured.html` (the homepage stopped including it); data `hosts.yml`, `member_sites.json`, `featured.yml`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url`. Facebook is only in `org.social`, so it is on no page; `community.yml` `channels` is the live list and does not carry it.
+- Unused after the 2026-10-25 reduction, the whole list so it can go in one cut: includes `community.html`, `countdown.html`, `featured.html` (the homepage stopped including it); data `hosts.yml`, `member_sites.json`, `featured.yml`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url`. Facebook is only in `org.social`, so it is on no page; `community.yml` `channels` is the live list and does not carry it.
 - `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
@@ -32,12 +32,12 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Something moving into `site/` gets an assertion in `site/bin/test_nothing_internal_is_published.py`, not an `exclude:`.
 - How long `/README.md` was public before #81 is unknown.
 - The Slack invite in `community.yml` expires every 30 days; nothing regenerates it. Slack or Teams is unsettled.
-- 2026-11-01: set `org.equipment_email` to equipment@fcpublicmedia.org. site/_data/org.yml
-- Every class in `classes.yml` is past and `calendar.json` is empty; `/meet/` and "Coming up" render empty.
+- 2026-11-01 is when equipment requests move from fcpmequipment@gmail.com to equipment@fcpublicmedia.org; `fcpm.email.equipment` already gives the new one, so `/reserve/` shows it early. site/_config.yml
+- `calendar.json`'s one session (the Wix site's, frozen) is past, so class mode is off everywhere until the M365 calendar is published and synced.
 
 ## Site content
 
-- Donating goes off-site: there is no `/donate/` page (dropped 2026-10-25). The header reads `donate.url` in `providers.yml` and renders no button while it is empty, which it is, so no Donate button is on the site right now. site/_data/providers.yml
+- Donating goes off-site: there is no `/donate/` page (dropped 2026-10-25). The header's Donate button links `fcpm.donate` in `site/_config.yml`, which is not set, so the button is on every page and goes nowhere. site/_includes/header.html
 - The 2026-10-25 reduction: `site/` is `/`, `/watch/`, `/learn/`, `/join/`, `/reserve/`, `/submit/`, `/meet/` and `you/`. `/watch/archive/` folded into `/watch/` (one catalog, no reason for the split); `classes.md` became `learn.md` and `membership.md` became `join.md` to match the menu; `_podcasts/` and `_shows/` left `site/`. Everything a page lists comes from Cablecast first; shows that never touch our Cablecast are a later question.
 - Two Wix URLs now land somewhere that is not their replacement, because the replacement is gone: `/for-nonprofits` to `/join/`, `/non-discrimination-policy` to `/meet/`. The DEI statement still has to be copied from Wix and now has nowhere to live.
 - `you/` pages split their URLs: `/check-in/`, `/authorize/` and `/lights/` keep the old ones (a printed door QR encodes `/check-in/`, `bin/mint-claim.py` hands out both, `machines/kiosk/door.py` reads `/lights/`), while `/you/devices/`, `/you/settings/` and `/you/upload/` moved with redirects. Moving all five is possible, but only once the QR is reprinted and no issued claim link is still in the wild.
@@ -47,13 +47,13 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - The footer carries the address block and the legal line, nothing else (2026-10-25): no page list, no channels. `nav.yml` `elsewhere` is not a menu and renders nowhere; it only lets the header name a page, since `page` prints no `<h1>`.
 - `/about/` and `/contact/` are dropped (2026-10-25). The 22 "ask us" links that pointed at `/contact/` are now `mailto:` on `org.email`. Autumn wants a further pass: 22 prompts to email us across the station pages is too many, and the number, not the target, is the problem.
 - Standing but unreviewed: `/nonprofits/` publishes a client list and no rates, and `/policies/non-discrimination/` is a TODO. Both are linked from nothing and still in `/sitemap.xml`, which is the honest state of a page nobody has decided to carry.
-- Membership tier benefits, nonprofit production pricing and drop-in prices (`TODO`, and whether members attend free) await the board.
+- Membership tier benefits, nonprofit production pricing and drop-in prices (whether members attend free) await the board. Drop-in prices have no home since `classes.yml` went.
 - Financials (EIN, 990, annual report) are a board decision; published ones go in `governance.yml` `documents`.
 - Retired Wix shows redirect to `/podcasts/`; Wix `/equipment` has no redirect or decision. site/_data/redirects.yml
 - A real logo: CSS called the mark a placeholder; brand/README.md documents a plate.
 - Board roster is empty, so office hours cannot appear. site/_data/board.yml
 - Photos waiting on files: mission band, each space, top of `/reserve/`, a class in progress, board headshots.
-- Ask: one picture of instruction, or one per instructor (no `instructor` field). site/_data/classes.yml
+- Ask: one picture of instruction, or one per instructor. Its slot at the top of `/learn/` went with `classes.yml`.
 - Someone has to enter community events as a standing job. site/_data/community.yml
 - `page` layout prints no `<h1>`; accessibility audits flag it. site/_layouts/page.html
 - Check `/watch/` renders `## Podcasts` as a heading (a trimming Liquid comment precedes it). site/watch.md
@@ -114,8 +114,10 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Payments are not switched on; what remains is the status table. docs/payments.md#before-charging
 - `/membership/` publishes "TODO" under three tiers (`tier.summary` renders unconditionally). site/_data/membership.yml
 - Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
-- No provider for `tickets`, `donate` or `submit`. site/_data/providers.yml
-- The room request on `/reserve/` and the class signup on `/learn/` have no form yet; they are to post to the site-worker, which adds a row to the log. site/_data/providers.yml
+- `/join/` has no tiers until a `SYNC_STRIPE_API_KEY` exists (machines/digitization/keys.yml, `stripe-sync`), the tiers are in Stripe with `membership:<slug>` lookup keys, and `sync-tiers.py` has run. docs/payments.md#tiers
+- The site-worker charges from its own `prices.js`, edited there; `/join/` reads it back with `sync-tiers.py --catalog`. Once the tiers are Stripe Prices it should charge by lookup key, and `reprice-subscriptions.py`'s reading of `prices.js` goes with it. FC-Public-Media/site-worker
+- Forms still to come back: `/learn/` (register, instructor), `/reserve/` (book; rooms only, Booqable stays off-site), `/meet/` (contact). `/submit/` and `/join/` are done. Every form emails instead until `site_worker.yml` `url` is set and site-worker#6 lets `new.` through.
+- The room request on `/reserve/` and the class signup on `/learn/` have no form yet; they are to post to the site-worker, which adds a row to the log.
 - A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
 - The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
 - The membership record (email, paid-through date) is unbuilt: a row in the log per paid join, from Stripe's webhook to the site-worker.

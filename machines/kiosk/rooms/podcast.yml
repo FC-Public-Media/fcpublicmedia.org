@@ -16,7 +16,8 @@ quiet: Nobody is in right now.
 # The code: the site, not check-in. A passer-by is not here for a reservation.
 encodes: https://www.fcpublicmedia.org/
 shown: fcpublicmedia.org
-# This room's name in site/_data/classes.yml, for what is coming up here.
+# This room's name as site/_data/calendar.json gives it (the calendar event's location), for what is
+# coming up here.
 classes: Podcast Studio
 
 # What lives in the room. `id` is what a reply names; `trove` cites the instrument's repository and the

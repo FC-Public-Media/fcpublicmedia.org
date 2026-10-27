@@ -158,9 +158,7 @@ def main():
     if not source:
         raise SystemExit(
             "No calendar source. Pass --ics <url>, --file <path>, or set "
-            "FCPM_CALENDAR_ICS.\n"
-            "Until one exists, site/_data/classes.yml is edited by hand and the site "
-            "uses that."
+            "FCPM_CALENDAR_ICS."
         )
 
     text = open(source).read() if args.file else fetch(source)

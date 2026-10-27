@@ -30,23 +30,19 @@ flush: true
       <div>
       <p class="eyebrow hero-tagline">{{ site.fcpm.tagline }}</p>
 
-      <div style="display: flex; justify-content: space-between;">
-        <div>
-          <h1>{{ site.fcpm.slogan_1 }}<br />{{ site.fcpm.slogan_2 }}</h1>
+      <div class="hero-lockup">
+        <h1>{{ site.fcpm.slogan_1 }}<br />{{ site.fcpm.slogan_2 }}</h1>
 
-          <div class="hero-actions hero-channels">
-            {%- for channel_kv in site.fcpm.channels -%}
-              <a class="btn" href="{{ channel_kv[1] }}">{{ channel_kv[0] }}</a>
-            {%- endfor %}
-          </div>
+        <a class="checkin-card-qr hero-qr" href="{{ '/check-in/' }}">
+          <img src="{{ '/assets/img/check-in-qr.svg' }}"
+               alt="" width="200" height="200">
+          <span>Check in &mdash; scan or tap</span>
+        </a>
 
-        </div>
-        <div>
-          <a class="checkin-card-qr hero-qr" href="{{ '/check-in/' }}">
-            <img src="{{ '/assets/img/check-in-qr.svg' }}"
-                 alt="" width="200" height="200">
-            <span>Check in &mdash; scan or tap</span>
-          </a>
+        <div class="hero-actions hero-channels">
+          {%- for channel_kv in site.fcpm.channels -%}
+            <a class="btn" href="{{ channel_kv[1] }}">{{ channel_kv[0] }}</a>
+          {%- endfor %}
         </div>
       </div>
     </div></div>
