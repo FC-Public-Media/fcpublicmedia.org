@@ -19,7 +19,9 @@ machine that puts on more (the standby page, the jukebox) takes the air by sayin
 {"holder": "..."} to ch97.fcpublicmedia.local, again every few seconds. While a claim is fresh (HOLD
 seconds) the copy to YouTube stops; when the claims lapse, it starts again by itself, so a machine
 that stops, crashes or is switched off never leaves YouTube with nothing. The floor itself never
-stops. GET /air says who has it; /floor/now.json, what the floor is playing; POST /floor/jukebox, from the
+stops. The switch is a file, standby.off beside standby.json: while it is there (Helm's /broadcast/
+page puts it there and takes it away) nothing is sent to YouTube at all, claims or no claims, and
+it stays off across restarts until switched on; the floor itself goes on for the LAN. GET /air says who has it; /floor/now.json, what the floor is playing; POST /floor/jukebox, from the
 jukebox's list page only, skips, stops or plays it (ask_jukebox).
 
 The key is ~/.config/fcpm/youtube.key, as the relay's; nothing here prints it. If ffmpeg sends nothing
@@ -52,6 +54,7 @@ STALL = 60                                      # seconds with nothing sent befo
 FLOOR = pathlib.Path(os.environ.get("FCPM_FLOOR", "/dev/shm/fcpm-floor"))   # memory: no wear on the card
 AIR = int(os.environ.get("FCPM_AIR_PORT", "8482"))  # the claims, on loopback; nginx passes /air to it
 HOLD = 15                                       # seconds a claim on the air lasts unless said again
+OFF = STATE_DIR / "standby.off"                 # the switch: there, the floor is not sent to YouTube at all
 MUSIC = pathlib.Path(os.environ.get("FCPM_JUKEBOX", "/srv/landing/jukebox"))   # the floor's jukebox's folder
 BUS = "fcpm-standby"                            # the null sink whose monitor is the sound we send
 os.environ.setdefault("PULSE_SERVER", f"unix:/run/user/{os.getuid()}/pulse/native")
@@ -358,12 +361,14 @@ def main(args):
             key = KEY.read_text().strip() if KEY.exists() else ""
             if copy and copy.done():
                 copy = None
-            if holder and copy:
+            off = OFF.exists()
+            if (holder or off) and copy:
                 copy.stop()
                 copy = None
-            if not holder and not copy and key and playlist.exists():
+            if not holder and not off and not copy and key and playlist.exists():
                 copy = Copy(key, env)
-            now = ("yielded", f"{holder} has the air", holder) if holder else \
+            now = ("off", "switched off: the floor is not sent to YouTube", None) if off else \
+                  ("yielded", f"{holder} has the air", holder) if holder else \
                   ("waiting", f"no key in {KEY}", None) if not key else \
                   ("sending", "the floor to YouTube's backup ingest, with "
                    + (f"{BUS}'s sound" if sound else "silence"), None) if copy else \

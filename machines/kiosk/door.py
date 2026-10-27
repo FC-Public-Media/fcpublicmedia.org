@@ -3879,24 +3879,51 @@ def broadcast_hand():
     return cablecast
 
 
+STANDBY_STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast"   # machines/broadcast/standby's
+
+
+def standby_now(on=None):
+    """Our standby on YouTube's backup ingest, where this machine runs it: {name, on, said}, or None.
+    Switched by its file (standby.off), which standby reads every two seconds."""
+    try:
+        said = json.loads((STANDBY_STATE / "standby.json").read_text())
+    except (OSError, ValueError):
+        return None
+    off = STANDBY_STATE / "standby.off"
+    if on is not None:
+        if on:
+            off.unlink(missing_ok=True)
+        else:
+            off.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
+    words = {"sending": "Sending to YouTube's backup", "off": "Off: not sent to YouTube",
+             "yielded": "Standing aside: %s has the air" % said.get("holder")}
+    return {"name": "Standby", "on": not off.exists(), "free": True,
+            "said": words.get(said.get("state"), said.get("why") or said.get("state") or "")}
+
+
 def broadcast_now(name=None, on=None):
-    """{"destinations": [{id, name, on}], "keyed": bool}, or {"why": ...} when the box can't say."""
+    """{"destinations": [{id, name, on}], "keyed": bool}, or {"why": ...} when the box can't say. Our
+    standby, where it runs here, is the last card, switched here without the box."""
+    standby = standby_now(on if name == "Standby" else None)
     try:
         hand = broadcast_hand()
-        return {"destinations": hand.push(name, on), "keyed": hand.TOKEN.exists()}
+        out = {"destinations": hand.push(None if name == "Standby" else name, on), "keyed": hand.TOKEN.exists()}
     except SystemExit as exc:                    # cablecast.py says what went wrong, then exits
-        return {"why": str(exc.code)}
+        out = {"why": str(exc.code), "destinations": []}
     except Exception as exc:
         log("broadcast: %r" % exc)
-        return {"why": "the box is not answering"}
+        out = {"why": "the box is not answering", "destinations": []}
+    if standby:
+        out["destinations"].append(standby)
+    return out
 
 
 BROADCAST_JS = """<script>
 (function () {
   var list = document.getElementById('dests'), said = document.getElementById('said'), busy = false, was = '';
   function show(d) {
-    if (!d || d.why) { said.textContent = (d && d.why) || 'The box is not answering'; return; }
-    said.textContent = d.keyed ? '' : 'Switching needs the Cablecast key, which this machine does not hold.';
+    if (!d) { said.textContent = 'The box is not answering'; return; }
+    said.textContent = d.why || (d.keyed ? '' : 'Switching needs the Cablecast key, which this machine does not hold.');
     if (JSON.stringify(d) + busy === was) return;   // redrawn only on a change, so a tap is never lost
     was = JSON.stringify(d) + busy;
     list.textContent = '';
@@ -3905,9 +3932,9 @@ BROADCAST_JS = """<script>
           p = document.createElement('p'), go = document.createElement('button');
       card.className = 'card' + (x.on ? ' on' : '');
       b.textContent = x.name;
-      p.textContent = x.on ? 'Streaming' : 'Not streaming';
+      p.textContent = x.said || (x.on ? 'Streaming' : 'Not streaming');
       go.textContent = x.on ? 'Stop' : 'Start';
-      go.disabled = busy || !d.keyed;
+      go.disabled = busy || !(d.keyed || x.free);
       go.onclick = function () { flip(x.name, !x.on); };
       card.append(b, p, go);
       list.append(card);
@@ -3942,7 +3969,8 @@ def broadcast_page():
     """Channel 97, out: each network stream destination in Cablecast, streaming or not, with its switch."""
     body = """%s<main>
 <h2>Channel 97, out</h2>
-<p class=dim>The Live 350 pushes the channel to each destination that is on. Stopping one is an outage there.</p>
+<p class=dim>The Live 350 pushes the channel to each destination that is on. Stopping one is an outage there.
+Standby is ours, on YouTube's backup: stopped, nothing but the 350 reaches YouTube, until it is started again.</p>
 <section class=here id=dests></section>
 <p class=dim id=said></p></main>%s""" % (masthead("%s &middot; broadcast" % e(socket.gethostname().lower())), BROADCAST_JS)
     return page("Channel 97, out", body, BROADCAST_CSS)

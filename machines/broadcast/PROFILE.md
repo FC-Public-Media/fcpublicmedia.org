@@ -153,7 +153,11 @@ source, its sound kept or muted), the standby page over it, and the jukebox role
 so, `POST /air {"holder": "bay 1"}` to ch97, every few seconds; the standby page does that by itself
 inside OBS. While a claim is fresh (15 s) the floor's copy to YouTube stops; when the claims lapse it
 starts again on its own, so a machine that stops, crashes or is switched off never leaves YouTube with
-nothing, and the floor needs to know nothing about what is on top. `GET /air` says who has it. Any
+nothing, and the floor needs to know nothing about what is on top. `GET /air` says who has it.
+To be sure the 350 is the only thing reaching YouTube, the standby has its own switch, the last card on
+Helm's `/broadcast/` page: Stop puts `standby.off` beside `standby.json`, and while it is there nothing
+of ours is sent to YouTube, claims or none, across restarts, until Start takes it away. The floor goes
+on for the LAN either way. Any
 machine on the LAN can claim; the channel's own stream rides the primary ingest either way.
 
 ## The standby page
