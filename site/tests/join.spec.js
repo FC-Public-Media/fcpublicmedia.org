@@ -31,6 +31,7 @@ test('a tier in the address is picked on arrival, and picking one puts it there'
 test('no tier, no payment page', async ({ page }) => {
   await open(page);
   await page.locator('[name="agree_terms"]').check();
+  await page.locator('[name="submit_terms"]').check();
   await page.locator('[data-pay]').click();
   await expect(page.locator('[data-say="pick-tier"]')).toBeVisible();
 });
@@ -61,12 +62,13 @@ test('answers, then checkout with the same reference, then Stripe', async ({ pag
   await page.locator('#first_name').fill('Ada');
   await page.locator('#email').fill('ada@example.org');
   await page.locator('[name="agree_terms"]').check();
+  await page.locator('[name="submit_terms"]').check();
   await page.locator('[data-pay]').click();
 
   await expect(page).toHaveURL(STRIPE);
   expect(sent.answers).toMatchObject({
     form: 'membership', sku: 'membership:student',
-    answers: { first_name: 'Ada', email: 'ada@example.org', agree_terms: true },
+    answers: { first_name: 'Ada', email: 'ada@example.org', agree_terms: true, submit_terms: true },
   });
   expect(sent.checkout).toMatchObject({
     sku: 'membership:student', email: 'ada@example.org', success_path: '/join/?joined', cancel_path: '/join/',
@@ -81,6 +83,7 @@ test('answers that fail to keep still open the payment page', async ({ page }) =
   await open(page);
   await pick(page, 'Supporter');
   await page.locator('[name="agree_terms"]').check();
+  await page.locator('[name="submit_terms"]').check();
   await page.locator('[data-pay]').click();
   await expect(page).toHaveURL(STRIPE);
 });
@@ -92,6 +95,7 @@ test('a payment page that will not open, with answers kept, says a person will w
   await pick(page, 'Supporter');
   await page.locator('#email').fill('ada@example.org');
   await page.locator('[name="agree_terms"]').check();
+  await page.locator('[name="submit_terms"]').check();
   await page.locator('[data-pay]').click();
   await expect(page.locator('[data-say="unpaid-kept"]')).toBeVisible();
 });
@@ -116,6 +120,7 @@ test('with no worker, joining becomes an email that names the tier', async ({ pa
   await pick(page, 'Creator');
   await page.locator('#email').fill('ada@example.org');
   await page.locator('[name="agree_terms"]').check();
+  await page.locator('[name="submit_terms"]').check();
   await page.locator('[data-pay]').click();
   await expect(page.locator('[data-say="unsent"]')).toBeVisible();
   const href = await page.locator('[data-say="unsent"] a[data-mailto]').getAttribute('href');

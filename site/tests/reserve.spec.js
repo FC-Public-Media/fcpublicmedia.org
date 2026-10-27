@@ -17,17 +17,21 @@ test('both halves show at once on a wide screen, and are tabs on a phone', async
     await expect(page.locator('.halves-tabs')).toBeVisible();
     await expect(page.locator('.half[data-half="equipment"]')).toBeVisible();
     await expect(page.locator('.half[data-half="spaces"]')).toBeHidden();
-    await page.getByRole('tab', { name: 'Spaces' }).click();
+    await page.locator('[role="tab"][data-half="spaces"]').click();
     await expect(page.locator('.half[data-half="spaces"]')).toBeVisible();
     await expect(page.locator('.half[data-half="equipment"]')).toBeHidden();
-    await expect(page).toHaveURL(/#spaces$/);
+    const id = await page.locator('.half[data-half="spaces"] h2').getAttribute('id');
+    expect(new URL(page.url()).hash).toBe(`#${id}`);
   }
 });
 
-test('the address can open a half', async ({ page }) => {
-  await page.goto('/reserve/#spaces');
+test('the address can open a half, by its heading', async ({ page }) => {
+  await page.goto('/reserve/');
+  const id = await page.locator('.half[data-half="spaces"] h2').getAttribute('id');
+  await page.goto(`/reserve/#${id}`);
+  await page.reload();
   await expect(page.locator('.half[data-half="spaces"]')).toBeVisible();
-  if (!wide(page)) await expect(page.getByRole('tab', { name: 'Spaces' })).toHaveAttribute('aria-selected', 'true');
+  if (!wide(page)) await expect(page.locator('[role="tab"][data-half="spaces"]')).toHaveAttribute('aria-selected', 'true');
 });
 
 test('without JavaScript nothing is hidden', async ({ browser }) => {

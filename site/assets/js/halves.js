@@ -12,9 +12,11 @@ function open(name) {
   for (const part of parts) part.classList.toggle('is-away', part.dataset.half !== name);
 }
 
+// The address takes the half's heading id, so it opens the same half again whatever the heading says.
 tabs.forEach((tab) => tab.addEventListener('click', () => {
   open(tab.dataset.half);
-  history.replaceState(null, '', `#${tab.dataset.half}`);
+  const heading = parts.find((part) => part.dataset.half === tab.dataset.half).querySelector('h2[id]');
+  history.replaceState(null, '', `#${heading ? heading.id : tab.dataset.half}`);
 }));
 
 const named = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
