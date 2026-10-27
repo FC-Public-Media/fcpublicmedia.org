@@ -1,35 +1,36 @@
-Tests never reach the real site-worker; the hero shows its photograph until the video plays
+site: contract the footer, and drop the pages it used to carry
 
-Two changes, one commit each.
+One pass, one kind of cut: a page or a block that restated something the site already says
+somewhere better.
 
-Tests and the site-worker. Cloudflare showed site-worker at 937 invocations in a day, with a usage
-meter at about half, while nobody uses the worker yet. It was the tests: they planted their fake
-worker by replacing the literal `"brokerUrl": ""`, which stopped matching once `site_worker.yml` named
-the real worker, so authorize, devices, settings and upload talked to it instead. Every `/challenge`
-is a KV write (1,000 a day on the free tier), and each full run made about 80; CI on every push did
-the same.
+The footer is now the address block and the legal line.
 
-- `site/tests/fixtures.js` is every spec's `test`: Playwright's, plus an automatic guard that blocks
-  any request to `site-worker.*.workers.dev` or `cloud.fcpublicmedia.org` and fails the test that
-  made it.
-- The swap replaces whatever URL is baked in. Authorize, devices, settings and upload default to no
-  worker; the tests that want one plant `broker.test` on top.
+- No page list. The header menu is the whole menu.
+- No channels. The hero leads with them and `/meet/` carries the full list from `community.yml`.
+- `nav.yml` `footer` becomes `elsewhere`, which renders nowhere: `page` prints no `<h1>`, so it is
+  the only way the header can still name the page you are on.
 
-The hero on a phone. The poster was the video's first frame, the worst one, and a phone that declines
-to autoplay (Low Power Mode, data saver) showed it frozen until play.
+Two pages dropped.
 
-- No poster: `hero_video_poster` and `wix-was-poster.jpg` are gone.
-- The video is invisible until frames are actually moving (`playing`, not `play`), so the photograph
-  shows until then, and again on pause. Reduced motion gets no fade.
-- The play/pause icon follows the button's own state, so a tap answers at once while it loads.
+- `/about/`, which handed its board and governance material to `/meet/` already. The history it
+  held a place for lands there too; `org.mission` renders on the homepage.
+- `/contact/`, and the 22 links at it become `mailto:` on `org.email`. All 22 already meant
+  "email us". On a phone the station pages now open a composed email, not a page load.
+  `/connect` goes to `/meet/`.
 
 Merge qualifications:
-- [x] authorize, devices, settings, upload: 108 pass, no request reaches the real worker
-- [x] the hero, in Chrome as an iPhone 13: autoplay declined shows the photograph; play shows the
-      video; pause returns to the photograph; autoplay allowed plays
-- [ ] upload's "produces an entry the site template would accept" needs PyYAML, which CI installs and
-      the LAN Mac's python3 lacks
+- [x] `bundle exec jekyll build` clean
+- [x] Playwright `--grep-invert @external`: 535 passed, 1 skipped, 0 failed
+- [x] secrets, internal-publish and token guards pass
+- [x] no internal link 404s; every Wix `from` still resolves
+- [x] the header still names the `elsewhere` pages
 
 Carried, not decided:
-- `meet-board.spec.js` still describes the old /meet/ board block and fails against the new page.
-- The home page's contrast check and its hero-video request fail as before.
+- Facebook was only in `org.yml` `social`, which nothing renders now, so it is on no page.
+  `community.yml` `channels` is the live list and does not carry it. OPEN.md says so.
+- `/nonprofits/` and `/policies/non-discrimination/` are linked from nothing and still in the
+  sitemap — the honest state of a page nobody has decided to carry.
+- 22 prompts to email us across the station pages is too many. Autumn's next pass; the number is
+  the problem, not the target.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
