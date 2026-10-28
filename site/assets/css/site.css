@@ -1066,7 +1066,7 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em;
   color: var(--ink-soft); margin-bottom: 0.9rem; font-weight: 700;
 }
-.site-foot address { font-style: normal; margin-bottom: 1em; }
+.site-foot address { font-style: normal; margin: 1em 0; }
 .foot-links { list-style: none; margin: 0; padding: 0; }
 .foot-links li { margin-bottom: 0.45rem; }
 
@@ -1771,7 +1771,7 @@ a[href^="mailto:"] span {
   padding-left: 0.25em;
   font-size: var(--step--1);
   letter-spacing: -0.05em;
-  color: var(--signal-ink);
+  color: var(--ink-soft);
 }
 .nonprofit {
   color: var(--record-ink) !important;

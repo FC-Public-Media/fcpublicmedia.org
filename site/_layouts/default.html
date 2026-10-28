@@ -11,14 +11,7 @@
   <footer class="site-foot {% if page.flush %}flush{% endif %}">
     <div class="wrap site-foot-inner">
 
-      <address>
-        {{ site.fcpm.address.venue }}<br>
-        {{ site.fcpm.address.street }}<br>
-        {{ site.fcpm.address.city }}
-        {{ site.fcpm.address.state }}
-        {{ site.fcpm.address.zip }}
-      </address>
-      <p>
+      <div>
         {%- for day_span in site.data.hosts.days -%}
           {%- if day_span[1][0] -%}
             {{ day_span[0] }}: {{ day_span[1][0] | modulo: 12 }}
@@ -28,8 +21,17 @@
             <br>
           {%- endif -%}
         {%- endfor -%}
-        <br>
-        <br>
+
+        <address>
+          {{ site.fcpm.address.venue }}<br>
+          {{ site.fcpm.address.street }}<br>
+          {{ site.fcpm.address.city }}
+          {{ site.fcpm.address.state }}
+          {{ site.fcpm.address.zip }}
+        </address>
+      </div>
+
+      <p>
         {%- for email_kv in site.fcpm.email -%}
         <a href="mailto:{{ email_kv[1] }}">
           {{- email_kv[0] -}}
@@ -39,12 +41,15 @@
         <a href="tel:{{ site.fcpm.phone | remove: '-' }}">{{ site.fcpm.phone }}</a>
       </p>
 
-      <p class="theme-toggle" data-theme-toggle hidden>
-        <label>
-          <input type="checkbox" data-theme-input>
-          <span>Match system colours</span>
-        </label>
-      </p>
+      <div>
+        <p class="theme-toggle" data-theme-toggle hidden>
+          <label>
+            <input type="checkbox" data-theme-input>
+            <span>Match system colours</span>
+          </label>
+        </p>
+        <p><a href="https://wix.fcpublicmedia.org" class="muted">Old site</a></p>
+      </div>
 
       <div class="foot-legal">
         <p>&copy; 2004&ndash;{{ site.time | date: '%Y' }}</p>
@@ -56,11 +61,6 @@
 
   <script src="{{ '/assets/js/nav.js' }}?v={{ site.time | date: '%s' }}" defer></script>
   <script src="{{ '/assets/js/theme.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
-  {%- comment -%}
-    Every page: the on-air bar is in the header now, so the test this used to make against `content`
-    (the page body) was false everywhere but /watch/, and the bar never primed. The script does
-    nothing when it finds no bar.
-  {%- endcomment %}
   <script src="{{ '/assets/js/onair.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
 </body>
 </html>
