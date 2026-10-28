@@ -9,8 +9,10 @@ publish_to: site/member-sites
 sites:
   - path: site
     role: site
+    # The address this site is served at. A machine that serves it finds the files by this name:
+    #   python3 bin/build-sites.py --deploy-root fcpublicmedia.org
     domain: fcpublicmedia.org
-    # The switch every host reads; `--deploy-root fcpublicmedia.org` prints its root. www redirects here.
+    # Built from site/ by whoever serves it (the other choice, intermediate, ships a prebuilt copy).
     deliver: source
     why: fcpublicmedia.org itself. bin/deploy-site builds it and uploads it to Cloudflare Pages (fcpm-new).
 
