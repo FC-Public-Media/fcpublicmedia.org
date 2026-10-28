@@ -203,7 +203,7 @@ function hostCard(person, day) {
     img.alt = '';
     card.append(img);
   }
-  card.append(el('span', null, person.name));
+  card.append(el('span', null, person.name.split(' ', 1)[0]));
   const can = supports(person);
   if (can.length) card.append(el('small', null, can.join(' · ')));
   card.addEventListener('click', () => setHost(field('host').value === person.name ? '' : person.name, day));
@@ -392,7 +392,9 @@ form.addEventListener('submit', async (event) => {
   if (field('email').value.trim()) answers.email = field('email').value.trim();
   answers.space = field('space').value;
   answers.when = when(choice, field('host').value);
-  if (field('notes').value.trim()) answers.notes = field('notes').value.trim();
+  // Notes only when the page asks for them (reserve.md may leave the box out).
+  const notes = field('notes');
+  if (notes && notes.value.trim()) answers.notes = notes.value.trim();
 
   const lines = [`Space: ${answers.space}`, `When: ${answers.when}`];
   if (name) lines.push(`Name: ${name}`);

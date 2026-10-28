@@ -7,6 +7,8 @@ title: Join
 ## Don't Just View It. Do It.
 
 Membership is annual from the date of your payment.
+If you need a la carte reservations on the venue itself, please reach out to 
+[{{ site.fcpm.email.info }}](mailto:{{ site.fcpm.email.info }}).
 
 <fieldset class="tiers">
 <legend class="visually-hidden">Choose a tier</legend>
@@ -19,12 +21,18 @@ Membership is annual from the date of your payment.
            aria-labelledby="tier-{{ slug }}-name tier-{{ slug }}-price">
     <h3 id="tier-{{ slug }}-name">{{ tier.name }}</h3>
     <p class="price" id="tier-{{ slug }}-price">${{ tier.price }}</p>
-    <p class="muted">Nonprofits ${{
+    {%- if slug == "student" -%}
+    <p class="student">Current Student ID required.</p>
+    {%- endif -%}
+    {%- if slug == "producer" -%}
+    <p class="nonprofit">Nonprofits ${{
       tier.amount
         | times: site.fcpm.membership.nonprofit_rate
         | divided_by: 100
         | round
-    }}</p>
+    }}.</p>
+    {%- endif -%}
+    <p class="muted">{{ site.fcpm.tiers[slug] | replace: ".", ".<br>" }}</p>
   </li>
 {% endfor %}
 </ul>

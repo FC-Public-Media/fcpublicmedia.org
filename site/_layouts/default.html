@@ -30,12 +30,12 @@
         {%- endfor -%}
         <br>
         <br>
-        {%- assign email = site.fcpm.email -%}
-        <a href="mailto:{{ email.info }}">{{ email.info }}</a><br>
-        <a href="mailto:{{ email.equipment }}">{{ email.equipment }}</a><br>
-        <a href="mailto:{{ email.bookings }}">{{ email.bookings }}</a><br>
-        <a href="mailto:{{ email.donations }}">{{ email.donations }}</a><br>
-        <a href="mailto:{{ email['non-profits'] }}">{{ email['non-profits'] }}</a><br>
+        {%- for email_kv in site.fcpm.email -%}
+        <a href="mailto:{{ email_kv[1] }}">
+          {{- email_kv[0] -}}
+          {%- assign _domain = email_kv[1] | split: "@" -%}
+          <span>@{{ _domain[1] }}</span></a><br>
+        {%- endfor -%}
         <a href="tel:{{ site.fcpm.phone | remove: '-' }}">{{ site.fcpm.phone }}</a>
       </p>
 

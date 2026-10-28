@@ -63,32 +63,32 @@ test('the week is hosts.yml\'s days with hours, each with its host', async ({ pa
   await openStudio(page);
   await expect(page.locator('.planner-date b')).toHaveText(['Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
   await expect(page.locator('.planner-month')).toHaveText('November');
-  await expect(page.locator('.planner-host > span')).toHaveText(['James', 'Morey', 'Nate Keen', 'Chris Crenshaw', 'Autumn']);
+  await expect(page.locator('.planner-host > span')).toHaveText(['James', 'Morey', 'Nate', 'Chris', 'Autumn']); // first names; hosts.yml has the full ones
   // What each can help with is on their card; a slot is only its time.
-  await expect(card(page, 'Morey').locator('small')).toHaveText('Outreach'); // hosts.yml's supports, as written
+  await expect(card(page, 'Morey').locator('small')).toHaveText('Audio · Video · Podcasting · Outreach'); // hosts.yml's supports, as written
   // Morey's 11–4 is two slots, with an hour between.
-  await expect(page.locator('.planner-slot[data-host="Morey"]')).toHaveCount(2);
-  await expect(page.locator('.planner-slot[data-host="Morey"]').first()).toHaveText('11–1');
-  await expect(slot(page, 'Morey', '11–1')).toBeVisible();
-  await expect(slot(page, 'Morey', '2–4')).toBeVisible();
+  await expect(page.locator('.planner-slot[data-host="Morey Hubin"]')).toHaveCount(2);
+  await expect(page.locator('.planner-slot[data-host="Morey Hubin"]').first()).toHaveText('11–1');
+  await expect(slot(page, 'Morey Hubin', '11–1')).toBeVisible();
+  await expect(slot(page, 'Morey Hubin', '2–4')).toBeVisible();
 });
 
 test('picking a host picks their slot; picking a slot picks its host', async ({ page }) => {
   await openStudio(page);
   await card(page, 'Morey').click();
-  expect(await picked(page)).toEqual(['2026-11-04', '11:00', 'Morey']);
+  expect(await picked(page)).toEqual(['2026-11-04', '11:00', 'Morey Hubin']);
   await expect(card(page, 'Morey')).toHaveClass(/is-picked/);
 
   await card(page, 'Morey').click(); // unpicked: the time stays, the host goes
-  await slot(page, 'Autumn', '2–4').click();
-  expect(await picked(page)).toEqual(['2026-11-07', '14:00', 'Autumn']);
+  await slot(page, 'Autumn Ryan/Valenta', '2–4').click();
+  expect(await picked(page)).toEqual(['2026-11-07', '14:00', 'Autumn Ryan/Valenta']);
 });
 
 test('a host picked by hand stays, and the day\'s own host is marked', async ({ page }) => {
   await openStudio(page);
   await card(page, 'Morey').click();
-  await slot(page, 'Autumn', '11–1').click();
-  expect(await picked(page)).toEqual(['2026-11-07', '11:00', 'Morey']);
+  await slot(page, 'Autumn Ryan/Valenta', '11–1').click();
+  expect(await picked(page)).toEqual(['2026-11-07', '11:00', 'Morey Hubin']);
   await expect(card(page, 'Morey')).toHaveClass(/is-picked/);
   await expect(page.locator('.planner-seat.is-suggested')).toContainText('Autumn');
 });
@@ -136,7 +136,7 @@ test('the request goes to the book tank, kept on the phone with check-in\'s name
   await page.locator('.book-picks label', { hasText: 'Podcast Studio' }).click();
   await expect(page.locator('[data-space="Podcast Studio"]')).toBeVisible();
   await expect(page.locator('[data-space="Video Studio"]')).toBeHidden();
-  await slot(page, 'Autumn', '11–1').click();
+  await slot(page, 'Autumn Ryan/Valenta', '11–1').click();
   await page.locator('#book-name').fill('Jo Q Tester');
   await page.locator('#book button[type="submit"]').click();
 
@@ -144,7 +144,7 @@ test('the request goes to the book tank, kept on the phone with check-in\'s name
   expect(sent.form).toBe('book');
   expect(sent.answers).toEqual({
     first_name: 'Jo', last_name: 'Q Tester', email: 'jo@example.org', space: 'Podcast Studio',
-    when: 'Saturday, November 7, 2026, 11 am to 1 pm, with Autumn',
+    when: 'Saturday, November 7, 2026, 11 am to 1 pm, with Autumn Ryan/Valenta',
   });
   await expect(page.locator('[data-receipt="sent"] [data-reference]')).toHaveText(sent.reference.slice(0, 8));
   await expect(page.locator('[data-mine-list] li')).toContainText('Podcast Studio');

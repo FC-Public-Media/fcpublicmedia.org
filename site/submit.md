@@ -11,7 +11,7 @@ Media will broadcast to **Comcast 97**, **Connexion 22**, **Roku**, **AppleTV**,
 
 Submissions must:
 
-1. be accompanied by the completed form below.
+1. be accompanied by the completed form.
 1. be released for broadcast by the copyright manager's permission.
 2. be "HD" (720p or better).
 3. be uploaded to our Dropbox.

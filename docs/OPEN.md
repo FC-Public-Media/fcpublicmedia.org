@@ -112,12 +112,13 @@ Plans that once had their own docs are here in a few lines; git history has the 
 ## Payments and identity
 
 - Payments are not switched on; what remains is the status table. docs/payments.md#before-charging
-- `/membership/` publishes "TODO" under three tiers (`tier.summary` renders unconditionally). site/_data/membership.yml
 - Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
-- `/join/` has no tiers until a `SYNC_STRIPE_API_KEY` exists (machines/digitization/keys.yml, `stripe-sync`), the tiers are in Stripe with `membership:<slug>` lookup keys, and `sync-tiers.py` has run. docs/payments.md#tiers
+- `/join/`'s tiers are `site/_data/tiers.json`, read from the site-worker's `prices.js` by `sync-tiers.py --catalog`; reading them from Stripe needs a `SYNC_STRIPE_API_KEY` (machines/digitization/keys.yml, `stripe-sync`) and `membership:<slug>` lookup keys. docs/payments.md#tiers
+- Each tier carries a hand-written `copy` line in `tiers.json`, but `sync-tiers.py` rewrites the file from its source and would drop them: it should keep `copy` per `sku` across a sync. site/bin/sync-tiers.py
+- À la carte: renting a space by itself when it's underused (`fcpm.classes.rate` is the only rate written down, $50/hr, for teaching). Not a tier, not in `tiers.json` or the worker's `prices.js`, and nothing on `/join/` or `/reserve/` offers it yet. Decide where it lives: a `tiers.json` entry with copy and no checkout, its own price in `prices.js`, or a line by the studio request on `/reserve/`. site/_data/tiers.json
 - The site-worker charges from its own `prices.js`, edited there; `/join/` reads it back with `sync-tiers.py --catalog`. Once the tiers are Stripe Prices it should charge by lookup key, and `reprice-subscriptions.py`'s reading of `prices.js` goes with it. FC-Public-Media/site-worker
-- Forms still to come back: `/learn/` (register), `/reserve/` (book; rooms only, Booqable stays off-site), `/meet/` (contact). `/submit/`, `/join/` and `/learn/`'s instructor application are done. They send to the site-worker (`site_worker.yml` `url`, workers.dev until the zone leaves Wix); a refused send becomes an email.
-- The room request on `/reserve/` and the class signup on `/learn/` have no form yet; they are to post to the site-worker, which adds a row to the log.
+- Forms still to come back: `/learn/` (register), `/meet/` (contact). `/submit/`, `/join/`, `/reserve/`'s studio request and `/learn/`'s instructor application are done. They send to the site-worker (`site_worker.yml` `url`, workers.dev until the zone leaves Wix); a refused send becomes an email.
+- The class signup on `/learn/` has no form yet; it is to post to the site-worker like the rest.
 - A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
 - The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
 - The membership record (email, paid-through date) is unbuilt: a row in the log per paid join, from Stripe's webhook to the site-worker.
