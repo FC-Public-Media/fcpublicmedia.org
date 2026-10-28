@@ -1,6 +1,7 @@
 // Forms that send to the site-worker's tanks: <form data-tank="program" data-worker="…" data-email="…">.
-// Field names are the tank's keys (site-worker src/tanks.js). A checkbox is `yes`, or a list when it
-// carries data-list; everything else is text. The `website` field is the robots' trap. A control outside
+// Field names are the tank's keys (site-worker src/tanks.js). A checkbox is `yes`, a list when it carries
+// data-list, or its own value as text when it has one (value="Yes"); a radio group is the checked one's
+// value; everything else is text. The `website` field is the robots' trap. A control outside
 // the <form> joins it with form="<id>", as /join/'s terms box does.
 // No worker, or a send that fails: the same answers as an email to a person. See docs/payments.md#requests.
 //
@@ -19,10 +20,12 @@ export function read(form) {
   const lines = [];
   for (const input of form.elements) {
     if (!input.name || input.name === 'website' || input.type === 'submit' || input.type === 'button') continue;
-    if (input.type === 'checkbox') {
+    if (input.type === 'checkbox' || input.type === 'radio') {
       if (!input.checked) continue;
       if ('list' in input.dataset) {
         (answers[input.name] = answers[input.name] || []).push(input.value);
+      } else if (input.type === 'radio' || input.hasAttribute('value')) {
+        answers[input.name] = input.value;
       } else {
         answers[input.name] = true;
       }

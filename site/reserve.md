@@ -22,6 +22,8 @@ booqable:
 
 [{{ site.fcpm.email.bookings }}](mailto:{{ site.fcpm.email.bookings }})
 
+The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}** shares a block with Old Town Library. Our equipment and software are yours to use while on-site.
+
 {%- comment -%} A request to the site-worker's `book` tank (assets/js/book.js). The week below is drawn
   from site/_data/hosts.yml as it is: each person's day keys are their hosting hours. Every word shown
   is here; book.js only picks which, and draws the week. {%- endcomment %}
@@ -111,19 +113,16 @@ booqable:
   <ul class="rows" data-mine-list></ul>
 </div>
 
-<figure class="floor-plan">
-  <img src="{{ '/assets/img/floor-plan.png' }}"
-       alt="Floorplan of studio space, demonstrating the control room, video studio, podcasting room, and restroom."
-       loading="lazy" decoding="async">
-</figure>
-
 </section>
 
 <section class="half" data-half="equipment" markdown="1">
 
-## Equipment
+## Equipment rental
 
 [{{ site.fcpm.email.equipment }}](mailto:{{ site.fcpm.email.equipment }})
+
+We offer ready-to-go kits for home and field work. Booqable and Stripe will handle your reservation.
+Come for pickup when it's time.
 
 {% include booqable.html config=page.booqable %}
 
