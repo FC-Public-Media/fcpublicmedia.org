@@ -45,7 +45,7 @@ The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}**
       <button type="button" data-week="1" aria-pressed="false">Next week</button>
       <button type="button" data-week="2" aria-pressed="false">Week after</button>
     </div>
-    <div class="field"><label for="book-start">Start, for two hours</label><input id="book-start" name="start" type="time" step="900"></div>
+    <div class="field"><label for="book-start">Time</label><input id="book-start" name="start" type="time" step="900"></div>
   </div>
   <input type="hidden" id="book-date" name="date">
 
@@ -59,9 +59,10 @@ The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}**
       </div>
       <div class="field"><label for="book-host">With</label>
         <select id="book-host" name="host">
-          <option value="">Whoever is hosting</option>
+          <option value="">No preference</option>
           {%- for person in site.data.hosts.people %}
-          <option value="{{ person.name | escape }}">{{ person.name }}</option>
+          {%- assign _name = person.name | split: " " -%}
+          <option value="{{ person.name | escape }}">{{ _name[0] }}</option>
           {%- endfor %}
         </select>
       </div>
@@ -89,8 +90,6 @@ The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}**
     </template>
   </div>
   <script type="application/json" id="hosts">{{ site.data.hosts | jsonify }}</script>
-
-  <div class="field"><label for="book-notes">What you're making, if you like</label><textarea id="book-notes" name="notes" rows="3"></textarea></div>
 
   <div class="trap" aria-hidden="true"><label for="book-website">Website</label><input id="book-website" name="website" tabindex="-1" autocomplete="off"></div>
 

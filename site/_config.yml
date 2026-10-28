@@ -1,22 +1,32 @@
-title: FC Public Media
+title: FC Public Media  # Don't stylize, is used for dynamic copy
 url: https://www.fcpublicmedia.org
-baseurl: ""
+baseurl: ""  # Root page /
 
 fcpm:
+  domain: fcpublicmedia.org  # just a hint, controls nothing
   hero_image: /assets/img/studio.avif
   slogan_1: Don't Just View It.
   slogan_2: Do It.
   tagline: You are PUBLIC MEDIA.
   mission: >-
     FC Public Media is a 501(c)(3) broadcasting the community of Fort Collins and its immediate area.
+
   email:
     info: info@fcpublicmedia.org
     education: education@fcpublicmedia.org
     equipment: equipment@fcpublicmedia.org
     bookings: bookings@fcpublicmedia.org
-    donations: donations@fcpublicmedia.org
-    non-profits: nonprofits@fcpublicmedia.org
+    donate: donate@fcpublicmedia.org
+    legal: legal@fcpublicmedia.org
+
   phone: 970-818-2490
+
+  tiers:
+    supporter: Half-off one class.
+    student: Half-off all classes. Free rentals.
+    creator: Half-off all classes. Half-off rentals.
+    producer: Free classes. Free rentals.
+    a-la-carte: Single- and multi-project studio rates available.
 
   hero_video: /assets/video/wix-was.mp4
 
@@ -57,24 +67,19 @@ fcpm:
   membership:
     nonprofit_rate: 0.5
 
+# Site system configuration
 permalink: pretty
 markdown: kramdown
-
 defaults:
   - scope:
       path: ""
     values:
       layout: page
-
 sass:
   style: compressed
-
-# Underscored, so skipped by default; the host reads them from the output root.
 include:
   - _redirects
   - _headers
-
-# Only these. Internal documents live outside site/; see docs/site.md#never-published.
 exclude:
   - bin
   - tests

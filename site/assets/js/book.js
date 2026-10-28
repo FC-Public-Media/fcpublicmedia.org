@@ -203,7 +203,7 @@ function hostCard(person, day) {
     img.alt = '';
     card.append(img);
   }
-  card.append(el('span', null, person.name));
+  card.append(el('span', null, person.name.split(' ', 1)[0]));
   const can = supports(person);
   if (can.length) card.append(el('small', null, can.join(' · ')));
   card.addEventListener('click', () => setHost(field('host').value === person.name ? '' : person.name, day));

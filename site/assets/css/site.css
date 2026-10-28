@@ -1766,3 +1766,18 @@ blockquote {
 .field-row > .checks { flex: 1 1 8rem; }
 .checks-inline legend { width: 100%; }
 .checks-inline .check { margin-bottom: 0.25rem; }
+
+a[href^="mailto:"] span {
+  padding-left: 0.25em;
+  font-size: var(--step--1);
+  letter-spacing: -0.05em;
+  color: var(--signal-ink);
+}
+.nonprofit {
+  color: var(--record) !important;
+  font-weight: bold;
+}
+.student {
+  color: var(--record-ink) !important;
+  font-weight: bold;
+}
