@@ -35,19 +35,19 @@ async function withList(page, { status = 200, body = ORGS } = {}) {
 }
 
 test.describe('the tiers', () => {
-  test('the nonprofit rate is on every tier, not hidden in a paragraph', async ({ page }) => {
-    // The nonprofit rate is on the page for everyone: half, to the dollar.
+  test('every tier shows its price, and Producer its nonprofit price', async ({ page }) => {
+    // Half, to the dollar, on the tier nonprofits join.
     test.skip(!TIERS.length, 'site/_data/tiers.json has no tiers; run sync-tiers.py');
     await page.goto('/join/');
 
     const cards = page.locator('.grid-4 .card');
     await expect(cards).toHaveCount(TIERS.length);
-
     for (const tier of TIERS) {
-      const card = page.locator('.card', { hasText: tier.name });
-      await expect(card).toContainText(`$${tier.price}`);
-      await expect(card).toContainText(`Nonprofits $${Math.round(tier.amount / 200)}`);
+      await expect(page.locator('.card', { hasText: tier.name })).toContainText(`$${tier.price}`);
     }
+    const producer = TIERS.find((tier) => tier.sku === 'membership:producer');
+    await expect(page.locator('.card', { hasText: 'Producer' }).locator('.nonprofit'))
+      .toHaveText(`Nonprofits $${Math.round(producer.amount / 200)}.`);
   });
 
   test('with no tiers pulled, no empty grid', async ({ page }) => {
