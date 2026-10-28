@@ -31,9 +31,25 @@ function escape(text) {
   return div.innerHTML;
 }
 
-function show(title) {
+// Fort Collins time, whatever the reader's clock says: "7:00 PM".
+const clock = (date) =>
+  date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Denver' });
+
+// The slot it runs in, from its start to the next programme's: "7:00–8:30 PM", or "11:30 AM–1:00 PM"
+// across noon. With nothing after it in the schedule, its start alone.
+function slot(current, next) {
+  const from = clock(current.at);
+  if (!next) return from;
+  const to = clock(next.at);
+  const [fromTime, fromHalf] = from.split(' ');
+  return fromHalf === to.split(' ')[1] ? `${fromTime}–${to}` : `${from}–${to}`;
+}
+
+// Two lines, as the wordmark beside it is: what is on, and when it runs.
+function show(current, next) {
   for (const box of boxes) {
-    box.innerHTML = `<span class="onair-label">${escape(title)}</span>`;
+    box.innerHTML = `<span class="onair-label">${escape(current.title)}</span>` +
+      `<span class="onair-slot">${escape(slot(current, next))}</span>`;
     box.hidden = false;
   }
 }
@@ -74,7 +90,7 @@ async function load() {
 
   if (!current && !next) throw new Error('no schedule returned');
 
-  if (current) show(current.title);
+  if (current) show(current, next);
   else hide();
 
   // Ask again when what we are showing should have given way to the next programme.
