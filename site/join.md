@@ -6,7 +6,7 @@ title: Join
 
 ## Don't Just View It. Do It.
 
-Membership is annual from the date of your payment.
+Membership is a one-time cost for a year of membership, beginning today.
 If you need a la carte reservations on the venue itself, please reach out to 
 [{{ site.fcpm.email.info }}](mailto:{{ site.fcpm.email.info }}).
 

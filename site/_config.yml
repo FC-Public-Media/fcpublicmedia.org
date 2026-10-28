@@ -23,9 +23,9 @@ fcpm:
 
   tiers:
     supporter: Half-off one class.
-    student: Half-off all classes. Free rentals.
-    creator: Half-off all classes. Half-off rentals.
-    producer: Free classes. Free rentals.
+    student: Half-off all classes. Free studio equipment rentals.
+    creator: Half-off all classes. Half-off studio equipment rentals.
+    producer: Free classes. Free studio equipment rentals.
     a-la-carte: Single- and multi-project studio rates available.
 
   hero_video: /assets/video/wix-was.mp4
