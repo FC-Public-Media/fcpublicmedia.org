@@ -5,6 +5,7 @@ baseurl: ""  # Root page /
 fcpm:
   domain: fcpublicmedia.org  # just a hint, controls nothing
   hero_image: /assets/img/studio.avif
+  hero_video: /assets/video/wix-was.mp4
   slogan_1: Don't Just View It.
   slogan_2: Do It.
   tagline: You are PUBLIC MEDIA.
@@ -27,8 +28,6 @@ fcpm:
     creator: Half-off all classes. Half-off studio equipment rentals.
     producer: Free classes. Free studio equipment rentals.
     a-la-carte: Single- and multi-project studio rates available.
-
-  hero_video: /assets/video/wix-was.mp4
 
   address:
     venue: Center for Creativity
