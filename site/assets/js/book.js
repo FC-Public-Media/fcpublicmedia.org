@@ -392,7 +392,9 @@ form.addEventListener('submit', async (event) => {
   if (field('email').value.trim()) answers.email = field('email').value.trim();
   answers.space = field('space').value;
   answers.when = when(choice, field('host').value);
-  if (field('notes').value.trim()) answers.notes = field('notes').value.trim();
+  // Notes only when the page asks for them (reserve.md may leave the box out).
+  const notes = field('notes');
+  if (notes && notes.value.trim()) answers.notes = notes.value.trim();
 
   const lines = [`Space: ${answers.space}`, `When: ${answers.when}`];
   if (name) lines.push(`Name: ${name}`);
