@@ -3,7 +3,8 @@
 // half (#equipment, its heading).
 
 const halves = document.querySelector('[data-halves]');
-const tabs = [...halves.querySelectorAll('[role="tab"]')];
+// Its own tab bar only: a half can have tabs of its own (the studio's weeks).
+const tabs = [...halves.querySelectorAll('.halves-tabs [role="tab"]')];
 const parts = [...halves.querySelectorAll('.half')];
 
 function open(name) {

@@ -1616,11 +1616,18 @@ blockquote {
 
 /* --- Halves: two parts of a page side by side; tabs on a phone (assets/js/halves.js) --- */
 
-.halves { display: grid; gap: clamp(2rem, 5vw, 4rem); }
+/* minmax(0, …) so a wide child (the studio's week) scrolls inside its half instead of widening the page. */
+.halves { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(2rem, 5vw, 4rem); }
 .half > :first-child { margin-top: 0; }
 .halves-tabs { display: none; }
 @media (min-width: 56rem) {
-  .halves { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  /* Wider than the page's column where the screen has room, and the studio's week gets the larger half.
+     Written out rather than through a var(): old Safari drops var() inside min(). */
+  .halves {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start;
+    width: max(100%, min(100vw - 3.5rem, 94rem));
+    margin-inline: calc((100% - max(100%, min(100vw - 3.5rem, 94rem))) / 2);
+  }
 }
 @media (max-width: 55.99rem) {
   .halves { gap: 1.5rem; }
@@ -1634,4 +1641,116 @@ blockquote {
   }
   .halves-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--signal); }
   .half.is-away { display: none; }
+}
+
+/* --- /reserve/'s studio request: a space, a day, a start, a host (assets/js/book.js) --- */
+
+/* The week shown and the space: two rows of picks that look alike, so they read as the form's choices
+   rather than as tabs. Each row ends in a box held to the right: the start time, then the host. */
+.book-spaces { border: 0; padding: 0; margin: 0; min-width: 0; }
+.book-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; margin-bottom: 1rem; }
+.book-row .field { margin: 0 0 0 auto; flex: 0 1 13rem; }
+.book-picks { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.book-picks label { position: relative; cursor: pointer; }
+.book-picks input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.book-picks span, .book-picks button {
+  display: block; font: inherit; font-weight: 650; padding: 0.55rem 0.95rem; cursor: pointer;
+  background: none; color: var(--ink); border: 1px solid var(--rule);
+}
+.book-picks label:hover span, .book-picks button:hover { border-color: var(--ink-soft); }
+.book-picks input:checked + span,
+.book-picks button[aria-pressed="true"] { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
+.book-picks input:focus-visible + span,
+.book-picks button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.book-picks[hidden] { display: none; }
+/* Three to a row on a phone. */
+@media (max-width: 30rem) {
+  .book-picks { gap: 0.35rem; }
+  .book-picks span, .book-picks button { padding: 0.5rem 0.6rem; font-size: var(--step--1); }
+}
+.book-space p { margin: 0 0 0.75rem; color: var(--ink-soft); max-width: var(--measure); }
+.book-space p b { color: var(--ink); }
+
+.planner { margin: 0 0 1.5rem; }
+/* Padding, because scrolling sideways clips, and a picked card tilts past its box. */
+.planner-scroll { overflow-x: auto; padding: 1rem 0.5rem 0.5rem; margin-inline: -0.5rem; }
+.planner-grid { display: grid; column-gap: 0.4rem; }
+
+.planner-head { display: flex; flex-direction: column; gap: 0.5rem; padding-bottom: 0.4rem; }
+.planner-month { margin: 0 0 0.35rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+.planner-date { margin: 0; font-size: var(--step--1); color: var(--ink-soft); }
+.planner-date b { color: var(--ink); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.planner-seat { position: relative; isolation: isolate; }
+/* The day's own host while a time on their day is picked: a yellow mark behind the card. */
+.planner-seat.is-suggested::before {
+  content: ""; position: absolute; inset: -0.25rem; z-index: -1;
+  background: var(--signal); rotate: -8deg;
+}
+.planner-host {
+  display: block; width: 100%; font: inherit; font-size: var(--step--1); font-weight: 650; text-align: left;
+  padding: 0.55rem 0.6rem; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); cursor: pointer;
+  transition: rotate 220ms cubic-bezier(.34, 1.56, .64, 1), border-color 150ms ease, box-shadow 150ms ease;
+}
+.planner-host img { width: 2.5rem; height: 2.5rem; object-fit: cover; border-radius: 50%; margin-bottom: 0.35rem; }
+.planner-host span { display: block; overflow-wrap: anywhere; }
+.planner-host small { display: block; margin-top: 0.2rem; font-size: 0.72rem; font-weight: 500; line-height: 1.3; color: var(--ink-soft); }
+.planner-host:hover { border-color: var(--ink-soft); }
+.planner-host:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+/* The host picked: tilted, as /join/'s tier is. */
+.planner-host.is-picked {
+  rotate: -8deg; position: relative; z-index: 2; border-color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal), 0 10px 24px rgb(0 0 0 / 0.18);
+}
+
+.planner-hours { position: relative; }
+.planner-hours span {
+  position: absolute; right: 0.35rem; translate: 0 -50%;
+  font-size: 0.72rem; font-weight: 650; color: var(--ink-soft);
+}
+.planner-track { position: relative; border-left: 1px solid var(--rule); cursor: pointer; }
+.planner-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--rule); pointer-events: none; }
+
+.planner-slot, .planner-you {
+  position: absolute; left: 0.2rem; right: 0.2rem;
+  display: flex; flex-direction: column; gap: 0.1rem; overflow: hidden;
+  padding: 0.35rem 0.45rem; text-align: left; font: inherit;
+}
+.planner-slot {
+  background: var(--paper-alt); color: var(--ink); cursor: pointer;
+  border: 1px solid var(--rule); border-left: 4px solid var(--ink);
+}
+.planner-slot b { font-size: var(--step--1); }
+.planner-slot span { font-size: 0.82rem; font-weight: 650; }
+.planner-slot small { font-size: 0.72rem; line-height: 1.3; color: var(--ink-soft); }
+.planner-slot:hover { border-color: var(--ink-soft); border-left-color: var(--ink); }
+.planner-slot:focus-visible { outline: 3px solid var(--signal); outline-offset: 1px; }
+.planner-slot.is-picked { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); border-left-color: var(--signal-ink); }
+.planner-slot.is-picked small { color: var(--signal-ink); }
+.planner-slot:disabled { cursor: default; opacity: 0.4; }
+.planner-now {
+  position: absolute; left: -0.3rem; right: 0; z-index: 3; height: 0;
+  border-top: 2px solid var(--record); pointer-events: none;
+}
+.planner-now::before {
+  content: ""; position: absolute; left: 0; top: -0.3rem;
+  width: 0.5rem; height: 0.5rem; margin-top: -1px; border-radius: 50%; background: var(--record);
+}
+.planner-you { background: var(--signal); color: var(--signal-ink); font-size: 0.82rem; font-weight: 700; pointer-events: none; }
+
+.planner-bumper {
+  font: inherit; font-size: 0.75rem; margin: 0.3rem 0; padding: 0.4rem 0.3rem; cursor: pointer;
+  background: none; color: var(--ink-soft); border: 1px dashed var(--rule);
+}
+.planner-bumper:hover { color: var(--ink); border-color: var(--ink-soft); }
+.planner-bumper.is-picked { background: var(--signal); color: var(--signal-ink); border: 1px solid var(--signal); font-weight: 700; }
+.planner-bumper:disabled { visibility: hidden; }
+.planner-head.is-past, .planner-track.is-past { opacity: 0.45; }
+.planner-track.is-past { cursor: default; }
+.planner-hint { font-size: var(--step--1); margin: 0.6rem 0 0; }
+
+.book-mine .rows li code { font-size: var(--step--1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-host { transition: none; }
 }
