@@ -1,33 +1,62 @@
-/learn/: the instructor application beside the page; a quieter QR in the hero
+/reserve/: ask for studio time on a week drawn from hosts.yml
 
-Rebased on #360 (the booking planner), with the copy and data edits made beside it.
+The Studio half becomes a request form. It sends to the site-worker's existing `book` tank, so the
+worker doesn't change.
 
-/learn/
-- The page reads down the left (classes, what ran before) while "Teaching at FC Public Media", its
-  two paragraphs and the application fill the right from the top; on a phone they stack in order.
-- The application sends the site-worker's `instructor` tank. Only email is required: who someone is
-  gets sorted out on our side, never theirs. Pairs side by side: name, email/phone, first time and in
-  person or online, what you'd teach / why FCPM, years / where, times / days; then anything else.
-- "This would be my first time" is a checkbox that sends "Yes"; in person or online is a radio.
-  answers.js now reads radio groups (only the checked one) and a checkbox's own value as text.
+Top to bottom: name and email; a row of week picks with the start time held to its right; a row of
+space picks with "With" (the host) held to its right; the picked space's description; the week. The
+two rows of picks look alike, so they read as choices on the form rather than as tabs. There is no
+day box: the day is picked on the week.
 
-The hero QR
-- Its white tile is translucent (`--qr-light`, 35%) over the glass: the densest thing in the hero stops
-  being its brightest, the modules stay solid black, and it still decodes. No blend mode: the panel's
-  counter-rotation isolates the lockup, and luminosity cannot tint white.
+- **Space:** Video Studio, Podcast Studio or Editing Bays. Only the picked one's description shows. (The "Equipment Checkout" row is gone: the Equipment half is right beside it.)
+- **Name and email:** check-in's profile on this phone (`fcpm.profile`). They fill the form, and
+  sending writes them back, so the first request also sets up check-in.
+- **Start, with:** a start time, always two hours. "With" lists everyone in `hosts.yml`, so anyone
+  can be asked for.
+- **The week:** one week at a time (This week / Next week / Week after, as pressed buttons rather than
+  tabs), Tuesday to Saturday. Columns
+  are `hosts.yml`'s `days` entries that have hours, in the file's order. Each person's day key is
+  their hours. Hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. A slot
+  shows only its time; each host's card above the day shows their name and `supports`. The month is
+  printed over the days, both months when a week crosses a month's end. A red line marks now on
+  today's column, moved every minute and held to the top or bottom edge outside the hours shown. The day runs from a quarter hour before the earliest slot to a
+  quarter hour after the latest one ends. From today's file that is 10:45 to 7:15, because Thursday
+  and Friday run 5–7. "Earlier" and "Later" strips above and below set 9 am or 7:30 pm, and focus
+  the start box so it can be changed. A click in open space sets that time, to the quarter hour.
+- **Host and time follow each other until both are picked by hand.** Picking a host with no time
+  picks their next slot. Picking a slot with no host picks its host. A host picked by hand stays
+  tilted, and the picked day's own host gets a yellow mark behind their card.
+- **Changing week** stops drawing the pick but leaves it in the form.
+- **The receipt** is kept on the phone (`fcpm.bookings`) and listed under the form ("Asked from this
+  phone"). Nobody else's appointments are drawn.
 
-Copy and data (hand edits)
-- `fcpm.email.education`; the street as "200 Mathews St"; /reserve/'s introduction above the studio
-  request and "Equipment rental" copy; "Tappable Check-In"; check-in without the staff link; orientation
-  out of hosts.yml's supports.
+`hosts.yml` is read as it is, through `jsonify`, and its format is unchanged. The worker's `book` tank
+has no host field yet, so the host is written into `when`, e.g. "Saturday, November 7, 2026, 11 am to
+1 pm, with Autumn".
+
+Layout: on a wide screen the halves are now wider than the header, up to 94rem, and the studio gets
+the larger share (1.25 : 1). On a phone the week scrolls sideways inside its half.
+
+Fixes found along the way:
+- `halves.js` took every `role="tab"` in the page, so the week tabs switched both halves off on a
+  phone. It now reads only its own tab bar.
+- On a phone, a wide child could widen the halves grid and the whole page. The grid column is now
+  `minmax(0, 1fr)`.
+- `answers.js` skips forms marked `data-sends`, which send themselves (book.js).
 
 Merge qualifications:
-- [x] jekyll build clean on #360 plus this
-- [x] Playwright against that build: 476 passed, 3 skipped; reserve 22/22 with the booking planner
-- [x] the hero QR decodes at 35% (OpenCV, desktop and phone screenshots)
-- [ ] a real phone camera on the hero QR
+- [x] `jekyll build` clean
+- [x] secrets, internal-publish, tokens and no-code guards pass
+- [x] Driven in headless Firefox, wide and phone: prefill from check-in, both follow rules, the hand-picked host
+      kept with the day's host marked, week change, Earlier strip, open-space click, the send to `book`
+      (stand-in worker), receipt, profile written back
+- [ ] Playwright: 7 new tests in `reserve.spec.js` (time frozen to Monday 2 November). Their expected
+      values were checked by hand with the same frozen time. Playwright can't run on digitization,
+      so they get their first run here in CI.
 
 Carried, not decided:
-- The failures left are the ones before this: meet-board (the old /meet/), the home page's contrast and
-  hero-video checks, and upload's PyYAML test on the LAN Mac.
-- With orientation out of hosts.yml, the kiosk's door no longer lists anyone as helping with orientation.
+- No blocking yet: booked or unavailable slots still show as open.
+- Whatever the worker keeps is emailed once the Microsoft 365 step is in place. Nothing here sends mail.
+- Photos: a card shows `photo` if a person has one. None do yet.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
