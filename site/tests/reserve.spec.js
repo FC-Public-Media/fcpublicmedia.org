@@ -43,3 +43,107 @@ test('without JavaScript nothing is hidden', async ({ browser }) => {
   await expect(page.locator('.halves-tabs')).toBeHidden();
   await context.close();
 });
+
+// The studio request: a week drawn from site/_data/hosts.yml, one week at a time. A Monday morning, so
+// the whole of "this week" (Tuesday 3 to Saturday 7 November) is still ahead.
+const WORKER = 'https://worker.test';
+const MONDAY = new Date('2026-11-02T09:00:00');
+
+async function openStudio(page) {
+  await page.clock.setFixedTime(MONDAY);
+  await page.goto('/reserve/#studio');
+  await page.locator('#book').evaluate((form, worker) => { form.dataset.worker = worker; }, WORKER);
+}
+
+const picked = (page) => Promise.all(['#book-date', '#book-start', '#book-host'].map((s) => page.inputValue(s)));
+const card = (page, name) => page.locator('.planner-host', { hasText: name });
+const slot = (page, name, time) => page.locator('.planner-slot', { hasText: name }).filter({ hasText: time });
+
+test('the week is hosts.yml\'s days with hours, each with its host', async ({ page }) => {
+  await openStudio(page);
+  await expect(page.locator('.planner-date b')).toHaveText(['Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  await expect(page.locator('.planner-host')).toHaveText(['James', 'Morey', 'Nate Keen', 'Chris Crenshaw', 'Autumn']);
+  // Morey's 11–4 is two slots, with an hour between.
+  await expect(page.locator('.planner-slot', { hasText: 'Morey' })).toHaveCount(2);
+  await expect(slot(page, 'Morey', '11–1')).toBeVisible();
+  await expect(slot(page, 'Morey', '2–4')).toBeVisible();
+});
+
+test('picking a host picks their slot; picking a slot picks its host', async ({ page }) => {
+  await openStudio(page);
+  await card(page, 'Morey').click();
+  expect(await picked(page)).toEqual(['2026-11-04', '11:00', 'Morey']);
+  await expect(card(page, 'Morey')).toHaveClass(/is-picked/);
+
+  await card(page, 'Morey').click(); // unpicked: the time stays, the host goes
+  await slot(page, 'Autumn', '2–4').click();
+  expect(await picked(page)).toEqual(['2026-11-07', '14:00', 'Autumn']);
+});
+
+test('a host picked by hand stays, and the day\'s own host is marked', async ({ page }) => {
+  await openStudio(page);
+  await card(page, 'Morey').click();
+  await slot(page, 'Autumn', '11–1').click();
+  expect(await picked(page)).toEqual(['2026-11-07', '11:00', 'Morey']);
+  await expect(card(page, 'Morey')).toHaveClass(/is-picked/);
+  await expect(page.locator('.planner-seat.is-suggested')).toHaveText('Autumn');
+});
+
+test('another week stops drawing the pick but keeps it in the form', async ({ page }) => {
+  await openStudio(page);
+  await slot(page, 'Nate', '5–7').click();
+  await expect(page.locator('.planner-slot.is-picked')).toHaveCount(1);
+  await page.locator('[role="tab"][data-week="1"]').click();
+  await expect(page.locator('.planner-date').first()).toContainText('10');
+  await expect(page.locator('.planner-slot.is-picked')).toHaveCount(0);
+  expect(await picked(page)).toEqual(['2026-11-05', '17:00', 'Nate Keen']);
+});
+
+test('above the day asks for earlier, and the start can be changed', async ({ page }) => {
+  await openStudio(page);
+  await page.locator('.planner-bumper', { hasText: 'Earlier' }).nth(1).click(); // Wednesday's
+  expect(await picked(page)).toEqual(['2026-11-04', '09:00', '']);
+  await expect(page.locator('#book-start')).toBeFocused();
+  await expect(page.locator('.planner-bumper.is-picked')).toContainText('9–11');
+});
+
+test('no time, no request', async ({ page }) => {
+  let calls = 0;
+  await page.route(`${WORKER}/**`, (route) => { calls += 1; route.fulfill({ json: { ok: true } }); });
+  await openStudio(page);
+  await page.locator('#book button[type="submit"]').click();
+  await expect(page.locator('#book [data-say="pick-time"]')).toBeVisible();
+  expect(calls).toBe(0);
+});
+
+test('the request goes to the book tank, kept on the phone with check-in\'s name', async ({ page }) => {
+  let sent = null;
+  await page.route(`${WORKER}/answers`, async (route) => {
+    sent = route.request().postDataJSON();
+    await route.fulfill({ json: { ok: true } });
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('fcpm.profile', JSON.stringify({ name: 'Jo Tester', email: 'jo@example.org', reason: '', note: '' }));
+  });
+  await openStudio(page);
+  await expect(page.locator('#book-name')).toHaveValue('Jo Tester');
+  await expect(page.locator('#book-email')).toHaveValue('jo@example.org');
+
+  await page.locator('.book-space-picks label', { hasText: 'Podcast Studio' }).click();
+  await expect(page.locator('[data-space="Podcast Studio"]')).toBeVisible();
+  await expect(page.locator('[data-space="Video Studio"]')).toBeHidden();
+  await slot(page, 'Autumn', '11–1').click();
+  await page.locator('#book-name').fill('Jo Q Tester');
+  await page.locator('#book button[type="submit"]').click();
+
+  await expect(page.locator('[data-receipt="sent"]')).toBeVisible();
+  expect(sent.form).toBe('book');
+  expect(sent.answers).toEqual({
+    first_name: 'Jo', last_name: 'Q Tester', email: 'jo@example.org', space: 'Podcast Studio',
+    when: 'Saturday, November 7, 2026, 11 am to 1 pm, with Autumn',
+  });
+  await expect(page.locator('[data-receipt="sent"] [data-reference]')).toHaveText(sent.reference.slice(0, 8));
+  await expect(page.locator('[data-mine-list] li')).toContainText('Podcast Studio');
+  const profile = await page.evaluate(() => JSON.parse(localStorage.getItem('fcpm.profile')));
+  expect(profile.name).toBe('Jo Q Tester');
+});

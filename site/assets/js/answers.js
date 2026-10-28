@@ -6,7 +6,8 @@
 //
 // The words are the page's. A script only shows one of the form's [data-say="…"] messages, or one of
 // the [data-receipt="…"] blocks after it, and fills in values: a[data-mailto] gets the email, and
-// [data-reference] the reference. A form with data-checkout is /join/'s, and join.js sends it.
+// [data-reference] the reference. A form with data-checkout is /join/'s, and join.js sends it; one with
+// data-sends has its own page script (book.js for /reserve/'s studio request).
 
 function labelOf(form, input) {
   const label = input.closest('label') || form.querySelector(`label[for="${input.id}"]`);
@@ -68,7 +69,7 @@ export async function post(form, path, body) {
   return result;
 }
 
-for (const form of document.querySelectorAll('form[data-tank]:not([data-checkout])')) {
+for (const form of document.querySelectorAll('form[data-tank]:not([data-checkout]):not([data-sends])')) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const { answers, lines, trap } = read(form);
