@@ -1,6 +1,6 @@
 // /join/: the rules are stated, and the nonprofit lookup always leaves a way through.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const DATA = '**/assets/nonprofits.json';
 

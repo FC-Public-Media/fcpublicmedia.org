@@ -1,6 +1,6 @@
 // /reserve/: spaces and equipment side by side on a wide screen, nothing hidden; tabs on a phone.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const wide = (page) => page.viewportSize().width >= 896;
 

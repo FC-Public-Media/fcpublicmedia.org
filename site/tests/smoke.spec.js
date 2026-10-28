@@ -1,7 +1,7 @@
 // Every page in pages.js loads cleanly, plus navigation, the archive and the unbuilt requests.
 // Needs no network. See docs/site.md.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 const { PAGES, isThirdParty, isThirdPartyConsole } = require('./pages');
 
 // Attach before navigating; third-party failures are collected apart from our own.

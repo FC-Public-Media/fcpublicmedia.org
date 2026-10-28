@@ -1,6 +1,6 @@
 // /upload/: a passkey made at /authorize/ signs in here and its user handle names the site.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect, brokerUrl, withBroker } = require('./fixtures');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -36,6 +36,9 @@ const claimFor = (email, repo) =>
   mint(['--key', keyPath, '--email', email, '--repo', repo, '--days', '2'])
     .split('#claim=')[1];
 
+// No worker unless a test plants one (later routes win), whatever site_worker.yml says.
+test.beforeEach(async ({ page }) => { await brokerUrl(page, '**/upload/', ''); });
+
 test.beforeAll(() => {
   workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fcpm-upload-'));
   keyPath = path.join(workdir, 'key.pem');
@@ -48,7 +51,7 @@ test.afterAll(() => fs.rmSync(workdir, { recursive: true, force: true }));
 async function withKey(page) {
   await page.route('**/authorize/', async (route) => {
     const response = await route.fetch();
-    const body = (await response.text()).replace(
+    const body = withBroker(await response.text()).replace(
       '"keys": []',
       `"keys": [${JSON.stringify(publicKey)}]`
     );

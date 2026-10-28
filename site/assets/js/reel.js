@@ -23,9 +23,11 @@ if (video) {
 
   let wanted = !still.matches;
 
+  // The button follows what was asked for; the picture only shows once frames are moving
+  // ('playing', not 'play'), so loading or a declined autoplay leaves the photograph up.
   const state = () => {
     const playing = !video.paused && !video.ended;
-    video.classList.toggle('is-playing', playing);
+    if (!playing) video.classList.remove('is-playing');
     if (toggle) toggle.setAttribute('aria-pressed', String(playing));
     if (label) label.textContent = playing ? 'Pause the background video' : 'Play the background video';
   };
@@ -35,7 +37,9 @@ if (video) {
   const play = () => video.play().then(state, state);
 
   video.addEventListener('play', state);
+  video.addEventListener('playing', () => video.classList.add('is-playing'));
   video.addEventListener('pause', state);
+  video.addEventListener('ended', state);
 
   if (toggle) {
     toggle.addEventListener('click', () => {

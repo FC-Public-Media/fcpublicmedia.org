@@ -1,7 +1,7 @@
 // @external: Cablecast player, show pages, thumbnails, footer links; needs the network.
 // Cablecast returns 200 for missing shows, so pages are rendered and checked. See docs/site.md.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const CABLECAST = 'https://reflect-fcpublicmedia.cablecast.tv';
 const LIVE_EMBED = `${CABLECAST}/internetchannel/watch-live-embed?streamId=1`;

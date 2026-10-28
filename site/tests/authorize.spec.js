@@ -1,6 +1,6 @@
 // /authorize/ against a CDP virtual authenticator: real WebAuthn calls, real credentials.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect, withBroker } = require('./fixtures');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -37,7 +37,7 @@ test.afterAll(() => fs.rmSync(workdir, { recursive: true, force: true }));
 async function withKey(page) {
   await page.route('**/authorize/', async (route) => {
     const response = await route.fetch();
-    const body = (await response.text()).replace(
+    const body = withBroker(await response.text()).replace(
       '"keys": []',
       `"keys": [${JSON.stringify(publicKey)}]`
     );

@@ -1,6 +1,6 @@
 // /devices/: which buttons are withheld and what each refusal says. GitHub and the broker are stubbed.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect, brokerUrl, withBroker } = require('./fixtures');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -18,6 +18,9 @@ let keyPath;
 let publicKey;
 
 const mint = (args) => execFileSync('python3', [SCRIPT, ...args], { encoding: 'utf8' }).trim();
+
+// No worker unless a test plants one (later routes win), whatever site_worker.yml says.
+test.beforeEach(async ({ page }) => { await brokerUrl(page, '**/devices/', ''); });
 
 test.beforeAll(() => {
   workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'fcpm-devices-'));
@@ -56,16 +59,11 @@ async function signedIn(page, { devices, broker = null, decision } = {}) {
 
   await page.route('**/authorize/', async (route) => {
     const response = await route.fetch();
-    const body = (await response.text()).replace('"keys": []', `"keys": [${JSON.stringify(publicKey)}]`);
+    const body = withBroker(await response.text()).replace('"keys": []', `"keys": [${JSON.stringify(publicKey)}]`);
     await route.fulfill({ response, body });
   });
 
-  await page.route('**/devices/', async (route) => {
-    const response = await route.fetch();
-    let body = await response.text();
-    if (broker) body = body.replace('"brokerUrl": ""', `"brokerUrl": "${broker}"`);
-    await route.fulfill({ response, body });
-  });
+  await brokerUrl(page, '**/devices/', broker || '');
 
   await page.route('https://raw.githubusercontent.com/**', async (route) => {
     if (devices === null) {

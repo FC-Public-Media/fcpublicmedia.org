@@ -1,6 +1,6 @@
 // Claims minted by the real mint-claim.py (openssl) and verified by claims.js in a real browser.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');

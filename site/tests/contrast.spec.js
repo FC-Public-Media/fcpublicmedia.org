@@ -1,7 +1,7 @@
 // WCAG contrast of computed text colour against the first opaque ancestor background.
 // Complements site/bin/test_tokens.py, which reads source only. See docs/site.md.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 /** Relative luminance, straight from the WCAG definition. */
 function luminance([r, g, b]) {

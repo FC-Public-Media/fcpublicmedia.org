@@ -800,9 +800,13 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   object-fit: cover;
   /* Behind the panels, above .hero-photo's background-image. */
   z-index: 0;
-  /* Until it plays, the still behind it is what shows rather than a black rectangle. */
+  /* Until frames are moving, the photograph behind it shows: never a frozen or black frame. */
   background: transparent;
+  opacity: 0;
+  transition: opacity 0.6s ease;
 }
+.hero-video.is-playing { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .hero-video { transition: none; } }
 
 /* The hero becomes the positioning context, and its content has to sit above the video. */
 .hero { position: relative; isolation: isolate; }
@@ -831,8 +835,9 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 
 /* One button, two glyphs: show the one that says what the click will do. */
 .reel-icon-pause { display: none; }
-.hero-video.is-playing ~ .wrap .reel-icon-play { display: none; }
-.hero-video.is-playing ~ .wrap .reel-icon-pause { display: block; }
+/* The button's own state, so a tap answers at once while the video is still loading. */
+.reel-toggle[aria-pressed="true"] .reel-icon-play { display: none; }
+.reel-toggle[aria-pressed="true"] .reel-icon-pause { display: block; }
 
 /* --- Embeds --------------------------------------------------------------- */
 

@@ -1,6 +1,6 @@
 // The clock is mocked to the class the site bakes in (pages.js bakedClass), a two-hour session.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 const { isThirdParty, bakedClass } = require('./pages');
 
 const CLASS = bakedClass();

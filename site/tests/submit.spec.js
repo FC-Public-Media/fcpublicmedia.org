@@ -1,7 +1,7 @@
 // /submit/: the program form beside the rules on a wide screen, under them on a phone; it sends to the
 // site-worker's `program` tank, and without one it hands the same answers to an email.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures');
 
 const WORKER = 'https://worker.test';
 
