@@ -4,3 +4,5 @@ follow          every 5m    machines/digitization
 pools           keep        troves/pools
 names           keep        machines/digitization
 senders         every 1m    machines/digitization
+# The tanks: 10 minutes keeps KV's list operations (1,000 a day on the free plan) far from the limit.
+drain           every 10m   machines/digitization

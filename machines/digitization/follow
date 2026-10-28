@@ -23,6 +23,15 @@ git fetch -q origin main && git merge -q --ff-only origin/main
 GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- troves
 # The Wix copy (the static job's `wix` site), from the origin like the rest.
 GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- wix
+# The site-worker's checkout beside this one (../site-worker), for the drain line: its own repository,
+# not a submodule, kept the same way: the origin's main, fast-forward only, never over local changes.
+SW=../site-worker
+if [ ! -e "$SW" ]; then
+  GIT_TERMINAL_PROMPT=0 git clone -q "$O/FC-Public-Media/site-worker" "$SW"
+elif [ "$(git -C "$SW" rev-parse --abbrev-ref HEAD)" = main ] && [ -z "$(git -C "$SW" status --porcelain)" ]; then
+  git -C "$SW" remote set-url origin "$O/FC-Public-Media/site-worker"
+  GIT_TERMINAL_PROMPT=0 git -C "$SW" fetch -q origin main && git -C "$SW" merge -q --ff-only origin/main
+fi
 # The static job's sites: each that moved is built or exported and pushed (../static/publish.py). An
 # exported one (NCCV's platform) moves on its own repository, so this asks every pass; one that did not
 # move costs a fetch from the origin and nothing more.

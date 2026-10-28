@@ -12,3 +12,7 @@ serves:
   - service: senders
     for: "who may deliver finished post work to the landing: authorized_keys's marked lines kept to post-senders.yml"
     start: "/usr/bin/python3 machines/digitization/post-receive senders"
+
+  - service: drain
+    for: "the site-worker's tanks (every form reply on the site) brought here into ~/fcpm/answers and emptied behind; see digitization/PROFILE.md#replies"
+    start: "/bin/sh machines/digitization/drain"
