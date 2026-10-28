@@ -43,6 +43,10 @@ fcpm:
     - Reserve
     - Join
     - Submit
+  # The first to give up their words as the bar narrows (they keep their icons).
+  menu_folds:
+    - Join
+    - Submit
 
   channels:
     On-site: /reserve/

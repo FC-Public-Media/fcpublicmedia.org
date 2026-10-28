@@ -1,38 +1,39 @@
-digitization: drain the site-worker's tanks here every hour
+Header: the 2025 logo, and a menu that stays on the bar at every width
 
-Every form on the site sends its reply to the site-worker, which only keeps it in a KV tank. This adds the
-crew line that brings them here, so the replies live on our own machine and the log (Microsoft 365, by any
-method) can be fed from here at leisure. No worker code changes: the line runs the site-worker's own
-`bin/drain.mjs` (site-worker #7).
+The hamburger and its drawer are gone, and so is `nav.js`. Every menu link is on the bar at every width,
+one tap from any page. As the bar narrows, things give up their room in this order:
 
-- `machines/digitization/drain`: `keys run cloudflare -- /usr/bin/node <site-worker>/bin/drain.mjs`.
-  Each reply becomes `~/fcpm/answers/<tank>/<received>--<reference>.json` on the card's encrypted home,
-  700/600. It is written, read back and compared before its KV key is deleted, so a reply is always in
-  one place or both. A failure leaves it in KV for the next pass. Passes `--keep` and `--tank` through.
-- `services`: `drain every 1h`. KV keeps a reply until something deletes it (the worker sets no
-  expiry), so there is no rush. A pass that finds nothing still costs one list operation: 24 a day,
-  against KV's 1,000-a-day free limit (every 10 minutes would have been 144).
-- `follow`: keeps `~/code/work/site-worker` (beside this checkout, its own repository, not a submodule) on
-  the origin's main, fast-forward only, never over local changes. It clones it if it is missing.
-- `check.sh`: the site-worker checkout is there, and the archive is private.
-- `keys.yml`: the `cloudflare` group lists the drain as a user. `PROFILE.md` gets a Replies section.
+1. What's on Channel 97 goes first, at 60rem (unchanged).
+2. Join and Submit (`menu_folds` in `_config.yml`) keep only their icons, at 52rem.
+3. Every item but the page you are on keeps only its icon, at 36rem. The four main words last to about
+   600px, which the measurements bear out: the name and the menu with its words need 566px.
+4. On a phone (30rem) the menu takes its own row under the name. The header is 103px tall there, and
+   `--head-h` follows so the hero still fills the rest.
 
-Debian's `/usr/bin/node` (v20, from gear `npm`) runs it: the crew's service has no person's PATH.
+The page you are on always keeps its icon, its word (in the menu's sans, not the masthead's serif)
+and its yellow underline. That replaces `.site-head-here`, the serif page name the drawer used to leave
+behind. A word that is hidden is still the link's accessible name. Icon-only links get a little more
+icon and padding, as a thumb's target.
 
 Merge qualifications:
-- [x] `drain --keep` from this branch's script: 1 reply found and saved, nothing deleted (written to a
-      scratch archive, then removed)
-- [x] `crew.py` reads the new line with nothing reported; its start line resolves
-- [x] cloning `FC-Public-Media/site-worker` from the origin as this box's user works
-- [x] YAML parses; shell syntax checks pass
+- [x] The logo at 1280, 600 and 390: no overflow; the tabs stop at the masthead's bottom edge (68/69px, and
+      102/103px on a phone)
+- [x] `jekyll build` clean; tokens, secrets, internal-publish and no-code guards pass
+- [x] Measured in headless Firefox at 1280, 1000, 900, 840, 760, 700, 672, 600, 520, 480, 430, 390 and
+      360: nothing overflows the bar or the page at any of them
+- [x] A folded item keeps its word when it is the page (/submit/ at 760, /join/ at 600). The home page on
+      a phone is icons only, and every link keeps its name.
+- [ ] Playwright: the drawer tests are rewritten. `smoke.spec.js` checks every link is on screen at 1280,
+      820, 600 and 390, with the current page's word visible and no sideways scroll. `onair.spec.js`
+      checks the current page's word instead of the drawer button. They first run in CI.
 
-After merge: `follow` puts it in place within 5 minutes. `work/site-worker` already exists, so it is
-re-pointed at the origin and fast-forwarded, and the crew starts the line when it sees the new
-`services` (its first pass at once, then hourly). The first real pass empties the one reply waiting now (in `program`).
+**The mark:** the 2025 logo (`brand/2025.png`) stands in for the yellow square until the board picks the
+new one. `site/assets/img/logo-2025.png` is the same art trimmed to its pixels (192×192 to 168×103), so it
+sits as a landscape, 2.35rem tall (61×38 on screen) and as tall as the name's two lines. The name moves
+right to make room. The main words still last to 600px with it. On the dark band the logo's black
+outlines and the camera's handle mostly disappear; the coloured body and its lettering carry it.
 
-Carried, not decided:
-- The `cloudflare` group is the org account's deploy token. The drain only needs KV read and delete, so a
-  narrower token in a group of its own would be safer. Not made yet.
-- Carrying the archive on to the M365 log is the next line. It reads these files; KV is not asked again.
+**/reserve/'s tabs on a phone** stick under the masthead (`top: var(--head-h)`) instead of sliding behind
+it.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

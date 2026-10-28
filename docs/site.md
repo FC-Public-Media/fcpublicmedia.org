@@ -108,7 +108,7 @@ Other data files name their doc in their first line.
 
 | | |
 |---|---|
-| `assets/js/nav.js`, `archive-filter.js` | mobile menu; filter and sort on the archive, now part of `/watch/` |
+| `assets/js/archive-filter.js` | filter and sort on the archive, now part of `/watch/` (the menu has no script: it stays on the bar at every width) |
 | `assets/js/onair.js` | "On now" and "Next at" from Cablecast's API, on pages with `data-onair`; removed on failure |
 | `assets/js/lights.js` | `/lights/`: the lights reply code for the kiosk camera ([kiosk.md](kiosk.md)) |
 | `assets/js/qr-*.mjs` | vendored from anecdote.channel, unchanged; `machines/kiosk/door.py` serves them, so never move them |

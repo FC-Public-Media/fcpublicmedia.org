@@ -155,23 +155,23 @@ for (const { path, name } of PAGES) {
 }
 
 test.describe('navigation', () => {
-  test('mobile menu opens and closes', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'mobile viewport only');
-
-    await page.goto('/');
-
-    const toggle = page.locator('.nav-toggle');
-    const nav = page.locator('#site-nav');
-
-    await expect(toggle).toBeVisible();
-    await expect(nav).toBeHidden();
-
-    await toggle.click();
-    await expect(nav).toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-    await toggle.click();
-    await expect(nav).toBeHidden();
+  // Never a drawer: at any width every menu link is on the bar, one tap from any page. Words may go;
+  // the page you are on keeps its word.
+  test('every menu link is on the bar, and the page you are on keeps its word', async ({ page }) => {
+    for (const width of [1280, 820, 600, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/reserve/');
+      const links = page.locator('.site-nav a');
+      const count = await links.count();
+      expect(count).toBeGreaterThan(3);
+      for (let i = 0; i < count; i += 1) await expect(links.nth(i)).toBeInViewport();
+      await expect(page.locator('.site-nav a[aria-current="page"] .nav-word')).toBeVisible();
+      await expect(page.locator('.site-nav a[aria-current="page"] .nav-word')).toHaveText('Reserve');
+      // A word that went is still the link's name.
+      await expect(page.locator('.site-nav a[href="/join/"]')).toHaveAccessibleName('Join');
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(over, `the page scrolls sideways at ${width}`).toBeLessThanOrEqual(0);
+    }
   });
 
   test('every header link is reachable', async ({ page, request }) => {
