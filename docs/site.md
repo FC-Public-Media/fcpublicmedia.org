@@ -1,7 +1,7 @@
 # Site
 
 fcpublicmedia.org is a static Jekyll site built from `site/` and uploaded to one Cloudflare Pages project,
-`fcpm-new`, at `new.fcpublicmedia.org` ([Deploy](#deploy)), while the apex and `www` serve the photocopy of the old Wix site. Its five transactions (tickets, dues, donations,
+`fcpm-new`, at `fcpublicmedia.org` ([Deploy](#deploy)); the photocopy of the old Wix site is at `wix.fcpublicmedia.org`. Its five transactions (tickets, dues, donations,
 booking, submissions) are hand-offs to other services ([payments.md](payments.md#transactions)).
 
 ## Layout
@@ -125,7 +125,7 @@ cd site && bundle exec jekyll build
 cd tests && npm ci && npx playwright install chromium
 npx playwright test --grep-invert @external      # what CI gates on
 npx playwright test --grep @external             # third-party health
-npm run test:live                                # against https://www.fcpublicmedia.org
+npm run test:live                                # against https://fcpublicmedia.org
 ```
 
 - `playwright.config.js` serves `../_site` on `localhost:4567` (WebAuthn rejects an IP), desktop and
@@ -142,7 +142,7 @@ Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it refres
 ([the sync jobs](programming.md#sync-jobs) and member sites), runs `jekyll build` in `site/` and uploads `_site` to
 the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
-side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
+side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new.fcpublicmedia.org`.
 
 - It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
   `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
@@ -157,25 +157,51 @@ side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
 - The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
-  www.fcpublicmedia.org` prints the root directory.
+  fcpublicmedia.org` prints the root directory.
 
 ## Domain and DNS
 
-Network Solutions is the registrar (expires 2027-06-19, `clientTransferProhibited`); nameservers
-change there, with no transfer. Wix's `ns4.wixdns.net` and `ns5.wixdns.net` serve the zone:
+Network Solutions is the registrar (expires 2027-06-19). `clientTransferProhibited` blocks moving the
+domain to another registrar, not changing its nameservers. Since 2026-10-24 the nameservers are
+Cloudflare's (`ganz` and `tiffany.ns.cloudflare.com`), so the zone lives in FCPM's org Cloudflare account
+beside the Pages projects and the site-worker. Wix's old nameservers still answer from a stale copy;
+nothing asks them.
+
+| Name | Serves |
+|---|---|
+| `@` | this site (Pages `fcpm-new`), its canonical address (`url` in `site/_config.yml`) |
+| `www` | a 301 to the same path on `@`, by a Single Redirect rule in the zone |
+| `wix` | the Wix photocopy (Pages `fcpm-wix`), for good |
+| `new` | this site too, for codes printed before the cutover; later the beta, beside a preview worker |
+| `cloud` | the site-worker, once `bin/provision.mjs` attaches it (no record yet) |
+
+The web names are proxied. Mail and Microsoft 365 came across whole, checked 2026-10-28:
 
 | Name | Type | Value |
 |---|---|---|
-| `@` | A | `185.230.63.171`, `185.230.63.107`, `185.230.63.186` |
-| `www`; `new` | CNAME | `cdn3.wixdns.net`; `fcpm.autumn-e2c.workers.dev` (Autumn's business account, autumn-e2c) |
 | `@` | MX 10; TXT | `fcpublicmedia-org.mail.protection.outlook.com`; `v=spf1 include:spf.protection.outlook.com -all`, `ms15993575` |
 | `autodiscover`, `lyncdiscover`, `sip` | CNAME | `autodiscover.outlook.com`, `webdir.online.lync.com`, `sipdir.online.lync.com` |
 | `enterpriseregistration`, `enterpriseenrollment` | CNAME | `enterpriseregistration.windows.net`, `enterpriseenrollment.manage.microsoft.com` |
 | `_sipfederationtls._tcp`, `_sip._tls` | SRV | `100 1 5061 sipfed.online.lync.com`, `100 1 443 sipdir.online.lync.com` |
 
-No wildcard, CAA, `_dmarc` or DKIM. A zone moved to Cloudflare must carry every row, re-read
-first: mail is on Microsoft 365 and the SPF ends in `-all`. A and CNAME rows stay DNS-only, since
-proxying Wix takes the apex down. A Workers Custom Domain needs zone and Worker in one account.
+No wildcard, CAA, `_dmarc` or DKIM. The SPF ends in `-all`: mail from anywhere else is refused.
+
+### Redirects
+
+Two layers, each doing what the other can't. The zone's Single Redirect rule sends `www` to `@`: it sees
+hostnames and runs before Pages. Old paths (Wix's, and ours that moved) are `_redirects`, built from
+`site/_data/redirects.yml`: paths only, matched exactly, so `/membership` and `/membership/` are two
+entries. A Pages custom domain that isn't Active answers Cloudflare's 522; a hostname is only safe to
+point at a project once the project lists it as Active.
+
+### The cutover (2026-10-28)
+
+1. Done: `@` serves `fcpm-new`, `www` redirects to it, `wix` keeps the photocopy.
+2. Deploy this site with `site/_data/checkin.yml` naming `@` (the QR, the poster and the kiosk follow).
+   A code printed for `new` keeps working.
+3. `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attaches `cloud`; then
+   `site/_data/site_worker.yml` `url` becomes `https://cloud.fcpublicmedia.org` and the site deploys again.
+4. Switch off the Wix forms; drain the site-worker; retire the `instructor` tank once its drain is empty.
 
 ## Redirects and headers
 

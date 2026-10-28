@@ -133,3 +133,20 @@
   to: /you/settings/
 - from: /upload/
   to: /you/upload/
+
+# Wix URLs the 2026-10-28 audit found unredirected (every page in the wix submodule's photocopy against
+# this build). Wix's own addresses have no trailing slash; the /membership/ and /classes/ entries above
+# are ours that moved, so these are not duplicates.
+- from: /membership
+  to: /join/
+- from: /classes
+  to: /learn/
+- from: /equipment
+  to: /reserve/
+# No donation page, and Donate's destination is not set: the Supporter tier is backing without studio use.
+- from: /donate
+  to: /join/
+- from: /event-details/podcasting-101-2
+  to: /learn/
+- from: /event-details/podcasting-production-102
+  to: /learn/

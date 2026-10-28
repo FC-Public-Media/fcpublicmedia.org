@@ -198,7 +198,7 @@ def main(argv=None):
     )
     parser.add_argument(
         "--site",
-        default="https://www.fcpublicmedia.org",
+        default="https://fcpublicmedia.org",
         help="site the link points at",
     )
     args = parser.parse_args(argv)

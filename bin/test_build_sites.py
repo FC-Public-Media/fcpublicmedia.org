@@ -109,7 +109,7 @@ class DeliveryTests(unittest.TestCase):
         """A plain git build rooted at site/ publishes what is live, needing no machine of ours."""
         by_path = {e.path: e for e in bs.load_manifest()}
         site = by_path["site"]
-        self.assertEqual(site.domain, "www.fcpublicmedia.org")
+        self.assertEqual(site.domain, "fcpublicmedia.org")
         self.assertEqual(site.deliver, "source")
         self.assertEqual(site.deploy_root, "site")
 
@@ -144,7 +144,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_deploy_root_prints_the_switch(self):
         with unittest.mock.patch("sys.stdout") as out:
-            code = bs.main(["--deploy-root", "www.fcpublicmedia.org"])
+            code = bs.main(["--deploy-root", "fcpublicmedia.org"])
         self.assertEqual(code, 0)
         printed = "".join(c.args[0] for c in out.write.call_args_list)
         self.assertEqual(printed.strip(), "source\tsite")

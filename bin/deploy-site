@@ -1,6 +1,6 @@
 #!/bin/sh
 # deploy-site: refresh the site's data, build site/ and upload it to Cloudflare Pages, project fcpm-new
-# (new.fcpublicmedia.org). That is the whole deploy: a direct upload of _site, from a checkout on a box
+# (fcpublicmedia.org, and new.). That is the whole deploy: a direct upload of _site, from a checkout on a box
 # holding the keychain's `cloudflare` group. No CI, no git-connected build, no other host. See docs/site.md#deploy.
 #
 #   bin/deploy-site            refresh, build HEAD's site/ and upload it as fcpm-new's production (branch main)
