@@ -1,5 +1,5 @@
 // What's on Channel 97, in the masthead: two lines like the wordmark (the programme, its slot), and on a
-// narrow screen not at all, so the page's name and the menu keep their room. /watch/ keeps its own bar.
+// narrow screen not at all: it gives up its room before any menu item gives up a word. /watch/ keeps its own bar.
 
 const { test, expect } = require('./fixtures');
 
@@ -27,8 +27,8 @@ test('the masthead says what is on and when it runs, or gives the room up', asyn
     await expect(bar.locator('.onair-slot')).toHaveText('7:00–8:30 PM');
   } else {
     await expect(bar).toBeHidden();
-    await expect(page.locator('.site-head-here')).toBeVisible();
-    await expect(page.locator('.nav-toggle')).toBeVisible();
+    await expect(page.locator('.site-nav a[aria-current="page"] .nav-word')).toHaveText('Join');
+    await expect(page.locator('.site-nav a[aria-current="page"] .nav-word')).toBeVisible();
   }
 });
 

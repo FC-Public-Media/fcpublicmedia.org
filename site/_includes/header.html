@@ -7,7 +7,9 @@
     {%- endcomment %}
     <div class="site-head-brand">
       <a class="wordmark" href="{{ '/' }}">
-        <span class="wordmark-mark" aria-hidden="true"></span>
+        {%- comment -%} The 2025 logo, standing in for the yellow square until the board picks the new one.
+          Trimmed from brand/2025.png to the art alone (168x103), so it sits as the landscape it is. {%- endcomment %}
+        <img class="wordmark-logo" src="{{ '/assets/img/logo-2025.png' }}" alt="" width="168" height="103">
         <span class="wordmark-text">
           <b>{{ site.data.brand.names.lockup[0] }}</b>
           <span>{{ site.data.brand.names.lockup[1] }}</span>
@@ -18,37 +20,19 @@
       <div class="onair-bar" data-onair hidden></div>
     </div>
 
-    {%- assign here = "" -%}
-    {%- for item in site.fcpm.menu -%}
-      {%- assign _url = "/" | append: item | downcase | append: "/" -%}
-      {%- if page.url contains _url -%}{%- assign here = item -%}{%- endif -%}
-    {%- endfor -%}
-
-    {%- if here == "" -%}
-      {%- for item in site.fcpm.elsewhere -%}
-        {%- assign _url = "/" | append: item | downcase | append: "/" -%}
-        {%- if page.url contains _url -%}{%- assign here = item -%}{%- endif -%}
-      {%- endfor -%}
-    {%- endif -%}
-
-    {%- if here != "" -%}
-      <p class="site-head-here">{{ here }}</p>
-    {%- endif -%}
-
-    <button class="nav-toggle" aria-expanded="false" aria-controls="site-nav">
-      <span class="nav-toggle-bars" aria-hidden="true"></span>
-      <span class="visually-hidden">Menu</span>
-    </button>
-
+    {%- comment -%} Never a drawer: every page is one tap away at any width. As the bar narrows, the
+      words go and the icons stay: `menu_folds` first (Join, Submit), then every item but the page
+      you are on, which keeps its word and its underline. See the Header section of site.css.
+    {%- endcomment %}
     <nav class="site-nav" id="site-nav" aria-label="Main">
       <ul>
         {%- for item in site.fcpm.menu -%}
           {%- assign _url = "/" | append: item | downcase | append: "/" -%}
-          <li>
+          <li{% if site.fcpm.menu_folds contains item %} class="nav-fold"{% endif %}>
             <a href="{{ _url }}"
                 {% if page.url contains _url %}aria-current="page"{% endif %}>
               {% include nav-icon.html name=item %}
-              <span>{{ item }}</span></a>
+              <span class="nav-word">{{ item }}</span></a>
           </li>
         {%- endfor -%}
       </ul>

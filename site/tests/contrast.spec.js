@@ -94,13 +94,6 @@ test.describe('contrast', () => {
     for (const [path, name] of [['/', 'home'], ['/watch/', 'watch'], ['/join/', 'membership']]) {
       await page.goto(path);
 
-      // On a phone the sampler skips hidden links, so open the menu first.
-      const toggle = page.locator('.nav-toggle');
-      if (await toggle.isVisible()) {
-        await toggle.click();
-        await expect(page.locator('.site-nav a').first()).toBeVisible();
-      }
-
       const links = await sample(page, '.site-nav a');
       expect(links.length, `no navigation on ${name}`).toBeGreaterThan(0);
 
