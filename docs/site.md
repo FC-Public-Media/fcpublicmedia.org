@@ -1,7 +1,7 @@
 # Site
 
 fcpublicmedia.org is a static Jekyll site built from `site/` and uploaded to one Cloudflare Pages project,
-`fcpm-new`, at `new.fcpublicmedia.org` ([Deploy](#deploy)), while the apex and `www` serve the photocopy of the old Wix site. Its five transactions (tickets, dues, donations,
+`fcpm-new`, at `fcpublicmedia.org` ([Deploy](#deploy)); the photocopy of the old Wix site is at `wix.fcpublicmedia.org`. Its five transactions (tickets, dues, donations,
 booking, submissions) are hand-offs to other services ([payments.md](payments.md#transactions)).
 
 ## Layout
@@ -142,7 +142,7 @@ Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it refres
 ([the sync jobs](programming.md#sync-jobs) and member sites), runs `jekyll build` in `site/` and uploads `_site` to
 the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
-side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
+side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new.fcpublicmedia.org`.
 
 - It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
   `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
@@ -169,9 +169,10 @@ nothing asks them.
 
 | Name | Serves |
 |---|---|
-| `@`, `www` | the Wix photocopy (Pages `fcpm-wix`) until the cutover, then this site (`fcpm-new`), the bare name redirecting to `www` |
-| `wix` | the Wix photocopy, for good |
-| `new` | this site (`fcpm-new`); later the beta, beside a preview worker |
+| `@` | this site (Pages `fcpm-new`), its canonical address (`url` in `site/_config.yml`) |
+| `www` | a 301 to the same path on `@`, by a Single Redirect rule in the zone |
+| `wix` | the Wix photocopy (Pages `fcpm-wix`), for good |
+| `new` | this site too, for codes printed before the cutover; later the beta, beside a preview worker |
 | `cloud` | the site-worker, once `bin/provision.mjs` attaches it (no record yet) |
 
 The web names are proxied. Mail and Microsoft 365 came across whole, checked 2026-10-28:
@@ -185,13 +186,19 @@ The web names are proxied. Mail and Microsoft 365 came across whole, checked 202
 
 No wildcard, CAA, `_dmarc` or DKIM. The SPF ends in `-all`: mail from anywhere else is refused.
 
-### The www cutover
+### Redirects
 
-1. In Pages, move the custom domains `www.fcpublicmedia.org` and `fcpublicmedia.org` from `fcpm-wix`
-   to `fcpm-new`; `wix` stays on `fcpm-wix`, `new` on `fcpm-new`. Add a redirect rule: the bare name
-   to `www`, path and query kept.
-2. Deploy this site with `site/_data/checkin.yml` naming `www` (the QR, the poster and the kiosk
-   follow from it). A code already printed for `new` keeps working: `new` still serves the site.
+Two layers, each doing what the other can't. The zone's Single Redirect rule sends `www` to `@`: it sees
+hostnames and runs before Pages. Old paths (Wix's, and ours that moved) are `_redirects`, built from
+`site/_data/redirects.yml`: paths only, matched exactly, so `/membership` and `/membership/` are two
+entries. A Pages custom domain that isn't Active answers Cloudflare's 522; a hostname is only safe to
+point at a project once the project lists it as Active.
+
+### The cutover (2026-10-28)
+
+1. Done: `@` serves `fcpm-new`, `www` redirects to it, `wix` keeps the photocopy.
+2. Deploy this site with `site/_data/checkin.yml` naming `@` (the QR, the poster and the kiosk follow).
+   A code printed for `new` keeps working.
 3. `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attaches `cloud`; then
    `site/_data/site_worker.yml` `url` becomes `https://cloud.fcpublicmedia.org` and the site deploys again.
 4. Switch off the Wix forms; drain the site-worker; retire the `instructor` tank once its drain is empty.

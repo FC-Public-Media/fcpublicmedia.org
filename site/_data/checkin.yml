@@ -1,7 +1,7 @@
 # /check-in/: visits recorded in the visitor's own browser, sent nowhere. See docs/identity.md#check-in.
 
 # What the QR encodes. Regenerate after changing it: python3 site/bin/make-qr.py
-url: https://www.fcpublicmedia.org/check-in/
+url: https://fcpublicmedia.org/check-in/
 
 location:
   required: true

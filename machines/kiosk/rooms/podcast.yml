@@ -14,7 +14,7 @@ welcome: Come in and have a look.
 quiet: Nobody is in right now.
 
 # The code: the site, not check-in. A passer-by is not here for a reservation.
-encodes: https://www.fcpublicmedia.org/
+encodes: https://fcpublicmedia.org/
 shown: fcpublicmedia.org
 # This room's name as site/_data/calendar.json gives it (the calendar event's location), for what is
 # coming up here.
