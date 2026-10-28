@@ -1,30 +1,62 @@
-Cutover: fcpublicmedia.org is canonical; check-in on it; every Wix page lands
+/reserve/: ask for studio time on a week drawn from hosts.yml
 
-The bare domain now serves fcpm-new and www redirects to it (done in Cloudflare on 2026-10-28). This
-makes the repository agree, and closes the redirect gaps the switch exposed.
+The Studio half becomes a request form. It sends to the site-worker's existing `book` tank, so the
+worker doesn't change.
 
-- **Canonical address**: `site/_config.yml` `url` is `https://fcpublicmedia.org`, so every canonical link
-  and absolute URL names it.
-- **Check-in**: `site/_data/checkin.yml` names `https://fcpublicmedia.org/check-in/`. The QR is
-  regenerated (it decodes to that), and the kiosk's artifacts are rebuilt. The podcast door's code,
-  `mint-claim.py`'s default site and `npm run test:live` follow. Codes printed for `new` keep working.
-- **Redirects**: every page in the Wix photocopy checked against this build. Six had neither a page nor a
-  redirect, and each has one now: `/membership` and `/classes` (listed only with a trailing slash; Pages
-  matches exactly), `/equipment`, `/donate` (to `/join/`: there's no donation page), and the two newest
-  `/event-details/` pages. Only the photocopy's own `/resting` and `/thanks` remain, never Wix's.
-- **docs/site.md**: the zone on Cloudflare since 2026-10-24, every mail and Microsoft 365 record carried
-  over (checked against its nameserver), what each name serves, the two redirect layers, why a Pages
-  domain that isn't Active answers 522, and the cutover's remaining steps.
+Top to bottom: name and email; a row of week picks with the start time held to its right; a row of
+space picks with "With" (the host) held to its right; the picked space's description; the week. The
+two rows of picks look alike, so they read as choices on the form rather than as tabs. There is no
+day box: the day is picked on the week.
+
+- **Space:** Video Studio, Podcast Studio or Editing Bays. Only the picked one's description shows. (The "Equipment Checkout" row is gone: the Equipment half is right beside it.)
+- **Name and email:** check-in's profile on this phone (`fcpm.profile`). They fill the form, and
+  sending writes them back, so the first request also sets up check-in.
+- **Start, with:** a start time, always two hours. "With" lists everyone in `hosts.yml`, so anyone
+  can be asked for.
+- **The week:** one week at a time (This week / Next week / Week after, as pressed buttons rather than
+  tabs), Tuesday to Saturday. Columns
+  are `hosts.yml`'s `days` entries that have hours, in the file's order. Each person's day key is
+  their hours. Hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. A slot
+  shows only its time; each host's card above the day shows their name and `supports`. The month is
+  printed over the days, both months when a week crosses a month's end. A red line marks now on
+  today's column, moved every minute and held to the top or bottom edge outside the hours shown. The day runs from a quarter hour before the earliest slot to a
+  quarter hour after the latest one ends. From today's file that is 10:45 to 7:15, because Thursday
+  and Friday run 5–7. "Earlier" and "Later" strips above and below set 9 am or 7:30 pm, and focus
+  the start box so it can be changed. A click in open space sets that time, to the quarter hour.
+- **Host and time follow each other until both are picked by hand.** Picking a host with no time
+  picks their next slot. Picking a slot with no host picks its host. A host picked by hand stays
+  tilted, and the picked day's own host gets a yellow mark behind their card.
+- **Changing week** stops drawing the pick but leaves it in the form.
+- **The receipt** is kept on the phone (`fcpm.bookings`) and listed under the form ("Asked from this
+  phone"). Nobody else's appointments are drawn.
+
+`hosts.yml` is read as it is, through `jsonify`, and its format is unchanged. The worker's `book` tank
+has no host field yet, so the host is written into `when`, e.g. "Saturday, November 7, 2026, 11 am to
+1 pm, with Autumn".
+
+Layout: on a wide screen the halves are now wider than the header, up to 94rem, and the studio gets
+the larger share (1.25 : 1). On a phone the week scrolls sideways inside its half.
+
+Fixes found along the way:
+- `halves.js` took every `role="tab"` in the page, so the week tabs switched both halves off on a
+  phone. It now reads only its own tab bar.
+- On a phone, a wide child could widen the halves grid and the whole page. The grid column is now
+  `minmax(0, 1fr)`.
+- `answers.js` skips forms marked `data-sends`, which send themselves (book.js).
 
 Merge qualifications:
-- [x] Playwright against a fresh build: 478 passed, 3 skipped (the failures are the standing ones)
-- [x] build-kiosk 39/39; secrets, internal-publish and claim tests
-- [x] no redirect leads to a missing page
-- [ ] deploy (bin/deploy-site on digitization), then `curl -sI https://fcpublicmedia.org/membership` gives a 301 to /join/
+- [x] `jekyll build` clean
+- [x] secrets, internal-publish, tokens and no-code guards pass
+- [x] Driven in headless Firefox, wide and phone: prefill from check-in, both follow rules, the hand-picked host
+      kept with the day's host marked, week change, Earlier strip, open-space click, the send to `book`
+      (stand-in worker), receipt, profile written back
+- [ ] Playwright: 7 new tests in `reserve.spec.js` (time frozen to Monday 2 November). Their expected
+      values were checked by hand with the same frozen time. Playwright can't run on digitization,
+      so they get their first run here in CI.
 
 Carried, not decided:
-- The header's Donate button links `site.fcpm.donate`, which isn't set (donate@ is under `email`), so it
-  reloads the page. It's live now.
-- `sites.yml` keeps `domain: www.fcpublicmedia.org`: the station's hosts read it for the site's deploy
-  root, so changing it is a station change.
-- The site-worker's address (`cloud.`) is #364, merged once `cloud.fcpublicmedia.org` answers.
+- No blocking yet: booked or unavailable slots still show as open.
+- Whatever the worker keeps is emailed once the Microsoft 365 step is in place. Nothing here sends mail.
+- Photos: a card shows `photo` if a person has one. None do yet.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
