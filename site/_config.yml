@@ -3,7 +3,6 @@ url: https://fcpublicmedia.org
 baseurl: ""  # Root page /
 
 fcpm:
-  domain: fcpublicmedia.org  # just a hint, controls nothing
   hero_image: /assets/img/studio.avif
   hero_video: /assets/video/wix-was.mp4
   slogan_1: Don't Just View It.
