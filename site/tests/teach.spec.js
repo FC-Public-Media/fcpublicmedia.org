@@ -3,9 +3,12 @@
 const { test, expect } = require('./fixtures');
 
 const WORKER = 'https://worker.test';
-const form = (page) => page.locator('form[data-tank="instructor"]');
+const form = (page) => page.locator('form[data-tank="instructor@2"]');
 
-test('sends the instructor tank its own field names, ticked boxes as lists', async ({ page }) => {
+// The site-worker's `instructor@2` tank (its src/tanks.js). A name it doesn't list makes it refuse the whole reply.
+const TANK = ['first_name', 'last_name', 'email', 'phone', 'first_time', 'method', 'times', 'days', 'topics', 'needs', 'audience'];
+
+test('sends the instructor@2 tank its own field names, ticked boxes as lists', async ({ page }) => {
   let body;
   await page.route(`${WORKER}/answers`, async (route) => {
     body = route.request().postDataJSON();
@@ -17,7 +20,8 @@ test('sends the instructor tank its own field names, ticked boxes as lists', asy
   await page.locator('#t-first').fill('Ada');
   await page.locator('#t-email').fill('ada@example.org');
   await page.locator('#t-first-time').check();
-  await page.locator('[name="in_person_virtual"][value="Online"]').check();
+  await page.locator('[name="method"][value="In person"]').check();
+  await page.locator('[name="method"][value="Recorded"]').check();
   await page.locator('#t-topics').fill('Lighting for small studios');
   await page.locator('[name="times"][value="Evening"]').check();
   await page.locator('[name="days"][value="Tuesday"]').check();
@@ -26,9 +30,9 @@ test('sends the instructor tank its own field names, ticked boxes as lists', asy
 
   await expect(page.locator('[data-receipt="sent"]')).toBeVisible();
   expect(body).toMatchObject({
-    form: 'instructor',
+    form: 'instructor@2',
     answers: {
-      first_name: 'Ada', email: 'ada@example.org', first_time: 'Yes', in_person_virtual: 'Online',
+      first_name: 'Ada', email: 'ada@example.org', first_time: 'Yes', method: ['In person', 'Recorded'],
       topics: 'Lighting for small studios',
       times: ['Evening'], days: ['Tuesday', 'Thursday'],
     },
@@ -50,4 +54,11 @@ test('with no worker, the application becomes an email', async ({ page }) => {
   await expect(page.locator('[data-say="unsent"]')).toBeVisible();
   const href = await page.locator('[data-say="unsent"] a[data-mailto]').getAttribute('href');
   expect(decodeURIComponent(href)).toContain('[x] Monday');
+});
+
+test('the form sends only fields the instructor@2 tank takes', async ({ page }) => {
+  await page.goto('/learn/');
+  const names = await form(page).locator('[name]').evaluateAll((els) => [...new Set(els.map((e) => e.name))]);
+  const sent = names.filter((name) => name !== 'website');
+  expect(sent.filter((name) => !TANK.includes(name)), 'fields the worker would refuse').toEqual([]);
 });

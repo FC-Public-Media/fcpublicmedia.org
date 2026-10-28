@@ -66,9 +66,9 @@ Got a LOT to teach? Starting a student or youth series? Want it recorded? Reach 
 
 </div>
 
-{%- comment -%} Names are the site-worker's `instructor` tank; assets/js/answers.js sends it. Only email is
+{%- comment -%} Names are the site-worker's `instructor@2` tank; assets/js/answers.js sends it. Only email is
   required: it is how we write back. Who someone is gets sorted out on our side, never theirs. {%- endcomment %}
-<form data-tank="instructor" data-subject="Instructor application"
+<form data-tank="instructor@2" data-subject="Instructor application"
       data-worker="{{ site.data.site_worker.url }}" data-email="{{ site.fcpm.email.education }}">
   <div class="field-row">
     <div>
@@ -78,10 +78,10 @@ Got a LOT to teach? Starting a student or youth series? Want it recorded? Reach 
       </fieldset>
       <fieldset class="checks">
         <legend>Method</legend>
-        <label class="check"><input type="checkbox" name="t-in-person" value="In person"><span>In person</span></label>
-        <label class="check"><input type="checkbox" name="t-streaming" value="Streaming"><span>Streaming</span></label>
-        <label class="check"><input type="checkbox" name="t-recorded" value="Recorded"><span>Recorded</span></label>
-        <label class="check"><input type="checkbox" name="t-materials" value="Virtual materials"><span>Includes materials</span></label>
+        <label class="check"><input type="checkbox" name="method" value="In person" data-list><span>In person</span></label>
+        <label class="check"><input type="checkbox" name="method" value="Streaming" data-list><span>Streaming</span></label>
+        <label class="check"><input type="checkbox" name="method" value="Recorded" data-list><span>Recorded</span></label>
+        <label class="check"><input type="checkbox" name="method" value="Virtual materials" data-list><span>Includes materials</span></label>
       </fieldset>
       <fieldset class="checks">
         <legend>Times</legend>
@@ -106,8 +106,8 @@ Got a LOT to teach? Starting a student or youth series? Want it recorded? Reach 
       <div class="field"><label for="t-email">Email</label><input id="t-email" name="email" type="email" autocomplete="email" required></div>
       <div class="field"><label for="t-phone">Phone</label><input id="t-phone" name="phone" type="tel" autocomplete="tel"></div>
       <div class="field"><label for="t-topics">Topics</label><textarea id="t-topics" name="topics" rows="2"></textarea></div>
-      <div class="field"><label for="t-why">Needs</label><textarea id="t-why" name="why" rows="2"></textarea></div>
-      <div class="field"><label for="t-where">Audience</label><textarea id="t-where" name="taught_where" rows="2"></textarea></div>
+      <div class="field"><label for="t-why">Needs</label><textarea id="t-why" name="needs" rows="2"></textarea></div>
+      <div class="field"><label for="t-where">Audience</label><textarea id="t-where" name="audience" rows="2"></textarea></div>
     </div>
   </div>
 
