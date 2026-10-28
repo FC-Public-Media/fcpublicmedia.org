@@ -73,7 +73,8 @@ const addDays = (date, n) => new Date(date.getFullYear(), date.getMonth(), date.
 
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-const nowMinutes = now.getHours() * 60 + now.getMinutes();
+// Moved on every minute, for the line across today.
+let nowMinutes = now.getHours() * 60 + now.getMinutes();
 // Weeks run Sunday to Saturday, so on a Friday "this week" still has its Saturday.
 const sunday = addDays(today, -today.getDay());
 const weekPicks = [...form.querySelectorAll('[data-week]')];
@@ -203,6 +204,8 @@ function hostCard(person, day) {
     card.append(img);
   }
   card.append(el('span', null, person.name));
+  const can = supports(person);
+  if (can.length) card.append(el('small', null, can.join(' · ')));
   card.addEventListener('click', () => setHost(field('host').value === person.name ? '' : person.name, day));
   return seat;
 }
@@ -211,14 +214,19 @@ function draw() {
   grid.textContent = '';
   // Inline rather than var() in repeat(): old Safari (the podcast door's iPad) drops those.
   grid.style.gridTemplateColumns = `2rem repeat(${days.length}, minmax(5.25rem, 1fr))`;
-  grid.style.gridTemplateRows = `auto auto ${(span / 60) * 3}rem auto`;
+  grid.style.gridTemplateRows = `auto auto auto ${(span / 60) * 3}rem auto`;
 
   const choice = picked();
   const chosenHost = field('host').value;
   const shownChoice = choice && weekOf(choice.date) === state.week ? choice : null;
 
+  // The month (or both, across a month's end) over the days, since the dates alone restart at 1.
+  const shown = days.map((day) => dateOf(state.week, day));
+  const months = [...new Set(shown.map((date) => date.toLocaleDateString('en-US', { month: 'long' })))];
+  grid.append(place(el('p', 'planner-month', months.join(' – ')), `2 / ${days.length + 2}`, 1));
+
   // The gutter: an hour mark wherever an hour falls inside the day shown.
-  const gutter = place(el('div', 'planner-hours'), 1, 3);
+  const gutter = place(el('div', 'planner-hours'), 1, 4);
   for (let hour = Math.ceil(top / 60) * 60; hour < bottom; hour += 60) {
     const mark = el('span', null, clock(hour));
     mark.style.top = at(hour);
@@ -232,7 +240,7 @@ function draw() {
     const past = date < today;
     const here = shownChoice && +shownChoice.date === +date;
 
-    const head = place(el('div', 'planner-head'), column, 1);
+    const head = place(el('div', 'planner-head'), column, 2);
     const title = el('p', 'planner-date');
     title.append(el('b', null, day.label.slice(0, 3)), ` ${date.getDate()}`);
     head.append(title);
@@ -245,9 +253,9 @@ function draw() {
       head.append(seat);
     }
 
-    const earlier = place(el('button', 'planner-bumper', words.earlier), column, 2);
-    const track = place(el('div', 'planner-track'), column, 3);
-    const later = place(el('button', 'planner-bumper', words.later), column, 4);
+    const earlier = place(el('button', 'planner-bumper', words.earlier), column, 3);
+    const track = place(el('div', 'planner-track'), column, 4);
+    const later = place(el('button', 'planner-bumper', words.later), column, 5);
     for (const node of [head, earlier, track, later]) node.classList.toggle('is-past', past);
     grid.append(head, earlier, track, later);
 
@@ -283,12 +291,19 @@ function draw() {
         slot.style.height = at(top + Math.min(SLOT, bottom - start));
         slot.disabled = isPast(date, start);
         slot.classList.toggle('is-picked', Boolean(here && shownChoice.start === start));
-        slot.append(el('b', null, `${clock(start)}–${clock(start + SLOT)}`), el('span', null, person.name));
-        const can = supports(person);
-        if (can.length) slot.append(el('small', null, can.join(' · ')));
+        slot.dataset.host = person.name;
+        slot.setAttribute('aria-label', `${clock(start)}–${clock(start + SLOT)}, ${person.name}`);
+        slot.append(el('b', null, `${clock(start)}–${clock(start + SLOT)}`));
         slot.addEventListener('click', () => setTime(date, start, true));
         track.append(slot);
       }
+    }
+
+    // Now, on today: a red line, held to the top or bottom edge outside the hours shown.
+    if (+date === +today) {
+      const line = el('span', 'planner-now');
+      line.dataset.now = '';
+      track.append(line);
     }
 
     // Their own pick, wherever it falls: on the day, or on a bumper with its time.
@@ -310,8 +325,20 @@ function draw() {
     }
   });
 
+  placeNow();
   for (const pick of weekPicks) pick.setAttribute('aria-pressed', String(Number(pick.dataset.week) === state.week));
 }
+
+function placeNow() {
+  const line = grid.querySelector('[data-now]');
+  if (line) line.style.top = at(Math.min(Math.max(nowMinutes, top), bottom));
+}
+
+setInterval(() => {
+  const moment = new Date();
+  nowMinutes = moment.getHours() * 60 + moment.getMinutes();
+  placeNow();
+}, 60 * 1000);
 
 /* ------------------------------------------------------------------ the form */
 
@@ -432,8 +459,6 @@ const profile = readStore(PROFILE_KEY, {});
 if (!field('name').value && profile.name) field('name').value = profile.name;
 if (!field('email').value && profile.email) field('email').value = profile.email;
 
-field('date').min = iso(today);
-field('date').max = iso(addDays(sunday, WEEKS * 7 - 1));
 
 // A form the browser kept from before: its own week, picked by hand.
 const kept = picked();

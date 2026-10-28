@@ -3,20 +3,23 @@
 The Studio half becomes a request form. It sends to the site-worker's existing `book` tank, so the
 worker doesn't change.
 
-Top to bottom: name and email; day, start and host; a row of week picks; a row of space picks with
-the picked space's description; the week. The two rows are centred and look alike, so they read as
-choices on the form rather than as tabs.
+Top to bottom: name and email; a row of week picks with the start time held to its right; a row of
+space picks with "With" (the host) held to its right; the picked space's description; the week. The
+two rows of picks look alike, so they read as choices on the form rather than as tabs. There is no
+day box: the day is picked on the week.
 
 - **Space:** Video Studio, Podcast Studio or Editing Bays. Only the picked one's description shows. (The "Equipment Checkout" row is gone: the Equipment half is right beside it.)
 - **Name and email:** check-in's profile on this phone (`fcpm.profile`). They fill the form, and
   sending writes them back, so the first request also sets up check-in.
-- **Day, start, with:** a start time, always two hours. "With" lists everyone in `hosts.yml`, so
-  anyone can be asked for.
+- **Start, with:** a start time, always two hours. "With" lists everyone in `hosts.yml`, so anyone
+  can be asked for.
 - **The week:** one week at a time (This week / Next week / Week after, as pressed buttons rather than
   tabs), Tuesday to Saturday. Columns
   are `hosts.yml`'s `days` entries that have hours, in the file's order. Each person's day key is
-  their hours. Hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. Each
-  slot shows the person's `supports`. The day runs from a quarter hour before the earliest slot to a
+  their hours. Hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. A slot
+  shows only its time; each host's card above the day shows their name and `supports`. The month is
+  printed over the days, both months when a week crosses a month's end. A red line marks now on
+  today's column, moved every minute and held to the top or bottom edge outside the hours shown. The day runs from a quarter hour before the earliest slot to a
   quarter hour after the latest one ends. From today's file that is 10:45 to 7:15, because Thursday
   and Friday run 5–7. "Earlier" and "Later" strips above and below set 9 am or 7:30 pm, and focus
   the start box so it can be changed. A click in open space sets that time, to the quarter hour.

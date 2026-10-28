@@ -57,14 +57,18 @@ async function openStudio(page) {
 
 const picked = (page) => Promise.all(['#book-date', '#book-start', '#book-host'].map((s) => page.inputValue(s)));
 const card = (page, name) => page.locator('.planner-host', { hasText: name });
-const slot = (page, name, time) => page.locator('.planner-slot', { hasText: name }).filter({ hasText: time });
+const slot = (page, name, time) => page.locator(`.planner-slot[data-host="${name}"]`, { hasText: time });
 
 test('the week is hosts.yml\'s days with hours, each with its host', async ({ page }) => {
   await openStudio(page);
   await expect(page.locator('.planner-date b')).toHaveText(['Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
-  await expect(page.locator('.planner-host')).toHaveText(['James', 'Morey', 'Nate Keen', 'Chris Crenshaw', 'Autumn']);
+  await expect(page.locator('.planner-month')).toHaveText('November');
+  await expect(page.locator('.planner-host > span')).toHaveText(['James', 'Morey', 'Nate Keen', 'Chris Crenshaw', 'Autumn']);
+  // What each can help with is on their card; a slot is only its time.
+  await expect(card(page, 'Morey').locator('small')).toHaveText('Onboarding · Outreach');
   // Morey's 11–4 is two slots, with an hour between.
-  await expect(page.locator('.planner-slot', { hasText: 'Morey' })).toHaveCount(2);
+  await expect(page.locator('.planner-slot[data-host="Morey"]')).toHaveCount(2);
+  await expect(page.locator('.planner-slot[data-host="Morey"]').first()).toHaveText('11–1');
   await expect(slot(page, 'Morey', '11–1')).toBeVisible();
   await expect(slot(page, 'Morey', '2–4')).toBeVisible();
 });
@@ -86,12 +90,12 @@ test('a host picked by hand stays, and the day\'s own host is marked', async ({ 
   await slot(page, 'Autumn', '11–1').click();
   expect(await picked(page)).toEqual(['2026-11-07', '11:00', 'Morey']);
   await expect(card(page, 'Morey')).toHaveClass(/is-picked/);
-  await expect(page.locator('.planner-seat.is-suggested')).toHaveText('Autumn');
+  await expect(page.locator('.planner-seat.is-suggested')).toContainText('Autumn');
 });
 
 test('another week stops drawing the pick but keeps it in the form', async ({ page }) => {
   await openStudio(page);
-  await slot(page, 'Nate', '5–7').click();
+  await slot(page, 'Nate Keen', '5–7').click();
   await expect(page.locator('.planner-slot.is-picked')).toHaveCount(1);
   await page.locator('[data-week="1"]').click();
   await expect(page.locator('.planner-date').first()).toContainText('10');
@@ -146,4 +150,17 @@ test('the request goes to the book tank, kept on the phone with check-in\'s name
   await expect(page.locator('[data-mine-list] li')).toContainText('Podcast Studio');
   const profile = await page.evaluate(() => JSON.parse(localStorage.getItem('fcpm.profile')));
   expect(profile.name).toBe('Jo Q Tester');
+});
+
+test('a red line marks now on today, and the month changes with the week', async ({ page }) => {
+  // Wednesday 28 October at 12:30: Wednesday's column, a little past the top of the day.
+  await page.clock.setFixedTime(new Date('2026-10-28T12:30:00'));
+  await page.goto('/reserve/#studio');
+  await expect(page.locator('.planner-now')).toHaveCount(1);
+  const wednesday = page.locator('.planner-track').nth(1);
+  await expect(wednesday.locator('.planner-now')).toHaveCount(1);
+  await expect(page.locator('.planner-month')).toHaveText('October');
+  await page.locator('[data-week="1"]').click();
+  await expect(page.locator('.planner-month')).toHaveText('November');
+  await expect(page.locator('.planner-now')).toHaveCount(0);
 });

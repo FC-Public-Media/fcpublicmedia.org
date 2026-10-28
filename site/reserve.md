@@ -33,34 +33,36 @@ booqable:
     <div class="field"><label for="book-email">Email</label><input id="book-email" name="email" type="email" autocomplete="email"></div>
   </div>
 
-  <div class="field-row book-when">
-    <div class="field"><label for="book-date">Day</label><input id="book-date" name="date" type="date"></div>
-    <div class="field"><label for="book-start">Start, for two hours</label><input id="book-start" name="start" type="time" step="900"></div>
-    <div class="field"><label for="book-host">With</label>
-      <select id="book-host" name="host">
-        <option value="">Whoever is hosting</option>
-        {%- for person in site.data.hosts.people %}
-        <option value="{{ person.name | escape }}">{{ person.name }}</option>
-        {%- endfor %}
-      </select>
-    </div>
-  </div>
-
   {%- comment -%} The week: one at a time, Tuesday to Saturday (the days in hosts.yml with hours).
-    A host's hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. {%- endcomment %}
-  {%- comment -%} Two rows of picks, alike on purpose: the week shown, then the space. {%- endcomment %}
-  <div class="book-picks book-weeks" role="group" aria-label="Week" data-weeks hidden>
-    <button type="button" data-week="0" aria-pressed="true">This week</button>
-    <button type="button" data-week="1" aria-pressed="false">Next week</button>
-    <button type="button" data-week="2" aria-pressed="false">Week after</button>
+    A host's hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4.
+    The day is picked on the week, so it has no box of its own. Two rows of picks, alike on purpose:
+    the week shown with the start time, then the space with the host. {%- endcomment %}
+  <div class="book-row">
+    <div class="book-picks" role="group" aria-label="Week" data-weeks hidden>
+      <button type="button" data-week="0" aria-pressed="true">This week</button>
+      <button type="button" data-week="1" aria-pressed="false">Next week</button>
+      <button type="button" data-week="2" aria-pressed="false">Week after</button>
+    </div>
+    <div class="field"><label for="book-start">Start, for two hours</label><input id="book-start" name="start" type="time" step="900"></div>
   </div>
+  <input type="hidden" id="book-date" name="date">
 
   <fieldset class="book-spaces">
     <legend class="visually-hidden">Which space</legend>
-    <div class="book-picks">
-      <label><input type="radio" name="space" value="Video Studio" checked><span>Video Studio</span></label>
-      <label><input type="radio" name="space" value="Podcast Studio"><span>Podcast Studio</span></label>
-      <label><input type="radio" name="space" value="Editing Bays"><span>Editing Bays</span></label>
+    <div class="book-row">
+      <div class="book-picks">
+        <label><input type="radio" name="space" value="Video Studio" checked><span>Video Studio</span></label>
+        <label><input type="radio" name="space" value="Podcast Studio"><span>Podcast Studio</span></label>
+        <label><input type="radio" name="space" value="Editing Bays"><span>Editing Bays</span></label>
+      </div>
+      <div class="field"><label for="book-host">With</label>
+        <select id="book-host" name="host">
+          <option value="">Whoever is hosting</option>
+          {%- for person in site.data.hosts.people %}
+          <option value="{{ person.name | escape }}">{{ person.name }}</option>
+          {%- endfor %}
+        </select>
+      </div>
     </div>
     <div class="book-space" data-space="Video Studio">
       <p><b>635 sq ft.</b> An adaptable space perfect for nearly every project. Includes a state-of-the-art RGB light system, live editing board, acoustic treatment, and a massive green screen to make your vision real.</p>
@@ -92,7 +94,7 @@ booqable:
 
   <p class="hero-actions"><button class="btn btn-primary" type="submit">Ask for this time</button></p>
   <div class="muted" role="status" aria-live="polite">
-    <p data-say="pick-time" hidden>Pick a day and a start time first.</p>
+    <p data-say="pick-time" hidden>Pick a time on the week first.</p>
     <p data-say="sending" hidden>Sending…</p>
     <p data-say="unsent" hidden>Requests can't be sent from here yet. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
     <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>

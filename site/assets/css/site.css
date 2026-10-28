@@ -1645,10 +1645,12 @@ blockquote {
 
 /* --- /reserve/'s studio request: a space, a day, a start, a host (assets/js/book.js) --- */
 
-/* The week shown and the space: two rows of picks, centred and alike, so they read as the form's
-   choices rather than as tabs. */
-.book-spaces { border: 0; padding: 0; margin: 0 0 1rem; min-width: 0; }
-.book-picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+/* The week shown and the space: two rows of picks that look alike, so they read as the form's choices
+   rather than as tabs. Each row ends in a box held to the right: the start time, then the host. */
+.book-spaces { border: 0; padding: 0; margin: 0; min-width: 0; }
+.book-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; margin-bottom: 1rem; }
+.book-row .field { margin: 0 0 0 auto; flex: 0 1 13rem; }
+.book-picks { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .book-picks label { position: relative; cursor: pointer; }
 .book-picks input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .book-picks span, .book-picks button {
@@ -1660,10 +1662,14 @@ blockquote {
 .book-picks button[aria-pressed="true"] { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
 .book-picks input:focus-visible + span,
 .book-picks button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-.book-weeks[hidden] { display: none; }
-.book-space p { margin: 0 auto 0.75rem; color: var(--ink-soft); max-width: var(--measure); text-align: center; }
+.book-picks[hidden] { display: none; }
+/* Three to a row on a phone. */
+@media (max-width: 30rem) {
+  .book-picks { gap: 0.35rem; }
+  .book-picks span, .book-picks button { padding: 0.5rem 0.6rem; font-size: var(--step--1); }
+}
+.book-space p { margin: 0 0 0.75rem; color: var(--ink-soft); max-width: var(--measure); }
 .book-space p b { color: var(--ink); }
-.book-when .field select { flex: 1; }
 
 .planner { margin: 0 0 1.5rem; }
 /* Padding, because scrolling sideways clips, and a picked card tilts past its box. */
@@ -1671,6 +1677,7 @@ blockquote {
 .planner-grid { display: grid; column-gap: 0.4rem; }
 
 .planner-head { display: flex; flex-direction: column; gap: 0.5rem; padding-bottom: 0.4rem; }
+.planner-month { margin: 0 0 0.35rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
 .planner-date { margin: 0; font-size: var(--step--1); color: var(--ink-soft); }
 .planner-date b { color: var(--ink); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; }
 
@@ -1687,6 +1694,7 @@ blockquote {
 }
 .planner-host img { width: 2.5rem; height: 2.5rem; object-fit: cover; border-radius: 50%; margin-bottom: 0.35rem; }
 .planner-host span { display: block; overflow-wrap: anywhere; }
+.planner-host small { display: block; margin-top: 0.2rem; font-size: 0.72rem; font-weight: 500; line-height: 1.3; color: var(--ink-soft); }
 .planner-host:hover { border-color: var(--ink-soft); }
 .planner-host:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
 /* The host picked: tilted, as /join/'s tier is. */
@@ -1720,6 +1728,14 @@ blockquote {
 .planner-slot.is-picked { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); border-left-color: var(--signal-ink); }
 .planner-slot.is-picked small { color: var(--signal-ink); }
 .planner-slot:disabled { cursor: default; opacity: 0.4; }
+.planner-now {
+  position: absolute; left: -0.3rem; right: 0; z-index: 3; height: 0;
+  border-top: 2px solid var(--record); pointer-events: none;
+}
+.planner-now::before {
+  content: ""; position: absolute; left: 0; top: -0.3rem;
+  width: 0.5rem; height: 0.5rem; margin-top: -1px; border-radius: 50%; background: var(--record);
+}
 .planner-you { background: var(--signal); color: var(--signal-ink); font-size: 0.82rem; font-weight: 700; pointer-events: none; }
 
 .planner-bumper {
