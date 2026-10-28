@@ -888,17 +888,33 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .onair-bar[hidden] { display: none; }
 .onair-bar > * { display: inline; }
 
-/* In the masthead the programme title is whatever Cablecast says it is, so it takes the room that
-   is left and ellipsises rather than shoving the menu. Not a flex container: text-overflow needs a
-   block with the text directly in it. */
+/* In the masthead, two lines like the wordmark beside it: the programme, and its slot. The title is
+   whatever Cablecast says it is, so it takes the room that is left and ellipsises rather than
+   shoving the menu; each line is a block with its text directly in it, which text-overflow needs. */
 .site-head-brand .onair-bar {
-  display: block; min-width: 0;
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  display: flex; flex-direction: column; min-width: 0; line-height: 1.05;
+}
+.site-head-brand .onair-bar > * {
+  display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.site-head-brand .onair-label {
+  font-family: var(--font-display);
+  font-size: 1.02rem; font-weight: 780; letter-spacing: -0.02em;
+}
+.site-head-brand .onair-slot {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--masthead-soft); font-variant-numeric: tabular-nums;
+}
+/* Narrow: the page's name and the menu button keep their room; what's on gives its up entirely.
+   /watch/ still says, in its own bar. */
+@media (max-width: 60rem) {
+  .site-head-brand .onair-bar { display: none; }
 }
 
 .onair-label {
   font-weight: 700;
 }
+.onair-inline .onair-slot { color: var(--ink-soft); margin-left: 0.5em; }
 .onair-next { color: var(--ink-soft); }
 
 .onair-inline {
