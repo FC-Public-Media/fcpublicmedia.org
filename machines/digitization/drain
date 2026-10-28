@@ -1,7 +1,7 @@
 #!/bin/sh
 # drain -- brings every reply the site's forms sent into the site-worker's tanks (KV site-worker-answers)
 # here, into ~/fcpm/answers/<tank>/ (or $FCPM_ANSWERS), and empties the tanks behind them. The crew's
-# `drain` line, every 10 minutes. The code is the site-worker's own bin/drain.mjs, in the checkout
+# `drain` line, every hour. The code is the site-worker's own bin/drain.mjs, in the checkout
 # beside this one that `follow` keeps on the origin's main: each reply is written, read back and compared
 # before its key is deleted, so a failure leaves it in KV for the next pass. Its key is the keychain's
 # `cloudflare` group. The archive holds names, emails, phones and addresses: it lives on the card's

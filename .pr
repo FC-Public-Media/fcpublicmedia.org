@@ -1,4 +1,4 @@
-digitization: drain the site-worker's tanks here every 10 minutes
+digitization: drain the site-worker's tanks here every hour
 
 Every form on the site sends its reply to the site-worker, which only keeps it in a KV tank. This adds the
 crew line that brings them here, so the replies live on our own machine and the log (Microsoft 365, by any
@@ -9,8 +9,9 @@ method) can be fed from here at leisure. No worker code changes: the line runs t
   Each reply becomes `~/fcpm/answers/<tank>/<received>--<reference>.json` on the card's encrypted home,
   700/600. It is written, read back and compared before its KV key is deleted, so a reply is always in
   one place or both. A failure leaves it in KV for the next pass. Passes `--keep` and `--tank` through.
-- `services`: `drain every 10m`. That is 144 list operations a day, far under KV's 1,000-a-day free
-  limit.
+- `services`: `drain every 1h`. KV keeps a reply until something deletes it (the worker sets no
+  expiry), so there is no rush. A pass that finds nothing still costs one list operation: 24 a day,
+  against KV's 1,000-a-day free limit (every 10 minutes would have been 144).
 - `follow`: keeps `~/code/work/site-worker` (beside this checkout, its own repository, not a submodule) on
   the origin's main, fast-forward only, never over local changes. It clones it if it is missing.
 - `check.sh`: the site-worker checkout is there, and the archive is private.
@@ -27,7 +28,7 @@ Merge qualifications:
 
 After merge: `follow` puts it in place within 5 minutes. `work/site-worker` already exists, so it is
 re-pointed at the origin and fast-forwarded, and the crew starts the line when it sees the new
-`services`. The first real pass empties the one reply waiting now (in `program`).
+`services` (its first pass at once, then hourly). The first real pass empties the one reply waiting now (in `program`).
 
 Carried, not decided:
 - The `cloudflare` group is the org account's deploy token. The drain only needs KV read and delete, so a

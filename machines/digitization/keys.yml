@@ -52,7 +52,7 @@ groups:
   cloudflare:
     what: "deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV"
     form: env
-    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout; the crew's drain line (machines/digitization/drain), every 10 minutes: lists, reads and deletes in KV site-worker-answers"
+    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout; the crew's drain line (machines/digitization/drain), every hour: lists, reads and deletes in KV site-worker-answers"
     keys:
       CLOUDFLARE_API_TOKEN:
         may: "Account: Cloudflare Pages Edit, Workers Scripts Edit, Workers KV Storage Edit; Zone (fcpublicmedia.org, once it is on the account): Zone Read, DNS Edit, Workers Routes Edit, for cloud.fcpublicmedia.org; FCPM's org account only"
