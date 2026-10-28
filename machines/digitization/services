@@ -4,3 +4,6 @@ follow          every 5m    machines/digitization
 pools           keep        troves/pools
 names           keep        machines/digitization
 senders         every 1m    machines/digitization
+# The tanks, hourly: KV keeps a reply until something deletes it, so there is no rush, and a pass that finds
+# nothing still costs one list operation (1,000 a day on the free plan); hourly is 24.
+drain           every 1h    machines/digitization

@@ -67,6 +67,11 @@ case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
 found=$(python3 -I "$HERE/keys" check)
 echo "$found"
 case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
+[ -f "$HERE/../../../site-worker/bin/drain.mjs" ]
+say $? "the site-worker checkout beside this one, for the drain" "the crew's follow line clones it from the origin"
+answers=${FCPM_ANSWERS:-$HOME/fcpm/answers}
+[ ! -e "$answers" ] || [ "$(stat -c %a "$answers")" = 700 ]
+say $? "the replies archive ($answers) is private" "chmod 700 $answers"
 own=$(hostname).fcpublicmedia.local
 curl -fsS -H "Host: $own" http://localhost/ 2>/dev/null | grep -q "<title>$own</title>"
 say $? "the door serves this machine's directory as $own" "a door from before lan.yml: it bounces on the next commit"
