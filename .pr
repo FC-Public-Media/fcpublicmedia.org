@@ -1,4 +1,4 @@
-Header: the menu stays on the bar at every width, never a drawer
+Header: the 2025 logo, and a menu that stays on the bar at every width
 
 The hamburger and its drawer are gone, and so is `nav.js`. Every menu link is on the bar at every width,
 one tap from any page. As the bar narrows, things give up their room in this order:
@@ -16,6 +16,8 @@ behind. A word that is hidden is still the link's accessible name. Icon-only lin
 icon and padding, as a thumb's target.
 
 Merge qualifications:
+- [x] The logo at 1280, 600 and 390: no overflow; the tabs stop at the masthead's bottom edge (68/69px, and
+      102/103px on a phone)
 - [x] `jekyll build` clean; tokens, secrets, internal-publish and no-code guards pass
 - [x] Measured in headless Firefox at 1280, 1000, 900, 840, 760, 700, 672, 600, 520, 480, 430, 390 and
       360: nothing overflows the bar or the page at any of them
@@ -25,7 +27,13 @@ Merge qualifications:
       820, 600 and 390, with the current page's word visible and no sideways scroll. `onair.spec.js`
       checks the current page's word instead of the drawer button. They first run in CI.
 
-Not in this PR: the 2025 logo in place of the yellow square. The file isn't on this machine or in any
-repository yet.
+**The mark:** the 2025 logo (`brand/2025.png`) stands in for the yellow square until the board picks the
+new one. `site/assets/img/logo-2025.png` is the same art trimmed to its pixels (192×192 to 168×103), so it
+sits as a landscape, 2.35rem tall (61×38 on screen) and as tall as the name's two lines. The name moves
+right to make room. The main words still last to 600px with it. On the dark band the logo's black
+outlines and the camera's handle mostly disappear; the coloured body and its lettering carry it.
+
+**/reserve/'s tabs on a phone** stick under the masthead (`top: var(--head-h)`) instead of sliding behind
+it.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

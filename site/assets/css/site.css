@@ -263,19 +263,15 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 }
 
 .wordmark {
-  display: flex; align-items: center; gap: 0.6rem;
+  display: flex; align-items: center; gap: 0.7rem;
   text-decoration: none; color: inherit;
   /* The name never gives up space; the programme title absorbs the squeeze. */
   flex: none;
 }
 
-/* The mark: the plate, set at -8deg. */
-.wordmark-mark {
-  width: 1.15rem; height: 1.15rem;
-  background: var(--signal);
-  flex: none;
-  rotate: -8deg;
-}
+/* The mark: the 2025 logo for now, a landscape picture as tall as the two lines of the name beside it.
+   (The yellow plate at -8deg comes back with the board's new logo.) */
+.wordmark-logo { height: 2.35rem; width: auto; flex: none; }
 
 .wordmark-text { display: flex; flex-direction: column; line-height: 1.05; }
 .wordmark-text b {
@@ -1616,9 +1612,10 @@ blockquote {
 }
 @media (max-width: 55.99rem) {
   .halves { gap: 1.5rem; }
+  /* Stuck under the masthead, which is sticky too: at top 0 the tabs would slide behind it. */
   .halves-tabs:not([hidden]) {
     display: flex; gap: 0; border-bottom: 1px solid var(--rule);
-    position: sticky; top: 0; z-index: 2; background: var(--paper);
+    position: sticky; top: var(--head-h); z-index: 2; background: var(--paper);
   }
   .halves-tabs button {
     flex: 1; font: inherit; font-weight: 700; padding: 0.8rem 1rem; cursor: pointer;

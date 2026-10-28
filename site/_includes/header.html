@@ -7,7 +7,9 @@
     {%- endcomment %}
     <div class="site-head-brand">
       <a class="wordmark" href="{{ '/' }}">
-        <span class="wordmark-mark" aria-hidden="true"></span>
+        {%- comment -%} The 2025 logo, standing in for the yellow square until the board picks the new one.
+          Trimmed from brand/2025.png to the art alone (168x103), so it sits as the landscape it is. {%- endcomment %}
+        <img class="wordmark-logo" src="{{ '/assets/img/logo-2025.png' }}" alt="" width="168" height="103">
         <span class="wordmark-text">
           <b>{{ site.data.brand.names.lockup[0] }}</b>
           <span>{{ site.data.brand.names.lockup[1] }}</span>
