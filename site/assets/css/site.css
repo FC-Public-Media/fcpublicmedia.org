@@ -587,6 +587,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 /* max-width off: in the lockup's min-content column a percentage cap lets the code shrink to the
    width of the word CHECK. The code sets the column; the label wraps to it. */
 .checkin-card-qr.hero-qr img { max-width: none; }
+/* The code is the densest thing in the hero and not its main action, so its white tile is glass, not
+   paper: translucent white behind the SVG's own black modules (the SVG has no background). The modules
+   stay solid black for scanning; --qr-light is how much white. Read by OpenCV down to 15% on screenshots;
+   35% leaves a real phone camera room. No blend mode needed, so the tilted panel's isolation is moot. */
+.hero-qr { --qr-light: 35%; }
+.checkin-card-qr.hero-qr img { background: color-mix(in srgb, #fff var(--qr-light), transparent); }
 .hero-qr span { font-size: 0.66rem; color: var(--stable-glass); }
 
 .hero .btn {
@@ -1754,3 +1760,9 @@ blockquote {
 @media (prefers-reduced-motion: reduce) {
   .planner-host { transition: none; }
 }
+
+/* Short checkbox options on one wrapping line (times of day, days of the week). */
+.checks-inline { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; }
+.field-row > .checks { flex: 1 1 8rem; }
+.checks-inline legend { width: 100%; }
+.checks-inline .check { margin-bottom: 0.25rem; }

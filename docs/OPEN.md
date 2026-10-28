@@ -116,7 +116,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Nothing reads `stripe.live` or `stripe.publishable_key`; the buy button that should does not exist. site/_data/payments.yml
 - `/join/` has no tiers until a `SYNC_STRIPE_API_KEY` exists (machines/digitization/keys.yml, `stripe-sync`), the tiers are in Stripe with `membership:<slug>` lookup keys, and `sync-tiers.py` has run. docs/payments.md#tiers
 - The site-worker charges from its own `prices.js`, edited there; `/join/` reads it back with `sync-tiers.py --catalog`. Once the tiers are Stripe Prices it should charge by lookup key, and `reprice-subscriptions.py`'s reading of `prices.js` goes with it. FC-Public-Media/site-worker
-- Forms still to come back: `/learn/` (register, instructor), `/reserve/` (book; rooms only, Booqable stays off-site), `/meet/` (contact). `/submit/` and `/join/` are done. Every form emails instead until `site_worker.yml` `url` is set and site-worker#6 lets `new.` through.
+- Forms still to come back: `/learn/` (register), `/reserve/` (book; rooms only, Booqable stays off-site), `/meet/` (contact). `/submit/`, `/join/` and `/learn/`'s instructor application are done. They send to the site-worker (`site_worker.yml` `url`, workers.dev until the zone leaves Wix); a refused send becomes an email.
 - The room request on `/reserve/` and the class signup on `/learn/` have no form yet; they are to post to the site-worker, which adds a row to the log.
 - A build-time Booqable catalog would need a read-only `BOOQABLE_TOKEN`; not wanted yet.
 - The first live `reprice-subscriptions.py --apply` runs against a Stripe sandbox with a test clock.
