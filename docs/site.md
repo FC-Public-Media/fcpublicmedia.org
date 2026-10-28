@@ -161,21 +161,40 @@ side, no Functions. It serves `fcpm-new.pages.dev` and `new.fcpublicmedia.org`.
 
 ## Domain and DNS
 
-Network Solutions is the registrar (expires 2027-06-19, `clientTransferProhibited`); nameservers
-change there, with no transfer. Wix's `ns4.wixdns.net` and `ns5.wixdns.net` serve the zone:
+Network Solutions is the registrar (expires 2027-06-19). `clientTransferProhibited` blocks moving the
+domain to another registrar, not changing its nameservers. Since 2026-10-24 the nameservers are
+Cloudflare's (`ganz` and `tiffany.ns.cloudflare.com`), so the zone lives in FCPM's org Cloudflare account
+beside the Pages projects and the site-worker. Wix's old nameservers still answer from a stale copy;
+nothing asks them.
+
+| Name | Serves |
+|---|---|
+| `@`, `www` | the Wix photocopy (Pages `fcpm-wix`) until the cutover, then this site (`fcpm-new`), the bare name redirecting to `www` |
+| `wix` | the Wix photocopy, for good |
+| `new` | this site (`fcpm-new`); later the beta, beside a preview worker |
+| `cloud` | the site-worker, once `bin/provision.mjs` attaches it (no record yet) |
+
+The web names are proxied. Mail and Microsoft 365 came across whole, checked 2026-10-28:
 
 | Name | Type | Value |
 |---|---|---|
-| `@` | A | `185.230.63.171`, `185.230.63.107`, `185.230.63.186` |
-| `www`; `new` | CNAME | `cdn3.wixdns.net`; `fcpm.autumn-e2c.workers.dev` (Autumn's business account, autumn-e2c) |
 | `@` | MX 10; TXT | `fcpublicmedia-org.mail.protection.outlook.com`; `v=spf1 include:spf.protection.outlook.com -all`, `ms15993575` |
 | `autodiscover`, `lyncdiscover`, `sip` | CNAME | `autodiscover.outlook.com`, `webdir.online.lync.com`, `sipdir.online.lync.com` |
 | `enterpriseregistration`, `enterpriseenrollment` | CNAME | `enterpriseregistration.windows.net`, `enterpriseenrollment.manage.microsoft.com` |
 | `_sipfederationtls._tcp`, `_sip._tls` | SRV | `100 1 5061 sipfed.online.lync.com`, `100 1 443 sipdir.online.lync.com` |
 
-No wildcard, CAA, `_dmarc` or DKIM. A zone moved to Cloudflare must carry every row, re-read
-first: mail is on Microsoft 365 and the SPF ends in `-all`. A and CNAME rows stay DNS-only, since
-proxying Wix takes the apex down. A Workers Custom Domain needs zone and Worker in one account.
+No wildcard, CAA, `_dmarc` or DKIM. The SPF ends in `-all`: mail from anywhere else is refused.
+
+### The www cutover
+
+1. In Pages, move the custom domains `www.fcpublicmedia.org` and `fcpublicmedia.org` from `fcpm-wix`
+   to `fcpm-new`; `wix` stays on `fcpm-wix`, `new` on `fcpm-new`. Add a redirect rule: the bare name
+   to `www`, path and query kept.
+2. Deploy this site with `site/_data/checkin.yml` naming `www` (the QR, the poster and the kiosk
+   follow from it). A code already printed for `new` keeps working: `new` still serves the site.
+3. `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attaches `cloud`; then
+   `site/_data/site_worker.yml` `url` becomes `https://cloud.fcpublicmedia.org` and the site deploys again.
+4. Switch off the Wix forms; drain the site-worker; retire the `instructor` tank once its drain is empty.
 
 ## Redirects and headers
 
