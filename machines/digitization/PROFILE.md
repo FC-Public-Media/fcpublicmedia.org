@@ -61,6 +61,23 @@ GitHub's repository secrets are not part of it: nothing is kept there that this 
 lives later (a vault on the LAN, a card of its own) is open; moving it is the `dir:` line and the files. The
 card's home is the only copy today, so losing it means issuing each key again, from the `from:` lines.
 
+## Replies
+
+Every form on the site (joining, a studio request, wanting to teach, a program, a message, equipment)
+sends its reply to the site-worker, which keeps it in a tank in Cloudflare KV and nothing more. The crew's
+`drain` line brings them here every hour: [`drain`](drain) runs the site-worker's own
+`bin/drain.mjs`, from the checkout beside this one (`~/code/work/site-worker`, kept on the origin's main by
+`follow`), with the keychain's `cloudflare` group. Each reply becomes one file,
+`~/fcpm/answers/<tank>/<received>--<reference>.json`, written, read back and compared before its key in KV
+is deleted, so a reply is always in one place or both, never neither. A failure leaves it in KV for the
+next pass. KV keeps a reply until something deletes it (the worker sets no expiry), so an hour costs
+nothing in safety, and a pass that finds nothing is one list operation: 24 a day.
+
+The archive is the list from then on: on the card's encrypted home, private (700/600), never in a
+repository, since it holds names, emails, phones and addresses. Nothing is deleted from it. Carrying it to
+the log in Microsoft 365 (or an email) is a later line that reads these files at its own pace; KV is not
+asked again. `drain --keep` writes the archive and deletes nothing; `drain --tank NAME` drains one tank.
+
 ## Memory
 
 7.7 GB, no disk swap, and a root on an SD card. On 2026-10-17 at 01:38 the box ran short with no swap: the kernel

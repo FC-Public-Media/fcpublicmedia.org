@@ -1,0 +1,14 @@
+#!/bin/sh
+# drain -- brings every reply the site's forms sent into the site-worker's tanks (KV site-worker-answers)
+# here, into ~/fcpm/answers/<tank>/ (or $FCPM_ANSWERS), and empties the tanks behind them. The crew's
+# `drain` line, every hour. The code is the site-worker's own bin/drain.mjs, in the checkout
+# beside this one that `follow` keeps on the origin's main: each reply is written, read back and compared
+# before its key is deleted, so a failure leaves it in KV for the next pass. Its key is the keychain's
+# `cloudflare` group. The archive holds names, emails, phones and addresses: it lives on the card's
+# encrypted home, 700/600, and never in a repository. What carries it on (the log in M365, an email) is
+# another line's. See PROFILE.md#replies.
+HERE=$(cd "$(dirname "$0")" && pwd)
+SW=${FCPM_SITE_WORKER:-$HERE/../../../site-worker}
+[ -f "$SW/bin/drain.mjs" ] || { echo "drain: no site-worker checkout at $SW (follow makes it)" >&2; exit 1; }
+# Debian's node (gear npm), not a login shell's: the crew's service has no PATH of a person's.
+exec "$HERE/keys" run cloudflare -- /usr/bin/node "$SW/bin/drain.mjs" "$@"
