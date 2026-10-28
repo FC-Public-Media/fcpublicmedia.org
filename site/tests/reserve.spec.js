@@ -93,7 +93,7 @@ test('another week stops drawing the pick but keeps it in the form', async ({ pa
   await openStudio(page);
   await slot(page, 'Nate', '5–7').click();
   await expect(page.locator('.planner-slot.is-picked')).toHaveCount(1);
-  await page.locator('[role="tab"][data-week="1"]').click();
+  await page.locator('[data-week="1"]').click();
   await expect(page.locator('.planner-date').first()).toContainText('10');
   await expect(page.locator('.planner-slot.is-picked')).toHaveCount(0);
   expect(await picked(page)).toEqual(['2026-11-05', '17:00', 'Nate Keen']);
@@ -129,7 +129,7 @@ test('the request goes to the book tank, kept on the phone with check-in\'s name
   await expect(page.locator('#book-name')).toHaveValue('Jo Tester');
   await expect(page.locator('#book-email')).toHaveValue('jo@example.org');
 
-  await page.locator('.book-space-picks label', { hasText: 'Podcast Studio' }).click();
+  await page.locator('.book-picks label', { hasText: 'Podcast Studio' }).click();
   await expect(page.locator('[data-space="Podcast Studio"]')).toBeVisible();
   await expect(page.locator('[data-space="Video Studio"]')).toBeHidden();
   await slot(page, 'Autumn', '11–1').click();

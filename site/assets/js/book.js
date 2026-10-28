@@ -76,7 +76,8 @@ const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const nowMinutes = now.getHours() * 60 + now.getMinutes();
 // Weeks run Sunday to Saturday, so on a Friday "this week" still has its Saturday.
 const sunday = addDays(today, -today.getDay());
-const WEEKS = planner.querySelectorAll('[data-week]').length;
+const weekPicks = [...form.querySelectorAll('[data-week]')];
+const WEEKS = weekPicks.length;
 
 /* ------------------------------------------------------------------ hosts */
 
@@ -309,9 +310,7 @@ function draw() {
     }
   });
 
-  for (const tab of planner.querySelectorAll('[data-week]')) {
-    tab.setAttribute('aria-selected', String(Number(tab.dataset.week) === state.week));
-  }
+  for (const pick of weekPicks) pick.setAttribute('aria-pressed', String(Number(pick.dataset.week) === state.week));
 }
 
 /* ------------------------------------------------------------------ the form */
@@ -421,9 +420,9 @@ form.addEventListener('change', (event) => {
 });
 
 // Another week: the pick is no longer drawn, but stays in the form until something else is picked.
-for (const tab of planner.querySelectorAll('[data-week]')) {
-  tab.addEventListener('click', () => {
-    state.week = Number(tab.dataset.week);
+for (const pick of weekPicks) {
+  pick.addEventListener('click', () => {
+    state.week = Number(pick.dataset.week);
     draw();
   });
 }
@@ -448,3 +447,4 @@ showSpace();
 draw();
 drawMine();
 planner.hidden = false;
+form.querySelector('[data-weeks]').hidden = false;

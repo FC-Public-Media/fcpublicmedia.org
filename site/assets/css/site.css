@@ -1645,25 +1645,27 @@ blockquote {
 
 /* --- /reserve/'s studio request: a space, a day, a start, a host (assets/js/book.js) --- */
 
-.book-spaces { border: 0; padding: 0; margin: 0 0 1.5rem; min-width: 0; }
-.book-space-picks { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
-.book-space-picks label { position: relative; cursor: pointer; }
-.book-space-picks input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-.book-space-picks span { display: block; padding: 0.55rem 0.95rem; border: 1px solid var(--rule); font-weight: 650; }
-.book-space-picks label:hover span { border-color: var(--ink-soft); }
-.book-space-picks input:checked + span { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
-.book-space-picks input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 2px; }
-.book-space p { margin: 0 0 0.75rem; color: var(--ink-soft); max-width: var(--measure); }
+/* The week shown and the space: two rows of picks, centred and alike, so they read as the form's
+   choices rather than as tabs. */
+.book-spaces { border: 0; padding: 0; margin: 0 0 1rem; min-width: 0; }
+.book-picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+.book-picks label { position: relative; cursor: pointer; }
+.book-picks input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.book-picks span, .book-picks button {
+  display: block; font: inherit; font-weight: 650; padding: 0.55rem 0.95rem; cursor: pointer;
+  background: none; color: var(--ink); border: 1px solid var(--rule);
+}
+.book-picks label:hover span, .book-picks button:hover { border-color: var(--ink-soft); }
+.book-picks input:checked + span,
+.book-picks button[aria-pressed="true"] { background: var(--signal); color: var(--signal-ink); border-color: var(--signal); }
+.book-picks input:focus-visible + span,
+.book-picks button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.book-weeks[hidden] { display: none; }
+.book-space p { margin: 0 auto 0.75rem; color: var(--ink-soft); max-width: var(--measure); text-align: center; }
 .book-space p b { color: var(--ink); }
 .book-when .field select { flex: 1; }
 
 .planner { margin: 0 0 1.5rem; }
-.planner-weeks { display: flex; border-bottom: 1px solid var(--rule); }
-.planner-weeks button {
-  font: inherit; font-weight: 700; padding: 0.6rem 0.9rem; cursor: pointer;
-  background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink-soft);
-}
-.planner-weeks button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--signal); }
 /* Padding, because scrolling sideways clips, and a picked card tilts past its box. */
 .planner-scroll { overflow-x: auto; padding: 1rem 0.5rem 0.5rem; margin-inline: -0.5rem; }
 .planner-grid { display: grid; column-gap: 0.4rem; }

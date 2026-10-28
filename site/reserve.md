@@ -28,24 +28,6 @@ booqable:
 <form class="book" id="book" data-tank="book" data-sends data-subject="Studio request"
       data-worker="{{ site.data.site_worker.url }}" data-email="{{ site.fcpm.email.bookings }}">
 
-  <fieldset class="book-spaces">
-    <legend class="visually-hidden">Which space</legend>
-    <div class="book-space-picks">
-      <label><input type="radio" name="space" value="Video Studio" checked><span>Video Studio</span></label>
-      <label><input type="radio" name="space" value="Podcast Studio"><span>Podcast Studio</span></label>
-      <label><input type="radio" name="space" value="Editing Bays"><span>Editing Bays</span></label>
-    </div>
-    <div class="book-space" data-space="Video Studio">
-      <p><b>635 sq ft.</b> An adaptable space perfect for nearly every project. Includes a state-of-the-art RGB light system, live editing board, acoustic treatment, and a massive green screen to make your vision real.</p>
-    </div>
-    <div class="book-space" data-space="Podcast Studio">
-      <p><b>113 sq ft.</b> Room for up to four in-person guests. Acoustically treated, with professional audio equipment to make your podcast sound great.</p>
-    </div>
-    <div class="book-space" data-space="Editing Bays">
-      <p><b>318 sq ft.</b> The entire Adobe Suite for video and audio projects. These are state-of-the-art machines — you can edit 4K footage and above. Two stations, both dual-monitor, and a window straight into the video studio.</p>
-    </div>
-  </fieldset>
-
   <div class="field-row">
     <div class="field"><label for="book-name">Name</label><input id="book-name" name="name" autocomplete="name"></div>
     <div class="field"><label for="book-email">Email</label><input id="book-email" name="email" type="email" autocomplete="email"></div>
@@ -66,12 +48,32 @@ booqable:
 
   {%- comment -%} The week: one at a time, Tuesday to Saturday (the days in hosts.yml with hours).
     A host's hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. {%- endcomment %}
-  <div class="planner" data-planner hidden>
-    <div class="planner-weeks" role="tablist" aria-label="Week">
-      <button type="button" role="tab" data-week="0" aria-selected="true">This week</button>
-      <button type="button" role="tab" data-week="1" aria-selected="false">Next week</button>
-      <button type="button" role="tab" data-week="2" aria-selected="false">Week after</button>
+  {%- comment -%} Two rows of picks, alike on purpose: the week shown, then the space. {%- endcomment %}
+  <div class="book-picks book-weeks" role="group" aria-label="Week" data-weeks hidden>
+    <button type="button" data-week="0" aria-pressed="true">This week</button>
+    <button type="button" data-week="1" aria-pressed="false">Next week</button>
+    <button type="button" data-week="2" aria-pressed="false">Week after</button>
+  </div>
+
+  <fieldset class="book-spaces">
+    <legend class="visually-hidden">Which space</legend>
+    <div class="book-picks">
+      <label><input type="radio" name="space" value="Video Studio" checked><span>Video Studio</span></label>
+      <label><input type="radio" name="space" value="Podcast Studio"><span>Podcast Studio</span></label>
+      <label><input type="radio" name="space" value="Editing Bays"><span>Editing Bays</span></label>
     </div>
+    <div class="book-space" data-space="Video Studio">
+      <p><b>635 sq ft.</b> An adaptable space perfect for nearly every project. Includes a state-of-the-art RGB light system, live editing board, acoustic treatment, and a massive green screen to make your vision real.</p>
+    </div>
+    <div class="book-space" data-space="Podcast Studio">
+      <p><b>113 sq ft.</b> Room for up to four in-person guests. Acoustically treated, with professional audio equipment to make your podcast sound great.</p>
+    </div>
+    <div class="book-space" data-space="Editing Bays">
+      <p><b>318 sq ft.</b> The entire Adobe Suite for video and audio projects. These are state-of-the-art machines — you can edit 4K footage and above. Two stations, both dual-monitor, and a window straight into the video studio.</p>
+    </div>
+  </fieldset>
+
+  <div class="planner" data-planner hidden>
     <div class="planner-scroll">
       <div class="planner-grid" data-planner-grid></div>
     </div>

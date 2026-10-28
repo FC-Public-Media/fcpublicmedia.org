@@ -3,13 +3,17 @@
 The Studio half becomes a request form. It sends to the site-worker's existing `book` tank, so the
 worker doesn't change.
 
-- **Space:** Video Studio, Podcast Studio or Editing Bays, picked like a tab. Only the picked one's
-  description shows. (The "Equipment Checkout" row is gone: the Equipment half is right beside it.)
+Top to bottom: name and email; day, start and host; a row of week picks; a row of space picks with
+the picked space's description; the week. The two rows are centred and look alike, so they read as
+choices on the form rather than as tabs.
+
+- **Space:** Video Studio, Podcast Studio or Editing Bays. Only the picked one's description shows. (The "Equipment Checkout" row is gone: the Equipment half is right beside it.)
 - **Name and email:** check-in's profile on this phone (`fcpm.profile`). They fill the form, and
   sending writes them back, so the first request also sets up check-in.
 - **Day, start, with:** a start time, always two hours. "With" lists everyone in `hosts.yml`, so
   anyone can be asked for.
-- **The week:** one week at a time (This week / Next week / Week after), Tuesday to Saturday. Columns
+- **The week:** one week at a time (This week / Next week / Week after, as pressed buttons rather than
+  tabs), Tuesday to Saturday. Columns
   are `hosts.yml`'s `days` entries that have hours, in the file's order. Each person's day key is
   their hours. Hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4. Each
   slot shows the person's `supports`. The day runs from a quarter hour before the earliest slot to a
