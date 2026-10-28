@@ -125,7 +125,7 @@ cd site && bundle exec jekyll build
 cd tests && npm ci && npx playwright install chromium
 npx playwright test --grep-invert @external      # what CI gates on
 npx playwright test --grep @external             # third-party health
-npm run test:live                                # against https://www.fcpublicmedia.org
+npm run test:live                                # against https://fcpublicmedia.org
 ```
 
 - `playwright.config.js` serves `../_site` on `localhost:4567` (WebAuthn rejects an IP), desktop and
@@ -157,7 +157,7 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
 - The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
-  www.fcpublicmedia.org` prints the root directory.
+  fcpublicmedia.org` prints the root directory.
 
 ## Domain and DNS
 

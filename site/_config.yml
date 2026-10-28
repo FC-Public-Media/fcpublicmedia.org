@@ -21,6 +21,9 @@ fcpm:
 
   phone: 970-818-2490
 
+  # Where the header's Donate button goes: /join/ (the Supporter tier) until there is a donation page or link.
+  donate: /join/
+
   tiers:
     supporter: Half-off one class.
     student: Half-off all classes. Free rentals.

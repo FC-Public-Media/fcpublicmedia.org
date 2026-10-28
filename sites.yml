@@ -9,8 +9,8 @@ publish_to: site/member-sites
 sites:
   - path: site
     role: site
-    domain: www.fcpublicmedia.org
-    # The switch every host reads; `--deploy-root www.fcpublicmedia.org` prints its root.
+    domain: fcpublicmedia.org
+    # The switch every host reads; `--deploy-root fcpublicmedia.org` prints its root. www redirects here.
     deliver: source
     why: fcpublicmedia.org itself. bin/deploy-site builds it and uploads it to Cloudflare Pages (fcpm-new).
 
