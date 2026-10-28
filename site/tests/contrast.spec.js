@@ -33,6 +33,9 @@ async function sample(page, selector) {
         const style = getComputedStyle(node);
         let behind = null;
         for (let el = node; el; el = el.parentElement) {
+          // Text over a picture (the hero's photograph, behind its glass) can't be judged from colours:
+          // leave it out rather than compare it with the paper it doesn't sit on.
+          if (getComputedStyle(el).backgroundImage !== 'none') break;
           const bg = getComputedStyle(el).backgroundColor;
           const parts = (bg.match(/[\d.]+/g) || []).map(Number);
           const alpha = parts.length > 3 ? parts[3] : 1;

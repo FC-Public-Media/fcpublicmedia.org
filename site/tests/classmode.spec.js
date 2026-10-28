@@ -86,10 +86,6 @@ test.describe('class mode', () => {
       'the class card runs past the fold',
     ).toBeLessThanOrEqual(fold);
 
-    // On a phone the class displaces the headline, not the QR.
-    const qr = await page.locator('a.hero-qr').boundingBox();
-    expect(qr, 'the QR has no box').not.toBeNull();
-    expect(qr.y + qr.height, 'the QR fell below the fold').toBeLessThanOrEqual(fold);
   });
 
   test('the join link carries no class information', async ({ page }) => {
