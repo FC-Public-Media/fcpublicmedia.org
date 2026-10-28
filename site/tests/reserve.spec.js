@@ -65,7 +65,7 @@ test('the week is hosts.yml\'s days with hours, each with its host', async ({ pa
   await expect(page.locator('.planner-month')).toHaveText('November');
   await expect(page.locator('.planner-host > span')).toHaveText(['James', 'Morey', 'Nate Keen', 'Chris Crenshaw', 'Autumn']);
   // What each can help with is on their card; a slot is only its time.
-  await expect(card(page, 'Morey').locator('small')).toHaveText('Onboarding · Outreach');
+  await expect(card(page, 'Morey').locator('small')).toHaveText('Outreach'); // hosts.yml's supports, as written
   // Morey's 11–4 is two slots, with an hour between.
   await expect(page.locator('.planner-slot[data-host="Morey"]')).toHaveCount(2);
   await expect(page.locator('.planner-slot[data-host="Morey"]').first()).toHaveText('11–1');
