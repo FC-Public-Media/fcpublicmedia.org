@@ -30,6 +30,9 @@ function watch(page) {
   });
 
   page.on('requestfailed', (request) => {
+    // A browser abandons media requests as a matter of course (the hero video's ranges, a navigation
+    // away mid-load); an aborted video is not a missing file.
+    if (request.resourceType() === 'media' && request.failure()?.errorText === 'net::ERR_ABORTED') return;
     const entry = `${request.url()} (${request.failure()?.errorText || 'failed'})`;
     (isThirdParty(request.url()) ? thirdPartyFailures : ownFailures).push(entry);
   });
