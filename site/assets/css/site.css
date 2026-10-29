@@ -1750,10 +1750,8 @@ a[href^="mailto:"] span {
   color: var(--ink-soft);
 }
 .nonprofit {
-  color: var(--record-ink) !important;
   font-weight: bold;
 }
 .student {
-  color: var(--record-ink) !important;
   font-weight: bold;
 }
