@@ -143,6 +143,31 @@ test.describe('kept replies', () => {
   });
 });
 
+test.describe('a phone that cannot sign', () => {
+  test('still pours the moving code, unsigned, and its bytes check out', async ({ page }) => {
+    await page.goto('/you/');
+    const out = await page.evaluate(async () => {
+      const { pour } = await import('/assets/js/bottle.js');
+      const canvas = document.getElementById('show-code');
+      document.querySelector('[data-view="show"]').hidden = false;
+      const poured = await pour(canvas, '{"hello":"there"}', { sign: false });
+      poured.stop();
+      const frames = JSON.parse(canvas.dataset.frames);
+      const { carrierSession } = await import('/assets/js/composer/carrier.mjs');
+      const { defaultHash } = await import('/assets/js/composer/anecdote.mjs');
+      const session = carrierSession({ friends: [] });
+      let snap = null;
+      for (const f of frames) snap = await session.feed(f);
+      const { signed: env } = (await session.result()).transfers[0];
+      const bytes = Uint8Array.from(atob(env.bytes), (c) => c.charCodeAt(0));
+      return { read: poured.read, ac1: frames[0].startsWith('AC1|d|'), complete: snap.complete, sig: env.sig || null,
+               intact: (await defaultHash(bytes)) === env.hash, text: new TextDecoder().decode(bytes) };
+    });
+    expect(out).toMatchObject({ ac1: true, complete: true, sig: null, intact: true, text: '{"hello":"there"}' });
+    expect(out.read).toContain('unsigned');
+  });
+});
+
 test.describe('contact cards', () => {
   test('a name, email and phone typed into a form become a card', async ({ page }) => {
     await fresh(page);

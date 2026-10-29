@@ -198,9 +198,12 @@ video from the first byte and a dented, shuffled or lossy catch heals; or the sa
 LAN (`POST /drop`). Either way it is kept first, as the file it arrived as, and read on the door's next pass
 (`replies.py take`, every 20 s): applied to the room's state, or held with the reason (`held/`,
 `log.ndjson`). Nothing is refused at the door and nothing is applied on arrival. Held: not JSON, a payload
-whose hash does not match, an unknown wizard or room, `issued` more than a day from now, a nonce seen
-before, an `until` already passed. The signature is read by the composer under Node (`verify-bottle.mjs`);
-without Node the payload's hash is still checked and the reply applies as `unverified`. For `kiosk+host`,
+whose hash does not match, an unknown wizard or room, `issued` more than a day from now (for a form's
+answers, `wizard:site+answers`, only a day ahead: answers are good however long they were kept), a nonce
+seen before, an `until` already passed. The signature is read by the composer under Node (`verify-bottle.mjs`);
+without Node the payload's hash is still checked and the reply applies as `unverified`. A phone without
+Ed25519 (Safari before 17) pours the same frames with no signature: the hash alone is checked and the
+reply applies as `unsigned`. A signature that is there and wrong is held. For `kiosk+host`,
 unsigned and unknown-key replies apply too: being on the studio's network is the staff's authority for
 this. `trust` is recorded (`friend`, `signed`, `unsigned`, `unverified`), and `replies.py trust
 <fingerprint> <name>` names a phone. The eyes' path (`troves/scanner` `page.py` handing a catch to
@@ -219,6 +222,24 @@ twice is held the second time (its nonce). `replies.py status` counts today's vi
 {"schema": "fcpm.reply/v0", "wizard": "wizard:kiosk+checkin", "at": "4a33627", "name": "Sam Rivera",
  "email": null, "reason": "Class", "issued": "2026-10-28T21:31:38-06:00", "nonce": "…", "sig": null}
 ```
+
+### wizard:site+answers
+
+Any form on the site (`/submit/`, `/learn/`, `/join/`, `/reserve/`): its reply, kept on the phone before it
+was sent (docs/identity.md#yours), shown from `/you/`. It goes where the tanks' replies go, the drain's
+archive (`~/fcpm/answers/<tank>/`, or `$FCPM_ANSWERS`), one file per reply in the site-worker's record
+shape, `origin: "camera"`, with `issued`, `by` and `trust` beside. The tier picked on `/join/` rides in the
+answers as `sku` and is lifted out to the record's `sku`. A reference the archive already holds (it went
+by the tank too) is noted and not written twice. Fields are kept as they came: the tank's schema is the
+site-worker's to apply.
+
+```json
+{"schema": "fcpm.reply/v0", "wizard": "wizard:site+answers", "at": "5321690", "tank": "program",
+ "reference": "68ea9429-…", "answers": {"first_name": "Ada", "email": "ada@example.org", "copyright": true},
+ "issued": "2026-10-28T23:29:02-06:00", "nonce": "…", "sig": null}
+```
+
+`python3 bin/test_replies.py` feeds `replies.py` real bottles made by the site's composer, signed and unsigned.
 
 ### wizard:kiosk+host
 
