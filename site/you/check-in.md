@@ -3,6 +3,7 @@ title: Check In
 layout: pass
 theme_color: "#121417"
 permalink: /check-in/
+offline: true
 ---
 
 {%- assign ci = site.data.checkin -%}
@@ -149,6 +150,7 @@ permalink: /check-in/
     <a href="#show" id="show-link" hidden>Show</a>
     <a href="#visits">Visits <span id="checkin-count"></span></a>
     <a href="#device">This phone</a>
+    <a href="{{ '/you/' | relative_url }}">Yours</a>
   </nav>
 </section>
 

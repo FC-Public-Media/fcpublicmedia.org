@@ -1,6 +1,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- comment -%} The commit this page was built from: a wizard's reply carries it as `at` (assets/js/keep.js). {%- endcomment %}
+  <meta name="fcpm-revision" content="{{ site.revision | default: 'dev' }}">
   {%- if page.theme_color %}
   <meta name="theme-color" content="{{ page.theme_color }}">
   {%- endif %}
@@ -23,6 +25,13 @@
   <link rel="icon" href="{{ '/assets/img/icon.svg' }}" type="image/svg+xml">
   <link rel="icon" href="{{ '/assets/img/icon-180.png' }}" sizes="180x180" type="image/png">
   <link rel="apple-touch-icon" href="{{ '/assets/img/icon-180.png' }}">
+  {%- if page.offline %}
+  {%- comment -%} One of the offline kit's pages: it installs the kit (sw.js; docs/site.md#offline). {%- endcomment %}
+  <link rel="manifest" href="{{ '/manifest.webmanifest' | relative_url }}">
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register({{ '/sw.js' | relative_url | jsonify }}).catch(function () {});
+  </script>
+  {%- endif %}
 
   <link rel="stylesheet" href="{{ '/assets/css/site.css' }}?v={{ site.time | date: '%s' }}">
 

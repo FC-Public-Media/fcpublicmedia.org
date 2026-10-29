@@ -14,6 +14,8 @@ Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDAT
     inbox/      set down, not yet read         applied/     read, good, acted on
     held/       read, not acted on             state/<room>.json   what a room's page reads
     visits.ndjson   one line per check-in shown to us, timed when it was read
+A form's reply (wizard:site+answers) goes where the tanks' replies go: the drain's archive,
+~/fcpm/answers/<tank>/ ($FCPM_ANSWERS), one file per reply, in the site-worker's record shape.
     log.ndjson  one line per arrival and per verdict        nonces.json   replies already applied
 The signature is read by the composer (verify-bottle.mjs, Node, troves/scanner/composer); without it
 the payload's hash is still checked here and the reply is applied as `unverified`. docs/kiosk.md, Replies.
@@ -35,10 +37,12 @@ ROOT = HERE.parents[1]
 STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ
          else pathlib.Path.home() / ".local" / "state") / "media-node" / "replies"
 COMPOSER = ROOT / "troves" / "scanner" / "composer"
+ANSWERS = pathlib.Path(os.environ.get("FCPM_ANSWERS") or pathlib.Path.home() / "fcpm" / "answers")
 SCHEMA = "fcpm.reply/v0"
 TRANSFER = "anecdote.transfer/v1"
 MAX_BYTES = 64 * 1024          # a reply is words; a file in a form is a longer bottle, for later
 SKEW = datetime.timedelta(days=1)   # `issued` may be this far from our clock: phones drift, bottles wait
+AGELESS = {"wizard:site+answers"}  # a form's answers are good however long they were kept; only a future `issued` is held
 NONCES_KEPT = 5000
 
 
@@ -174,6 +178,10 @@ def composer_reads(payload):
         return {"ok": False, "errors": ["verifier: %r" % exc]}
 
 
+def trust_of(v):
+    return "friend" if v.get("trusted") else "unsigned" if v.get("unsigned") else "signed"
+
+
 def hash_ok(transfer):
     """The payload's own check, in Python: its bytes hash to its `hash`."""
     try:
@@ -194,7 +202,7 @@ def read(path):
         if not v.get("ok"):
             return None, "; ".join(v.get("errors") or ["unreadable frames"])
         return parse_reply(v.get("text")), {"by": v.get("by"), "kind": v.get("kind"),
-                                             "trust": "friend" if v.get("trusted") else "signed"}
+                                             "trust": trust_of(v)}
     try:
         obj = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, ValueError):
@@ -212,7 +220,7 @@ def read(path):
         if not v.get("ok"):
             return None, "; ".join(v.get("errors") or ["signature"])
         return parse_reply(v.get("text")), {"by": v.get("by"), "kind": v.get("kind"),
-                                             "trust": "friend" if v.get("trusted") else "signed"}
+                                             "trust": trust_of(v)}
     return obj, {"by": None, "kind": None, "trust": "unsigned"}
 
 
@@ -299,7 +307,43 @@ def visits(day=None):
     return out
 
 
-WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply}
+def answer_value(v):
+    return isinstance(v, (str, bool)) or (isinstance(v, list) and all(isinstance(x, str) for x in v))
+
+
+def answers_reply(reply, meta):
+    """wizard:site+answers: a form's reply, shown to our camera instead of (or as well as) sent to its tank.
+    It joins the tank's archive as the drain writes it, `origin` saying it came by camera; a reference
+    the archive already holds (it went by the tank too) is noted, not written twice. Fields are kept as
+    they came: the tank's own schema is the site-worker's, and bad data is data."""
+    tank = str(reply.get("tank") or "")
+    if not tank or len(tank) > 40 or not all(ch.isalnum() or ch in "@._-" for ch in tank):
+        return "tank: a tank's name"
+    reference = str(reply.get("reference") or "")
+    if not (8 <= len(reference) <= 64 and all(ch.isalnum() or ch == "-" for ch in reference)):
+        return "reference: the form's reference"
+    answers = reply.get("answers")
+    if not isinstance(answers, dict) or not all(isinstance(k, str) and answer_value(v) for k, v in answers.items()):
+        return "answers: names and text, yes, or lists of text"
+    answers = dict(answers)
+    sku = answers.pop("sku", None)
+    folder = ANSWERS / tank
+    if folder.is_dir() and any(folder.glob("*--%s.json" % reference)):
+        return None, "%s %s: already in the tank's archive" % (tank, reference[:8])
+    received = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    record = {"form": tank, "received": received, "reference": reference, "origin": "camera",
+              "sku": sku if isinstance(sku, str) else None, "answers": answers,
+              "issued": reply.get("issued"), "by": meta.get("by"), "trust": meta.get("trust"), "wizard_at": reply.get("at")}
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path = folder / ("%s--%s.json" % (received.replace(":", "-"), reference))
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False))
+    return None, "%s %s: into the tank's archive" % (tank, reference[:8])
+
+
+WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
+           "wizard:site+answers": answers_reply}
 
 
 def nonces():
@@ -322,7 +366,8 @@ def examine(reply, meta):
             issued = issued.astimezone()
     except ValueError:
         return "issued: not a time"
-    if abs(now() - issued) > SKEW:
+    late = now() - issued
+    if late < -SKEW or (late > SKEW and reply.get("wizard") not in AGELESS):
         return "issued %s: too far from now" % reply.get("issued")
     nonce = str(reply.get("nonce") or "")
     if not nonce:

@@ -8,6 +8,7 @@ booqable:
   components:
   - class: booqable-product-list
     attributes: 'data-per="24" data-show-search="true"'
+offline: true
 ---
 
 <div class="halves" data-halves>
@@ -97,8 +98,8 @@ The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}**
   <div class="muted" role="status" aria-live="polite">
     <p data-say="pick-time" hidden>Pick a time on the week first.</p>
     <p data-say="sending" hidden>Sending…</p>
-    <p data-say="unsent" hidden>Requests can't be sent from here yet. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
-    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
+    <p data-say="unsent" hidden>Requests can't be sent from here yet. <a data-mailto href="#">Email this to us</a>; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
+    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email this to us</a>; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
   </div>
 </form>
 <div data-receipt="sent" tabindex="-1" hidden>

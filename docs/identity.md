@@ -103,6 +103,26 @@ held. See docs/kiosk.md#replies.
 The poster is `/check-in/poster/`. Its QR is a committed SVG encoding `url` in `checkin.yml`;
 regenerate with `pip install qrcode && python3 site/bin/make-qr.py` when the URL changes.
 
+## Yours
+
+`/you/` (`site/you/index.md`, `site/assets/js/yours.js`) is what a device keeps for its person. Nothing on it
+is sent unless they say so.
+
+- **Lock it in.** Every form keeps its reply on the device before it sends anything (`site/assets/js/keep.js`,
+  called by `answers.js`, `join.js` and `book.js`): `fcpm.replies`, newest first, up to 200. The reply is
+  `wizard:site+answers` (`fcpm.reply/v0`: `tank`, the `reference` the tank and Stripe also get, `answers`,
+  `issued`, a nonce, `at` = the commit the page was built from, from `<meta name="fcpm-revision">`), kept as
+  text beside the labelled `lines`, the tank POST exactly as it goes, the email link, and `sent`.
+- **Sending is separate,** by any way out: the tank, our camera (Show it pours the same reply as a bottle,
+  as the check-in does), or the email link. A send that fails loses nothing; the form says it is kept, and
+  `/you/` offers *Send it* (the same POST, same reference) and *Email it* until it has gone.
+- **A record, not the form.** `/you/#reply-<reference>` reads the reply back from its `lines`. Replies are never
+  edited: their bytes are what we verify. A change will be a new reply that names the one it replaces.
+- **Contact cards** (`fcpm.cards`): name, email and phone are noticed in any form, by the standard
+  `autocomplete` tokens (`name`, `given-name`/`family-name`, `email`, `tel`), and by the check-in. The same email
+  or phone is the same card, brought up to date; anything else is another card. Never refused, removable,
+  and never used to fill a form in (the check-in's own pass, and the reservation request reading it, aside).
+
 ### Location
 
 Off (`location.required: false`): showing the reply to our camera is the proof of arrival, and a check-in

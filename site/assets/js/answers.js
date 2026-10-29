@@ -4,11 +4,14 @@
 // value; everything else is text. The `website` field is the robots' trap. A control outside
 // the <form> joins it with form="<id>", as /join/'s terms box does.
 // No worker, or a send that fails: the same answers as an email to a person. See docs/payments.md#requests.
+// Every form keeps its reply on the device first (keep.js), whatever happens to the send.
 //
 // The words are the page's. A script only shows one of the form's [data-say="…"] messages, or one of
 // the [data-receipt="…"] blocks after it, and fills in values: a[data-mailto] gets the email, and
 // [data-reference] the reference. A form with data-checkout is /join/'s, and join.js sends it; one with
 // data-sends has its own page script (book.js for /reserve/'s studio request).
+
+import { keep, markSent } from './keep.js';
 
 function labelOf(form, input) {
   const label = input.closest('label') || form.querySelector(`label[for="${input.id}"]`);
@@ -78,6 +81,8 @@ for (const form of document.querySelectorAll('form[data-tank]:not([data-checkout
     const { answers, lines, trap } = read(form);
     const reference = crypto.randomUUID();
     const mailto = emailLink(form, lines, reference);
+    const body = { form: form.dataset.tank, answers: trap ? { ...answers, website: trap } : answers, reference };
+    keep(form, { answers, lines, reference, body, mailto });
 
     if (!form.dataset.worker) {
       say(form, 'unsent', mailto);
@@ -86,11 +91,8 @@ for (const form of document.querySelectorAll('form[data-tank]:not([data-checkout
 
     say(form, 'sending');
     try {
-      await post(form, '/answers', {
-        form: form.dataset.tank,
-        answers: trap ? { ...answers, website: trap } : answers,
-        reference,
-      });
+      await post(form, '/answers', body);
+      markSent(reference, 'tank');
       settle(form, 'sent', reference);
     } catch {
       say(form, 'failed', mailto);

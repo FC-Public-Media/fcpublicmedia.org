@@ -1552,7 +1552,9 @@ html.is-pass,
 .pass-code canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .pass-show p { margin: 0; }
 .pass-read { color: var(--ink-soft); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
-.rows-checkin li a { color: inherit; }
+.rows-checkin li a, .rows-yours li a { color: inherit; }
+.pass-scroll h3 { font-size: var(--step-0); margin: 0.5rem 0 0.25rem; color: var(--ink-soft); }
+.rows-yours li .btn { padding: 0.2rem 0.6rem; font-size: 0.8rem; }
 
 
 .supports {

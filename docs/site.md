@@ -112,11 +112,28 @@ Other data files name their doc in their first line.
 | `assets/js/onair.js` | "On now" and "Next at" from Cablecast's API, on pages with `data-onair`; removed on failure |
 | `assets/js/lights.js` | `/lights/`: the lights reply code for the kiosk camera ([kiosk.md](kiosk.md)) |
 | `assets/js/qr-*.mjs` | vendored from anecdote.channel, unchanged; `machines/kiosk/door.py` serves them, so never move them |
+| `assets/js/composer/` | anecdote.channel's composer, vendored unchanged by way of `troves/scanner`; `bottle.js` pours a reply with it |
+| `assets/js/bottle.js` | a wizard's reply as AC1 fountain frames for our camera, signed with the browser's own key ([kiosk.md](kiosk.md#replies)) |
+| `assets/js/keep.js` | every form's reply kept on the device before it is sent, and the contact cards ([identity.md](identity.md#yours)) |
+| `assets/js/yours.js` | `/you/`: kept replies and cards |
 | `bin/make-qr.py` | writes the committed `check-in-qr.svg` from `_data/checkin.yml`; needs `pip install qrcode` |
 | `bin/make-wifi-qr.py` | writes the uncommitted `wifi-qr.svg`; password from `FCPM_WIFI_PASSWORD` or a prompt |
 | `bin/redirect-report.py` | checks the live Wix sitemaps against `redirects.yml` and `_site` |
 | `bin/catalog-report.py` | Cablecast records that look wrong; `catalog-report.yml` keeps one issue, monthly on the 12th |
 | `bin/check-template.py` | builds `site-template/` on `member-site-core/` and reads its feed back |
+
+## Offline
+
+`sw.js` is a service worker: it runs in the visitor's browser, and nothing of ours runs anywhere. A page
+with `offline: true` in its front matter (the check-in, `/you/`, `/submit/`, `/learn/`, `/join/`,
+`/reserve/`) registers it and links `manifest.webmanifest`. It keeps those pages and every file under
+`assets/js`, `assets/css`, `assets/fonts` and the icons, so they open with no signal, a check-in or a form is
+still kept, and Show it still pours. Pages and files come from the network whenever there is one; the kept
+copy answers only when there isn't. The cache is named for the build's `revision` (the commit; `bin/deploy-site`
+stamps it), so each deploy replaces the last kit. `_headers` keeps `sw.js` itself uncached. Service workers
+need https: the LAN's `http://fcpublicmedia.local` copy registers nothing. On an iPhone, *Add to Home Screen*
+(the manifest's `start_url` is `/check-in/`) is also what keeps Safari from clearing what the phone kept.
+`site/tests/offline.spec.js` proves it with the network off.
 
 ## Tests
 

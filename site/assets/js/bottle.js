@@ -2,8 +2,9 @@
 // pouring it signs it with this browser's own key (Ed25519 in WebCrypto, kept here, its fingerprint the
 // pseudonym), packs it as a transfer and draws it as AC1 fountain frames, 48 bytes a frame: a video
 // from the first byte, and any enough of it heals. The composer is anecdote.channel's (./composer/,
-// vendored), the same the door and the qr screen read with. Without it, or without Ed25519 (older
-// Safari), the reply is one plain code, unsigned. See docs/kiosk.md#replies.
+// vendored), the same the door and the qr screen read with. Without Ed25519 (Safari before 17) the
+// same frames carry the reply unsigned: the intake checks its hash and records it as `unsigned`. Only
+// without the composer or WebCrypto at all (plain http) is it one plain code. See docs/kiosk.md#replies.
 
 import { encodeQR } from './qr-encode.mjs';
 
@@ -14,9 +15,9 @@ let composer;
 async function loadComposer() {
   if (composer !== undefined) return composer;
   try {
-    const [sign, transfer, carrier] = await Promise.all(
-      ['sign', 'transfer', 'carrier'].map((m) => import(`./composer/${m}.mjs`)));
-    composer = { ...sign, ...transfer, ...carrier };
+    const [sign, transfer, carrier, anecdote] = await Promise.all(
+      ['sign', 'transfer', 'carrier', 'anecdote'].map((m) => import(`./composer/${m}.mjs`)));
+    composer = { ...sign, ...transfer, ...carrier, defaultHash: anecdote.defaultHash };
   } catch (error) {
     composer = null;
   }
@@ -85,21 +86,29 @@ function draw(canvas, qr) {
 
 // Pour `text` onto `canvas` until stop() is called. Resolves to { stop, signed, read }: `read` is one
 // line about what is showing. canvas.dataset.frames holds every frame, for the page's tests.
-export async function pour(canvas, text) {
+// The transfer envelope with no signature: what packTransfer makes, before it signs.
+async function unsignedTransfer(c, bytes) {
+  return { schema: c.TRANSFER, kind: 'fcpm.reply', size: bytes.length, hash: await c.defaultHash(bytes),
+           bytes: btoa(String.fromCharCode(...bytes)) };
+}
+
+export async function pour(canvas, text, { sign = true } = {}) {
   const c = await loadComposer();
-  const me = await identity(c);
+  const me = sign ? await identity(c) : null;
+  const bytes = new TextEncoder().encode(text);
   let frames, read, timer = null, at = 0;
-  if (c && me) {
-    const bottle = await c.packTransfer('fcpm.reply', new TextEncoder().encode(text), me);
+  if (c && crypto.subtle) {
+    const bottle = me ? await c.packTransfer('fcpm.reply', bytes, me) : await unsignedTransfer(c, bytes);
     const ft = await c.fountainTransfer(bottle, { blockSize: DROPLET });
     const strings = ft.frames(Math.max(40, ft.K * 4));
     frames = strings.map((s) => encodeQR(s, { ecLevel: 'M' }));
     canvas.dataset.frames = JSON.stringify(strings);
-    read = `${ft.K} blocks · ${frames.length} frames · ${FPS}/s · signed ${me.fingerprint.slice(11, 19)}`;
+    read = `${ft.K} blocks · ${frames.length} frames · ${FPS}/s · `
+      + (me ? `signed ${me.fingerprint.slice(11, 19)}` : 'unsigned');
   } else {
     frames = [encodeQR(text, { ecLevel: 'M' })];
     canvas.dataset.frames = JSON.stringify([text]);
-    read = `one code · ${c ? 'no key in this browser' : 'no composer'}: unsigned`;
+    read = `one code · ${c ? 'no WebCrypto here' : 'no composer'}: unsigned`;
   }
   const tick = () => { draw(canvas, frames[at]); at = (at + 1) % frames.length; };
   tick();
@@ -107,7 +116,7 @@ export async function pour(canvas, text) {
   const redraw = () => draw(canvas, frames[(at + frames.length - 1) % frames.length]);
   addEventListener('resize', redraw);
   return {
-    signed: Boolean(c && me),
+    signed: Boolean(c && crypto.subtle && me),
     read,
     stop() {
       clearInterval(timer);

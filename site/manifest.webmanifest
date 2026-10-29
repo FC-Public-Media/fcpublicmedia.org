@@ -1,0 +1,19 @@
+---
+layout: null
+permalink: /manifest.webmanifest
+sitemap: false
+---
+{%- comment -%} Add to Home Screen: the pass opens like an app, and Safari keeps its storage. docs/site.md#offline. {%- endcomment -%}
+{
+  "name": {{ site.title | jsonify }},
+  "short_name": "FCPM",
+  "start_url": {{ '/check-in/' | relative_url | jsonify }},
+  "scope": {{ '/' | relative_url | jsonify }},
+  "display": "standalone",
+  "background_color": "#121417",
+  "theme_color": "#121417",
+  "icons": [
+    {"src": {{ '/assets/img/icon-180.png' | relative_url | jsonify }}, "sizes": "180x180", "type": "image/png"},
+    {"src": {{ '/assets/img/icon-512.png' | relative_url | jsonify }}, "sizes": "512x512", "type": "image/png"}
+  ]
+}
