@@ -1,5 +1,6 @@
 ---
 title: Join
+offline: true
 ---
 
 {%- assign tiers = site.data.tiers.tiers -%}

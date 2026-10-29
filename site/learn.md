@@ -1,5 +1,6 @@
 ---
 title: Learn
+offline: true
 ---
 
 {%- comment -%} The page's reading on the left; teaching, and its application, on the right from the top. {%- endcomment %}

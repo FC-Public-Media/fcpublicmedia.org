@@ -4,6 +4,7 @@ layout: pass
 theme_color: "#121417"
 permalink: /you/
 sitemap: false
+offline: true
 ---
 
 {%- comment -%} What this device keeps for its person: every form's reply (kept before it is sent) and the contact

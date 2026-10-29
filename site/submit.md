@@ -1,5 +1,6 @@
 ---
 title: Submit
+offline: true
 ---
 
 <div class="split">

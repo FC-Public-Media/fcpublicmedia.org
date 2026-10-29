@@ -8,6 +8,7 @@ booqable:
   components:
   - class: booqable-product-list
     attributes: 'data-per="24" data-show-search="true"'
+offline: true
 ---
 
 <div class="halves" data-halves>

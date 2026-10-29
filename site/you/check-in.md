@@ -3,6 +3,7 @@ title: Check In
 layout: pass
 theme_color: "#121417"
 permalink: /check-in/
+offline: true
 ---
 
 {%- assign ci = site.data.checkin -%}
