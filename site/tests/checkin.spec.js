@@ -20,6 +20,13 @@ const readPending = (page) =>
 
 const panel = (page, state) => page.locator(`[data-state="${state}"]`);
 
+// checkin.yml's location.required, as the built page has it. The location tests run only when it is on.
+const locationRequired = (page) =>
+  page.evaluate(() => JSON.parse(document.getElementById('checkin-config').textContent).location.required);
+async function needsLocation(page) {
+  test.skip(!(await locationRequired(page)), 'location.required is off in checkin.yml');
+}
+
 async function fresh(page, context, coords) {
   if (coords) {
     await context.grantPermissions(['geolocation']);
@@ -39,6 +46,7 @@ test.describe('check-in', () => {
 
   test('checks in when you are at the studio', async ({ page, context }) => {
     await fresh(page, context, STUDIO);
+    await needsLocation(page);
 
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
 
@@ -59,6 +67,7 @@ test.describe('check-in', () => {
 
   test('holds the check-in as pending when you are not there yet', async ({ page, context }) => {
     await fresh(page, context, NEARBY);
+    await needsLocation(page);
 
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
 
@@ -75,6 +84,7 @@ test.describe('check-in', () => {
 
   test('a long way away is still just pending, not an error', async ({ page, context }) => {
     await fresh(page, context, FAR);
+    await needsLocation(page);
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
 
     await expect(panel(page, 'far')).toBeVisible();
@@ -83,6 +93,7 @@ test.describe('check-in', () => {
 
   test('completes by itself once you arrive', async ({ page, context }) => {
     await fresh(page, context, NEARBY);
+    await needsLocation(page);
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
     await expect(panel(page, 'far')).toBeVisible();
 
@@ -97,6 +108,7 @@ test.describe('check-in', () => {
 
   test('a pending check-in survives closing the page', async ({ page, context }) => {
     await fresh(page, context, NEARBY);
+    await needsLocation(page);
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
     await expect(panel(page, 'far')).toBeVisible();
 
@@ -109,6 +121,7 @@ test.describe('check-in', () => {
 
   test('cancelling a pending check-in clears it', async ({ page, context }) => {
     await fresh(page, context, NEARBY);
+    await needsLocation(page);
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
     await expect(panel(page, 'far')).toBeVisible();
 
@@ -123,6 +136,7 @@ test.describe('check-in', () => {
     await page.goto(PATH);
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+    await needsLocation(page);
 
     await page.locator('[data-state="idle"] [data-action="check-in"]').click();
 
@@ -343,6 +357,111 @@ test.describe('check-in', () => {
     await page.waitForTimeout(500);
 
     expect(outbound, 'check-in made a network request').toEqual([]);
+  });
+});
+
+// The reply: each visit keeps one (wizard:kiosk+checkin), and #show pours it for our camera.
+
+// Feeds frames to the vendored composer, as the door's intake does: the reply's text, or why not.
+const readFrames = (page) =>
+  page.evaluate(async () => {
+    const frames = JSON.parse(document.getElementById('show-code').dataset.frames || '[]');
+    const { carrierSession } = await import('/assets/js/composer/carrier.mjs');
+    const session = carrierSession({ friends: [] });
+    let snap = null;
+    for (const f of frames) snap = await session.feed(f);
+    if (!snap?.complete) return { frames: frames.length, text: null };
+    const { transfers } = await session.result();
+    const v = transfers[0].verify;
+    return { frames: frames.length, ok: v.ok, kind: v.kind, text: v.bytes ? new TextDecoder().decode(v.bytes) : null };
+  });
+
+test.describe('check-in reply', () => {
+  test('checks in from anywhere while location is off', async ({ page, context }) => {
+    await fresh(page, context, FAR);
+    test.skip(await locationRequired(page), 'location.required is on in checkin.yml');
+
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await expect(panel(page, 'done')).toBeVisible();
+    const [entry] = await readHistory(page);
+    expect(entry.verified).toBe(false);
+    expect(entry.distance_m).toBeNull();
+  });
+
+  test('each visit keeps its reply, made once', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await page.locator('#profile-name').fill('Sam Rivera');
+    await page.goto(`${PATH}?reason=Class`);
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await expect(panel(page, 'done')).toBeVisible();
+
+    const [entry] = await readHistory(page);
+    const reply = JSON.parse(entry.reply);
+    expect(Object.keys(reply)).toEqual(['schema', 'wizard', 'at', 'name', 'email', 'reason', 'issued', 'nonce', 'sig']);
+    expect(reply).toMatchObject({ schema: 'fcpm.reply/v0', wizard: 'wizard:kiosk+checkin', name: 'Sam Rivera', reason: 'Class', sig: null });
+    expect(Date.parse(reply.issued)).toEqual(Date.parse(entry.at.replace(/\.\d+Z$/, 'Z')));
+    expect(reply.nonce).toMatch(/^[A-Za-z0-9_-]{22}$/);
+
+    // Shown and reloaded, it is the same bytes.
+    await page.getByRole('link', { name: 'Show it' }).click();
+    await page.reload();
+    expect((await readHistory(page))[0].reply).toEqual(entry.reply);
+  });
+
+  test('Show it pours the reply as a bottle our camera reads', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await page.locator('#profile-name').fill('Sam Rivera');
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await page.getByRole('link', { name: 'Show it' }).click();
+
+    await expect(page.locator('[data-view="show"]')).toBeVisible();
+    await expect(page.locator('#show-read')).toContainText('signed');
+    const read = await readFrames(page);
+    expect(read.frames).toBeGreaterThanOrEqual(40);
+    expect(read.ok).toBe(true);
+    expect(read.kind).toEqual('fcpm.reply');
+    expect(read.text).toEqual((await readHistory(page))[0].reply);
+  });
+
+  test('any visit in the list can be shown again', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await page.locator('#again-button').click();
+    await page.waitForTimeout(20);
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await expect(page.locator('#checkin-count')).toHaveText('2');
+
+    await page.getByRole('link', { name: /Visits/ }).click();
+    await page.locator('#checkin-history li a').nth(1).click();
+    await expect(page.locator('#show-read')).toContainText('signed');
+    const older = (await readHistory(page))[1];
+    expect((await readFrames(page)).text).toEqual(older.reply);
+  });
+
+  test('a visit from before replies gets one the first time it is shown', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await page.evaluate(() => localStorage.setItem('fcpm.checkins', JSON.stringify([
+      { at: '2026-10-20T18:00:00.000Z', device: 'x', email: null, email_verified: false, name: 'Old Visit',
+        reason: null, verified: true, distance_m: 12 }])));
+    await page.goto(`${PATH}#show`);
+    await expect(page.locator('#show-read')).toContainText('signed');
+
+    const [entry] = await readHistory(page);
+    expect(JSON.parse(entry.reply)).toMatchObject({ wizard: 'wizard:kiosk+checkin', name: 'Old Visit' });
+    expect((await readFrames(page)).text).toEqual(entry.reply);
+  });
+
+  test('forgetting the phone forgets its signing key', async ({ page, context }) => {
+    await fresh(page, context, STUDIO);
+    await page.locator('[data-state="idle"] [data-action="check-in"]').click();
+    await page.getByRole('link', { name: 'Show it' }).click();
+    await expect(page.locator('#show-read')).toContainText('signed');
+    expect(await page.evaluate(() => localStorage.getItem('fcpm.key'))).not.toBeNull();
+
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.goto(`${PATH}#device`);
+    await page.locator('#forget-button').click();
+    expect(await page.evaluate(() => localStorage.getItem('fcpm.key'))).toBeNull();
   });
 });
 
