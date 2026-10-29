@@ -1,7 +1,10 @@
-// /check-in/: visits recorded in this browser's storage, never sent. See docs/identity.md#check-in.
+// /check-in/: visits recorded in this browser's storage, never sent. Each visit keeps a reply
+// (wizard:kiosk+checkin), made once; #show pours it for our camera whenever they like, and only that
+// shows it to us. See docs/identity.md#check-in.
 
 import { readConfig, pickSession, sessionKey, clockTime, watch } from './classes.js';
 import { verifyClaim, claimFromLocation, clearClaimFromLocation } from './claims.js';
+import { pour, localIso, nonce, forgetKey } from './bottle.js';
 
 const DEVICE_KEY = 'fcpm.device';
 const HISTORY_KEY = 'fcpm.checkins';
@@ -9,6 +12,8 @@ const PROFILE_KEY = 'fcpm.profile';
 const PENDING_KEY = 'fcpm.pending';
 const RSVP_KEY = 'fcpm.rsvp';
 const CLAIM_KEY = 'fcpm.claim';
+
+const WIZARD = 'wizard:kiosk+checkin';
 
 const config = JSON.parse(document.getElementById('checkin-config').textContent);
 const classConfig = readConfig();
@@ -99,6 +104,36 @@ function saveHistory(entries) {
   return writeStore(HISTORY_KEY, entries.slice(0, config.historyLimit));
 }
 
+/* ----------------------------------------------------------------- reply */
+
+// The visit as the reply our camera reads, in the intake's key order: who, why, when it was made.
+// Kept as text, so the bytes never change however often it is shown; the nonce makes it one visit.
+function checkinReply(entry) {
+  return JSON.stringify({
+    schema: 'fcpm.reply/v0',
+    wizard: WIZARD,
+    at: config.at,
+    name: entry.name || null,
+    email: entry.email || null,
+    reason: entry.reason || null,
+    issued: localIso(new Date(entry.at)),
+    nonce: nonce(),
+    sig: null,
+  });
+}
+
+// A visit from before replies were kept gets its reply the first time it is shown, and keeps it.
+function replyFor(at) {
+  const history = getHistory();
+  const entry = history.find((e) => e.at === at) || history[0];
+  if (!entry) return null;
+  if (!entry.reply) {
+    entry.reply = checkinReply(entry);
+    saveHistory(history);
+  }
+  return entry;
+}
+
 /* -------------------------------------------------------------- distance */
 
 // Haversine, far more precise than a phone's fix.
@@ -186,12 +221,18 @@ function renderHistory() {
   el('checkin-empty').hidden = history.length > 0;
   // A number beside "Visits" on the pass, nothing when there are none.
   count.textContent = history.length ? String(history.length) : '';
+  el('show-link').hidden = history.length === 0;
 
   for (const entry of history) {
     const item = document.createElement('li');
 
+    // Each visit can be shown again: its time opens #show with it.
     const when = document.createElement('b');
-    when.textContent = formatWhen(entry.at);
+    const link = document.createElement('a');
+    link.href = '#show';
+    link.textContent = formatWhen(entry.at);
+    link.addEventListener('click', () => { showing = entry.at; });
+    when.append(link);
 
     const detail = document.createElement('span');
     // Unconfirmed addresses are marked in the list.
@@ -404,6 +445,7 @@ function complete(reading) {
       verified: Boolean(reading),
       distance_m: reading ? Math.round(reading.distance) : null,
     };
+    entry.reply = checkinReply(entry);
 
     const stored = saveHistory([entry, ...getHistory()]);
     dropStore(PENDING_KEY);
@@ -605,6 +647,7 @@ function forgetDevice() {
     return;
   }
   [DEVICE_KEY, HISTORY_KEY, PROFILE_KEY, PENDING_KEY, CLAIM_KEY].forEach(dropStore);
+  forgetKey();
   stopTimer();
   renderDevice();
   renderProfile();
@@ -616,10 +659,43 @@ function forgetDevice() {
 
 /* ------------------------------------------------------------------ views */
 
-// Views by #: #visits, #device; anything else (a claim link, say) is the pass.
-const VIEWS = ['visits', 'device'];
+// Views by #: #visits, #device, #show; anything else (a claim link, say) is the pass.
+const VIEWS = ['visits', 'device', 'show'];
 let view = 'pass';
 let cameFromPass = false;
+
+// #show pours the visit picked from the list, else the latest; it stops when the view is left.
+let showing = null;
+let pouring = null;
+let pours = 0;                    // a pour that finishes after its view was left stops itself
+
+async function startShowing() {
+  const mine = ++pours;
+  const entry = replyFor(showing);
+  showing = null;
+  if (!entry) {
+    el('show-what').textContent = 'Check in first, then show it here.';
+    return;
+  }
+  el('show-what').textContent = [formatWhen(entry.at), entry.reason].filter(Boolean).join(' · ');
+  el('show-read').textContent = '';
+  const poured = await pour(el('show-code'), entry.reply);
+  if (mine !== pours) { poured.stop(); return; }
+  pouring = poured;
+  el('show-read').textContent = poured.read;
+  // The screen stays up while the code is held to the camera.
+  navigator.wakeLock?.request('screen').then((lock) => {
+    if (pouring === poured) poured.lock = lock; else lock.release();
+  }).catch(() => {});
+}
+
+function stopShowing() {
+  pours += 1;
+  if (!pouring) return;
+  pouring.stop();
+  pouring.lock?.release().catch(() => {});
+  pouring = null;
+}
 
 function route() {
   const wanted = location.hash.slice(1);
@@ -629,6 +705,8 @@ function route() {
   for (const section of document.querySelectorAll('[data-view]')) {
     section.hidden = section.dataset.view !== view;
   }
+  stopShowing();
+  if (view === 'show') startShowing();
 }
 
 // "Pass" goes Back when it can, else replaces, so history does not fill with screens.

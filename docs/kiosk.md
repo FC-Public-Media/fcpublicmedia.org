@@ -189,7 +189,8 @@ reply left it, or as `usually:` says while no reply has spoken. The small `Staff
 ## Replies
 
 A wizard is a page that helps one person form one reply, and only that: the form's checks exist to make
-the shape, never to refuse. `fcpm.reply/v0` names the wizard (`wizard:kiosk+lights`, `wizard:kiosk+host`)
+the shape, never to refuse. `fcpm.reply/v0` names the wizard (`wizard:kiosk+lights`, `wizard:kiosk+host`,
+`wizard:kiosk+checkin`)
 and the wizard's commit (`at`, the form's version), and carries `issued`, a `nonce` and `sig: null`. The
 reply travels in a bottle: a signed transfer (the scanner trove's composer; Ed25519, the phone's own key,
 its fingerprint the pseudonym), poured as AC1 fountain frames at 48 bytes a frame, so every bottle is a
@@ -204,6 +205,20 @@ unsigned and unknown-key replies apply too: being on the studio's network is the
 this. `trust` is recorded (`friend`, `signed`, `unsigned`, `unverified`), and `replies.py trust
 <fingerprint> <name>` names a phone. The eyes' path (`troves/scanner` `page.py` handing a catch to
 `replies.drop_frames`) is not wired yet; the reader is.
+
+### wizard:kiosk+checkin
+
+The public `/check-in/` (docs/identity.md#check-in), the first wizard the site itself serves. The tap
+keeps a reply on the visitor's phone; `#show` pours it (`site/assets/js/bottle.js`, the composer vendored
+in `site/assets/js/composer/`) whenever they hold it up, and the camera's catch lands here. Applied, it is
+one line in `visits.ndjson`: `seen` (when we read it: the arrival), `issued` (when they made it), name,
+email, reason, `by`, `trust`. Every field may be empty, and unsigned replies apply. The same reply shown
+twice is held the second time (its nonce). `replies.py status` counts today's visits.
+
+```json
+{"schema": "fcpm.reply/v0", "wizard": "wizard:kiosk+checkin", "at": "4a33627", "name": "Sam Rivera",
+ "email": null, "reason": "Class", "issued": "2026-10-28T21:31:38-06:00", "nonce": "…", "sig": null}
+```
 
 ### wizard:kiosk+host
 

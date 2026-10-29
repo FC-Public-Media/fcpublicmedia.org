@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """replies: the door's intake for what a wizard made. A wizard is a page that helps a person form
-one reply (site/lights.md was the first; /host/ is the second). The reply travels in a bottle: a
+one reply (site/lights.md was the first; /host/ the second; /check-in/ the first public one). The reply travels in a bottle: a
 signed transfer, as AC1 frames for a camera, or the same bytes set down over the LAN (POST /drop).
 A bottle is KEPT FIRST, as the file it arrived as; on the next pass it is read, checked and applied,
 or held with the reason. Nothing is refused at the door, and nothing is applied on arrival.
@@ -13,6 +13,7 @@ or held with the reason. Nothing is refused at the door, and nothing is applied 
 Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDATA%\\media-node\\replies):
     inbox/      set down, not yet read         applied/     read, good, acted on
     held/       read, not acted on             state/<room>.json   what a room's page reads
+    visits.ndjson   one line per check-in shown to us, timed when it was read
     log.ndjson  one line per arrival and per verdict        nonces.json   replies already applied
 The signature is read by the composer (verify-bottle.mjs, Node, troves/scanner/composer); without it
 the payload's hash is still checked here and the reply is applied as `unverified`. docs/kiosk.md, Replies.
@@ -268,7 +269,37 @@ def host_reply(reply, meta):
     return None, note + ("; unknown gear ignored: %s" % ", ".join(unknown) if unknown else "")
 
 
-WIZARDS = {"wizard:kiosk+host": host_reply}
+def checkin_reply(reply, meta):
+    """wizard:kiosk+checkin: somebody showed us their check-in. One visit, timed when we read it; when they
+    made it (`issued`) is theirs to say. Everything in it may be empty."""
+    for key, most in (("name", 80), ("email", 254), ("reason", 80)):
+        v = reply.get(key)
+        if v is not None and not (isinstance(v, str) and len(v) <= most):
+            return "%s: text, up to %d characters" % (key, most)
+    visit = {"seen": now().isoformat(timespec="seconds"), "issued": reply.get("issued"),
+             "name": reply.get("name"), "email": reply.get("email"), "reason": reply.get("reason"),
+             "by": meta.get("by"), "trust": meta.get("trust"), "wizard_at": reply.get("at")}
+    STATE.mkdir(parents=True, exist_ok=True)
+    with open(STATE / "visits.ndjson", "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(visit, ensure_ascii=False) + "\n")
+    return None, "%s checked in%s" % (visit["name"] or "somebody", " (%s)" % visit["reason"] if visit["reason"] else "")
+
+
+def visits(day=None):
+    """The check-ins read on `day` (a date; today by default), oldest first."""
+    day = day or now().date()
+    out = []
+    try:
+        for line in (STATE / "visits.ndjson").read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if datetime.datetime.fromisoformat(row["seen"]).date() == day:
+                out.append(row)
+    except (OSError, ValueError, KeyError):
+        pass
+    return out
+
+
+WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply}
 
 
 def nonces():
@@ -344,6 +375,9 @@ def status():
         lit = [g["id"] for g in r["gear"] if g["lit"]]
         print("%-12s %s%s  gear: %s" % (room, ("hosting: %s until %s" % (r["host"], r["until"])) if r["hosting"] else "nobody hosting",
                                         " (%s)" % r["trust"] if r["spoken"] and r["trust"] else "", ", ".join(lit) or "none"))
+    today = visits()
+    print("visits today: %d%s" % (len(today), "  last: %s at %s" % (today[-1].get("name") or "somebody", today[-1]["seen"][11:16])
+                                   if today else ""))
     held = sorted((STATE / "held").iterdir()) if (STATE / "held").is_dir() else []
     waiting = sorted((STATE / "inbox").iterdir()) if (STATE / "inbox").is_dir() else []
     print("inbox: %d waiting · held: %d" % (len(waiting), len(held)))

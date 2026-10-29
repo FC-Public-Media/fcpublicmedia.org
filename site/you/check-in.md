@@ -15,6 +15,8 @@ permalink: /check-in/
 
 <script type="application/json" id="checkin-config">
 {
+  {%- comment -%} The wizard's version: the commit the site was built from (the builds stamp `revision`). {%- endcomment %}
+  "at": {{ site.revision | default: "dev" | jsonify }},
   "identityMode": {{ ci.identity.mode | jsonify }},
   {%- comment -%} Public halves only, from _data/identity.yml. {%- endcomment %}
   "identity": {
@@ -49,7 +51,7 @@ permalink: /check-in/
 </noscript>
 
 
-{%- comment -%} Three one-screen views by #: (none) the pass, #visits, #device. See docs/identity.md#check-in. {%- endcomment %}
+{%- comment -%} Four one-screen views by #: (none) the pass, #visits, #device, #show. See docs/identity.md#check-in. {%- endcomment %}
 
 {% comment %} ------------------------------------------------------ the pass {% endcomment %}
 
@@ -136,11 +138,15 @@ permalink: /check-in/
     <div class="state" data-state="done" hidden>
       <h2>Welcome.</h2>
       <p id="done-detail"></p>
-      <button class="btn" id="again-button" type="button">Check in again</button>
+      <p class="pass-actions">
+        <a class="btn btn-primary" href="#show">Show it</a>
+        <button class="btn" id="again-button" type="button">Check in again</button>
+      </p>
     </div>
   </div>
 
   <nav class="pass-nav" aria-label="More">
+    <a href="#show" id="show-link" hidden>Show</a>
     <a href="#visits">Visits <span id="checkin-count"></span></a>
     <a href="#device">This phone</a>
   </nav>
@@ -156,6 +162,22 @@ permalink: /check-in/
   <div class="pass-scroll">
     <p class="muted" id="checkin-empty" hidden>No visits yet.</p>
     <ul class="rows rows-checkin" id="checkin-history"></ul>
+  </div>
+</section>
+
+{% comment %} ---------------------------------------------------------- show {% endcomment %}
+
+{%- comment -%} A kept check-in poured for our camera (assets/js/bottle.js). Made once, shown any time. {%- endcomment %}
+
+<section class="pass-view" data-view="show" aria-labelledby="show-title" hidden>
+  <header class="pass-top">
+    <a class="pass-back" href="#" data-back>Pass</a>
+    <h2 id="show-title">Show it</h2>
+  </header>
+  <div class="pass-show">
+    <div class="pass-code"><canvas id="show-code" role="img" aria-label="Your check-in, as a moving code for our camera"></canvas></div>
+    <p id="show-what"></p>
+    <p class="pass-read" id="show-read"></p>
   </div>
 </section>
 
