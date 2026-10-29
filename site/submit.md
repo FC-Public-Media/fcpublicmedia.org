@@ -88,8 +88,8 @@ Media that is offensive or inappropriate for unsolicited or underage viewing sho
   <p><button class="btn btn-primary" type="submit">Submit</button></p>
   <div class="muted" role="status" aria-live="polite">
     <p data-say="sending" hidden>Sending…</p>
-    <p data-say="unsent" hidden>This form can't send on its own yet. <a data-mailto href="#">Email it to us</a> instead; it's all filled in.</p>
-    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email it to us</a> instead; it's all filled in.</p>
+    <p data-say="unsent" hidden>This form can't send on its own yet. <a data-mailto href="#">Email it to us</a> instead; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
+    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email it to us</a> instead; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
   </div>
 </form>
 <div data-receipt="sent" tabindex="-1" hidden>

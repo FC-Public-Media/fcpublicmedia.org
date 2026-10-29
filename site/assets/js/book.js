@@ -12,6 +12,7 @@
 // kept on this phone too, as the person's receipt; nothing here shows anyone else's.
 
 import { emailLink, say, settle, post } from './answers.js';
+import { keep, markSent } from './keep.js';
 
 const PROFILE_KEY = 'fcpm.profile';
 const MINE_KEY = 'fcpm.bookings';
@@ -403,7 +404,10 @@ form.addEventListener('submit', async (event) => {
 
   const reference = crypto.randomUUID();
   const mailto = emailLink(form, lines, reference);
+  const trap = field('website').value;
+  const body = { form: 'book', answers: trap ? { ...answers, website: trap } : answers, reference };
   remember(answers, null);
+  keep(form, { answers, lines, reference, body, mailto });
   if (!form.dataset.worker) {
     say(form, 'unsent', mailto);
     return;
@@ -411,12 +415,12 @@ form.addEventListener('submit', async (event) => {
 
   say(form, 'sending');
   try {
-    const trap = field('website').value;
-    await post(form, '/answers', { form: 'book', answers: trap ? { ...answers, website: trap } : answers, reference });
+    await post(form, '/answers', body);
   } catch {
     say(form, 'failed', mailto);
     return;
   }
+  markSent(reference, 'tank');
   remember(answers, { reference, space: answers.space, when: answers.when, date: iso(choice.date), sent: new Date().toISOString() });
   settle(form, 'sent', reference);
   drawMine();

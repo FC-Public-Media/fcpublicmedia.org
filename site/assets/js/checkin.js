@@ -5,6 +5,7 @@
 import { readConfig, pickSession, sessionKey, clockTime, watch } from './classes.js';
 import { verifyClaim, claimFromLocation, clearClaimFromLocation } from './claims.js';
 import { pour, localIso, nonce, forgetKey } from './bottle.js';
+import { noticeCard } from './keep.js';
 
 const DEVICE_KEY = 'fcpm.device';
 const HISTORY_KEY = 'fcpm.checkins';
@@ -446,6 +447,8 @@ function complete(reading) {
       distance_m: reading ? Math.round(reading.distance) : null,
     };
     entry.reply = checkinReply(entry);
+    // The visit's name and email, noticed as a contact card (/you/), like any form's.
+    noticeCard({ name: entry.name || '', email: entry.email || '' });
 
     const stored = saveHistory([entry, ...getHistory()]);
     dropStore(PENDING_KEY);

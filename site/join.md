@@ -113,10 +113,10 @@ If you need a la carte reservations on the venue itself, please reach out to
     <p data-say="opening" hidden>Opening the payment page…</p>
     <p data-say="sending" hidden>Sending…</p>
     <p data-say="empty" hidden>Nothing is filled in yet.</p>
-    <p data-say="unsent" hidden>Joining can't take payment online yet. <a data-mailto href="#">Email this to us</a>; it's all filled in, and a person will sort out paying with you.</p>
+    <p data-say="unsent" hidden>Joining can't take payment online yet. <a data-mailto href="#">Email this to us</a>; it's all filled in, and a person will sort out paying with you. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
     <p data-say="unpaid-kept" hidden>The payment page couldn't open. We have your answers and the tier you picked, and a person will write to you about paying.</p>
-    <p data-say="unpaid" hidden>The payment page couldn't open. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
-    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email this to us</a>; it's all filled in.</p>
+    <p data-say="unpaid" hidden>The payment page couldn't open. <a data-mailto href="#">Email this to us</a>; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
+    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email this to us</a>; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
   </div>
 </form>
 <div data-receipt="sent" tabindex="-1" hidden>

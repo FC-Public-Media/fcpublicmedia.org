@@ -1,6 +1,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- comment -%} The commit this page was built from: a wizard's reply carries it as `at` (assets/js/keep.js). {%- endcomment %}
+  <meta name="fcpm-revision" content="{{ site.revision | default: 'dev' }}">
   {%- if page.theme_color %}
   <meta name="theme-color" content="{{ page.theme_color }}">
   {%- endif %}

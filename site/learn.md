@@ -116,8 +116,8 @@ Got a LOT to teach? Starting a student or youth series? Want it recorded? Reach 
   <p><button class="btn btn-primary" type="submit">Apply to teach</button></p>
   <div class="muted" role="status" aria-live="polite">
     <p data-say="sending" hidden>Sending…</p>
-    <p data-say="unsent" hidden>This form can't send on its own yet. <a data-mailto href="#">Email it to us</a> instead; it's all filled in.</p>
-    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email it to us</a> instead; it's all filled in.</p>
+    <p data-say="unsent" hidden>This form can't send on its own yet. <a data-mailto href="#">Email it to us</a> instead; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
+    <p data-say="failed" hidden>That didn't send. <a data-mailto href="#">Email it to us</a> instead; it's all filled in. It's kept on this phone too, under <a href="{{ '/you/' | relative_url }}">Yours</a>.</p>
   </div>
 </form>
 <div data-receipt="sent" tabindex="-1" hidden>
