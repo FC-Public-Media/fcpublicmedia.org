@@ -4,7 +4,9 @@
 url: https://fcpublicmedia.org/check-in/
 
 location:
-  required: true
+  # Off: a check-in made at home and shown at the door is a good one. Showing it to our camera is the
+  # proof of arrival (docs/kiosk.md#replies). On, the page holds a check-in until the phone is within radius_m.
+  required: false
 
   name: Carnegie Center for Creativity
   address: 200 Mathews Street, Fort Collins, CO 80524

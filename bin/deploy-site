@@ -26,7 +26,9 @@ for step in "site/bin/sync-cablecast.py" "site/bin/sync-schedule.py" \
 done
 
 cd "$COPY/site"
-JEKYLL_ENV=production jekyll build --quiet
+# The commit, for wizards' replies (`at`, the form's version): _revision.yml is never published.
+printf 'revision: %s\n' "$(git rev-parse --short HEAD)" > _revision.yml
+JEKYLL_ENV=production jekyll build --quiet --config _config.yml,_revision.yml
 python3 bin/test_nothing_internal_is_published.py
 python3 bin/test_site_runs_no_code.py
 if [ "${1:-}" = --build ]; then

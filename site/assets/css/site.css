@@ -1546,6 +1546,14 @@ html.is-pass,
 .pass-back::before { content: "\2190\00a0"; }
 .pass-scroll { min-height: 0; overflow: auto; padding: 1rem 1.5rem; }
 
+/* Show it: the kept check-in as a moving code (its own white border), as big as the phone allows. */
+.pass-show { min-height: 0; display: grid; grid-template-rows: 1fr auto auto; gap: 0.5rem; padding: 1rem 1.5rem; }
+.pass-code { min-height: 0; display: grid; place-items: center; }
+.pass-code canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.pass-show p { margin: 0; }
+.pass-read { color: var(--ink-soft); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.rows-checkin li a { color: inherit; }
+
 
 .supports {
   color: var(--ink-soft);

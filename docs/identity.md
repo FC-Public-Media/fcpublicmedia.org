@@ -79,8 +79,19 @@ approval or removal. `/settings/` signs in to find the site, then signs each sav
 destination. One tap records a visit in the browser's own storage; nothing is sent anywhere, and
 `site/tests/checkin.spec.js` fails if checking in makes a network request.
 
-- The pass is one screen; `#visits` and `#device` are separate views. The device id is a random UUID,
-  shown only as a fragment, deleted by "Forget this device".
+The plain code (the poster, the homepage, a kiosk) only opens the page. The page is a wizard,
+`wizard:kiosk+checkin`: each visit keeps a reply (`fcpm.reply/v0`: name, email, reason, `issued`, a
+nonce, `at` = the commit the site was built from), made once at the tap and never changed. `#show`
+pours it for our camera whenever the visitor likes (tonight at home, in the line, next week within a
+day of `issued`) as a bottle: signed with the browser's own Ed25519 key and drawn as AC1 fountain
+frames by `site/assets/js/bottle.js` and the vendored composer (`site/assets/js/composer/`). The
+visitor's camera opened a page; our camera reads what the page made. The door's intake applies it as one
+visit (`replies.py`, `visits.ndjson`), timed when it was read; showing it again is the same nonce and is
+held. See docs/kiosk.md#replies.
+
+- The pass is one screen; `#visits`, `#device` and `#show` are separate views. Any visit in the list opens
+  `#show` with it. The device id is a random UUID, shown only as a fragment, deleted by "Forget this
+  device" (with the signing key).
 - The reason comes from the scanned code (`?reason=Class`, limited to `reasons` in
   `site/_data/checkin.yml`) or a running class (`site/assets/js/classes.js`); nobody is asked.
 - History keeps `history_limit` (200) visits, exports to JSON, and imports by merging.
@@ -94,7 +105,8 @@ regenerate with `pip install qrcode && python3 site/bin/make-qr.py` when the URL
 
 ### Location
 
-`location` in `site/_data/checkin.yml` sets the venue, `radius_m` (200), `accuracy_slack_m` (100) and
+Off (`location.required: false`): showing the reply to our camera is the proof of arrival, and a check-in
+made somewhere else first is a good one. Turned on, `location` in `site/_data/checkin.yml` sets the venue, `radius_m` (200), `accuracy_slack_m` (100) and
 `recheck_seconds` (300). A reading counts when `distance - accuracy` is inside the radius, with accuracy
 credited up to the slack. Out of range, the check-in is held as pending with distance and directions,
 survives a reload, and completes on arrival. Re-checks run only while the tab is visible and reuse a
