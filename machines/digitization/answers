@@ -1,0 +1,12 @@
+#!/bin/sh
+# answers -- reads the drain's archive (~/fcpm/answers, or $FCPM_ANSWERS): every reply the site's forms
+# sent, and every form shown to our camera, oldest first, as the log's rows. Changes nothing, needs no key.
+#   answers                 readable, one block per reply
+#   answers --csv > f.csv   the log's one schema, for a spreadsheet or a list import
+#   answers --tank NAME     one tank (program, membership, book, ...)
+# The reader is the site-worker's own bin/dump.mjs --archive, from the checkout beside this one that
+# `follow` keeps on the origin's main, so the rows are the same ones the tanks would print. See PROFILE.md#replies.
+HERE=$(cd "$(dirname "$0")" && pwd)
+SW=${FCPM_SITE_WORKER:-$HERE/../../../site-worker}
+[ -f "$SW/bin/dump.mjs" ] || { echo "answers: no site-worker checkout at $SW (follow makes it)" >&2; exit 1; }
+exec /usr/bin/node "$SW/bin/dump.mjs" --archive "$@"

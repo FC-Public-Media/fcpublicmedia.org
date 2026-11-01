@@ -77,6 +77,16 @@ The archive is the list from then on: on the card's encrypted home, private (700
 repository, since it holds names, emails, phones and addresses. Nothing is deleted from it. Carrying it to
 the log in Microsoft 365 (or an email) is a later line that reads these files at its own pace; KV is not
 asked again. `drain --keep` writes the archive and deletes nothing; `drain --tank NAME` drains one tank.
+A form shown to our camera instead of sent (`wizard:site+answers`, `../kiosk/replies.py`) is filed in the
+same archive, `origin: "camera"`.
+
+[`answers`](answers) reads it: `answers` (readable), `answers --csv > replies.csv` (a spreadsheet),
+`answers --tank program`. No key, nothing changed. The drain's own log, one line an hour, is
+`~/.local/state/fcpm/crew/drain.log`.
+
+What it survives: losing `persistence.dat` (the archive is on the card's home, not the overlay, and the
+crew line and keys come back with the home and the checkout). What it does not: losing the card itself.
+Once a reply is drained, the archive is its only copy, until the log in Microsoft 365 holds it too.
 
 ## Memory
 
