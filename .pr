@@ -7,4 +7,5 @@ The studio's language model as an instrument on the switched network: `fcpm mode
 - [x] fcpm route, fcpm.yml, gear.yml, PROFILE.md (network line corrected)
 - [ ] Autumn at the desk: fcpm model install, grant, on, ask
 - [ ] bay record machines/production/bay/llama-cpp-b12047.yml from bay.ndjson
-- [ ] digitization's Qwen Code against http://10.209.1.20:11435/v1, model qwen3.5-4b
+- [x] port 9931 (llama-server's default), the 11435/11436 era gone; PROFILE.md lists what may reach the bay
+- [ ] digitization's Qwen Code against http://10.209.1.20:9931/v1, model qwen3.5-4b

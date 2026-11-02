@@ -7,7 +7,7 @@ version: 1
 instrument: model
 kind: api                 # OpenAI-shaped: /v1/models, /v1/chat/completions, /health
 network: 10.209.1.0/24    # the switched network (Helm); not the building's 10.1.10.x, not Guest
-port: 11435               # where digitization's Qwen Code already looks
+port: 9931                # llama-server's own default; 11435 was runai's, gone with it
 context: 32768
 
 # The server: llama.cpp's own build, through the bay. CUDA 12.4: this driver (610.88) speaks 13.3,

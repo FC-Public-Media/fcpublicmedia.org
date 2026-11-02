@@ -4,7 +4,7 @@ model.ps1 -- the studio's language model, an instrument on the switched network 
     model.ps1 status        what is here, what is in the way, whether it is up. Changes nothing
     model.ps1 install       bring llama.cpp aboard through the bay, and place the model file
     model.ps1 grant         an administrator's step: the one inbound rule, and the 2026-10-29
-                            port forwards and "LAN AI Relay" rule taken away (they hold the port)
+                            port forwards into WSL and "LAN AI Relay" rule taken away
     model.ps1 on            start the server on this bay's address in model.yml's network
     model.ps1 off           stop the server `on` started, by the id it wrote
     model.ps1 ask "TEXT"    one question, its answer, and how fast it came
@@ -154,7 +154,7 @@ switch ($Verb) {
     Say ("grant     " + $(if (Grant) { "$Rule, from $(Fact 'network') only" } else { 'not placed (fcpm model grant)' }))
     $old = @(LegacyProxies); $legacy = Get-NetFirewallRule -DisplayName $LegacyRule -ErrorAction SilentlyContinue
     if ($old.Count -or $legacy) {
-        Say ("in the way " + ((@($old | ForEach-Object { "forward $($_.addr):$($_.port)" }) + @($(if ($legacy) { "rule '$LegacyRule'" }))) -join ', ') + ' (fcpm model grant takes them away)')
+        Say ("leftover  " + ((@($old | ForEach-Object { "forward $($_.addr):$($_.port)" }) + @($(if ($legacy) { "rule '$LegacyRule'" }))) -join ', ') + ' (fcpm model grant takes them away)')
     }
     $p = Server
     if ($p) {
@@ -236,7 +236,7 @@ switch ($Verb) {
     $a = Address
     if (-not $a) { Fail "this bay has no address in $(Fact 'network'); the model answers that network only" }
     $h = Holder $Port
-    if ($h) { Fail "port $Port is held by pid $($h.OwningProcess) on $($h.LocalAddress) (a 2026-10-29 forward? fcpm model grant)" }
+    if ($h) { Fail "port $Port is held by pid $($h.OwningProcess) on $($h.LocalAddress); fcpm model status names it" }
     if (-not (Grant)) { Say "note      no rule yet: this bay can reach it, nothing else can (fcpm model grant)" }
     $argv = @('--host', $a.IPAddress, '--port', $Port, '--model', "`"$File`"", '--alias', $Model,
               '--ctx-size', (Fact 'context'), '--n-gpu-layers', 'all', '--no-webui', '--offline',

@@ -27,6 +27,20 @@ grants: [docs/station.md](../../docs/station.md).
 | `model.ps1`, `model.yml` | `fcpm model`: the language model, an instrument answering the switched network only (llama.cpp, Qwen3.5 4B) |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
+## Inbound
+
+What may reach this bay is one rule per need, placed by its verb (an administrator's step), naming a
+program, a port and an address range:
+
+| rule | placed by | admits |
+|---|---|---|
+| `fcpm-model inbound` | `fcpm model grant` | TCP 9931 to llama-server.exe, from 10.209.1.0/24 |
+| `fcpm-roku relay inbound 8888` | `fcpm roku grant` | TCP 8888 to mediamtx.exe, from the local subnet |
+| `fcpm-recorder obs64 HELO RTP` | by hand | UDP to obs64.exe, from the HELO (10.209.1.114) |
+
+Clicking Allow on Windows' prompt makes a wider rule (any port, any address): obs64, obs-browser-page
+and mediamtx.exe carry those now. Vendors' own rules (Adobe, DaVinci, Drobo) are theirs.
+
 ## Bringing it up
 
 1. At the desk: `winget install --id Git.Git --exact`.
