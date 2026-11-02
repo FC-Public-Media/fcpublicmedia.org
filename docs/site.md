@@ -46,7 +46,7 @@ bundle exec jekyll serve      # http://localhost:4000, rebuilds on save
 Always from `site/`: from the root Jekyll finds no config and builds the wrong tree. No npm, no
 CSS preprocessor, no theme gem, no plugins; try a `_data` file and a Liquid loop first.
 
-- `site/.ruby-version` (3.2.2) is the only Ruby pin; Cloudflare and `ruby/setup-ruby` read it. The
+- `site/.ruby-version` (3.2.11) is the only Ruby pin; Cloudflare and `ruby/setup-ruby` read it. The
   `Gemfile` floor `ruby ">= 3.2"` makes the macOS system Ruby 2.6 fail at once.
 - No `.tool-versions` ([AGENTS.md](../AGENTS.md)): Cloudflare's builder detects it and can fail with
   `error occurred while installing tools or dependencies`.
