@@ -1,0 +1,27 @@
+# model.yml: the studio's language model, an instrument: we get answers from it. model.ps1 (`fcpm
+# model`) reads the keys it needs line by line. It listens on this bay's address in `network:` and
+# admits only that network, whatever Windows calls it. A member on the guest network reaches it
+# through a wizard's bottle, never directly (docs/kiosk.md, Replies).
+
+version: 1
+instrument: model
+kind: api                 # OpenAI-shaped: /v1/models, /v1/chat/completions, /health
+network: 10.209.1.0/24    # the switched network (Helm); not the building's 10.1.10.x, not Guest
+port: 11435               # where digitization's Qwen Code already looks
+context: 32768
+
+# The server: llama.cpp's own build, through the bay. CUDA 12.4: this driver (610.88) speaks 13.3,
+# and a 13.4 build would refuse it. Both zips carry a GitHub build attestation from ggml-org/llama.cpp.
+llama: b12047
+llama-zip: llama-b12047-bin-win-cuda-12.4-x64.zip
+llama-sha256: fed7cd0e67cec5206500cdf66a4de768f9c468657ae12be43a32fc1aa81e9d88
+cudart-zip: cudart-llama-bin-win-cuda-12.4-x64.zip
+cudart-sha256: 8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6
+
+# The model: Qwen3.5 4B (Qwen/Qwen3.5-4B, Apache-2.0), Q8_0, quantized by lmstudio-community. The
+# copy runai pulled into WSL on 2026-10-29 matches this hash; install takes that copy when present.
+model: qwen3.5-4b
+file: Qwen3.5-4B-Q8_0.gguf
+source: https://huggingface.co/lmstudio-community/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q8_0.gguf
+sha256: c3fc7bcaf6f75b8f7ceeead9a769f5a7a9f86a8180af1cfb2b72958dcad8e028
+size: 4482402656

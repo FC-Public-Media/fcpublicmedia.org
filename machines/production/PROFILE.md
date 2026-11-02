@@ -10,7 +10,7 @@ grants: [docs/station.md](../../docs/station.md).
 | system | Windows 11 Home. i7-13700KF (24 threads), 32 GB, RTX 4080, 2 TB on `D:` |
 | user | one local account, `fcpub`. Nothing below assumes an administrator |
 | shells | Git Bash and Windows PowerShell 5.1. `python` on PATH is the Store stub; Python comes from uv |
-| network | Ethernet on the building's managed network and the guest Wi-Fi, category Public. The depot (`10.209.1.1`) answers only on the opt-in Wi-Fi |
+| network | `Ethernet` (onboard) on the building's network, 10.1.10.x; `Ethernet 2` (USB 2.5GbE) on the switched network (Helm), 10.209.1.20. Windows' categories here are not to be believed (`Ethernet 2` carries a profile named "FC Public Media Guest 2", Public), so a rule names an address range, never a category. The Wi-Fi is unused |
 | storage | the Drobo B810i over iSCSI (`10.209.1.179`): `E:` "TO ENHANCE", 1 TB, shared as `enhance`; and an HFS+ LUN, read only, that only this bay may log in to |
 | screens | two HP E273s at the desk, and the rolling TV, which it drives for the kiosk ([roller-tv](../kiosk/roller-tv/README.md)) |
 | not ours | the OBS in Program Files, browser profiles, display settings. People use this machine every week |
@@ -24,6 +24,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
+| `model.ps1`, `model.yml` | `fcpm model`: the language model, an instrument answering the switched network only (llama.cpp, Qwen3.5 4B) |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
 ## Bringing it up
