@@ -156,7 +156,7 @@ def offer(groups, name, device, minutes=60):
 
     def wanted():
         held = read(group)
-        return [k for k, spec in group["keys"].items() if not fits(spec, held.get(k, ""))]
+        return [k for k, spec in group["keys"].items() if not held.get(k) or not fits(spec, held[k])]
 
     def page(note=""):
         rows = "".join(
