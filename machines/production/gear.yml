@@ -98,3 +98,14 @@ gear:
     provisioner: bay          # a uv venv and pinned packages; bay/faster-whisper-1.1.1.yml
     updates: bay
     restart-tier: none
+
+  - gear: llama-cpp
+    for: the language model (model.yml, `fcpm model`): llama-server on the RTX 4080,
+      OpenAI-shaped, listening on the switched network only. Qwen3.5 4B first
+    at: "%LOCALAPPDATA%\editing-bay-1\model\llama\llama-server.exe"
+    vendor: ggml-org (github.com/ggml-org/llama.cpp), MIT; Qwen (Qwen3.5 4B), Apache-2.0
+    signer: none; a GitHub build attestation on each zip, and the model checked by
+      its sha256 (model.yml)
+    provisioner: bay          # fcpm model install; the record follows the arrival
+    updates: bay
+    restart-tier: none        # started and stopped by fcpm model on / off; no service, no task
