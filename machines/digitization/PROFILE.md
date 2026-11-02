@@ -52,6 +52,7 @@ files beside it). Keys used together sit in one file, so a test key never meets 
 
 - `keys` lists what is held and what is wanted, never a value; `fcpm check` says the same.
 - `keys take GROUP KEY` asks for a value in a window on this screen and refuses the wrong prefix.
+- `keys offer GROUP DEVICE` asks for the group's wanted keys on a one-time page (an hour, closed once all are held) that only that tailnet device can open, for when nobody is at this screen.
 - `keys run GROUP... -- CMD` hands groups to one command as environment variables.
 - In a site-worker checkout (FC-Public-Media/site-worker): `keys run cloudflare stripe-live -- sh bin/deploy`
   deploys it, the Stripe key to wrangler on stdin; `keys run stripe-test -- node try-checkout.mjs` starts one
