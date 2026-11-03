@@ -1,8 +1,10 @@
-# model-arrival
+# model-effort
 
-After #375: the model's first night on the bay, recorded.
+Effort as a word of ours, and the shapes this bay's model offers.
 
-- [x] bay/llama-cpp-b12047.yml from bay.ndjson (installed 2026-11-02; 5.8 GB on the GPU, ~111 tokens/s)
-- [x] status reads the server's GPU memory (this build logs no layer count)
-- [x] bay.ndjson lines keep their time (a path was written as `at`)
-- [ ] digitization's Qwen Code against http://10.209.1.20:9931/v1, model qwen3.5-4b
+- [x] model.yml: quick (no thinking) and considered (1024 tokens of thinking, server-enforced, then the answer)
+- [x] considered never ends empty: an empty answer is asked again at quick, and says so
+- [x] shapes/: model+hello, model+poem (prompt, limit, answer length, effort word); fcpm model shapes
+- [x] fcpm model ask -Shape / -Effort; tried against the running server
+- [ ] digitization matches the table and the shapes; the join publishes shapes/
+- [ ] the queue: considered's long waits wait in line, not in a held-open request

@@ -7,7 +7,15 @@ model.ps1 -- the studio's language model, an instrument on the switched network 
                             port forwards into WSL and "LAN AI Relay" rule taken away
     model.ps1 on            start the server on this bay's address in model.yml's network
     model.ps1 off           stop the server `on` started, by the id it wrote
-    model.ps1 ask "TEXT"    one question, its answer, and how fast it came
+    model.ps1 shapes        what this bay offers (shapes/): what each takes, its effort word
+    model.ps1 ask "TEXT" [-Shape NAME] [-Effort quick|considered]
+                            one question, its answer, and how fast it came. A shape wraps TEXT in
+                            its prompt and sets the answer's length and the effort; without one,
+                            TEXT is asked as it is, at quick
+
+Effort is a word of ours (model.yml says what each means to this model), never a person's field.
+`considered` always ends in an answer: the thinking has a budget the server enforces, and an empty
+answer is asked again at quick, which the answer says.
 
 The server is llama.cpp's llama-server, no web UI, offline: it serves one model and fetches nothing.
 It listens on one address, never 0.0.0.0, and the rule admits only model.yml's network. A session
@@ -18,9 +26,11 @@ server.log, model.ndjson. The bay's stages log to bay.ndjson (machines/BAY.md); 
 server goes to bay\cellar\llama-cpp\. Windows PowerShell 5.1, ASCII only. See PROFILE.md.
 #>
 param(
-    [Parameter(Position = 0)] [ValidateSet('status', 'install', 'grant', 'on', 'off', 'ask')]
+    [Parameter(Position = 0)] [ValidateSet('status', 'install', 'grant', 'on', 'off', 'shapes', 'ask')]
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Text = '',
+    [string] $Shape = '',
+    [ValidateSet('', 'quick', 'considered')] [string] $Effort = '',
     [string] $Node = 'editing-bay-1'
 )
 $ErrorActionPreference = 'Stop'
@@ -46,11 +56,18 @@ $WslCopy  = '\\wsl.localhost\Debian\home\bay1\.runai\models\qwen3.5-4b.gguf'
 $LegacyRule  = 'LAN AI Relay'
 $LegacyProxies = @(@{ addr = '10.209.1.20'; port = 11435 }, @{ addr = '0.0.0.0'; port = 11436 })
 
-# model.yml, one `key: value` per line; a value ends at two spaces and a #.
-$Facts = @{}
-foreach ($l in Get-Content $Spec) {
-    if ($l -match '^([a-z0-9-]+):\s*(.*?)\s*(\s#.*)?$') { $Facts[$Matches[1]] = $Matches[2] }
+# A facts file (model.yml, a shape), one `key: value` per line; a value ends at two spaces and a #,
+# and a quoted one keeps what is inside its quotes.
+function ReadFacts($path) {
+    $f = @{}
+    foreach ($l in Get-Content $path) {
+        if ($l -match '^([a-z0-9-]+):\s*"(.*)"\s*(#.*)?$') { $f[$Matches[1]] = $Matches[2] }
+        elseif ($l -match '^([a-z0-9-]+):\s*(.*?)\s*(\s#.*)?$') { $f[$Matches[1]] = $Matches[2] }
+    }
+    $f
 }
+$Facts = ReadFacts $Spec
+$Shapes = Join-Path $PSScriptRoot 'shapes'
 function Fact($k) { if (-not $Facts.ContainsKey($k) -or -not $Facts[$k]) { throw "model.yml has no $k" }; $Facts[$k] }
 $Port  = [int](Fact 'port')
 $Model = Fact 'model'
@@ -143,6 +160,30 @@ function Bring($zipKey, $shaKey) {
     Line $BayLog (Merge $f ([ordered]@{ step = 'stage'; event = 'staged'; path = $staged; unsigned = $unsigned.Count }))
     Say "staged    ${zip}: sha256 matches, built by ggml-org/llama.cpp's attested workflow; $($unsigned.Count) files without Authenticode (the attestation is the gate)"
     $staged
+}
+
+# One chat at an effort: the body carries the knobs model.yml gives the word; a knob it does not
+# name is not sent. Returns the reply, the seconds it took, and the effort that answered.
+function Chat($url, $prompt, $effort, [int] $answer) {
+    $body = [ordered]@{ model = $Model; messages = @(@{ role = 'user'; content = $prompt }); max_tokens = $answer }
+    $think = if ($Facts.ContainsKey("$effort-thinking")) { [int]$Facts["$effort-thinking"] } else { $null }
+    if ($think -eq 0) { $body.chat_template_kwargs = @{ enable_thinking = $false } }
+    elseif ($think -gt 0) {
+        $body.thinking_budget_tokens = $think
+        $body.max_tokens = $think + $answer
+        if ($Facts.ContainsKey("$effort-nudge")) { $body.reasoning_budget_message = $Facts["$effort-nudge"] }
+    }
+    $json = $body | ConvertTo-Json -Depth 6
+    $t = [Diagnostics.Stopwatch]::StartNew()
+    $r = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "$url/v1/chat/completions" -ContentType 'application/json' `
+         -Body ([Text.Encoding]::UTF8.GetBytes($json)) -TimeoutSec 600
+    @{ reply = $r; seconds = [math]::Round($t.Elapsed.TotalSeconds, 1); effort = $effort }
+}
+function Content($r) { $c = $r.choices[0].message.content; if ($c) { "$c".Trim() } else { '' } }
+function ShapeFile($name) {
+    $p = Join-Path $Shapes "$name.yml"
+    if (-not (Test-Path $p)) { Fail "no shape $name; fcpm model shapes lists them" }
+    ReadFacts $p
 }
 
 switch ($Verb) {
@@ -266,19 +307,39 @@ switch ($Verb) {
     Say "stopped   pid $($p.Id)"
 }
 
+'shapes' {
+    foreach ($f in Get-ChildItem $Shapes -Filter *.yml | Sort-Object Name) {
+        $s = ReadFacts $f.FullName
+        Say ('{0,-8} {1}: takes {2} (up to {3} characters); {4}, up to {5} tokens of answer' -f `
+             $f.BaseName, $s['shape'], $s['takes'], $s['limit'], $s['effort'], $s['answer'])
+    }
+}
+
 'ask' {
-    if (-not $Text) { Fail 'ask what? fcpm model ask "a question"' }
+    $prompt = $Text; $word = 'quick'; $answer = [int](Fact 'answer'); $name = ''
+    if ($Shape) {
+        $s = ShapeFile $Shape; $name = $s['shape']
+        if ($Text.Length -gt [int]$s['limit']) { Fail "$name takes up to $($s['limit']) characters; this is $($Text.Length)" }
+        $prompt = $s['prompt'].Replace('{input}', $Text); $word = $s['effort']; $answer = [int]$s['answer']
+    } elseif (-not $Text) { Fail 'ask what? fcpm model ask "a question"' }
+    if ($Effort) { $word = $Effort }
     $u = Url
     if (-not (Server) -or -not (Healthy $u)) { Fail 'not running: fcpm model on' }
-    $body = @{ model = $Model; messages = @(@{ role = 'user'; content = $Text }) } | ConvertTo-Json -Depth 5
-    $t = [Diagnostics.Stopwatch]::StartNew()
-    $r = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "$u/v1/chat/completions" -ContentType 'application/json' `
-         -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 600
-    $s = [math]::Round($t.Elapsed.TotalSeconds, 1)
-    Say $r.choices[0].message.content
+    $a = Chat $u $prompt $word $answer
+    $fell = $false
+    if (-not (Content $a.reply) -and $word -ne 'quick') {
+        $first = $a
+        $a = Chat $u $prompt 'quick' $answer
+        $a.seconds += $first.seconds; $fell = $true
+    }
+    $r = $a.reply
+    Say $(if (Content $r) { Content $r } else { '(no answer)' })
     $rate = if ($r.PSObject.Properties.Name -contains 'timings') { ", $([math]::Round($r.timings.predicted_per_second)) tokens/s" } else { '' }
     Say ''
-    Say "answered  in $s s, $($r.usage.completion_tokens) tokens$rate"
-    Note 'asked' @{ seconds = $s; tokens = $r.usage.completion_tokens }
+    Say ("answered  in $($a.seconds) s, $($r.usage.completion_tokens) tokens$rate, at $word" +
+         $(if ($fell) { "; it ran out of room thinking, so this is the answer at quick" } else { '' }) +
+         $(if ($r.choices[0].finish_reason -eq 'length') { "; cut at the shape's $answer tokens" } else { '' }) +
+         $(if ($name) { " ($name)" } else { '' }))
+    Note 'asked' @{ seconds = $a.seconds; tokens = $r.usage.completion_tokens; effort = $word; fell_back = $fell; shape = $name; answered = [bool](Content $r) }
 }
 }
