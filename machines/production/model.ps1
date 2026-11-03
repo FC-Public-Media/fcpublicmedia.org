@@ -100,10 +100,12 @@ function LegacyProxies {
     @($LegacyProxies | Where-Object { $shown -match ('(?m)^' + [regex]::Escape($_.addr) + '\s+' + $_.port + '\s') })
 }
 function Version { if (Test-Path $Exe) { $v = (Native $Exe @('--version')).text; if ($v -match 'version:\s*(\S+)') { $Matches[1] } else { 'present' } } }
-function Offload {
-    if (-not (Test-Path $ServerLog)) { return $null }
-    $m = Select-String -Path $ServerLog -Pattern 'offloaded (\d+)/(\d+) layers to GPU' | Select-Object -Last 1
-    if ($m) { "$($m.Matches[0].Groups[1].Value) of $($m.Matches[0].Groups[2].Value) layers on the GPU" }
+# The server's dedicated GPU memory, from Windows' own counter; this build logs no layer count.
+function Gpu($id) {
+    $c = Get-Counter "\GPU Process Memory(pid_${id}_*)\Dedicated Usage" -ErrorAction SilentlyContinue
+    if (-not $c) { return $null }
+    $mb = ($c.CounterSamples | Measure-Object CookedValue -Sum).Sum / 1MB
+    if ($mb -gt 0) { "{0:N0} MB of dedicated GPU memory" -f $mb } else { 'nothing on the GPU' }
 }
 function Url { $a = Address; if ($a) { "http://$($a.IPAddress):$Port" } }
 function Healthy($url) {
@@ -138,7 +140,7 @@ function Bring($zipKey, $shaKey) {
     if (Test-Path $staged) { Remove-Item -Recurse -Force $staged }
     Expand-Archive -Path $received -DestinationPath $staged
     $unsigned = @(Get-ChildItem $staged -Recurse -Include *.exe, *.dll | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid' } | ForEach-Object Name)
-    Line $BayLog (Merge $f ([ordered]@{ step = 'stage'; event = 'staged'; at = $staged; unsigned = $unsigned.Count }))
+    Line $BayLog (Merge $f ([ordered]@{ step = 'stage'; event = 'staged'; path = $staged; unsigned = $unsigned.Count }))
     Say "staged    ${zip}: sha256 matches, built by ggml-org/llama.cpp's attested workflow; $($unsigned.Count) files without Authenticode (the attestation is the gate)"
     $staged
 }
@@ -160,7 +162,7 @@ switch ($Verb) {
     if ($p) {
         $u = Url
         Say ("running   pid $($p.Id), $u/v1 as model $Model, " + $(if (Healthy $u) { 'healthy' } else { 'not answering /health yet' }))
-        $o = Offload; if ($o) { Say "gpu       $o" }
+        $o = Gpu $p.Id; if ($o) { Say "gpu       $o" }
     } else {
         $h = Holder $Port
         Say ("running   no" + $(if ($h) { "; port $Port is held by pid $($h.OwningProcess) on $($h.LocalAddress)" } else { '' }))
@@ -186,7 +188,7 @@ switch ($Verb) {
         if (-not (Test-Path $Exe)) { Fail "no llama-server.exe in $(Fact 'llama-zip')" }
         [IO.File]::WriteAllText((Join-Path $Llama "$tag.txt"), "$(Fact 'llama-zip') $(Fact 'llama-sha256')`n$(Fact 'cudart-zip') $(Fact 'cudart-sha256')`n")
         $v = Version
-        Line $BayLog ([ordered]@{ payload = 'llama-cpp'; version = $tag; step = 'install'; event = 'installed'; at = $Llama; reports = $v; exe_sha256 = (Hash $Exe) })
+        Line $BayLog ([ordered]@{ payload = 'llama-cpp'; version = $tag; step = 'install'; event = 'installed'; path = $Llama; reports = $v; exe_sha256 = (Hash $Exe) })
         Say "installed llama.cpp $tag at $Llama (it reports $v)"
     }
     $want = Fact 'sha256'
@@ -204,7 +206,7 @@ switch ($Verb) {
         $got = Hash $part
         if ($got -ne $want) { Remove-Item -Force $part; Fail "the model is sha256 $got, not model.yml's $want" }
         Move-Item -Force $part $File
-        Line $BayLog ([ordered]@{ payload = 'model'; version = $Model; step = 'install'; event = 'installed'; at = $File; from = $from; sha256 = $got })
+        Line $BayLog ([ordered]@{ payload = 'model'; version = $Model; step = 'install'; event = 'installed'; path = $File; from = $from; sha256 = $got })
         Say "model     $Model in place, sha256 matches"
     }
     Say 'next      fcpm model grant (an administrator), then fcpm model on'
@@ -252,7 +254,7 @@ switch ($Verb) {
     if ($p.HasExited -or -not (Healthy $u)) { Fail "the server did not come up in $([int]$t.Elapsed.TotalSeconds) s; see $ServerLog and $ServerOut.err" }
     Note 'started' @{ pid = $p.Id; url = $u; seconds = [int]$t.Elapsed.TotalSeconds }
     Say "running   pid $($p.Id): $u/v1, model $Model ($([int]$t.Elapsed.TotalSeconds) s to load)"
-    $o = Offload; if ($o) { Say "gpu       $o" }
+    $o = Gpu $p.Id; if ($o) { Say "gpu       $o" }
 }
 
 'off' {

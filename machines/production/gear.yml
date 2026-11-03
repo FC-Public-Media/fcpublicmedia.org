@@ -106,6 +106,6 @@ gear:
     vendor: ggml-org (github.com/ggml-org/llama.cpp), MIT; Qwen (Qwen3.5 4B), Apache-2.0
     signer: none; a GitHub build attestation on each zip, and the model checked by
       its sha256 (model.yml)
-    provisioner: bay          # fcpm model install; the record follows the arrival
+    provisioner: bay          # fcpm model install; bay/llama-cpp-b12047.yml
     updates: bay
     restart-tier: none        # started and stopped by fcpm model on / off; no service, no task

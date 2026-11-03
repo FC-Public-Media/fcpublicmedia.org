@@ -1,0 +1,50 @@
+# A payload the bay took in. One file per arrival; the file is the record.
+# See ../../BAY.md. The procedure is ../model.ps1 install; the facts it pins are ../model.yml.
+
+payload: llama-cpp
+version: b12047          # llama-server --version reports 0.8.0-dev
+replaces: nothing        # the first model server on Windows here; runai in WSL is no longer used
+vendor: ggml-org (github.com/ggml-org/llama.cpp), MIT
+role: the language model instrument (`fcpm model`), Qwen3.5 4B on the RTX 4080
+asked: Autumn, a local Qwen as a proof before other models; digitization's Qwen Code is the client
+
+received: 2026-11-02
+source:
+  - https://github.com/ggml-org/llama.cpp/releases/download/b12047/llama-b12047-bin-win-cuda-12.4-x64.zip
+  - https://github.com/ggml-org/llama.cpp/releases/download/b12047/cudart-llama-bin-win-cuda-12.4-x64.zip
+size: [279955473, 391443627]
+why-cuda-12.4: the driver (610.88) speaks CUDA 13.3; a 13.4 build would refuse it
+
+verified:
+  sha256:
+    llama: fed7cd0e67cec5206500cdf66a4de768f9c468657ae12be43a32fc1aa81e9d88
+    cudart: 8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6
+  # Three that had to agree, and did: model.yml's pin, GitHub's asset digest, and
+  # `gh attestation verify --repo ggml-org/llama.cpp` (a build attestation on each zip).
+  signature: >
+    52 of the server zip's files and 3 of cudart's carry no valid Authenticode. The
+    vendor signs no Windows build; the attestation is the gate (docs/station.md, Bay).
+
+staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\llama-b12047-bin-win-cuda-12.4-x64 (and cudart-...)"
+install-to: "%LOCALAPPDATA%\\editing-bay-1\\model\\llama"
+installed-sha256: 3dc8afd711dd7a885f864043bedf2ff47e5070da12b0f05e98c5e56b0081634a  # llama-server.exe
+model: >
+  Qwen3.5-4B-Q8_0.gguf at %LOCALAPPDATA%\editing-bay-1\model\models, copied from runai's
+  store in WSL, sha256 c3fc7bcaf6f75b8f7ceeead9a769f5a7a9f86a8180af1cfb2b72958dcad8e028
+  (model.yml's, and Hugging Face's)
+restart-tier: none       # started and stopped by fcpm model on / off; no service, no task
+cover: none
+grants: >
+  one: `fcpm-model inbound`, TCP 9931 for the installed llama-server.exe, remote
+  10.209.1.0/24, all profiles. Placed by `fcpm model grant`, which also took away the
+  2026-10-29 forwards (10.209.1.20:11435, 0.0.0.0:11436) and "LAN AI Relay"
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage per zip; install; the model's install)"
+
+confirmed: >
+  2026-11-02: on in 4 s, healthy at http://10.209.1.20:9931/v1; 5.8 GB of dedicated GPU
+  memory; the first ask answered in 39.8 s, 4431 tokens (about 111 tokens/s, most of it
+  the model's thinking)
+
+# No rollback copy: there was no previous server.
+status: installed
