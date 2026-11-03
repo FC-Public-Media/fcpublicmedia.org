@@ -1,0 +1,6 @@
+shape: model+hello
+takes: a name, or nothing
+limit: 80
+answer: 60
+effort: quick
+prompt: "Say hello in five words to {input}."

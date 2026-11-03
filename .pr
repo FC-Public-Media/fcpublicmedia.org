@@ -8,3 +8,7 @@ Fort Collins' open data, both portals, as one list: the label reducer's first co
 - [x] bin/test_city_catalog.py, offline
 - [x] (from model-arrival) digitization's Qwen Code points at http://edit2.local:9931/v1, model qwen3.5-4b
 - [ ] reduce the descriptions and columns on bay 1's model; score them (true, fewest words, collapse)
+
+Still open from model-effort (#377), digitization's side:
+- [ ] digitization matches the table and the shapes; the join publishes shapes/
+- [ ] the queue: considered's long waits wait in line, not in a held-open request

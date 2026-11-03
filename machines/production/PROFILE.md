@@ -24,7 +24,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
-| `model.ps1`, `model.yml` | `fcpm model`: the language model, an instrument answering the switched network only (llama.cpp, Qwen3.5 4B) |
+| `model.ps1`, `model.yml`, `shapes/` | `fcpm model`: the language model, an instrument answering the switched network only (llama.cpp, Qwen3.5 4B); its effort words, and the shapes it offers |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
 ## Inbound
