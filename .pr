@@ -1,8 +1,10 @@
-# model-arrival
+# city-catalog
 
-After #375: the model's first night on the bay, recorded.
+Fort Collins' open data, both portals, as one list: the label reducer's first corpus.
 
-- [x] bay/llama-cpp-b12047.yml from bay.ndjson (installed 2026-11-02; 5.8 GB on the GPU, ~111 tokens/s)
-- [x] status reads the server's GPU memory (this build logs no layer count)
-- [x] bay.ndjson lines keep their time (a path was written as `at`)
-- [ ] digitization's Qwen Code against http://10.209.1.20:9931/v1, model qwen3.5-4b
+- [x] bin/city-catalog.py: Socrata (Tyler, still live at fortcollins.data.socrata.com) and the ArcGIS Hub (Esri,
+      where opendata.fcgov.com now redirects), keyless, matched by title, written to ~/fcpm/city/catalog.{json,md}
+- [x] Hub descriptions left as `{{description}}` templates are read from each item's own ArcGIS record
+- [x] bin/test_city_catalog.py, offline
+- [x] (from model-arrival) digitization's Qwen Code points at http://edit2.local:9931/v1, model qwen3.5-4b
+- [ ] reduce the descriptions and columns on bay 1's model; score them (true, fewest words, collapse)
