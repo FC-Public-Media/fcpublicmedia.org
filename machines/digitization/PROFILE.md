@@ -42,6 +42,16 @@ as before, deeper ones through `mdns4` after unicast DNS says no, so reverse loo
 resolvers take the deep names as they are. Windows' is not tested yet. `python3 machines/lan.py` says who
 holds each name now.
 
+## The model over the tailnet
+
+Bay 1's model (`machines/production/model.yml`) admits only the switched network, 10.209.1.0/24. An operator away from
+the building reaches it through this machine: `model-relay` (crew line, `keep`) listens on this machine's tailnet
+address, port 9931, and nowhere else. Every connection is asked of Tailscale (`tailscale whois`); a device tagged
+`tag:operator` is joined to `10.209.1.20:9931`, any other is refused. Both are logged in
+`~/.local/state/fcpm/model-relay.log`. The tailnet's own policy may be wider; this is where the scope is kept.
+A client is set to `http://digitization.<tailnet>.ts.net:9931/v1`, model `qwen3.5-4b`, no key. When bay 1's model is
+off, a passed connection finds nothing to join and closes, which is the model being off, not the relay failing.
+
 ## Keys
 
 This machine holds FCPM's secrets for now (decided 2026-10-23), and deploys that need them run here by hand.
