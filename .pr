@@ -1,10 +1,14 @@
-# model-effort
+# city-catalog
 
-Effort as a word of ours, and the shapes this bay's model offers.
+Fort Collins' open data, both portals, as one list: the label reducer's first corpus.
 
-- [x] model.yml: quick (no thinking) and considered (1024 tokens of thinking, server-enforced, then the answer)
-- [x] considered never ends empty: an empty answer is asked again at quick, and says so
-- [x] shapes/: model+hello, model+poem (prompt, limit, answer length, effort word); fcpm model shapes
-- [x] fcpm model ask -Shape / -Effort; tried against the running server
+- [x] bin/city-catalog.py: Socrata (Tyler, still live at fortcollins.data.socrata.com) and the ArcGIS Hub (Esri,
+      where opendata.fcgov.com now redirects), keyless, matched by title, written to ~/fcpm/city/catalog.{json,md}
+- [x] Hub descriptions left as `{{description}}` templates are read from each item's own ArcGIS record
+- [x] bin/test_city_catalog.py, offline
+- [x] (from model-arrival) digitization's Qwen Code points at http://edit2.local:9931/v1, model qwen3.5-4b
+- [ ] reduce the descriptions and columns on bay 1's model; score them (true, fewest words, collapse)
+
+Still open from model-effort (#377), digitization's side:
 - [ ] digitization matches the table and the shapes; the join publishes shapes/
 - [ ] the queue: considered's long waits wait in line, not in a held-open request
