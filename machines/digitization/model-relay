@@ -1,0 +1,32 @@
+#!/bin/sh
+# model-relay -- bay 1's model (production's llama-server, 10.209.1.20:9931) on this machine's tailnet
+# address, for devices tagged tag:operator and no one else. The model admits only the switched network;
+# this machine is on it and on the tailnet, so it carries the connection. Each connection is asked of
+# Tailscale itself (`tailscale whois`): a device without the tag is refused, and both are logged.
+# It listens on the tailnet address only, never the LAN's. See PROFILE.md, The model over the tailnet.
+#
+#   model-relay          listen (the crew's `keep` line)
+#   model-relay gate     one connection, run by socat: name the peer, then join it to the model or refuse
+set -u
+MODEL=${FCPM_MODEL_AT:-10.209.1.20:9931}
+PORT=${FCPM_MODEL_PORT:-9931}
+TAG=${FCPM_MODEL_TAG:-tag:operator}
+LOG=${XDG_STATE_HOME:-$HOME/.local/state}/fcpm/model-relay.log
+here=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+
+if [ "${1:-}" = gate ]; then
+    peer=${SOCAT_PEERADDR:-}
+    info=$(tailscale whois --json "$peer" 2>/dev/null)
+    name=$(printf '%s' "$info" | jq -r '.Node.Name // "unknown"' 2>/dev/null)
+    mkdir -p "$(dirname "$LOG")"
+    if printf '%s' "$info" | jq -e --arg t "$TAG" '(.Node.Tags // []) | index($t)' >/dev/null 2>&1; then
+        echo "$(date -Is) $peer ${name:-unknown} passed" >> "$LOG"
+        exec socat STDIO "TCP:$MODEL,connect-timeout=10"
+    fi
+    echo "$(date -Is) $peer ${name:-unknown} refused (no $TAG)" >> "$LOG"
+    exit 0
+fi
+
+addr=$(tailscale ip -4 2>/dev/null | head -n 1)
+[ -n "$addr" ] || { echo "model-relay: no tailnet address (is tailscale up?)" >&2; exit 1; }
+exec socat "TCP-LISTEN:$PORT,bind=$addr,reuseaddr,fork" "EXEC:$here gate"

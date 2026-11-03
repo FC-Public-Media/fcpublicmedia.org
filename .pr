@@ -1,14 +1,10 @@
-# city-catalog
+# model-relay
 
-Fort Collins' open data, both portals, as one list: the label reducer's first corpus.
+Bay 1's model on digitization's tailnet address, for tag:operator devices only.
 
-- [x] bin/city-catalog.py: Socrata (Tyler, still live at fortcollins.data.socrata.com) and the ArcGIS Hub (Esri,
-      where opendata.fcgov.com now redirects), keyless, matched by title, written to ~/fcpm/city/catalog.{json,md}
-- [x] Hub descriptions left as `{{description}}` templates are read from each item's own ArcGIS record
-- [x] bin/test_city_catalog.py, offline
-- [x] (from model-arrival) digitization's Qwen Code points at http://edit2.local:9931/v1, model qwen3.5-4b
-- [ ] reduce the descriptions and columns on bay 1's model; score them (true, fewest words, collapse)
-
-Still open from model-effort (#377), digitization's side:
-- [ ] digitization matches the table and the shapes; the join publishes shapes/
-- [ ] the queue: considered's long waits wait in line, not in a held-open request
+- [x] machines/digitization/model-relay: socat on the tailnet address only; each connection asked of `tailscale whois`;
+      tag:operator joined to 10.209.1.20:9931, anything else refused; both logged
+- [x] crew line `model-relay keep`, digitization.yml, PROFILE.md (The model over the tailnet)
+- [x] tried live from the worktree (user unit model-relay-try): this box refused, the operator iPhone's identity passed
+- [ ] after merge: stop model-relay-try so the crew's line can take the port
+- [ ] Autumn's iPhone client set to http://digitization.opaleye-beaufort.ts.net:9931/v1, model qwen3.5-4b

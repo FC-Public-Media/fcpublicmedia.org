@@ -9,6 +9,10 @@ serves:
     for: "this machine's names under fcpublicmedia.local (lan.yml: helm, the site, its directory and gear), by mDNS, while this runs"
     start: "/usr/bin/python3 -I machines/lan.py publish"
 
+  - service: model-relay
+    for: "bay 1's model (production's llama-server, 10.209.1.20:9931) on this machine's tailnet address, for tag:operator devices only, each asked of tailscale whois; see digitization/PROFILE.md"
+    start: "/bin/sh machines/digitization/model-relay"
+
   - service: senders
     for: "who may deliver finished post work to the landing: authorized_keys's marked lines kept to post-senders.yml"
     start: "/usr/bin/python3 machines/digitization/post-receive senders"
