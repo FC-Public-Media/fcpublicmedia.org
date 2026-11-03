@@ -25,3 +25,12 @@ file: Qwen3.5-4B-Q8_0.gguf
 source: https://huggingface.co/lmstudio-community/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q8_0.gguf
 sha256: c3fc7bcaf6f75b8f7ceeead9a769f5a7a9f86a8180af1cfb2b72958dcad8e028
 size: 4482402656
+
+# Effort: a word of ours, never a field a person fills in. A shape names one (shapes/); here each word
+# becomes this model's knobs, and a model without a knob ignores the word. Considered must always end
+# in an answer: the server ends the thinking at its budget and the answer follows; an empty answer is
+# asked again at quick, and says so.
+answer: 1024                        # tokens of answer, when no shape says
+quick-thinking: 0                   # none: chat_template_kwargs enable_thinking false
+considered-thinking: 1024           # thinking_budget_tokens; max_tokens is this plus the answer's
+considered-nudge: " Time to answer." # reasoning_budget_message, said when the budget runs out

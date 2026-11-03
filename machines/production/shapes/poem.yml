@@ -1,0 +1,6 @@
+shape: model+poem
+takes: one funny sentence
+limit: 200
+answer: 200
+effort: quick
+prompt: "Write a four-line poem about this, said into a microphone: {input}"
