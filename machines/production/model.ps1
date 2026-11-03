@@ -8,7 +8,8 @@ model.ps1 -- the studio's language model, an instrument on the switched network 
     model.ps1 on            start the server on this bay's address in model.yml's network
     model.ps1 off           stop the server `on` started, by the id it wrote
     model.ps1 shapes        what this bay offers (shapes/): what each takes, its effort word
-    model.ps1 ask "TEXT" [-Shape NAME] [-Effort quick|considered]
+    model.ps1 contexts      the contexts kept here: each one's address, turns and last turn
+    model.ps1 ask "TEXT" [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]
                             one question, its answer, and how fast it came. A shape wraps TEXT in
                             its prompt and sets the answer's length and the effort; without one,
                             TEXT is asked as it is, at quick
@@ -17,20 +18,30 @@ Effort is a word of ours (model.yml says what each means to this model), never a
 `considered` always ends in an answer: the thinking has a budget the server enforces, and an empty
 answer is asked again at quick, which the answer says.
 
+A shape's `context:` says what it remembers. `none`: nothing, the input is the whole scope.
+`shared`: one context for the shape, by construction (the guestbook). Every turn is kept, in full,
+in contexts\<name>.ndjson, with what it takes to find it again (production/<name>#<turn>) and to
+reproduce it (shape, input, effort, the model's hash, the seed). What the model reads is the
+shape's view of the log: the turns of the last `sees-days`, at most `sees-turns`, and a roster made
+from it (who signed, how often, from how many devices), so its awareness costs a few lines.
+-Name and -From (a bottle's signer, its pseudonym) are what a person plainly shared.
+
 The server is llama.cpp's llama-server, no web UI, offline: it serves one model and fetches nothing.
 It listens on one address, never 0.0.0.0, and the rule admits only model.yml's network. A session
 does not start it (sessions start no service); a person does, by `fcpm model on`.
 
 State in %LOCALAPPDATA%\<node>\model\: llama\ (the server), models\, server.json (the running id),
-server.log, model.ndjson. The bay's stages log to bay.ndjson (machines/BAY.md); the previous
+server.log, model.ndjson, contexts\ ($env:FCPM_CONTEXTS for a trial). The bay's stages log to bay.ndjson (machines/BAY.md); the previous
 server goes to bay\cellar\llama-cpp\. Windows PowerShell 5.1, ASCII only. See PROFILE.md.
 #>
 param(
-    [Parameter(Position = 0)] [ValidateSet('status', 'install', 'grant', 'on', 'off', 'shapes', 'ask')]
+    [Parameter(Position = 0)] [ValidateSet('status', 'install', 'grant', 'on', 'off', 'shapes', 'contexts', 'ask')]
     [string] $Verb = 'status',
     [Parameter(Position = 1)] [string] $Text = '',
     [string] $Shape = '',
     [ValidateSet('', 'quick', 'considered')] [string] $Effort = '',
+    [string] $Name = '',
+    [string] $From = '',
     [string] $Node = 'editing-bay-1'
 )
 $ErrorActionPreference = 'Stop'
@@ -68,6 +79,7 @@ function ReadFacts($path) {
 }
 $Facts = ReadFacts $Spec
 $Shapes = Join-Path $PSScriptRoot 'shapes'
+$Here  = Split-Path -Leaf $PSScriptRoot     # this profile's name: the first part of an address
 function Fact($k) { if (-not $Facts.ContainsKey($k) -or -not $Facts[$k]) { throw "model.yml has no $k" }; $Facts[$k] }
 $Port  = [int](Fact 'port')
 $Model = Fact 'model'
@@ -164,25 +176,73 @@ function Bring($zipKey, $shaKey) {
 
 # One chat at an effort: the body carries the knobs model.yml gives the word; a knob it does not
 # name is not sent. Returns the reply, the seconds it took, and the effort that answered.
-function Chat($url, $prompt, $effort, [int] $answer) {
-    $body = [ordered]@{ model = $Model; messages = @(@{ role = 'user'; content = $prompt }); max_tokens = $answer }
-    $think = if ($Facts.ContainsKey("$effort-thinking")) { [int]$Facts["$effort-thinking"] } else { $null }
+function Chat($url, $messages, $level, [int] $answer, [int] $seed) {
+    $body = [ordered]@{ model = $Model; messages = @($messages); max_tokens = $answer; seed = $seed }
+    $think = if ($Facts.ContainsKey("$level-thinking")) { [int]$Facts["$level-thinking"] } else { $null }
     if ($think -eq 0) { $body.chat_template_kwargs = @{ enable_thinking = $false } }
     elseif ($think -gt 0) {
         $body.thinking_budget_tokens = $think
         $body.max_tokens = $think + $answer
-        if ($Facts.ContainsKey("$effort-nudge")) { $body.reasoning_budget_message = $Facts["$effort-nudge"] }
+        if ($Facts.ContainsKey("$level-nudge")) { $body.reasoning_budget_message = $Facts["$level-nudge"] }
     }
     $json = $body | ConvertTo-Json -Depth 6
     $t = [Diagnostics.Stopwatch]::StartNew()
     $r = Invoke-RestMethod -UseBasicParsing -Method Post -Uri "$url/v1/chat/completions" -ContentType 'application/json' `
          -Body ([Text.Encoding]::UTF8.GetBytes($json)) -TimeoutSec 600
-    @{ reply = $r; seconds = [math]::Round($t.Elapsed.TotalSeconds, 1); effort = $effort }
+    @{ reply = $r; seconds = [math]::Round($t.Elapsed.TotalSeconds, 1); effort = $level }
 }
 function Content($r) { $c = $r.choices[0].message.content; if ($c) { "$c".Trim() } else { '' } }
-function ShapeFile($name) {
-    $p = Join-Path $Shapes "$name.yml"
-    if (-not (Test-Path $p)) { Fail "no shape $name; fcpm model shapes lists them" }
+function Contexts { if ($env:FCPM_CONTEXTS) { $env:FCPM_CONTEXTS } else { Join-Path $Root 'contexts' } }
+function Turns($ctx) {
+    $p = Join-Path (Contexts) "$ctx.ndjson"
+    if (-not (Test-Path $p)) { return @() }
+    @(Get-Content -Encoding UTF8 $p | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+}
+function Plural($n, $word) { "$n $word" + $(if ($n -ne 1) { 's' } else { '' }) }
+# The shape's view of a shared context: recent turns as messages, and a roster made from them.
+function View($s, $ctx, $who, $key) {
+    $since = (Get-Date).AddDays(-[int]$s['sees-days'])
+    $recent = @(Turns $ctx | Where-Object { [datetime]$_.at -ge $since })
+    $kept = @($recent | Select-Object -Last ([int]$s['sees-turns']))
+    $roster = @($recent | Group-Object { $_.name.ToLower() } | ForEach-Object {
+        $g = @($_.Group); $d = @($g | Where-Object { $_.from } | ForEach-Object { $_.from } | Sort-Object -Unique).Count
+        "- $($g[-1].name): $(Plural $g.Count 'hello'), from $(Plural $d 'device') we can tell apart, last $(([datetime]$g[-1].at).ToString('yyyy-MM-dd'))"
+    })
+    # Said outright, so a small model need not count: which of this name's devices it is, and whether new.
+    $same = @($recent | Where-Object { $_.name.ToLower() -eq $who.ToLower() })
+    $order = @($same | Where-Object { $_.from } | ForEach-Object { $_.from } | Select-Object -Unique)
+    $before = @($same | Where-Object { $key -and $_.from -eq $key }).Count
+    if (-not $key) { $now = "Now signing: $who, from a device we cannot tell apart; $(Plural $same.Count 'hello') under this name before. Call them $who" }
+    elseif ($before) {
+        $i = [array]::IndexOf($order, $key) + 1
+        $call = if ($order.Count -gt 1) { "$who $i" } else { $who }
+        $now = "Now signing: $who, back again: this device has said hello $(Plural $before 'time') before. Call them $call"
+    } elseif ($order.Count) {
+        $now = "Now signing: a NEW person as $who, not a return: $(Plural $order.Count 'other device') signed as $who before. Call them $who $($order.Count + 1)"
+    } else { $now = "Now signing: $who, for the first time. Call them $who" }
+    $list = if ($roster.Count) { $roster -join "`n" } else { '(nobody yet: this is the first)' }
+    $sys = "$($s['role'])`n`nToday is $((Get-Date).ToString('dddd, yyyy-MM-dd')). From the guestbook's own log, " +
+           "the last $($s['sees-days']) days ($(Plural $recent.Count 'hello')):`n$list`n$now."
+    $m = @(@{ role = 'system'; content = $sys })
+    foreach ($t in $kept) {
+        $m += @{ role = 'user'; content = $s['prompt'].Replace('{name}', $t.name).Replace('{input}', $t.input) }
+        $m += @{ role = 'assistant'; content = $t.answer }
+    }
+    $m
+}
+# Append one turn to a context; returns its address.
+function Keep($ctx, $fields) {
+    $dir = Contexts; New-Item -ItemType Directory -Force $dir | Out-Null
+    $p = Join-Path $dir "$ctx.ndjson"
+    $n = @(Turns $ctx).Count + 1
+    $o = [ordered]@{ turn = $n; at = (Get-Date).ToString('o') }
+    foreach ($k in $fields.Keys) { $o[$k] = $fields[$k] }
+    [IO.File]::AppendAllText($p, (($o | ConvertTo-Json -Compress -Depth 4) + "`n"), (New-Object Text.UTF8Encoding $false))
+    "$Here/$ctx#$n"
+}
+function ShapeFile($n) {
+    $p = Join-Path $Shapes "$n.yml"
+    if (-not (Test-Path $p)) { Fail "no shape $n; fcpm model shapes lists them" }
     ReadFacts $p
 }
 
@@ -238,16 +298,16 @@ switch ($Verb) {
         $part = "$File.part"
         if ((Test-Path $WslCopy) -and (Get-Item $WslCopy).Length -eq [int64](Fact 'size')) {
             Say "model     copying runai's copy out of WSL ($([math]::Round([int64](Fact 'size') / 1GB, 1)) GB)"
-            Copy-Item $WslCopy $part -Force; $from = 'wsl:runai'
+            Copy-Item $WslCopy $part -Force; $origin = 'wsl:runai'
         } else {
             Say "model     fetching $(Fact 'source')"
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            Invoke-WebRequest -UseBasicParsing -Uri (Fact 'source') -OutFile $part; $from = Fact 'source'
+            Invoke-WebRequest -UseBasicParsing -Uri (Fact 'source') -OutFile $part; $origin = Fact 'source'
         }
         $got = Hash $part
         if ($got -ne $want) { Remove-Item -Force $part; Fail "the model is sha256 $got, not model.yml's $want" }
         Move-Item -Force $part $File
-        Line $BayLog ([ordered]@{ payload = 'model'; version = $Model; step = 'install'; event = 'installed'; path = $File; from = $from; sha256 = $got })
+        Line $BayLog ([ordered]@{ payload = 'model'; version = $Model; step = 'install'; event = 'installed'; path = $File; from = $origin; sha256 = $got })
         Say "model     $Model in place, sha256 matches"
     }
     Say 'next      fcpm model grant (an administrator), then fcpm model on'
@@ -310,26 +370,50 @@ switch ($Verb) {
 'shapes' {
     foreach ($f in Get-ChildItem $Shapes -Filter *.yml | Sort-Object Name) {
         $s = ReadFacts $f.FullName
-        Say ('{0,-8} {1}: takes {2} (up to {3} characters); {4}, up to {5} tokens of answer' -f `
-             $f.BaseName, $s['shape'], $s['takes'], $s['limit'], $s['effort'], $s['answer'])
+        $c = if ($s['context'] -and $s['context'] -ne 'none') { "; keeps a $($s['context']) context, $Here/$($s['context-name'])" } else { '' }
+        Say ('{0,-9} {1}: takes {2} (up to {3} characters); {4}, up to {5} tokens of answer{6}' -f `
+             $f.BaseName, $s['shape'], $s['takes'], $s['limit'], $s['effort'], $s['answer'], $c)
+    }
+}
+
+'contexts' {
+    $dir = Contexts
+    $files = @(if (Test-Path $dir) { Get-ChildItem $dir -Filter *.ndjson | Sort-Object Name })
+    if (-not $files.Count) { Say "none kept yet ($dir)"; break }
+    foreach ($f in $files) {
+        $t = @(Turns $f.BaseName)
+        $last = if ($t.Count) { "last $(([datetime]$t[-1].at).ToString('yyyy-MM-dd HH:mm')), $($t[-1].name)" } else { 'empty' }
+        Say ('{0,-24} {1}; {2}' -f "$Here/$($f.BaseName)", (Plural $t.Count 'turn'), $last)
     }
 }
 
 'ask' {
-    $prompt = $Text; $word = 'quick'; $answer = [int](Fact 'answer'); $name = ''
+    $prompt = $Text; $word = 'quick'; $answer = [int](Fact 'answer'); $shapeName = ''; $ctx = ''
+    $messages = $null
     if ($Shape) {
-        $s = ShapeFile $Shape; $name = $s['shape']
-        if ($Text.Length -gt [int]$s['limit']) { Fail "$name takes up to $($s['limit']) characters; this is $($Text.Length)" }
-        $prompt = $s['prompt'].Replace('{input}', $Text); $word = $s['effort']; $answer = [int]$s['answer']
+        $s = ShapeFile $Shape; $shapeName = $s['shape']
+        if ($Text.Length -gt [int]$s['limit']) { Fail "$shapeName takes up to $($s['limit']) characters; this is $($Text.Length)" }
+        $word = $s['effort']; $answer = [int]$s['answer']
+        $kind = if ($s['context']) { $s['context'] } else { 'none' }
+        if ($kind -eq 'shared') {
+            if (-not $Name.Trim()) { Fail "$shapeName needs who is signing: -Name" }
+            if ($Name.Trim().Length -gt 40) { Fail 'a name is up to 40 characters' }
+            $ctx = $s['context-name']
+            $prompt = $s['prompt'].Replace('{name}', $Name.Trim()).Replace('{input}', $Text)
+            $messages = @(View $s $ctx $Name.Trim() $From) + @(@{ role = 'user'; content = $prompt })
+        } elseif ($kind -eq 'none') { $prompt = $s['prompt'].Replace('{input}', $Text) }
+        else { Fail "$shapeName keeps a $kind context, which this bay does not keep yet" }
     } elseif (-not $Text) { Fail 'ask what? fcpm model ask "a question"' }
+    if (-not $messages) { $messages = @(@{ role = 'user'; content = $prompt }) }
     if ($Effort) { $word = $Effort }
     $u = Url
     if (-not (Server) -or -not (Healthy $u)) { Fail 'not running: fcpm model on' }
-    $a = Chat $u $prompt $word $answer
+    $seed = Get-Random -Minimum 0 -Maximum 2147483647
+    $a = Chat $u $messages $word $answer $seed
     $fell = $false
     if (-not (Content $a.reply) -and $word -ne 'quick') {
         $first = $a
-        $a = Chat $u $prompt 'quick' $answer
+        $a = Chat $u $messages 'quick' $answer $seed
         $a.seconds += $first.seconds; $fell = $true
     }
     $r = $a.reply
@@ -339,7 +423,13 @@ switch ($Verb) {
     Say ("answered  in $($a.seconds) s, $($r.usage.completion_tokens) tokens$rate, at $word" +
          $(if ($fell) { "; it ran out of room thinking, so this is the answer at quick" } else { '' }) +
          $(if ($r.choices[0].finish_reason -eq 'length') { "; cut at the shape's $answer tokens" } else { '' }) +
-         $(if ($name) { " ($name)" } else { '' }))
-    Note 'asked' @{ seconds = $a.seconds; tokens = $r.usage.completion_tokens; effort = $word; fell_back = $fell; shape = $name; answered = [bool](Content $r) }
+         $(if ($shapeName) { " ($shapeName)" } else { '' }))
+    if ($ctx -and (Content $r)) {
+        $addr = Keep $ctx ([ordered]@{ shape = $shapeName; name = $Name.Trim(); from = $From; input = $Text; answer = (Content $r)
+            effort = $(if ($fell) { 'quick' } else { $word }); model = $Model; model_sha256 = (Fact 'sha256').Substring(0, 12)
+            seed = $seed; tokens = $r.usage.completion_tokens })
+        Say "kept      $addr"
+    }
+    Note 'asked' @{ seconds = $a.seconds; tokens = $r.usage.completion_tokens; effort = $word; fell_back = $fell; shape = $shapeName; answered = [bool](Content $r) }
 }
 }

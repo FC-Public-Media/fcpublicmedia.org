@@ -122,7 +122,7 @@ verbs:
     linux: "not: no record kept here yet; the journal holds sudo's"
 
   - verb: model
-    args: "[status|install|grant|on|off|shapes|ask TEXT [-Shape NAME] [-Effort quick|considered]]"
+    args: "[status|install|grant|on|off|shapes|contexts|ask TEXT [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]]"
     says: "the language model, for the switched network only (grant is an administrator's)"
     windows: "machines/<profile>/model.ps1"
     linux: "not: Windows gear (the bay's GPU)"
