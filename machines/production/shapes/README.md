@@ -5,7 +5,8 @@ at most `limit:` characters). The prompt around it, the answer's length and the 
 fixed here, so a reply never carries them. Effort words map to the model's knobs in `../model.yml`.
 `fcpm model shapes` lists them; `fcpm model ask "TEXT" -Shape poem` tries one. One `key: value` a line.
 
-`context:` is what a shape remembers: `none` (the input is the whole scope) or `shared` (one context
-for the shape, named by `context-name:`; the guestbook). A shared shape's `role:` is said first, then
+`context:` is what a shape remembers: `none` (the input is the whole scope), `shared` (one context
+for the shape, named by `context-name:`; the guestbook) or `quoted` (the request carries its own context as
+messages, quoted in, and nothing is kept between requests; `ask`, from a bottle). A shared shape's `role:` is said first, then
 a roster made from its log, then its last `sees-turns:` turns within `sees-days:`. `fcpm model
 contexts` lists what is kept, each by its address (production/guestbook).

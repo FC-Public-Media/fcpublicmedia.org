@@ -53,6 +53,17 @@ The tailnet has no MagicDNS, so a client is set to this machine's tailnet addres
 100.115.246.115 today): `http://100.115.246.115:9931/v1`, model `qwen3.5-4b`, no key. When bay 1's model is
 off, a passed connection finds nothing to join and closes, which is the model being off, not the relay failing.
 
+## Questions for the model
+
+A person asks bay 1's model through a bottle, never directly: `wizard:model+ask` carries OpenAI-enough messages
+(a role and its text, the question last; no model, no bay, no session), and anything they want remembered is
+quoted in. The door's intake (`replies.py`) checks it against `shapes/ask.yml` and queues it; `asks` (crew line,
+`keep`) answers the oldest first, one at a time, as the shape says: our role first, their own instructions
+inside it. The question is then reduced to a label (`shapes/label.yml`), so a phone can filter a category.
+Each answer is `asks/answers/<nonce>.json` under the door's state, named for the question's nonce, which the
+asker's phone already holds: that is how its inbox finds its own in the public loop. While the model is off,
+questions wait. `machines/digitization/asks status` says what waits and what was answered.
+
 ## Keys
 
 This machine holds FCPM's secrets for now (decided 2026-10-23), and deploys that need them run here by hand.

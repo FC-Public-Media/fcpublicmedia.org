@@ -13,6 +13,10 @@ serves:
     for: "bay 1's model (production's llama-server, 10.209.1.20:9931) on this machine's tailnet address, for tag:operator devices only, each asked of tailscale whois; see digitization/PROFILE.md"
     start: "/bin/sh machines/digitization/model-relay"
 
+  - service: asks
+    for: "the questions people showed us (wizard:model+ask), answered by bay 1's model one at a time, each labeled and kept under its nonce for the public loop; see digitization/PROFILE.md"
+    start: "/usr/bin/python3 machines/digitization/asks"
+
   - service: senders
     for: "who may deliver finished post work to the landing: authorized_keys's marked lines kept to post-senders.yml"
     start: "/usr/bin/python3 machines/digitization/post-receive senders"

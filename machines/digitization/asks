@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""asks: the questions people showed us (wizard:model+ask), answered by bay 1's model one at a time.
+
+    asks            keep answering: the oldest queued question, then the next (the crew's `keep` line)
+    asks once       answer one question, if one is waiting
+    asks status     what waits, and the last answers
+
+replies.py queues each question under the door's state (asks/queue/, oldest first). Each is asked as the
+shape model+ask says (machines/production/shapes/ask.yml: our role first, the asker's own instructions inside
+it, their quoted context and question after), at its effort word as machines/production/model.yml maps it.
+Its words are then reduced to a label (shapes/label.yml), which is how a phone filters a category. The
+answer is kept as asks/answers/<nonce>.json, named by the question's nonce: the asker's phone holds that
+nonce, and finds its answer by it in the public loop. The question moves to asks/done/.
+
+When the model is off (bay 1 asleep, `fcpm model off`), the question stays queued and is asked again in a
+minute. Nothing here decides who may ask; replies.py has already read and checked the bottle.
+"""
+import hashlib
+import json
+import os
+import pathlib
+import shutil
+import sys
+import time
+import urllib.error
+import urllib.request
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "machines" / "kiosk"))
+import replies  # noqa: E402  the door's state, its YAML and its clock
+
+SHAPES = ROOT / "machines" / "production" / "shapes"
+MODEL_YML = ROOT / "machines" / "production" / "model.yml"
+URL = "http://%s/v1/chat/completions" % os.environ.get("FCPM_MODEL_AT", "10.209.1.20:9931")
+TIMEOUT = 600
+IDLE, ASLEEP = 5, 60
+
+
+def folder(name):
+    return replies.STATE / "asks" / name
+
+
+def shape(name):
+    return replies.load_yaml(SHAPES / ("%s.yml" % name)) or {}
+
+
+def knobs(effort, answer, model):
+    """Our effort word as this model's knobs (model.yml); a knob the file doesn't name isn't sent."""
+    if effort == "considered" and model.get("considered-thinking") is not None:
+        k = {"max_tokens": int(model["considered-thinking"]) + answer,
+             "thinking_budget_tokens": int(model["considered-thinking"])}
+        if model.get("considered-nudge"):
+            k["reasoning_budget_message"] = model["considered-nudge"]
+        return k
+    k = {"max_tokens": answer}
+    if model.get("quick-thinking") is not None and int(model["quick-thinking"]) == 0:
+        k["chat_template_kwargs"] = {"enable_thinking": False}
+    return k
+
+
+def seed_of(nonce):
+    return int(hashlib.sha256(nonce.encode()).hexdigest()[:8], 16)
+
+
+def messages_for(sh, messages):
+    """Our role first; the asker's own instructions inside it, as theirs; then their context and question."""
+    theirs = [m["content"] for m in messages if m["role"] == "system" and m["content"].strip()]
+    system = sh.get("role") or ""
+    if theirs:
+        system += "\n\nThe person's own instructions, as they wrote them:\n" + "\n".join(theirs)
+    return [{"role": "system", "content": system}] + [m for m in messages if m["role"] != "system"]
+
+
+def post(body):
+    req = urllib.request.Request(URL, json.dumps(body).encode(), {"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        return json.load(r)
+
+
+def complete(sh, msgs, seed, model, send=post):
+    """One request at the shape's effort. Considered that comes back empty is asked again at quick, and says so."""
+    effort = sh.get("effort") or "quick"
+    answer = int(sh.get("answer") or model.get("answer") or 1024)
+    body = {"model": model.get("model"), "messages": msgs, "seed": seed}
+    r = send(dict(body, **knobs(effort, answer, model)))
+    text = ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+    if not text.strip() and effort != "quick":
+        r = send(dict(body, **knobs("quick", answer, model)))
+        text = ((r.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        effort = "quick (considered came back empty)"
+    choice = (r.get("choices") or [{}])[0]
+    return {"text": text.strip(), "effort": effort, "finish": choice.get("finish_reason"),
+            "tokens": (r.get("usage") or {}).get("completion_tokens")}
+
+
+def label(text, seed, model, send=post):
+    sh = shape("label")
+    limit = int(sh.get("limit") or 2000)
+    msgs = [{"role": "system", "content": sh.get("role") or ""},
+            {"role": "user", "content": (sh.get("prompt") or "{input}").replace("{input}", text[:limit])}]
+    got = complete(sh, msgs, seed, model, send)["text"]
+    return " ".join(got.split()).strip(" .") or None
+
+
+def answer_one(send=post):
+    """The oldest waiting question, answered and filed. Returns its nonce, None when nothing waits; raises
+    OSError (URLError) when the model doesn't answer, leaving the question queued."""
+    waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
+    if not waiting:
+        return None
+    path = waiting[0]
+    try:
+        q = json.loads(path.read_text(encoding="utf-8"))
+        q["nonce"], q["messages"][-1]["content"]
+    except (ValueError, KeyError, IndexError, TypeError):
+        folder("held").mkdir(parents=True, exist_ok=True)     # unreadable: set aside, never asked again and again
+        shutil.move(str(path), str(folder("held") / path.name))
+        return path.stem
+    sh, model = shape("ask"), replies.load_yaml(MODEL_YML) or {}
+    seed = seed_of(q["nonce"])
+    got = complete(sh, messages_for(sh, q["messages"]), seed, model, send)
+    question = q["messages"][-1]["content"]
+    out = {"schema": "fcpm.answer/v0", "in_reply_to": q["nonce"], "shape": sh.get("shape"),
+           "label": label(question, seed, model, send), "answer": got["text"], "effort": got["effort"],
+           "finish": got["finish"], "tokens": got["tokens"], "model": model.get("model"),
+           "model_sha256": (model.get("sha256") or "")[:12], "seed": seed,
+           "asked": q.get("issued"), "answered": replies.now().isoformat(timespec="seconds"),
+           "by": q.get("by"), "trust": q.get("trust")}
+    folder("answers").mkdir(parents=True, exist_ok=True)
+    (folder("answers") / ("%s.json" % q["nonce"])).write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    folder("done").mkdir(parents=True, exist_ok=True)
+    shutil.move(str(path), str(folder("done") / path.name))
+    replies.log({"name": path.stem, "verdict": "answered", "why": out["label"], "wizard": "wizard:model+ask",
+                 "by": q.get("by")})
+    return q["nonce"]
+
+
+def status():
+    waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
+    print("waiting: %d" % len(waiting))
+    done = sorted(folder("answers").glob("*.json"), key=lambda p: p.stat().st_mtime) if folder("answers").is_dir() else []
+    print("answered: %d" % len(done))
+    for p in done[-5:]:
+        a = json.loads(p.read_text(encoding="utf-8"))
+        print("  %s  %s  [%s]  %s" % (a.get("answered"), a["in_reply_to"][:12], a.get("label") or "",
+                                     " ".join((a.get("answer") or "").split())[:80]))
+
+
+def main(argv):
+    verb = argv[1] if len(argv) > 1 else "keep"
+    if verb == "status":
+        status()
+        return 0
+    if verb == "once":
+        try:
+            n = answer_one()
+        except (urllib.error.URLError, OSError) as e:
+            print("asks: the model did not answer (%s); the question waits" % e, file=sys.stderr)
+            return 1
+        print("asks: %s" % (("answered " + n) if n else "nothing waiting"))
+        return 0
+    if verb != "keep":
+        print(__doc__, file=sys.stderr)
+        return 2
+    while True:
+        try:
+            n = answer_one()
+        except (urllib.error.URLError, OSError) as e:
+            print("asks: the model did not answer (%s); asking again in %ds" % (e, ASLEEP), flush=True)
+            time.sleep(ASLEEP)
+            continue
+        if n:
+            print("asks: answered %s" % n, flush=True)
+        else:
+            time.sleep(IDLE)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

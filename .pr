@@ -1,6 +1,11 @@
-# relay-address
+# model-ask
 
-After #379: the tailnet has no MagicDNS, so PROFILE.md gives the relay's tailnet address, not a ts.net name.
+A question for bay 1's model, by bottle: the intake and the answers, first step toward the public loop.
 
-- [x] machines/digitization/PROFILE.md: `http://100.115.246.115:9931/v1` (`tailscale ip -4`)
-- [x] the crew's model-relay line holds the port (model-relay-try stopped 2026-11-03 17:43)
+- [x] shapes/ask.yml (model+ask: quoted context, quick, 400 tokens, 1500 characters in) and shapes/label.yml (the reducer)
+- [x] replies.py: wizard:model+ask checked (roles, question last, size, nonce) and queued under asks/queue/
+- [x] machines/digitization/asks: oldest first, one at a time; our role, their instructions inside; labeled;
+      asks/answers/<nonce>.json; a sleeping model leaves it queued; crew line `asks keep`
+- [x] bin/test_asks.py (6, offline); tried live on bay 1: a quoted 4-turn question answered in ~1 s, "Garden show idea"
+- [ ] the answer as a bottle carrying its nonce and label; qr.local's loop with an index bottle
+- [ ] the compose-and-pour page on .local, its inbox catching from the loop
