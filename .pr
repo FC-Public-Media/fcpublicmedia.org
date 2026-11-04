@@ -1,14 +1,12 @@
-# model-loop
+# loop-catch
 
-The public fountain's first loop: every answer bottled, an index of them, a screen to show them, and the wizard.
+The phone catches its own answer from the loop with its camera, on the public site's /ask/.
 
-- [x] machines/digitization/pour.mjs: an unsigned transfer as AC1 fountain frames (max(40, K×4), as the site pours)
-- [x] asks bottles each answer (asks/bottles/<nonce>.json: no signer, no question) and remakes the index bottle
-      (fcpm.index/v0: each nonce, label, bottle id; the last day, at most 40); `asks reindex`
-- [x] door /loop/ (loop.js): index, then answers, the index again every N; ?fps= ?index=; re-asks /loop/now each pass
-- [x] door /ask/ (ask.js): box, outbox (the code; or set it down), notebook kept on the phone, ticked answers quoted in;
-      /asks/answer/<nonce> as a LAN courtesy
-- [x] site/assets/js/sha256.mjs: digest where a plain-http page has no crypto.subtle, so its bottles are fountains
-- [x] tried whole on bay 1: an http-only page's 40-frame fountain → intake → answered → loop; a phone-style catch
-      from the loop's pixels (one catch per bottle id; the index names ours) rebuilt its answer in 12.7 s
-- [ ] the phone's camera catch from the loop, on the public site (needs a secure page); the init bottle from qr.local
+- [x] site/assets/js/catch.mjs: one catch per bottle id until the index names ours; others' frames let go after
+- [x] site/assets/js/camera.mjs: the camera as a code reader (secure pages only; `can()` says first)
+- [x] ask.js moved into the site (one script for the door's /ask/ and the public /ask/); "Catch it from the loop"
+      where a camera may open; the LAN-only parts (set it down, ask the door) behind config `lan`
+- [x] site/you/wizards/ask.md: the public /ask/ (pass layout, offline: true, unlisted)
+- [x] test: a phone joining mid-loop, losing 30% of frames, keeps only its own answer from three; the built site's
+      /ask/ on a secure page makes a signed bottle (intake: signed, wizard:model+ask)
+- [ ] deploy the site when Autumn says (bin/deploy-site); the init bottle from qr.local
