@@ -363,8 +363,8 @@ def ask_reply(reply, meta):
     if msgs[-1]["role"] != "user" or not msgs[-1]["content"].strip():
         return "messages: the last is the question (role user)"
     nonce = str(reply.get("nonce") or "")
-    if not (8 <= len(nonce) <= 64 and all(ch.isalnum() or ch == "-" for ch in nonce)):
-        return "nonce: 8 to 64 letters, digits or dashes (the answer is filed under it)"
+    if not (8 <= len(nonce) <= 64 and all(ch.isascii() and (ch.isalnum() or ch in "-_") for ch in nonce)):
+        return "nonce: 8 to 64 letters, digits, dashes or underscores (the answer is filed under it)"
     size = sum(len(m["content"]) for m in msgs)
     limit = int((load_yaml(ASK_SHAPE) or {}).get("limit") or 1500)
     if size > limit:

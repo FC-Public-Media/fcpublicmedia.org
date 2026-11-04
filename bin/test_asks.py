@@ -68,7 +68,7 @@ class Asks(unittest.TestCase):
         cases = {"messages: the last is the question (role user)": ask(("user", "hi"), ("assistant", "hello")),
                  "messages: each a role (system, user or assistant) and its text": ask(("tool", "x")),
                  "messages: 1600 characters; model+ask takes 1500": ask(("user", "x" * 1600)),
-                 "nonce: 8 to 64 letters, digits or dashes (the answer is filed under it)": ask(("user", "hi"), nonce="a/b")}
+                 "nonce: 8 to 64 letters, digits, dashes or underscores (the answer is filed under it)": ask(("user", "hi"), nonce="a/b")}
         for why, r in cases.items():
             self.assertEqual(replies.examine(r, {}), why)
         self.assertEqual(self.queued(), [])
@@ -110,6 +110,58 @@ class Asks(unittest.TestCase):
         asks.answer_one(send=Fake("never"))
         self.assertEqual(self.queued(), [])
         self.assertTrue((replies.STATE / "asks" / "held" / "2026-01-01T00-00-00--broken.json").exists())
+
+
+NODE = replies.node_exe()
+VERIFY = REPO / "machines" / "kiosk" / "verify-bottle.mjs"
+COMPOSER = REPO / "site" / "assets" / "js" / "composer"
+
+
+def read_frames(frames):
+    """What the composer makes of frames, as the intake asks it (verify-bottle.mjs)."""
+    import subprocess
+    out = subprocess.run([NODE, str(VERIFY), str(COMPOSER)], input=json.dumps({"frames": frames, "friends": []}),
+                         capture_output=True, text=True, timeout=60)
+    return json.loads(out.stdout)
+
+
+@unittest.skipUnless(NODE, "no node")
+class Loop(unittest.TestCase):
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.saved = replies.STATE
+        replies.STATE = self.tmp / "state"
+
+    def tearDown(self):
+        replies.STATE = self.saved
+        shutil.rmtree(self.tmp)
+
+    def test_each_answer_is_bottled_and_the_index_names_its_bottle(self):
+        for n in ("nonce-aaaa", "nonce-bbbb"):
+            replies.examine(ask(("user", "question %s?" % n), nonce=n), {"by": "fp-secret", "trust": "signed"})
+            asks.answer_one(send=Fake("An answer to %s." % n, "Label %s" % n[-4:]))
+        bottles = replies.STATE / "asks" / "bottles"
+        index = json.loads((bottles / "index.json").read_text())
+        rows = {r["in_reply_to"]: r for r in index["index"]["answers"]}
+        self.assertEqual(set(rows), {"nonce-aaaa", "nonce-bbbb"})
+        b = json.loads((bottles / "nonce-aaaa.json").read_text())
+        self.assertEqual(rows["nonce-aaaa"]["id"], b["id"])
+        self.assertTrue(all(f.split("|")[3] == b["id"] for f in b["frames"]))     # every frame names its bottle
+        got = read_frames(b["frames"])
+        self.assertTrue(got["ok"] and got["unsigned"])
+        public = json.loads(got["text"])
+        self.assertEqual((public["kind"] if "kind" in public else got["kind"], public["answer"]),
+                         ("fcpm.answer", "An answer to nonce-aaaa."))
+        self.assertNotIn("by", public)                 # who signed the question is not in the public bottle
+        self.assertEqual(json.loads(read_frames(json.loads((bottles / "index.json").read_text())["frames"])["text"])
+                         ["schema"], "fcpm.index/v0")
+
+    def test_reindex_bottles_an_answer_that_lacks_one(self):
+        replies.examine(ask(("user", "late?"), nonce="nonce-cccc"), {})
+        asks.answer_one(send=Fake("Yes.", "Lateness"))
+        (replies.STATE / "asks" / "bottles" / "nonce-cccc.json").unlink()
+        self.assertEqual([r["in_reply_to"] for r in asks.reindex()["answers"]], ["nonce-cccc"])
+        self.assertTrue((replies.STATE / "asks" / "bottles" / "nonce-cccc.json").is_file())
 
 
 if __name__ == "__main__":

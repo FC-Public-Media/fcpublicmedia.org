@@ -64,6 +64,16 @@ Each answer is `asks/answers/<nonce>.json` under the door's state, named for the
 asker's phone already holds: that is how its inbox finds its own in the public loop. While the model is off,
 questions wait. `machines/digitization/asks status` says what waits and what was answered.
 
+Every answer is also bottled for the public loop (`pour.mjs`: unsigned AC1 fountain frames, `asks/bottles/`), and an
+index bottle names the last day's answers: each question's nonce, its label and its bottle's id. Every frame names
+its bottle, so a phone that has read the index keeps only its own frames and lets the rest go by. The door's
+`/loop/` draws the index and the answers in turn (`?fps=`, `?index=`; asked again every pass, so it follows the set
+as it changes) on any screen, over plain http: it only draws. `/ask/` is the wizard: the box, the outbox (the
+code to show the camera) and the notebook kept on the phone, whose ticked answers are quoted into the next
+question. On plain http a phone has no WebCrypto, so the page brings SHA-256 (`site/assets/js/sha256.mjs`) and
+its bottles are real fountains, unsigned; signing, and catching the loop with the phone's camera, need a
+secure page (the public site).
+
 ## Keys
 
 This machine holds FCPM's secrets for now (decided 2026-10-23), and deploys that need them run here by hand.
