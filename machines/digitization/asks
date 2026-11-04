@@ -40,6 +40,8 @@ SHAPES = ROOT / "machines" / "production" / "shapes"
 COMPOSER = ROOT / "site" / "assets" / "js" / "composer"
 POUR = pathlib.Path(__file__).resolve().parent / "pour.mjs"
 DROPLET = 48                      # bytes a frame, as the site pours
+CONSOLE = {"blockSize": 20, "overhead": 2.5, "qr": "L"}   # qr.local's text screen: a version-6 code (41 modules)
+STATE_FILE = "state.json"         # who answers, whether it's up, what it's on: what qr.local's inbox bar says
 LOOP_DAYS, LOOP_MOST = 1, 40      # what the index holds: the last day's answers, at most this many
 PUBLIC = ("schema", "in_reply_to", "shape", "label", "answer", "effort", "finish", "model", "model_sha256",
           "seed", "answered")     # what an answer's bottle carries: not who signed, not the question
@@ -115,7 +117,16 @@ def label(text, seed, model, send=post):
     return " ".join(got.split()).strip(" .") or None
 
 
-def answer_one(send=post):
+def alive():
+    """Whether the model answers at all (its /health), asked without a question."""
+    try:
+        with urllib.request.urlopen(URL.replace("/v1/chat/completions", "/health"), timeout=5) as r:
+            return r.status == 200
+    except (urllib.error.URLError, OSError):
+        return False
+
+
+def answer_one(send=post, on=None):
     """The oldest waiting question, answered and filed. Returns its nonce, None when nothing waits; raises
     OSError (URLError) when the model doesn't answer, leaving the question queued."""
     waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
@@ -131,6 +142,8 @@ def answer_one(send=post):
         return path.stem
     sh, model = shape("ask"), replies.load_yaml(MODEL_YML) or {}
     seed = seed_of(q["nonce"])
+    if on:
+        on(q["nonce"])
     got = complete(sh, messages_for(sh, q["messages"]), seed, model, send)
     question = q["messages"][-1]["content"]
     out = {"schema": "fcpm.answer/v0", "in_reply_to": q["nonce"], "shape": sh.get("shape"),
@@ -151,22 +164,47 @@ def answer_one(send=post):
 
 # ---- the public loop: each answer bottled, and the index of them --------------------------------------
 
-def pour(kind, text):
-    """An unsigned transfer as AC1 frames (pour.mjs, Node): {id, K, frames}; None without Node."""
+def pour(kind, text, **how):
+    """An unsigned transfer as AC1 frames (pour.mjs, Node): {id, K, frames[, modules]}; None without Node."""
     node = replies.node_exe()
     if not node:
         return None
     import subprocess
-    out = subprocess.run([node, str(POUR), str(COMPOSER)], capture_output=True, text=True, timeout=60,
-                         input=json.dumps({"kind": kind, "text": text, "blockSize": DROPLET}))
+    out = subprocess.run([node, str(POUR), str(COMPOSER)], capture_output=True, text=True, timeout=120,
+                         input=json.dumps(dict({"kind": kind, "text": text, "blockSize": DROPLET}, **how)))
     return json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else None
+
+
+def pour_both(kind, text):
+    """The loop's frames, and the same bottle as qr.local's console frames (smaller, each with its QR modules)."""
+    got = pour(kind, text)
+    if got:
+        small = pour(kind, text, **CONSOLE)
+        if small:
+            got["console"] = {"frames": small["frames"], "modules": small["modules"]}
+    return got
+
+
+def say(**state):
+    """asks/state.json: who answers and how it is, for qr.local's inbox bar. Written only when it changes."""
+    now = dict({"shape": "model+ask", "by": "bay 1", "model": (replies.load_yaml(MODEL_YML) or {}).get("model")}, **state)
+    path = replies.STATE / "asks" / STATE_FILE
+    try:
+        was = json.loads(path.read_text(encoding="utf-8"))
+        was.pop("at", None)
+    except (OSError, ValueError):
+        was = None
+    if was == now:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(dict(now, at=replies.now().isoformat(timespec="seconds"))), encoding="utf-8")
 
 
 def bottle(nonce):
     """asks/answers/<nonce>.json as its public bottle, asks/bottles/<nonce>.json. True when made."""
     a = json.loads((folder("answers") / ("%s.json" % nonce)).read_text(encoding="utf-8"))
     public = {k: a.get(k) for k in PUBLIC if k in a}
-    got = pour("fcpm.answer", json.dumps(public, ensure_ascii=False, separators=(",", ":")))
+    got = pour_both("fcpm.answer", json.dumps(public, ensure_ascii=False, separators=(",", ":")))
     if not got:
         return False
     got.update({"in_reply_to": nonce, "label": a.get("label"), "answered": a.get("answered")})
@@ -190,14 +228,15 @@ def reindex():
             if datetime.datetime.fromisoformat(a["answered"]) < since:
                 break
             b = folder("bottles") / p.name
-            if not b.is_file() and not bottle(a["in_reply_to"]):
+            if (not b.is_file() or "console" not in json.loads(b.read_text(encoding="utf-8"))) \
+                    and not bottle(a["in_reply_to"]):
                 continue
             rows.append({"in_reply_to": a["in_reply_to"], "label": a.get("label"),
                          "id": json.loads(b.read_text(encoding="utf-8"))["id"], "answered": a["answered"]})
         except (OSError, ValueError, KeyError):
             continue
     index = {"schema": "fcpm.index/v0", "at": replies.now().isoformat(timespec="seconds"), "answers": rows}
-    got = pour("fcpm.index", json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    got = pour_both("fcpm.index", json.dumps(index, ensure_ascii=False, separators=(",", ":")))
     if not got:
         return None
     got["index"] = index
@@ -238,16 +277,28 @@ def main(argv):
         print(__doc__, file=sys.stderr)
         return 2
     reindex()
+    checked = 0.0
     while True:
         try:
-            n = answer_one()
+            n = answer_one(on=lambda nonce: say(up=True, working=nonce, trouble=None))
         except (urllib.error.URLError, OSError) as e:
+            say(up=False, working=None, trouble=None)
             print("asks: the model did not answer (%s); asking again in %ds" % (e, ASLEEP), flush=True)
+            time.sleep(ASLEEP)
+            checked = time.time()
+            continue
+        except Exception as e:                       # anything else is trouble, said where people look
+            say(up=True, working=None, trouble=("%s" % e)[:60])
+            print("asks: trouble: %r" % e, flush=True)
             time.sleep(ASLEEP)
             continue
         if n:
             print("asks: answered %s" % n, flush=True)
+            say(up=True, working=None, trouble=None)
         else:
+            if time.time() - checked >= ASLEEP:      # idle: is the model there? asked once a minute at most
+                say(up=alive(), working=None, trouble=None)
+                checked = time.time()
             time.sleep(IDLE)
 
 

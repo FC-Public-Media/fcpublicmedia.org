@@ -37,6 +37,12 @@ question becomes a code for the camera at FC Public Media; nothing is sent from 
   .ask .code canvas { width: min(84vw, 46vh); height: min(84vw, 46vh); background: #fff; image-rendering: pixelated; }
   .ask .code span, .ask #caught, .ask #said { font-size: .8rem; color: #8a9099; }
   .ask #eye { width: 100%; border-radius: .6rem; background: #000; }
+  .ask .catching { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
+  .ask .catching li { position:relative; display:flex; justify-content:space-between; gap:1rem; padding:.45rem .7rem; overflow:hidden; }
+  .ask .catching .bar { position:absolute; left:0; bottom:0; height:3px; width:calc(var(--p) * 100%); background:#f5c518; }
+  .ask .catching .how { font-variant-numeric:tabular-nums; }
+  .ask .catching li.mine { font-weight:700; } .catching li.passing { opacity:.55; }
+  .ask .catching li { background: #1b1f24; }
   .ask .notebook ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .8rem; }
   .ask .notebook li { border-top: 1px solid #2c3138; padding-top: .6rem; }
   .ask .notebook .q { margin: 0; font-weight: 650; }
@@ -59,6 +65,7 @@ question becomes a code for the camera at FC Public Media; nothing is sent from 
     <div class="code"><canvas id="code" role="img" aria-label="Your question, as a code"></canvas><span id="read"></span></div>
     <div class="bar"><button id="drop" type="button" hidden>Set it down here</button><span id="said"></span></div>
     <div class="bar"><button id="catch" type="button" hidden>Catch it from the loop</button><span id="caught"></span></div>
+    <ol id="catching" class="catching"></ol>
     <video id="eye" hidden muted playsinline></video>
   </section>
   <section class="notebook"><h2>Kept on this phone</h2><p id="notebook-empty" class="lede">Nothing yet.</p>

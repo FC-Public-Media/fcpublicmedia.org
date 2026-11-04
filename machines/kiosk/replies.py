@@ -450,6 +450,50 @@ def take():
     return out
 
 
+
+# ---- what qr.local's inbox shows ------------------------------------------------------------------
+
+def asks_state():
+    """machines/digitization/asks's word on itself (asks/state.json): shape, by, model, up, working, trouble."""
+    try:
+        return json.loads((STATE / "asks" / "state.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def inbox(most=6):
+    """The last things this door took, newest first, each {at, what, state, why}: a question by its label once
+    answered (queued, answering, answered), and anything held, with the reason. What a station's inbox shows."""
+    rows, working = [], (asks_state() or {}).get("working")
+    for name, state in (("queue", "queued"), ("answers", "answered")):
+        folder = STATE / "asks" / name
+        for p in sorted(folder.glob("*.json"))[-most * 2:] if folder.is_dir() else []:
+            try:
+                a = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if state == "queued":
+                rows.append({"at": a.get("queued"), "nonce": a.get("nonce"), "state": "answering" if a.get("nonce") == working
+                             else "queued", "what": " ".join(a["messages"][-1]["content"].split())[:80], "why": ""})
+            else:
+                rows.append({"at": a.get("answered"), "nonce": a.get("in_reply_to"), "state": "answered",
+                             "what": a.get("label") or " ".join((a.get("answer") or "").split())[:40], "why": ""})
+    try:
+        lines = (STATE / "log.ndjson").read_text(encoding="utf-8").splitlines()[-400:]
+    except OSError:
+        lines = []
+    for line in lines:
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        if r.get("verdict") == "held" or (r.get("verdict") == "applied" and r.get("wizard") != "wizard:model+ask"):
+            rows.append({"at": r.get("at"), "nonce": None, "state": r["verdict"],
+                         "what": (r.get("wizard") or "a bottle").replace("wizard:", ""), "why": r.get("why") or ""})
+    rows.sort(key=lambda r: r.get("at") or "", reverse=True)
+    return rows[:most]
+
+
 # ---- the command -----------------------------------------------------------------------------------
 
 def status():

@@ -17,21 +17,32 @@ function bytesOf(b64) {
 
 // wants(nonce) -> true for the questions this phone is waiting on. feed(text) resolves to null, or
 // { index } when an index completes, or { answer } when a wanted answer does (each answer once).
+// `bottles` is every bottle seen in the stream, in the order first seen: {id, have, total, done, kind, label,
+// mine, passing}. `have` of `total` is blocks recovered of the blocks it needs (the composer's own count);
+// a bottle the index lists for someone else is `passing`: named, but let go by.
 export function catcher(wants) {
-  const open = new Map(), others = new Set(), done = new Set();
+  const open = new Map(), others = new Set(), done = new Set(), seen = new Map();
   let index = null;
+  const row = (id) => { if (!seen.has(id)) seen.set(id, { id, have: 0, total: null, done: false, kind: null,
+                                                           label: null, mine: false, passing: false });
+                        return seen.get(id); };
   return {
     get index() { return index; },
+    get bottles() { return [...seen.values()]; },
     async feed(text) {
       if (typeof text !== "string" || !text.startsWith("AC1|")) return null;
       const id = text.split("|")[3];
+      const r = row(id);
       if (others.has(id) || done.has(id)) return null;
       if (!open.has(id)) {
         if (open.size >= OPEN_MOST) open.delete(open.keys().next().value);
         open.set(id, carrierSession());
       }
       const snap = await open.get(id).feed(text);
+      const p = snap && snap.present && snap.present[0];
+      if (p) { r.have = p.have || 0; r.total = p.total; }
       if (!(snap && snap.complete)) return null;
+      r.done = true;
       const res = await open.get(id).result();
       open.delete(id);
       done.add(id);
@@ -39,15 +50,25 @@ export function catcher(wants) {
       if (!t || !t.signed || !t.signed.bytes) return null;
       let json;
       try { json = JSON.parse(td.decode(bytesOf(t.signed.bytes))); } catch { return null; }
+      r.kind = t.signed.kind;
       if (t.signed.kind === "fcpm.index" && json.schema === "fcpm.index/v0") {
         index = json;
+        r.label = `the index · ${(json.answers || []).length}`;
         others.clear();
-        for (const row of json.answers || []) if (!wants(row.in_reply_to)) others.add(row.id);
+        for (const a of json.answers || []) {
+          const b = row(a.id);
+          b.label = a.label || b.label;
+          b.mine = !!wants(a.in_reply_to);
+          if (!b.mine) { others.add(a.id); b.passing = !b.done; }
+        }
         for (const k of [...open.keys()]) if (others.has(k)) open.delete(k);
         return { index: json };
       }
-      if (t.signed.kind === "fcpm.answer" && json.schema === "fcpm.answer/v0" && wants(json.in_reply_to))
-        return { answer: json };
+      if (t.signed.kind === "fcpm.answer" && json.schema === "fcpm.answer/v0") {
+        r.label = json.label || r.label;
+        r.mine = !!wants(json.in_reply_to);
+        if (r.mine) return { answer: json };
+      }
       return null;
     },
   };
