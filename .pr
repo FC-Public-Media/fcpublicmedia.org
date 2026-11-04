@@ -1,14 +1,8 @@
-# model-loop
+# follow-submodule-remotes
 
-The public fountain's first loop: every answer bottled, an index of them, a screen to show them, and the wizard.
+follow points each checked-out submodule's own `origin` at FCPM's origin, not only the superproject's config.
 
-- [x] machines/digitization/pour.mjs: an unsigned transfer as AC1 fountain frames (max(40, K×4), as the site pours)
-- [x] asks bottles each answer (asks/bottles/<nonce>.json: no signer, no question) and remakes the index bottle
-      (fcpm.index/v0: each nonce, label, bottle id; the last day, at most 40); `asks reindex`
-- [x] door /loop/ (loop.js): index, then answers, the index again every N; ?fps= ?index=; re-asks /loop/now each pass
-- [x] door /ask/ (ask.js): box, outbox (the code; or set it down), notebook kept on the phone, ticked answers quoted in;
-      /asks/answer/<nonce> as a LAN courtesy
-- [x] site/assets/js/sha256.mjs: digest where a plain-http page has no crypto.subtle, so its bottles are fountains
-- [x] tried whole on bay 1: an http-only page's 40-frame fountain → intake → answered → loop; a phone-style catch
-      from the loop's pixels (one catch per bottle id; the index names ours) rebuilt its answer in 12.7 s
-- [ ] the phone's camera catch from the loop, on the public site (needs a secure page); the init bottle from qr.local
+- [x] the Wix copy's own remote was this machine's old /srv/origin (from before origin.local held the origin): every
+      follow since failed "not our ref dbd1909", and the LAN's wix site stayed at d3829a0 (2026-10-17)
+- [x] fourteen troves' own remotes were GitHub: follow's "costs GitHub nothing" now holds for them too
+- [x] checked: all 24 checked-out submodules answer at fcpm-origin:/srv/origin/<owner>/<repo>
