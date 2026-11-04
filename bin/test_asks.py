@@ -182,6 +182,7 @@ for (let pass = 0; pass < 6 && !out.got; pass++)          // the loop goes round
       if (r && r.answer) { out.got = r.answer; break; }
     }
 out.index = c.index && c.index.answers.length;
+out.bottles = c.bottles.map((b) => ({ label: b.label, mine: b.mine, passing: b.passing, have: b.have, total: b.total, kind: b.kind }));
 process.stdout.write(JSON.stringify(out));
 """
         res = subprocess.run([NODE, "--input-type=module", "-e", script, str(REPO / "site" / "assets" / "js" / "catch.mjs")],
@@ -189,6 +190,11 @@ process.stdout.write(JSON.stringify(out));
         out = json.loads(res.stdout or "{}")
         self.assertEqual((out.get("got") or {}).get("in_reply_to"), "nonce-mine", res.stderr[-400:])
         self.assertIn("nonce-mine", out["got"]["answer"])
+        rows = out["bottles"]                       # every bottle going by: what it is, how far, whose
+        self.assertEqual(sum(1 for b in rows if b["mine"]), 1)
+        self.assertEqual([b["label"] for b in rows if b["mine"]], ["L"])       # its own, named once read
+        self.assertTrue(all(b["total"] for b in rows if b["kind"] != "fcpm.index" and not b["passing"]))
+        self.assertTrue(all(0 <= b["have"] <= (b["total"] or 0) for b in rows if b["total"]))
 
     def test_console_frames_fit_qr_locals_screen_and_the_inbox_reads_back(self):
         replies.examine(ask(("user", "what airs tonight?"), nonce="nonce-qrlo"), {})

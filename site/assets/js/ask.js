@@ -86,17 +86,36 @@ async function catchIt() {
     eye = await watch(el("eye"), async (text) => {
       const got = await c.feed(text);
       if (text.startsWith("AC1|")) seen++;
-      el("caught").textContent = c.index ? `${seen} frames · index of ${c.index.answers.length} · waiting for yours`
-                                         : `${seen} frames · looking for the index`;
+      el("caught").textContent = c.index ? `index of ${c.index.answers.length} · waiting for yours`
+                                         : "looking for the index";
+      paintCatching(c.bottles);
       if (got && got.answer) { stopCatch("Caught."); take(got.answer); }
     });
   } catch (error) {
     stopCatch("The camera didn't open: " + (error && error.message || error));
   }
 }
+// Every bottle going by, as it goes by: what it is (once known), how far it has got, and whose it is.
+function paintCatching(bottles) {
+  el("catching").replaceChildren(...bottles.map((b) => {
+    const li = document.createElement("li");
+    li.className = b.mine ? "mine" : b.passing ? "passing" : b.kind === "fcpm.index" ? "index" : "";
+    const what = Object.assign(document.createElement("span"), { className: "what",
+      textContent: b.label || (b.kind === "fcpm.index" ? "the index" : `…${b.id.slice(-6)}`) });
+    const how = Object.assign(document.createElement("span"), { className: "how",
+      textContent: b.passing ? "someone else's" : b.done ? (b.mine ? "yours" : "read")
+                 : b.total ? `${b.mine ? "yours · " : ""}${b.have} of ${b.total}` : "…" });
+    const bar = Object.assign(document.createElement("span"), { className: "bar" });
+    bar.style.setProperty("--p", b.total ? Math.min(1, b.have / b.total) : 0);
+    li.append(what, how, bar);
+    return li;
+  }));
+}
+
 function stopCatch(why) {
   if (eye) { eye.stop(); eye = null; }
   el("eye").hidden = true;
+  el("catching").replaceChildren();
   el("catch").textContent = "Catch it from the loop";
   el("caught").textContent = why || "";
 }

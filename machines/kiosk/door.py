@@ -2744,6 +2744,7 @@ def ask_page():
     <div class=code><canvas id=code role=img aria-label="Your question, as a code"></canvas><span id=read></span></div>
     <div class=bar><button id=drop type=button>Set it down here</button><span id=said></span></div>
     <div class=bar><button id=catch type=button hidden>Catch it from the loop</button><span id=caught></span></div>
+    <ol id=catching class=catching></ol>
     <video id=eye hidden muted playsinline></video>
   </section>
   <section class=notebook><h2>Kept on this phone</h2><p id=notebook-empty class=lede>Nothing yet.</p>
@@ -2764,6 +2765,12 @@ details summary { color:var(--soft); font-size:.9rem; cursor:pointer; }
 #count { font-variant-numeric:tabular-nums; font-size:.8rem; color:var(--dim); }
 #count.over { color:var(--signal); }
 #eye { width:100%; border-radius:.6rem; background:#000; }
+#catching { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
+#catching li { position:relative; display:flex; justify-content:space-between; gap:1rem; padding:.45rem .7rem; overflow:hidden; }
+#catching .bar { position:absolute; left:0; bottom:0; height:3px; width:calc(var(--p) * 100%); background:var(--signal); }
+#catching .how { font-variant-numeric:tabular-nums; }
+#catching li.mine { font-weight:700; } #catching li.passing { opacity:.55; }
+#catching li { background:var(--slate); }
 .asked { margin:0; font-size:1.05rem; }
 .notebook h2 { font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin:1rem 0 .4rem; }
 .notebook ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.8rem; }
