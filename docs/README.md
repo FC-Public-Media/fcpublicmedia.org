@@ -6,6 +6,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 
 | doc | |
 |---|---|
+| [`addresses.md`](addresses.md) | the front doors: the names in the building, the one number away, the site |
 | [`OPEN.md`](OPEN.md) | everything not built, not decided, or known wrong |
 | [`site.md`](site.md) | the site: layout, build, pages, data, tests, deploy, domain, redirects |
 | [`programming.md`](programming.md) | Cablecast, the schedule, feeds, shows, classes and class mode |

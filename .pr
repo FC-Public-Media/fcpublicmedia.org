@@ -1,8 +1,0 @@
-# board-tiles
-
-The board is its pages: every page and wizard the door serves, as tiles in panels; the switches stay push buttons.
-
-- [x] panels: Ask (ask, loop), each room (its door, host check-in), Channel 97 (out; by name also the day and the jukebox),
-      Screens (welcome, idle, depot, wallpapers), Sites (by name only: the site, the Wix copy, this machine's gear), This machine
-- [x] asked by its tailnet number, the tiles for names that only resolve in the building are left out
-- [x] fcpm's verbs moved to /verbs/, one link in the bottom bar with the revision
