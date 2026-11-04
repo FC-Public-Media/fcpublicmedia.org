@@ -49,7 +49,8 @@ the building reaches it through this machine: `model-relay` (crew line, `keep`) 
 address, port 9931, and nowhere else. Every connection is asked of Tailscale (`tailscale whois`); a device tagged
 `tag:operator` is joined to `10.209.1.20:9931`, any other is refused. Both are logged in
 `~/.local/state/fcpm/model-relay.log`. The tailnet's own policy may be wider; this is where the scope is kept.
-A client is set to `http://digitization.<tailnet>.ts.net:9931/v1`, model `qwen3.5-4b`, no key. When bay 1's model is
+The tailnet has no MagicDNS, so a client is set to this machine's tailnet address (`tailscale ip -4`;
+100.115.246.115 today): `http://100.115.246.115:9931/v1`, model `qwen3.5-4b`, no key. When bay 1's model is
 off, a passed connection finds nothing to join and closes, which is the model being off, not the relay failing.
 
 ## Keys
