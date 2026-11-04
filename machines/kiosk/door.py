@@ -2690,7 +2690,7 @@ def host_page(room):
 # and the screen that shows every answer back (loop.js). The answers and their bottles are made by
 # machines/digitization/asks under the door's state; these pages only read them. See digitization/PROFILE.md.
 SITE_JS = ROOT / "site" / "assets" / "js"
-ASK_FILES = ("ask.js", "bottle.js", "sha256.mjs", "qr-encode.mjs")
+ASK_FILES = ("ask.js", "bottle.js", "sha256.mjs", "qr-encode.mjs", "qr-decode.mjs", "catch.mjs", "camera.mjs")
 
 
 def asks_dir(name):
@@ -2715,13 +2715,15 @@ def ask_page():
     <p class=asked id=asked></p>
     <div class=code><canvas id=code role=img aria-label="Your question, as a code"></canvas><span id=read></span></div>
     <div class=bar><button id=drop type=button>Set it down here</button><span id=said></span></div>
+    <div class=bar><button id=catch type=button hidden>Catch it from the loop</button><span id=caught></span></div>
+    <video id=eye hidden muted playsinline></video>
   </section>
   <section class=notebook><h2>Kept on this phone</h2><p id=notebook-empty class=lede>Nothing yet.</p>
     <ol id=notebook></ol><button id=forget type=button class=quiet>Forget them all</button></section>
 </div>
 <script type=application/json id=ask-config>%s</script>
 <script type=module src="/ask/ask.js?v=%s"></script>""" % (
-        limit, json.dumps({"at": git("rev-parse", "--short", "HEAD") or "nogit", "limit": limit}),
+        limit, json.dumps({"at": git("rev-parse", "--short", "HEAD") or "nogit", "limit": limit, "lan": True}),
         e(git("rev-parse", "--short", "HEAD") or "0"))
     return shell("Ask the model", body, HOST_CSS + ASK_CSS)
 
@@ -2733,6 +2735,7 @@ details summary { color:var(--soft); font-size:.9rem; cursor:pointer; }
 .bar button.quiet, .notebook button.quiet { background:none; border:1px solid var(--rule); color:var(--soft); font-weight:500; }
 #count { font-variant-numeric:tabular-nums; font-size:.8rem; color:var(--dim); }
 #count.over { color:var(--signal); }
+#eye { width:100%; border-radius:.6rem; background:#000; }
 .asked { margin:0; font-size:1.05rem; }
 .notebook h2 { font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin:1rem 0 .4rem; }
 .notebook ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.8rem; }
@@ -3020,7 +3023,7 @@ class Door(BaseHTTPRequestHandler):
             if route == "/ask/":
                 return self.reply(200, ask_page())
             if route.startswith("/ask/") and tail in ASK_FILES and route.count("/") == 2:
-                return self.file(HERE / tail if tail == "ask.js" else SITE_JS / tail)
+                return self.file(SITE_JS / tail)
             if route.startswith("/ask/composer/") and tail in COMPOSER_FILES:
                 return self.file(inside(SITE_JS / "composer", tail))
             if route == "/loop/":
