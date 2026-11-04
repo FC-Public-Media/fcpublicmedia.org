@@ -19,6 +19,13 @@ git config -f .gitmodules --get-regexp '^submodule\..*\.url$' | while read -r ke
   path=$(printf '%s' "$url" | sed -n 's|^https://\([^@/]*@\)\{0,1\}github\.com/\([^/]*/[^/]*\)$|\2|p' | sed 's|\.git$||')
   [ -n "$path" ] && git config "$key" "$O/$path"
 done
+# And each checked-out submodule's own `origin`, which is what `submodule update` fetches through: one cloned
+# before the origin moved (the Wix copy, from this machine's old /srv/origin) or from GitHub (the troves)
+# would otherwise keep asking there, and a pin only the origin has could never be checked out.
+git config --get-regexp '^submodule\..*\.url$' | while read -r key url; do
+  p=$(git config -f .gitmodules --get "${key%.url}.path") || continue
+  [ -e "$p/.git" ] && git -C "$p" remote set-url origin "$url"
+done
 git fetch -q origin main && git merge -q --ff-only origin/main
 GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- troves
 # The Wix copy (the static job's `wix` site), from the origin like the rest.
