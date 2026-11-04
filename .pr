@@ -1,8 +1,0 @@
-# follow-submodule-remotes
-
-follow points each checked-out submodule's own `origin` at FCPM's origin, not only the superproject's config.
-
-- [x] the Wix copy's own remote was this machine's old /srv/origin (from before origin.local held the origin): every
-      follow since failed "not our ref dbd1909", and the LAN's wix site stayed at d3829a0 (2026-10-17)
-- [x] fourteen troves' own remotes were GitHub: follow's "costs GitHub nothing" now holds for them too
-- [x] checked: all 24 checked-out submodules answer at fcpm-origin:/srv/origin/<owner>/<repo>

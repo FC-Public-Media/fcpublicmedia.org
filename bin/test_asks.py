@@ -156,6 +156,40 @@ class Loop(unittest.TestCase):
         self.assertEqual(json.loads(read_frames(json.loads((bottles / "index.json").read_text())["frames"])["text"])
                          ["schema"], "fcpm.index/v0")
 
+    def test_a_phone_keeps_only_its_own_answer_from_a_mixed_lossy_loop(self):
+        for n in ("nonce-mine", "nonce-other1", "nonce-other2"):
+            replies.examine(ask(("user", "question %s?" % n), nonce=n), {})
+            asks.answer_one(send=Fake("The answer to %s, with some length to it so the bottle has blocks." % n, "L"))
+        bottles = replies.STATE / "asks" / "bottles"
+        loop = [json.loads((bottles / "index.json").read_text())["frames"]]
+        loop += [json.loads((bottles / ("%s.json" % n)).read_text())["frames"] for n in ("nonce-other1", "nonce-mine", "nonce-other2")]
+        import subprocess
+        script = """
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+globalThis.atob ??= (s) => Buffer.from(s, "base64").toString("binary");
+const { catcher } = await import(pathToFileURL(process.argv[process.argv.length - 1]).href);
+const passes = JSON.parse(readFileSync(0, "utf8"));
+let rnd = 7; const keep = () => ((rnd = (rnd * 1103515245 + 12345) % 2147483648) / 2147483648) > 0.3;
+const c = catcher((n) => n === "nonce-mine");
+let out = { got: null, frames: 0 };
+for (let pass = 0; pass < 6 && !out.got; pass++)          // the loop goes round; a phone joins mid-way, loses 30%
+  for (const bottle of (pass ? passes : passes.slice(2)))
+    for (const f of bottle) {
+      if (!keep()) continue;
+      out.frames++;
+      const r = await c.feed(f);
+      if (r && r.answer) { out.got = r.answer; break; }
+    }
+out.index = c.index && c.index.answers.length;
+process.stdout.write(JSON.stringify(out));
+"""
+        res = subprocess.run([NODE, "--input-type=module", "-e", script, str(REPO / "site" / "assets" / "js" / "catch.mjs")],
+                             input=json.dumps(loop), capture_output=True, text=True, timeout=120)
+        out = json.loads(res.stdout or "{}")
+        self.assertEqual((out.get("got") or {}).get("in_reply_to"), "nonce-mine", res.stderr[-400:])
+        self.assertIn("nonce-mine", out["got"]["answer"])
+
     def test_reindex_bottles_an_answer_that_lacks_one(self):
         replies.examine(ask(("user", "late?"), nonce="nonce-cccc"), {})
         asks.answer_one(send=Fake("Yes.", "Lateness"))

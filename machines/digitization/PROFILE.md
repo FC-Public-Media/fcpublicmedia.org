@@ -71,8 +71,10 @@ its bottle, so a phone that has read the index keeps only its own frames and let
 as it changes) on any screen, over plain http: it only draws. `/ask/` is the wizard: the box, the outbox (the
 code to show the camera) and the notebook kept on the phone, whose ticked answers are quoted into the next
 question. On plain http a phone has no WebCrypto, so the page brings SHA-256 (`site/assets/js/sha256.mjs`) and
-its bottles are real fountains, unsigned; signing, and catching the loop with the phone's camera, need a
-secure page (the public site).
+its bottles are real fountains, unsigned. The same page is on the public site (`/ask/`, `site/you/wizards/ask.md`,
+offline with the kit), a secure page: there the bottle is signed, and "Catch it from the loop" reads the loop
+with the phone's camera (`catch.mjs`, `camera.mjs`) until its own answer has come by. One script, `site/assets/js/ask.js`,
+serves both; the LAN's copy also offers "Set it down here" and asks the door for the answer.
 
 ## Keys
 
