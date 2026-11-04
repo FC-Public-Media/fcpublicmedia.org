@@ -14,6 +14,8 @@ Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDAT
     inbox/      set down, not yet read         applied/     read, good, acted on
     held/       read, not acted on             state/<room>.json   what a room's page reads
     visits.ndjson   one line per check-in shown to us, timed when it was read
+    asks/queue/     a question for the model (wizard:model+ask), waiting its turn; asks/answers/<nonce>.json
+                    its answer, written by machines/digitization/asks
 A form's reply (wizard:site+answers) goes where the tanks' replies go: the drain's archive,
 ~/fcpm/answers/<tank>/ ($FCPM_ANSWERS), one file per reply, in the site-worker's record shape.
     log.ndjson  one line per arrival and per verdict        nonces.json   replies already applied
@@ -342,8 +344,44 @@ def answers_reply(reply, meta):
     return None, "%s %s: into the tank's archive" % (tank, reference[:8])
 
 
+ASK_SHAPE = ROOT / "machines" / "production" / "shapes" / "ask.yml"
+ASK_TURNS = 24
+
+
+def ask_reply(reply, meta):
+    """wizard:model+ask: a question for the model, with whatever context the asker quoted in, as OpenAI-enough
+    messages (a role and its text; no model, no bay, no session). It is queued here, one file a question, oldest
+    first; machines/digitization/asks answers them one at a time and keeps each answer under the question's
+    nonce, which is how the asker's inbox finds it in the public loop."""
+    msgs = reply.get("messages")
+    if not isinstance(msgs, list) or not 1 <= len(msgs) <= ASK_TURNS:
+        return "messages: a list of 1 to %d" % ASK_TURNS
+    for m in msgs:
+        if not (isinstance(m, dict) and m.get("role") in ("system", "user", "assistant")
+                and isinstance(m.get("content"), str)):
+            return "messages: each a role (system, user or assistant) and its text"
+    if msgs[-1]["role"] != "user" or not msgs[-1]["content"].strip():
+        return "messages: the last is the question (role user)"
+    nonce = str(reply.get("nonce") or "")
+    if not (8 <= len(nonce) <= 64 and all(ch.isalnum() or ch == "-" for ch in nonce)):
+        return "nonce: 8 to 64 letters, digits or dashes (the answer is filed under it)"
+    size = sum(len(m["content"]) for m in msgs)
+    limit = int((load_yaml(ASK_SHAPE) or {}).get("limit") or 1500)
+    if size > limit:
+        return "messages: %d characters; model+ask takes %d" % (size, limit)
+    queued = now().isoformat(timespec="seconds")
+    entry = {"nonce": nonce, "issued": reply.get("issued"), "queued": queued, "shape": "model+ask",
+             "messages": [{"role": m["role"], "content": m["content"]} for m in msgs],
+             "by": meta.get("by"), "trust": meta.get("trust"), "wizard_at": reply.get("at")}
+    folder = STATE / "asks" / "queue"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ("%s--%s.json" % (queued.replace(":", "-"), nonce))).write_text(
+        json.dumps(entry, ensure_ascii=False), encoding="utf-8")
+    return None, "a question queued for the model (%d characters)" % size
+
+
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
-           "wizard:site+answers": answers_reply}
+           "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply}
 
 
 def nonces():
