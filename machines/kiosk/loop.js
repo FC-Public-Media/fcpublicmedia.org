@@ -6,6 +6,9 @@
 // ?fps=N    frames a second (8).  ?index=N  the index again after every N answers (3).
 // ?up=N     codes up at once: 1, 2 (side by side) or 4 (two by two). Each tile takes the next bottle of the pass
 //           as it finishes its own, so several bottles are on the air together; a phone reads them all at once.
+// ?tiles=N  the press's collage (anecdote.channel press/broadcast.mjs): N droplets of the SAME bottle on screen at
+//           once, redundancy in space, so one good look catches N pieces; each bottle's share goes by N times
+//           faster. Smaller codes, so the camera needs to be closer or better. With ?up it applies to each tile.
 // Each bottle gets K and a bit fresh droplets a pass (any K-and-a-bit rebuild it: the fountain's promise), then
 // its tile moves on; the next pass takes the next droplets of its stock, so a phone that caught half the first
 // time gets new ones, not the same again. The loop flows; nothing waits on a slow reader.
@@ -17,15 +20,18 @@ const QUIET = 4;
 const P = new URLSearchParams(location.search);
 const knob = (k, d, most = 30) => Math.max(1, Math.min(most, Number(P.get(k)) || d));
 const fps = knob("fps", 8), every = knob("index", 3), up = [1, 2, 4].includes(knob("up", 1, 4)) ? knob("up", 1, 4) : 1;
+const tilesEach = knob("tiles", 1, 16), side = Math.ceil(Math.sqrt(tilesEach));
 const said = document.getElementById("said"), what = document.getElementById("what"), box = document.getElementById("tiles");
 box.style.setProperty("--cols", up === 1 ? 1 : 2);
 box.style.setProperty("--rows", up === 4 ? 2 : 1);
 box.replaceChildren(...Array.from({ length: up }, () => {
   const d = document.createElement("div");
-  d.append(Object.assign(document.createElement("canvas"), { className: "code" }));
+  d.className = "up";
+  d.style.cssText = `display:grid; gap:1.2vmin; grid-template-columns:repeat(${side}, auto); align-content:center; justify-content:center;`;
+  for (let i = 0; i < tilesEach; i++) d.append(Object.assign(document.createElement("canvas"), { className: "code" }));
   return d;
 }));
-const tiles = [...box.querySelectorAll("canvas")].map((canvas) => ({ canvas, step: null, at: 0 }));
+const tiles = [...box.querySelectorAll("div.up")].map((d) => ({ canvases: [...d.querySelectorAll("canvas")], step: null, at: 0 }));
 
 const offset = new Map();                 // bottle id -> where in its stock the next pass starts
 const share = (b) => Math.min(b.frames.length, Math.ceil((b.K || b.frames.length / 4) * 1.15) + 2);
@@ -38,7 +44,8 @@ function slice(b) {                       // this pass's droplets for a bottle: 
 function draw(canvas, text) {
   const qr = encodeQR(text, { ecLevel: "M" });
   const area = canvas.parentElement.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  const n = qr.size + 2 * QUIET, scale = Math.max(1, Math.floor(Math.min(area.width, area.height) * dpr / n));
+  const room = Math.min(area.width, area.height) / side - 8;    // a collage's tiles share their part of the screen
+  const n = qr.size + 2 * QUIET, scale = Math.max(1, Math.floor(room * dpr / n));
   canvas.width = canvas.height = n * scale;
   canvas.style.width = canvas.style.height = `${(n * scale) / dpr}px`;
   const g = canvas.getContext("2d");
@@ -102,7 +109,8 @@ function caption() {
   const s = on[0];
   what.textContent = on.length > 1 ? on.map((x) => (x.index ? "Index" : x.b.label || "An answer")).join(" · ")
     : s.index ? `Index · ${latest.bottles.length} answer${latest.bottles.length === 1 ? "" : "s"}` : (s.b.label || "An answer");
-  said.textContent = (s.takeover ? "asked for again · " : "") + `${fps}/s` + (up > 1 ? ` · ${up} up` : "");
+  said.textContent = (s.takeover ? "asked for again · " : "") + `${fps}/s` + (up > 1 ? ` · ${up} up` : "")
+    + (tilesEach > 1 ? ` · ${tilesEach} pieces at once` : "");
 }
 
 async function tick() {
@@ -114,9 +122,10 @@ async function tick() {
       t.step = src.shift() || null; t.at = 0; changed = true;
       if (takeover && !takeover.length) takeover = null;
     }
-    if (!t.step) { blank(t.canvas); continue; }
-    draw(t.canvas, t.step.shown[t.at]);
-    if (++t.at >= t.step.shown.length) { t.step = null; changed = true; }
+    if (!t.step) { for (const c of t.canvases) blank(c); continue; }
+    t.canvases.forEach((c, i) => (t.at + i < t.step.shown.length ? draw(c, t.step.shown[t.at + i]) : blank(c)));
+    t.at += t.canvases.length;
+    if (t.at >= t.step.shown.length) { t.step = null; changed = true; }
   }
   if (changed) caption();
   setTimeout(tick, 1000 / fps);
