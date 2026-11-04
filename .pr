@@ -1,11 +1,6 @@
-# model-guestbook
+# relay-address
 
-The first context the model keeps: the guestbook, one shared context with plain awareness.
+After #379: the tailnet has no MagicDNS, so PROFILE.md gives the relay's tailnet address, not a ts.net name.
 
-- [x] shapes/guestbook.yml: context shared, a month's view, a role; takes a name and a hello
-- [x] every turn kept in full with its address (production/guestbook#n) and what reproduces it (shape, input, effort, model hash, seed)
-- [x] the model reads a view: recent turns plus a roster that says outright who is new and what to call them (Jamie 3)
-- [x] fcpm model contexts; ask -Name -From; tried in a scratch folder (FCPM_CONTEXTS), the real guestbook untouched
-- [ ] digitization: the member hello arrives as a bottle and becomes one ask (-Name, -From = the signer's pseudonym)
-- [ ] the directory on qr.local lists shapes and public contexts by address
-- [ ] thread contexts (one per conversation), and citing a turn by its address
+- [x] machines/digitization/PROFILE.md: `http://100.115.246.115:9931/v1` (`tailscale ip -4`)
+- [x] the crew's model-relay line holds the port (model-relay-try stopped 2026-11-03 17:43)
