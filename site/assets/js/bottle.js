@@ -87,18 +87,19 @@ function draw(canvas, qr) {
 // Pour `text` onto `canvas` until stop() is called. Resolves to { stop, signed, read }: `read` is one
 // line about what is showing. canvas.dataset.frames holds every frame, for the page's tests.
 // The transfer envelope with no signature: what packTransfer makes, before it signs.
-async function unsignedTransfer(c, bytes) {
-  return { schema: c.TRANSFER, kind: 'fcpm.reply', size: bytes.length, hash: await c.defaultHash(bytes),
+async function unsignedTransfer(c, bytes, kind = 'fcpm.reply') {
+  return { schema: c.TRANSFER, kind, size: bytes.length, hash: await c.defaultHash(bytes),
            bytes: btoa(String.fromCharCode(...bytes)) };
 }
 
-export async function pour(canvas, text, { sign = true } = {}) {
+// `kind` is what the bottle says it carries: a wizard's reply by default; an answer when a phone carries one on.
+export async function pour(canvas, text, { sign = true, kind = 'fcpm.reply' } = {}) {
   const c = await loadComposer();
   const me = sign ? await identity(c) : null;
   const bytes = new TextEncoder().encode(text);
   let frames, read, timer = null, at = 0;
   if (c && crypto.subtle) {
-    const bottle = me ? await c.packTransfer('fcpm.reply', bytes, me) : await unsignedTransfer(c, bytes);
+    const bottle = me ? await c.packTransfer(kind, bytes, me) : await unsignedTransfer(c, bytes, kind);
     const ft = await c.fountainTransfer(bottle, { blockSize: DROPLET });
     const strings = ft.frames(Math.max(40, ft.K * 4));
     frames = strings.map((s) => encodeQR(s, { ecLevel: 'M' }));

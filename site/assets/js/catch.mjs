@@ -1,12 +1,12 @@
-// catch.mjs — a phone's catch from the public loop (the door's /loop/): frames in, its own answers out.
-// The loop shows many bottles in turn, and every AC1 frame names its bottle by id. Until the index has been
-// read, each id gets a catch of its own; whichever completes is read by its kind. The index says which bottle
-// answers which question (by the nonce the phone already holds), so from then on the frames of bottles listed
-// for someone else are let go by without being kept. An id the index doesn't list (the next index, or an
-// answer newer than it) still gets a catch. Others' answers are public; this only saves the phone the work.
+// catch.mjs — a phone's catch from the public loop (the door's /loop/, qr.local's broadcast): frames in, every
+// bottle out. The loop shows many bottles in turn, and every AC1 frame names its bottle by id; each id gets a
+// catch of its own, and whichever completes is read by its kind. Everything in the stream is caught, not just
+// this phone's own: an answer is public, and a phone that was at the cradle carries the others to the people
+// they answer, who weren't there to read them. The index says which bottle answers which question; `wants`
+// says which questions are this phone's, so its own are marked, never the only ones kept.
 import { carrierSession } from "./composer/carrier.mjs";
 
-const OPEN_MOST = 16;      // catches kept at once; the oldest is let go when a new id arrives
+const OPEN_MOST = 24;      // catches kept at once; the oldest is let go when a new id arrives
 const td = new TextDecoder();
 
 function bytesOf(b64) {
@@ -15,16 +15,15 @@ function bytesOf(b64) {
   return u;
 }
 
-// wants(nonce) -> true for the questions this phone is waiting on. feed(text) resolves to null, or
-// { index } when an index completes, or { answer } when a wanted answer does (each answer once).
+// wants(nonce) -> true for this phone's own questions. feed(text) resolves to null, or { index } when an
+// index completes, or { answer, mine } when any answer does (each once).
 // `bottles` is every bottle seen in the stream, in the order first seen: {id, have, total, done, kind, label,
-// mine, passing}. `have` of `total` is blocks recovered of the blocks it needs (the composer's own count);
-// a bottle the index lists for someone else is `passing`: named, but let go by.
+// for, mine}. `have` of `total` is blocks recovered of the blocks it needs (the composer's own count).
 export function catcher(wants) {
-  const open = new Map(), others = new Set(), done = new Set(), seen = new Map();
+  const open = new Map(), done = new Set(), seen = new Map();
   let index = null;
   const row = (id) => { if (!seen.has(id)) seen.set(id, { id, have: 0, total: null, done: false, kind: null,
-                                                           label: null, mine: false, passing: false });
+                                                           label: null, for: null, mine: false });
                         return seen.get(id); };
   return {
     get index() { return index; },
@@ -33,7 +32,7 @@ export function catcher(wants) {
       if (typeof text !== "string" || !text.startsWith("AC1|")) return null;
       const id = text.split("|")[3];
       const r = row(id);
-      if (others.has(id) || done.has(id)) return null;
+      if (done.has(id)) return null;
       if (!open.has(id)) {
         if (open.size >= OPEN_MOST) open.delete(open.keys().next().value);
         open.set(id, carrierSession());
@@ -54,20 +53,19 @@ export function catcher(wants) {
       if (t.signed.kind === "fcpm.index" && json.schema === "fcpm.index/v0") {
         index = json;
         r.label = `the index · ${(json.answers || []).length}`;
-        others.clear();
         for (const a of json.answers || []) {
           const b = row(a.id);
           b.label = a.label || b.label;
+          b.for = a.in_reply_to;
           b.mine = !!wants(a.in_reply_to);
-          if (!b.mine) { others.add(a.id); b.passing = !b.done; }
         }
-        for (const k of [...open.keys()]) if (others.has(k)) open.delete(k);
         return { index: json };
       }
       if (t.signed.kind === "fcpm.answer" && json.schema === "fcpm.answer/v0") {
         r.label = json.label || r.label;
+        r.for = json.in_reply_to;
         r.mine = !!wants(json.in_reply_to);
-        if (r.mine) return { answer: json };
+        return { answer: json, mine: r.mine };
       }
       return null;
     },

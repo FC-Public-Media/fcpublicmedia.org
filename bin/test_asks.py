@@ -156,7 +156,7 @@ class Loop(unittest.TestCase):
         self.assertEqual(json.loads(read_frames(json.loads((bottles / "index.json").read_text())["frames"])["text"])
                          ["schema"], "fcpm.index/v0")
 
-    def test_a_phone_keeps_only_its_own_answer_from_a_mixed_lossy_loop(self):
+    def test_a_phone_catches_its_own_and_carries_everyone_elses_from_a_mixed_lossy_loop(self):
         for n in ("nonce-mine", "nonce-other1", "nonce-other2"):
             replies.examine(ask(("user", "question %s?" % n), nonce=n), {})
             asks.answer_one(send=Fake("The answer to %s, with some length to it so the bottle has blocks." % n, "L"))
@@ -172,17 +172,18 @@ const { catcher } = await import(pathToFileURL(process.argv[process.argv.length 
 const passes = JSON.parse(readFileSync(0, "utf8"));
 let rnd = 7; const keep = () => ((rnd = (rnd * 1103515245 + 12345) % 2147483648) / 2147483648) > 0.3;
 const c = catcher((n) => n === "nonce-mine");
-let out = { got: null, frames: 0 };
-for (let pass = 0; pass < 6 && !out.got; pass++)          // the loop goes round; a phone joins mid-way, loses 30%
-  for (const bottle of (pass ? passes : passes.slice(2)))
+let out = { got: null, carried: [], frames: 0 };
+for (let pass = 0; pass < 8 && !(out.got && out.carried.length === 2); pass++)   // the loop goes round; a phone
+  for (const bottle of (pass ? passes : passes.slice(2)))                            // joins mid-way, loses 30%
     for (const f of bottle) {
       if (!keep()) continue;
       out.frames++;
       const r = await c.feed(f);
-      if (r && r.answer) { out.got = r.answer; break; }
+      if (r && r.answer && r.mine) out.got = r.answer;
+      if (r && r.answer && !r.mine) out.carried.push(r.answer.in_reply_to);
     }
 out.index = c.index && c.index.answers.length;
-out.bottles = c.bottles.map((b) => ({ label: b.label, mine: b.mine, passing: b.passing, have: b.have, total: b.total, kind: b.kind }));
+out.bottles = c.bottles.map((b) => ({ label: b.label, mine: b.mine, for: b.for, have: b.have, total: b.total, kind: b.kind }));
 process.stdout.write(JSON.stringify(out));
 """
         res = subprocess.run([NODE, "--input-type=module", "-e", script, str(REPO / "site" / "assets" / "js" / "catch.mjs")],
@@ -193,7 +194,8 @@ process.stdout.write(JSON.stringify(out));
         rows = out["bottles"]                       # every bottle going by: what it is, how far, whose
         self.assertEqual(sum(1 for b in rows if b["mine"]), 1)
         self.assertEqual([b["label"] for b in rows if b["mine"]], ["L"])       # its own, named once read
-        self.assertTrue(all(b["total"] for b in rows if b["kind"] != "fcpm.index" and not b["passing"]))
+        self.assertEqual(sorted(out["carried"]), ["nonce-other1", "nonce-other2"])   # carried for the others
+        self.assertTrue(all(b["total"] for b in rows))
         self.assertTrue(all(0 <= b["have"] <= (b["total"] or 0) for b in rows if b["total"]))
 
     def test_console_frames_fit_qr_locals_screen_and_the_inbox_reads_back(self):

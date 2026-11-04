@@ -2743,10 +2743,16 @@ def ask_page():
     <p class=asked id=asked></p>
     <div class=code><canvas id=code role=img aria-label="Your question, as a code"></canvas><span id=read></span></div>
     <div class=bar><button id=drop type=button>Set it down here</button><span id=said></span></div>
-    <div class=bar><button id=catch type=button hidden>Catch it from the loop</button><span id=caught></span></div>
+  </section>
+  <section id=loop-catch hidden><h2>From the loop</h2>
+    <div class=bar><button id=catch type=button>Catch from the loop</button><span id=caught></span></div>
     <ol id=catching class=catching></ol>
     <video id=eye hidden muted playsinline></video>
   </section>
+  <section class=notebook><h2>Carried for others</h2><p id=carried-empty class=lede>Nothing yet. Everyone's answers in the loop are caught,
+    so you can carry them to the people they answer.</p><ol id=carried></ol>
+    <div class=code id=relay hidden><canvas id=relay-code role=img aria-label="A carried answer, as a code"></canvas><span id=relay-read></span>
+      <div class=bar><button id=relay-stop type=button class=quiet>Done showing it</button></div></div></section>
   <section class=notebook><h2>Kept on this phone</h2><p id=notebook-empty class=lede>Nothing yet.</p>
     <ol id=notebook></ol><button id=forget type=button class=quiet>Forget them all</button></section>
 </div>
@@ -2791,10 +2797,10 @@ def loop_now():
     for row in idx.get("index", {}).get("answers", []):
         try:
             b = json.loads((asks_dir("bottles") / ("%s.json" % row["in_reply_to"])).read_text(encoding="utf-8"))
-            bottles.append({k: b.get(k) for k in ("in_reply_to", "label", "id", "frames", "answered")})
+            bottles.append({k: b.get(k) for k in ("in_reply_to", "label", "id", "K", "frames", "answered")})
         except (OSError, ValueError, KeyError):
             continue
-    return {"index": {"id": idx.get("id"), "frames": idx.get("frames"), "at": idx.get("index", {}).get("at"),
+    return {"index": {"id": idx.get("id"), "K": idx.get("K"), "frames": idx.get("frames"), "at": idx.get("index", {}).get("at"),
                       "answers": len(bottles)}, "bottles": bottles}
 
 
