@@ -1,10 +1,11 @@
-# model-relay
+# model-guestbook
 
-Bay 1's model on digitization's tailnet address, for tag:operator devices only.
+The first context the model keeps: the guestbook, one shared context with plain awareness.
 
-- [x] machines/digitization/model-relay: socat on the tailnet address only; each connection asked of `tailscale whois`;
-      tag:operator joined to 10.209.1.20:9931, anything else refused; both logged
-- [x] crew line `model-relay keep`, digitization.yml, PROFILE.md (The model over the tailnet)
-- [x] tried live from the worktree (user unit model-relay-try): this box refused, the operator iPhone's identity passed
-- [ ] after merge: stop model-relay-try so the crew's line can take the port
-- [ ] Autumn's iPhone client set to http://digitization.opaleye-beaufort.ts.net:9931/v1, model qwen3.5-4b
+- [x] shapes/guestbook.yml: context shared, a month's view, a role; takes a name and a hello
+- [x] every turn kept in full with its address (production/guestbook#n) and what reproduces it (shape, input, effort, model hash, seed)
+- [x] the model reads a view: recent turns plus a roster that says outright who is new and what to call them (Jamie 3)
+- [x] fcpm model contexts; ask -Name -From; tried in a scratch folder (FCPM_CONTEXTS), the real guestbook untouched
+- [ ] digitization: the member hello arrives as a bottle and becomes one ask (-Name, -From = the signer's pseudonym)
+- [ ] the directory on qr.local lists shapes and public contexts by address
+- [ ] thread contexts (one per conversation), and citing a turn by its address
