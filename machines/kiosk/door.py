@@ -2758,7 +2758,8 @@ def ask_page():
 </div>
 <script type=application/json id=ask-config>%s</script>
 <script type=module src="/ask/ask.js?v=%s"></script>""" % (
-        limit, json.dumps({"at": git("rev-parse", "--short", "HEAD") or "nogit", "limit": limit, "lan": True}),
+        limit, json.dumps({"at": git("rev-parse", "--short", "HEAD") or "nogit", "limit": limit, "lan": True,
+                    "urgent": replies.URGENT}),
         e(git("rev-parse", "--short", "HEAD") or "0"))
     return shell("Ask the model", body, HOST_CSS + ASK_CSS)
 
@@ -2771,6 +2772,9 @@ details summary { color:var(--soft); font-size:.9rem; cursor:pointer; }
 #count { font-variant-numeric:tabular-nums; font-size:.8rem; color:var(--dim); }
 #count.over { color:var(--signal); }
 #eye { width:100%; border-radius:.6rem; background:#000; }
+.notebook .acts { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-top:.45rem; }
+.notebook .acts button { font:inherit; font-size:.85rem; padding:.35rem .8rem; border-radius:99px; cursor:pointer; }
+.notebook li.showing { border-top-color:var(--signal); }
 #catching { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
 #catching li { position:relative; display:flex; justify-content:space-between; gap:1rem; padding:.45rem .7rem; overflow:hidden; }
 #catching .bar { position:absolute; left:0; bottom:0; height:3px; width:calc(var(--p) * 100%); background:var(--signal); }
@@ -2800,14 +2804,24 @@ def loop_now():
             bottles.append({k: b.get(k) for k in ("in_reply_to", "label", "id", "K", "frames", "answered")})
         except (OSError, ValueError, KeyError):
             continue
-    return {"index": {"id": idx.get("id"), "K": idx.get("K"), "frames": idx.get("frames"), "at": idx.get("index", {}).get("at"),
+    return {"now": idx.get("index", {}).get("now"),
+            "index": {"id": idx.get("id"), "K": idx.get("K"), "frames": idx.get("frames"), "at": idx.get("index", {}).get("at"),
                       "answers": len(bottles)}, "bottles": bottles}
 
 
+def loop_head():
+    """Just which index is up and the latest takeover: what the loop's screen asks every few seconds."""
+    try:
+        idx = json.loads((asks_dir("bottles") / "index.json").read_text(encoding="utf-8"))
+        return {"id": idx.get("id"), "now": idx.get("index", {}).get("now")}
+    except (OSError, ValueError):
+        return {"id": None, "now": None}
+
+
 def loop_page():
-    body = """<main class=loop><div class=frame><canvas id=code role=img aria-label="The answers, as codes"></canvas></div>
+    body = """<main class=loop><div class=frame id=tiles><canvas class=code role=img aria-label="The answers, as codes"></canvas></div>
 <p class=what id=what>Waiting for the first pass.</p><p class=said id=said></p>
-<p class=how>Every answer today, each under the number of the question it answers. Ask at <b>/ask/</b>.</p></main>
+<p class=how>Every answer of the last ten minutes, each under the number of the question it answers. Ask at <b>/ask/</b>.</p></main>
 <script type=module src="/loop/loop.js?v=%s"></script>""" % e(git("rev-parse", "--short", "HEAD") or "0")
     return shell("The loop", body, LOOP_CSS)
 
@@ -2815,7 +2829,9 @@ def loop_page():
 LOOP_CSS = """
 body { margin:0; height:100vh; overflow:hidden; }
 .loop { height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5vmin; }
-.frame { width:min(86vmin, 86vw); height:min(76vh, 86vw); display:flex; align-items:center; justify-content:center; }
+.frame { width:min(96vw, 150vh); height:76vh; display:grid; gap:3vmin; align-items:center; justify-items:center;
+  grid-template-columns:repeat(var(--cols, 1), 1fr); grid-template-rows:repeat(var(--rows, 1), 1fr); }
+.frame > div { width:100%; height:100%; display:flex; align-items:center; justify-content:center; min-height:0; }
 .frame canvas { background:#fff; image-rendering:pixelated; image-rendering:crisp-edges; }
 .what { margin:0; font-size:4vmin; font-weight:750; }
 .said { margin:0; font-size:2vmin; color:var(--dim); font-variant-numeric:tabular-nums; }
@@ -3075,6 +3091,8 @@ class Door(BaseHTTPRequestHandler):
                 return self.file(HERE / "loop.js")
             if route == "/loop/now":
                 return self.reply(200, json.dumps(loop_now()), TYPES[".json"])
+            if route == "/loop/head":
+                return self.reply(200, json.dumps(loop_head()), TYPES[".json"])
             m = re.fullmatch(r"/asks/answer/([A-Za-z0-9_-]{8,64})", route)
             if m:
                 path = asks_dir("answers") / ("%s.json" % m.group(1))

@@ -14,8 +14,10 @@ answer is kept as asks/answers/<nonce>.json, named by the question's nonce: the 
 nonce, and finds its answer by it in the public loop. The question moves to asks/done/.
 
 Each answer is then bottled for the public loop (pour.mjs: an unsigned transfer as AC1 fountain frames,
-asks/bottles/<nonce>.json), and the index is made again (asks/bottles/index.json): the last day's answers,
-each nonce with its label and its bottle's id. A phone reads the index, then keeps only the frames whose id
+asks/bottles/<nonce>.json), and the index is made again (asks/bottles/index.json): what is on the air, each
+nonce with its label and its bottle's id. An answer rides the loop for replies.URGENT seconds (ten minutes),
+then falls off it and stays on hand; wizard:loop+recall brings one back, at once (takeover) or into the
+running loop (inject). A phone reads the index, then keeps only the frames whose id
 it wants. The door's /loop/ draws the index and the bottles in turn; it bottles nothing itself.
 
 When the model is off (bay 1 asleep, `fcpm model off`), the question stays queued and is asked again in a
@@ -43,7 +45,7 @@ DROPLET = 48                      # bytes a frame, as the site pours
 CONSOLE = {"blockSize": 20, "overhead": 6, "qr": "L"}     # qr.local's text screen: a version-6 code (41 modules);
                                   # a deep stock, so each pass of the loop can show fresh droplets (K and a bit)
 STATE_FILE = "state.json"         # who answers, whether it's up, what it's on: what qr.local's inbox bar says
-LOOP_DAYS, LOOP_MOST = 1, 40      # what the index holds: the last day's answers, at most this many
+LOOP_MOST = 40                    # the most answers the loop carries at once
 PUBLIC = ("schema", "in_reply_to", "shape", "label", "answer", "effort", "finish", "model", "model_sha256",
           "seed", "answered")     # what an answer's bottle carries: not who signed, not the question
 MODEL_YML = ROOT / "machines" / "production" / "model.yml"
@@ -216,29 +218,58 @@ def bottle(nonce):
     return True
 
 
-def reindex():
-    """The index bottle: the last day's answers (newest first, at most LOOP_MOST), each by nonce, label and
-    bottle id. Any answer still without a bottle is bottled first. Returns the index, or None without Node."""
-    answers = sorted(folder("answers").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True) \
-        if folder("answers").is_dir() else []
-    since = replies.now() - datetime.timedelta(days=LOOP_DAYS)
+def on_air(at=None):
+    """What the loop carries now: answers given within replies.URGENT seconds, and any recalled within
+    replies.RECALLED_FOR, newest first, at most LOOP_MOST. Returns (nonces, now): `now` is the latest takeover,
+    {"at", "nonces"}, which the screens show at once before going back to the loop."""
+    at = at or replies.now()
+    def age(iso):
+        try:
+            return (at - datetime.datetime.fromisoformat(iso)).total_seconds()
+        except (TypeError, ValueError):
+            return float("inf")
+    try:
+        recalled = json.loads((replies.STATE / "asks" / "recall.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        recalled = {}
+    recalled = {n: r for n, r in recalled.items() if age(r.get("at")) < replies.RECALLED_FOR}
     rows = []
-    for p in answers:
-        if len(rows) >= LOOP_MOST:
-            break
+    for p in (folder("answers").glob("*.json") if folder("answers").is_dir() else []):
         try:
             a = json.loads(p.read_text(encoding="utf-8"))
-            if datetime.datetime.fromisoformat(a["answered"]) < since:
-                break
-            b = folder("bottles") / p.name
+        except (OSError, ValueError):
+            continue
+        n = a.get("in_reply_to")
+        if n in recalled or age(a.get("answered")) < replies.URGENT:
+            rows.append((recalled.get(n, {}).get("at") or a.get("answered") or "", n))
+    nonces = [n for _, n in sorted(rows, reverse=True)][:LOOP_MOST]
+    taken = [(r["at"], n) for n, r in recalled.items() if r.get("mode") == "takeover"]
+    now = None
+    if taken:
+        latest = max(t for t, _ in taken)
+        now = {"at": latest, "nonces": [n for t, n in taken if t == latest]}
+    return nonces, now
+
+
+def reindex():
+    """The index bottle: what is on the air (on_air), each by nonce, label and bottle id, and the takeover if any.
+    Any answer still without a bottle is bottled first. Returns the index, or None without Node."""
+    nonces, now = on_air()
+    rows = []
+    for n in nonces:
+        try:
+            a = json.loads((folder("answers") / ("%s.json" % n)).read_text(encoding="utf-8"))
+            b = folder("bottles") / ("%s.json" % n)
             if (not b.is_file() or "K" not in json.loads(b.read_text(encoding="utf-8")).get("console", {})) \
-                    and not bottle(a["in_reply_to"]):
+                    and not bottle(n):
                 continue
-            rows.append({"in_reply_to": a["in_reply_to"], "label": a.get("label"),
+            rows.append({"in_reply_to": n, "label": a.get("label"),
                          "id": json.loads(b.read_text(encoding="utf-8"))["id"], "answered": a["answered"]})
         except (OSError, ValueError, KeyError):
             continue
     index = {"schema": "fcpm.index/v0", "at": replies.now().isoformat(timespec="seconds"), "answers": rows}
+    if now:
+        index["now"] = now
     got = pour_both("fcpm.index", json.dumps(index, ensure_ascii=False, separators=(",", ":")))
     if not got:
         return None
@@ -246,7 +277,6 @@ def reindex():
     folder("bottles").mkdir(parents=True, exist_ok=True)
     (folder("bottles") / "index.json").write_text(json.dumps(got), encoding="utf-8")
     return index
-
 
 def status():
     waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
@@ -280,8 +310,11 @@ def main(argv):
         print(__doc__, file=sys.stderr)
         return 2
     reindex()
-    checked = 0.0
+    checked, aired = 0.0, on_air()
     while True:
+        if on_air() != aired:                    # an answer fell off, or one was recalled: the loop follows
+            reindex()
+            aired = on_air()
         try:
             n = answer_one(on=lambda nonce: say(up=True, working=nonce, trouble=None))
         except (urllib.error.URLError, OSError) as e:
@@ -298,6 +331,7 @@ def main(argv):
         if n:
             print("asks: answered %s" % n, flush=True)
             say(up=True, working=None, trouble=None)
+            aired = on_air()
         else:
             if time.time() - checked >= ASLEEP:      # idle: is the model there? asked once a minute at most
                 say(up=alive(), working=None, trouble=None)

@@ -15,7 +15,8 @@ Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDAT
     held/       read, not acted on             state/<room>.json   what a room's page reads
     visits.ndjson   one line per check-in shown to us, timed when it was read
     asks/queue/     a question for the model (wizard:model+ask), waiting its turn; asks/answers/<nonce>.json
-                    its answer, written by machines/digitization/asks
+                    its answer, written by machines/digitization/asks; asks/recall.json what wizard:loop+recall
+                    brought back into the loop
 A form's reply (wizard:site+answers) goes where the tanks' replies go: the drain's archive,
 ~/fcpm/answers/<tank>/ ($FCPM_ANSWERS), one file per reply, in the site-worker's record shape.
     log.ndjson  one line per arrival and per verdict        nonces.json   replies already applied
@@ -346,6 +347,9 @@ def answers_reply(reply, meta):
 
 ASK_SHAPE = ROOT / "machines" / "production" / "shapes" / "ask.yml"
 ASK_TURNS = 24
+URGENT = 600           # seconds an answer rides the public loop after it is given; after, it is on hand, not on air
+RECALLED_FOR = 600     # seconds a recalled answer rides it again
+RECALL_MOST = 20       # answers one recall may ask for
 
 
 def ask_reply(reply, meta):
@@ -380,8 +384,36 @@ def ask_reply(reply, meta):
     return None, "a question queued for the model (%d characters)" % size
 
 
+def recall_reply(reply, meta):
+    """wizard:loop+recall: bring answers back into the public loop after they fell off it (they stay on hand).
+    `nonces` names the questions; `mode` is takeover (shown at once, the loop then goes back to normal: what one
+    person asking for theirs wants) or inject (back in the running loop for RECALLED_FOR seconds). Kept as
+    asks/recall.json; machines/digitization/asks makes the index again from it."""
+    nonces = reply.get("nonces")
+    if not isinstance(nonces, list) or not 1 <= len(nonces) <= RECALL_MOST or not all(isinstance(n, str) for n in nonces):
+        return "nonces: a list of 1 to %d" % RECALL_MOST
+    mode = reply.get("mode") or ("takeover" if len(nonces) == 1 else "inject")
+    if mode not in ("takeover", "inject"):
+        return "mode: takeover or inject"
+    have = [n for n in nonces if (STATE / "asks" / "answers" / ("%s.json" % n)).is_file()
+            and all(ch.isascii() and (ch.isalnum() or ch in "-_") for ch in n)]
+    if not have:
+        return "no answer on hand for %s" % ", ".join("…" + n[-6:] for n in nonces[:3])
+    path = STATE / "asks" / "recall.json"
+    try:
+        kept = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        kept = {}
+    at = now().isoformat(timespec="seconds")
+    kept.update({n: {"at": at, "mode": mode} for n in have})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(kept), encoding="utf-8")
+    return None, "%d answer%s back in the loop (%s)" % (len(have), "" if len(have) == 1 else "s", mode)
+
+
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
-           "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply}
+           "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply,
+           "wizard:loop+recall": recall_reply}
 
 
 def nonces():
