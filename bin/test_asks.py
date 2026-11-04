@@ -190,6 +190,29 @@ process.stdout.write(JSON.stringify(out));
         self.assertEqual((out.get("got") or {}).get("in_reply_to"), "nonce-mine", res.stderr[-400:])
         self.assertIn("nonce-mine", out["got"]["answer"])
 
+    def test_console_frames_fit_qr_locals_screen_and_the_inbox_reads_back(self):
+        replies.examine(ask(("user", "what airs tonight?"), nonce="nonce-qrlo"), {})
+        asks.answer_one(send=Fake("Tonight: the council meeting, then the jukebox.", "Tonight's lineup"))
+        b = json.loads((replies.STATE / "asks" / "bottles" / "nonce-qrlo.json").read_text())
+        con = b["console"]
+        self.assertEqual(len(con["frames"]), len(con["modules"]))
+        self.assertTrue(all(len(m) == 41 and all(len(r) == 41 for r in m) for m in con["modules"]))   # version 6
+        self.assertTrue(all(f.split("|")[3] == b["id"] for f in con["frames"]))     # the same bottle, smaller frames
+        self.assertTrue(read_frames(con["frames"])["ok"])
+        rows = replies.inbox()
+        self.assertEqual((rows[0]["state"], rows[0]["what"], rows[0]["nonce"]), ("answered", "Tonight's lineup", "nonce-qrlo"))
+        replies.examine(ask(("user", "and tomorrow?"), nonce="nonce-qrl2"), {})
+        self.assertEqual(replies.inbox()[0]["state"], "queued")
+
+    def test_the_answerer_says_how_it_is_only_when_that_changes(self):
+        asks.say(up=False, working=None, trouble=None)
+        first = replies.asks_state()
+        self.assertEqual((first["shape"], first["by"], first["up"]), ("model+ask", "bay 1", False))
+        asks.say(up=False, working=None, trouble=None)
+        self.assertEqual(replies.asks_state()["at"], first["at"])
+        asks.say(up=True, working="nonce-x", trouble=None)
+        self.assertEqual((replies.asks_state()["up"], replies.asks_state()["working"]), (True, "nonce-x"))
+
     def test_reindex_bottles_an_answer_that_lacks_one(self):
         replies.examine(ask(("user", "late?"), nonce="nonce-cccc"), {})
         asks.answer_one(send=Fake("Yes.", "Lateness"))

@@ -76,6 +76,11 @@ offline with the kit), a secure page: there the bottle is signed, and "Catch it 
 with the phone's camera (`catch.mjs`, `camera.mjs`) until its own answer has come by. One script, `site/assets/js/ask.js`,
 serves both; the LAN's copy also offers "Set it down here" and asks the door for the answer.
 
+qr.local's own screen (`troves/scanner/page.py`) is the station's inbox and its broadcast. Each bottle is poured
+twice: the loop's frames, and console frames (20 bytes a frame, each with its QR modules: a version-6 code, 41
+modules, printed in half blocks on the 51-column screen). `asks` keeps `asks/state.json` (what it answers, by
+whom, up or off, what it is on, any trouble), and `replies.inbox()` lists what the door took, newest first.
+
 ## Keys
 
 This machine holds FCPM's secrets for now (decided 2026-10-23), and deploys that need them run here by hand.
