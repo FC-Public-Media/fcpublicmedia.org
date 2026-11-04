@@ -69,7 +69,12 @@ index bottle names the last day's answers: each question's nonce, its label and 
 its bottle by id. A phone catches everything in the loop, not only its own: its own answers go in its notebook,
 and everyone else's it carries to the people they answer, who weren't there to read them ("Show it" pours one
 again). Each pass shows each bottle K and a bit fresh droplets and moves on, so the loop flows; the next pass
-shows the next droplets of its stock. The door's
+shows the next droplets of its stock. An answer rides the loop for ten minutes (`replies.URGENT`), then falls off
+it and stays on hand; a recall code (`wizard:loop+recall`, the ask page's "Ask the loop for it") brings it
+back, at once and then out of the way (takeover), or into the running loop (inject). `/loop/?up=2` or `?up=4`
+puts several bottles up at once, and `?tiles=N` is the press's collage (anecdote.channel press/broadcast.mjs):
+N pieces of the same bottle at once. The phone's reader reads each frame in overlapping windows, so it catches
+them all together. The door's
 `/loop/` draws the index and the answers in turn (`?fps=`, `?index=`; asked again every pass, so it follows the set
 as it changes) on any screen, over plain http: it only draws. `/ask/` is the wizard: the box, the outbox (the
 code to show the camera) and the notebook kept on the phone, whose ticked answers are quoted into the next

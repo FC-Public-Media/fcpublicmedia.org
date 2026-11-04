@@ -37,6 +37,9 @@ question becomes a code for the camera at FC Public Media; nothing is sent from 
   .ask .code canvas { width: min(84vw, 46vh); height: min(84vw, 46vh); background: #fff; image-rendering: pixelated; }
   .ask .code span, .ask #caught, .ask #said { font-size: .8rem; color: #8a9099; }
   .ask #eye { width: 100%; border-radius: .6rem; background: #000; }
+  .ask .notebook .acts { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-top:.45rem; }
+  .ask .notebook .acts button { font:inherit; font-size:.85rem; padding:.35rem .8rem; border-radius:99px; cursor:pointer; }
+  .ask .notebook li.showing { border-top-color:#f5c518; }
   .ask .catching { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
   .ask .catching li { position:relative; display:flex; justify-content:space-between; gap:1rem; padding:.45rem .7rem; overflow:hidden; }
   .ask .catching .bar { position:absolute; left:0; bottom:0; height:3px; width:calc(var(--p) * 100%); background:#f5c518; }
@@ -78,5 +81,5 @@ question becomes a code for the camera at FC Public Media; nothing is sent from 
     <ol id="notebook"></ol><button id="forget" type="button" class="quiet">Forget them all</button></section>
 </div>
 
-<script type="application/json" id="ask-config">{"at": {{ site.revision | default: "dev" | jsonify }}, "limit": 1500, "lan": false}</script>
+<script type="application/json" id="ask-config">{"at": {{ site.revision | default: "dev" | jsonify }}, "limit": 1500, "lan": false, "urgent": 600}</script>
 <script type="module" src="{{ '/assets/js/ask.js' }}?v={{ site.time | date: '%s' }}"></script>

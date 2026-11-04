@@ -221,6 +221,32 @@ process.stdout.write(JSON.stringify(out));
         asks.say(up=True, working="nonce-x", trouble=None)
         self.assertEqual((replies.asks_state()["up"], replies.asks_state()["working"]), (True, "nonce-x"))
 
+    def test_answers_fall_off_the_loop_after_ten_minutes_and_a_recall_brings_one_back(self):
+        import datetime, os
+        for n in ("nonce-old1", "nonce-new1", "nonce-old2"):
+            replies.examine(ask(("user", "question %s?" % n), nonce=n), {})
+            asks.answer_one(send=Fake("Answer to %s." % n, "L " + n[-4:]))
+        folder = replies.STATE / "asks" / "answers"
+        long_ago = (replies.now() - datetime.timedelta(minutes=30)).isoformat(timespec="seconds")
+        for n in ("nonce-old1", "nonce-old2"):                       # answered half an hour ago
+            a = json.loads((folder / ("%s.json" % n)).read_text()); a["answered"] = long_ago
+            (folder / ("%s.json" % n)).write_text(json.dumps(a))
+        self.assertEqual(asks.on_air(), (["nonce-new1"], None))      # on hand, but off the air
+        self.assertEqual([r["in_reply_to"] for r in asks.reindex()["answers"]], ["nonce-new1"])
+        recall = {"schema": "fcpm.reply/v0", "wizard": "wizard:loop+recall", "at": "test", "nonce": "recall-0001",
+                  "issued": replies.now().isoformat(timespec="seconds"), "nonces": ["nonce-old1"]}
+        self.assertEqual(replies.examine(recall, {}), (None, "1 answer back in the loop (takeover)"))
+        nonces, now = asks.on_air()
+        self.assertEqual((sorted(nonces), now["nonces"]), (["nonce-new1", "nonce-old1"], ["nonce-old1"]))
+        index = asks.reindex()
+        self.assertEqual(index["now"]["nonces"], ["nonce-old1"])     # the screens show it at once
+        inject = dict(recall, nonce="recall-0002", nonces=["nonce-old2", "nonce-gone"])
+        self.assertEqual(replies.examine(inject, {}), (None, "1 answer back in the loop (inject)"))
+        self.assertIn("nonce-old2", asks.on_air()[0])
+        self.assertEqual(asks.on_air()[1]["nonces"], ["nonce-old1"])  # an inject takes nothing over
+        nothing = dict(recall, nonce="recall-0003", nonces=["nonce-gone"])
+        self.assertEqual(replies.examine(nothing, {}), "no answer on hand for …e-gone")
+
     def test_reindex_bottles_an_answer_that_lacks_one(self):
         replies.examine(ask(("user", "late?"), nonce="nonce-cccc"), {})
         asks.answer_one(send=Fake("Yes.", "Lateness"))
