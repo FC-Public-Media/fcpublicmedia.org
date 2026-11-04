@@ -5,6 +5,8 @@
 //   the outbox    exactly what will be poured: the reply, as a code for a camera (or set down on the LAN)
 //   the notebook  questions and answers kept on this phone. Ticking one quotes it into the next question;
 //                 nothing points anywhere, so it works whichever model answers, or none that remembers.
+//   carried       everyone else's answers this phone caught from the loop: it carries them to the people they
+//                 answer, who weren't there to read them, and "Show it" pours one again for another phone.
 // The reply is OpenAI-enough messages (a role and its text, the question last; no model, bay or session).
 // Its answer comes back in the public loop (/loop/) under the reply's nonce. Where the page may open a camera
 // (a secure page: the public site), "Catch it from the loop" reads the loop until this question's answer has
@@ -16,12 +18,13 @@ import { catcher } from "./catch.mjs";
 import { can, watch } from "./camera.mjs";
 
 const C = JSON.parse(document.getElementById("ask-config").textContent);
-const NOTEBOOK = "fcpm.ask.notebook", OUTBOX = "fcpm.ask.outbox";
+const NOTEBOOK = "fcpm.ask.notebook", OUTBOX = "fcpm.ask.outbox", CARRIED = "fcpm.ask.carried", CARRIED_MOST = 200;
 const el = (id) => document.getElementById(id);
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* not kept */ } };
 
 let notebook = load(NOTEBOOK, []), outbox = load(OUTBOX, null), pouring = null, waiting = null, eye = null;
+let carried = load(CARRIED, []), relaying = null;
 
 function messages() {
   const m = [];
@@ -69,41 +72,76 @@ async function showOutbox() {
   pouring = await pour(el("code"), JSON.stringify(outbox.reply), { sign: true });
   el("read").textContent = `${pouring.read} · …${outbox.reply.nonce.slice(-6)}`;
   el("said").textContent = "Show this to the camera. Its answer comes back in the loop.";
-  el("catch").hidden = !can();
   listen();
 }
 
-// Read the loop with this phone's camera until this question's answer comes by.
+// Read the loop with this phone's camera: everything in it is caught, this phone's own answer into the
+// notebook, everyone else's into what it carries. It keeps reading until stopped.
 async function catchIt() {
   if (eye) return stopCatch("Stopped.");
-  if (!outbox) return;
-  const want = outbox.reply.nonce, c = catcher((n) => n === want);
-  let seen = 0;
+  const want = outbox && outbox.reply.nonce, c = catcher((n) => n === want);
   el("eye").hidden = false;
   el("catch").textContent = "Stop";
   el("caught").textContent = "Point it at the loop.";
   try {
     eye = await watch(el("eye"), async (text) => {
       const got = await c.feed(text);
-      if (text.startsWith("AC1|")) seen++;
-      el("caught").textContent = c.index ? `index of ${c.index.answers.length} · waiting for yours`
-                                         : "looking for the index";
       paintCatching(c.bottles);
-      if (got && got.answer) { stopCatch("Caught."); take(got.answer); }
+      const answers = c.bottles.filter((b) => b.kind === "fcpm.answer");
+      el("caught").textContent = `${answers.length} answer${answers.length === 1 ? "" : "s"} caught`
+        + (c.index ? ` of ${c.index.answers.length}` : "") + (want ? "" : " · carrying them");
+      if (got && got.answer) {
+        if (got.mine) take(got.answer);
+        else carry(got.answer);
+      }
     });
   } catch (error) {
     stopCatch("The camera didn't open: " + (error && error.message || error));
   }
 }
+
+function carry(a) {
+  carried = carried.filter((x) => x.in_reply_to !== a.in_reply_to);
+  carried.push({ ...a, caught: localIso(new Date()) });
+  carried = carried.slice(-CARRIED_MOST);
+  save(CARRIED, carried);
+  paintCarried();
+}
+
+function paintCarried() {
+  el("carried").replaceChildren(...carried.slice().reverse().map((a) => {
+    const li = document.createElement("li");
+    li.append(Object.assign(document.createElement("p"), { className: "q", textContent: a.label || "An answer" }),
+              Object.assign(document.createElement("p"), { className: "a", textContent: a.answer }),
+              Object.assign(document.createElement("span"), { className: "meta",
+                textContent: `for …${String(a.in_reply_to).slice(-6)} · ${(a.answered || "").slice(0, 16).replace("T", " ")}` }));
+    const show = Object.assign(document.createElement("button"), { type: "button", className: "quiet", textContent: "Show it" });
+    show.addEventListener("click", () => relay(a));
+    li.append(show);
+    return li;
+  }));
+  el("carried-empty").hidden = carried.length > 0;
+}
+
+// Pour a carried answer again, as an answer, for the phone of the person it answers (or anyone's).
+async function relay(a) {
+  if (relaying) { relaying.stop(); relaying = null; }
+  el("relay").hidden = false;
+  const { in_reply_to, label, answer, answered, schema, shape, model } = a;
+  relaying = await pour(el("relay-code"), JSON.stringify({ schema, in_reply_to, shape, label, answer, model, answered }),
+                        { sign: true, kind: "fcpm.answer" });
+  el("relay-read").textContent = `${label || "An answer"} · for …${String(in_reply_to).slice(-6)} · ${relaying.read}`;
+}
+
 // Every bottle going by, as it goes by: what it is (once known), how far it has got, and whose it is.
 function paintCatching(bottles) {
   el("catching").replaceChildren(...bottles.map((b) => {
     const li = document.createElement("li");
-    li.className = b.mine ? "mine" : b.passing ? "passing" : b.kind === "fcpm.index" ? "index" : "";
+    li.className = b.mine ? "mine" : b.kind === "fcpm.index" ? "index" : "";
     const what = Object.assign(document.createElement("span"), { className: "what",
       textContent: b.label || (b.kind === "fcpm.index" ? "the index" : `…${b.id.slice(-6)}`) });
     const how = Object.assign(document.createElement("span"), { className: "how",
-      textContent: b.passing ? "someone else's" : b.done ? (b.mine ? "yours" : "read")
+      textContent: b.done ? (b.mine ? "yours" : b.kind === "fcpm.index" ? "read" : "carried")
                  : b.total ? `${b.mine ? "yours · " : ""}${b.have} of ${b.total}` : "…" });
     const bar = Object.assign(document.createElement("span"), { className: "bar" });
     bar.style.setProperty("--p", b.total ? Math.min(1, b.have / b.total) : 0);
@@ -116,7 +154,7 @@ function stopCatch(why) {
   if (eye) { eye.stop(); eye = null; }
   el("eye").hidden = true;
   el("catching").replaceChildren();
-  el("catch").textContent = "Catch it from the loop";
+  el("catch").textContent = "Catch from the loop";
   el("caught").textContent = why || "";
 }
 
@@ -178,9 +216,11 @@ el("pour").addEventListener("click", make);
 el("drop").addEventListener("click", dropIt);
 el("blank").addEventListener("click", blank);
 el("catch").addEventListener("click", catchIt);
+el("relay-stop").addEventListener("click", () => { if (relaying) relaying.stop(); relaying = null; el("relay").hidden = true; });
 el("forget").addEventListener("click", () => {
   if (!confirm("Forget every question and answer kept on this phone?")) return;
   notebook = []; save(NOTEBOOK, notebook); paintNotebook(); paintCount();
 });
 el("drop").hidden = !C.lan;
-paintNotebook(); paintCount(); showOutbox();
+el("loop-catch").hidden = !can();
+paintNotebook(); paintCarried(); paintCount(); showOutbox();

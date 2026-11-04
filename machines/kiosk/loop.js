@@ -4,7 +4,10 @@
 // lets the rest go by. Others seeing them is the point. The bottles are made by machines/digitization/asks;
 // this page only draws them, so any screen can show it, on any browser, over plain http.
 //
-// ?fps=N    frames a second (4).  ?index=N  the index again after every N answers (3).
+// ?fps=N    frames a second (8).  ?index=N  the index again after every N answers (3).
+// Each bottle gets K and a bit fresh droplets a pass (any K-and-a-bit rebuild it: the fountain's promise), then
+// the loop moves on; the next pass takes the next droplets of its stock, so a phone that caught half the first
+// time gets new ones, not the same again. The loop flows; nothing waits on a slow reader.
 // Both may change any time: the next frame uses them. What is shown is asked again after every pass,
 // so the loop is a pointer on a set that changes under it, never a fixed reel.
 import { encodeQR } from "/js/qr-encode.mjs";
@@ -12,7 +15,9 @@ import { encodeQR } from "/js/qr-encode.mjs";
 const QUIET = 4;
 const P = new URLSearchParams(location.search);
 const knob = (k, d) => Math.max(1, Math.min(30, Number(P.get(k)) || d));
-let fps = knob("fps", 4), every = knob("index", 3);
+let fps = knob("fps", 8), every = knob("index", 3);
+const offset = new Map();                 // bottle id -> where in its stock the next pass starts
+const share = (b) => Math.min(b.frames.length, Math.ceil((b.K || b.frames.length / 4) * 1.15) + 2);
 const canvas = document.getElementById("code"), said = document.getElementById("said"), what = document.getElementById("what");
 
 function draw(text) {
@@ -41,10 +46,16 @@ function pass(now) {
 }
 
 let steps = [], step = 0, at = 0, timer = null;
+// This pass's droplets for a bottle: the next `share` of its stock, wrapping round.
+function slice(b) {
+  const from = offset.get(b.id) || 0, n = share(b);
+  offset.set(b.id, (from + n) % b.frames.length);
+  return Array.from({ length: n }, (_, i) => b.frames[(from + i) % b.frames.length]);
+}
 async function next() {
   try {
     const now = await (await fetch("/loop/now", { cache: "no-store" })).json();
-    steps = pass(now); step = 0; at = 0;
+    steps = pass(now).map((s) => ({ ...s, shown: slice(s.b) })); step = 0; at = 0;
     if (!steps.length) {
       canvas.width = canvas.height = 0;
       what.textContent = "Nothing answered today yet.";
@@ -64,8 +75,8 @@ async function tick() {
     said.textContent = s.index ? `${s.b.id.slice(7, 15)} · ${fps}/s`
                                : `for …${String(s.b.in_reply_to).slice(-6)} · ${s.b.id.slice(7, 15)} · ${fps}/s`;
   }
-  draw(s.b.frames[at]);
-  if (++at >= s.b.frames.length) {
+  draw(s.shown[at]);
+  if (++at >= s.shown.length) {
     at = 0;
     if (++step >= steps.length) await next();
   }

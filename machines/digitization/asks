@@ -40,7 +40,8 @@ SHAPES = ROOT / "machines" / "production" / "shapes"
 COMPOSER = ROOT / "site" / "assets" / "js" / "composer"
 POUR = pathlib.Path(__file__).resolve().parent / "pour.mjs"
 DROPLET = 48                      # bytes a frame, as the site pours
-CONSOLE = {"blockSize": 20, "overhead": 2.5, "qr": "L"}   # qr.local's text screen: a version-6 code (41 modules)
+CONSOLE = {"blockSize": 20, "overhead": 6, "qr": "L"}     # qr.local's text screen: a version-6 code (41 modules);
+                                  # a deep stock, so each pass of the loop can show fresh droplets (K and a bit)
 STATE_FILE = "state.json"         # who answers, whether it's up, what it's on: what qr.local's inbox bar says
 LOOP_DAYS, LOOP_MOST = 1, 40      # what the index holds: the last day's answers, at most this many
 PUBLIC = ("schema", "in_reply_to", "shape", "label", "answer", "effort", "finish", "model", "model_sha256",
@@ -163,6 +164,8 @@ def answer_one(send=post, on=None):
 
 
 # ---- the public loop: each answer bottled, and the index of them --------------------------------------
+# A loop shows each bottle K and a bit fresh droplets a pass (any K-and-a-bit rebuild it) and moves on, so it
+# flows; the next pass shows the next droplets of the stock, so a phone that caught half of it gets new ones.
 
 def pour(kind, text, **how):
     """An unsigned transfer as AC1 frames (pour.mjs, Node): {id, K, frames[, modules]}; None without Node."""
@@ -181,7 +184,7 @@ def pour_both(kind, text):
     if got:
         small = pour(kind, text, **CONSOLE)
         if small:
-            got["console"] = {"frames": small["frames"], "modules": small["modules"]}
+            got["console"] = {"K": small["K"], "frames": small["frames"], "modules": small["modules"]}
     return got
 
 
@@ -228,7 +231,7 @@ def reindex():
             if datetime.datetime.fromisoformat(a["answered"]) < since:
                 break
             b = folder("bottles") / p.name
-            if (not b.is_file() or "console" not in json.loads(b.read_text(encoding="utf-8"))) \
+            if (not b.is_file() or "K" not in json.loads(b.read_text(encoding="utf-8")).get("console", {})) \
                     and not bottle(a["in_reply_to"]):
                 continue
             rows.append({"in_reply_to": a["in_reply_to"], "label": a.get("label"),

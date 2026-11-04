@@ -66,7 +66,10 @@ questions wait. `machines/digitization/asks status` says what waits and what was
 
 Every answer is also bottled for the public loop (`pour.mjs`: unsigned AC1 fountain frames, `asks/bottles/`), and an
 index bottle names the last day's answers: each question's nonce, its label and its bottle's id. Every frame names
-its bottle, so a phone that has read the index keeps only its own frames and lets the rest go by. The door's
+its bottle by id. A phone catches everything in the loop, not only its own: its own answers go in its notebook,
+and everyone else's it carries to the people they answer, who weren't there to read them ("Show it" pours one
+again). Each pass shows each bottle K and a bit fresh droplets and moves on, so the loop flows; the next pass
+shows the next droplets of its stock. The door's
 `/loop/` draws the index and the answers in turn (`?fps=`, `?index=`; asked again every pass, so it follows the set
 as it changes) on any screen, over plain http: it only draws. `/ask/` is the wizard: the box, the outbox (the
 code to show the camera) and the notebook kept on the phone, whose ticked answers are quoted into the next
