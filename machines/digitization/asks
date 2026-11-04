@@ -4,6 +4,7 @@
     asks            keep answering: the oldest queued question, then the next (the crew's `keep` line)
     asks once       answer one question, if one is waiting
     asks status     what waits, and the last answers
+    asks reindex    bottle any answer that lacks one, and make the index again
 
 replies.py queues each question under the door's state (asks/queue/, oldest first). Each is asked as the
 shape model+ask says (machines/production/shapes/ask.yml: our role first, the asker's own instructions inside
@@ -12,9 +13,15 @@ Its words are then reduced to a label (shapes/label.yml), which is how a phone f
 answer is kept as asks/answers/<nonce>.json, named by the question's nonce: the asker's phone holds that
 nonce, and finds its answer by it in the public loop. The question moves to asks/done/.
 
+Each answer is then bottled for the public loop (pour.mjs: an unsigned transfer as AC1 fountain frames,
+asks/bottles/<nonce>.json), and the index is made again (asks/bottles/index.json): the last day's answers,
+each nonce with its label and its bottle's id. A phone reads the index, then keeps only the frames whose id
+it wants. The door's /loop/ draws the index and the bottles in turn; it bottles nothing itself.
+
 When the model is off (bay 1 asleep, `fcpm model off`), the question stays queued and is asked again in a
 minute. Nothing here decides who may ask; replies.py has already read and checked the bottle.
 """
+import datetime
 import hashlib
 import json
 import os
@@ -30,6 +37,12 @@ sys.path.insert(0, str(ROOT / "machines" / "kiosk"))
 import replies  # noqa: E402  the door's state, its YAML and its clock
 
 SHAPES = ROOT / "machines" / "production" / "shapes"
+COMPOSER = ROOT / "site" / "assets" / "js" / "composer"
+POUR = pathlib.Path(__file__).resolve().parent / "pour.mjs"
+DROPLET = 48                      # bytes a frame, as the site pours
+LOOP_DAYS, LOOP_MOST = 1, 40      # what the index holds: the last day's answers, at most this many
+PUBLIC = ("schema", "in_reply_to", "shape", "label", "answer", "effort", "finish", "model", "model_sha256",
+          "seed", "answered")     # what an answer's bottle carries: not who signed, not the question
 MODEL_YML = ROOT / "machines" / "production" / "model.yml"
 URL = "http://%s/v1/chat/completions" % os.environ.get("FCPM_MODEL_AT", "10.209.1.20:9931")
 TIMEOUT = 600
@@ -132,7 +145,65 @@ def answer_one(send=post):
     shutil.move(str(path), str(folder("done") / path.name))
     replies.log({"name": path.stem, "verdict": "answered", "why": out["label"], "wizard": "wizard:model+ask",
                  "by": q.get("by")})
+    reindex()
     return q["nonce"]
+
+
+# ---- the public loop: each answer bottled, and the index of them --------------------------------------
+
+def pour(kind, text):
+    """An unsigned transfer as AC1 frames (pour.mjs, Node): {id, K, frames}; None without Node."""
+    node = replies.node_exe()
+    if not node:
+        return None
+    import subprocess
+    out = subprocess.run([node, str(POUR), str(COMPOSER)], capture_output=True, text=True, timeout=60,
+                         input=json.dumps({"kind": kind, "text": text, "blockSize": DROPLET}))
+    return json.loads(out.stdout) if out.returncode == 0 and out.stdout.strip() else None
+
+
+def bottle(nonce):
+    """asks/answers/<nonce>.json as its public bottle, asks/bottles/<nonce>.json. True when made."""
+    a = json.loads((folder("answers") / ("%s.json" % nonce)).read_text(encoding="utf-8"))
+    public = {k: a.get(k) for k in PUBLIC if k in a}
+    got = pour("fcpm.answer", json.dumps(public, ensure_ascii=False, separators=(",", ":")))
+    if not got:
+        return False
+    got.update({"in_reply_to": nonce, "label": a.get("label"), "answered": a.get("answered")})
+    folder("bottles").mkdir(parents=True, exist_ok=True)
+    (folder("bottles") / ("%s.json" % nonce)).write_text(json.dumps(got), encoding="utf-8")
+    return True
+
+
+def reindex():
+    """The index bottle: the last day's answers (newest first, at most LOOP_MOST), each by nonce, label and
+    bottle id. Any answer still without a bottle is bottled first. Returns the index, or None without Node."""
+    answers = sorted(folder("answers").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True) \
+        if folder("answers").is_dir() else []
+    since = replies.now() - datetime.timedelta(days=LOOP_DAYS)
+    rows = []
+    for p in answers:
+        if len(rows) >= LOOP_MOST:
+            break
+        try:
+            a = json.loads(p.read_text(encoding="utf-8"))
+            if datetime.datetime.fromisoformat(a["answered"]) < since:
+                break
+            b = folder("bottles") / p.name
+            if not b.is_file() and not bottle(a["in_reply_to"]):
+                continue
+            rows.append({"in_reply_to": a["in_reply_to"], "label": a.get("label"),
+                         "id": json.loads(b.read_text(encoding="utf-8"))["id"], "answered": a["answered"]})
+        except (OSError, ValueError, KeyError):
+            continue
+    index = {"schema": "fcpm.index/v0", "at": replies.now().isoformat(timespec="seconds"), "answers": rows}
+    got = pour("fcpm.index", json.dumps(index, ensure_ascii=False, separators=(",", ":")))
+    if not got:
+        return None
+    got["index"] = index
+    folder("bottles").mkdir(parents=True, exist_ok=True)
+    (folder("bottles") / "index.json").write_text(json.dumps(got), encoding="utf-8")
+    return index
 
 
 def status():
@@ -159,9 +230,14 @@ def main(argv):
             return 1
         print("asks: %s" % (("answered " + n) if n else "nothing waiting"))
         return 0
+    if verb == "reindex":
+        index = reindex()
+        print("asks: %s" % ("index of %d" % len(index["answers"]) if index else "no Node, no bottles"))
+        return 0
     if verb != "keep":
         print(__doc__, file=sys.stderr)
         return 2
+    reindex()
     while True:
         try:
             n = answer_one()

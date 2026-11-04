@@ -2686,6 +2686,99 @@ def host_page(room):
     return shell("Host · %s" % cfg.get("title", room), body, HOST_CSS)
 
 
+# THE ASK WIZARD and THE PUBLIC LOOP: wizard:model+ask on a phone (ask.js forms the reply and bottles it),
+# and the screen that shows every answer back (loop.js). The answers and their bottles are made by
+# machines/digitization/asks under the door's state; these pages only read them. See digitization/PROFILE.md.
+SITE_JS = ROOT / "site" / "assets" / "js"
+ASK_FILES = ("ask.js", "bottle.js", "sha256.mjs", "qr-encode.mjs")
+
+
+def asks_dir(name):
+    import replies
+    return replies.STATE / "asks" / name
+
+
+def ask_page():
+    import replies
+    limit = int((replies.load_yaml(ROOT / "machines" / "production" / "shapes" / "ask.yml") or {}).get("limit") or 1500)
+    body = """
+<div class="host ask">
+  <h1>Ask the model</h1>
+  <p class=lede>Write one question. It becomes a code: show it to the camera and its answer comes back in the
+  loop on the big screen, under this question's own number. Tick an earlier answer to quote it in.</p>
+  <label class=field><span>Your question</span><textarea id=box rows=4 maxlength=%d></textarea></label>
+  <details><summary>Your own instructions (if you like)</summary>
+    <label class=field><textarea id=inst rows=2 maxlength=400 placeholder="Answer like a librarian."></textarea></label></details>
+  <div class=bar><button id=pour type=button disabled>Make the code</button><span id=count></span>
+    <button id=blank type=button class=quiet>Start over</button></div>
+  <section id=outbox hidden>
+    <p class=asked id=asked></p>
+    <div class=code><canvas id=code role=img aria-label="Your question, as a code"></canvas><span id=read></span></div>
+    <div class=bar><button id=drop type=button>Set it down here</button><span id=said></span></div>
+  </section>
+  <section class=notebook><h2>Kept on this phone</h2><p id=notebook-empty class=lede>Nothing yet.</p>
+    <ol id=notebook></ol><button id=forget type=button class=quiet>Forget them all</button></section>
+</div>
+<script type=application/json id=ask-config>%s</script>
+<script type=module src="/ask/ask.js?v=%s"></script>""" % (
+        limit, json.dumps({"at": git("rev-parse", "--short", "HEAD") or "nogit", "limit": limit}),
+        e(git("rev-parse", "--short", "HEAD") or "0"))
+    return shell("Ask the model", body, HOST_CSS + ASK_CSS)
+
+
+ASK_CSS = """
+textarea { font:inherit; font-size:1.1rem; padding:.55rem .7rem; border-radius:.6rem; border:1px solid var(--rule);
+  background:var(--slate); color:var(--paper); resize:vertical; }
+details summary { color:var(--soft); font-size:.9rem; cursor:pointer; }
+.bar button.quiet, .notebook button.quiet { background:none; border:1px solid var(--rule); color:var(--soft); font-weight:500; }
+#count { font-variant-numeric:tabular-nums; font-size:.8rem; color:var(--dim); }
+#count.over { color:var(--signal); }
+.asked { margin:0; font-size:1.05rem; }
+.notebook h2 { font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin:1rem 0 .4rem; }
+.notebook ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.8rem; }
+.notebook li { border-top:1px solid var(--rule); padding-top:.6rem; }
+.notebook .q { margin:0; font-weight:650; } .notebook .a { margin:.3rem 0; color:var(--soft); }
+.notebook .meta { font-size:.75rem; color:var(--dim); display:block; }
+.notebook label { display:inline-flex; gap:.4rem; align-items:center; font-size:.85rem; margin-top:.3rem; }
+"""
+
+
+def loop_now():
+    """What the loop shows now: the index bottle and each answer's, as asks made them."""
+    try:
+        idx = json.loads((asks_dir("bottles") / "index.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"index": None, "bottles": []}
+    bottles = []
+    for row in idx.get("index", {}).get("answers", []):
+        try:
+            b = json.loads((asks_dir("bottles") / ("%s.json" % row["in_reply_to"])).read_text(encoding="utf-8"))
+            bottles.append({k: b.get(k) for k in ("in_reply_to", "label", "id", "frames", "answered")})
+        except (OSError, ValueError, KeyError):
+            continue
+    return {"index": {"id": idx.get("id"), "frames": idx.get("frames"), "at": idx.get("index", {}).get("at"),
+                      "answers": len(bottles)}, "bottles": bottles}
+
+
+def loop_page():
+    body = """<main class=loop><div class=frame><canvas id=code role=img aria-label="The answers, as codes"></canvas></div>
+<p class=what id=what>Waiting for the first pass.</p><p class=said id=said></p>
+<p class=how>Every answer today, each under the number of the question it answers. Ask at <b>/ask/</b>.</p></main>
+<script type=module src="/loop/loop.js?v=%s"></script>""" % e(git("rev-parse", "--short", "HEAD") or "0")
+    return shell("The loop", body, LOOP_CSS)
+
+
+LOOP_CSS = """
+body { margin:0; height:100vh; overflow:hidden; }
+.loop { height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5vmin; }
+.frame { width:min(86vmin, 86vw); height:min(76vh, 86vw); display:flex; align-items:center; justify-content:center; }
+.frame canvas { background:#fff; image-rendering:pixelated; image-rendering:crisp-edges; }
+.what { margin:0; font-size:4vmin; font-weight:750; }
+.said { margin:0; font-size:2vmin; color:var(--dim); font-variant-numeric:tabular-nums; }
+.how { margin:0; font-size:1.8vmin; color:var(--soft); }
+"""
+
+
 HOST_CSS = """
 body { font-size:17px; }
 .host { max-width:36rem; margin:0 auto; padding:1.2rem 1rem calc(1.2rem + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:1rem; }
@@ -2919,6 +3012,31 @@ class Door(BaseHTTPRequestHandler):
                     return self.reply(200, json.dumps(now), TYPES[".json"]) if now else self.file(None)
                 body = room_page(m.group(1))
                 return self.reply(200, body) if body else self.file(None)
+            if route in ("/ask", "/loop"):
+                self.send_response(301)
+                self.send_header("Location", route + "/")
+                self.end_headers()
+                return
+            if route == "/ask/":
+                return self.reply(200, ask_page())
+            if route.startswith("/ask/") and tail in ASK_FILES and route.count("/") == 2:
+                return self.file(HERE / tail if tail == "ask.js" else SITE_JS / tail)
+            if route.startswith("/ask/composer/") and tail in COMPOSER_FILES:
+                return self.file(inside(SITE_JS / "composer", tail))
+            if route == "/loop/":
+                return self.reply(200, loop_page())
+            if route == "/loop/loop.js":
+                return self.file(HERE / "loop.js")
+            if route == "/loop/now":
+                return self.reply(200, json.dumps(loop_now()), TYPES[".json"])
+            m = re.fullmatch(r"/asks/answer/([A-Za-z0-9_-]{8,64})", route)
+            if m:
+                path = asks_dir("answers") / ("%s.json" % m.group(1))
+                if not path.is_file():
+                    return self.reply(404, json.dumps({"in_reply_to": m.group(1), "answer": None}), TYPES[".json"])
+                a = json.loads(path.read_text(encoding="utf-8"))
+                return self.reply(200, json.dumps({k: a.get(k) for k in ("in_reply_to", "label", "answer", "answered")}),
+                                  TYPES[".json"])
             if route == "/host":
                 self.send_response(301)
                 self.send_header("Location", "/host/" + (("?" + self.path.split("?", 1)[1]) if "?" in self.path else ""))

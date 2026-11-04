@@ -1,11 +1,14 @@
-# model-ask
+# model-loop
 
-A question for bay 1's model, by bottle: the intake and the answers, first step toward the public loop.
+The public fountain's first loop: every answer bottled, an index of them, a screen to show them, and the wizard.
 
-- [x] shapes/ask.yml (model+ask: quoted context, quick, 400 tokens, 1500 characters in) and shapes/label.yml (the reducer)
-- [x] replies.py: wizard:model+ask checked (roles, question last, size, nonce) and queued under asks/queue/
-- [x] machines/digitization/asks: oldest first, one at a time; our role, their instructions inside; labeled;
-      asks/answers/<nonce>.json; a sleeping model leaves it queued; crew line `asks keep`
-- [x] bin/test_asks.py (6, offline); tried live on bay 1: a quoted 4-turn question answered in ~1 s, "Garden show idea"
-- [ ] the answer as a bottle carrying its nonce and label; qr.local's loop with an index bottle
-- [ ] the compose-and-pour page on .local, its inbox catching from the loop
+- [x] machines/digitization/pour.mjs: an unsigned transfer as AC1 fountain frames (max(40, K×4), as the site pours)
+- [x] asks bottles each answer (asks/bottles/<nonce>.json: no signer, no question) and remakes the index bottle
+      (fcpm.index/v0: each nonce, label, bottle id; the last day, at most 40); `asks reindex`
+- [x] door /loop/ (loop.js): index, then answers, the index again every N; ?fps= ?index=; re-asks /loop/now each pass
+- [x] door /ask/ (ask.js): box, outbox (the code; or set it down), notebook kept on the phone, ticked answers quoted in;
+      /asks/answer/<nonce> as a LAN courtesy
+- [x] site/assets/js/sha256.mjs: digest where a plain-http page has no crypto.subtle, so its bottles are fountains
+- [x] tried whole on bay 1: an http-only page's 40-frame fountain → intake → answered → loop; a phone-style catch
+      from the loop's pixels (one catch per bottle id; the index names ours) rebuilt its answer in 12.7 s
+- [ ] the phone's camera catch from the loop, on the public site (needs a secure page); the init bottle from qr.local
