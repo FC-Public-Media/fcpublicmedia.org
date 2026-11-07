@@ -256,3 +256,38 @@ phone), Hosting or Left, until (23:59 by default), and what is in the room.
 `hosting: false` is leaving. `present` is the whole list each time; gear the room does not list is
 ignored and noted in the verdict. The public check-in's pass offers *Hosting a room? Check in as
 staff*: the wizard on the board's LAN name (`_data/lan.yml`, at the root), the typed name carried in `?name=`.
+
+### wizard:model+up
+
+`/models/` on any helm: bay 1's models (`machines/production/models/`), each with its state on bay 1's
+server, and a tick for each. *Keep this line-up* sets this down at that helm:
+
+```json
+{"schema": "fcpm.reply/v0", "wizard": "wizard:model+up", "at": "ee44cc3",
+ "up": ["qwen3.5-9b", "gpt-oss-20b"], "issued": "2026-11-06T20:46:29-07:00", "nonce": "…"}
+```
+
+`up` is the whole line-up each time; the default stays up whatever it says. Only production's helm
+applies it, by `model.ps1 pick` (started and left to run: a model it lacks takes minutes to fetch; its
+words go to `model-pick.log` beside the replies). A name the spread does not have is held. On the studio's
+network, like `kiosk+host`, being there is the authority.
+
+## Helms
+
+A helm is a door: the board and its pages, and the intake (Replies). Every machine may run one, and
+running one is that machine's consent to take what a peer helm passes it. Helms are peers: none is in
+charge, so losing one (digitization's power, 2026-11-06) leaves the others whole. Nothing else commands
+one machine from another; other crews coordinate through helms.
+
+`machines/helms.yml` says where each job's helm answers and which wizards only it can apply. A reply set
+down at a helm whose job does not hold its wizard is not read for its meaning there: on the next pass it is
+passed as it came, byte for byte with its signature, to the holding helm's `POST /drop`, and kept in
+`routed/` with the name it was kept by there (`GET /drop/<name>` says `routed`). While that helm does not
+answer, the reply waits in the inbox, said once in the log, and goes on a later pass. The nonce is spent
+by the helm that applies it. Which jobs a machine wears is `machines/binding`'s answer.
+
+Bay 1's helm is the production crew's `helm` line: `door.py serve` with `FCPM_DOOR_WATCH=commit,replies`,
+so it keeps the intake and the pages but not the media node's depot, wall or camera, on 8080 for the
+switched network (`fcpm helm grant` places its one rule). A guest's laptop on the guest network reaches
+none of this; the same reply reaches a helm by the camera instead. Not built yet: a helm joining qr.local
+(a special guest beside the bays' own joins), and helms finding each other rather than reading helms.yml.

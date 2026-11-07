@@ -1,7 +1,8 @@
 """door — the one address the media node answers on.
 
     door.py serve              become the door, on [::]:8080 (FCPM_DOOR_PORT moves it; FCPM_DOOR_BIND=127.0.0.1
-                               puts it behind a front such as digitization's nginx, FCPM_DOOR_FRONT its port)
+                               puts it behind a front such as digitization's nginx, FCPM_DOOR_FRONT its port;
+                               FCPM_DOOR_WATCH=replies keeps only the intake, for a helm that is not the media node)
     door.py supervise          run `serve`, restart it when it exits, pull in the background, follow its folder if a pull moves it
     door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
@@ -77,6 +78,9 @@ PORT = int(os.environ.get("FCPM_DOOR_PORT") or 8080)
 # LAN reaches it on the front's port: links and its own name say that one.
 BIND = os.environ.get("FCPM_DOOR_BIND") or "::"
 FRONT = int(os.environ.get("FCPM_DOOR_FRONT") or PORT)
+# What the door watches besides answering. A helm on a machine that is not the media node (bay 1's) keeps
+# only the intake: the depot and the wall are the media node's, and a second writer would fight it.
+WATCH = set((os.environ.get("FCPM_DOOR_WATCH") or "commit,depot,wall,camera,replies").split(","))
 LOOPBACK = ("127.0.0.1", "::1", "::ffff:127.0.0.1")
 BOUNCE = 75          # exit code meaning "my code changed, start me again"
 PULL_EVERY = 300
@@ -1059,7 +1063,8 @@ def board_page(here=False, host=""):
             html.escape(href, quote=True), e(title), "<span>%s</span>" % e(says) if says else "")
 
     panels = [("Ask", [tile("/ask/", "Ask the model", "a question, as a code for the camera"),
-                       tile("/loop/", "The loop", "every answer today, for a big screen")])]
+                       tile("/loop/", "The loop", "every answer today, for a big screen"),
+                       tile("/models/", "Models", "which of bay 1's are up")])]
     try:
         import replies
         for room, cfg in replies.rooms().items():
@@ -2986,8 +2991,10 @@ class Door(BaseHTTPRequestHandler):
             data = self.rfile.read(n)
             if not data.strip():
                 return self.reply(400, json.dumps({"why": "nothing in it"}), TYPES[".json"])
+            text = data.lstrip()[:4]
+            kind = "frames" if text.startswith(b"AC1") else "json"      # a camera's frames, passed on by another helm
             try:
-                name = replies.drop(data, self.peer())
+                name = replies.drop(data, self.peer(), kind)
             except (OSError, ValueError) as exc:
                 log("drop: %r" % exc)
                 return self.reply(500, json.dumps({"why": "not kept: %s" % exc}), TYPES[".json"])
@@ -3126,6 +3133,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, depot_page())
             if route in ("/broadcast", "/broadcast/"):
                 return self.reply(200, broadcast_page())
+            if route in ("/models", "/models/"):
+                return self.reply(200, models_page())
+            if route == "/models/now":
+                return self.reply(200, json.dumps(models_now()), TYPES[".json"])
             if route == "/broadcast/now":
                 return self.reply(200, json.dumps(broadcast_now()), TYPES[".json"])
             if route in ("/preview", "/preview/"):
@@ -3234,11 +3245,10 @@ def serve():
         log("port %d unavailable, refusing to pick another: %s" % (PORT, exc))
         return 1
     server.bounce = False
-    threading.Thread(target=watch_commit, args=(server,), daemon=True).start()
-    threading.Thread(target=watch_depot, daemon=True).start()
-    threading.Thread(target=watch_wall, daemon=True).start()
-    threading.Thread(target=watch_camera, daemon=True).start()
-    threading.Thread(target=watch_replies, daemon=True).start()
+    for job, watch in (("commit", watch_commit), ("depot", watch_depot), ("wall", watch_wall),
+                       ("camera", watch_camera), ("replies", watch_replies)):
+        if job in WATCH:
+            threading.Thread(target=watch, args=(server,) if job == "commit" else (), daemon=True).start()
     log("door up on %s:%d from %s at %s%s" % ("[::]" if BIND == "::" else BIND, PORT, ROOT, git("rev-parse", "--short", "HEAD"),
                                                  "; %d LAN names" % len(NAMES) if NAMES else ""))
     server.serve_forever()
@@ -4145,6 +4155,120 @@ BROADCAST_CSS = BOARD_CSS + """
 .card.on { border-left-color:#3fb950; } .card button:disabled { opacity:.4; cursor:default; }
 #said { min-height:1.4em; }
 """
+
+
+# ---------------------------------------------------------------------- models --
+# BAY 1's MODELS: the spread (../production/models/), which are up, and a toggle for each. A toggle is a
+# reply, wizard:model+up, set down at this door like any other: production's helm applies it, and any
+# other helm passes it there (replies.py, route). The list is what bay 1's server answers, read-only.
+MODEL_AT = os.environ.get("FCPM_MODEL_AT", "10.209.1.20:9931")
+
+
+def models_now():
+    """Each model of the spread with its lab, size and state on bay 1's server (loaded, unloaded, or not
+    served), and whether that server answered at all."""
+    import urllib.request
+    import replies
+    spread = replies.load_yaml(ROOT / "machines" / "production" / "model.yml")
+    try:
+        with urllib.request.urlopen("http://%s/models" % MODEL_AT, timeout=2) as r:
+            listed = {d["id"]: (d.get("status") or {}).get("value") or "loaded" for d in json.load(r).get("data") or []}
+        up = True
+    except (OSError, ValueError, KeyError, TypeError):
+        listed, up = {}, False
+    models = []
+    for f in sorted((ROOT / "machines" / "production" / "models").glob("*.yml")):
+        m = replies.load_yaml(f)
+        models.append({"model": f.stem, "lab": m.get("lab"), "params": m.get("params"), "active": m.get("active"),
+                       "gb": round((m.get("size") or 0) / 1e9, 1), "why": m.get("why"),
+                       "default": f.stem == spread.get("model"), "state": listed.get(f.stem)})
+    models.sort(key=lambda m: (float(m["params"] or 0), m["model"]))       # a ladder of sizes, smallest first
+    holder = replies.holder("wizard:model+up")
+    return {"answering": up, "models": models, "at": MODEL_AT,
+            "holder": holder[0] if holder else None, "here": bool(holder) and holder[0] in replies.wears()}
+
+
+def models_page():
+    body = """%s<main>
+<h2>Bay 1's models</h2>
+<p class=dim>Stock models, as their labs made them, for testing what each can do. Tap the ones to be up and
+keep the line-up: it goes to the helm of the bay that serves them, which fetches any it lacks (minutes, for a
+big one) and serves them. The default is always up. A model up but not asked lately waits on the disk.</p>
+<form id=pick data-at="%s"><section id=list></section>
+<p><button id=keep>Keep this line-up</button></p></form>
+<p class=dim id=said></p></main>%s""" % (masthead("%s &middot; models" % e(socket.gethostname().lower())),
+                                         e(revision()), MODELS_JS)
+    return page("Bay 1's models", body, MODELS_CSS)
+
+
+MODELS_CSS = BOARD_CSS + """
+#list { display:grid; grid-template-columns:repeat(auto-fill, minmax(17rem, 1fr)); gap:.6rem; margin:1.2rem 0; }
+.model { display:flex; flex-direction:column; gap:.25rem; text-align:left; padding:.9rem 1.1rem; font-weight:400;
+  background:var(--slate); color:var(--dim); border:0; border-left:4px solid transparent; cursor:pointer; }
+.model b { font-size:1.05rem; color:var(--dim); } .model .why { font-size:.85rem; line-height:1.3; }
+.model .state { font-size:.8rem; text-transform:uppercase; letter-spacing:.1em; }
+.model.up { border-left-color:var(--signal); color:var(--paper); } .model.up b { color:var(--paper); font-size:1.2rem; }
+.model.loaded .state { color:var(--signal); } .model:disabled { cursor:default; opacity:1; }
+#said { min-height:1.4em; }
+"""
+
+
+MODELS_JS = """<script>
+(function () {
+  var list = document.getElementById('list'), said = document.getElementById('said'), drawn = false;
+  function size(m) { return m.active != null && m.active !== m.params ? m.params + 'B, ' + m.active + 'B at work' : m.params + 'B'; }
+  function draw(d) {
+    if (!drawn) {                                  // drawn once, so a tap is never lost to a refresh
+      drawn = true;
+      d.models.forEach(function (m) {
+        var card = document.createElement('button'), b = document.createElement('b'), p = document.createElement('span'),
+            w = document.createElement('span'), s = document.createElement('span');
+        card.type = 'button'; card.className = 'model'; card.dataset.model = m.model;
+        card.classList.toggle('up', m.default || !!m.state); card.disabled = m.default;
+        b.textContent = m.model; p.textContent = m.lab + ', ' + size(m) + ', ' + m.gb + ' GB';
+        w.className = 'why'; w.textContent = m.why || ''; s.className = 'state';
+        card.onclick = function () { card.classList.toggle('up'); };
+        card.append(b, p, w, s); list.append(card);
+      });
+    }
+    d.models.forEach(function (m) {
+      var card = list.querySelector('[data-model="' + m.model + '"]');
+      card.classList.toggle('loaded', m.state === 'loaded');
+      card.querySelector('.state').textContent = m.default ? 'the default, always up' + (m.state === 'loaded' ? ', loaded' : '') :
+        !d.answering ? '' : m.state === 'loaded' ? 'loaded' : m.state ? 'up, on the disk' : '';
+    });
+    if (!said.dataset.busy) said.textContent = d.answering ? '' : "Bay 1's model server is not answering. A line-up kept now waits for its helm.";
+  }
+  function now() { fetch('/models/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
+  function hex(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  function iso(d) {
+    var o = -d.getTimezoneOffset(), p = function (n) { return ('0' + Math.floor(Math.abs(n))).slice(-2); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' +
+      p(d.getSeconds()) + (o >= 0 ? '+' : '-') + p(o / 60) + ':' + p(o % 60);
+  }
+  function follow(name, tries) {
+    fetch('/drop/' + name, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (w) {
+      var s = w.state;
+      said.textContent = s === 'applied' ? 'Kept: ' + w.why : s === 'routed' ? 'Passed on ' + w.why + '.' :
+        s === 'held' ? 'Held: ' + w.why : s === 'inbox' && w.why ? 'Waiting ' + w.why + '; it goes when that helm answers.' :
+        'Set down; read within 20 seconds...';
+      if ((s === 'inbox' || !s) && tries > 0) setTimeout(function () { follow(name, tries - 1); }, 3000);
+      else delete said.dataset.busy;
+    });
+  }
+  document.getElementById('pick').onsubmit = function (ev) {
+    ev.preventDefault();
+    var up = Array.from(list.querySelectorAll('.model.up'), function (b) { return b.dataset.model; });
+    var reply = {schema: 'fcpm.reply/v0', wizard: 'wizard:model+up', at: this.dataset.at, issued: iso(new Date()),
+                 nonce: hex(16), up: up};
+    said.dataset.busy = 1; said.textContent = 'Keeping ' + up.join(', ') + '...';
+    fetch('/drop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(reply)})
+      .then(function (r) { return r.json(); }).then(function (k) { follow(k.kept, 20); })
+      .catch(function () { said.textContent = 'This machine is not answering'; delete said.dataset.busy; });
+  };
+  now(); setInterval(now, 10000);
+})();
+</script>"""
 
 
 def broadcast_page():

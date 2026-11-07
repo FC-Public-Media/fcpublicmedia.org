@@ -122,10 +122,16 @@ verbs:
     linux: "not: no record kept here yet; the journal holds sudo's"
 
   - verb: model
-    args: "[status|install|grant|on|off|shapes|contexts|ask TEXT [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]]"
-    says: "the language model, for the switched network only (grant is an administrator's)"
+    args: "[status|models|pick [NAMES]|install [NAME]|grant|on|off|shapes|contexts|ask TEXT [-Model NAME] [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]]"
+    says: "the language models, for the switched network only: pick says which are up (grant is an administrator's)"
     windows: "machines/<profile>/model.ps1"
     linux: "not: Windows gear (the bay's GPU)"
+
+  - verb: helm
+    args: "[status|grant]"
+    says: "this bay's helm, which takes what a peer helm passes it (grant is an administrator's)"
+    windows: "machines/<profile>/helm.ps1"
+    linux: "not: digitization's helm is its door, at login (at-login)"
 
   - verb: camera
     args: "[console|presets|apply NAME|state]"

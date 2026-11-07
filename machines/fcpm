@@ -91,7 +91,7 @@ case "$cmd" in
     p=$(profile)
     [ -f "$HERE/$p/audition.ps1" ] || { echo "fcpm: ${p:-this machine} carries no Audition panel"; exit 0; }
     ps1 "$HERE/$p/audition.ps1" "$@" ;;
-  drobo|share|audit|model)
+  drobo|share|audit|model|helm)
     p=$(profile)
     [ -f "$HERE/$p/$cmd.ps1" ] || { echo "fcpm: ${p:-this machine} carries no $cmd"; exit 0; }
     ps1 "$HERE/$p/$cmd.ps1" "$@" ;;
