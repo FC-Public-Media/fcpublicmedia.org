@@ -89,6 +89,20 @@ class Helms(unittest.TestCase):
         self.assertEqual(log.read_text(), "qwen3.5-9b,gpt-oss-20b")
         self.assertIn("by unsigned", (replies.STATE / replies.PICK_LOG).read_text())
 
+    def test_the_default_can_be_down_and_none_up_is_said_as_none(self):
+        os.environ["FCPM_WEARS"] = "production"
+        log = self.tmp / "picked"
+        os.environ["FCPM_MODEL_PICK"] = json.dumps([sys.executable, "-c",
+                                                    "import sys; open(%r, 'w').write(sys.argv[1])" % str(log)])
+        replies.drop(up())
+        [(_, verdict, why)] = replies.take()
+        self.assertEqual((verdict, why), ("applied", "up: none; model.ps1 pick started (model-pick.log)"))
+        for _ in range(50):
+            if log.exists():
+                break
+            time.sleep(0.1)
+        self.assertEqual(log.read_text(), "none")
+
     def test_the_holding_helm_holds_what_it_cannot_pick(self):
         os.environ["FCPM_WEARS"] = "production"
         os.environ["FCPM_MODEL_PICK"] = json.dumps(["true"])

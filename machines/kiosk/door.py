@@ -4193,7 +4193,7 @@ def models_page():
 <h2>Bay 1's models</h2>
 <p class=dim>Stock models, as their labs made them, for testing what each can do. Tap the ones to be up and
 keep the line-up: it goes to the helm of the bay that serves them, which fetches any it lacks (minutes, for a
-big one) and serves them. The default is always up. A model up but not asked lately waits on the disk.</p>
+big one) and serves them. Any may be down, the default too. A model up but not asked lately waits on the disk.</p>
 <form id=pick data-at="%s"><section id=list></section>
 <p><button id=keep>Keep this line-up</button></p></form>
 <p class=dim id=said></p></main>%s""" % (masthead("%s &middot; models" % e(socket.gethostname().lower())),
@@ -4224,7 +4224,7 @@ MODELS_JS = """<script>
         var card = document.createElement('button'), b = document.createElement('b'), p = document.createElement('span'),
             w = document.createElement('span'), s = document.createElement('span');
         card.type = 'button'; card.className = 'model'; card.dataset.model = m.model;
-        card.classList.toggle('up', m.default || !!m.state); card.disabled = m.default;
+        card.classList.toggle('up', !!m.state || (!d.answering && m.default));
         b.textContent = m.model; p.textContent = m.lab + ', ' + size(m) + ', ' + m.gb + ' GB';
         w.className = 'why'; w.textContent = m.why || ''; s.className = 'state';
         card.onclick = function () { card.classList.toggle('up'); };
@@ -4234,8 +4234,8 @@ MODELS_JS = """<script>
     d.models.forEach(function (m) {
       var card = list.querySelector('[data-model="' + m.model + '"]');
       card.classList.toggle('loaded', m.state === 'loaded');
-      card.querySelector('.state').textContent = m.default ? 'the default, always up' + (m.state === 'loaded' ? ', loaded' : '') :
-        !d.answering ? '' : m.state === 'loaded' ? 'loaded' : m.state ? 'up, on the disk' : '';
+      card.querySelector('.state').textContent = (!d.answering ? '' : m.state === 'loaded' ? 'loaded' : m.state ? 'up, on the disk' : '') +
+        (m.default ? (d.answering && m.state ? ', ' : '') + 'the default' : '');
     });
     if (!said.dataset.busy) said.textContent = d.answering ? '' : "Bay 1's model server is not answering. A line-up kept now waits for its helm.";
   }

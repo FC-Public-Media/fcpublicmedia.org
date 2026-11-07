@@ -438,7 +438,8 @@ def pick_command():
 
 
 def model_up_reply(reply, meta):
-    """{up: [names]}: the models to be up on this bay; the default stays up whatever the list says.
+    """{up: [names]}: the models to be up on this bay, the whole line-up; any may be down, the default too, and
+    an empty list is none up.
     model.ps1 pick is started and left to run (fetching a model takes minutes); its words go to model-pick.log."""
     up = reply.get("up")
     if not isinstance(up, list) or not all(isinstance(n, str) and n for n in up):
@@ -450,7 +451,7 @@ def model_up_reply(reply, meta):
     cmd = pick_command()
     if not cmd:
         return "this helm cannot run model.ps1 (not Windows)"
-    names = ",".join(up) or (load_yaml(ROOT / "machines" / "production" / "model.yml").get("model") or "")
+    names = ",".join(up) or "none"
     with open(STATE / PICK_LOG, "ab") as out:          # the pick keeps its own handle; ours closes
         out.write(("\n%s %s, by %s\n" % (now().isoformat(timespec="seconds"), names, (meta or {}).get("by") or "unsigned")).encode())
         out.flush()
