@@ -9,8 +9,8 @@ The source is the ingest (./ingest), fed by ./fetch from the Cablecast box on th
 by RTMPS, as it arrives. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here
 prints it, and Cablecast never holds it. `--backup` sends to YouTube's backup ingest instead.
 
-Nothing is pushed until the ingest's counters show the channel arriving (the 350 publishing and its
-bytes growing), and ffmpeg is stopped when its output stops moving. When the 350 goes, the ingest
+Nothing is pushed until the ingest's counters show the channel arriving (a publisher on and its
+bytes growing), and ffmpeg is stopped when its output stops moving. When the channel goes, the ingest
 ends the stream, ffmpeg ends, and this waits for it to come back; meanwhile YouTube has the floor on
 its backup ingest. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json for any screen.
 ffmpeg and the system python. See PROFILE.md, "To YouTube".
@@ -29,7 +29,7 @@ KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
 STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json"
 INGEST = {"primary": "rtmps://a.rtmp.youtube.com/live2/{key}",
           "backup": "rtmps://b.rtmp.youtube.com/live2/{key}?backup=1"}
-SOURCE = "rtmp://127.0.0.1:1935/ch97/air"     # the ingest, where the 350 publishes
+SOURCE = "rtmp://127.0.0.1:1935/ch97/air"     # the ingest, where the channel arrives
 STAT = "http://127.0.0.1:1936/stat"
 WATCH = 5         # seconds between two reads of the ingest's counters, to see the channel arrive
 STALL = 60        # seconds of no output before ffmpeg is stopped
@@ -51,7 +51,7 @@ def note(**facts):
 
 
 def arriving():
-    """(True, bytes in) if the 350 is publishing to the ingest and its bytes grow within WATCH seconds."""
+    """(True, bytes in) if something is publishing to the ingest and its bytes grow within WATCH seconds."""
     def count():
         with urllib.request.urlopen(STAT, timeout=10) as reply:
             stat = reply.read().decode("utf-8", "replace")
