@@ -12,7 +12,10 @@ prints it, and Cablecast never holds it. `--backup` sends to YouTube's backup in
 Nothing is pushed until the ingest's counters show the channel arriving (a publisher on and its
 bytes growing), and ffmpeg is stopped when its output stops moving. When the channel goes, the ingest
 ends the stream, ffmpeg ends, and this waits for it to come back; meanwhile YouTube has the floor on
-its backup ingest. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json for any screen.
+its backup ingest. The same when Cablecast's VIOLite Player, our programming, stops for a gap in the
+schedule (the channel would show the CG): the push to YouTube ends at the moment the gap reaches
+what we carry (fetch says how far behind the room that is), so YouTube falls over to the floor, and
+it starts again when the player's next show does. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json for any screen.
 ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import datetime
@@ -25,12 +28,19 @@ import threading
 import time
 import urllib.request
 
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import cablecast  # noqa: E402  the player's state, from the box
+
 KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
 STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json"
 INGEST = {"primary": "rtmps://a.rtmp.youtube.com/live2/{key}",
           "backup": "rtmps://b.rtmp.youtube.com/live2/{key}?backup=1"}
 SOURCE = "rtmp://127.0.0.1:1935/ch97/air"     # the ingest, where the channel arrives
 STAT = "http://127.0.0.1:1936/stat"
+FETCH = pathlib.Path.home() / ".local/state/fcpm/broadcast/fetch.json"   # how far behind the room fetch reads
+PLAYER = 4        # Cablecast's VIOLite Player: our programming; when it stops, the channel shows the CG
+GAP = 6           # seconds the player must stay stopped to count as a gap, not a seam between two shows
 WATCH = 5         # seconds between two reads of the ingest's counters, to see the channel arrive
 STALL = 60        # seconds of no output before ffmpeg is stopped
 WAIT = 10         # seconds between tries while nothing arrives or there is no key
@@ -67,7 +77,44 @@ def arriving():
     return second is not None and second > first, second
 
 
-def push(target, key):
+class Player:
+    """When the VIOLite Player played, by this box's clock: Cablecast asked every 2 s."""
+    def __init__(self):
+        self.changes = [(0.0, True)]
+        threading.Thread(target=self.watch, daemon=True).start()
+
+    def watch(self):
+        while True:
+            try:
+                status = cablecast.call("GET", f"/automationstatus?location={cablecast.LOCATION}")["deviceStatus"]
+                playing = next(d for d in status if d.get("device") == PLAYER).get("action") == "play"
+                if playing != self.changes[-1][1]:
+                    self.changes.append((time.time(), playing))
+                    print(f"relay: the player {'plays' if playing else 'stopped'}", flush=True)
+                    self.changes = self.changes[-50:]
+            except Exception as e:  # not knowing is no gap: the channel goes on as it is
+                print(f"relay: the player's state: {type(e).__name__}: {e}"[:200], flush=True)
+            time.sleep(2)
+
+    def gap(self, at):
+        """True if, at the moment `at`, the player was stopped and stayed so for GAP seconds or more."""
+        before = [c for c in self.changes if c[0] <= at]
+        if not before or before[-1][1]:
+            return False
+        stopped = before[-1][0]
+        after = [c for c in self.changes if c[0] > stopped]
+        return (after[0][0] if after else time.time()) - stopped >= GAP
+
+
+def behind():
+    """Seconds between the room and what the ingest carries, as fetch measured it."""
+    try:
+        return float(json.loads(FETCH.read_text())["behind"])
+    except Exception:
+        return 35.0
+
+
+def push(target, key, player):
     run = subprocess.Popen(
         ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-rtmp_live", "live",
          "-rtmp_buffer", "3000", "-i", SOURCE, "-map", "0:v:0", "-map", "0:a:0", "-c", "copy",
@@ -84,6 +131,14 @@ def push(target, key):
 
     threading.Thread(target=progress, daemon=True).start()
     while run.poll() is None:
+        if player.gap(time.time() - behind()):
+            note(state="gap", why="the player stopped: YouTube shows its backup ingest, the floor", target=target)
+            run.terminate()
+            try:
+                run.wait(10)
+            except subprocess.TimeoutExpired:
+                run.kill()
+            return
         if time.time() - seen["at"] > STALL:
             note(state="stalled", why=f"no output for {STALL} s; ffmpeg stopped", target=target)
             run.terminate()
@@ -92,12 +147,16 @@ def push(target, key):
             except subprocess.TimeoutExpired:
                 run.kill()
             return
-        time.sleep(2)
+        time.sleep(1)
     note(state="stopped", why=f"ffmpeg ended ({run.returncode})", target=target)
 
 
 def main(check, target):
+    player = Player()
     while True:
+        if player.gap(time.time() - behind()):
+            time.sleep(1)
+            continue
         key = KEY.read_text().strip() if KEY.exists() else ""
         try:
             flowing, got = arriving()
@@ -115,7 +174,7 @@ def main(check, target):
                               "key": bool(key), "target": INGEST[target].format(key="<key>")}, indent=1))
             return
         if flowing and key:
-            push(target, key)
+            push(target, key, player)
             continue
         time.sleep(WAIT)
 

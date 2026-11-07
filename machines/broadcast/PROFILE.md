@@ -128,6 +128,13 @@ relay waits for it, while YouTube shows the floor (below). Latency is spent for 
 second read buffer, one encode (the 350's), one hop on the LAN, one to YouTube. `relay --check` says
 what it sees; `relay.json` keeps it for any screen.
 
+**Gaps.** Our programming is Cablecast's VIOLite Player; between its shows the channel shows the CG.
+The relay asks Cablecast every 2 s whether the player plays (`/automationstatus`, device 4; 2026-11-06,
+21:07:59 `stop` and 21:09:55 `play`, for a gap scheduled 21:08 to 21:10). A stop that lasts 6 s or
+more is a gap: when it reaches what we carry (fetch's `behind`, about half a minute), the relay ends
+its push and YouTube falls over to its backup ingest, the floor; when the player's next show reaches
+us, the push starts again. YouTube's own failover makes the seam; there is no second encode.
+
 Whether the 350 pushes is a switch: attaching the destination (`addOutput`, a forced event) starts
 the push and detaching it (`removeOutput`) stops it. Destinations themselves are made and edited
 only in Cablecast's web interface; its API lists them and nothing more. `cablecast.py push [NAME
