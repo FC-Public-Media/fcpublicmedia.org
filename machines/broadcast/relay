@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""relay — channel 97 to YouTube, all day: what the Live 350 sends us, copied, never re-encoded.
+"""relay — channel 97 to YouTube, all day: what arrives at the ingest, copied, never re-encoded.
 
     python3 -I machines/broadcast/relay            run (the broadcast crew's `youtube` line keeps it up)
     python3 -I machines/broadcast/relay --check    say what it would do now, push nothing
 
-The source is the channel as the 350 pushes it to this box: the ingest (./ingest), read on
+The source is the ingest (./ingest), fed by ./fetch from the Cablecast box on the LAN, read on
 127.0.0.1, so the only leg on the internet is ours to YouTube. It goes to YouTube's primary ingest
 by RTMPS, as it arrives. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here
 prints it, and Cablecast never holds it. `--backup` sends to YouTube's backup ingest instead.
@@ -74,7 +74,7 @@ def push(target, key):
          "-f", "flv", "-flvflags", "no_duration_filesize", INGEST[target].format(key=key),
          "-progress", "pipe:1", "-nostats"],
         stdout=subprocess.PIPE, text=True)
-    note(state="pushing", why=f"the 350's stream to YouTube's {target} ingest", target=target)
+    note(state="pushing", why=f"the channel to YouTube's {target} ingest", target=target)
     seen = {"at": time.time(), "out": None}
 
     def progress():         # ffmpeg says how far its output has got; a new figure is a sign of life
@@ -106,8 +106,8 @@ def main(check, target):
             flowing, got = False, None
         else:
             if not flowing:
-                note(state="waiting", why="nothing arriving from the 350" if got is None
-                     else "the 350 is connected but nothing moves")
+                note(state="waiting", why="nothing arriving at the ingest" if got is None
+                     else "a publisher is connected but nothing moves")
             elif not key:
                 note(state="waiting", why=f"the channel arrives; no key in {KEY}")
         if check:

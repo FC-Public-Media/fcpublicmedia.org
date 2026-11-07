@@ -103,13 +103,20 @@ has no play.
 
 ## To YouTube
 
-Channel 97 goes to YouTube all day, everything on it, through us: the Live 350 pushes the channel to
-one network stream destination, "FCPM Digitization" (`rtmp://10.209.1.95/ch97`, stream name `air`),
-and we carry it to YouTube with our key. Cablecast holds no YouTube destination and no YouTube key;
-the key lives only in our keychain (`youtube` group). Its one internet leg is ours, so when YouTube
-complains, the evidence is here.
+Channel 97 goes to YouTube all day, everything on it, through us: we take the channel on the LAN
+from the Cablecast box and carry it to YouTube with our key. Cablecast holds no YouTube destination
+and no YouTube key; the key lives only in our keychain (`youtube` group). The one internet leg is
+ours, so when YouTube complains, the evidence is here.
 
-[`ingest`](ingest), the crew's `ingest` line, is where the 350 lands: nginx with Debian's RTMP module,
+[`fetch`](fetch), the crew's `fetch` line, reads the channel's live stream from the box itself
+(`https://10.1.10.84/live-5/...`, the HLS that Reflect copies to the web): the largest picture and
+the audio, copied, three segments behind live and paced by the clock, half a minute of slack against
+a late segment. This box can reach the box; the box cannot reach this one, because the video subnet
+sits behind its router (2026-11-06: the 350 attached to "FCPM Digitization", nothing ever arrived on
+1935). So we fetch. A push from the 350 would need that router to forward 1935 to this box, and
+then `fetch` stops, since the ingest takes one publisher at a time.
+
+[`ingest`](ingest), the crew's `ingest` line, is where the channel lands, fetched or pushed: nginx with Debian's RTMP module,
 its own instance (not the web's nginx on :80), listening on 1935. Only the 350 may publish, only this
 box may read; nothing is recorded or re-encoded. It holds the 350's one connection, so our side can
 come and go without touching Cablecast. Its counters are on `127.0.0.1:1936/stat`.
