@@ -23,4 +23,4 @@ serves:
 
   - service: drain
     for: "the site-worker's tanks (every form reply on the site) brought here into ~/fcpm/answers and emptied behind; see digitization/PROFILE.md#replies"
-    start: "/bin/sh machines/digitization/drain"
+    start: "/usr/bin/python3 machines/drain"

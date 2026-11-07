@@ -5,6 +5,7 @@
 helms:
   digitization:
     at: http://digitization.local
+    holds: [wizard:site+deploy]
   production:
     at: http://10.209.1.20:8080
     holds: [wizard:model+up]

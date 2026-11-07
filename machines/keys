@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""keys -- the keychain digitization holds, read from keys.yml. Never prints a value.
+"""keys -- the keychain this machine holds for the jobs it wears: machines/<job>/keys.yml, for each job
+this machine's name is in (machines/binding). Never prints a value. The same on Linux and Windows.
 
   keys                  each key: held or WANTED, and where it lives
   keys check            the same in `fcpm check`'s words; exit 1 if any is wanted
   keys take GROUP KEY   ask for one value in a window on this screen, check its prefix, store it
   keys offer GROUP DEVICE   ask for GROUP's wanted keys on a one-time page only DEVICE on the tailnet can open
-  keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment
+  keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment, and the
+                        folders of the job's gear called by `at:` (a bay's Node) first on its PATH
+
+FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test.
 """
 import html
 import http.server
@@ -13,6 +17,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import time
 import urllib.parse
 import pathlib
@@ -24,19 +29,56 @@ import yaml
 HERE = pathlib.Path(__file__).resolve().parent
 SHAPES = {"guid": re.compile(r"[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}"),
           "hex32": re.compile(r"[0-9a-f]{32}")}
-LEDGER = HERE / "keys.yml"
+WINDOWS = os.name == "nt"
 
 
 def home(path):
-    return pathlib.Path(os.path.expanduser(path))
+    return pathlib.Path(os.path.expandvars(os.path.expanduser(path)))
+
+
+def wears():
+    """The jobs this machine wears: each profile's `names` against the host's own name."""
+    if os.environ.get("FCPM_WEARS") is not None:
+        return [j for j in os.environ["FCPM_WEARS"].split(",") if j]
+    b = {"__name__": "binding", "__file__": str(HERE / "binding")}      # run as source: no __pycache__
+    exec(compile((HERE / "binding").read_text(encoding="utf-8"), str(HERE / "binding"), "exec"), b)
+    system = b["this_platform"]()
+    fact = b["actual"](system) if system else None
+    if not fact:
+        return []
+    return [p.name for p in b["profiles"]() if (b["declared"](p).get(system) or "").casefold() == fact.casefold()]
+
+
+def ledgers():
+    if os.environ.get("FCPM_KEYS_LEDGER"):
+        return [pathlib.Path(os.environ["FCPM_KEYS_LEDGER"])]
+    return [HERE / job / "keys.yml" for job in wears() if (HERE / job / "keys.yml").is_file()]
 
 
 def load():
-    ledger = yaml.safe_load(LEDGER.read_text())
-    groups = ledger["groups"]
-    for name, group in groups.items():
-        group["path"] = home(group.get("file") or f"{ledger['dir']}/{name}.env")
-    return ledger, groups
+    """Every group of every ledger this machine holds; a group two jobs name is the first job's."""
+    groups = {}
+    for path in ledgers():
+        ledger = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for name, group in (ledger.get("groups") or {}).items():
+            if name not in groups:
+                group["path"] = home(group.get("file") or f"{ledger['dir']}/{name}.env")
+                groups[name] = group
+    return groups
+
+
+def gear_folders():
+    """The folder of each worn job's gear that is called by `at:`, never from PATH (a bay's Node). Read by
+    line, as check.ps1 reads gear.yml: its prose is not always YAML."""
+    out = []
+    for job in wears():
+        f = HERE / job / "gear.yml"
+        for line in f.read_text(encoding="utf-8").splitlines() if f.is_file() else []:
+            m = re.match(r'\s*at:\s*"?([^"#]+)"?', line)
+            folder = pathlib.Path(os.path.expandvars(m.group(1).strip().replace("\\\\", "\\"))).parent if m else None
+            if folder and folder.is_absolute() and folder.is_dir() and str(folder) not in out:
+                out.append(str(folder))
+    return out
 
 
 def read(group):
@@ -44,7 +86,7 @@ def read(group):
     path = group["path"]
     if not path.exists():
         return {}
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     if group["form"] == "raw":
         value = text.strip()
         return {next(iter(group["keys"])): value} if value else {}
@@ -71,7 +113,7 @@ def facts(groups):
                 yield False, f"key {where} in {short(path)} has the wrong kind", f"keys take {name} {key}"
             else:
                 yield True, f"key {where} in {short(path)}", None
-        if path.exists() and path.stat().st_mode & 0o077:
+        if not WINDOWS and path.exists() and path.stat().st_mode & 0o077:
             yield False, f"key file {short(path)} readable only by its owner", f"chmod 600 {path}"
 
 
@@ -87,27 +129,42 @@ def short(path):
 
 def ask(title, text):
     """A hidden entry on this screen; None if the window was closed."""
+    if WINDOWS:
+        return ask_tk(title, text)
     env = dict(os.environ, DISPLAY=os.environ.get("DISPLAY", ":0"))
     done = subprocess.run(["zenity", "--entry", "--hide-text", "--width", "480", "--title", title, "--text", text],
                           capture_output=True, text=True, env=env)
     return done.stdout.strip() if done.returncode == 0 else None
 
 
+def ask_tk(title, text):
+    """Windows: the same hidden entry, by the Tk that uv's Python carries."""
+    import tkinter
+    from tkinter import simpledialog
+    root = tkinter.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    value = simpledialog.askstring(title, text, show="*", parent=root)
+    root.destroy()
+    return value.strip() if value else None
+
+
 def store(group, key, value):
     """Write the group's file with key set, atomically, mode 600, in a folder only its owner reads."""
     path = group["path"]
     path.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(path.parent, 0o700)
+    if not WINDOWS:                       # Windows: the profile folder is this account's alone
+        os.chmod(path.parent, 0o700)
     if group["form"] == "raw":
         body = value + "\n"
     else:
-        lines = path.read_text().splitlines() if path.exists() else []
+        lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
         lines = [l for l in lines if l.split("=", 1)[0].strip() != key]
         lines.append(f"{key}={value}")
         body = "\n".join(lines) + "\n"
     temp = path.with_name(path.name + ".new")
     fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as out:
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as out:
         out.write(body)
     os.replace(temp, path)
 
@@ -115,7 +172,7 @@ def store(group, key, value):
 def take(groups, name, key):
     group = groups.get(name)
     if not group or key not in group["keys"]:
-        sys.exit(f"keys: no {name} {key} in {LEDGER.name}; add it there first")
+        sys.exit(f"keys: no {name} {key} in this machine's keys.yml; add it there first")
     spec = group["keys"][key]
     prefix = spec.get("prefix", "")
     text = f"{group['what']}\n\n{key}: {spec['may']}.\nFrom {spec['from']}."
@@ -150,7 +207,7 @@ def offer(groups, name, device, minutes=60):
     """Serve one page, to one tailnet device, asking for the group's wanted keys; stop once all are held."""
     group = groups.get(name)
     if not group:
-        sys.exit(f"keys: no group {name} in {LEDGER.name}")
+        sys.exit(f"keys: no group {name} in this machine's keys.yml")
     here, allowed = tailnet(device)
     path = "/" + secrets.token_urlsafe(12)
 
@@ -226,7 +283,7 @@ def run(groups, names, command):
     for name in names:
         group = groups.get(name)
         if not group:
-            sys.exit(f"keys: no group {name} in {LEDGER.name}")
+            sys.exit(f"keys: no group {name} in this machine's keys.yml ({', '.join(wears()) or 'it wears no job'})")
         if group["form"] != "env":
             sys.exit(f"keys: {name} is one raw value; its job reads {short(group['path'])} itself")
         held = read(group)
@@ -234,11 +291,22 @@ def run(groups, names, command):
         if missing:
             sys.exit(f"keys: {name} lacks {', '.join(missing)}: keys take {name} {missing[0]}")
         env.update({k: held[k] for k in group["keys"]})
-    os.execvpe(command[0], command, env)
+    env["PATH"] = os.pathsep.join(gear_folders() + [env.get("PATH", "")])
+    exe = shutil.which(command[0], path=env["PATH"])                    # Windows: npx is npx.cmd
+    if not exe:
+        sys.exit(f"keys: no {command[0]} on this machine")
+    if WINDOWS:
+        sys.exit(subprocess.run([exe] + command[1:], env=env).returncode)
+    os.execve(exe, command, env)
 
 
 def main(argv):
-    _, groups = load()
+    if WINDOWS:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    groups = load()
+    if not groups and argv[:1] != ["run"]:
+        print(f"keys: this machine holds no keychain ({', '.join(wears()) or 'it wears no job'})")
+        return 0
     if argv[:1] == ["take"] and len(argv) == 3:
         return take(groups, argv[1], argv[2])
     if argv[:1] == ["offer"] and len(argv) == 3:

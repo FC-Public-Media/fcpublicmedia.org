@@ -9,3 +9,6 @@ helm            keep        machines/production
 
 # Held off: no Claude at startup. Uncomment to keep it.
 # remote-control  keep        machines/production
+
+# Held off: one machine drains the site's tanks, and digitization does. Uncomment here and comment it there to move it.
+# drain           every 1h    machines/production

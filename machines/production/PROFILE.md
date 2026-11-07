@@ -26,6 +26,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
 | `model.ps1`, `model.yml`, `models/`, `shapes/` | `fcpm model`: the language models, an instrument answering the switched network only (llama.cpp serving the spread in [`models/`](models/README.md), Qwen3.5 4B the default); its effort words, the shapes it offers, and the contexts it keeps |
 | `helm.ps1` | `fcpm helm`: this bay's helm, the crew's `helm` line (the door's intake and pages only, on 8080), which takes what a peer helm passes it ([`../helms.yml`](../helms.yml)); its one rule |
+| `keys.yml` | its own keychain (`fcpm keys`, [`../keys`](../keys)): a Cloudflare token for the site's deploy and the tanks' drain. See Deploy |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
 ## Inbound
@@ -42,6 +43,26 @@ program, a port and an address range:
 
 Clicking Allow on Windows' prompt makes a wider rule (any port, any address): obs64, obs-browser-page
 and mediamtx.exe carry those now. Vendors' own rules (Adobe, DaVinci, Drobo) are theirs.
+
+## Deploy
+
+The site deploys from here the way it does from digitization: `fcpm deploy` (or `fcpm deploy --build`, which
+uploads nothing) runs `bin/deploy-site` in Git Bash, from `refs\fcpublicmedia.org`, with uv's Python,
+RubyInstaller's Jekyll and the bay's Node. It needs, once:
+
+1. Ruby: `winget install --id RubyInstallerTeam.RubyWithDevKit.3.2 --exact --scope user`, then `ridk install`
+   (MSYS2 and its toolchain, option 3). Then `bundle install` in `refs\fcpublicmedia.org\site`.
+2. This bay's own Cloudflare token: made in the dashboard for bay 1 alone (`keys.yml` says which two
+   permissions), then `fcpm keys take cloudflare CLOUDFLARE_API_TOKEN` and
+   `fcpm keys take cloudflare CLOUDFLARE_ACCOUNT_ID` at the desk (a window, never a chat). It sits in
+   `%USERPROFILE%\.config\fcpm\keys`, which anyone signed in as `fcpub` can read: the token may deploy
+   the site and drain the tanks, and nothing else.
+3. `fcpm check`: Jekyll 4 and both keys `ok`.
+
+The board's deploy (`/deploy/`, `wizard:site+deploy`) runs on the machine whose helm holds it in
+[`../helms.yml`](../helms.yml). Moving it here is that one line. The tanks' drain is a crew line held by one
+machine at a time: it is in `services`, commented, until it moves here from digitization (its archive,
+`%USERPROFILE%\fcpm\answers`, holds names and addresses, so it is the bay's to keep private).
 
 ## Bringing it up
 

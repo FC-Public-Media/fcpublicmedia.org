@@ -218,7 +218,7 @@ def build(entry, repo=None, runner=None, core=None):
 
         destination = source / "_site"
         result = runner(
-            ["bundle", "exec", "jekyll", "build",
+            [shutil.which("bundle") or "bundle", "exec", "jekyll", "build",      # Windows: bundle.bat
              "--source", str(staged),
              "--destination", str(destination)],
             cwd=repo / "site", capture_output=True, text=True,

@@ -8,7 +8,7 @@ their release. Editing bay 1 (`EDIT2`) wears it. Jobs and the supervisor: [`mach
 What any machine wearing production owes, so a peer can step in beside it:
 
 - It runs the lines in `machines/production/services`, each from a menu (`<from>.yml`).
-- It stays in the building: LAN only, nothing to Cloudflare, no grants to anyone outside. `fcpm` tends it.
+- It stays in the building: LAN only, no grants to anyone outside. `fcpm` tends it. Its one way out is Cloudflare, with its own key: the site's deploy and, when it holds the line, the tanks' drain ([PROFILE.md](PROFILE.md#deploy)).
 - Status is asked live; nothing it shows was written down at start.
 - One supervisor, up before anyone signs in, with no window, nothing in Startup apps and no cost at sign-in.
 
@@ -28,6 +28,7 @@ What any machine wearing production owes, so a peer can step in beside it:
 | `post` | keep | `troves/post` | the post page on 8093 ([`troves/post/`](../../troves/post/README.md)) |
 | `screen` | every 1m | `troves/kiosk-screen` | the rolling TV's page (a desktop line) |
 | `helm` | keep | `machines/production` | this bay's helm: `door.py serve` with only the intake and the pages, on 8080; it applies `wizard:model+up` (`fcpm model pick`) for any peer helm ([`../helms.yml`](../helms.yml)) |
+| `drain` | held off | `machines/production` | the site's tanks into this bay's `~/fcpm/answers` ([`../drain`](../drain)); one machine holds it, digitization today |
 | `remote-control` | held off | `machines/production` | the root's Remote Control server; uncomment its line in `services` to keep it |
 
 `post.yml` here holds production's post steps: `enhance` is a door step (Adobe Podcast, by

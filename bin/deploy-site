@@ -1,7 +1,8 @@
 #!/bin/sh
 # deploy-site: refresh the site's data, build site/ and upload it to Cloudflare Pages, project fcpm-new
-# (fcpublicmedia.org, and new.). That is the whole deploy: a direct upload of _site, from a checkout on a box
-# holding the keychain's `cloudflare` group. No CI, no git-connected build, no other host. See docs/site.md#deploy.
+# (fcpublicmedia.org, and new.). That is the whole deploy: a direct upload of _site, from a checkout on a machine
+# whose keychain holds `cloudflare` (machines/keys): digitization, or bay 1 in Git Bash (`fcpm deploy` there).
+# No CI, no git-connected build, no other host. See docs/site.md#deploy.
 #
 #   bin/deploy-site            refresh, build HEAD's site/ and upload it as fcpm-new's production (branch main)
 #   bin/deploy-site --build    refresh, build and run the publish checks; upload nothing, keep the copy and say where
@@ -12,6 +13,13 @@
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)   # a Windows bay: uv's Python and RubyInstaller's Jekyll (its gear.yml)
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    py() { "$uv" run --no-project --python 3.12 --with pyyaml python "$@"; }
+    jekyll() { ruby -S jekyll "$@"; } ;;
+  *) py() { python3 "$@"; } ;;
+esac
 COPY="$(mktemp -d)/site-deploy"
 git -C "$ROOT" worktree add --quiet --detach "$COPY" HEAD
 done_with_copy() { git -C "$ROOT" worktree remove --force "$COPY"; rmdir "$(dirname "$COPY")"; }
@@ -22,15 +30,15 @@ export SYNC_STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"    # cablecast.json `fetched`
 for step in "site/bin/sync-cablecast.py" "site/bin/sync-schedule.py" \
             "site/bin/sync-nonprofits.py" "bin/build-sites.py --publish"; do
   # shellcheck disable=SC2086
-  python3 $step >/dev/null 2>&1 && echo "refreshed: $step" || echo "kept the committed copy: $step failed"
+  py $step >/dev/null 2>&1 && echo "refreshed: $step" || echo "kept the committed copy: $step failed"
 done
 
 cd "$COPY/site"
 # The commit, for wizards' replies (`at`, the form's version): _revision.yml is never published.
 printf 'revision: %s\n' "$(git rev-parse --short HEAD)" > _revision.yml
 JEKYLL_ENV=production jekyll build --quiet --config _config.yml,_revision.yml
-python3 bin/test_nothing_internal_is_published.py
-python3 bin/test_site_runs_no_code.py
+py bin/test_nothing_internal_is_published.py
+py bin/test_site_runs_no_code.py
 if [ "${1:-}" = --build ]; then
   echo "built: $COPY/site/_site (remove with: git worktree remove --force $COPY)"
   exit 0
@@ -39,6 +47,8 @@ fi
 cd "$COPY"
 fresh=false
 git diff --quiet HEAD || fresh=true
-machines/digitization/keys run cloudflare -- npx --yes wrangler@4 pages deploy site/_site \
+# The subject without the characters a Windows .cmd (npx there) would read as its own.
+said=$(git log -1 --format=%s | tr -d '"&|<>^%!')
+py machines/keys run cloudflare -- npx --yes wrangler@4 pages deploy site/_site \
   --project-name fcpm-new --branch main \
-  --commit-hash "$(git rev-parse HEAD)" --commit-message "$(git log -1 --format=%s)" --commit-dirty="$fresh"
+  --commit-hash "$(git rev-parse HEAD)" --commit-message "$said" --commit-dirty="$fresh"

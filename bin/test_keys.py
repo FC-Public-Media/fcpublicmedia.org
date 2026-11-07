@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""The keychain (machines/keys): each machine holds the ledger of the jobs it wears, and `run` hands a group
+to one command with the job's own gear (a bay's Node) first on its PATH. No value is ever printed.
+
+    python3 bin/test_keys.py
+"""
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+import tempfile
+import textwrap
+import unittest
+
+REPO = pathlib.Path(__file__).resolve().parents[1]
+KEYS = REPO / "machines" / "keys"
+
+
+def keys(*args, **env):
+    return subprocess.run([sys.executable, "-I", str(KEYS), *args], capture_output=True, text=True,
+                          env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", **env))
+
+
+class Keys(unittest.TestCase):
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.ledger = self.tmp / "keys.yml"
+        self.ledger.write_text(textwrap.dedent(f"""\
+            dir: {self.tmp}/held
+            groups:
+              cloudflare:
+                what: a test group
+                form: env
+                keys:
+                  CLOUDFLARE_API_TOKEN: {{may: deploy, from: a test}}
+                  CLOUDFLARE_ACCOUNT_ID: {{shape: hex32, may: names it, from: a test}}
+            """))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def test_each_job_has_its_own_ledger(self):
+        out = keys(FCPM_WEARS="production", HOME=str(self.tmp)).stdout
+        self.assertIn("WANTED  key cloudflare CLOUDFLARE_API_TOKEN", out)
+        self.assertNotIn("stripe", out)                               # digitization's groups are not bay 1's
+        self.assertIn("stripe-live", keys(FCPM_WEARS="digitization").stdout)
+        self.assertIn("holds no keychain", keys(FCPM_WEARS="kiosk").stdout)
+
+    def test_wanted_until_held_and_never_a_value(self):
+        out = keys("check", FCPM_KEYS_LEDGER=str(self.ledger))
+        self.assertEqual(out.returncode, 1)
+        (self.tmp / "held").mkdir(mode=0o700)
+        (self.tmp / "held" / "cloudflare.env").write_text("CLOUDFLARE_API_TOKEN=s3cret\nCLOUDFLARE_ACCOUNT_ID=" + "a" * 32 + "\n")
+        os.chmod(self.tmp / "held" / "cloudflare.env", 0o600)
+        out = keys("check", FCPM_KEYS_LEDGER=str(self.ledger))
+        self.assertEqual(out.returncode, 0, out.stdout)
+        self.assertNotIn("s3cret", out.stdout)
+
+    def test_run_hands_the_group_to_one_command(self):
+        (self.tmp / "held").mkdir(mode=0o700)
+        (self.tmp / "held" / "cloudflare.env").write_text("CLOUDFLARE_API_TOKEN=s3cret\nCLOUDFLARE_ACCOUNT_ID=" + "a" * 32 + "\n")
+        out = keys("run", "cloudflare", "--", "sh", "-c", 'echo "$CLOUDFLARE_API_TOKEN"', FCPM_KEYS_LEDGER=str(self.ledger))
+        self.assertEqual(out.stdout.strip(), "s3cret")
+        self.assertIn("lacks CLOUDFLARE_API_TOKEN", keys("run", "cloudflare", "--", "true",
+                                                         FCPM_WEARS="production", HOME=str(self.tmp)).stderr)
+        self.assertIn("no nonesuch-command", keys("run", "cloudflare", "--", "nonesuch-command",
+                                                  FCPM_KEYS_LEDGER=str(self.ledger)).stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -55,4 +55,15 @@ try {
 } catch { } finally { $t.Close() }
 Say $depot "the depot (\\10.209.1.1)" "reachable only by opt-in Wi-Fi; Autumn is working on the subnet"
 
+# The deploy's build (bin/deploy-site) and the keychain it deploys with (machines/keys, keys.yml).
+$jk = $null; if (Get-Command ruby -ErrorAction SilentlyContinue) { $jk = ruby -S jekyll --version 2>$null }
+Say ("$jk" -match '^jekyll 4') "Jekyll 4 for the site's build ($jk)" "bundle install, in refs\fcpublicmedia.org\site"
+$uv = (Get-Command uv -ErrorAction SilentlyContinue).Source
+if (-not $uv) { $uv = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe" }
+if (Test-Path $uv) {
+    $found = & $uv run --no-project --python 3.12 --with pyyaml python (Join-Path $Here "..\keys") check 2>$null
+    $found
+    if ("$found" -match 'WANTED') { $script:bad++ }
+}
+
 if ($bad) { exit 1 } else { exit 0 }

@@ -11,3 +11,7 @@ serves:
     start: "{home}/.local/bin/claude.exe remote-control"
     cwd: "{code}"
     alive: {process: 'claude.exe.*\sremote-control(\s|$)'}
+
+  - service: drain
+    for: "the site-worker's tanks (every form reply on the site) brought into ~/fcpm/answers on this bay and emptied behind, with this bay's own key; held by one machine at a time (../drain)"
+    start: "{python} machines/drain"
