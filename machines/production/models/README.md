@@ -8,7 +8,9 @@ them is a final model. One file a model, `key: value` a line, pinned by its sha2
 The spread is what can be up, never what must be. Which models are up is bay 1's own choice, kept on
 the bay (`up`, beside the server), and it changes as often as the testing does: `fcpm model pick` is a
 list to toggle with the space bar, and `fcpm model pick qwen3.5-9b,gpt-oss-20b` says it in one line.
-The default is always up; without a choice it is the only one. Picking a model fetches it if it isn't
+Any model may be down, the default too: taking the 4B down gives a bigger one the whole card. Without a
+choice the default is the only one up; while it is down, a request that names no model gets the first
+that is up. Picking a model fetches it if it isn't
 here yet (all nine come to about 77 GB), and a running server takes the new line-up at once. `fcpm model
 on` serves the models that are up on the same port as a router: a request names its model, the router
 loads it, and when room is needed the one asked least lately leaves. `fcpm model models` lists

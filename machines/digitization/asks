@@ -9,7 +9,8 @@
 replies.py queues each question under the door's state (asks/queue/, oldest first). Each is asked as the
 shape model+ask says (machines/production/shapes/ask.yml: our role first, the asker's own instructions inside
 it, their quoted context and question after), at its effort word as machines/production/model.yml maps it, on
-model.yml's default model (its pins in machines/production/models/<name>.yml).
+model.yml's default model while bay 1 serves it, else on the first model it serves (pins in
+machines/production/models/<name>.yml); the answer names the model that gave it.
 Its words are then reduced to a label (shapes/label.yml), which is how a phone filters a category. The
 answer is kept as asks/answers/<nonce>.json, named by the question's nonce: the asker's phone holds that
 nonce, and finds its answer by it in the public loop. The question moves to asks/done/.
@@ -163,7 +164,7 @@ def answer_one(send=post, on=None):
         folder("held").mkdir(parents=True, exist_ok=True)     # unreadable: set aside, never asked again and again
         shutil.move(str(path), str(folder("held") / path.name))
         return path.stem
-    sh, model = shape("ask"), facts()
+    sh, model = shape("ask"), facts(answerer())
     seed = seed_of(q["nonce"])
     if on:
         on(q["nonce"])
@@ -232,11 +233,20 @@ def joined(fetch=None):
     return out
 
 
+def answerer(listed=None):
+    """Who answers: the default while bay 1 lists it, else the first model it lists (the spread's order);
+    the default when it lists nothing, so a question waits for it rather than for nobody."""
+    names = [m["model"] for m in (joined() if listed is None else listed)]
+    default = facts().get("model")
+    return default if default in names or not names else names[0]
+
+
 def say(**state):
     """asks/state.json: who answers and how it is, for qr.local's inbox bar, and the models bay 1 lists while it
     is up. Written only when it changes."""
-    now = dict({"shape": "model+ask", "by": "bay 1", "model": facts().get("model")}, **state)
-    now["models"] = joined() if now.get("up") else []
+    listed = joined() if state.get("up") else []
+    now = dict({"shape": "model+ask", "by": "bay 1", "model": answerer(listed)}, **state)
+    now["models"] = listed
     path = replies.STATE / "asks" / STATE_FILE
     try:
         was = json.loads(path.read_text(encoding="utf-8"))

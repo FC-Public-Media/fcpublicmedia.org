@@ -46,6 +46,9 @@ class Fake:
 
 class Asks(unittest.TestCase):
     def setUp(self):
+        real = asks.joined                       # never bay 1 itself: what it lists is said by each test
+        asks.joined = lambda fetch=None: real(fetch) if fetch else []
+        self.addCleanup(setattr, asks, "joined", real)
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         self.saved = replies.STATE
         replies.STATE = self.tmp / "state"
@@ -128,6 +131,9 @@ def read_frames(frames):
 @unittest.skipUnless(NODE, "no node")
 class Loop(unittest.TestCase):
     def setUp(self):
+        real = asks.joined                       # never bay 1 itself: what it lists is said by each test
+        asks.joined = lambda fetch=None: real(fetch) if fetch else []
+        self.addCleanup(setattr, asks, "joined", real)
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         self.saved = replies.STATE
         replies.STATE = self.tmp / "state"
@@ -247,6 +253,12 @@ process.stdout.write(JSON.stringify(out));
             self.assertRegex(f["sha256"], r"^[0-9a-f]{64}$")
             self.assertTrue(f["source"].startswith("https://huggingface.co/") and f["source"].endswith("/" + f["file"]))
             self.assertIsInstance(f["size"], int)
+
+    def test_the_default_answers_while_it_is_up_and_the_first_up_while_it_is_down(self):
+        up = lambda *names: [{"model": n} for n in names]
+        self.assertEqual(asks.answerer(up("qwen3.5-0.8b", "qwen3.5-4b")), "qwen3.5-4b")
+        self.assertEqual(asks.answerer(up("qwen3.8-27b", "gpt-oss-20b")), "qwen3.8-27b")
+        self.assertEqual(asks.answerer([]), "qwen3.5-4b")                   # asleep: the question waits for the default
 
     def test_a_model_that_always_reasons_gets_its_own_level_for_the_word(self):
         oss = asks.facts("gpt-oss-20b")
