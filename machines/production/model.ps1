@@ -5,9 +5,8 @@ model.ps1 -- the studio's language models, an instrument on the switched network
     model.ps1 models        the spread (models/): each one's size, whether it is up, placed, loaded
     model.ps1 pick [NAME,NAME...|none]
                             which models are up: a list to toggle with the space bar (Enter keeps
-                            it, Esc leaves it), or the names given. Any of them may be down, the
-                            default too. A model picked is fetched if it is not here yet, and a
-                            running server takes the new line-up at once
+                            it, Esc leaves it), or the names given. A model picked is fetched if it
+                            is not here yet, and a running server takes the new line-up at once
     model.ps1 install [NAME]
                             bring llama.cpp aboard through the bay, and place the files of the
                             models that are up, or the one named
@@ -20,8 +19,8 @@ model.ps1 -- the studio's language models, an instrument on the switched network
     model.ps1 ask "TEXT" [-Model NAME] [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]
                             one question, its answer, and how fast it came. A shape wraps TEXT in
                             its prompt and sets the answer's length and the effort; without one,
-                            TEXT is asked as it is, at quick. Without -Model, the default answers,
-                            or, while it is down, the first model that is up
+                            TEXT is asked as it is, at quick. Without -Model, the model that is up
+                            and loaded answers, or else the first that is up; the answer names it
 
 Effort is a word of ours (model.yml says what each means to this model), never a person's field.
 `considered` always ends in an answer: the thinking has a budget the server enforces, and an empty
@@ -42,11 +41,10 @@ the one asked least lately leaves when room is needed (model.yml: loaded-at-once
 only model.yml's network. A session does not start it (sessions start no service); a person does,
 by `fcpm model on`.
 
-Up is this bay's choice, not the repository's: `up` holds the names, one a line. Any model may be up
-or down, the default too: taking the 4B down to give a bigger one the card is the point. Without a
-choice only the default is up; with none up the server serves nothing. The spread is what can be
-picked, never what must run. `on` and `pick` serve the models that are up and placed. The default is
-only what a request that names no model gets, while it is up.
+Up is this bay's choice, not the repository's: `up` holds the names, one a line. There is no default
+model: nothing is up until something is picked, and any model may be taken down, so a bigger one can
+have the card. The spread is what can be picked, never what must run. `on` and `pick` serve the models
+that are up and placed; each loads when it is first asked.
 
 State in %LOCALAPPDATA%\<node>\model\: llama\ (the server), models\ (or model.yml's store), up (the
 line-up), models.ini (what the server serves), server.json (the running id), server.log, model.ndjson, contexts\ ($env:FCPM_CONTEXTS for a trial). The bay's stages log to bay.ndjson (machines/BAY.md); the previous
@@ -101,7 +99,6 @@ $Spread = Join-Path $PSScriptRoot 'models'
 $Here  = Split-Path -Leaf $PSScriptRoot     # this profile's name: the first part of an address
 function Fact($k) { if (-not $Facts.ContainsKey($k) -or -not $Facts[$k]) { throw "model.yml has no $k" }; $Facts[$k] }
 $Port  = [int](Fact 'port')
-$Default = Fact 'model'
 $Models = if ($Facts['store']) { $Facts['store'] } else { Join-Path $Root 'models' }
 # The spread: one facts file a model, models\<name>.yml, named by its own `model:`.
 function Names { @(Get-ChildItem $Spread -Filter *.yml | Sort-Object Name | ForEach-Object BaseName) }
@@ -113,10 +110,9 @@ function Spec($n) {
 function FileOf($m) { Join-Path $Models $m['file'] }
 function Placed($m) { $f = FileOf $m; (Test-Path $f) -and (Get-Item $f).Length -eq [int64]$m['size'] }
 function GB($bytes) { '{0:N1} GB' -f ([int64]$bytes / 1GB) }
-# The line-up: the names in `up` the spread still has, in the spread's order; the default alone when
-# nothing was ever picked.
+# The line-up: the names in `up` the spread still has, in the spread's order; none when nothing was picked.
 function Chosen {
-    if (-not (Test-Path $Up)) { return @($Default) }
+    if (-not (Test-Path $Up)) { return @() }
     $want = @(Get-Content $Up | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     @(Names | Where-Object { $want -contains $_ })
 }
@@ -126,17 +122,17 @@ function Choose($names) {
     [IO.File]::WriteAllText($Up, (($keep -join "`n") + "`n"), (New-Object Text.UTF8Encoding $false))
     $keep
 }
-# Who answers a request that names no model: the default while it is up, else the first that is up.
-function First($names) { if ($names -contains $Default) { $Default } elseif ($names.Count) { $names[0] } else { $null } }
-# The router's presets for these models: the context pinned, the GPU layers left to llama.cpp's fit, the
-# first to answer (First) loaded at once. UTF-8 without a byte-order mark, which its reader would take for a key.
+# Who answers a request that names no model: one that is up and loaded, else the first that is up; $null
+# when none is. $listed is what the running server lists ({name: loaded|unloaded}), empty when it is off.
+function Answerer($up, $listed) {
+    $loaded = @($up | Where-Object { $listed[$_] -eq 'loaded' })
+    if ($loaded.Count) { $loaded[0] } elseif (@($up).Count) { @($up)[0] } else { $null }
+}
+# The router's presets for these models: the context pinned, the GPU layers left to llama.cpp's fit; none
+# is loaded until it is asked for. UTF-8 without a byte-order mark, which its reader would take for a key.
 function PresetText($names) {
     $ini = @('version = 1', '', '[*]', "c = $(Fact 'context')")
-    $lead = First @($names)
-    foreach ($n in $names) {
-        $ini += @('', "[$n]", "model = $(FileOf (Spec $n))")
-        if ($n -eq $lead) { $ini += 'load-on-startup = true' }
-    }
+    foreach ($n in $names) { $ini += @('', "[$n]", "model = $(FileOf (Spec $n))") }
     ($ini -join "`n") + "`n"
 }
 function WritePreset {
@@ -161,7 +157,7 @@ function Place($n) {
     Line $BayLog ([ordered]@{ payload = 'model'; version = $n; step = 'install'; event = 'installed'; path = $file; from = $m['source']; sha256 = $got })
     Say "model     $n in place, sha256 matches"
 }
-# The list to toggle: up and down move, space turns a model on or off (any, the default too), Enter keeps
+# The list to toggle: up and down move, space turns a model on or off, Enter keeps
 # it, Esc or q leaves it. $key reads one key and $draw shows the list, so a test can stand in for both.
 # Returns the names on, or $null when left.
 function PickLoop($names, $on, [scriptblock] $key, [scriptblock] $draw) {
@@ -407,7 +403,9 @@ switch ($Verb) {
         Line $BayLog ([ordered]@{ payload = 'llama-cpp'; version = $tag; step = 'install'; event = 'installed'; path = $Llama; reports = $v; exe_sha256 = (Hash $Exe) })
         Say "installed llama.cpp $tag at $Llama (it reports $v)"
     }
-    foreach ($n in $(if ($Text) { @($Text) } else { Chosen })) { Place $n }
+    $want = @(if ($Text) { $Text } else { Chosen })
+    if (-not $want.Count) { Say 'models    none is up yet: fcpm model pick' }
+    foreach ($n in $want) { Place $n }
     Say 'next      fcpm model grant (an administrator, once), then fcpm model on; fcpm model pick says which are up'
 }
 
@@ -443,7 +441,6 @@ switch ($Verb) {
     if (-not $names.Count) { Fail 'nothing is up and placed: fcpm model pick' }
     $missing = @(Chosen | Where-Object { $names -notcontains $_ })
     if ($missing.Count) { Say "note      up but not placed, so not served: $($missing -join ', ') (fcpm model install)" }
-    $lead = First $names
     $argv = @('--host', $a.IPAddress, '--port', $Port, '--models-preset', "`"$Preset`"",
               '--models-max', (Fact 'loaded-at-once'), '--models-memory-margin', (Fact 'keep-free'),
               '--no-webui', '--offline', '--log-file', "`"$ServerLog`"")
@@ -456,13 +453,13 @@ switch ($Verb) {
     $t = [Diagnostics.Stopwatch]::StartNew()
     while ($t.Elapsed.TotalSeconds -lt 120) {
         if ($p.HasExited) { break }
-        if ((Healthy $u) -and (Listed $u)[$lead] -eq 'loaded') { break }
+        if (Healthy $u) { break }
         Start-Sleep -Milliseconds 500
     }
     if ($p.HasExited -or -not (Healthy $u)) { Fail "the server did not come up in $([int]$t.Elapsed.TotalSeconds) s; see $ServerLog and $ServerOut.err" }
     $l = Listed $u
     Note 'started' @{ pid = $p.Id; url = $u; seconds = [int]$t.Elapsed.TotalSeconds; models = $names.Count }
-    Say "running   pid $($p.Id): $u/v1, serving $($names -join ', '); $lead $($l[$lead]) ($([int]$t.Elapsed.TotalSeconds) s)"
+    Say "running   pid $($p.Id): $u/v1, serving $($names -join ', '), each loaded when first asked ($([int]$t.Elapsed.TotalSeconds) s)"
     Say "gpu       $(Gpu)"
 }
 
@@ -485,7 +482,6 @@ switch ($Verb) {
         $size = if ($m['active'] -ne $m['params']) { "$($m['params'])B, $($m['active'])B at work" } else { "$($m['params'])B" }
         $state = if (-not (Placed $m)) { 'not placed' } elseif ($l.ContainsKey($n)) { $l[$n] } elseif ($p) { 'placed, not served' } else { 'placed' }
         $mark = if ($up -contains $n) { '+' } else { ' ' }
-        if ($n -eq $Default) { $state += ', the default' }
         Say ('{0}{1,-17} {2,-8} {3,-22} {4,7}  {5}' -f $mark, $n, $m['lab'], $size, (GB $m['size']), $state)
         Say ('                   {0}' -f $m['why'])
     }
@@ -505,12 +501,10 @@ switch ($Verb) {
             for ($i = 0; $i -lt $names.Count; $i++) {
                 $n = $names[$i]; $m = Spec $n
                 $box = if ($set[$n]) { '[x]' } else { '[ ]' }
-                $line = '{0} {1} {2,-17} {3,7}  {4}{5}' -f $(if ($i -eq $at) { '>' } else { ' ' }), $box, $n, (GB $m['size']),
-                        $(if (Placed $m) { 'placed' } else { 'to fetch' }), $(if ($n -eq $Default) { ', the default' } else { '' })
+                $line = '{0} {1} {2,-17} {3,7}  {4}' -f $(if ($i -eq $at) { '>' } else { ' ' }), $box, $n, (GB $m['size']),
+                        $(if (Placed $m) { 'placed' } else { 'to fetch' })
                 if ($i -eq $at) { Write-Host $line -ForegroundColor Black -BackgroundColor Yellow } else { Write-Host $line }
             }
-            Write-Host ''
-            Write-Host "Any may be down, the default too. With $Default down, a request that names no model gets the first that is up."
         }
         $got = PickLoop $names $was { "$([Console]::ReadKey($true).Key)" } $draw
         Clear-Host
@@ -551,7 +545,11 @@ switch ($Verb) {
 
 'ask' {
     $prompt = $Text; $word = 'quick'; $answer = [int](Fact 'answer'); $shapeName = ''; $ctx = ''
-    $m = Spec $(if ($Model) { $Model } else { $lead = First @(Chosen | Where-Object { Placed (Spec $_) }); if ($lead) { $lead } else { $Default } })
+    if (-not $Model) {
+        $Model = Answerer @(Chosen | Where-Object { Placed (Spec $_) }) $(if (Server) { Listed (Url) } else { @{} })
+        if (-not $Model) { Fail 'no model is up: fcpm model pick' }
+    }
+    $m = Spec $Model
     $messages = $null
     if ($Shape) {
         $s = ShapeFile $Shape; $shapeName = $s['shape']

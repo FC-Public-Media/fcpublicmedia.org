@@ -46,8 +46,9 @@ class Fake:
 
 class Asks(unittest.TestCase):
     def setUp(self):
-        real = asks.joined                       # never bay 1 itself: what it lists is said by each test
-        asks.joined = lambda fetch=None: real(fetch) if fetch else []
+        real = asks.joined                       # never bay 1 itself: one model loaded, unless a test says otherwise
+        self.listed = [{"model": "qwen3.5-4b", "state": "loaded"}]
+        asks.joined = lambda fetch=None: real(fetch) if fetch else self.listed
         self.addCleanup(setattr, asks, "joined", real)
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         self.saved = replies.STATE
@@ -131,8 +132,9 @@ def read_frames(frames):
 @unittest.skipUnless(NODE, "no node")
 class Loop(unittest.TestCase):
     def setUp(self):
-        real = asks.joined                       # never bay 1 itself: what it lists is said by each test
-        asks.joined = lambda fetch=None: real(fetch) if fetch else []
+        real = asks.joined                       # never bay 1 itself: one model loaded, unless a test says otherwise
+        self.listed = [{"model": "qwen3.5-4b", "state": "loaded"}]
+        asks.joined = lambda fetch=None: real(fetch) if fetch else self.listed
         self.addCleanup(setattr, asks, "joined", real)
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         self.saved = replies.STATE
@@ -244,9 +246,9 @@ process.stdout.write(JSON.stringify(out));
             raise urllib.error.URLError("refused")
         self.assertEqual(asks.joined(fetch=asleep), [])
 
-    def test_each_model_in_the_spread_is_pinned_and_the_default_is_one_of_them(self):
-        default = asks.facts()
-        self.assertEqual((default["model"], default["sha256"][:12]), ("qwen3.5-4b", "c3fc7bcaf6f7"))
+    def test_each_model_in_the_spread_is_pinned_and_there_is_no_default(self):
+        self.assertNotIn("model", asks.facts())
+        self.assertEqual(asks.facts("qwen3.5-4b")["sha256"][:12], "c3fc7bcaf6f7")
         for p in sorted(asks.SPREAD.glob("*.yml")):
             f = replies.load_yaml(p)
             self.assertEqual(f["model"], p.stem)
@@ -254,11 +256,18 @@ process.stdout.write(JSON.stringify(out));
             self.assertTrue(f["source"].startswith("https://huggingface.co/") and f["source"].endswith("/" + f["file"]))
             self.assertIsInstance(f["size"], int)
 
-    def test_the_default_answers_while_it_is_up_and_the_first_up_while_it_is_down(self):
-        up = lambda *names: [{"model": n} for n in names]
-        self.assertEqual(asks.answerer(up("qwen3.5-0.8b", "qwen3.5-4b")), "qwen3.5-4b")
-        self.assertEqual(asks.answerer(up("qwen3.8-27b", "gpt-oss-20b")), "qwen3.8-27b")
-        self.assertEqual(asks.answerer([]), "qwen3.5-4b")                   # asleep: the question waits for the default
+    def test_a_loaded_model_answers_else_the_first_listed_else_nobody(self):
+        up = lambda *names: [{"model": n.strip("*"), "state": "loaded" if n.endswith("*") else "unloaded"} for n in names]
+        self.assertEqual(asks.answerer(up("qwen3.5-0.8b", "qwen3.8-27b*")), "qwen3.8-27b")
+        self.assertEqual(asks.answerer(up("gpt-oss-20b", "qwen3.8-27b")), "gpt-oss-20b")
+        self.assertIsNone(asks.answerer([]))
+
+    def test_a_question_waits_while_bay_1_serves_no_model(self):
+        self.listed = []
+        replies.examine(ask(("user", "anyone there?"), nonce="nonce-wait"), {})
+        with self.assertRaises(urllib.error.URLError):
+            asks.answer_one(send=Fake("never", "never"))
+        self.assertEqual(len(list((replies.STATE / "asks" / "queue").glob("*.json"))), 1)
 
     def test_a_model_that_always_reasons_gets_its_own_level_for_the_word(self):
         oss = asks.facts("gpt-oss-20b")
