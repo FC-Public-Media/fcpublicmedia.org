@@ -18,16 +18,16 @@ llama-sha256: fed7cd0e67cec5206500cdf66a4de768f9c468657ae12be43a32fc1aa81e9d88
 cudart-zip: cudart-llama-bin-win-cuda-12.4-x64.zip
 cudart-sha256: 8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6
 
-# The model: Qwen3.5 4B (Qwen/Qwen3.5-4B, Apache-2.0), Q8_0, quantized by lmstudio-community. The
-# copy runai pulled into WSL on 2026-10-29 matches this hash; install takes that copy when present.
-model: qwen3.5-4b
-file: Qwen3.5-4B-Q8_0.gguf
-source: https://huggingface.co/lmstudio-community/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q8_0.gguf
-sha256: c3fc7bcaf6f75b8f7ceeead9a769f5a7a9f86a8180af1cfb2b72958dcad8e028
-size: 4482402656
+# The models: one file each in models/, pinned by its hash; the spread and why each is in it is
+# models/README.md. One server answers for all of them, loading each when it is asked for.
+model: qwen3.5-4b         # the default: what a request that names no model is asked on
+store: ""                 # where the model files go; empty: %LOCALAPPDATA%\editing-bay-1\model\models
+loaded-at-once: 2         # at most this many models held at once; the one asked least lately leaves first
+keep-free: 1024           # MiB of GPU memory left free when another model loads (whisper, OBS)
 
 # Effort: a word of ours, never a field a person fills in. A shape names one (shapes/); here each word
-# becomes this model's knobs, and a model without a knob ignores the word. Considered must always end
+# becomes the models' knobs, and a model without a knob ignores the word. A model that always thinks
+# says so in its own file (thinking: effort), with what each word is to it. Considered must always end
 # in an answer: the server ends the thinking at its budget and the answer follows; an empty answer is
 # asked again at quick, and says so.
 answer: 1024                        # tokens of answer, when no shape says

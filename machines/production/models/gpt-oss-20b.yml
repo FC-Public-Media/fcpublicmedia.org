@@ -1,0 +1,15 @@
+model: gpt-oss-20b
+family: gpt-oss
+lab: OpenAI
+params: 21
+active: 3.6
+quant: MXFP4
+license: apache-2.0
+file: gpt-oss-20b-MXFP4.gguf
+source: https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b-MXFP4.gguf
+size: 12109566624
+sha256: 27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901
+why: "OpenAI's open weights, mixture of experts; it always reasons, by an effort level, never off"
+thinking: effort              # chat_template_kwargs reasoning_effort, not enable_thinking
+quick-effort: low
+considered-effort: medium

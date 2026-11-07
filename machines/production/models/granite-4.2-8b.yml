@@ -1,0 +1,12 @@
+model: granite-4.2-8b
+family: granite-4.2
+lab: IBM
+params: 8
+active: 8
+quant: Q8_0
+license: apache-2.0
+file: granite-4.2-8b-Q8_0.gguf
+source: https://huggingface.co/ibm-granite/granite-4.2-8b-GGUF/resolve/main/granite-4.2-8b-Q8_0.gguf
+size: 9345613952
+sha256: fb66ad5750680c77c76b9dc095961375f14fc88ba15fd5fc084ef6e6701bad77
+why: "a third lab at the 8B rung, trained for business work and tool calls"

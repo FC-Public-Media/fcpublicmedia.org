@@ -1,0 +1,12 @@
+model: qwen3.5-2b
+family: qwen3.5
+lab: Qwen
+params: 2
+active: 2
+quant: Q8_0
+license: apache-2.0
+file: Qwen3.5-2B-Q8_0.gguf
+source: https://huggingface.co/lmstudio-community/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q8_0.gguf
+size: 2012012000
+sha256: 30d5d309e77d48b44325fe8eee08f4201f99687752f9a4a77fa66498457b45f4
+why: "the ladder's second rung"
