@@ -145,6 +145,9 @@ npx playwright test --grep @external             # third-party health
 npm run test:live                                # against https://fcpublicmedia.org
 ```
 
+- A test never restates our configuration (`_data/`: hosts and their hours, tiers, the calendar). It takes
+  whatever the file holds and checks what the page does with it, so changing the file never turns a test red.
+  Likewise the runtime reads the file for every fact about it: `book.js` names no host, day or hour.
 - `playwright.config.js` serves `../_site` on `localhost:4567` (WebAuthn rejects an IP), desktop and
   Pixel 5. `BASE_URL` targets a deployed site; redirects, 404s and trailing slashes exist only there.
 - Every page in `pages.js` must load with a title, at most one `<h1>`, no console errors, no failed
