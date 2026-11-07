@@ -25,10 +25,14 @@ function watch(page) {
     }
   });
 
-  // An embed's own scripts (Cablecast's player) throw here too: judged by where the stack begins.
+  // An embed's own scripts (Cablecast's player) throw here too: judged by the stack's first frame (past the
+  // message, which can carry a URL of its own: React's errors link reactjs.org), or by its words.
   page.on('pageerror', (error) => {
-    const where = (String(error.stack || '').match(/https?:\/\/[^\s)]+/) || [''])[0];
-    (where && isThirdParty(where) ? thirdPartyFailures : pageErrors).push(`${error.name}: ${error.message}`);
+    const text = `${error.name}: ${error.message}`;
+    const stack = String(error.stack || '');
+    const frames = stack.startsWith(text) ? stack.slice(text.length) : stack;
+    const where = (frames.match(/https?:\/\/[^\s)]+/) || [''])[0];
+    ((where && isThirdParty(where)) || isThirdPartyConsole(text) ? thirdPartyFailures : pageErrors).push(text);
   });
 
   page.on('requestfailed', (request) => {
