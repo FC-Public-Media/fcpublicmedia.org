@@ -213,6 +213,8 @@ process.stdout.write(JSON.stringify(out));
         self.assertEqual(replies.inbox()[0]["state"], "queued")
 
     def test_the_answerer_says_how_it_is_only_when_that_changes(self):
+        listed, asks.joined = asks.joined, lambda fetch=None: [{"model": "qwen3.5-4b", "state": "loaded"}]
+        self.addCleanup(setattr, asks, "joined", listed)
         asks.say(up=False, working=None, trouble=None)
         first = replies.asks_state()
         self.assertEqual((first["shape"], first["by"], first["up"]), ("model+ask", "bay 1", False))
@@ -220,6 +222,39 @@ process.stdout.write(JSON.stringify(out));
         self.assertEqual(replies.asks_state()["at"], first["at"])
         asks.say(up=True, working="nonce-x", trouble=None)
         self.assertEqual((replies.asks_state()["up"], replies.asks_state()["working"]), (True, "nonce-x"))
+        self.assertEqual(replies.asks_state()["models"], [{"model": "qwen3.5-4b", "state": "loaded"}])
+        self.assertEqual(first["models"], [])                            # asleep: nobody joined
+
+    def test_the_spread_is_what_bay_1_lists_in_its_own_order(self):
+        router = {"data": [{"id": "zz-unknown", "status": {"value": "unloaded"}},
+                           {"id": "qwen3.8-27b", "status": {"value": "unloaded"}},
+                           {"id": "qwen3.5-4b", "status": {"value": "loaded"}}]}
+        got = asks.joined(fetch=lambda: router)
+        self.assertEqual([(m["model"], m["state"]) for m in got],
+                         [("qwen3.5-4b", "loaded"), ("qwen3.8-27b", "unloaded"), ("zz-unknown", "unloaded")])
+        self.assertEqual((got[1]["lab"], got[1]["params"]), ("Qwen", 27))
+        self.assertIsNone(got[2]["lab"])
+        def asleep():
+            raise urllib.error.URLError("refused")
+        self.assertEqual(asks.joined(fetch=asleep), [])
+
+    def test_each_model_in_the_spread_is_pinned_and_the_default_is_one_of_them(self):
+        default = asks.facts()
+        self.assertEqual((default["model"], default["sha256"][:12]), ("qwen3.5-4b", "c3fc7bcaf6f7"))
+        for p in sorted(asks.SPREAD.glob("*.yml")):
+            f = replies.load_yaml(p)
+            self.assertEqual(f["model"], p.stem)
+            self.assertRegex(f["sha256"], r"^[0-9a-f]{64}$")
+            self.assertTrue(f["source"].startswith("https://huggingface.co/") and f["source"].endswith("/" + f["file"]))
+            self.assertIsInstance(f["size"], int)
+
+    def test_a_model_that_always_reasons_gets_its_own_level_for_the_word(self):
+        oss = asks.facts("gpt-oss-20b")
+        self.assertEqual(asks.knobs("quick", 100, oss),
+                         {"max_tokens": 1124, "chat_template_kwargs": {"reasoning_effort": "low"}})
+        self.assertEqual(asks.knobs("considered", 100, oss)["chat_template_kwargs"], {"reasoning_effort": "medium"})
+        self.assertEqual(asks.knobs("quick", 100, asks.facts()),
+                         {"max_tokens": 100, "chat_template_kwargs": {"enable_thinking": False}})
 
     def test_answers_fall_off_the_loop_after_ten_minutes_and_a_recall_brings_one_back(self):
         import datetime, os

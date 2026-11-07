@@ -1,0 +1,12 @@
+model: gemma-4-26b-a4b
+family: gemma-4
+lab: Google
+params: 26
+active: 4
+quant: Q4_0
+license: apache-2.0
+file: gemma-4-26B_q4_0-it.gguf
+source: https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/resolve/main/gemma-4-26B_q4_0-it.gguf
+size: 14439363584
+sha256: 3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d
+why: "mixture of experts, 26B known and 4B at work: whether a task needs knowledge or width"

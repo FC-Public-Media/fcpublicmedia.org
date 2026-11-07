@@ -1,0 +1,12 @@
+model: qwen3.5-0.8b
+family: qwen3.5
+lab: Qwen
+params: 0.8
+active: 0.8
+quant: Q8_0
+license: apache-2.0
+file: Qwen3.5-0.8B-Q8_0.gguf
+source: https://huggingface.co/lmstudio-community/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q8_0.gguf
+size: 811843040
+sha256: 091d8deba394f428b67aa42c100ee145fcbecac5a79621935d3655016ca737e5
+why: "the ladder's floor: phone-sized, where the label reducer wants to end up"
