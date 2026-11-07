@@ -133,6 +133,7 @@ case "$cmd" in
   ti89)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyserial "$REPO/troves/ti-89/cable/link.py" "$@" ;;
+  hear|say)  exec python3 "$HERE/loudspeaker" "$cmd" "$@" ;;
   help|-h|--help)
     # From machines/fcpm.yml, the one place each verb is defined (Autumn, 2026-10-13).
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) plat=windows ;; *) plat=linux ;; esac

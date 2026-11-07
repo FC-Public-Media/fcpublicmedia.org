@@ -1,0 +1,236 @@
+#!/usr/bin/python3
+"""loudspeaker -- every signal this machine hears, one line each, in one stream.
+
+    loudspeaker serve              BE the loudspeaker (the crew's `loudspeaker` line)
+    loudspeaker say WHO WHAT...    put one line on it (from here, or FCPM_LOUDSPEAKER=host)
+    loudspeaker hear [HOST]        the stream, live, after its last 20 lines
+
+Ears: UDP 9797 from anyone on the LAN or this box (one line per datagram line; `WHO<tab>WHAT` names
+the speaker), and the job's taps (<job>/loudspeaker.yml): files it follows and commands it runs.
+Mouth: TCP 9798 streams every line to whoever connects (nc, curl, a browser), and every line is
+appended to ~/.local/state/fcpm/loudspeaker.log for cat and grep. A line: `<UTC time>\t<who>\t<what>`.
+Doc: machines/README.md, "The loudspeaker".
+"""
+import collections
+import glob
+import os
+import queue
+import re
+import shlex
+import socket
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+EAR, MOUTH = 9797, 9798
+HERE = Path(__file__).resolve().parent
+STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "fcpm"
+LOG = STATE / "loudspeaker.log"
+
+lock = threading.Lock()
+recent = collections.deque(maxlen=20)
+listeners = set()
+
+
+def flat(s):
+    return str(s).replace("\t", " ").replace("\r", " ").replace("\n", " ").strip()[:2000]
+
+
+def speak(who, what):
+    what = flat(what)
+    if not what:
+        return
+    line = f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\t{flat(who) or '?'}\t{what}\n"
+    with lock:
+        with open(LOG, "a", encoding="utf-8") as f:
+            f.write(line)
+        recent.append(line)
+        for q in list(listeners):
+            try:
+                q.put_nowait(line)
+            except queue.Full:
+                listeners.discard(q)     # a listener that stopped reading is let go, never waited for
+
+
+# --- ears -----------------------------------------------------------------------
+
+def own_addresses():
+    found = {"127.0.0.1", "::1"}
+    try:
+        found.update(subprocess.run(["hostname", "-I"], capture_output=True, text=True).stdout.split())
+    except OSError:
+        pass
+    return found
+
+
+def ear():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("0.0.0.0", EAR))
+    here = own_addresses()
+    while True:
+        data, (addr, _) = s.recvfrom(65535)
+        for raw in data.decode("utf-8", "replace").splitlines():
+            who, what = raw.split("\t", 1) if "\t" in raw else ("", raw)
+            if addr not in here:
+                who = f"{who}@{addr}" if who else addr
+            speak(who or "here", what)
+
+
+def expand(p):
+    return os.path.expanduser(os.path.expandvars(p))
+
+
+def follow(tap):
+    """Every new whole line of the tap's files; a glob names each file's speaker `<who>/<stem>`."""
+    pattern, who = expand(tap["file"]), tap.get("who") or "file"
+    quiet = re.compile(tap["quiet"]) if tap.get("quiet") else None
+    many = glob.has_magic(pattern)
+    seen = {}                          # path -> [inode, offset, partial]
+    first = True
+    while True:
+        for p in glob.glob(pattern) if many else [pattern]:
+            if many and Path(p).stem == "loudspeaker":
+                continue
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            k = seen.get(p)
+            if k is None:
+                k = seen[p] = [st.st_ino, st.st_size if first else 0, b""]
+            if k[0] != st.st_ino or st.st_size < k[1]:
+                k[:] = [st.st_ino, 0, b""]
+            if st.st_size == k[1]:
+                continue
+            with open(p, "rb") as f:
+                f.seek(k[1])
+                chunk = f.read(st.st_size - k[1])
+            k[1] += len(chunk)
+            *lines, k[2] = (k[2] + chunk).split(b"\n")
+            name = f"{who}/{Path(p).stem}" if many else who
+            for l in lines:
+                l = l.decode("utf-8", "replace")
+                if l.strip() and not (quiet and quiet.search(l)):
+                    speak(name, l)
+        first = False
+        time.sleep(1)
+
+
+def run(tap):
+    """Every line a long-running command prints; started again 30 s after it stops."""
+    who = tap.get("who") or "run"
+    quiet = re.compile(tap["quiet"]) if tap.get("quiet") else None
+    while True:
+        try:
+            p = subprocess.Popen([expand(a) for a in shlex.split(tap["run"])], stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, errors="replace")
+            for l in p.stdout:
+                if l.strip() and not (quiet and quiet.search(l)):
+                    speak(who, l)
+            speak("loudspeaker", f"{who}: `{tap['run']}` stopped ({p.wait()}); again in 30 s")
+        except OSError as e:
+            speak("loudspeaker", f"{who}: `{tap['run']}` cannot start: {e}; again in 30 s")
+        time.sleep(30)
+
+
+def taps():
+    """The taps of every job whose names file names this machine (the job's loudspeaker.yml)."""
+    import yaml
+    host = socket.gethostname().split(".")[0].lower()
+    out = []
+    for names in sorted(HERE.glob("*/names")):
+        rows = [l.split() for l in names.read_text(encoding="utf-8").splitlines() if not l.startswith("#")]
+        if not any(len(r) > 2 and r[2].lower() == host for r in rows):
+            continue
+        f = names.parent / "loudspeaker.yml"
+        if f.exists():
+            out += (yaml.safe_load(f.read_text(encoding="utf-8")) or {}).get("taps") or []
+    return out
+
+
+# --- mouth ----------------------------------------------------------------------
+
+def mouth():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("0.0.0.0", MOUTH))
+    s.listen(16)
+    while True:
+        c, _ = s.accept()
+        threading.Thread(target=listener, args=(c,), daemon=True).start()
+
+
+def listener(c):
+    q = queue.Queue(maxsize=5000)
+    try:
+        c.settimeout(0.3)
+        try:
+            asked = c.recv(4096)
+        except socket.timeout:
+            asked = b""
+        c.settimeout(None)
+        if asked.startswith(b"GET"):
+            c.sendall(b"HTTP/1.0 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\n"
+                      b"Cache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n")
+        with lock:
+            back = list(recent)
+            listeners.add(q)
+        c.sendall("".join(back).encode())
+        while q in listeners:
+            c.sendall(q.get().encode())
+    except OSError:
+        pass
+    finally:
+        listeners.discard(q)
+        c.close()
+
+
+def serve():
+    STATE.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(LOG, "rb") as f:
+            f.seek(max(0, f.seek(0, 2) - 8192))
+            recent.extend(l.decode("utf-8", "replace") + "\n" for l in f.read().split(b"\n")[1:] if l)
+    except OSError:
+        pass
+    found = taps()
+    for t in found:
+        target = follow if "file" in t else run if "run" in t else None
+        if target:
+            threading.Thread(target=target, args=(t,), daemon=True).start()
+    threading.Thread(target=ear, daemon=True).start()
+    speak("loudspeaker", f"up on {socket.gethostname()}: ear udp {EAR}, mouth tcp {MOUTH}, {len(found)} taps")
+    mouth()
+
+
+def main(argv):
+    cmd = argv[0] if argv else "help"
+    if cmd == "serve":
+        serve()
+    elif cmd == "say" and len(argv) > 2:
+        host = os.environ.get("FCPM_LOUDSPEAKER", "127.0.0.1")
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.sendto(f"{flat(argv[1])}\t{flat(' '.join(argv[2:]))}".encode(), (host, EAR))
+    elif cmd == "hear":
+        host = argv[1] if len(argv) > 1 else os.environ.get("FCPM_LOUDSPEAKER", "127.0.0.1")
+        with socket.create_connection((host, MOUTH)) as s:
+            while True:
+                b = s.recv(65536)
+                if not b:
+                    break
+                sys.stdout.write(b.decode("utf-8", "replace"))
+                sys.stdout.flush()
+    else:
+        print(__doc__.strip())
+        return 0 if cmd in ("help", "-h", "--help") else 2
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        sys.exit(0)

@@ -1,0 +1,21 @@
+# What digitization's loudspeaker follows besides its ear (UDP 9797). See machines/loudspeaker.
+# `file`: every new line (a glob speaks as who/<file stem>); `run`: every line a command prints. `quiet`: lines left out.
+
+taps:
+  - who: crew
+    file: ~/.local/state/fcpm/crew/*.log
+    quiet: '^--- \S+ \S+  start$'
+  - who: door
+    file: ~/.local/state/media-node/door.log
+  - who: replies
+    file: ~/.local/state/media-node/replies/log.ndjson
+  - who: visits
+    file: ~/.local/state/media-node/replies/visits.ndjson
+  - who: eyes
+    file: ~/.local/state/fcpm/scanner/events.log
+  - who: post
+    file: /srv/landing/post/.receive.ndjson
+  - who: model-relay
+    file: ~/.local/state/fcpm/model-relay.log
+  - who: lan
+    run: avahi-browse --all --parsable --resolve --no-db-lookup
