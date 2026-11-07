@@ -25,8 +25,10 @@ function watch(page) {
     }
   });
 
+  // An embed's own scripts (Cablecast's player) throw here too: judged by where the stack begins.
   page.on('pageerror', (error) => {
-    pageErrors.push(`${error.name}: ${error.message}`);
+    const where = (String(error.stack || '').match(/https?:\/\/[^\s)]+/) || [''])[0];
+    (where && isThirdParty(where) ? thirdPartyFailures : pageErrors).push(`${error.name}: ${error.message}`);
   });
 
   page.on('requestfailed', (request) => {
