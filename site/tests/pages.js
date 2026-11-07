@@ -33,6 +33,7 @@ const isThirdParty = (url) => THIRD_PARTY.some((host) => url.includes(host));
 // Embedded-player console text, matched by text since some messages carry no source URL.
 const THIRD_PARTY_CONSOLE = [
   'VIDEOJS:', // the Cablecast player
+  'Minified React error', // the Cablecast player too; this site ships no React
 ];
 
 const isThirdPartyConsole = (text) =>
