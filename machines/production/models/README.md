@@ -2,18 +2,20 @@
 
 Bay 1's spread: stock models, as their labs published them, with no harness of ours around them. They are
 research stock for testing hypotheses: which model, or which size, can do a given job by default. None of
-them is a final model. One file a model, `key: value` a line, pinned by its sha256 and its size;
-`model:` in `../model.yml` names the default, the one the shapes are asked on.
+them is a final model. One file a model, `key: value` a line, pinned by its sha256 and its size.
+There is no default model.
 
 The spread is what can be up, never what must be. Which models are up is bay 1's own choice, kept on
 the bay (`up`, beside the server), and it changes as often as the testing does: `fcpm model pick` is a
 list to toggle with the space bar, and `fcpm model pick qwen3.5-9b,gpt-oss-20b` says it in one line.
-The default is always up; without a choice it is the only one. Picking a model fetches it if it isn't
-here yet (all nine come to about 77 GB), and a running server takes the new line-up at once. `fcpm model
-on` serves the models that are up on the same port as a router: a request names its model, the router
-loads it, and when room is needed the one asked least lately leaves. `fcpm model models` lists
-them, placed and loaded. What the running server lists is what has joined: digitization's `asks` reads
-it into `asks/state.json`, and qr.local's screen shows those names under its inbox bar, a loaded one bright.
+Nothing is up until it is picked, and any model may be taken down, so a bigger one can have the whole
+card. A request that names no model gets one that is up and loaded, else the first that is up, and the
+answer names it. Picking a model fetches it if it isn't here yet (all nine come to about 77 GB), and a
+running server takes the new line-up at once. `fcpm model on` serves the models that are up on the same
+port as a router: a request names its model, the router loads it, and when room is needed the one asked
+least lately leaves. `fcpm model models` lists them, placed and loaded. What the running server lists
+is what has joined: digitization's `asks` reads it into `asks/state.json`, and qr.local's screen shows
+those names under its inbox bar, a loaded one bright.
 
 The card is an RTX 4080 with 16 GB, beside 32 GB of memory. A model bigger than the card keeps part of
 itself in memory and answers more slowly; llama.cpp decides how much goes where (`--fit`), and every
@@ -25,7 +27,7 @@ model has the same 32k context (`../model.yml`), the advocate engine's floor.
 |---|---|---|---|
 | `qwen3.5-0.8b` | Qwen | 0.8B | the ladder's floor: phone-sized, where the label reducer wants to end up |
 | `qwen3.5-2b` | Qwen | 2B | the ladder's second rung |
-| `qwen3.5-4b` | Qwen | 4B | the waterline: what the shapes are asked on today |
+| `qwen3.5-4b` | Qwen | 4B | the waterline: what the shapes were first asked on |
 | `qwen3.5-9b` | Qwen | 9B | the ladder's top rung that sits on the card whole |
 | `qwen3.8-27b` | Qwen | 27B | the newest Qwen, dense, the most the card brings; the slow one |
 | `gemma-4-12b` | Google | 12B | another lab beside the 9B rung, quantized by Google itself |
