@@ -66,6 +66,21 @@ gear:
     updates: bay
     restart-tier: none
 
+  - gear: ruby
+    for: building the site to deploy it (bin/deploy-site, `fcpm deploy`): Ruby and its DevKit (MSYS2), which
+      Jekyll's native gems compile with. The minor of the root's .ruby-version
+    package: RubyInstallerTeam.RubyWithDevKit.3.2
+    vendor: RubyInstaller (rubyinstaller.org), BSD-3-Clause
+    provisioner: winget       # --scope user, no administrator; then `ridk install` (MSYS2 and its toolchain)
+    updates: winget
+    restart-tier: none
+
+  - gear: jekyll
+    for: the site's build, from site/Gemfile (Jekyll 4.3 and what Ruby 3 dropped). check.ps1 asks `ruby -S jekyll`
+    provisioner: gem          # `bundle install` in refs\fcpublicmedia.org\site, after ruby
+    updates: gem
+    restart-tier: none
+
   - gear: audition
     for: the enhance suite, run unattended through the engine's panel (below).
       Members' recordings in, enhanced or stemmed takes out (.enhance-engine)

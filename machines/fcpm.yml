@@ -43,10 +43,22 @@ verbs:
     linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
   - verb: deploy
+    args: "[--build]"
+    says: "fcpublicmedia.org onto Cloudflare Pages: refresh, build, check, upload (--build uploads nothing)"
+    windows: bin/deploy-site
+    linux: bin/deploy-site
+
+  - verb: deploy
     args: "SITE DIR [HOST]"
     says: "a finished site onto the static host (static.local): only what changed crosses"
     windows: "not yet: no key for the static host"
     linux: machines/static/deploy
+
+  - verb: keys
+    args: "[check|take GROUP KEY|offer GROUP DEVICE|run GROUP... -- CMD]"
+    says: "the keychain of the jobs this machine wears: what is held and wanted, never a value"
+    windows: machines/keys
+    linux: machines/keys
 
   - verb: relay
     args: "[status|on|off]"

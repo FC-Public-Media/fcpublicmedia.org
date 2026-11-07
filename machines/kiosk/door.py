@@ -30,6 +30,8 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /depot/now         the drive's index, as JSON. The page polls it
     GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
     GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, from that page only
+    GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
+    GET /deploy/now        the same as JSON, with the deploy's log where it runs here
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
     GET /room/<room>/      a room's hallway door, any shape (rooms/<room>.yml): who is hosting, what is coming, what is in
     GET /room/<room>/now   the same as JSON. The page polls it
@@ -1084,11 +1086,13 @@ def board_page(here=False, host=""):
     screens += [tile("/wallpaper/" + f.name, f.stem.replace("-1050x1680", "").replace("-", " ").capitalize(),
                      "wallpaper, this panel's size") for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png"))]
     panels.append(("Screens", screens))
+    sites = [tile("/deploy/", "Deploy", "fcpublicmedia.org, from main")]
     if named:
-        panels.append(("Sites", [tile("http://%s/" % domain, "The site", "as built here"),
-                                 tile("http://wix.%s/" % domain, "The Wix copy", "photocopied"),
-                                 tile("http://%s.%s/" % (socket.gethostname().split(".")[0].lower(), domain),
-                                      "This machine's gear", "each piece, its facts")]))
+        sites += [tile("http://%s/" % domain, "The site", "as built here"),
+                  tile("http://wix.%s/" % domain, "The Wix copy", "photocopied"),
+                  tile("http://%s.%s/" % (socket.gethostname().split(".")[0].lower(), domain),
+                       "This machine's gear", "each piece, its facts")]
+    panels.append(("Sites", sites))
 
     def button(action, label):
         return "<form method=post action=%s><button>%s</button></form>" % (action, label) if here else ""
@@ -3137,6 +3141,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, models_page())
             if route == "/models/now":
                 return self.reply(200, json.dumps(models_now()), TYPES[".json"])
+            if route in ("/deploy", "/deploy/"):
+                return self.reply(200, deploy_page())
+            if route == "/deploy/now":
+                return self.reply(200, json.dumps(deploy_now()), TYPES[".json"])
             if route == "/broadcast/now":
                 return self.reply(200, json.dumps(broadcast_now()), TYPES[".json"])
             if route in ("/preview", "/preview/"):
@@ -4267,6 +4275,100 @@ MODELS_JS = """<script>
       .catch(function () { said.textContent = 'This machine is not answering'; delete said.dataset.busy; });
   };
   now(); setInterval(now, 10000);
+})();
+</script>"""
+
+
+# ---------------------------------------------------------------------- deploy --
+# THE SITE's DEPLOY: what fcpublicmedia.org serves, what main here holds, and one button. The button is a reply,
+# wizard:site+deploy, set down here like any other: the helm whose job holds it runs bin/deploy-site, and any
+# other helm passes it there (replies.py, route). docs/site.md, Deploy.
+LIVE_AT = os.environ.get("FCPM_LIVE_AT", "https://fcpublicmedia.org/")
+
+
+def deploy_now():
+    """The live site's revision, this checkout's main, who holds the deploy, and, where it runs here, its log."""
+    import urllib.request
+    import replies
+    try:
+        with urllib.request.urlopen(urllib.request.Request(LIVE_AT, headers={"User-Agent": "fcpm-helm"}), timeout=4) as r:   # Cloudflare refuses urllib's own
+            m = re.search(rb'name="fcpm-revision" content="([^"]*)"', r.read(65536))
+        live = m.group(1).decode() if m else None
+    except OSError:
+        live = None
+    full, subject = replies.head()
+    holder = replies.holder("wizard:site+deploy")
+    here = bool(holder) and holder[0] in replies.wears()
+    tail = []
+    if here:
+        try:
+            tail = (replies.STATE / replies.DEPLOY_LOG).read_text(encoding="utf-8", errors="replace").splitlines()[-14:]
+        except OSError:
+            pass
+    return {"live": live, "head": full[:7], "subject": subject, "holder": holder[0] if holder else None,
+            "here": here, "running": here and replies.deploying(), "log": tail}
+
+
+def deploy_page():
+    body = """%s<main>
+<h2>Deploy the site</h2>
+<p class=dim>fcpublicmedia.org is a Cloudflare Pages bucket. A deploy refreshes the Cablecast, schedule and nonprofit
+data, builds main, checks it and uploads it, in a few minutes. It runs on the machine whose helm holds the deploy,
+with that machine's own key.</p>
+<section class=here id=state></section>
+<p><button id=go disabled>Deploy</button></p>
+<p class=dim id=said></p><pre id=log></pre></main>%s""" % (masthead("%s &middot; deploy" % e(socket.gethostname().lower())),
+                                                      DEPLOY_JS)
+    return page("Deploy the site", body, DEPLOY_CSS)
+
+
+DEPLOY_CSS = BOARD_CSS + """
+#state { display:grid; grid-template-columns:max-content 1fr; gap:.4rem 1.2rem; margin:1.2rem 0; }
+#state b { color:var(--paper); } #log { font-size:.8rem; color:var(--dim); white-space:pre-wrap; }
+#said { min-height:1.4em; }
+"""
+
+
+DEPLOY_JS = """<script>
+(function () {
+  var state = document.getElementById('state'), go = document.getElementById('go'), said = document.getElementById('said'),
+      logs = document.getElementById('log'), head = null;
+  function row(k, v) { var a = document.createElement('span'), b = document.createElement('b'); a.textContent = k; b.textContent = v; state.append(a, b); }
+  function draw(d) {
+    state.textContent = ''; head = d.head;
+    row('Live now', d.live || 'not answering');
+    row('Main here', d.head + ', ' + d.subject);
+    row('Deployed by', d.holder ? d.holder + "'s helm" + (d.here ? ' (this one)' : '') : 'no helm holds it');
+    go.textContent = d.live === d.head ? 'Deploy ' + d.head + ' again' : 'Deploy ' + d.head;
+    go.disabled = !d.holder || d.running || !!said.dataset.busy;
+    if (d.running) said.textContent = 'Deploying...';
+    logs.textContent = d.log.join('\\n');
+  }
+  function now() { fetch('/deploy/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
+  function hex(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  function iso(d) {
+    var o = -d.getTimezoneOffset(), p = function (n) { return ('0' + Math.floor(Math.abs(n))).slice(-2); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' +
+      p(d.getSeconds()) + (o >= 0 ? '+' : '-') + p(o / 60) + ':' + p(o % 60);
+  }
+  function follow(name, tries) {
+    fetch('/drop/' + name, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (w) {
+      var s = w.state;
+      said.textContent = s === 'applied' ? w.why : s === 'routed' ? 'Passed on ' + w.why + '.' :
+        s === 'held' ? 'Held: ' + w.why : s === 'inbox' && w.why ? 'Waiting ' + w.why + '; it goes when that helm answers.' :
+        'Set down; read within 20 seconds...';
+      if ((s === 'inbox' || !s) && tries > 0) setTimeout(function () { follow(name, tries - 1); }, 3000);
+      else delete said.dataset.busy;
+    });
+  }
+  go.onclick = function () {
+    var reply = {schema: 'fcpm.reply/v0', wizard: 'wizard:site+deploy', at: head, issued: iso(new Date()), nonce: hex(16), rev: head};
+    said.dataset.busy = 1; go.disabled = true; said.textContent = 'Deploying ' + head + '...';
+    fetch('/drop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(reply)})
+      .then(function (r) { return r.json(); }).then(function (k) { follow(k.kept, 20); })
+      .catch(function () { said.textContent = 'This machine is not answering'; delete said.dataset.busy; });
+  };
+  now(); setInterval(now, 5000);
 })();
 </script>"""
 

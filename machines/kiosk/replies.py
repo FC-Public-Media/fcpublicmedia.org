@@ -459,6 +459,61 @@ def model_up_reply(reply, meta):
     return None, "up: %s; model.ps1 pick started (%s)" % (names, PICK_LOG)
 
 
+# ---- the site, onto Cloudflare Pages (wizard:site+deploy), by the helm of the job that holds the deploy ----
+
+DEPLOY_LOG = "deploy.log"
+_deploy = None         # the deploy this helm started, while it runs: one at a time
+
+
+def git_bash():
+    """Git's bash on Windows, never WSL's: deploy-site is a sh script."""
+    exe = shutil.which("git")
+    for p in pathlib.Path(exe).resolve().parents if exe else ():
+        if (p / "bin" / "bash.exe").exists():
+            return str(p / "bin" / "bash.exe")
+    return "bash"
+
+
+def deploy_command():
+    """bin/deploy-site, then its exit status into the log. FCPM_DEPLOY (a JSON list) stands in for it in a test."""
+    if os.environ.get("FCPM_DEPLOY"):
+        return json.loads(os.environ["FCPM_DEPLOY"])
+    return [git_bash() if os.name == "nt" else "sh", "-c", 'sh "$0"; echo "deploy-site: exit $?"',
+            str(ROOT / "bin" / "deploy-site")]
+
+
+def head():
+    out = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%H %s"], capture_output=True, text=True)
+    full, _, subject = out.stdout.strip().partition(" ")
+    return full, subject
+
+
+def deploying():
+    return _deploy is not None and _deploy.poll() is None
+
+
+def deploy_reply(reply, meta):
+    """{rev}: deploy what this helm's checkout holds, if it is that commit. deploy-site is started and left to
+    run (a few minutes); its words go to deploy.log."""
+    global _deploy
+    rev = str(reply.get("rev") or "").lower()
+    if not (7 <= len(rev) <= 40 and all(c in "0123456789abcdef" for c in rev)):
+        return "rev: the commit to deploy"
+    full, subject = head()
+    if not full.startswith(rev):
+        return "rev %s: this helm's checkout is at %s" % (rev[:7], full[:7] or "no commit")
+    if deploying():
+        return "a deploy is already running (%s)" % DEPLOY_LOG
+    STATE.mkdir(parents=True, exist_ok=True)
+    with open(STATE / DEPLOY_LOG, "ab") as out:
+        out.write(("\n%s %s %s, by %s\n" % (now().isoformat(timespec="seconds"), full[:7], subject,
+                                            (meta or {}).get("by") or "unsigned")).encode())
+        out.flush()
+        _deploy = subprocess.Popen(deploy_command(), stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                   cwd=str(ROOT), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return None, "deploy of %s started (%s)" % (full[:7], DEPLOY_LOG)
+
+
 def helms():
     return (load_yaml(HELMS).get("helms") or {}) if HELMS.is_file() else {}
 
@@ -499,7 +554,8 @@ _waiting = set()       # bottles already said to be waiting for a helm, so a lon
 
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
            "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply,
-           "wizard:loop+recall": recall_reply, "wizard:model+up": model_up_reply}
+           "wizard:loop+recall": recall_reply, "wizard:model+up": model_up_reply,
+           "wizard:site+deploy": deploy_reply}
 
 
 def nonces():

@@ -1,0 +1,21 @@
+# The keychain production holds: machines/keys reads it on the machine wearing this job (bay 1). Its own keys,
+# never a copy of digitization's: each machine that deploys is given its own token, so one can be revoked alone.
+# Values never enter this repository. Shape and commands: ../digitization/keys.yml; `fcpm keys` here.
+
+dir: ~/.config/fcpm/keys
+
+groups:
+  cloudflare:
+    what: "deploys the site to FCPM's Cloudflare account (the org account), Pages project fcpm-new, and drains the site-worker's tanks (KV site-worker-answers); never the worker itself"
+    form: env
+    used by: "bin/deploy-site (fcpm deploy); machines/drain, when this job's crew holds the drain line"
+    keys:
+      CLOUDFLARE_API_TOKEN:
+        may: "Account: Cloudflare Pages Edit, Workers KV Storage Edit; FCPM's org account only"
+        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token named for bay 1, those two permissions"
+        issued: not held
+      CLOUDFLARE_ACCOUNT_ID:
+        shape: hex32
+        may: names FCPM's Cloudflare account, the org account (not secret; kept with its token)
+        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): the account's home page, Account ID"
+        issued: not held

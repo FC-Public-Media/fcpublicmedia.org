@@ -6,9 +6,9 @@
 # and replaced together: a test key beside a live one is how a checkout breaks quietly.
 # `form: env` files hold NAME=value lines; `form: raw` files hold the one value and nothing else.
 #
-#   machines/digitization/keys            what is held and what is wanted; never a value
-#   machines/digitization/keys take G K   asks for G's key K in a window on this screen
-#   machines/digitization/keys run G -- CMD   runs CMD with group G in its environment
+#   machines/keys            what is held and what is wanted; never a value (`fcpm keys`)
+#   machines/keys take G K   asks for G's key K in a window on this screen
+#   machines/keys run G -- CMD   runs CMD with group G in its environment
 #
 # `fcpm check` reads this file too. GitHub's repository secrets are not part of the keychain:
 # nothing here is kept there, and nothing that deploys relies on them. See PROFILE.md, Keys.
@@ -52,7 +52,7 @@ groups:
   cloudflare:
     what: "deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV"
     form: env
-    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout; the crew's drain line (machines/digitization/drain), every hour: lists, reads and deletes in KV site-worker-answers"
+    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout; the crew's drain line (machines/drain), every hour: lists, reads and deletes in KV site-worker-answers"
     keys:
       CLOUDFLARE_API_TOKEN:
         may: "Account: Cloudflare Pages Edit, Workers Scripts Edit, Workers KV Storage Edit; Zone (fcpublicmedia.org, once it is on the account): Zone Read, DNS Edit, Workers Routes Edit, for cloud.fcpublicmedia.org; FCPM's org account only"

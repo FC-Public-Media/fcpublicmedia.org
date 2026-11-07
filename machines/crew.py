@@ -115,7 +115,8 @@ def argv(svc):
     for tok in shlex.split(svc["start"]):
         if tok == "{python}":
             # Linux: the Python running the supervisor, which already has pyyaml (python3-yaml)
-            out += [uv(), "run", "--no-project", "--python", "3.12", "--with", "pyyaml"] if WINDOWS else [sys.executable]
+            # Windows: `uv run ... python FILE`, since uv spawns a file without .py as a program
+            out += [uv(), "run", "--no-project", "--python", "3.12", "--with", "pyyaml", "python"] if WINDOWS else [sys.executable]
             continue
         for k, v in fill.items():
             tok = tok.replace(k, v)

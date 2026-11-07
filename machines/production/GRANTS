@@ -11,11 +11,14 @@ wears  bin/build-kiosk.py
 wears  bin/build-sites.py
 wears  machines/binding
 wears  machines/fcpm
+wears  machines/keys
+wears  machines/drain
+wears  bin/deploy-site
 
 runner  powershell  Bash        powershell -NoProfile -ExecutionPolicy Bypass -File
 runner  powershell  PowerShell  &
 runner  sh          Bash
-runner  python      Bash        uv run --no-project --python 3.12 --with pyyaml
+runner  python      Bash        uv run --no-project --python 3.12 --with pyyaml python
 
 # Never stop a process by name here: the staff OBS and the members' OBS are both obs64.exe.
 host  deny  PowerShell(Stop-Process -Name *)

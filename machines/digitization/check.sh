@@ -64,7 +64,7 @@ found=$(python3 -I "$HERE/../lan.py" status | while read -r name serves who; do
 done)
 echo "$found"
 case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
-found=$(python3 -I "$HERE/keys" check)
+found=$(python3 -I "$HERE/../keys" check)
 echo "$found"
 case "$found" in *WANTED*) bad=$((bad + 1)) ;; esac
 [ -f "$HERE/../../../site-worker/bin/drain.mjs" ]

@@ -161,8 +161,14 @@ the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
 side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new.fcpublicmedia.org`.
 
-- It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
-  `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
+- It runs on any machine whose keychain ([`machines/keys`](../machines/keys), the job's `keys.yml`) holds a
+  `cloudflare` group: digitization, and bay 1 in Git Bash ([production](../machines/production/PROFILE.md#deploy)).
+  Each machine has its own token, so one can be revoked alone. `fcpm deploy` runs it; `fcpm deploy --build`
+  (`bin/deploy-site --build`) refreshes, builds and checks without uploading, and keeps the copy.
+- The board's **Deploy** (`/deploy/`, on every helm) shows what is live beside main and sets down
+  `wizard:site+deploy` naming main's commit. The helm whose job holds it in `machines/helms.yml` runs
+  `bin/deploy-site` if its checkout is at that commit, one deploy at a time, into `deploy.log` beside its
+  replies; any other helm passes the bottle there. Moving the deploy to another machine is that one line.
 - The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
   `airings.json` and `nonprofits.json` are what the LAN build and the tests
   use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.

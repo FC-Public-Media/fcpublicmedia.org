@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Helm to helm (machines/helms.yml, replies.py route): a reply whose wizard another job's helm holds is
-passed there as it came, or waits for it; the holding helm applies wizard:model+up by model.ps1 pick.
+passed there as it came, or waits for it; the holding helm applies wizard:model+up by model.ps1 pick, and
+wizard:site+deploy by bin/deploy-site.
 
     python3 bin/test_helms.py
 """
@@ -18,6 +19,12 @@ import urllib.error
 REPO = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "machines" / "kiosk"))
 import replies  # noqa: E402
+
+
+def deploy(rev):
+    return json.dumps({"schema": "fcpm.reply/v0", "wizard": "wizard:site+deploy", "at": "test",
+                       "issued": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+                       "nonce": os.urandom(8).hex(), "rev": rev})
 
 
 def up(*names, **fields):
@@ -38,6 +45,9 @@ class Helms(unittest.TestCase):
 
     def tearDown(self):
         replies.STATE, replies.route = self.saved[:2]
+        if replies._deploy is not None:
+            replies._deploy.wait()
+            replies._deploy = None
         os.environ.clear()
         os.environ.update(self.saved[2])
         shutil.rmtree(self.tmp)
@@ -102,6 +112,33 @@ class Helms(unittest.TestCase):
             replies.drop(up("qwen3.5-9b"))
             [(_, verdict, why)] = replies.take()
             self.assertEqual((verdict, why), ("held", "this helm cannot run model.ps1 (not Windows)"))
+
+    def test_the_deploy_is_held_by_digitizations_helm_and_passed_there_from_a_bay(self):
+        self.assertEqual(replies.holder("wizard:site+deploy"), ("digitization", "http://digitization.local"))
+        os.environ["FCPM_WEARS"] = "production"
+        sent = []
+        replies.route = lambda path, at: sent.append(at) or "far-name"
+        replies.drop(deploy(replies.head()[0]))
+        [(_, verdict, _)] = replies.take()
+        self.assertEqual((verdict, sent), ("routed", ["http://digitization.local"]))
+
+    def test_the_holding_helm_deploys_only_the_commit_it_has_and_one_at_a_time(self):
+        mark = self.tmp / "deployed"
+        os.environ["FCPM_DEPLOY"] = json.dumps([sys.executable, "-c",
+                                                "import sys, time; open(%r, 'w').write('x'); time.sleep(1)" % str(mark)])
+        full = replies.head()[0]
+        replies.drop(deploy("abc1234"))
+        replies.drop(deploy("not a commit"))
+        replies.drop(deploy(full[:7]))
+        replies.drop(deploy(full))
+        verdicts = [(v, w) for _, v, w in replies.take()]
+        self.assertEqual(verdicts[0], ("held", "rev abc1234: this helm's checkout is at %s" % full[:7]))
+        self.assertEqual(verdicts[1], ("held", "rev: the commit to deploy"))
+        self.assertEqual(verdicts[2], ("applied", "deploy of %s started (deploy.log)" % full[:7]))
+        self.assertEqual(verdicts[3], ("held", "a deploy is already running (deploy.log)"))
+        replies._deploy.wait()
+        self.assertTrue(mark.exists())
+        self.assertIn("by unsigned", (replies.STATE / replies.DEPLOY_LOG).read_text())
 
 
 if __name__ == "__main__":

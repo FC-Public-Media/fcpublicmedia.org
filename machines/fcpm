@@ -68,9 +68,17 @@ case "$cmd" in
       *) echo "fcpm dev [status|on|off]" >&2; exit 2 ;;
     esac ;;
   deploy)
-    # A finished site onto the static host (static/deploy): only what changed crosses, and
-    # what is up stays up until the push is whole. `fcpm deploy nccv ./_site`.
+    # Alone or with --build: fcpublicmedia.org onto Cloudflare Pages (bin/deploy-site), from any machine whose
+    # keychain holds `cloudflare`. With SITE DIR: a finished site onto the static host (static/deploy).
+    case "${1:-}" in ""|--build) exec "$REPO/bin/deploy-site" "$@" ;; esac
     exec "$HERE/static/deploy" "$@" ;;
+  keys)
+    # The keychain of the jobs this machine wears (keys; each job's keys.yml).
+    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*)
+      uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+      exec "$uv" run --no-project --python 3.12 --with pyyaml python "$HERE/keys" "$@" ;;
+    esac
+    exec python3 "$HERE/keys" "$@" ;;
   relay)
     # The origin's mode (../origin/door): on, what is pushed there goes out to GitHub on intake's
     # 15-minute pass; off, LAN-only: it pulls, and what is pushed waits there.
