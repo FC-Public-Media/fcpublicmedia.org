@@ -20,6 +20,7 @@ const PAGES = [
 // Embed hosts: their failures are reported apart from same-origin failures.
 const THIRD_PARTY = [
   'cablecast.tv',
+  'vjs.zencdn.net', // the Cablecast player's video.js
   'youtube.com',
   'youtu.be',
   'instagram.com',
