@@ -25,6 +25,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
 | `model.ps1`, `model.yml`, `models/`, `shapes/` | `fcpm model`: the language models, an instrument answering the switched network only (llama.cpp serving the spread in [`models/`](models/README.md), Qwen3.5 4B the default); its effort words, the shapes it offers, and the contexts it keeps |
+| `helm.ps1` | `fcpm helm`: this bay's helm, the crew's `helm` line (the door's intake and pages only, on 8080), which takes what a peer helm passes it ([`../helms.yml`](../helms.yml)); its one rule |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
 ## Inbound
@@ -35,6 +36,7 @@ program, a port and an address range:
 | rule | placed by | admits |
 |---|---|---|
 | `fcpm-model inbound` | `fcpm model grant` | TCP 9931 to llama-server.exe, from 10.209.1.0/24 |
+| `fcpm-helm inbound` | `fcpm helm grant` | TCP 8080, the crew's `helm` line (its Python moves, so the port), from 10.209.1.0/24 |
 | `fcpm-roku relay inbound 8888` | `fcpm roku grant` | TCP 8888 to mediamtx.exe, from the local subnet |
 | `fcpm-recorder obs64 HELO RTP` | by hand | UDP to obs64.exe, from the HELO (10.209.1.114) |
 

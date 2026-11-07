@@ -1,0 +1,10 @@
+# helms.yml: every helm, by the job it serves, where it answers on the switched network, and the
+# wizards only that job's helm can apply. Helms are peers: a reply set down at any of them is applied
+# there, or passed as it came to the helm that holds its wizard (replies.py, route). Nothing else
+# commands one machine from another. docs/kiosk.md, Helms.
+helms:
+  digitization:
+    at: http://digitization.local
+  production:
+    at: http://10.209.1.20:8080
+    holds: [wizard:model+up]

@@ -27,6 +27,7 @@ What any machine wearing production owes, so a peer can step in beside it:
 | `episodes` | every 5m | `troves/pools` | admits each released episode to post as a take; held episodes are left alone |
 | `post` | keep | `troves/post` | the post page on 8093 ([`troves/post/`](../../troves/post/README.md)) |
 | `screen` | every 1m | `troves/kiosk-screen` | the rolling TV's page (a desktop line) |
+| `helm` | keep | `machines/production` | this bay's helm: `door.py serve` with only the intake and the pages, on 8080; it applies `wizard:model+up` (`fcpm model pick`) for any peer helm ([`../helms.yml`](../helms.yml)) |
 | `remote-control` | held off | `machines/production` | the root's Remote Control server; uncomment its line in `services` to keep it |
 
 `post.yml` here holds production's post steps: `enhance` is a door step (Adobe Podcast, by
