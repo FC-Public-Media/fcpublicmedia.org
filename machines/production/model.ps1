@@ -5,8 +5,9 @@ model.ps1 -- the studio's language models, an instrument on the switched network
     model.ps1 models        the spread (models/): each one's size, whether it is up, placed, loaded
     model.ps1 pick [NAME,NAME...|none]
                             which models are up: a list to toggle with the space bar (Enter keeps
-                            it, Esc leaves it), or the names given. A model picked is fetched if it
-                            is not here yet, and a running server takes the new line-up at once
+                            it, Esc leaves it), or the names given. A model picked is fetched first
+                            if it is not here yet, resuming what an earlier try left; what was up
+                            stays up until it is in place, then a running server takes the new line-up
     model.ps1 install [NAME]
                             bring llama.cpp aboard through the bay, and place the files of the
                             models that are up, or the one named
@@ -145,17 +146,44 @@ function Place($n) {
     $m = Spec $n; $file = FileOf $m; $size = [int64]$m['size']
     if ((Placed $m) -and (Hash $file) -eq $m['sha256']) { Say "model     $n in place"; return }
     New-Item -ItemType Directory -Force $Models | Out-Null
-    $free = (New-Object IO.DriveInfo ([IO.Path]::GetPathRoot($Models))).AvailableFreeSpace
-    if ($free -lt $size + 2GB) { Fail "$n needs $(GB $size) and $Models has $(GB $free) free; model.yml's store can name another drive" }
     $part = "$file.part"
-    Say "model     fetching $n, $(GB $size), from $($m['source'])"
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -UseBasicParsing -Uri $m['source'] -OutFile $part
+    $had = if (Test-Path $part) { (Get-Item $part).Length } else { [int64]0 }
+    $free = (New-Object IO.DriveInfo ([IO.Path]::GetPathRoot($Models))).AvailableFreeSpace
+    if ($free -lt $size - $had + 2GB) { Fail "$n needs $(GB ($size - $had)) more and $Models has $(GB $free) free; model.yml's store can name another drive" }
+    if ($had) { Say "model     picking up $n at $(GB $had) of $(GB $size), from $($m['source'])" }
+    else { Say "model     fetching $n, $(GB $size), from $($m['source'])" }
+    Fetch $m['source'] $part $size
+    Say "model     checking $n's sha256 (a minute or two for the big ones)"
     $got = Hash $part
     if ($got -ne $m['sha256']) { Remove-Item -Force $part; Fail "$n is sha256 $got, not models\$n.yml's $($m['sha256'])" }
     Move-Item -Force $part $file
     Line $BayLog ([ordered]@{ payload = 'model'; version = $n; step = 'install'; event = 'installed'; path = $file; from = $m['source']; sha256 = $got })
     Say "model     $n in place, sha256 matches"
+}
+# One file from $url into $part, picking up where $part left off. Windows' own curl.exe resumes, and ends a
+# connection that stalls (under 1 KB/s for a minute); 5.1's Invoke-WebRequest did neither, and began a
+# 17 GB model from zero at every dropped connection. A try that gains bytes earns another; three in a row
+# that gain none end it, and the .part stays for the same verb to pick up. $size 0: whatever comes.
+function Fetch($url, $part, [int64] $size) {
+    $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+    $idle = 0; $try = 0
+    while ($true) {
+        $had = if (Test-Path $part) { (Get-Item $part).Length } else { [int64]0 }
+        if ($size -and $had -ge $size) { return }
+        $try++
+        & $curl --location --fail --show-error --continue-at - --speed-limit 1024 --speed-time 60 `
+                --ssl-revoke-best-effort --output $part $url
+        $code = $LASTEXITCODE
+        $now = if (Test-Path $part) { (Get-Item $part).Length } else { [int64]0 }
+        if ($code -eq 0 -and (-not $size -or $now -ge $size)) { return }
+        Note 'dropped' @{ url = $url; try = $try; exit = $code; got = $now; of = $size }
+        if ($now -gt $had) { $idle = 0 } else { $idle++ }
+        $at = if ($size) { "$(GB $now) of $(GB $size)" } else { GB $now }
+        if ($idle -ge 3) { Fail "the fetch stopped at $at (curl exit $code, three tries without a byte); the same verb again picks up from there" }
+        $wait = 5 * [math]::Pow(2, $idle)
+        Say "fetch     broke off at $at (curl exit $code); again from there in $wait s"
+        Start-Sleep -Seconds $wait
+    }
 }
 # The list to toggle: up and down move, space turns a model on or off, Enter keeps
 # it, Esc or q leaves it. $key reads one key and $draw shows the list, so a test can stand in for both.
@@ -258,7 +286,7 @@ function Bring($zipKey, $shaKey) {
         if (-not $a) { Fail "release $tag has no $zip" }
         if ("$($a.digest)" -ne "sha256:$want") { Fail "GitHub's digest for $zip ($($a.digest)) is not model.yml's sha256:$want" }
         Say "receiving $zip ($([math]::Round($a.size / 1MB)) MB)"
-        Invoke-WebRequest -UseBasicParsing -Uri "$Release/$tag/$zip" -OutFile "$received.part"
+        Fetch "$Release/$tag/$zip" "$received.part" ([int64]$a.size)
         Move-Item -Force "$received.part" $received
         Line $BayLog (Merge $f ([ordered]@{ step = 'receive'; event = 'received'; size = $a.size; published = $a.digest }))
     }
@@ -512,10 +540,12 @@ switch ($Verb) {
     }
     $unknown = @($got | Where-Object { $names -notcontains $_ })
     if ($unknown.Count) { Fail "not in the spread: $($unknown -join ', '); fcpm model models lists it" }
+    # Fetched before the line-up changes: while a model is on its way, what was up stays up and served.
+    try { foreach ($n in $got) { Place $n } }
+    catch { Say ("up        unchanged: " + $(if ($was.Count) { $was -join ', ' } else { 'none' })); throw }
     $now = @(Choose $got)
     Note 'picked' @{ up = ($now -join ','); was = ($was -join ',') }
     Say ("up        " + $(if ($now.Count) { $now -join ', ' } else { 'none: the server serves nothing until the next pick' }))
-    foreach ($n in $now) { Place $n }
     if (Server) {
         $names = @(WritePreset)
         $l = Listed (Url) '?reload=1'

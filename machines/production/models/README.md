@@ -10,7 +10,8 @@ the bay (`up`, beside the server), and it changes as often as the testing does: 
 list to toggle with the space bar, and `fcpm model pick qwen3.5-9b,gpt-oss-20b` says it in one line.
 Nothing is up until it is picked, and any model may be taken down, so a bigger one can have the whole
 card. A request that names no model gets one that is up and loaded, else the first that is up, and the
-answer names it. Picking a model fetches it if it isn't here yet (all nine come to about 77 GB), and a
+answer names it. Picking a model fetches it first if it isn't here yet (all nine come to about 77 GB),
+picking up where a dropped connection left off, and what was up stays up until it arrives; then a
 running server takes the new line-up at once. `fcpm model on` serves the models that are up on the same
 port as a router: a request names its model, the router loads it, and when room is needed the one asked
 least lately leaves. `fcpm model models` lists them, placed and loaded. What the running server lists
