@@ -24,3 +24,8 @@ serves:
   - service: drain
     for: "the site-worker's tanks (every form reply on the site) brought here into ~/fcpm/answers and emptied behind; see digitization/PROFILE.md#replies"
     start: "/usr/bin/python3 machines/drain"
+
+  - service: loudspeaker
+    for: "every signal this machine hears (UDP 9797 from the LAN, digitization/loudspeaker.yml's taps), one stream on TCP 9798 and one log; see README.md, The loudspeaker"
+    start: "/usr/bin/python3 -I machines/loudspeaker serve"
+    alive: {port: 9798}

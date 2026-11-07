@@ -46,3 +46,11 @@ Each job a machine does has one supervisor there, `machines/crew.py serve <job>`
 - **Start lines** fill `{python}` (Windows: uv, Python 3.12, pyyaml; Linux: the supervisor's own `python3`, with `python3-yaml`), `{home}`, `{code}`, `{repo}`. Children get no console; each line logs to `%LOCALAPPDATA%\editing-bay-1\crew\<name>.log`, or `~/.local/state/fcpm/crew/<name>.log` on Linux. A named mutex (Linux: a lock file there) keeps one supervisor per job per machine.
 - **Windows only:** a scheduled task (S4U), a named mutex, the session id for "has a desktop", `taskkill /T`, `Win32_Process`.
 - **Linux only:** one systemd instance per job, all under `fcpm.target` (`machines/fcpm-crew@.service`, `machines/fcpm.target`), restarted by systemd; `DISPLAY` for "has a desktop"; each line in its own process group; `/proc` for process patterns.
+
+## The loudspeaker
+
+One stream of every signal a machine hears, one line each: `<UTC time>\t<who>\t<what>`. [`loudspeaker`](loudspeaker) is the program; on digitization it is the crew's `loudspeaker` line.
+
+- **Hear it:** `fcpm hear` (or `nc digitization.local 9798`, `curl -N http://digitization.local:9798/`, a browser): the last 20 lines, then live. Everything it said is in `~/.local/state/fcpm/loudspeaker.log`, for cat and grep. It is open to the LAN, as the rest of our metadata is.
+- **Speak on it:** `fcpm say WHO WHAT...`, or one UDP datagram to port 9797 from anywhere on the LAN, a line each, `WHO<tab>WHAT` (`printf 'bay1\tobs up\n' > /dev/udp/digitization.local/9797`). A speaker from another machine is written `who@address`.
+- **What it follows:** `<job>/loudspeaker.yml` of each job the machine's `names` puts it in. `file:` taps say each new line of a log (a glob speaks as `who/<file stem>`); `run:` taps say each line a long-running command prints (digitization's `lan` is `avahi-browse`: every service that appears on, resolves on or leaves the LAN). `quiet:` leaves out the lines matching it.

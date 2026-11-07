@@ -3,6 +3,7 @@
 follow          every 5m    machines/digitization
 pools           keep        troves/pools
 names           keep        machines/digitization
+loudspeaker     keep        machines/digitization
 model-relay     keep        machines/digitization
 asks            keep        machines/digitization
 senders         every 1m    machines/digitization
