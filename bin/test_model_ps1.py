@@ -48,19 +48,24 @@ class ModelPs1(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
             return r.stdout.splitlines()
 
-    def test_the_default_alone_is_up_until_something_is_picked(self):
+    def test_the_default_alone_is_up_until_something_is_picked_and_any_may_be_down(self):
         out = self.run_ps(r'''
 "none: " + ((Chosen) -join ',')
 $kept = Choose @('gpt-oss-20b', 'nonesuch', 'qwen3.5-0.8b')
 "kept: " + ($kept -join ',')
 "read: " + ((Chosen) -join ',')
+"first: " + (First @(Chosen))
 Set-Content $Up "qwen3.8-27b`ngone-model"
 "stale: " + ((Chosen) -join ',')
+$null = Choose @()
+"empty: " + @(Chosen).Count
 ''')
-        self.assertEqual(out, ["none: qwen3.5-4b",
-                               "kept: qwen3.5-4b,gpt-oss-20b,qwen3.5-0.8b",
-                               "read: qwen3.5-4b,gpt-oss-20b,qwen3.5-0.8b",
-                               "stale: qwen3.5-4b,qwen3.8-27b"])
+        self.assertEqual(out, ["none: qwen3.5-4b",                    # never picked: the default alone
+                               "kept: gpt-oss-20b,qwen3.5-0.8b",        # the default down: not picked
+                               "read: gpt-oss-20b,qwen3.5-0.8b",
+                               "first: gpt-oss-20b",
+                               "stale: qwen3.8-27b",
+                               "empty: 0"])
 
     def test_the_router_serves_only_what_is_up_and_placed(self):
         out = self.run_ps(r'''
@@ -70,18 +75,22 @@ foreach ($n in 'qwen3.5-4b', 'qwen3.5-0.8b') {          # placed: the right size
 }
 "served: " + ((WritePreset) -join ',')
 ''')
-        self.assertEqual(out, ["served: qwen3.5-4b,qwen3.5-0.8b"])
+        self.assertEqual(out, ["served: qwen3.5-0.8b"])                # the 4B is placed but down
 
-    def test_the_presets_pin_the_context_and_load_the_default_first(self):
+    def test_the_presets_load_the_default_first_or_else_the_first_up(self):
         out = self.run_ps(r'''
 PresetText @('qwen3.5-4b', 'gpt-oss-20b')
+PresetText @('qwen3.5-0.8b', 'qwen3.8-27b')
 ''')
         models = str(self.root / "models")
         self.assertEqual(out, ["version = 1", "", "[*]", "c = 32768",
                                "", "[qwen3.5-4b]", "model = %s/Qwen3.5-4B-Q8_0.gguf" % models, "load-on-startup = true",
-                               "", "[gpt-oss-20b]", "model = %s/gpt-oss-20b-MXFP4.gguf" % models, ""])
+                               "", "[gpt-oss-20b]", "model = %s/gpt-oss-20b-MXFP4.gguf" % models, "",
+                               "version = 1", "", "[*]", "c = 32768",
+                               "", "[qwen3.5-0.8b]", "model = %s/Qwen3.5-0.8B-Q8_0.gguf" % models, "load-on-startup = true",
+                               "", "[qwen3.8-27b]", "model = %s/Qwen3.8-27B-Q4_K_M.gguf" % models, ""])
 
-    def test_the_picker_toggles_with_space_and_never_the_default(self):
+    def test_the_picker_toggles_any_model_with_space_the_default_too(self):
         out = self.run_ps(r'''
 $names = @(Names)
 $keys = [System.Collections.Queue]::new()
@@ -89,14 +98,14 @@ function Keys($list) { $keys.Clear(); foreach ($k in $list) { $keys.Enqueue($k) 
 $read = { $keys.Dequeue() }
 $quiet = { param($n, $s, $a) }
 $four = [array]::IndexOf($names, 'qwen3.5-4b')
-Keys (@('DownArrow') * $four + @('Spacebar', 'DownArrow', 'Spacebar', 'Enter'))     # the default, then the 9b
+Keys (@('DownArrow') * $four + @('Spacebar', 'DownArrow', 'Spacebar', 'Enter'))     # the 4B down, the 9b up
 "picked: " + ((PickLoop $names @('qwen3.5-4b') $read $quiet) -join ',')
 Keys @('Spacebar', 'Escape')
 "left: " + ($null -eq (PickLoop $names @('qwen3.5-4b') $read $quiet))
 Keys @('UpArrow', 'Spacebar', 'Spacebar', 'Enter')                                  # on, then off again
 "twice: " + ((PickLoop $names @('qwen3.5-4b', 'gpt-oss-20b') $read $quiet) -join ',')
 ''')
-        self.assertEqual(out, ["picked: qwen3.5-4b,qwen3.5-9b", "left: True", "twice: gpt-oss-20b,qwen3.5-4b"])
+        self.assertEqual(out, ["picked: qwen3.5-9b", "left: True", "twice: gpt-oss-20b,qwen3.5-4b"])
 
     def test_a_model_that_always_reasons_reads_as_its_own_level(self):
         out = self.run_ps(r'''
