@@ -19,8 +19,7 @@ cudart-zip: cudart-llama-bin-win-cuda-12.4-x64.zip
 cudart-sha256: 8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6
 
 # The models: one file each in models/, pinned by its hash; the spread and why each is in it is
-# models/README.md. One server answers for all of them, loading each when it is asked for.
-model: qwen3.5-4b         # the default: what a request that names no model is asked on
+# models/README.md. One server answers for those picked (`fcpm model pick`), loading each when asked.
 store: ""                 # where the model files go; empty: %LOCALAPPDATA%\editing-bay-1\model\models
 loaded-at-once: 2         # at most this many models held at once; the one asked least lately leaves first
 keep-free: 1024           # MiB of GPU memory left free when another model loads (whisper, OBS)

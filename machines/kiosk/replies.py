@@ -438,7 +438,7 @@ def pick_command():
 
 
 def model_up_reply(reply, meta):
-    """{up: [names]}: the models to be up on this bay, the whole line-up; any may be down, the default too, and
+    """{up: [names]}: the models to be up on this bay, the whole line-up; any may be down, and
     an empty list is none up.
     model.ps1 pick is started and left to run (fetching a model takes minutes); its words go to model-pick.log."""
     up = reply.get("up")

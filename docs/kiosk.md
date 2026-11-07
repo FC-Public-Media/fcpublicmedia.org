@@ -267,7 +267,7 @@ server, and a tick for each. *Keep this line-up* sets this down at that helm:
  "up": ["qwen3.5-9b", "gpt-oss-20b"], "issued": "2026-11-06T20:46:29-07:00", "nonce": "…"}
 ```
 
-`up` is the whole line-up each time; any model may be down, the default too, and `[]` is none up. Only production's helm
+`up` is the whole line-up each time; there is no default model, and `[]` is none up. Only production's helm
 applies it, by `model.ps1 pick` (started and left to run: a model it lacks takes minutes to fetch; its
 words go to `model-pick.log` beside the replies). A name the spread does not have is held. On the studio's
 network, like `kiosk+host`, being there is the authority.

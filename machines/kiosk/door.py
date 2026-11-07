@@ -4169,7 +4169,6 @@ def models_now():
     served), and whether that server answered at all."""
     import urllib.request
     import replies
-    spread = replies.load_yaml(ROOT / "machines" / "production" / "model.yml")
     try:
         with urllib.request.urlopen("http://%s/models" % MODEL_AT, timeout=2) as r:
             listed = {d["id"]: (d.get("status") or {}).get("value") or "loaded" for d in json.load(r).get("data") or []}
@@ -4181,7 +4180,7 @@ def models_now():
         m = replies.load_yaml(f)
         models.append({"model": f.stem, "lab": m.get("lab"), "params": m.get("params"), "active": m.get("active"),
                        "gb": round((m.get("size") or 0) / 1e9, 1), "why": m.get("why"),
-                       "default": f.stem == spread.get("model"), "state": listed.get(f.stem)})
+                       "state": listed.get(f.stem)})
     models.sort(key=lambda m: (float(m["params"] or 0), m["model"]))       # a ladder of sizes, smallest first
     holder = replies.holder("wizard:model+up")
     return {"answering": up, "models": models, "at": MODEL_AT,
@@ -4193,7 +4192,7 @@ def models_page():
 <h2>Bay 1's models</h2>
 <p class=dim>Stock models, as their labs made them, for testing what each can do. Tap the ones to be up and
 keep the line-up: it goes to the helm of the bay that serves them, which fetches any it lacks (minutes, for a
-big one) and serves them. Any may be down, the default too. A model up but not asked lately waits on the disk.</p>
+big one) and serves them. Nothing is up until it is picked. A model up but not asked lately waits on the disk.</p>
 <form id=pick data-at="%s"><section id=list></section>
 <p><button id=keep>Keep this line-up</button></p></form>
 <p class=dim id=said></p></main>%s""" % (masthead("%s &middot; models" % e(socket.gethostname().lower())),
@@ -4208,7 +4207,7 @@ MODELS_CSS = BOARD_CSS + """
 .model b { font-size:1.05rem; color:var(--dim); } .model .why { font-size:.85rem; line-height:1.3; }
 .model .state { font-size:.8rem; text-transform:uppercase; letter-spacing:.1em; }
 .model.up { border-left-color:var(--signal); color:var(--paper); } .model.up b { color:var(--paper); font-size:1.2rem; }
-.model.loaded .state { color:var(--signal); } .model:disabled { cursor:default; opacity:1; }
+.model.loaded .state { color:var(--signal); }
 #said { min-height:1.4em; }
 """
 
@@ -4224,7 +4223,7 @@ MODELS_JS = """<script>
         var card = document.createElement('button'), b = document.createElement('b'), p = document.createElement('span'),
             w = document.createElement('span'), s = document.createElement('span');
         card.type = 'button'; card.className = 'model'; card.dataset.model = m.model;
-        card.classList.toggle('up', !!m.state || (!d.answering && m.default));
+        card.classList.toggle('up', !!m.state);
         b.textContent = m.model; p.textContent = m.lab + ', ' + size(m) + ', ' + m.gb + ' GB';
         w.className = 'why'; w.textContent = m.why || ''; s.className = 'state';
         card.onclick = function () { card.classList.toggle('up'); };
@@ -4234,8 +4233,7 @@ MODELS_JS = """<script>
     d.models.forEach(function (m) {
       var card = list.querySelector('[data-model="' + m.model + '"]');
       card.classList.toggle('loaded', m.state === 'loaded');
-      card.querySelector('.state').textContent = (!d.answering ? '' : m.state === 'loaded' ? 'loaded' : m.state ? 'up, on the disk' : '') +
-        (m.default ? (d.answering && m.state ? ', ' : '') + 'the default' : '');
+      card.querySelector('.state').textContent = !d.answering ? '' : m.state === 'loaded' ? 'loaded' : m.state ? 'up, on the disk' : '';
     });
     if (!said.dataset.busy) said.textContent = d.answering ? '' : "Bay 1's model server is not answering. A line-up kept now waits for its helm.";
   }

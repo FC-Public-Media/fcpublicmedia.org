@@ -102,7 +102,7 @@ gear:
   - gear: llama-cpp
     for: the language models (model.yml, `fcpm model`): llama-server on the RTX 4080,
       OpenAI-shaped, listening on the switched network only, serving the spread
-      (models/README.md) by name, Qwen3.5 4B the default
+      (models/README.md) by name, those picked
     at: "%LOCALAPPDATA%\editing-bay-1\model\llama\llama-server.exe"
     vendor: ggml-org (github.com/ggml-org/llama.cpp), MIT; the models' labs (Qwen, Google,
       OpenAI, IBM), each Apache-2.0

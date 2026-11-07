@@ -26,7 +26,6 @@ foreach ($f in $ast.FindAll({ $args[0] -is [System.Management.Automation.Languag
 $PSScriptRoot2 = Split-Path $path
 $Facts = ReadFacts (Join-Path $PSScriptRoot2 'model.yml')
 $Spread = Join-Path $PSScriptRoot2 'models'
-$Default = $Facts['model']
 $Root = '%(root)s'
 $Up = Join-Path $Root 'up'
 $Models = Join-Path $Root 'models'
@@ -48,22 +47,26 @@ class ModelPs1(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
             return r.stdout.splitlines()
 
-    def test_the_default_alone_is_up_until_something_is_picked_and_any_may_be_down(self):
+    def test_nothing_is_up_until_something_is_picked(self):
         out = self.run_ps(r'''
-"none: " + ((Chosen) -join ',')
+"none: " + @(Chosen).Count
 $kept = Choose @('gpt-oss-20b', 'nonesuch', 'qwen3.5-0.8b')
 "kept: " + ($kept -join ',')
 "read: " + ((Chosen) -join ',')
-"first: " + (First @(Chosen))
+"answers: " + (Answerer @(Chosen) @{})
+"loaded answers: " + (Answerer @(Chosen) @{ 'qwen3.5-0.8b' = 'loaded'; 'gpt-oss-20b' = 'unloaded' })
+"nobody: " + ($null -eq (Answerer @() @{}))
 Set-Content $Up "qwen3.8-27b`ngone-model"
 "stale: " + ((Chosen) -join ',')
 $null = Choose @()
 "empty: " + @(Chosen).Count
 ''')
-        self.assertEqual(out, ["none: qwen3.5-4b",                    # never picked: the default alone
-                               "kept: gpt-oss-20b,qwen3.5-0.8b",        # the default down: not picked
+        self.assertEqual(out, ["none: 0",                               # never picked: nothing up, no default
+                               "kept: gpt-oss-20b,qwen3.5-0.8b",
                                "read: gpt-oss-20b,qwen3.5-0.8b",
-                               "first: gpt-oss-20b",
+                               "answers: gpt-oss-20b",                  # the first that is up
+                               "loaded answers: qwen3.5-0.8b",          # one already loaded: no swap on the card
+                               "nobody: True",
                                "stale: qwen3.8-27b",
                                "empty: 0"])
 
@@ -77,20 +80,20 @@ foreach ($n in 'qwen3.5-4b', 'qwen3.5-0.8b') {          # placed: the right size
 ''')
         self.assertEqual(out, ["served: qwen3.5-0.8b"])                # the 4B is placed but down
 
-    def test_the_presets_load_the_default_first_or_else_the_first_up(self):
+    def test_the_presets_pin_the_context_and_load_nothing_ahead(self):
         out = self.run_ps(r'''
 PresetText @('qwen3.5-4b', 'gpt-oss-20b')
 PresetText @('qwen3.5-0.8b', 'qwen3.8-27b')
 ''')
         models = str(self.root / "models")
         self.assertEqual(out, ["version = 1", "", "[*]", "c = 32768",
-                               "", "[qwen3.5-4b]", "model = %s/Qwen3.5-4B-Q8_0.gguf" % models, "load-on-startup = true",
+                               "", "[qwen3.5-4b]", "model = %s/Qwen3.5-4B-Q8_0.gguf" % models,
                                "", "[gpt-oss-20b]", "model = %s/gpt-oss-20b-MXFP4.gguf" % models, "",
                                "version = 1", "", "[*]", "c = 32768",
-                               "", "[qwen3.5-0.8b]", "model = %s/Qwen3.5-0.8B-Q8_0.gguf" % models, "load-on-startup = true",
+                               "", "[qwen3.5-0.8b]", "model = %s/Qwen3.5-0.8B-Q8_0.gguf" % models,
                                "", "[qwen3.8-27b]", "model = %s/Qwen3.8-27B-Q4_K_M.gguf" % models, ""])
 
-    def test_the_picker_toggles_any_model_with_space_the_default_too(self):
+    def test_the_picker_toggles_any_model_with_space(self):
         out = self.run_ps(r'''
 $names = @(Names)
 $keys = [System.Collections.Queue]::new()
