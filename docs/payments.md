@@ -118,32 +118,33 @@ is an equal path to a person. Staff verify the EIN and issue a Stripe promotion 
 ## Requests
 
 Join (a paid checkout), a room request (`/reserve/`), a class signup (`/learn/`) and a check-in each
-become one row in one log: a list on the Operations SharePoint site, added to by the site-worker and
-by nothing else. Each form is written in its page, field names being the site-worker's tank keys (its `src/tanks.js`), and
+land in the site-worker's tanks, which digitization drains every hour into `~/fcpm/answers/<tank>/`; that
+archive is the list, and the log (one row each, a list on the Operations SharePoint site) is fed from it,
+not built yet. The site-worker sends nothing to Microsoft 365. Each form is written in its page, field names being the site-worker's tank keys (its `src/tanks.js`), and
 `site/assets/js/answers.js` posts it to `/answers` and shows the reference. With `site_worker.yml` `url` empty,
 or a send refused, the same answers open as an email to info@. Built: `/submit/` (`program`); the program
 file goes to Dropbox's file request in a new tab, never framed (Dropbox refuses) and never a precondition.
-`/join/` (`membership`, `site/assets/js/join.js`): the answers go to the tank with the tier's SKU, then `/checkout`
+`/join/` (`membership@2`, `site/assets/js/join.js`): the answers go to the tank with the tier's SKU, then `/checkout`
 with the same `reference`, then Stripe; answers that fail to keep never stop the payment page. Stripe returns to
 `/join/?joined`. "Just send these" keeps the answers and tier without paying. The terms it links are
 `site/assets/docs/studio-terms.pdf` and `equipment-terms.pdf`, from the Wix copy. A request asks on the
 page that owns the thing; `/book/` and `/register/` were Wix's separate pages and are dropped
-(2026-10-25). The site-worker's access is the `m365` group in digitization's keychain.
+(2026-10-25).
 
 ## Before charging
 
 | Item | Where | Status |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | digitization's keychain, `cloudflare` | Not held; the site-worker does not deploy |
-| `PUBLIC_STRIPE_API_KEY` | digitization's keychain, `stripe-live` (`stripe-test` beside it) | Live not held |
+| `CLOUDFLARE_API_TOKEN` | digitization's keychain, `cloudflare` | Held (2026-10-24); the site-worker deploys by Cloudflare's git build |
+| `PUBLIC_STRIPE_API_KEY` | digitization's keychain, `stripe-live` (`stripe-test` beside it) | Live held and on the site-worker (2026-10-24) |
 | Publishable key | `payments.yml` `stripe.publishable_key` | Empty |
-| Site-worker URL | `url` in `site/_data/settings.yml`, `authorize.yml`, `upload.yml` | Empty |
+| Site-worker URL | `url` in `site/_data/site_worker.yml` | `https://cloud.fcpublicmedia.org` |
 | What each tier includes | `membership.yml` `tiers[].includes` | Board; all `[]` |
 | Student, Creator, Producer summaries | `membership.yml` `tiers[].summary` | Board; `TODO` |
 | Class drop-in prices | None yet | Board |
 | Who emails a price change | `payments.yml` `terms.announcements.owner` | Board; `TODO` |
 | 30 days' notice | `payments.yml` `terms.price_change_notice_days` | Board to confirm |
 | Membership terms page | `terms.page`, `/policies/membership-terms/` | Missing; subscriptions only |
-| A buy button calling `POST /checkout` | `/membership/` | Not built |
-| Success page | `/thanks/`, the default `success_path` | Missing |
+| A buy button calling `POST /checkout` | `/join/` | Built |
+| Success page | `/join/?joined` (the page's `success_path`) | Built |
 | Switch on | `payments.yml` `stripe.live` | `false` |

@@ -41,7 +41,7 @@ If you need a la carte reservations on the venue itself, please reach out to
 
 {%- comment -%} Names are the site-worker's `membership` tank; join.js sends it, then Stripe's page for
   the tier picked above. See assets/js/join.js. {%- endcomment %}
-<form class="join-form" data-tank="membership" data-checkout data-subject="Membership"
+<form class="join-form" data-tank="membership@2" data-checkout data-subject="Membership"
       data-worker="{{ site.data.site_worker.url }}" data-email="{{ site.fcpm.email.info }}">
   <div class="field-row">
     <div class="field"><label for="first_name">First</label><input id="first_name" name="first_name" autocomplete="given-name"></div>
