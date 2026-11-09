@@ -19,8 +19,6 @@ https://github.com/FCCN-ANTIBODY/judgement.git
 https://github.com/FCCN-ANTIBODY/template-civic-node.git
 https://github.com/FCCN-ANTIBODY/jekyll-enough.git
 https://github.com/DiscoveryWritten/discoverywritten.com.git
-https://github.com/NCCV-OPINION/cite-fort-collins.git
-https://github.com/NCCV-OPINION/platform.git
 # The site-worker, private: the drain's own code (machines/drain), beside fcpublicmedia.org.
 https://fcpm-public@github.com/FC-Public-Media/site-worker.git
 # Troves: private, so named with the account, as origin is; a bare URL makes a headless clone ask who.
