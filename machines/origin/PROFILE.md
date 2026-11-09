@@ -78,3 +78,22 @@ Take the stick out and power on. Then sign its git account in to GitHub:
 and fill it from GitHub the first time with `ssh fcpm@origin.local sudo -u git /bin/sh /usr/local/lib/fcpm/run-intake --now`.
 A workstation's checkout follows it with `git remote set-url origin git@origin.local:/srv/origin/<owner>/<repo>`;
 digitization's `follow` does that, and every submodule, by itself.
+
+## Taking a project out
+
+How NCCV-OPINION came out (#401). For an owner, or for some of an owner's repositories:
+
+1. Look first. In each of its repositories, `main` = `github/main` and there are no other refs, and
+   `/srv/origin/.intake/carry.json` has nothing pending for it. Then GitHub holds all of it, and removing loses nothing.
+   A repository with no `github` remote began here: removing it is losing it.
+2. Look at its submodules. An engine that only this project calls on goes too. One that FCPM's own repositories
+   also call on stays.
+3. Take it out of [`intake`](intake)'s `KEEP`, by PR, or intake makes it again from GitHub.
+4. Install that intake: `machines/origin/install fcpm@origin.local` after the merge, or only that file before it.
+5. Remove it as `git`, under intake's lock:
+   `ssh fcpm@origin.local sudo -u git flock /srv/origin/.intake/lock rm -rf /srv/origin/<owner>[/<repo>]`.
+6. `ssh fcpm@origin.local sudo -u git /usr/local/lib/fcpm/intake --now`, then check: the directory has not come back,
+   and `.intake/state.json` does not name it.
+7. Do the same to any other copy (digitization's old `/srv/origin`).
+8. Search the checkout for the name. Whatever reads from the origin goes too. Whatever reads from GitHub
+   (a static site's `export_from: github`, a keychain group) stays until someone says otherwise.
