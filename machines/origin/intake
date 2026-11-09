@@ -37,12 +37,9 @@ DEV = os.environ.get("FCPM_DEV") or os.path.join(STATE_DIR, "dev")
 RELAY = os.path.join(STATE_DIR, "relay")
 DOOR_LOG = os.path.join(ORIGIN, ".door", "actions.ndjson")
 CARRY = os.path.join(STATE_DIR, "carry.json")
-# Owners whose every repository the origin keeps. FCCN-ANTIBODY's are only the ones FCPM calls on.
-# Owners whose repositories the origin keeps, found by themselves: every one of FC-Public-Media's;
-# of NCCV-OPINION's only `cite-*`, the managed, multi-tenant citations that get passkey-signed
-# commits (Autumn, 2026-10-22). NCCV's own software (platform, editor-app, .github) is theirs and is
-# not kept or updated here; nor are anyone's personal cite repositories outside the org.
-KEEP = {"FC-Public-Media": "", "NCCV-OPINION": "cite-"}
+# Owners whose repositories the origin keeps, found by themselves (a prefix narrows one): every one of
+# FC-Public-Media's. FCCN-ANTIBODY's are only the ones FCPM calls on.
+KEEP = {"FC-Public-Media": ""}
 
 
 def kept(full):

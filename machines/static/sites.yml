@@ -19,5 +19,5 @@ sites:
   nccv:
     serve: [nccv.you]                   # a host root of its own: absolute paths, and a passkey binds to an origin
     export: NCCV-OPINION/platform       # the repository is the site (platform #28): its main, as committed
-    export_from: github                 # NCCV's own software: not kept on our origin (only its cite-* are)
+    export_from: github                 # not kept on our origin
     frame: self                         # its include tags open its own intermediates in iframes; no other site is framed
