@@ -18,7 +18,12 @@ case "$(uname -s)" in
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     py() { "$uv" run --no-project --python 3.12 --with pyyaml python "$@"; }
     jekyll() { ruby -S jekyll "$@"; } ;;
-  *) py() { python3 "$@"; } ;;
+  *) py() { python3 "$@"; }
+     # wrangler 4 wants Node 22 or later; Debian 13's is 20, so pnpm's (as replies.py finds it) goes first.
+     case "$(node -v 2>/dev/null)" in
+       v2[2-9].*|v[3-9][0-9].*) ;;
+       *) [ ! -x "$HOME/.local/share/pnpm/bin/node" ] || PATH="$HOME/.local/share/pnpm/bin:$PATH" ;;
+     esac ;;
 esac
 COPY="$(mktemp -d)/site-deploy"
 git -C "$ROOT" worktree add --quiet --detach "$COPY" HEAD
