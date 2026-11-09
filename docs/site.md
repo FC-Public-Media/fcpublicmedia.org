@@ -199,7 +199,7 @@ nothing asks them.
 | `www` | a 301 to the same path on `@`, by a Single Redirect rule in the zone |
 | `wix` | the Wix photocopy (Pages `fcpm-wix`), for good |
 | `new` | this site too, for codes printed before the cutover; later the beta, beside a preview worker |
-| `cloud` | the site-worker, once `bin/provision.mjs` attaches it (no record yet) |
+| `cloud` | the site-worker (attached by its `bin/provision.mjs`) |
 
 The web names are proxied. Mail and Microsoft 365 came across whole, checked 2026-10-28:
 
@@ -225,8 +225,8 @@ point at a project once the project lists it as Active.
 1. Done: `@` serves `fcpm-new`, `www` redirects to it, `wix` keeps the photocopy.
 2. Deploy this site with `site/_data/checkin.yml` naming `@` (the QR, the poster and the kiosk follow).
    A code printed for `new` keeps working.
-3. `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attaches `cloud`; then
-   `site/_data/site_worker.yml` `url` becomes `https://cloud.fcpublicmedia.org` and the site deploys again.
+3. Done: `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attached `cloud`, and
+   `site/_data/site_worker.yml` `url` is `https://cloud.fcpublicmedia.org`.
 4. Switch off the Wix forms; drain the site-worker; retire the `instructor` tank once its drain is empty.
 
 ## Redirects and headers

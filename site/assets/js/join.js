@@ -19,7 +19,7 @@ function described(lines, chosen) {
 
 // Kept on the device first (keep.js), then sent to the tank.
 async function keep(answers, trap, sku, lines, mailto) {
-  const body = { form: 'membership', answers: trap ? { ...answers, website: trap } : answers, sku, reference };
+  const body = { form: form.dataset.tank, answers: trap ? { ...answers, website: trap } : answers, sku, reference };
   keepHere(form, { answers: sku ? { ...answers, sku } : answers, lines, reference, body, mailto });
   try {
     await post(form, '/answers', body);

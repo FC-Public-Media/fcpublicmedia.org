@@ -67,7 +67,7 @@ test('answers, then checkout with the same reference, then Stripe', async ({ pag
 
   await expect(page).toHaveURL(STRIPE);
   expect(sent.answers).toMatchObject({
-    form: 'membership', sku: 'membership:student',
+    form: 'membership@2', sku: 'membership:student',
     answers: { first_name: 'Ada', email: 'ada@example.org', agree_terms: true, submit_terms: true },
   });
   expect(sent.checkout).toMatchObject({
@@ -112,7 +112,7 @@ test('"just send these" keeps the answers and the tier, without paying', async (
   await page.locator('[data-keep]').click();
   await expect(page.locator('[data-receipt="sent"]')).toBeVisible();
   await expect(page.locator('[data-receipt="sent"] [data-reference]')).toHaveText(body.reference.slice(0, 8));
-  expect(body).toMatchObject({ form: 'membership', sku: 'membership:producer', answers: { email: 'ada@example.org' } });
+  expect(body).toMatchObject({ form: 'membership@2', sku: 'membership:producer', answers: { email: 'ada@example.org' } });
 });
 
 test('with no worker, joining becomes an email that names the tier', async ({ page }) => {
