@@ -74,21 +74,6 @@ groups:
         from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token: Zone, Zone, Read and Zone, DNS, Edit; Zone Resources: fcpublicmedia.org (add the zone first, pending, no nameserver change)"
         issued: not held
 
-  nccv:
-    what: "deploys NCCV's site (NCCV-OPINION/platform) to its Cloudflare Pages project `nccv`, held for NCCV until it has an account of its own; then this group's values are swapped and nothing else moves"
-    form: env
-    used by: "keys run nccv -- bin/deploy, in a NCCV-OPINION/platform checkout"
-    keys:
-      CLOUDFLARE_API_TOKEN:
-        may: "Account: Cloudflare Pages Edit, on the account holding Pages project nccv (today Autumn's business account, autumn-e2c, where anecdote.channel lives); nothing on FCPM's account"
-        from: "Cloudflare dashboard, the account holding Pages project nccv: My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit; Account Resources: that account only"
-        issued: not held
-      CLOUDFLARE_ACCOUNT_ID:
-        shape: hex32
-        may: names the account holding Pages project nccv (not secret; kept with its token)
-        from: "Cloudflare dashboard, the account holding Pages project nccv: the account's home page, Account ID"
-        issued: not held
-
   m365:
     what: the site-worker adds rows to the log, a list on the Operations SharePoint site, and nothing else.
     form: env

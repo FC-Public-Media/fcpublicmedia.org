@@ -1,5 +1,5 @@
 # sites.yml -- every site the static job serves, and where: `serve` is a LAN name (`@` the domain, a
-# label under it, as deep as DNS goes: `nccv.you`) or a path under one (`you/<show>`). The static host
+# label under it, as deep as DNS goes: `<show>.you`) or a path under one (`you/<show>`). The static host
 # (./receive) serves what is pushed to it, by these; a workstation pushes with `deploy SITE DIR`.
 # A site with a `build` is built by a workstation's publish.py when the last commit touching its
 # `from` changes; one with a `root` is copied as it sits; one with `export` is that repository's
@@ -16,8 +16,3 @@ sites:
   wix:
     serve: [wix]
     root: wix/site                      # the Wix site, photocopied (submodule `wix`): no build
-  nccv:
-    serve: [nccv.you]                   # a host root of its own: absolute paths, and a passkey binds to an origin
-    export: NCCV-OPINION/platform       # the repository is the site (platform #28): its main, as committed
-    export_from: github                 # not kept on our origin
-    frame: self                         # its include tags open its own intermediates in iframes; no other site is framed
