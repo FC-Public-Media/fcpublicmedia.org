@@ -67,6 +67,21 @@ class Keys(unittest.TestCase):
         self.assertIn("no nonesuch-command", keys("run", "cloudflare", "--", "nonesuch-command",
                                                   FCPM_KEYS_LEDGER=str(self.ledger)).stderr)
 
+    def test_birth_makes_one_key_and_shows_only_its_public_half(self):
+        home = dict(HOME=str(self.tmp), USERPROFILE=str(self.tmp), FCPM_BIRTH_FILE="1")
+        self.assertIn("wears no job", keys("birth", FCPM_WEARS="", **home).stderr)
+        first = keys("birth", FCPM_WEARS="editing-bay-2", **home)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        pub = (self.tmp / ".ssh" / "fcpm-editing-bay-2.pub").read_text().strip()
+        self.assertTrue(pub.startswith("ssh-ed25519 ") and " fcpm editing-bay-2 " in pub, pub)
+        self.assertIn(pub, first.stdout)
+        self.assertNotIn("PRIVATE KEY", first.stdout)
+        again = keys("birth", FCPM_WEARS="editing-bay-2", **home)
+        self.assertNotIn("made", again.stdout)                        # once: a second run shows the same key
+        self.assertIn(pub, again.stdout)
+        (self.tmp / ".ssh" / "fcpm-editing-bay-2").unlink()
+        self.assertIn("private half is not", keys("birth", FCPM_WEARS="editing-bay-2", **home).stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

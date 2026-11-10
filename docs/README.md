@@ -13,6 +13,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`members.md`](members.md) | tenancy, member sites, publishing, ejection, the directory, the library |
 | [`payments.md`](payments.md) | the transactions, who processes each, prices, keys |
 | [`identity.md`](identity.md) | passkeys, claims, devices, check-in, authorize |
+| [`keystore.md`](keystore.md) | a machine's own key (birth, granted by merge), and the keystore that holds real secrets |
 | [`station.md`](station.md) | the station: machines, profiles, fcpm, sync, grants, runnables, the bay, engines |
 | [`kiosk.md`](kiosk.md) | the kiosk screen, dim mode, the kiosk's door |
 | [`services.md`](services.md) | designs taken far enough to resume: scheduling, digitization, sign-in, production's door |
