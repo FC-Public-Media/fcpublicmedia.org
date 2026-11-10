@@ -31,9 +31,11 @@ the payload's hash is still checked here and the reply is applied as `unverified
 import base64
 import datetime
 import hashlib
+import itertools
 import json
 import os
 import pathlib
+import re
 import secrets
 import shutil
 import subprocess
@@ -119,9 +121,14 @@ def log(entry):
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+_arrivals = itertools.count()
+
+
 def name_for():
-    """Sorts by arrival (take() reads in name order), to the microsecond: a line of phones at once."""
-    return "%s-%s" % (datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"), secrets.token_hex(3))
+    """Sorts by arrival (take() reads in name order), to the microsecond: a line of phones at once. Windows' clock
+    can give two arrivals the same microsecond, so this door's own count of them comes before the random part."""
+    return "%s-%06d-%s" % (datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"),
+                           next(_arrivals) % 1000000, secrets.token_hex(3))
 
 
 def drop(data, origin="", kind="json"):
@@ -517,6 +524,30 @@ def deploy_reply(reply, meta):
     return None, "deploy of %s started (%s)" % (full[:7], DEPLOY_LOG)
 
 
+# ---- a machine's newborn key (wizard:keys+birth), lodged at the keystore's helm for a board wizard to grant ----
+
+PETITIONS = "petitions"
+KEY_LINE = re.compile(r"(ssh-ed25519|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]{40,}={0,2}( [^\n]*)?")
+
+
+def birth_reply(reply, meta):
+    """{job, host, key}: a machine's own key, born there (machines/keys birth). Lodged here, never granted: a
+    grant is a board wizard's, by the keystore (docs/keystore.md). One file a petition, petitions/<nonce>.json."""
+    key = str(reply.get("key") or "").strip()
+    if not KEY_LINE.fullmatch(key):
+        return "key: one public key line (ssh-ed25519)"
+    job = str(reply.get("job") or "")
+    if not re.fullmatch(r"[a-z0-9-]+", job) or not (ROOT / "machines" / job / "PROFILE.md").is_file():
+        return "job: %r is no profile in machines/" % job
+    nonce = re.sub(r"[^A-Za-z0-9_-]", "", str(reply.get("nonce")))[:64]
+    folder = STATE / PETITIONS
+    folder.mkdir(parents=True, exist_ok=True)
+    petition = {"job": job, "host": str(reply.get("host") or ""), "key": key, "issued": reply.get("issued"),
+                "at": reply.get("at"), "trust": (meta or {}).get("trust"), "lodged": now().isoformat(timespec="seconds")}
+    (folder / ("%s.json" % nonce)).write_text(json.dumps(petition, indent=1) + "\n", encoding="utf-8")
+    return None, "lodged for the keystore: %s's key from %s (%s/%s.json)" % (job, petition["host"] or "?", PETITIONS, nonce)
+
+
 def helms():
     return (load_yaml(HELMS).get("helms") or {}) if HELMS.is_file() else {}
 
@@ -559,7 +590,7 @@ _waiting = set()       # bottles already said to be waiting for a helm, so a lon
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
            "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply,
            "wizard:loop+recall": recall_reply, "wizard:model+up": model_up_reply,
-           "wizard:site+deploy": deploy_reply}
+           "wizard:site+deploy": deploy_reply, "wizard:keys+birth": birth_reply}
 
 
 def nonces():

@@ -10,11 +10,14 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
   keys birth            this machine's own key, made here once: the private half never leaves (on Windows,
                         it is held by the OpenSSH agent and no file keeps it); the public half is shown, as
-                        text and as a QR code, for a PR to grant (docs/keystore.md, Birth)
+                        text and as a QR code, and lodged once at this machine's helm, which passes it to
+                        the keystore's for a board wizard to grant (docs/keystore.md, Birth)
 
 FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test;
-FCPM_BIRTH_FILE keeps a born key's private half in a file, as on Linux, so a test never touches the agent.
+FCPM_BIRTH_FILE keeps a born key's private half in a file, as on Linux, so a test never touches the agent;
+FCPM_BIRTH_HELM is the helm a test's petition is set down at.
 """
+import datetime
 import html
 import http.server
 import json
@@ -24,6 +27,7 @@ import secrets
 import shutil
 import time
 import urllib.parse
+import urllib.request
 import pathlib
 import platform
 import subprocess
@@ -353,8 +357,43 @@ def show_birth(job, pub):
         code.print_ascii(invert=True)
     except ImportError:
         print("(no QR code: this Python lacks qrcode)")
-    print("\nNext: this line goes to a PR, into machines/origin/KEYHOLDERS and onto fcpm-public as this machine's")
-    print("signing key. The merge is the grant; emptying the line by another merge takes it back.")
+    lodge(job, pub, line)
+
+
+def own_helm(job):
+    """Where this machine's own helm answers: helms.yml's `at` for its job, else this machine's port 8080."""
+    if os.environ.get("FCPM_BIRTH_HELM"):
+        return os.environ["FCPM_BIRTH_HELM"]
+    helms = (yaml.safe_load((HERE / "helms.yml").read_text(encoding="utf-8")) or {}).get("helms") or {}
+    return (helms.get(job) or {}).get("at") or "http://127.0.0.1:8080"
+
+
+def lodge(job, pub, line):
+    """The petition (wizard:keys+birth), set down once at this machine's own helm, which passes it to the
+    keystore's (helms.yml). Nobody carries the key: the grant is a board wizard's, at the keystore."""
+    mark = pub.with_name(pub.name[:-len(".pub")] + ".lodged")
+    if mark.exists():
+        print(f"\nLodged with the keystore already ({mark.read_text(encoding='utf-8').strip()}); it waits there")
+        print("for a board wizard's grant (docs/keystore.md, Birth).")
+        return
+    rev = subprocess.run(["git", "-C", str(HERE.parent), "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
+    petition = {"schema": "fcpm.reply/v0", "wizard": "wizard:keys+birth", "at": rev.stdout.strip() or "unknown",
+                "job": job, "host": os.environ.get("COMPUTERNAME") or platform.node().split(".")[0], "key": line,
+                "issued": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+                "nonce": secrets.token_hex(8), "sig": None}
+    at = own_helm(job)
+    request = urllib.request.Request(at.rstrip("/") + "/drop", json.dumps(petition).encode("utf-8"),
+                                     {"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as answer:
+            kept = json.load(answer).get("kept")
+    except (OSError, ValueError) as exc:
+        print(f"\nNot lodged yet: this machine's helm ({at}) did not take it ({exc}).")
+        print("Run fcpm keys birth again once the helm is up (fcpm helm status); the key stays as it is.")
+        return
+    mark.write_text(f"set down at {at} as {kept}, {petition['issued']}\n", encoding="utf-8")
+    print(f"\nLodged with the keystore: set down at this machine's helm as {kept}, which passes it on. It")
+    print("waits there for a board wizard's grant (docs/keystore.md, Birth). Nothing needs carrying by hand.")
 
 
 def birth():

@@ -4,6 +4,8 @@ to one command with the job's own gear (a bay's Node) first on its PATH. No valu
 
     python3 bin/test_keys.py
 """
+import http.server
+import json
 import os
 import pathlib
 import shutil
@@ -11,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -68,7 +71,8 @@ class Keys(unittest.TestCase):
                                                   FCPM_KEYS_LEDGER=str(self.ledger)).stderr)
 
     def test_birth_makes_one_key_and_shows_only_its_public_half(self):
-        home = dict(HOME=str(self.tmp), USERPROFILE=str(self.tmp), FCPM_BIRTH_FILE="1")
+        home = dict(HOME=str(self.tmp), USERPROFILE=str(self.tmp), FCPM_BIRTH_FILE="1",
+                    FCPM_BIRTH_HELM="http://127.0.0.1:9")                # nothing answers: never this machine's helm
         self.assertIn("wears no job", keys("birth", FCPM_WEARS="", **home).stderr)
         first = keys("birth", FCPM_WEARS="editing-bay-2", **home)
         self.assertEqual(first.returncode, 0, first.stderr)
@@ -77,10 +81,42 @@ class Keys(unittest.TestCase):
         self.assertIn(pub, first.stdout)
         self.assertNotIn("PRIVATE KEY", first.stdout)
         again = keys("birth", FCPM_WEARS="editing-bay-2", **home)
-        self.assertNotIn("made", again.stdout)                        # once: a second run shows the same key
+        self.assertNotIn("keys: made", again.stdout)                      # once: a second run shows the same key
         self.assertIn(pub, again.stdout)
+        self.assertIn("Not lodged yet", again.stdout)
         (self.tmp / ".ssh" / "fcpm-editing-bay-2").unlink()
         self.assertIn("private half is not", keys("birth", FCPM_WEARS="editing-bay-2", **home).stderr)
+
+    def test_birth_lodges_its_petition_at_its_own_helm_once(self):
+        kept = []
+
+        class Helm(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                kept.append((self.path, json.loads(self.rfile.read(int(self.headers["Content-Length"])))))
+                body = json.dumps({"kept": "20261110-000000.000001"}).encode()
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        helm = http.server.HTTPServer(("127.0.0.1", 0), Helm)
+        threading.Thread(target=helm.serve_forever, daemon=True).start()
+        self.addCleanup(helm.shutdown)
+        home = dict(HOME=str(self.tmp), USERPROFILE=str(self.tmp), FCPM_BIRTH_FILE="1", FCPM_WEARS="editing-bay-2",
+                    FCPM_BIRTH_HELM="http://127.0.0.1:%d" % helm.server_port)
+        first = keys("birth", **home)
+        self.assertIn("Lodged with the keystore", first.stdout, first.stderr)
+        [(path, petition)] = kept
+        pub = (self.tmp / ".ssh" / "fcpm-editing-bay-2.pub").read_text().strip()
+        self.assertEqual(path, "/drop")
+        self.assertEqual((petition["schema"], petition["wizard"], petition["job"], petition["key"]),
+                         ("fcpm.reply/v0", "wizard:keys+birth", "editing-bay-2", pub))
+        self.assertTrue(petition["nonce"] and petition["issued"])
+        self.assertIn("already", keys("birth", **home).stdout)
+        self.assertEqual(len(kept), 1)                                # once: a second run sets nothing down
 
 
 if __name__ == "__main__":

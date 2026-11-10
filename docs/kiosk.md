@@ -274,6 +274,21 @@ that choice yet. The pick is started and left to run (a model it lacks takes min
 to `model-pick.log` beside the replies). A name the spread does not have is held. On the studio's
 network, like `kiosk+host`, being there is the authority.
 
+### wizard:keys+birth
+
+A machine's own petition, not a person's: `fcpm keys birth` sets it down once at the machine's own helm,
+which passes it to the keystore's (digitization's, in `helms.yml`). A board wizard does not make
+this one; a board wizard grants it (docs/keystore.md, Birth):
+
+```json
+{"schema": "fcpm.reply/v0", "wizard": "wizard:keys+birth", "at": "6b2b5b7", "job": "editing-bay-2",
+ "host": "FCPMEDIT2", "key": "ssh-ed25519 AAAA… fcpm editing-bay-2 FCPMEDIT2 2026-11-10",
+ "issued": "2026-11-10T01:12:00-07:00", "nonce": "…", "sig": null}
+```
+
+Applying it is lodging it, never granting it: `petitions/<nonce>.json` beside the replies. Held: a
+`key` that is not one ssh-ed25519 public line, or a `job` with no profile in `machines/`.
+
 ## Helms
 
 A helm is a door: the board and its pages, and the intake (Replies). Every machine may run one, and
