@@ -10,6 +10,7 @@ gear:
     for: everything; Git Bash is also the shell `../sync` and bin/refs run in
     package: Git.Git
     provisioner: winget
+    scope: machine
     updates: winget
 
   - gear: claude-code
@@ -44,6 +45,7 @@ gear:
     # Authenticode Valid, signed OpenAI OpCo, LLC, not Astral. Another signer is a question.
     signer: OpenAI OpCo, LLC
     provisioner: winget       # --scope user, no administrator. 0.12.19, 2026-09-26
+    scope: user
     updates: winget
     restart-tier: none
     # An older shell: %LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe
@@ -54,6 +56,7 @@ gear:
     package: Gyan.FFmpeg
     vendor: Gyan Doshi's builds of FFmpeg (gyan.dev), GPL-3.0
     provisioner: winget       # --scope user, no administrator
+    scope: user
     updates: winget
     restart-tier: none
 
@@ -72,6 +75,7 @@ gear:
     package: RubyInstallerTeam.RubyWithDevKit.3.2
     vendor: RubyInstaller (rubyinstaller.org), BSD-3-Clause
     provisioner: winget       # --scope user, no administrator; then `ridk install` (MSYS2 and its toolchain)
+    scope: user
     updates: winget
     restart-tier: none
 

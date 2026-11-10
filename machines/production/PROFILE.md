@@ -66,9 +66,10 @@ machine at a time: it is in `services`, commented, until it moves here from digi
 
 ## Bringing it up
 
-1. At the desk: `winget install --id Git.Git --exact`.
-2. Paste the start line from [README.md](../../README.md), *Setting up a machine*: it gets this
-   repository and runs `fcpm install`. Clone station-node's mirror into `refs/` by hand, if wanted.
+1. At the desk: nothing first. Git comes with step 2.
+2. Paste the start line from [README.md](../../README.md), *Setting up a machine*, ending in
+   `production`: Git, this repository, the winget gear (uv, FFmpeg, Ruby), then `fcpm install`.
+   Clone station-node's mirror into `refs/` by hand, if wanted.
 3. At the desk: Developer Mode (Settings > System > For developers), for symlinks without
    elevation; Claude Code from the vendor's installer into `~/.local/bin`, opened once in `~/code`
    to accept the folder (the root's server cannot start until then).
