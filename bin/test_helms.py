@@ -76,6 +76,31 @@ class Helms(unittest.TestCase):
         self.assertEqual(replies.where(name)["state"], "routed")
         self.assertFalse((replies.STATE / "nonces.json").exists())       # the holder spends the nonce, not us
 
+    def test_two_bays_hold_the_models_and_the_reply_names_which(self):
+        self.assertEqual(replies.holder("wizard:model+up", "editing-bay-2"), ("editing-bay-2", ""))
+        self.assertEqual(replies.holder("wizard:model+up", "nonesuch"), ("production", "http://10.209.1.20:8080"))
+        sent = []
+        replies.route = lambda path, at: sent.append(at) or "far-name"
+        os.environ["FCPM_WEARS"] = "production"              # bay 1 passes bay 2's on
+        replies.drop(up("qwen3.5-2b", job="editing-bay-2"))
+        self.assertEqual([v for _, v, _ in replies.take()], ["routed"])
+        os.environ["FCPM_WEARS"] = "digitization"
+        replies.drop(up("qwen3.5-9b"))                        # no job: bay 1's, as before
+        self.assertEqual([v for _, v, _ in replies.take()], ["routed"])
+        self.assertEqual(sent, ["", "http://10.209.1.20:8080"])
+
+    def test_a_helm_without_an_address_is_waited_for(self):
+        saved = replies.route
+        replies.route = self.saved[1]                         # the real one: it refuses an empty address
+        try:
+            name = replies.drop(up("qwen3.5-2b", job="editing-bay-2"))
+            [(_, verdict, why)] = replies.take()
+            self.assertEqual(verdict, "waiting")
+            self.assertIn("no address", why)
+            self.assertEqual(replies.where(name)["state"], "inbox")
+        finally:
+            replies.route = saved
+
     def test_a_reply_any_helm_applies_is_never_routed(self):
         def never(path, at):
             raise AssertionError("routed")

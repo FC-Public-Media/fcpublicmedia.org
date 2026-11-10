@@ -21,7 +21,7 @@ if (-not $Uv) {
             (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe")) |
           Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 }
-$State = Join-Path $env:LOCALAPPDATA "editing-bay-1\crew"
+$State = Join-Path $env:LOCALAPPDATA "$(if ($Crew -eq 'production') { 'editing-bay-1' } else { $Crew })\crew"   # as crew.py keeps it
 $Log = Join-Path $State "install.log"
 $Py = Join-Path $Repo "machines\crew.py"
 

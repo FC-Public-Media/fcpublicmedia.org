@@ -1,0 +1,4 @@
+# What editing bay 2 runs: `name keep from` or `name every Nm from`. See machines/README.md.
+# Taken from its twin a line at a time; each names bay 1's menu (../production.yml), not a copy.
+
+helm            keep        machines/production

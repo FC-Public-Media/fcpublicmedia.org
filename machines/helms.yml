@@ -9,3 +9,8 @@ helms:
   production:
     at: http://10.209.1.20:8080
     holds: [wizard:model+up]
+  # Bay 2's models, the same wizard: only a reply naming `job: editing-bay-2` comes here (replies.py,
+  # holder). It has no address on the switched network yet, so such a reply waits until `at:` is filled.
+  editing-bay-2:
+    at: ""
+    holds: [wizard:model+up]

@@ -267,9 +267,11 @@ server, and a tick for each. *Keep this line-up* sets this down at that helm:
  "up": ["qwen3.5-9b", "gpt-oss-20b"], "issued": "2026-11-06T20:46:29-07:00", "nonce": "…"}
 ```
 
-`up` is the whole line-up each time; there is no default model, and `[]` is none up. Only production's helm
-applies it, by `model.ps1 pick` (started and left to run: a model it lacks takes minutes to fetch; its
-words go to `model-pick.log` beside the replies). A name the spread does not have is held. On the studio's
+`up` is the whole line-up each time; there is no default model, and `[]` is none up. A bay's helm applies
+it, by its own job's `model.ps1 pick`. Production's is the one by default; `"job": "editing-bay-2"` in the reply
+sends it to bay 2's helm instead (both hold the wizard in `helms.yml`). The `/models/` page does not offer
+that choice yet. The pick is started and left to run (a model it lacks takes minutes to fetch; its words go
+to `model-pick.log` beside the replies). A name the spread does not have is held. On the studio's
 network, like `kiosk+host`, being there is the authority.
 
 ## Helms
@@ -283,11 +285,13 @@ one machine from another; other crews coordinate through helms.
 down at a helm whose job does not hold its wizard is not read for its meaning there: on the next pass it is
 passed as it came, byte for byte with its signature, to the holding helm's `POST /drop`, and kept in
 `routed/` with the name it was kept by there (`GET /drop/<name>` says `routed`). While that helm does not
-answer, the reply waits in the inbox, said once in the log, and goes on a later pass. The nonce is spent
-by the helm that applies it. Which jobs a machine wears is `machines/binding`'s answer.
+answer, or has no address yet, the reply waits in the inbox, said once in the log, and goes on a later
+pass. When several jobs hold a wizard, the reply's `job` says which, and else the first listed does. The
+nonce is spent by the helm that applies it. Which jobs a machine wears is `machines/binding`'s answer.
 
 Bay 1's helm is the production crew's `helm` line: `door.py serve` with `FCPM_DOOR_WATCH=commit,replies`,
 so it keeps the intake and the pages but not the media node's depot, wall or camera, on 8080 for the
-switched network (`fcpm helm grant` places its one rule). A guest's laptop on the guest network reaches
+switched network (`fcpm helm grant` places its one rule). Bay 2's crew orders the same line from bay 1's
+menu (`machines/editing-bay-2/services`). A guest's laptop on the guest network reaches
 none of this; the same reply reaches a helm by the camera instead. Not built yet: a helm joining qr.local
 (a special guest beside the bays' own joins), and helms finding each other rather than reading helms.yml.

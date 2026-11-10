@@ -60,7 +60,8 @@ param(
     [ValidateSet('', 'quick', 'considered')] [string] $Effort = '',
     [string] $Name = '',
     [string] $From = '',
-    [string] $Node = 'editing-bay-1'
+    [string] $Node = 'editing-bay-1',
+    [string] $Job = ''        # the profile answering, when its twin runs this file (../editing-bay-2/model.ps1)
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
@@ -78,6 +79,7 @@ $Log      = Join-Path $Root 'model.ndjson'
 $Bay      = Join-Path $env:LOCALAPPDATA "$Node\bay"
 $BayLog   = Join-Path $env:LOCALAPPDATA "$Node\bay.ndjson"
 $Gh       = Join-Path $env:USERPROFILE '.local\bin\gh.exe'
+if (-not (Test-Path $Gh)) { $c = Get-Command gh.exe -ErrorAction SilentlyContinue; if ($c) { $Gh = $c.Source } }   # a twin's, from winget
 $Rule     = 'fcpm-model inbound'
 $Release  = 'https://github.com/ggml-org/llama.cpp/releases/download'
 # The sledgehammer of 2026-10-29: forwards into WSL and a rule open on every network.
@@ -97,7 +99,7 @@ function ReadFacts($path) {
 $Facts = ReadFacts $Spec
 $Shapes = Join-Path $PSScriptRoot 'shapes'
 $Spread = Join-Path $PSScriptRoot 'models'
-$Here  = Split-Path -Leaf $PSScriptRoot     # this profile's name: the first part of an address
+$Here  = if ($Job) { $Job } else { Split-Path -Leaf $PSScriptRoot }   # this profile's name: the first part of an address
 function Fact($k) { if (-not $Facts.ContainsKey($k) -or -not $Facts[$k]) { throw "model.yml has no $k" }; $Facts[$k] }
 $Port  = [int](Fact 'port')
 $Models = if ($Facts['store']) { $Facts['store'] } else { Join-Path $Root 'models' }
