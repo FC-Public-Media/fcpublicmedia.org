@@ -1,0 +1,9 @@
+# bay-2-model
+
+1. [x] fcpm model on bay 2: editing-bay-2/model.ps1 runs bay 1's with -Node/-Job editing-bay-2; gh from PATH
+2. [ ] On FCPMEDIT2: fcpm model install, fcpm model pick (small ones: qwen3.5-0.8b/2b/4b), fcpm model status
+3. [ ] Its address on Helm (10.209.1.x) for `on`; grant at the desk
+4. [ ] Network mode: llama.cpp's ggml-rpc-server (in the same zip) on bay 2, bay 1's server laying layers on it
+       with --rpc. The RPC server has no auth: Helm subnet only, its own rule, on only while tried
+5. [ ] fcpm origin (agreed 2026-11-09): bay key -> KEYHOLDERS PR -> fetch from origin.local, push to GitHub
+6. [ ] reset .pr to main's (empty) before merge
