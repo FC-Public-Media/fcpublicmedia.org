@@ -54,3 +54,46 @@ as files on the machine that uses them. The keystore is where they go instead, a
 Open: what holds the keystore's own identity while it is locked. Also open: a Windows bay's age
 identity. The agent signs with an ed25519 key but will not decrypt with one, so a bay needs a second
 key, which Windows protects (DPAPI). And the talk-back screen: a reply to the phone that is still in the cradle.
+
+## The grant: a study for digitization to build
+
+Written on bay 1 on 2026-11-10 for the job that holds the keystore, digitization for now, to
+build and run. Bay 1 built birth and the petition (#411, #412). Everything below is digitization's to
+build, in this order. Each step stands on its own, and each is to be revised where the machine says
+otherwise.
+
+1. **Read the petitions.** They wait in the helm's state, `petitions/<nonce>.json` beside the replies
+   (`~/.local/state/media-node/replies/` on Linux). Each holds `job`, `host`, `key` (one ssh-ed25519
+   line), `issued`, `at`, `trust` (`unsigned`: a machine's petition carries no phone's signature), and
+   `lodged`. A verb that lists them, a fingerprint each (`ssh-keygen -lf`), is the first piece, and
+   the helm's inbox page can show them as waiting.
+2. **The yes: `wizard:keys+grant`.** `{petition: <nonce>, fingerprint: "SHA256:…"}`, shown in the
+   cradle from a board member's phone. Unlike `kiosk+host` or `model+up`, being on the studio's
+   network is no authority here. The handler applies only `trust: friend` (a phone named by
+   `replies.py trust`) and holds anything else, saying why. Its `issued` must be minutes old, not
+   the day `SKEW` allows. The fingerprint must match the petition's key, so the yes names exactly
+   what it grants. The two-step form ("I am here", then the yes while the phone is still in the cradle)
+   is a later tightening; one signed, fresh reply is the first form.
+3. **The acts**, by the keystore itself, never by a session:
+   - **Signing key.** `POST /user/ssh_signing_keys` on fcpm-public, titled `<host> (<job>) commit
+     signing`. Bay 1's is "EDIT2 (Bay 1) commit signing". The token is a keychain group of its own, say
+     `github-signing`, holding one classic token with only `admin:ssh_signing_key`. It is issued by
+     the board and listed in `machines/digitization/keys.yml` like the others.
+   - **KEYHOLDERS.** One line, `<office> <job> <key type> <key> <date>`, committed on a branch
+     pushed to origin.local by digitization's own keyholder key, and opened as a PR for the board
+     to merge. The merge stays the grant of origin access. Which office a bay holds is the board's
+     to name; today's offices are `secretary` and `workstation`.
+   - **Record.** The petition moves to `granted/` with the GitHub key's id and the PR. Revoking deletes that
+     key by its id and empties the line by another PR.
+4. **The bay, after the merge.** Its checkout fetches by the new key: `core.sshCommand` set to Windows'
+   OpenSSH (Git's own ssh does not reach the agent), and the remote set to
+   `git@origin.local:FC-Public-Media/fcpublicmedia.org`. That is the change bay 2's `follow` waits for.
+   It is machine-side, so it belongs in `fcpm keys birth`'s next run or in `sync`, never in a person's hands.
+5. **Then the keystore proper** (the design above). The keychain's values are sealed with age.
+   `keystore.local` is the only page. An unlock is the same signed, fresh yes, sealed to the asking
+   machine's birth key. The first test of a move is to move the keystore off digitization onto another
+   profile and still unlock it.
+
+Known on 2026-11-10: bay 2 (FCPMEDIT2) has not yet run `fcpm keys birth` against its real agent, so no
+petition has been lodged yet. `bin/test_keys.py` and `bin/test_helms.py` cover birth and lodging.
+`bin/test_replies.py` needs Node, which bay 1 lacks.
