@@ -79,7 +79,7 @@ in `fcpm`. Verbs are for people; a task names the tool itself, because a grant p
 | verb | does |
 |---|---|
 | (none) | the watcher, `machines/watch` |
-| `status`, `install` | `sync`; `install` also makes the people's working copy and the `fcpm weekly` task |
+| `status`, `install [JOB]` | `sync`; `install` also makes the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
 | `pull` | `bin/refs pull fcpublicmedia.org`, then `sync install` |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `~/code/bin/pool.ps1`; `bin/runnables` |
 | `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged; on the kiosk, the door fetches |
@@ -95,7 +95,11 @@ updates on this computer*. If edits and the latest change the same lines, it sto
 
 `fcpm weekly` runs at sign-in and 7am and works once a week: it pulls every mirror and fast-forwards
 the working copy, never merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). A bare
-machine starts from the start line in [README.md](../README.md), *Setting up a machine*.
+machine starts from the start line in [README.md](../README.md), *Setting up a machine*. It fetches
+[`machines/start.ps1`](../machines/start.ps1), which needs only winget: Git (machine-wide), this
+repository cloned or pulled into `~/code/refs/`, every `provisioner: winget` package in the job's
+`gear.yml` (else `machines/gear.yml`) not yet installed, then `fcpm install JOB`. A job whose `names`
+does not list the computer yet is put on all the same, with a warning.
 
 ## Sync and MANIFEST
 

@@ -2,8 +2,9 @@
 
 FCPMEDIT2: a Windows bay, the twin of editing bay 1 ([production](../production/PROFILE.md)), and
 new to us on 2026-11-09. Its user is `fcpme`. Git is `Git.Git` from winget, machine-wide, as on bay
-1; the repository's start line (README.md, Setting up a machine) puts the profile on. It carries
-only `fcpm` so far; its hardware is unread, and nothing else is claimed. Machines and profiles:
+1; the repository's start line (README.md, Setting up a machine), ending in `editing-bay-2`, installs
+Git and the rest of [`gear.yml`](gear.yml) (gh) and puts the profile on. It carries only `fcpm`
+so far; its hardware is unread, and nothing else is claimed. Machines and profiles:
 [docs/station.md](../../docs/station.md).
 
 An earlier note here described a macOS bay that schedules FCPM's Cablecast material. Which machine
