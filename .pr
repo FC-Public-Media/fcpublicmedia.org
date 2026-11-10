@@ -1,6 +1,0 @@
-# refs-done-submodules
-
-1. [x] bin/refs done: remove a worktree with submodules, after its own check (nothing uncommitted, no submodule-only commits)
-2. [x] tried on EDIT2: refused for each kind of own work; removed clean ones; retired bay-2-twin, start-line, bay-2-model
-3. [ ] after merge: fcpm pull places it in ~/code/bin
-4. [ ] reset .pr to main's before merge
