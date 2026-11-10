@@ -1,13 +1,6 @@
-# bay-2-model (stacked on start-line, #406)
+# refs-done-submodules
 
-1. [x] fcpm model on bay 2: editing-bay-2/model.ps1 runs bay 1's with -Node/-Job editing-bay-2; gh from PATH
-2. [x] bay 2's helm: services orders bay 1's `helm` line; helm.ps1 is bay 1's; uv in gear.yml
-3. [x] crew.py/crew.ps1 keep each crew's state by its name (production keeps editing-bay-1); fcpm crew names this machine's crew
-4. [x] helms.yml: editing-bay-2 holds wizard:model+up too; a reply's `job` picks the bay; no address -> waits
-5. [ ] On FCPMEDIT2: start line (start-line URL until #406 merges), fcpm model install/pick, fcpm crew install, fcpm helm grant
-6. [ ] Bay 2's address on Helm (10.209.1.x) -> helms.yml `at:`
-7. [ ] /models/ page: choose the bay (sends `job`); MODEL_AT per bay
-8. [ ] digitization's asks: answer from whichever bay serves the asked model (today FCPM_MODEL_AT, bay 1 only)
-9. [ ] Network mode: ggml-rpc-server on bay 2 for bay 1's --rpc; no auth, so Helm-only rule, on only while tried
-10. [ ] fcpm origin (agreed 2026-11-09): bay key -> KEYHOLDERS PR -> fetch from origin.local, push to GitHub
-11. [ ] reset .pr to main's (empty) before merge
+1. [x] bin/refs done: remove a worktree with submodules, after its own check (nothing uncommitted, no submodule-only commits)
+2. [x] tried on EDIT2: refused for each kind of own work; removed clean ones; retired bay-2-twin, start-line, bay-2-model
+3. [ ] after merge: fcpm pull places it in ~/code/bin
+4. [ ] reset .pr to main's before merge
