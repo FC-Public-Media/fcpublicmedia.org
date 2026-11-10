@@ -8,8 +8,12 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
   keys offer GROUP DEVICE   ask for GROUP's wanted keys on a one-time page only DEVICE on the tailnet can open
   keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment, and the
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
+  keys birth            this machine's own key, made here once: the private half never leaves (on Windows,
+                        it is held by the OpenSSH agent and no file keeps it); the public half is shown, as
+                        text and as a QR code, for a PR to grant (docs/keystore.md, Birth)
 
-FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test.
+FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test;
+FCPM_BIRTH_FILE keeps a born key's private half in a file, as on Linux, so a test never touches the agent.
 """
 import html
 import http.server
@@ -21,8 +25,10 @@ import shutil
 import time
 import urllib.parse
 import pathlib
+import platform
 import subprocess
 import sys
+import tempfile
 
 import yaml
 
@@ -299,10 +305,105 @@ def run(groups, names, command):
         sys.exit(subprocess.run([exe] + command[1:], env=env).returncode)
     os.execve(exe, command, env)
 
+# Windows' own OpenSSH: its agent is a service that keeps a key across restarts, and Git's ssh does not speak to it.
+OPENSSH = pathlib.Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "OpenSSH"
+
+
+def ssh_tool(name):
+    if WINDOWS and (OPENSSH / f"{name}.exe").is_file():
+        return str(OPENSSH / f"{name}.exe")
+    found = shutil.which(name)
+    if not found:
+        sys.exit(f"keys: no {name} on this machine")
+    return found
+
+
+def agent_held():
+    return WINDOWS and not os.environ.get("FCPM_BIRTH_FILE")
+
+
+def agent(*args):
+    env = {k: v for k, v in os.environ.items() if k != "SSH_AUTH_SOCK"}        # Git's bash may set one of its own
+    return subprocess.run([ssh_tool("ssh-add"), *args], capture_output=True, text=True, env=env)
+
+
+def agent_running():
+    done = subprocess.run(["sc", "query", "ssh-agent"], capture_output=True, text=True)
+    return "RUNNING" in done.stdout
+
+
+def start_agent():
+    """An administrator's step, once: the agent service on at every start (Windows ships it off)."""
+    cmd = "Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+    print(f"keys: asking Windows for an administrator to run: {cmd}")
+    subprocess.run(["powershell", "-NoProfile", "-Command",
+                    f"Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-Command','{cmd}'"])
+    if not agent_running():
+        sys.exit("keys: the OpenSSH agent is not running; nothing was made")
+
+
+def show_birth(job, pub):
+    line = pub.read_text(encoding="utf-8").strip()
+    print(f"keys: {job}'s key, public half (safe to show anyone): {short(pub)}\n")
+    print(line + "\n")
+    try:
+        import qrcode
+        code = qrcode.QRCode(border=2)
+        code.add_data(line)
+        code.print_ascii(invert=True)
+    except ImportError:
+        print("(no QR code: this Python lacks qrcode)")
+    print("\nNext: this line goes to a PR, into machines/origin/KEYHOLDERS and onto fcpm-public as this machine's")
+    print("signing key. The merge is the grant; emptying the line by another merge takes it back.")
+
+
+def birth():
+    jobs = wears()
+    if not jobs:
+        sys.exit("keys: this machine wears no job, so its key would have no name (machines/binding)")
+    job = jobs[0]
+    ssh = pathlib.Path.home() / ".ssh"
+    key, pub = ssh / f"fcpm-{job}", ssh / f"fcpm-{job}.pub"
+    if pub.exists():
+        if agent_held():
+            if not agent_running():
+                start_agent()
+            if pub.read_text(encoding="utf-8").split()[1] not in agent("-L").stdout:
+                sys.exit(f"keys: {short(pub)} is here but the agent does not hold its private half; "
+                         f"take {short(pub)} away and run keys birth again for a new one")
+        elif not key.exists():
+            sys.exit(f"keys: {short(pub)} is here but its private half is not; take it away for a new one")
+        return show_birth(job, pub)
+    if agent_held() and not agent_running():
+        start_agent()
+    ssh.mkdir(parents=True, exist_ok=True)
+    host = os.environ.get("COMPUTERNAME") or platform.node().split(".")[0]
+    comment = f"fcpm {job} {host} {time.strftime('%Y-%m-%d')}".strip()
+    if agent_held():
+        made = pathlib.Path(tempfile.mkdtemp(prefix="fcpm-birth-"))
+        try:
+            subprocess.run([ssh_tool("ssh-keygen"), "-q", "-t", "ed25519", "-N", "", "-C", comment,
+                            "-f", str(made / "key")], check=True)
+            added = agent(str(made / "key"))
+            if added.returncode:
+                sys.exit(f"keys: the agent did not take the key ({added.stderr.strip()}); nothing was kept")
+            shutil.copyfile(made / "key.pub", pub)
+        finally:
+            shutil.rmtree(made, ignore_errors=True)          # the private half now lives in the agent alone
+    else:
+        subprocess.run([ssh_tool("ssh-keygen"), "-q", "-t", "ed25519", "-N", "", "-C", comment, "-f", str(key)],
+                       check=True)
+        if not WINDOWS:
+            os.chmod(key, 0o600)
+    print(f"keys: made {job}'s key here, once")
+    return show_birth(job, pub)
+
 
 def main(argv):
     if WINDOWS:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if argv == ["birth"]:
+        return birth()
     groups = load()
     if not groups and argv[:1] != ["run"]:
         print(f"keys: this machine holds no keychain ({', '.join(wears()) or 'it wears no job'})")

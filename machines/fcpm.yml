@@ -55,7 +55,7 @@ verbs:
     linux: machines/static/deploy
 
   - verb: keys
-    args: "[check|take GROUP KEY|offer GROUP DEVICE|run GROUP... -- CMD]"
+    args: "[check|take GROUP KEY|offer GROUP DEVICE|run GROUP... -- CMD|birth]"
     says: "the keychain of the jobs this machine wears: what is held and wanted, never a value"
     windows: machines/keys
     linux: machines/keys

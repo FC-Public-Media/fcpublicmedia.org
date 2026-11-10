@@ -77,7 +77,7 @@ case "$cmd" in
     # The keychain of the jobs this machine wears (keys; each job's keys.yml).
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*)
       uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-      exec "$uv" run --no-project --python 3.12 --with pyyaml python "$HERE/keys" "$@" ;;
+      exec "$uv" run --no-project --python 3.12 --with pyyaml --with qrcode python "$HERE/keys" "$@" ;;
     esac
     exec python3 "$HERE/keys" "$@" ;;
   relay)
