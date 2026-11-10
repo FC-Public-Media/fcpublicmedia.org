@@ -1,0 +1,7 @@
+# start-line
+
+1. [x] machines/start.ps1: the start line needs only winget (Git, repo, job's winget gear, fcpm install JOB)
+2. [x] fcpm install [JOB] -> sync -p; gear.yml `scope:` honored; bay 2 gear.yml (git, gh)
+3. [ ] Autumn pastes the start line on FCPMEDIT2 (branch URL until merge); notes what it said
+4. [ ] whatever bay 2's first run shows (gh signed in as FCPM, Claude or not)
+5. [ ] reset .pr to main's (empty) before merge
