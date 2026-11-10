@@ -1,0 +1,6 @@
+# What the editing-bay-2 job itself serves, when it orders it (editing-bay-2/services). See README.md.
+
+serves:
+  - service: follow
+    for: "this bay's orders, by commit: main, fast-forward only, then what merged put on (editing-bay-2/follow); a line merged into services comes up by itself"
+    start: '"C:/Program Files/Git/bin/bash.exe" machines/editing-bay-2/follow'
