@@ -5,7 +5,7 @@
 helms:
   digitization:
     at: http://digitization.local
-    holds: [wizard:site+deploy]
+    holds: [wizard:site+deploy, wizard:keys+birth]   # keys+birth: the keystore starts here (docs/keystore.md)
   production:
     at: http://10.209.1.20:8080
     holds: [wizard:model+up]

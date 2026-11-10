@@ -1,9 +1,9 @@
 # The keystore
 
-How an FCPM machine comes by its keys. There are two parts. A machine's own key is born on the machine, and a merge grants it. A
-real secret (a token, a stream key) sits sealed in the keystore, and a board wizard unlocks it for one
-delivery. Only birth is built (`fcpm keys birth`); the keystore is a design. The keychain's ledgers:
-`machines/<job>/keys.yml`, read by `machines/keys`.
+How an FCPM machine comes by its keys, with no operator in the path. A machine's own key is born on
+it and lodged with the keystore; a real secret (a token, a stream key) sits sealed there. Either way a
+board wizard grants it. Built: birth and its petition (`fcpm keys birth`, `wizard:keys+birth`); the
+keystore's grant is a design. The keychain's ledgers: `machines/<job>/keys.yml`, read by `machines/keys`.
 
 ## Birth
 
@@ -12,10 +12,17 @@ agent holds the private half, a service that keeps it across restarts, and no fi
 is `~/.ssh/fcpm-<job>`, mode 600, on the card's encrypted home. The public half, `~/.ssh/fcpm-<job>.pub`,
 is shown as text and as a QR code. It is safe to show anyone.
 
-A PR grants it: the public half goes into `machines/origin/KEYHOLDERS` (origin.local, by its office),
-and onto fcpm-public as that machine's signing key. The merge is the board's signature on the birth
-certificate, and emptying the line by another merge takes it back. Nothing secret moves. A person
-at the desk runs one verb and merges one PR, and never handles an SSH key.
+Nobody carries it. The same verb sets a petition down at the machine's own helm, once
+(`wizard:keys+birth`, docs/kiosk.md). Helms pass a reply to the one that holds its wizard, and the
+keystore's helm holds this one: digitization's, until the keystore is a job of its own. There it is
+lodged as `petitions/<nonce>.json` beside the replies, inert. Lodging grants nothing. No operator
+may grant it, a session included.
+
+The grant is the keystore's act, once a board wizard says yes through the QR inbox. It puts the
+public half into `machines/origin/KEYHOLDERS` (origin.local, by its office), and onto fcpm-public as
+that machine's signing key. The merge of that line is the board's signature on the birth certificate,
+and emptying the line by another merge takes it back. Nothing secret moves at any step. Not built:
+the grant itself, and the wizard that says yes.
 
 The first agent-held key on Windows asks an administrator once to turn the agent service on.
 Windows ships it off. Git's own ssh does not talk to that agent, so a checkout that fetches by this

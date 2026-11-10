@@ -27,6 +27,14 @@ def deploy(rev):
                        "nonce": os.urandom(8).hex(), "rev": rev})
 
 
+def birth(key, **fields):
+    r = {"schema": "fcpm.reply/v0", "wizard": "wizard:keys+birth", "at": "test", "job": "editing-bay-2",
+         "host": "FCPMEDIT2", "key": key, "issued": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+         "nonce": os.urandom(8).hex(), "sig": None}
+    r.update(fields)
+    return json.dumps(r)
+
+
 def up(*names, **fields):
     r = {"schema": "fcpm.reply/v0", "wizard": "wizard:model+up", "at": "test",
          "issued": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -178,6 +186,27 @@ class Helms(unittest.TestCase):
         replies._deploy.wait()
         self.assertTrue(mark.exists())
         self.assertIn("by unsigned", (replies.STATE / replies.DEPLOY_LOG).read_text())
+
+    def test_a_birth_goes_to_the_keystores_helm_and_is_lodged_never_granted(self):
+        self.assertEqual(replies.holder("wizard:keys+birth"), ("digitization", "http://digitization.local"))
+        key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFH+qRqGtHSJs4bTDOHkA6z2nu2XC9PFFSYrOhwqbvME fcpm editing-bay-2 X"
+        os.environ["FCPM_WEARS"] = "editing-bay-2"
+        sent = []
+        replies.route = lambda path, at: sent.append(at) or "far-name"
+        replies.drop(birth(key))
+        [(_, verdict, _)] = replies.take()
+        self.assertEqual((verdict, sent), ("routed", ["http://digitization.local"]))
+        os.environ["FCPM_WEARS"] = "digitization"
+        verdicts = []
+        for r in (birth(key, nonce="n1"), birth("ssh-rsa AAAAB3Nza not ours"), birth(key, job="nonesuch")):
+            replies.drop(r)                   # one at a time: Windows' clock can give two drops the same microsecond
+            verdicts += [(v, w) for _, v, w in replies.take()]
+        self.assertEqual(verdicts[0][0], "applied")
+        self.assertIn("lodged for the keystore: editing-bay-2's key", verdicts[0][1])
+        self.assertEqual(verdicts[1], ("held", "key: one public key line (ssh-ed25519)"))
+        self.assertEqual(verdicts[2], ("held", "job: 'nonesuch' is no profile in machines/"))
+        petition = json.loads((replies.STATE / "petitions" / "n1.json").read_text())
+        self.assertEqual((petition["job"], petition["key"], petition["trust"]), ("editing-bay-2", key, "unsigned"))
 
 
 if __name__ == "__main__":
