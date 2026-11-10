@@ -142,6 +142,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Putting a profile on should be a signed commit; admission a passkey-signed request with KEYHOLDERS, not a merge.
 - Machines pull from a LAN origin (thin-client is the likely host) once they can reach it.
 - digitization: names not applied; SSH door and keys wait on passkeys; intake polls until a webhook.
+- The keystore's grant: petitions (`wizard:keys+birth`) are lodged on digitization and nothing grants them yet; the board's yes (`wizard:keys+grant`) and the keystore's acts are digitization's to build. docs/keystore.md#the-grant-a-study-for-digitization-to-build
 - editing-bay-2: names unfilled, and it may be the machine that is now the kiosk.
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - `code/bin/refs` has two copies that differ; it belongs where both machines read it.
