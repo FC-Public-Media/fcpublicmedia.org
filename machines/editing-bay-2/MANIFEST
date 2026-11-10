@@ -1,0 +1,4 @@
+# MANIFEST: what editing bay 2 carries of its own home, for `../sync`. Modes as in ../production/MANIFEST.
+# The twin of editing bay 1, so the same switch: machine-wide Git, mirrors in refs/.
+mirror    ../production/home/bin/fcpm.cmd   .local/bin/fcpm.cmd
+path      -                                 .local/bin
