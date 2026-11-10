@@ -427,14 +427,16 @@ PICK_LOG = "model-pick.log"
 
 
 def pick_command():
-    """How this helm says which models are up: model.ps1 pick, on the Windows bay that serves them.
-    FCPM_MODEL_PICK (a JSON list) stands in for it in a test."""
+    """How this helm says which models are up: its own job's model.ps1 pick, on the Windows bay that serves
+    them (production's, or a twin's that runs it: ../editing-bay-2/model.ps1). FCPM_MODEL_PICK (a JSON list)
+    stands in for it in a test."""
     if os.environ.get("FCPM_MODEL_PICK"):
         return json.loads(os.environ["FCPM_MODEL_PICK"])
     if os.name != "nt":
         return None
-    return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-            str(ROOT / "machines" / "production" / "model.ps1"), "pick"]
+    own = [ROOT / "machines" / j / "model.ps1" for j in sorted(wears())]
+    script = next((p for p in own if p.is_file()), ROOT / "machines" / "production" / "model.ps1")
+    return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "pick"]
 
 
 def model_up_reply(reply, meta):
@@ -534,16 +536,17 @@ def wears():
     return {p.name for p in b["profiles"]() if (b["declared"](p).get(system) or "").casefold() == fact.casefold()}
 
 
-def holder(wizard):
-    """(job, its helm's address) when one job's helm holds this wizard; None when any helm applies it."""
-    for job, h in helms().items():
-        if wizard in ((h or {}).get("holds") or []):
-            return job, (h or {}).get("at")
-    return None
+def holder(wizard, job=None):
+    """(job, its helm's address) when a job's helm holds this wizard; None when any helm applies it. When
+    several hold it (each bay's models), the reply's own `job` says which, and else the first listed does."""
+    held = [(j, (h or {}).get("at")) for j, h in helms().items() if wizard in ((h or {}).get("holds") or [])]
+    return next((o for o in held if o[0] == job), held[0] if held else None)
 
 
 def route(path, at):
     """The bottle, byte for byte as it was kept, to another helm's /drop. Returns the name it was kept by there."""
+    if not at:
+        raise ValueError("it has no address in helms.yml yet")
     req = urllib.request.Request(at.rstrip("/") + "/drop", path.read_bytes(),
                                  {"Content-Type": "text/plain" if path.suffix == ".frames" else "application/json"})
     with urllib.request.urlopen(req, timeout=ROUTE_TIMEOUT) as r:
@@ -608,7 +611,7 @@ def take():
             continue
         name = path.stem                      # the name has a dot of its own (the microseconds)
         reply, meta = read(path)
-        owner = holder(str(reply.get("wizard") or "")) if reply is not None else None
+        owner = holder(str(reply.get("wizard") or ""), reply.get("job")) if reply is not None else None
         if owner and owner[0] not in wears():
             job, at = owner
             try:
@@ -617,7 +620,7 @@ def take():
                 if name not in _waiting:
                     _waiting.add(name)
                     log({"name": name, "waiting": job, "error": str(exc),
-                         "why": "for %s's helm at %s, which is not answering" % (job, at.split("//")[-1])})
+                         "why": "for %s's helm at %s, which is not answering" % (job, (at or "no address").split("//")[-1])})
                     out.append((name, "waiting", "for %s's helm (%s)" % (job, exc)))
                 continue
             _waiting.discard(name)

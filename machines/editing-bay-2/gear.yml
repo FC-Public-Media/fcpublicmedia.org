@@ -18,3 +18,10 @@ gear:
     package: GitHub.cli
     provisioner: winget
     updates: winget
+
+  - gear: uv
+    for: the crew's Python (machines/crew.py), and the helm it keeps (machines/kiosk/door.py)
+    package: astral-sh.uv
+    provisioner: winget
+    scope: user
+    updates: winget
