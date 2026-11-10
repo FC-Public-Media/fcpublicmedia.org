@@ -1,0 +1,15 @@
+#!/bin/sh
+# follow -- bay 2 takes its orders from main. Fast-forward this checkout to origin's main, never over
+# local changes, then put on what merged (../sync install: every job whose `names` lists this computer).
+# The crew's `follow` line, every 15 minutes. What a merge adds to `services`, the supervisor starts by
+# itself; the helm restarts on the new commit. So an order is a merged commit, and no one need be here.
+# `origin` is GitHub until this bay holds a key to origin.local. Like ../digitization/follow.
+cd "$(dirname "$0")/../.." || exit 1
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || { echo "follow: not on main; left alone"; exit 0; }
+[ -z "$(git status --porcelain --ignore-submodules=all)" ] || { echo "follow: local changes; left alone"; exit 0; }
+before=$(git rev-parse HEAD)
+GIT_TERMINAL_PROMPT=0 git fetch -q origin main || exit 1
+git merge -q --ff-only origin/main || { echo "follow: main has commits of its own here; left alone"; exit 0; }
+[ "$(git rev-parse HEAD)" = "$before" ] && exit 0
+echo "follow: $(git rev-parse --short "$before") -> $(git rev-parse --short HEAD)"
+exec sh machines/sync install
