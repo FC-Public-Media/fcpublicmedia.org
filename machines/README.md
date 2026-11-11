@@ -10,14 +10,14 @@ Gear comes from [`troves/`](../troves/README.md).
 |---|---|---|
 | [`production`](production/CREW.md) | recordings after they land: pools, transcription, episodes, release; it drives the roller TV for the kiosk and hosts digitization's tank | editing bay 1 (`EDIT2`) |
 | [`kiosk`](kiosk/CREW.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
-| [`qr`](qr/PROFILE.md) | the kiosk's pickup point ([`troves/scanner`](../troves/scanner/README.md)) | a Raspberry Pi 3 |
+| [`qr`](qr/PROFILE.md) | the kiosk's pickup point and the intake by camera ([`troves/scanner`](../troves/scanner/README.md)); `qr.local` | the OptiPlex 9020M, beside digitization; cameras join by leash |
 | [`thin-client`](thin-client/PROFILE.md) | the kiosk's overflow console, beside the scanner | a donated HP t510 |
 | [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 | [`static`](static/CREW.md) | finished sites to the LAN by name, by nginx: the public site (built here when it moves) and the Wix copy | the OptiPlex 9020M, beside digitization |
 | [`broadcast`](broadcast/PROFILE.md) | channel 97: what plays out and records, its schedule, our fields on its shows, the public Internet Channel. Vendor software we drive by its API ([`cablecast.py`](broadcast/cablecast.py)) | the Cablecast server in the building's server room (`10.1.10.84`) |
 | [`jukebox`](jukebox/README.md) | the house's music: the cleared music on the wearer's own disks, one stream, for the standby page. A role any job orders with one `services` line | editing bay 1 first; whoever orders it |
-| [`bounce`](bounce/CREW.md) | the captive bounce: its own open Wi-Fi whose sign-in sheet opens our page with no internet and nothing typed (the community-ping study, proven as a peer) | the Raspberry Pi 3's spare radio, for now |
+| [`bounce`](bounce/CREW.md) | the captive bounce: its own open Wi-Fi whose sign-in sheet opens our page with no internet and nothing typed (the community-ping study, proven as a peer) | [the Raspberry Pi 3](bounce/PROFILE.md) (`bounce`) |
 
 [`cards/`](cards/README.md) are boot cards, not jobs: each carries the checkout, so it can start any job.
 
