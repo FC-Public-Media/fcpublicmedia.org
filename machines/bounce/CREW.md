@@ -1,0 +1,28 @@
+# bounce
+
+The captive bounce from the community-ping study, proven by FCPM as a peer with tools only: a Wi-Fi QR joins
+the wearer's own open network, the phone's sign-in sheet opens by itself, and the box's page is in front of
+the person with no internet, no app and nothing typed. Worn by [`qr`](../qr/PROFILE.md)'s spare radio for now;
+a real antenna gets its own box.
+
+| | |
+|---|---|
+| network | `FC Public Media Bounce`, open, 2.4 GHz channel 11, `10.97.97.0/24`; the box is `10.97.97.1` |
+| QR | `WIFI:S:FC Public Media Bounce;T:nopass;;` |
+| DNS | every name answers `10.97.97.1` ([`dnsmasq.conf`](dnsmasq.conf), run from `dnsmasq-base`) |
+| DHCP | 1 h leases; option 114 = `http://10.97.97.1/captive` (RFC 8910) |
+| wall | [`wall.nft`](wall.nft): the island reaches DHCP, DNS and port 80 only; anything else is reset at once; nothing is forwarded, so the island never touches Helm |
+| page | [`bounce.py`](bounce.py) on port 80 serves [`page/`](page/); island phones asking any other host are sent there; the OS probes (Apple, Android, Windows, Firefox) open the sheet until the phone presses release |
+| kept | nothing, unless a person presses Send: then `state/reports/<time>.json` beside the code. Events go to the loudspeaker as `bounce` |
+
+## Wear it
+
+From a copy of this folder on the box (the Pi keeps one in `~/bounce`): `sudo sh install`. `sudo sh install remove`
+takes all of it down (the connection, the wall, the units). `BOUNCE_SSID` names the network.
+
+## What the page finds out
+
+The study's open questions about the sheet, answered per phone by pressing through the page: does storage
+survive closing the sheet (visits, cookie), can a file be downloaded, can a link open the real browser, does
+release turn the sheet's button to Done, and does the phone use option 114's API (an `asked the captive API`
+line) or only the probe. Plain HTTP, so no service worker or passkey here: that is the HTTPS layer, later.

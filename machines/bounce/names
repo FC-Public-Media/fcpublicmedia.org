@@ -1,0 +1,4 @@
+# What this machine should answer to; `../binding` asks it. Check with `hostname`. See docs/station.md.
+
+# platform   key        value
+linux        Hostname   qr

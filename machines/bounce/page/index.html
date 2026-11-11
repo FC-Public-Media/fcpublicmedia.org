@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FC Public Media: bounce</title>
+<style>
+body{font:17px/1.5 -apple-system,system-ui,sans-serif;max-width:34rem;margin:0 auto;padding:1.2rem 16px 4rem;background:#fbfaf7;color:#1d1c1a}
+h1{font-size:1.4rem;margin:.2em 0}
+p{margin:.6em 0}
+table{border-collapse:collapse;width:100%;margin:1em 0}
+td{border-top:1px solid #e2ded5;padding:.35em .2em;vertical-align:top}
+td+td{text-align:right;font-weight:600}
+button,.go{display:block;width:100%;box-sizing:border-box;margin:.6em 0;padding:.8em;font:inherit;border:1px solid #1d1c1a;border-radius:6px;background:#fff;color:#1d1c1a;text-align:center;text-decoration:none}
+pre{background:#f1eee7;padding:.8em;overflow-x:auto;font-size:13px;white-space:pre-wrap;word-break:break-all}
+.quiet{color:#6b675f;font-size:15px}
+</style>
+</head>
+<body>
+<h1>FC Public Media</h1>
+<p>You joined our test network. It has no internet. It is a small box in the studio, and this page is all it serves.</p>
+<p class="quiet">We are finding out what a phone's sign-in sheet lets a page do. Below is what this page could do on your phone. It stays on your phone. Nothing goes anywhere unless you press Send.</p>
+
+<table id="checks"></table>
+
+<a class="go" href="keep.html" download>Download a file</a>
+<a class="go" href="/?from=link" target="_blank">Open this page in the browser</a>
+<button id="release">I'm done here</button>
+<p id="said" class="quiet"></p>
+
+<p>What Send would send:</p>
+<pre id="report"></pre>
+<button id="send">Send these results to FCPM</button>
+
+<script>
+(function () {
+  var rows = [], report = {page: "bounce/1", at: new Date().toISOString(), from: location.search.indexOf("from=link") >= 0 ? "link" : "sheet"};
+  function check(name, key, fn) {
+    var v;
+    try { v = fn(); } catch (e) { v = "no (" + (e && e.name || "error") + ")"; }
+    report[key] = v;
+    rows.push([name, String(v)]);
+  }
+  check("Times you've opened this page here", "visits", function () {
+    var n = Number(localStorage.getItem("bounce.visits") || 0) + 1;
+    localStorage.setItem("bounce.visits", String(n));
+    if (!localStorage.getItem("bounce.first")) localStorage.setItem("bounce.first", report.at);
+    return n;
+  });
+  check("First opened", "first", function () { return localStorage.getItem("bounce.first"); });
+  check("Cookie kept", "cookie", function () {
+    var m = document.cookie.match(/bounce=(\d+)/), n = (m ? Number(m[1]) : 0) + 1;
+    document.cookie = "bounce=" + n + "; max-age=31536000; path=/";
+    return m ? "yes, visit " + n : "new";
+  });
+  check("Session storage", "session", function () { sessionStorage.setItem("b", "1"); return "yes"; });
+  check("IndexedDB", "indexeddb", function () { return window.indexedDB ? "yes" : "no"; });
+  check("Secure context", "secure", function () { return window.isSecureContext ? "yes" : "no"; });
+  check("Service worker", "serviceworker", function () { return "serviceWorker" in navigator ? "yes" : "no"; });
+  check("Cache storage", "caches", function () { return "caches" in window ? "yes" : "no"; });
+  check("Opened as an app", "standalone", function () { return navigator.standalone || matchMedia("(display-mode: standalone)").matches ? "yes" : "no"; });
+  report.agent = navigator.userAgent;
+
+  var t = document.getElementById("checks");
+  rows.forEach(function (r) { var tr = t.insertRow(); tr.insertCell().textContent = r[0]; tr.insertCell().textContent = r[1]; });
+  document.getElementById("report").textContent = JSON.stringify(report, null, 1);
+  try { localStorage.setItem("bounce.last", JSON.stringify(report)); } catch (e) {}
+
+  var said = document.getElementById("said");
+  function post(path, body, done) {
+    var x = new XMLHttpRequest();
+    x.open("POST", path);
+    x.setRequestHeader("Content-Type", "application/json");
+    x.onload = function () { done(x.status === 200 ? JSON.parse(x.responseText) : null); };
+    x.onerror = function () { done(null); };
+    x.send(body);
+  }
+  document.getElementById("release").onclick = function () {
+    post("/release", "{}", function (r) { said.textContent = r ? "Released. The sheet should now offer Done." : "The box didn't answer."; });
+  };
+  document.getElementById("send").onclick = function () {
+    post("/report", JSON.stringify(report), function (r) { said.textContent = r ? "Sent. Thank you." : "The box didn't answer."; });
+  };
+})();
+</script>
+</body>
+</html>
