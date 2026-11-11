@@ -34,3 +34,8 @@ line) or only the probe. Plain HTTP, so no service worker or passkey here: that 
   time it opens. A download link renders in the sheet instead of saving, and a `target=_blank` link
   navigates inside the sheet: neither leaves it. Rejoining does not reliably bring the
   sheet back; forgetting the network, Wi-Fi off a while, and waiting minutes usually does.
+- The sheet re-asks Apple's probe after every page load, and the phone asks again on its own while idle. Release
+  turns the sheet's button to Done only once a page loads after it.
+- Inside one sheet, storage lasts across page loads; it is gone when the sheet closes.
+- Out of the sheet: after Done the phone stays joined, and the Camera app's scan of `?from=qr` opens real Safari.
+  Each scan there started with empty storage and a new cookie, and only an in-page link kept the count.
