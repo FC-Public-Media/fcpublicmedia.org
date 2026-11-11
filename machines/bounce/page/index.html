@@ -34,7 +34,7 @@ pre{background:#f1eee7;padding:.8em;overflow-x:auto;font-size:13px;white-space:p
 
 <script>
 (function () {
-  var rows = [], report = {page: "bounce/1", at: new Date().toISOString(), from: location.search.indexOf("from=link") >= 0 ? "link" : "sheet"};
+  var rows = [], report = {page: "bounce/1", at: new Date().toISOString(), from: (location.search.match(/from=(\w+)/) || [0, "sheet"])[1]};
   function check(name, key, fn) {
     var v;
     try { v = fn(); } catch (e) { v = "no (" + (e && e.name || "error") + ")"; }

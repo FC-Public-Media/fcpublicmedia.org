@@ -8,7 +8,7 @@ a real antenna gets its own box.
 | | |
 |---|---|
 | network | `FC Public Media Bounce`, open, 2.4 GHz channel 11, `10.97.97.0/24`; the box is `10.97.97.1` |
-| QR | `WIFI:S:FC Public Media Bounce;T:nopass;;` |
+| QR | `WIFI:S:FC Public Media Bounce;T:nopass;;` to join; `http://10.97.97.1/?from=qr` to open the page in the real browser once joined |
 | DNS | every name answers `10.97.97.1` ([`dnsmasq.conf`](dnsmasq.conf), run from `dnsmasq-base`) |
 | DHCP | 1 h leases; option 114 = `http://10.97.97.1/captive` (RFC 8910) |
 | wall | [`wall.nft`](wall.nft): the island reaches DHCP, DNS and port 80 only; anything else is reset at once; nothing is forwarded, so the island never touches Helm |
@@ -31,5 +31,6 @@ line) or only the probe. Plain HTTP, so no service worker or passkey here: that 
 
 - iPhone, iOS 18.7, two phones: the sheet opens from Apple's probe alone; option 114's API is never asked (it is
   plain HTTP; the RFC asks for HTTPS). Storage, cookie and IndexedDB work inside the sheet and are gone the next
-  time it opens. A download link renders in the sheet instead of saving. Rejoining does not reliably bring the
+  time it opens. A download link renders in the sheet instead of saving, and a `target=_blank` link
+  navigates inside the sheet: neither leaves it. Rejoining does not reliably bring the
   sheet back; forgetting the network, Wi-Fi off a while, and waiting minutes usually does.

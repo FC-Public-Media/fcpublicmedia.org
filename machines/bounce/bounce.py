@@ -8,6 +8,7 @@ Says what happens on the loudspeaker (BOUNCE_SAY, host:port); keeps reports only
 import ipaddress, json, os, secrets, socket, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "page"
@@ -130,7 +131,8 @@ class Door(BaseHTTPRequestHandler):
         if file.parent != PAGE or not file.is_file():
             return self.send(404, "not here\n", "text/plain")
         if name == "index.html":
-            say(f"{self.client()} opened the page" + (" from the link" if "from=link" in self.path else ""))
+            src = parse_qs(urlsplit(self.path).query).get("from", [""])[0][:20]
+            say(f"{self.client()} opened the page" + (f" from the {src}" if src else ""))
         extra = [("Content-Disposition", f'attachment; filename="{name}"')] if name.startswith("keep") else []
         self.send(200, file.read_bytes(), TYPES.get(file.suffix, "application/octet-stream"), extra)
 
