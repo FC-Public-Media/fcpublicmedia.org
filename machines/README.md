@@ -17,6 +17,7 @@ Gear comes from [`troves/`](../troves/README.md).
 | [`static`](static/CREW.md) | finished sites to the LAN by name, by nginx: the public site (built here when it moves) and the Wix copy | the OptiPlex 9020M, beside digitization |
 | [`broadcast`](broadcast/PROFILE.md) | channel 97: what plays out and records, its schedule, our fields on its shows, the public Internet Channel. Vendor software we drive by its API ([`cablecast.py`](broadcast/cablecast.py)) | the Cablecast server in the building's server room (`10.1.10.84`) |
 | [`jukebox`](jukebox/README.md) | the house's music: the cleared music on the wearer's own disks, one stream, for the standby page. A role any job orders with one `services` line | editing bay 1 first; whoever orders it |
+| [`bounce`](bounce/CREW.md) | the captive bounce: its own open Wi-Fi whose sign-in sheet opens our page with no internet and nothing typed (the community-ping study, proven as a peer) | the Raspberry Pi 3's spare radio, for now |
 
 [`cards/`](cards/README.md) are boot cards, not jobs: each carries the checkout, so it can start any job.
 

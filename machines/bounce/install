@@ -1,0 +1,82 @@
+#!/bin/sh
+# install [remove] -- as root on the wearer: the island Wi-Fi, its wall, DHCP/DNS and the page, from this folder.
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+owner=$(stat -c %U "$here")
+ssid=${BOUNCE_SSID:-FC Public Media Bounce}
+units="fcpm-bounce-wall fcpm-bounce-dns fcpm-bounce"
+
+if [ "${1:-}" = remove ]; then
+	nmcli con delete fcpm-bounce 2>/dev/null || true
+	for u in $units; do systemctl disable --now "$u" 2>/dev/null || true; rm -f "/etc/systemd/system/$u.service"; done
+	nft delete table inet fcpm_bounce 2>/dev/null || true
+	rm -rf /etc/fcpm-bounce
+	systemctl daemon-reload
+	echo "bounce removed"
+	exit 0
+fi
+
+[ -x /usr/sbin/dnsmasq ] || { echo "needs dnsmasq-base"; exit 1; }
+mkdir -p /etc/fcpm-bounce
+cp "$here/dnsmasq.conf" "$here/wall.nft" /etc/fcpm-bounce/
+
+cat > /etc/systemd/system/fcpm-bounce-wall.service <<EOF
+[Unit]
+Description=FCPM bounce: the island's wall
+Before=NetworkManager.service network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/fcpm-bounce/wall.nft
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/fcpm-bounce-dns.service <<EOF
+[Unit]
+Description=FCPM bounce: the island's DHCP and DNS
+Requires=fcpm-bounce-wall.service
+After=fcpm-bounce-wall.service NetworkManager.service
+
+[Service]
+RuntimeDirectory=fcpm-bounce
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/etc/fcpm-bounce/dnsmasq.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/fcpm-bounce.service <<EOF
+[Unit]
+Description=FCPM bounce: the island's page
+Requires=fcpm-bounce-wall.service
+After=fcpm-bounce-wall.service network-online.target
+
+[Service]
+User=$owner
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+Environment=BOUNCE_STATE=$here/state
+ExecStart=/usr/bin/python3 $here/bounce.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now fcpm-bounce-wall
+nmcli con delete fcpm-bounce 2>/dev/null || true
+nmcli con add type wifi ifname wlan0 con-name fcpm-bounce autoconnect yes connection.autoconnect-priority 10 \
+	ssid "$ssid" 802-11-wireless.mode ap 802-11-wireless.band bg 802-11-wireless.channel 11 \
+	ipv4.method manual ipv4.addresses 10.97.97.1/24 ipv6.method disabled >/dev/null
+nmcli con up fcpm-bounce >/dev/null
+systemctl enable --now fcpm-bounce-dns fcpm-bounce
+sleep 2
+for u in $units; do printf '%s %s\n' "$u" "$(systemctl is-active "$u")"; done
+echo "bounce up: \"$ssid\", open, channel 11, page at http://10.97.97.1/"
