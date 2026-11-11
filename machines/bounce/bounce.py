@@ -2,7 +2,7 @@
 """bounce -- the captive page of the island network: every name lands here, phones' probes open the sheet.
 
 Serves page/ to anyone; a phone on the island (10.97.97.0/24) asking any other host is sent to the page.
-GET /captive is the RFC 8908 API (captive until the phone presses release). POST /release, POST /report.
+GET /captive is the RFC 8908 API (captive until the phone presses release, for RELEASE seconds). POST /release, POST /report.
 Says what happens on the loudspeaker (BOUNCE_SAY, host:port); keeps reports only when a person sends one.
 """
 import ipaddress, json, os, secrets, socket, sys, time
@@ -16,6 +16,7 @@ BOX = os.environ.get("BOUNCE_ADDR", "10.97.97.1")
 ISLAND = ipaddress.ip_network(os.environ.get("BOUNCE_NET", "10.97.97.0/24"))
 SAY = os.environ.get("BOUNCE_SAY", "digitization.local:9797")
 PORT = int(os.environ.get("BOUNCE_PORT", "80"))
+RELEASE = int(os.environ.get("BOUNCE_RELEASE", "300"))
 HOME = f"http://{BOX}/"
 
 PROBES = {
@@ -30,7 +31,7 @@ PROBES = {
 }
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json"}
 
-released, seen = set(), set()
+released, seen = {}, set()
 
 
 def say(what):
@@ -73,6 +74,9 @@ class Door(BaseHTTPRequestHandler):
         except ValueError:
             return False
 
+    def free(self):
+        return released.get(self.client(), 0) > time.time()
+
     def first(self, what):
         key = (self.client(), what)
         if key not in seen:
@@ -88,13 +92,13 @@ class Door(BaseHTTPRequestHandler):
         mine = host in (BOX, "") or not self.on_island()
         if path in PROBES and host != BOX:
             kind, code, ctype, body = PROBES[path]
-            if self.client() in released:
+            if self.free():
                 return self.send(code, body, ctype)
             self.first(f"{kind} probe: sheet")
             return self.send(302, "", None, [("Location", HOME)])
         if path == "/captive":
             self.first("asked the captive API")
-            api = {"captive": self.client() not in released, "user-portal-url": HOME}
+            api = {"captive": not self.free(), "user-portal-url": HOME}
             return self.send(200, json.dumps(api), "application/captive+json")
         if not mine:
             return self.send(302, "", None, [("Location", HOME)])
@@ -103,7 +107,7 @@ class Door(BaseHTTPRequestHandler):
         if file.parent != PAGE or not file.is_file():
             return self.send(404, "not here\n", "text/plain")
         if name == "index.html":
-            self.first("opened the page")
+            say(f"{self.client()} opened the page" + (" from the link" if "from=link" in self.path else ""))
         extra = [("Content-Disposition", f'attachment; filename="{name}"')] if name.startswith("keep") else []
         self.send(200, file.read_bytes(), TYPES.get(file.suffix, "application/octet-stream"), extra)
 
@@ -114,7 +118,7 @@ class Door(BaseHTTPRequestHandler):
             return self.send(413, "too big\n", "text/plain")
         body = self.rfile.read(size)
         if path == "/release":
-            released.add(self.client())
+            released[self.client()] = time.time() + RELEASE
             say(f"{self.client()} released")
             return self.send(200, json.dumps({"captive": False}), "application/json")
         if path == "/report":
