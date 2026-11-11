@@ -3,7 +3,9 @@
 One folder per job a machine does, named for the job. A computer takes the job by answering to the
 folder's `names` ([`binding`](binding)); what the computer is, and what it is called on its sticker
 and by Windows, is in the folder's `PROFILE.md`. A computer without a job or a name yet keeps a
-placeholder (`editing-bay-2`, `thin-client`). Profiles, sync and grants: [`docs/station.md`](../docs/station.md).
+placeholder (`editing-bay-2`, `thin-client`). Every folder here needs a `PROFILE.md`, and every `names`
+line must parse: [`bin/test_binding.py`](../bin/test_binding.py) checks both in smoke, and it is the usual suspect
+when a job is added, renamed or moved. Run it before pushing (a stray `__pycache__` here fails it locally too). Profiles, sync and grants: [`docs/station.md`](../docs/station.md).
 Gear comes from [`troves/`](../troves/README.md).
 
 | job | looks after | the computer |
