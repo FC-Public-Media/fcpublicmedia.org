@@ -24,7 +24,7 @@ takes all of it down (the connection, the wall, the units). `BOUNCE_SSID` names 
 
 The study's open questions about the sheet, answered per phone by pressing through the page: does storage
 survive closing the sheet (visits, cookie), can a file be downloaded, can a link open the real browser, does
-release turn the sheet's button to Done, and does the phone use option 114's API (an `asked the captive API`
+release turn the sheet's button to Done (the page loads `done.html` after it, so the sheet checks again), and does the phone use option 114's API (an `asked the captive API`
 line) or only the probe. Plain HTTP, so no service worker or passkey here: that is the HTTPS layer, later.
 
 ## Found

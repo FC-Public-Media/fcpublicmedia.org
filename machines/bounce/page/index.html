@@ -76,7 +76,7 @@ pre{background:#f1eee7;padding:.8em;overflow-x:auto;font-size:13px;white-space:p
     x.send(body);
   }
   document.getElementById("release").onclick = function () {
-    post("/release", "{}", function (r) { said.textContent = r ? "Released. The sheet should now offer Done." : "The box didn't answer."; });
+    post("/release", "{}", function (r) { if (r) location.href = "done.html"; else said.textContent = "The box didn't answer."; });
   };
   document.getElementById("send").onclick = function () {
     post("/report", JSON.stringify(report), function (r) { said.textContent = r ? "Sent. Thank you." : "The box didn't answer."; });
