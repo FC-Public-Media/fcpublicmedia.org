@@ -12,7 +12,7 @@ a real antenna gets its own box.
 | DNS | every name answers `10.97.97.1` ([`dnsmasq.conf`](dnsmasq.conf), run from `dnsmasq-base`) |
 | DHCP | 1 h leases; option 114 = `http://10.97.97.1/captive` (RFC 8910) |
 | wall | [`wall.nft`](wall.nft): the island reaches DHCP, DNS and port 80 only; anything else is reset at once; nothing is forwarded, so the island never touches Helm |
-| page | [`bounce.py`](bounce.py) on port 80 serves [`page/`](page/); island phones asking any other host are sent there; the OS probes (Apple, Android, Windows, Firefox) open the sheet until the phone presses release |
+| page | [`bounce.py`](bounce.py) on port 80 serves [`page/`](page/); island phones asking any other host are sent there; the OS probes (Apple, Android, Windows, Firefox) open the sheet until the phone presses release; a release ends when the phone rejoins (its lease moves) |
 | kept | nothing, unless a person presses Send: then `state/reports/<time>.json` beside the code. Events go to the loudspeaker as `bounce` |
 
 ## Wear it
@@ -26,3 +26,10 @@ The study's open questions about the sheet, answered per phone by pressing throu
 survive closing the sheet (visits, cookie), can a file be downloaded, can a link open the real browser, does
 release turn the sheet's button to Done, and does the phone use option 114's API (an `asked the captive API`
 line) or only the probe. Plain HTTP, so no service worker or passkey here: that is the HTTPS layer, later.
+
+## Found
+
+- iPhone, iOS 18.7, two phones: the sheet opens from Apple's probe alone; option 114's API is never asked (it is
+  plain HTTP; the RFC asks for HTTPS). Storage, cookie and IndexedDB work inside the sheet and are gone the next
+  time it opens. A download link renders in the sheet instead of saving. Rejoining does not reliably bring the
+  sheet back; forgetting the network, Wi-Fi off a while, and waiting minutes usually does.
