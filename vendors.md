@@ -1,6 +1,6 @@
 # Seat · vendors
 
-`advocate/vendors` · last spoke **2026-11-09** · 27 session(s) · 5 draft · 1 ready
+`advocate/vendors` · last spoke **2026-11-11** · 28 session(s) · 5 draft · 1 ready
 
 <sub>Copied whole from the branch, which is the authority. Do not edit this page — it is
 overwritten every round.</sub>
@@ -272,9 +272,9 @@ would, a forwarding rule might. Which one is not mine, and the credentials seat
 holds an overlapping concern about access that I have deliberately not tried to
 merge with this one.
 
-## Last session note — 2026-11-09
+## Last session note — 2026-11-11
 
-### 2026-11-09
+### 2026-11-11
 
 Subject unchanged at `919a413`. Nothing merged since the last session; nothing to say.
 
