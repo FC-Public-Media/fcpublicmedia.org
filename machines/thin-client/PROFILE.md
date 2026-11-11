@@ -26,7 +26,7 @@ on 2026-10-13 took the box down mid-run: nothing a job needs should hang outside
 
 ## The job
 
-The kiosk's overflow console, partnering the [`qr`](../qr/PROFILE.md) Pi's scanner. It is our own
+The kiosk's overflow console, partnering the [`qr`](../qr/PROFILE.md) scanner. It is our own
 thin client: like ThinPro it shows what is kept elsewhere, and keeps nothing itself.
 
 - It runs the scanner's eyes (`eyes.py`, FC-Public-Media/scanner#2) with no camera. Its console goes

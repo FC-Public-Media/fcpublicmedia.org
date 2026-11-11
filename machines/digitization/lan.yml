@@ -13,6 +13,10 @@ shared:
   wix: wix           # the Wix site, photocopied, until the board retires it
   ch97: broadcast    # the broadcast job's page: the channel's day, laid, beside Cablecast's (broadcast/ch97)
 
+# Bare <label>.local names, held the same way: a job's old machine name that moved here.
+bare:
+  qr: board          # the qr job's join point: the board, where /drop takes the bays' intake (../qr/PROFILE.md)
+
 # <hostname>.fcpublicmedia.local is this machine's directory: its gear, each one level deeper
 # (atem-mini-pro.digitization.fcpublicmedia.local), named for its trove, which holds its facts.
 gear: [rodecaster-pro-ii, atem-mini-pro, aja-helo]
