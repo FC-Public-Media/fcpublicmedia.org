@@ -134,6 +134,12 @@ class Door(BaseHTTPRequestHandler):
         self.send(404, "not here\n", "text/plain")
 
 
+class Server(ThreadingHTTPServer):
+    def handle_error(self, request, address):
+        if not isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
+            super().handle_error(request, address)
+
+
 if __name__ == "__main__":
     say(f"up on :{PORT}, the page at {HOME}")
-    ThreadingHTTPServer(("0.0.0.0", PORT), Door).serve_forever()
+    Server(("0.0.0.0", PORT), Door).serve_forever()
