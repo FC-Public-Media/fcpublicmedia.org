@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""relay — channel 97 to YouTube, all day: Cablecast's own web stream, copied, never re-encoded.
+"""relay — channel 97 to YouTube, all day: what arrives at the ingest, copied, never re-encoded.
 
     python3 -I machines/broadcast/relay            run (the broadcast crew's `youtube` line keeps it up)
     python3 -I machines/broadcast/relay --check    say what it would do now, push nothing
 
-The source is the channel's live stream as Cablecast publishes it (livestreams/1's streamUrl). The
-largest picture and the audio go to YouTube by RTMPS, as they are: what YouTube gets is what the
-website gets. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here prints it.
-`--backup` sends to YouTube's backup ingest instead, so a second box can stand beside the first.
+The source is the ingest (./ingest), fed by ./fetch from the Cablecast box on the LAN, read on
+127.0.0.1, so the only leg on the internet is ours to YouTube. It goes to YouTube's primary ingest
+by RTMPS, as it arrives. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here
+prints it, and Cablecast never holds it. `--backup` sends to YouTube's backup ingest instead.
 
-Cablecast can say BROADCASTING while its stream has stopped moving (2026-10-19, 23:19 here: two
-days frozen). So nothing is pushed until the source's playlist is seen to advance, and ffmpeg is
-stopped when its output stops moving. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json
-for any screen: the source flowing or frozen and since when, and whether YouTube is being fed.
+Nothing is pushed until the ingest's counters show the channel arriving (a publisher on and its
+bytes growing), and ffmpeg is stopped when its output stops moving. When the channel goes, the ingest
+ends the stream, ffmpeg ends, and this waits for it to come back; meanwhile YouTube has the floor on
+its backup ingest. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json for any screen.
 ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import datetime
@@ -25,17 +25,15 @@ import threading
 import time
 import urllib.request
 
-HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE))
-import cablecast  # noqa: E402  the same hand on the box
-
 KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
 STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json"
 INGEST = {"primary": "rtmps://a.rtmp.youtube.com/live2/{key}",
           "backup": "rtmps://b.rtmp.youtube.com/live2/{key}?backup=1"}
-WATCH = 20        # seconds between two reads of the playlist, to see it move
+SOURCE = "rtmp://127.0.0.1:1935/ch97/air"     # the ingest, where the channel arrives
+STAT = "http://127.0.0.1:1936/stat"
+WATCH = 5         # seconds between two reads of the ingest's counters, to see the channel arrive
 STALL = 60        # seconds of no output before ffmpeg is stopped
-WAIT = 60         # seconds between tries while there is no key or the source is frozen
+WAIT = 10         # seconds between tries while nothing arrives or there is no key
 
 
 def now():
@@ -52,60 +50,31 @@ def note(**facts):
     STATE.write_text(json.dumps(dict(facts, since=since, at=now()), indent=1) + "\n")
 
 
-def fetch(url):
-    with urllib.request.urlopen(url, timeout=20) as reply:
-        return reply.read().decode("utf-8", "replace")
-
-
-def source():
-    """The channel's stream address, from Cablecast itself."""
-    return cablecast.call("GET", "/livestreams/1")["liveStream"]["streamUrl"]
-
-
-def largest(master_url):
-    """The playlist of the largest picture in the master playlist."""
-    master = fetch(master_url)
-    best = max(re.findall(r"RESOLUTION=(\d+)x(\d+)[^\n]*\n([^\n#]+)", master), key=lambda r: int(r[0]) * int(r[1]))
-    return urllib.request.urljoin(master_url, best[2].strip())
-
-
-def moving(master_url):
-    """(True, last segment's time) if the largest picture's playlist advances within WATCH seconds."""
-    playlist = largest(master_url)
-    def where():
-        text = fetch(playlist)
-        first = re.search(r"#EXT-X-MEDIA-SEQUENCE:(\d+)", text)      # absent means 0 (RFC 8216)
-        seq = (int(first.group(1)) if first else 0) + text.count("#EXTINF")
-        stamps = re.findall(r"#EXT-X-PROGRAM-DATE-TIME:(\S+)", text)
-        return seq, stamps[-1] if stamps else None
-    first, _ = where()
+def arriving():
+    """(True, bytes in) if something is publishing to the ingest and its bytes grow within WATCH seconds."""
+    def count():
+        with urllib.request.urlopen(STAT, timeout=10) as reply:
+            stat = reply.read().decode("utf-8", "replace")
+        for stream in re.findall(r"<stream>(.*?)</stream>", stat, re.S):
+            if "<name>air</name>" in stream and "<publishing/>" in stream:
+                return int(re.search(r"<bytes_in>(\d+)</bytes_in>", stream).group(1))
+        return None
+    first = count()
+    if first is None:
+        return False, None
     time.sleep(WATCH)
-    second, stamp = where()
-    return second > first, stamp
+    second = count()
+    return second is not None and second > first, second
 
 
-def video_track(master_url):
-    """ffmpeg's index of the widest video track: the one to send."""
-    probe = subprocess.run(["ffprobe", "-v", "error", "-rw_timeout", "20000000", "-show_entries",
-                            "stream=index,codec_type,width", "-of", "json", master_url],
-                           capture_output=True, text=True, timeout=120)
-    streams = json.loads(probe.stdout or "{}").get("streams", [])
-    videos = [s for s in streams if s.get("codec_type") == "video"]
-    audio = [s for s in streams if s.get("codec_type") == "audio"]
-    if not videos or not audio:
-        raise RuntimeError(f"no video and audio in the source ({len(videos)} video, {len(audio)} audio)")
-    return max(videos, key=lambda s: s.get("width") or 0)["index"], audio[0]["index"]
-
-
-def push(master_url, target, key):
-    v, a = video_track(master_url)
+def push(target, key):
     run = subprocess.Popen(
-        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-rw_timeout", "20000000",
-         "-i", master_url, "-map", f"0:{v}", "-map", f"0:{a}", "-c", "copy",
+        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-rtmp_live", "live",
+         "-rtmp_buffer", "3000", "-i", SOURCE, "-map", "0:v:0", "-map", "0:a:0", "-c", "copy",
          "-f", "flv", "-flvflags", "no_duration_filesize", INGEST[target].format(key=key),
          "-progress", "pipe:1", "-nostats"],
         stdout=subprocess.PIPE, text=True)
-    note(state="pushing", why=f"{target} ingest, video track {v}, audio track {a}", target=target)
+    note(state="pushing", why=f"the channel to YouTube's {target} ingest", target=target)
     seen = {"at": time.time(), "out": None}
 
     def progress():         # ffmpeg says how far its output has got; a new figure is a sign of life
@@ -131,21 +100,22 @@ def main(check, target):
     while True:
         key = KEY.read_text().strip() if KEY.exists() else ""
         try:
-            url = source()
-            flowing, stamp = moving(url)
-        except Exception as e:  # the box or Reflect not answering is a state, not a crash
-            note(state="unreachable", why=f"{type(e).__name__}: {e}"[:200])
-            flowing, stamp, url = False, None, None
-        if url and not flowing:
-            note(state="frozen", why=f"the source's playlist has not moved; its last segment is {stamp}", last=stamp)
-        elif url and not key:
-            note(state="waiting", why=f"the source flows (last segment {stamp}); no key in {KEY}")
+            flowing, got = arriving()
+        except Exception as e:  # the ingest not answering is a state, not a crash
+            note(state="unreachable", why=f"the ingest: {type(e).__name__}: {e}"[:200])
+            flowing, got = False, None
+        else:
+            if not flowing:
+                note(state="waiting", why="nothing arriving at the ingest" if got is None
+                     else "a publisher is connected but nothing moves")
+            elif not key:
+                note(state="waiting", why=f"the channel arrives; no key in {KEY}")
         if check:
-            print(json.dumps({"source": url, "flowing": flowing, "last_segment": stamp,
+            print(json.dumps({"source": SOURCE, "arriving": flowing, "bytes_in": got,
                               "key": bool(key), "target": INGEST[target].format(key="<key>")}, indent=1))
             return
-        if url and flowing and key:
-            push(url, target, key)
+        if flowing and key:
+            push(target, key)
             continue
         time.sleep(WAIT)
 

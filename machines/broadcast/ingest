@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""ingest — where the Live 350 sends channel 97: an RTMP door on this box, for the relay to read.
+
+    python3 -I machines/broadcast/ingest            run (the broadcast crew's `ingest` line keeps it up)
+    python3 -I machines/broadcast/ingest --check    write the configuration and have nginx test it
+
+Cablecast pushes the channel to its network stream destination "FCPM Digitization",
+rtmp://<this box>/ch97 with the stream name `air`; the name is no secret, the address is the guard:
+only the 350 (and this box, to test) may publish, only this box may read. It is nginx with Debian's
+RTMP module, its own instance, apart from the web's nginx on :80: listening on 1935, its counters on
+127.0.0.1:1936/stat, where the relay sees whether the channel is arriving. Nothing is recorded or
+re-encoded; it holds the one connection from the 350 so the relay's to YouTube can come and go
+without touching it. See PROFILE.md, "To YouTube".
+"""
+import os
+import pathlib
+import sys
+
+ROOT = pathlib.Path.home() / ".local/state/fcpm/broadcast/ingest"
+SENDER = "10.1.10.84"   # the Live 350, as cablecast.ADDRESS
+PORT, STAT = 1935, 1936
+
+CONF = f"""
+load_module /usr/lib/nginx/modules/ngx_rtmp_module.so;
+pid {ROOT}/nginx.pid;
+error_log stderr warn;
+daemon off;
+events {{ worker_connections 64; }}
+rtmp {{
+    server {{
+        listen {PORT};
+        chunk_size 4096;
+        access_log off;
+        application ch97 {{
+            live on;
+            record off;
+            allow publish {SENDER};
+            allow publish 127.0.0.1;
+            deny publish all;
+            allow play 127.0.0.1;
+            deny play all;
+            wait_key on;
+            wait_video on;
+            idle_streams off;
+            drop_idle_publisher 15s;
+        }}
+    }}
+}}
+http {{
+    access_log off;
+    client_body_temp_path {ROOT}/tmp;
+    proxy_temp_path {ROOT}/tmp;
+    fastcgi_temp_path {ROOT}/tmp;
+    uwsgi_temp_path {ROOT}/tmp;
+    scgi_temp_path {ROOT}/tmp;
+    server {{
+        listen 127.0.0.1:{STAT};
+        access_log off;
+        location /stat {{ rtmp_stat all; }}
+    }}
+}}
+"""
+
+
+def main(check):
+    (ROOT / "tmp").mkdir(parents=True, exist_ok=True)
+    conf = ROOT / "nginx.conf"
+    conf.write_text(CONF.lstrip())
+    args = ["/usr/sbin/nginx", "-p", str(ROOT), "-e", "stderr", "-c", str(conf)]
+    if check:
+        os.execv(args[0], args + ["-t"])
+    os.execv(args[0], args)
+
+
+if __name__ == "__main__":
+    main("--check" in sys.argv[1:])

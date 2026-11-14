@@ -1,6 +1,20 @@
 # What the broadcast job serves, when it orders it (broadcast/services). See README.md.
 
 serves:
+  - service: ingest
+    for: "where the Live 350 sends channel 97: an RTMP door on :1935 (nginx's RTMP module, its own instance), publish from the 350 only, read from this box only; see broadcast/PROFILE.md, To YouTube"
+    start: "/usr/bin/python3 -I machines/broadcast/ingest"
+    alive: {port: 1935}
+  - service: fetch
+    for: "channel 97 from the Cablecast box's LAN stream into the ingest, copied, half a minute behind live; see broadcast/PROFILE.md, To YouTube"
+    start: "/usr/bin/python3 -I machines/broadcast/fetch"
+    alive: {process: 'machines/broadcast/fetch(\s|$)'}
+    needs: [ingest]
+  - service: youtube
+    for: "channel 97 to YouTube's primary ingest: the ingest's stream copied by RTMPS with our key, once it is seen arriving; see broadcast/PROFILE.md, To YouTube"
+    start: "/usr/bin/python3 -I machines/broadcast/relay"
+    alive: {process: 'machines/broadcast/relay(\s|$)'}
+    needs: [ingest]
   - service: backup
     for: "the floor: our own steady picture (the brand's slate and the room's clock) on the LAN and on YouTube's backup ingest, stepping off YouTube while a machine on top has the air; see broadcast/PROFILE.md, To YouTube"
     start: "/usr/bin/python3 -I machines/broadcast/standby"

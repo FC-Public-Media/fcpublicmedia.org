@@ -6,9 +6,19 @@ platform: linux
 gear:
   - gear: ffmpeg
     for: >
-      The YouTube relay (relay): Cablecast's web stream read and copied to YouTube by RTMPS,
-      never re-encoded; ffprobe picks the largest picture.
+      The YouTube relay (relay): the 350's stream read from the ingest and copied to YouTube by
+      RTMPS, never re-encoded.
     package: ffmpeg
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own"
+
+  - gear: libnginx-mod-rtmp
+    for: >
+      The ingest (ingest): nginx's RTMP module, run as its own nginx on :1935, where the Live 350
+      pushes the channel for the relay to read.
+    package: libnginx-mod-rtmp
     provisioner: apt
     updates: apt
     restart-tier: app

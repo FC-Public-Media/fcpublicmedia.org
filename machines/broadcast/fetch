@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""fetch — channel 97 from the Cablecast box on the LAN into the ingest, for the relay to carry.
+
+    python3 -I machines/broadcast/fetch            run (the broadcast crew's `fetch` line keeps it up)
+    python3 -I machines/broadcast/fetch --check    say what it would read, send nothing
+
+The box serves the channel's live stream on the LAN (https://10.1.10.84/live-5/..., the same HLS
+Reflect copies to the web). This box can reach it, while the box cannot reach this one (the video
+subnet sits behind its router), so we fetch rather than wait for a push. The largest picture and the
+audio are copied, never re-encoded, into the ingest (rtmp://127.0.0.1/ch97/air), read three segments
+behind live and at the pace of the clock: half a minute of slack against a late segment. If the
+output stops moving for a minute, ffmpeg is ended and started again. Only one thing can publish to
+the ingest at a time; while this runs, the 350's own push would be refused. See PROFILE.md, "To YouTube".
+"""
+import json
+import pathlib
+import subprocess
+import sys
+import threading
+import time
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import cablecast  # noqa: E402  the box's address
+
+SOURCE = f"https://{cablecast.ADDRESS}/live-5/live/stream-1/live.m3u8"
+INGEST = "rtmp://127.0.0.1:1935/ch97/air"
+STALL = 60
+
+
+def tracks():
+    """ffmpeg's indexes of the widest video and the first audio in the source."""
+    probe = subprocess.run(["ffprobe", "-v", "error", "-rw_timeout", "20000000", "-show_entries",
+                            "stream=index,codec_type,width", "-of", "json", SOURCE],
+                           capture_output=True, text=True, timeout=120)
+    streams = json.loads(probe.stdout or "{}").get("streams", [])
+    videos = [s for s in streams if s.get("codec_type") == "video"]
+    audio = [s for s in streams if s.get("codec_type") == "audio"]
+    if not videos or not audio:
+        raise RuntimeError(f"no video and audio at {SOURCE} ({len(videos)} video, {len(audio)} audio)")
+    return max(videos, key=lambda s: s.get("width") or 0)["index"], audio[0]["index"]
+
+
+def main(check):
+    v, a = tracks()
+    if check:
+        print(json.dumps({"source": SOURCE, "video": v, "audio": a, "to": INGEST}, indent=1))
+        return
+    run = subprocess.Popen(
+        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-rw_timeout", "20000000",
+         "-live_start_index", "-3", "-re", "-i", SOURCE, "-map", f"0:{v}", "-map", f"0:{a}",
+         "-c", "copy", "-f", "flv", INGEST, "-progress", "pipe:1", "-nostats"],
+        stdout=subprocess.PIPE, text=True)
+    print(f"fetch: {SOURCE} video {v} audio {a} -> {INGEST}", flush=True)
+    seen = {"at": time.time(), "out": None}
+
+    def progress():
+        for line in run.stdout:
+            if line.startswith("out_time_us=") and line != seen["out"]:
+                seen.update(at=time.time(), out=line)
+
+    threading.Thread(target=progress, daemon=True).start()
+    while run.poll() is None:
+        if time.time() - seen["at"] > STALL:
+            print(f"fetch: no output for {STALL} s; ffmpeg stopped", flush=True)
+            run.terminate()
+            try:
+                run.wait(10)
+            except subprocess.TimeoutExpired:
+                run.kill()
+            sys.exit(1)
+        time.sleep(2)
+    sys.exit(f"fetch: ffmpeg ended ({run.returncode})")
+
+
+if __name__ == "__main__":
+    main("--check" in sys.argv[1:])

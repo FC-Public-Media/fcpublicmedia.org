@@ -103,20 +103,35 @@ has no play.
 
 ## To YouTube
 
-Channel 97 goes to YouTube all day, everything on it, from Cablecast itself: the Live 350 pushes it to
-the YouTube network stream destination (`addOutput`), with YouTube's current key. Our part is to be
-under it, never to carry it.
+Channel 97 goes to YouTube all day, everything on it, through us: we take the channel on the LAN
+from the Cablecast box and carry it to YouTube with our key. Cablecast holds no YouTube destination
+and no YouTube key; the key lives only in our keychain (`youtube` group). The one internet leg is
+ours, so when YouTube complains, the evidence is here.
 
-Whether the 350 pushes to a destination is a switch: attaching it (`addOutput`, a forced event) starts
-the push and detaching it (`removeOutput`) stops it. The box's automation status lists what is attached,
-and reading it needs no key. `cablecast.py push [NAME on|off]` says or switches, and the door's
-`/broadcast/` page (`helm.fcpublicmedia.local/broadcast/`) shows each destination with its switch, for
-whoever is on Helm; switching needs the token, so it works where the token is kept.
+[`fetch`](fetch), the crew's `fetch` line, reads the channel's live stream from the box itself
+(`https://10.1.10.84/live-5/...`, the HLS that Reflect copies to the web): the largest picture and
+the audio, copied, three segments behind live and paced by the clock, half a minute of slack against
+a late segment. This box can reach the box; the box cannot reach this one, because the video subnet
+sits behind its router (2026-11-06: the 350 attached to "FCPM Digitization", nothing ever arrived on
+1935). So we fetch. A push from the 350 would need that router to forward 1935 to this box, and
+then `fetch` stops, since the ingest takes one publisher at a time.
 
-[`relay`](relay) is the emergency tool if the 350 cannot push: it copies the channel's web stream (taken
-on the LAN from the 350, the cloud copy as fallback) to YouTube's primary ingest without re-encoding,
-and pushes only once the source is seen to move. It is not a crew line; `relay --check` says what it
-would do. It carried the channel on 2026-10-22 from 00:03 while the 350's own push could not.
+[`ingest`](ingest), the crew's `ingest` line, is where the channel lands, fetched or pushed: nginx with Debian's RTMP module,
+its own instance (not the web's nginx on :80), listening on 1935. Only the 350 may publish, only this
+box may read; nothing is recorded or re-encoded. It holds the 350's one connection, so our side can
+come and go without touching Cablecast. Its counters are on `127.0.0.1:1936/stat`.
+
+[`relay`](relay), the crew's `youtube` line, reads the ingest on loopback and copies it to YouTube's
+primary ingest by RTMPS, as it arrives, once the counters show the channel moving. If its output
+stops for a minute it is ended and started again; if the 350 goes, the ingest ends the stream and the
+relay waits for it, while YouTube shows the floor (below). Latency is spent for steadiness: a three
+second read buffer, one encode (the 350's), one hop on the LAN, one to YouTube. `relay --check` says
+what it sees; `relay.json` keeps it for any screen.
+
+Whether the 350 pushes is a switch: attaching the destination (`addOutput`, a forced event) starts
+the push and detaching it (`removeOutput`) stops it. Destinations themselves are made and edited
+only in Cablecast's web interface; its API lists them and nothing more. `cablecast.py push [NAME
+on|off]` says or switches, and the door's `/broadcast/` page shows each destination with its switch.
 
 When the channel's stream pauses (a gap in the schedule, an IP-exempt program), YouTube would end the
 broadcast. So YouTube's backup ingest is fed in layers, each one able to stand alone.
