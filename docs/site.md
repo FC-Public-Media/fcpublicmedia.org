@@ -168,6 +168,11 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
   `cloudflare` group: digitization, and bay 1 in Git Bash ([production](../machines/production/PROFILE.md#deploy)).
   Each machine has its own token, so one can be revoked alone. `fcpm deploy` runs it; `fcpm deploy --build`
   (`bin/deploy-site --build`) refreshes, builds and checks without uploading, and keeps the copy.
+- The worker goes first. Before uploading, `site/bin/tanks_live.py` asks the live site-worker about every
+  form in the build: its tank (`data-tank`, or a script's own `form: '...'`, as `book.js`'s) and every field it
+  sends. A tank or field the worker doesn't have yet stops the deploy, named, with nothing uploaded; a worker
+  that can't be asked stops it too. The probe ends in a field no tank has, so the worker refuses it before
+  keeping anything. On 2026-10-28 `/learn` sent `instructor@2` for 80 minutes before the worker had it.
 - The board's **Deploy** (`/deploy/`, on every helm) shows what is live beside main and sets down
   `wizard:site+deploy` naming main's commit. The helm whose job holds it in `machines/helms.yml` runs
   `bin/deploy-site` if its checkout is at that commit, one deploy at a time, into `deploy.log` beside its
