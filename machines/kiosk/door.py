@@ -31,7 +31,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
     GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, from that page only
     GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
-    GET /deploy/now        the same as JSON, with the deploy's log where it runs here
+    GET /deploy/now        the same as JSON, with the deploy's log where it runs here and the PRs waiting on main
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
     GET /room/<room>/      a room's hallway door, any shape (rooms/<room>.yml): who is hosting, what is coming, what is in
     GET /room/<room>/now   the same as JSON. The page polls it
@@ -4304,7 +4304,35 @@ def deploy_now():
         except OSError:
             pass
     return {"live": live, "head": full[:7], "subject": subject, "holder": holder[0] if holder else None,
-            "here": here, "running": here and replies.deploying(), "log": tail}
+            "here": here, "running": here and replies.deploying(), "log": tail, "pulls": pulls_open()}
+
+
+PULLS_REPO = "FC-Public-Media/fcpublicmedia.org"
+_pulls = {"at": 0.0, "rows": None, "lock": threading.Lock()}
+
+
+def pulls_open():
+    """The pull requests waiting to merge into main, as gh here sees them; None where gh can't ask. Kept a minute."""
+    with _pulls["lock"]:
+        if time.time() - _pulls["at"] < 60:
+            return _pulls["rows"]
+        _pulls["at"] = time.time()
+        try:
+            r = subprocess.run(["gh", "pr", "list", "-R", PULLS_REPO, "--base", "main", "--state", "open", "--json",
+                                "number,title,author,url,isDraft,statusCheckRollup,reviewRequests"],
+                               capture_output=True, text=True, timeout=20)
+            found = json.loads(r.stdout) if r.returncode == 0 else None
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            found = None
+        _pulls["rows"] = None if found is None else [{
+            "number": p["number"], "title": p["title"], "url": p["url"], "draft": p["isDraft"],
+            "by": (p.get("author") or {}).get("login"),
+            "review": [q.get("login") or q.get("name") for q in p.get("reviewRequests") or []],
+            "checks": [{"name": c.get("name") or c.get("context"),
+                        "state": (c.get("conclusion") or c.get("state") or c.get("status") or "").lower()}
+                       for c in p.get("statusCheckRollup") or []],
+        } for p in found]
+        return _pulls["rows"]
 
 
 def deploy_page():
@@ -4314,6 +4342,7 @@ def deploy_page():
 data, builds main, checks it and uploads it, in a few minutes. It runs on the machine whose helm holds the deploy,
 with that machine's own key.</p>
 <section class=here id=state></section>
+<section id=pulls hidden><h3>Waiting to merge</h3><ul></ul></section>
 <p><button id=go disabled>Deploy</button></p>
 <p class=dim id=said></p><pre id=log></pre></main>%s""" % (masthead("%s &middot; deploy" % e(socket.gethostname().lower())),
                                                       DEPLOY_JS)
@@ -4323,6 +4352,8 @@ with that machine's own key.</p>
 DEPLOY_CSS = BOARD_CSS + """
 #state { display:grid; grid-template-columns:max-content 1fr; gap:.4rem 1.2rem; margin:1.2rem 0; }
 #state b { color:var(--paper); } #log { font-size:.8rem; color:var(--dim); white-space:pre-wrap; }
+#pulls ul { list-style:none; margin:.4rem 0 1.2rem; padding:0; } #pulls li { margin:.5rem 0; }
+#pulls a { color:var(--paper); text-decoration:none; } #pulls .dim { display:block; font-size:.85rem; }
 #said { min-height:1.4em; }
 """
 
@@ -4341,6 +4372,25 @@ DEPLOY_JS = """<script>
     go.disabled = !d.holder || d.running || !!said.dataset.busy;
     if (d.running) said.textContent = 'Deploying...';
     logs.textContent = d.log.join('\\n');
+    pulls(d.pulls);
+  }
+  var WORD = {success: 'passed', failure: 'failed', cancelled: 'cancelled', skipped: 'skipped', neutral: 'neutral',
+              in_progress: 'running', queued: 'waiting', pending: 'running', error: 'failed', timed_out: 'timed out'};
+  function pulls(list) {
+    var box = document.getElementById('pulls'), ul = box.querySelector('ul');
+    box.hidden = !list; if (!list) return;
+    ul.textContent = '';
+    if (!list.length) { var none = document.createElement('li'); none.className = 'dim'; none.textContent = 'Nothing.'; ul.append(none); return; }
+    list.forEach(function (p) {
+      var li = document.createElement('li'), a = document.createElement('a'), s = document.createElement('span');
+      a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '#' + p.number + ' ' + p.title;
+      var bits = [p.draft ? 'draft' : null, p.by ? 'by ' + p.by : null];
+      p.checks.forEach(function (c) { bits.push(c.name + ' ' + (WORD[c.state] || c.state || 'not run')); });
+      if (!p.checks.length) bits.push('no checks yet');
+      if (p.review.length) bits.push('review: ' + p.review.join(', '));
+      s.className = 'dim'; s.textContent = bits.filter(Boolean).join(' · ');
+      li.append(a, s); ul.append(li);
+    });
   }
   function now() { fetch('/deploy/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
   function hex(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }

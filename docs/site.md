@@ -177,6 +177,9 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
   `wizard:site+deploy` naming main's commit. The helm whose job holds it in `machines/helms.yml` runs
   `bin/deploy-site` if its checkout is at that commit, one deploy at a time, into `deploy.log` beside its
   replies; any other helm passes the bottle there. Moving the deploy to another machine is that one line.
+- The same page lists the pull requests waiting to merge into main: title, author, each check's result and
+  whose review is asked, linked to GitHub. It asks with that helm's own `gh`, once a minute, so it shows what
+  GitHub's inbox would, without the inbox. A helm without `gh` signed in leaves the list off.
 - The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
   `airings.json` and `nonprofits.json` are what the LAN build and the tests
   use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.
