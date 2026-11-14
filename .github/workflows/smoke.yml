@@ -75,6 +75,9 @@ jobs:
       - name: Check nothing internal reached the site
         run: python3 site/bin/test_nothing_internal_is_published.py
 
+      - name: Test the deploy's tank guard (offline)
+        run: python3 site/bin/test_tanks_live.py
+
       - name: Test the kiosk artifact builder
         run: python3 bin/test_build_kiosk.py
 
