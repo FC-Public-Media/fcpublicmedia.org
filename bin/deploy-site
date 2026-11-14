@@ -9,7 +9,8 @@
 #
 # It works in a throwaway copy of HEAD, so this checkout is never touched. The refresh is what GitHub's
 # scheduled workflows used to commit: the Cablecast catalog and airings, the IRS nonprofit list, member
-# sites. A refresh that fails keeps the committed copy and says so; the deploy goes on.
+# sites. A refresh that fails keeps the committed copy and says so; the deploy goes on. A form whose tank or
+# field the live site-worker doesn't have yet stops it, before anything is uploaded (site/bin/tanks_live.py).
 
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -44,6 +45,12 @@ printf 'revision: %s\n' "$(git rev-parse --short HEAD)" > _revision.yml
 JEKYLL_ENV=production jekyll build --quiet --config _config.yml,_revision.yml
 py bin/test_nothing_internal_is_published.py
 py bin/test_site_runs_no_code.py
+# Every form's tank, and every field it sends, must already be live on the site-worker, so a page never goes up
+# ahead of its tank. It asks the worker without leaving a reply behind (site/bin/tanks_live.py).
+if ! py bin/tanks_live.py _site; then
+  [ "${1:-}" = --build ] || { echo "deploy-site: not uploading. Deploy the site-worker first, then run this again."; exit 1; }
+  echo "deploy-site: a deploy would stop here (above)."
+fi
 if [ "${1:-}" = --build ]; then
   echo "built: $COPY/site/_site (remove with: git worktree remove --force $COPY)"
   exit 0
