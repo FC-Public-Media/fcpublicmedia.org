@@ -8,7 +8,9 @@
 
 replies.py queues each question under the door's state (asks/queue/, oldest first). Each is asked as the
 shape model+ask says (machines/production/shapes/ask.yml: our role first, the asker's own instructions inside
-it, their quoted context and question after), at its effort word as machines/production/model.yml maps it.
+it, their quoted context and question after), at its effort word as machines/production/model.yml maps it, on
+a model bay 1 serves: one already loaded, else the first it lists (pins in machines/production/models/<name>.yml).
+There is no default model; the answer names the model that gave it.
 Its words are then reduced to a label (shapes/label.yml), which is how a phone filters a category. The
 answer is kept as asks/answers/<nonce>.json, named by the question's nonce: the asker's phone holds that
 nonce, and finds its answer by it in the public loop. The question moves to asks/done/.
@@ -20,8 +22,11 @@ then falls off it and stays on hand; wizard:loop+recall brings one back, at once
 running loop (inject). A phone reads the index, then keeps only the frames whose id
 it wants. The door's /loop/ draws the index and the bottles in turn; it bottles nothing itself.
 
-When the model is off (bay 1 asleep, `fcpm model off`), the question stays queued and is asked again in a
-minute. Nothing here decides who may ask; replies.py has already read and checked the bottle.
+When bay 1 serves no model (asleep, `fcpm model off`, nothing picked), the question stays queued and is asked
+again in a minute. Nothing here decides who may ask; replies.py has already read and checked the bottle.
+
+Bay 1 serves every model of its spread on one port; what it lists (its /models) is what has joined, and
+state.json carries that list for qr.local: each model, its lab and size, and whether it is loaded.
 """
 import datetime
 import hashlib
@@ -49,7 +54,9 @@ LOOP_MOST = 40                    # the most answers the loop carries at once
 PUBLIC = ("schema", "in_reply_to", "shape", "label", "answer", "effort", "finish", "model", "model_sha256",
           "seed", "answered")     # what an answer's bottle carries: not who signed, not the question
 MODEL_YML = ROOT / "machines" / "production" / "model.yml"
+SPREAD = ROOT / "machines" / "production" / "models"
 URL = "http://%s/v1/chat/completions" % os.environ.get("FCPM_MODEL_AT", "10.209.1.20:9931")
+LISTED = URL.replace("/v1/chat/completions", "/models")
 TIMEOUT = 600
 IDLE, ASLEEP = 5, 60
 
@@ -62,8 +69,23 @@ def shape(name):
     return replies.load_yaml(SHAPES / ("%s.yml" % name)) or {}
 
 
+def facts(name=None):
+    """model.yml with one model's own file over it (models/<name>.yml); model.yml alone without a name."""
+    base = replies.load_yaml(MODEL_YML) or {}
+    if not name:
+        return base
+    own = SPREAD / ("%s.yml" % name)
+    return dict(base, **(replies.load_yaml(own) if own.is_file() else {"model": name}))
+
+
 def knobs(effort, answer, model):
-    """Our effort word as this model's knobs (model.yml); a knob the file doesn't name isn't sent."""
+    """Our effort word as this model's knobs (model.yml); a knob the file doesn't name isn't sent. A model
+    that always thinks (thinking: effort) gets its own level for the word, and room to think at either."""
+    if model.get("thinking") == "effort":
+        k = {"max_tokens": int(model.get("considered-thinking") or 0) + answer}
+        if model.get("%s-effort" % effort):
+            k["chat_template_kwargs"] = {"reasoning_effort": model["%s-effort" % effort]}
+        return k
     if effort == "considered" and model.get("considered-thinking") is not None:
         k = {"max_tokens": int(model["considered-thinking"]) + answer,
              "thinking_budget_tokens": int(model["considered-thinking"])}
@@ -143,7 +165,10 @@ def answer_one(send=post, on=None):
         folder("held").mkdir(parents=True, exist_ok=True)     # unreadable: set aside, never asked again and again
         shutil.move(str(path), str(folder("held") / path.name))
         return path.stem
-    sh, model = shape("ask"), replies.load_yaml(MODEL_YML) or {}
+    who = answerer()
+    if not who:
+        raise urllib.error.URLError("bay 1 serves no model")
+    sh, model = shape("ask"), facts(who)
     seed = seed_of(q["nonce"])
     if on:
         on(q["nonce"])
@@ -190,9 +215,42 @@ def pour_both(kind, text):
     return got
 
 
+def joined(fetch=None):
+    """What bay 1 lists now (its /models), in the spread's order, each {model, lab, params, active, state};
+    [] when it doesn't answer. A model it lists that the spread doesn't know is shown by its name alone."""
+    try:
+        if fetch:
+            listed = fetch()
+        else:
+            with urllib.request.urlopen(LISTED, timeout=5) as r:
+                listed = json.load(r)
+        listed = {d["id"]: (d.get("status") or {}).get("value") for d in listed.get("data") or []}
+    except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return []
+    known = sorted(SPREAD.glob("*.yml"))
+    order = [p.stem for p in known if p.stem in listed] + sorted(set(listed) - {p.stem for p in known})
+    out = []
+    for name in order:
+        f = facts(name) if (SPREAD / ("%s.yml" % name)).is_file() else {}
+        out.append({"model": name, "lab": f.get("lab"), "params": f.get("params"), "active": f.get("active"),
+                    "state": listed[name] or "loaded"})     # a one-model server lists only what it serves
+    return out
+
+
+def answerer(listed=None):
+    """Who answers: a model bay 1 has loaded (no swap on the card), else the first it lists; None when it lists
+    none, and the question waits."""
+    listed = joined() if listed is None else listed
+    loaded = [m["model"] for m in listed if m.get("state") == "loaded"]
+    return (loaded or [m["model"] for m in listed] or [None])[0]
+
+
 def say(**state):
-    """asks/state.json: who answers and how it is, for qr.local's inbox bar. Written only when it changes."""
-    now = dict({"shape": "model+ask", "by": "bay 1", "model": (replies.load_yaml(MODEL_YML) or {}).get("model")}, **state)
+    """asks/state.json: who answers and how it is, for qr.local's inbox bar, and the models bay 1 lists while it
+    is up. Written only when it changes."""
+    listed = joined() if state.get("up") else []
+    now = dict({"shape": "model+ask", "by": "bay 1", "model": answerer(listed)}, **state)
+    now["models"] = listed
     path = replies.STATE / "asks" / STATE_FILE
     try:
         was = json.loads(path.read_text(encoding="utf-8"))

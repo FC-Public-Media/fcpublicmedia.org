@@ -10,6 +10,7 @@ gear:
     for: everything; Git Bash is also the shell `../sync` and bin/refs run in
     package: Git.Git
     provisioner: winget
+    scope: machine
     updates: winget
 
   - gear: claude-code
@@ -44,6 +45,7 @@ gear:
     # Authenticode Valid, signed OpenAI OpCo, LLC, not Astral. Another signer is a question.
     signer: OpenAI OpCo, LLC
     provisioner: winget       # --scope user, no administrator. 0.12.19, 2026-09-26
+    scope: user
     updates: winget
     restart-tier: none
     # An older shell: %LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe
@@ -54,6 +56,7 @@ gear:
     package: Gyan.FFmpeg
     vendor: Gyan Doshi's builds of FFmpeg (gyan.dev), GPL-3.0
     provisioner: winget       # --scope user, no administrator
+    scope: user
     updates: winget
     restart-tier: none
 
@@ -64,6 +67,22 @@ gear:
     vendor: OpenJS Foundation (nodejs.org), LTS
     provisioner: bay          # the zip, published with SHASUMS256.txt; bay/node-24.21.0.yml
     updates: bay
+    restart-tier: none
+
+  - gear: ruby
+    for: building the site to deploy it (bin/deploy-site, `fcpm deploy`): Ruby and its DevKit (MSYS2), which
+      Jekyll's native gems compile with. The minor of the root's .ruby-version
+    package: RubyInstallerTeam.RubyWithDevKit.3.2
+    vendor: RubyInstaller (rubyinstaller.org), BSD-3-Clause
+    provisioner: winget       # --scope user, no administrator; then `ridk install` (MSYS2 and its toolchain)
+    scope: user
+    updates: winget
+    restart-tier: none
+
+  - gear: jekyll
+    for: the site's build, from site/Gemfile (Jekyll 4.3 and what Ruby 3 dropped). check.ps1 asks `ruby -S jekyll`
+    provisioner: gem          # `bundle install` in refs\fcpublicmedia.org\site, after ruby
+    updates: gem
     restart-tier: none
 
   - gear: audition
@@ -100,12 +119,14 @@ gear:
     restart-tier: none
 
   - gear: llama-cpp
-    for: the language model (model.yml, `fcpm model`): llama-server on the RTX 4080,
-      OpenAI-shaped, listening on the switched network only. Qwen3.5 4B first
+    for: the language models (model.yml, `fcpm model`): llama-server on the RTX 4080,
+      OpenAI-shaped, listening on the switched network only, serving the spread
+      (models/README.md) by name, those picked
     at: "%LOCALAPPDATA%\editing-bay-1\model\llama\llama-server.exe"
-    vendor: ggml-org (github.com/ggml-org/llama.cpp), MIT; Qwen (Qwen3.5 4B), Apache-2.0
-    signer: none; a GitHub build attestation on each zip, and the model checked by
-      its sha256 (model.yml)
+    vendor: ggml-org (github.com/ggml-org/llama.cpp), MIT; the models' labs (Qwen, Google,
+      OpenAI, IBM), each Apache-2.0
+    signer: none; a GitHub build attestation on each zip, and each model checked by
+      its sha256 (models/<name>.yml)
     provisioner: bay          # fcpm model install; bay/llama-cpp-b12047.yml
     updates: bay
     restart-tier: none        # started and stopped by fcpm model on / off; no service, no task

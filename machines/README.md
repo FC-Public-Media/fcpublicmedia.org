@@ -3,20 +3,23 @@
 One folder per job a machine does, named for the job. A computer takes the job by answering to the
 folder's `names` ([`binding`](binding)); what the computer is, and what it is called on its sticker
 and by Windows, is in the folder's `PROFILE.md`. A computer without a job or a name yet keeps a
-placeholder (`editing-bay-2`, `thin-client`). Profiles, sync and grants: [`docs/station.md`](../docs/station.md).
+placeholder (`editing-bay-2`, `thin-client`). Every folder here needs a `PROFILE.md`, and every `names`
+line must parse: [`bin/test_binding.py`](../bin/test_binding.py) checks both in smoke, and it is the usual suspect
+when a job is added, renamed or moved. Run it before pushing (a stray `__pycache__` here fails it locally too). Profiles, sync and grants: [`docs/station.md`](../docs/station.md).
 Gear comes from [`troves/`](../troves/README.md).
 
 | job | looks after | the computer |
 |---|---|---|
 | [`production`](production/CREW.md) | recordings after they land: pools, transcription, episodes, release; it drives the roller TV for the kiosk and hosts digitization's tank | editing bay 1 (`EDIT2`) |
 | [`kiosk`](kiosk/CREW.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
-| [`qr`](qr/PROFILE.md) | the kiosk's pickup point ([`troves/scanner`](../troves/scanner/README.md)) | a Raspberry Pi 3 |
+| [`qr`](qr/PROFILE.md) | the kiosk's pickup point and the intake by camera ([`troves/scanner`](../troves/scanner/README.md)); `qr.local` | the OptiPlex 9020M, beside digitization; cameras join by leash |
 | [`thin-client`](thin-client/PROFILE.md) | the kiosk's overflow console, beside the scanner | a donated HP t510 |
 | [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
 | [`static`](static/CREW.md) | finished sites to the LAN by name, by nginx: the public site (built here when it moves) and the Wix copy | the OptiPlex 9020M, beside digitization |
 | [`broadcast`](broadcast/PROFILE.md) | channel 97: what plays out and records, its schedule, our fields on its shows, the public Internet Channel. Vendor software we drive by its API ([`cablecast.py`](broadcast/cablecast.py)) | the Cablecast server in the building's server room (`10.1.10.84`) |
 | [`jukebox`](jukebox/README.md) | the house's music: the cleared music on the wearer's own disks, one stream, for the standby page. A role any job orders with one `services` line | editing bay 1 first; whoever orders it |
+| [`bounce`](bounce/CREW.md) | the captive bounce: its own open Wi-Fi whose sign-in sheet opens our page with no internet and nothing typed (the community-ping study, proven as a peer) | [the Raspberry Pi 3](bounce/PROFILE.md) (`bounce`) |
 
 [`cards/`](cards/README.md) are boot cards, not jobs: each carries the checkout, so it can start any job.
 
@@ -46,3 +49,11 @@ Each job a machine does has one supervisor there, `machines/crew.py serve <job>`
 - **Start lines** fill `{python}` (Windows: uv, Python 3.12, pyyaml; Linux: the supervisor's own `python3`, with `python3-yaml`), `{home}`, `{code}`, `{repo}`. Children get no console; each line logs to `%LOCALAPPDATA%\editing-bay-1\crew\<name>.log`, or `~/.local/state/fcpm/crew/<name>.log` on Linux. A named mutex (Linux: a lock file there) keeps one supervisor per job per machine.
 - **Windows only:** a scheduled task (S4U), a named mutex, the session id for "has a desktop", `taskkill /T`, `Win32_Process`.
 - **Linux only:** one systemd instance per job, all under `fcpm.target` (`machines/fcpm-crew@.service`, `machines/fcpm.target`), restarted by systemd; `DISPLAY` for "has a desktop"; each line in its own process group; `/proc` for process patterns.
+
+## The loudspeaker
+
+One stream of every signal a machine hears, one line each: `<UTC time>\t<who>\t<what>`. [`loudspeaker`](loudspeaker) is the program; on digitization it is the crew's `loudspeaker` line.
+
+- **Hear it:** `fcpm hear` (or `nc digitization.local 9798`, `curl -N http://digitization.local:9798/`, a browser): the last 20 lines, then live. Everything it said is in `~/.local/state/fcpm/loudspeaker.log`, for cat and grep. It is open to the LAN, as the rest of our metadata is.
+- **Speak on it:** `fcpm say WHO WHAT...`, or one UDP datagram to port 9797 from anywhere on the LAN, a line each, `WHO<tab>WHAT` (`printf 'bay1\tobs up\n' > /dev/udp/digitization.local/9797`). A speaker from another machine is written `who@address`.
+- **What it follows:** `<job>/loudspeaker.yml` of each job the machine's `names` puts it in. `file:` taps say each new line of a log (a glob speaks as `who/<file stem>`); `run:` taps say each line a long-running command prints (digitization's `lan` is `avahi-browse`: every service that appears on, resolves on or leaves the LAN). `quiet:` leaves out the lines matching it.

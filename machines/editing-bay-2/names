@@ -1,5 +1,4 @@
-# What this machine should answer to; `../binding` asks it. Unfilled: on the machine, run
-# `scutil --get LocalHostName` and put the answer below, never the sticker. See docs/station.md.
+# What this machine should answer to; `../binding` asks it (`$env:COMPUTERNAME`). See docs/station.md.
 
 # platform   key             value
-# darwin     LocalHostName
+windows      ComputerName    FCPMEDIT2

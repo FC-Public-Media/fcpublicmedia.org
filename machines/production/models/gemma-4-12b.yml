@@ -1,0 +1,12 @@
+model: gemma-4-12b
+family: gemma-4
+lab: Google
+params: 12
+active: 12
+quant: Q4_0
+license: apache-2.0
+file: gemma-4-12b-it-qat-q4_0.gguf
+source: https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf/resolve/main/gemma-4-12b-it-qat-q4_0.gguf
+size: 6975879296
+sha256: 93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b
+why: "another lab beside the 9B rung, quantized by Google itself: a size threshold or one lab's training"

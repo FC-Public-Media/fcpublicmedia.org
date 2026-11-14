@@ -1,0 +1,20 @@
+# The island reaches the box's DHCP, DNS and page only; everything else is refused at once, and nothing is forwarded.
+table inet fcpm_bounce
+delete table inet fcpm_bounce
+table inet fcpm_bounce {
+	chain input {
+		type filter hook input priority filter; policy accept;
+		iifname != "wlan0" accept
+		ct state established,related accept
+		udp dport { 53, 67 } accept
+		tcp dport { 53, 80 } accept
+		icmp type echo-request accept
+		meta l4proto tcp reject with tcp reset
+		reject with icmpx type admin-prohibited
+	}
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		iifname "wlan0" drop
+		oifname "wlan0" drop
+	}
+}

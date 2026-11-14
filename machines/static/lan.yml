@@ -9,4 +9,3 @@ shared:
   www: site
   wix: wix
   you: members       # member projects without a name of their own: you.fcpublicmedia.local/<show>/
-  nccv.you: nccv     # NCCV, a member site with its own origin: nccv.you.fcpublicmedia.local

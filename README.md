@@ -13,13 +13,15 @@ Contents:
 
 ## Setting up a machine
 
-On a studio computer that has Git, paste this into any window, cmd or PowerShell:
+On a studio computer running Windows, paste this into any window, cmd or PowerShell. The
+word at the end is the computer's job: `production` (editing bay 1) or `editing-bay-2`.
 
-    powershell -NoProfile -Command "git config --global core.autocrlf false; if (Test-Path $HOME\code\refs\fcpublicmedia.org) { git -C $HOME\code\refs\fcpublicmedia.org pull -q } else { git clone -q https://github.com/FC-Public-Media/fcpublicmedia.org $HOME\code\refs\fcpublicmedia.org }; & 'C:\Program Files\Git\bin\bash.exe' -c '~/code/refs/fcpublicmedia.org/machines/fcpm install'"
+    powershell -NoProfile -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/FC-Public-Media/fcpublicmedia.org/main/machines/start.ps1))) editing-bay-2"
 
-It gets this repository, or updates it, then puts the computer's profile on. That
-includes the working copy people edit in and a weekly pull. From then on, type
-`fcpm`. See [`docs/station.md`](docs/station.md).
+It installs Git if it is missing (Windows asks once), gets this repository or updates it,
+installs the job's gear, then puts the job's profile on. That includes `fcpm` on the PATH,
+the working copy people edit in and a weekly pull. From then on, type `fcpm`. Pasting it
+again is safe. See [`docs/station.md`](docs/station.md).
 
 ## Site
 

@@ -1,7 +1,7 @@
-// /reserve/'s studio request: a space, who you are, a day and a start time (always two hours), and a
-// host. The week is drawn from site/_data/hosts.yml as it is: a day in `days` with hours is a column,
-// in the file's order, and a person's key for that day is their hours there. Hours are cut into
-// two-hour slots with an hour between them, so 11–4 is 11–1 and 2–4.
+// /reserve/'s studio request: a space, who you are, a day and a start time (one session), and a host.
+// Everything about the week is site/_data/hosts.yml as it is: a day in `days` with hours is a column, in
+// the file's order; a person's key for that day is their hours there, cut into `session`s with `between`
+// between them. Nothing here names a host or their hours.
 //
 // Picking a host when no time is picked by hand picks their slot; picking a slot when no host is
 // picked by hand picks its host. Once both are picked by hand they no longer follow each other, and
@@ -16,8 +16,6 @@ import { keep, markSent } from './keep.js';
 
 const PROFILE_KEY = 'fcpm.profile';
 const MINE_KEY = 'fcpm.bookings';
-const SLOT = 120;
-const BREAK = 60;
 const SNAP = 15;
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -83,7 +81,10 @@ const WEEKS = weekPicks.length;
 
 /* ------------------------------------------------------------------ hosts */
 
-// The days with hours, in the file's order: Tuesday to Saturday today.
+const SLOT = minutes(hosts.session);
+const BREAK = minutes(hosts.between);
+
+// The days with hours, in the file's order.
 const days = Object.entries(hosts.days || {})
   .filter(([, hours]) => Array.isArray(hours))
   .map(([code]) => ({ code, label: hosts.labels[code] || code, weekday: WEEKDAYS.indexOf(hosts.labels[code]) }))
@@ -105,8 +106,8 @@ const hostsOf = (code) => people.filter((person) => Array.isArray(person[code]))
 
 // The shown span of the day: the earliest slot to the end of the latest, and a quarter hour either side.
 const everySlot = days.flatMap((day) => people.flatMap((person) => slotsOf(person, day.code)));
-const top = (everySlot.length ? Math.min(...everySlot) : 11 * 60) - SNAP;
-const bottom = (everySlot.length ? Math.max(...everySlot) + SLOT : 17 * 60) + SNAP;
+const top = Math.min(...everySlot) - SNAP;
+const bottom = Math.max(...everySlot) + SLOT + SNAP;
 const span = bottom - top;
 // What the bumpers ask for, until the start box is changed: before the day, and after it.
 const EARLIER = Math.min(9 * 60, Math.floor((top - 60) / 60) * 60);
@@ -477,5 +478,6 @@ if (kept) {
 showSpace();
 draw();
 drawMine();
-planner.hidden = false;
-form.querySelector('[data-weeks]').hidden = false;
+// No hours in hosts.yml, no week: the start box alone.
+planner.hidden = !everySlot.length;
+form.querySelector('[data-weeks]').hidden = !everySlot.length;

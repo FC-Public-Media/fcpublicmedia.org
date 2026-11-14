@@ -24,7 +24,9 @@ grants: [docs/station.md](../../docs/station.md).
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
-| `model.ps1`, `model.yml`, `shapes/` | `fcpm model`: the language model, an instrument answering the switched network only (llama.cpp, Qwen3.5 4B); its effort words, the shapes it offers, and the contexts it keeps |
+| `model.ps1`, `model.yml`, `models/`, `shapes/` | `fcpm model`: the language models, an instrument answering the switched network only (llama.cpp serving the models picked from the spread in [`models/`](models/README.md)); its effort words, the shapes it offers, and the contexts it keeps |
+| `helm.ps1` | `fcpm helm`: this bay's helm, the crew's `helm` line (the door's intake and pages only, on 8080), which takes what a peer helm passes it ([`../helms.yml`](../helms.yml)); its one rule |
+| `keys.yml` | its own keychain (`fcpm keys`, [`../keys`](../keys)): a Cloudflare token for the site's deploy and the tanks' drain. See Deploy |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
 ## Inbound
@@ -35,17 +37,39 @@ program, a port and an address range:
 | rule | placed by | admits |
 |---|---|---|
 | `fcpm-model inbound` | `fcpm model grant` | TCP 9931 to llama-server.exe, from 10.209.1.0/24 |
+| `fcpm-helm inbound` | `fcpm helm grant` | TCP 8080, the crew's `helm` line (its Python moves, so the port), from 10.209.1.0/24 |
 | `fcpm-roku relay inbound 8888` | `fcpm roku grant` | TCP 8888 to mediamtx.exe, from the local subnet |
 | `fcpm-recorder obs64 HELO RTP` | by hand | UDP to obs64.exe, from the HELO (10.209.1.114) |
 
 Clicking Allow on Windows' prompt makes a wider rule (any port, any address): obs64, obs-browser-page
 and mediamtx.exe carry those now. Vendors' own rules (Adobe, DaVinci, Drobo) are theirs.
 
+## Deploy
+
+The site deploys from here the way it does from digitization: `fcpm deploy` (or `fcpm deploy --build`, which
+uploads nothing) runs `bin/deploy-site` in Git Bash, from `refs\fcpublicmedia.org`, with uv's Python,
+RubyInstaller's Jekyll and the bay's Node. It needs, once:
+
+1. Ruby: `winget install --id RubyInstallerTeam.RubyWithDevKit.3.2 --exact --scope user`, then `ridk install`
+   (MSYS2 and its toolchain, option 3). Then `bundle install` in `refs\fcpublicmedia.org\site`.
+2. This bay's own Cloudflare token: made in the dashboard for bay 1 alone (`keys.yml` says which two
+   permissions), then `fcpm keys take cloudflare CLOUDFLARE_API_TOKEN` and
+   `fcpm keys take cloudflare CLOUDFLARE_ACCOUNT_ID` at the desk (a window, never a chat). It sits in
+   `%USERPROFILE%\.config\fcpm\keys`, which anyone signed in as `fcpub` can read: the token may deploy
+   the site and drain the tanks, and nothing else.
+3. `fcpm check`: Jekyll 4 and both keys `ok`.
+
+The board's deploy (`/deploy/`, `wizard:site+deploy`) runs on the machine whose helm holds it in
+[`../helms.yml`](../helms.yml). Moving it here is that one line. The tanks' drain is a crew line held by one
+machine at a time: it is in `services`, commented, until it moves here from digitization (its archive,
+`%USERPROFILE%\fcpm\answers`, holds names and addresses, so it is the bay's to keep private).
+
 ## Bringing it up
 
-1. At the desk: `winget install --id Git.Git --exact`.
-2. Paste the start line from [README.md](../../README.md), *Setting up a machine*: it gets this
-   repository and runs `fcpm install`. Clone station-node's mirror into `refs/` by hand, if wanted.
+1. At the desk: nothing first. Git comes with step 2.
+2. Paste the start line from [README.md](../../README.md), *Setting up a machine*, ending in
+   `production`: Git, this repository, the winget gear (uv, FFmpeg, Ruby), then `fcpm install`.
+   Clone station-node's mirror into `refs/` by hand, if wanted.
 3. At the desk: Developer Mode (Settings > System > For developers), for symlinks without
    elevation; Claude Code from the vendor's installer into `~/.local/bin`, opened once in `~/code`
    to accept the folder (the root's server cannot start until then).

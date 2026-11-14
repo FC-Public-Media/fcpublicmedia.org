@@ -145,6 +145,9 @@ npx playwright test --grep @external             # third-party health
 npm run test:live                                # against https://fcpublicmedia.org
 ```
 
+- A test never restates our configuration (`_data/`: hosts and their hours, tiers, the calendar). It takes
+  whatever the file holds and checks what the page does with it, so changing the file never turns a test red.
+  Likewise the runtime reads the file for every fact about it: `book.js` names no host, day or hour.
 - `playwright.config.js` serves `../_site` on `localhost:4567` (WebAuthn rejects an IP), desktop and
   Pixel 5. `BASE_URL` targets a deployed site; redirects, 404s and trailing slashes exist only there.
 - Every page in `pages.js` must load with a title, at most one `<h1>`, no console errors, no failed
@@ -161,8 +164,14 @@ the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
 side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new.fcpublicmedia.org`.
 
-- It runs where the keychain is (digitization), with the `cloudflare` group (`machines/digitization/keys.yml`).
-  `bin/deploy-site --build` refreshes, builds and checks without uploading, and keeps the copy.
+- It runs on any machine whose keychain ([`machines/keys`](../machines/keys), the job's `keys.yml`) holds a
+  `cloudflare` group: digitization, and bay 1 in Git Bash ([production](../machines/production/PROFILE.md#deploy)).
+  Each machine has its own token, so one can be revoked alone. `fcpm deploy` runs it; `fcpm deploy --build`
+  (`bin/deploy-site --build`) refreshes, builds and checks without uploading, and keeps the copy.
+- The board's **Deploy** (`/deploy/`, on every helm) shows what is live beside main and sets down
+  `wizard:site+deploy` naming main's commit. The helm whose job holds it in `machines/helms.yml` runs
+  `bin/deploy-site` if its checkout is at that commit, one deploy at a time, into `deploy.log` beside its
+  replies; any other helm passes the bottle there. Moving the deploy to another machine is that one line.
 - The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
   `airings.json` and `nonprofits.json` are what the LAN build and the tests
   use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.
@@ -190,7 +199,7 @@ nothing asks them.
 | `www` | a 301 to the same path on `@`, by a Single Redirect rule in the zone |
 | `wix` | the Wix photocopy (Pages `fcpm-wix`), for good |
 | `new` | this site too, for codes printed before the cutover; later the beta, beside a preview worker |
-| `cloud` | the site-worker, once `bin/provision.mjs` attaches it (no record yet) |
+| `cloud` | the site-worker (attached by its `bin/provision.mjs`) |
 
 The web names are proxied. Mail and Microsoft 365 came across whole, checked 2026-10-28:
 
@@ -216,8 +225,8 @@ point at a project once the project lists it as Active.
 1. Done: `@` serves `fcpm-new`, `www` redirects to it, `wix` keeps the photocopy.
 2. Deploy this site with `site/_data/checkin.yml` naming `@` (the QR, the poster and the kiosk follow).
    A code printed for `new` keeps working.
-3. `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attaches `cloud`; then
-   `site/_data/site_worker.yml` `url` becomes `https://cloud.fcpublicmedia.org` and the site deploys again.
+3. Done: `keys run cloudflare -- node bin/provision.mjs` in the site-worker checkout attached `cloud`, and
+   `site/_data/site_worker.yml` `url` is `https://cloud.fcpublicmedia.org`.
 4. Switch off the Wix forms; drain the site-worker; retire the `instructor` tank once its drain is empty.
 
 ## Redirects and headers

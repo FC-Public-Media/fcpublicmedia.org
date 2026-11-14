@@ -43,10 +43,22 @@ verbs:
     linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
   - verb: deploy
+    args: "[--build]"
+    says: "fcpublicmedia.org onto Cloudflare Pages: refresh, build, check, upload (--build uploads nothing)"
+    windows: bin/deploy-site
+    linux: bin/deploy-site
+
+  - verb: deploy
     args: "SITE DIR [HOST]"
     says: "a finished site onto the static host (static.local): only what changed crosses"
     windows: "not yet: no key for the static host"
     linux: machines/static/deploy
+
+  - verb: keys
+    args: "[check|take GROUP KEY|offer GROUP DEVICE|run GROUP... -- CMD|birth]"
+    says: "the keychain of the jobs this machine wears: what is held and wanted, never a value"
+    windows: machines/keys
+    linux: machines/keys
 
   - verb: relay
     args: "[status|on|off]"
@@ -122,10 +134,16 @@ verbs:
     linux: "not: no record kept here yet; the journal holds sudo's"
 
   - verb: model
-    args: "[status|install|grant|on|off|shapes|contexts|ask TEXT [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]]"
-    says: "the language model, for the switched network only (grant is an administrator's)"
+    args: "[status|models|pick [NAMES]|install [NAME]|grant|on|off|shapes|contexts|ask TEXT [-Model NAME] [-Shape NAME] [-Effort quick|considered] [-Name NAME] [-From KEY]]"
+    says: "the language models, for the switched network only: pick says which are up (grant is an administrator's)"
     windows: "machines/<profile>/model.ps1"
     linux: "not: Windows gear (the bay's GPU)"
+
+  - verb: helm
+    args: "[status|grant]"
+    says: "this bay's helm, which takes what a peer helm passes it (grant is an administrator's)"
+    windows: "machines/<profile>/helm.ps1"
+    linux: "not: digitization's helm is its door, at login (at-login)"
 
   - verb: camera
     args: "[console|presets|apply NAME|state]"
@@ -150,6 +168,18 @@ verbs:
     says: "after release: the takes and their steps, as a page"
     windows: "troves/post/post.py by uv"
     linux: "troves/post/post.py by uv"
+
+  - verb: hear
+    args: "[HOST]"
+    says: "the loudspeaker: every signal this machine hears, live (README.md, The loudspeaker)"
+    windows: "not: no loudspeaker on Windows yet; `fcpm hear digitization.local` there needs Python, so use curl.exe -N http://digitization.local:9798/"
+    linux: machines/loudspeaker
+
+  - verb: say
+    args: "WHO WHAT..."
+    says: "put one line on the loudspeaker (FCPM_LOUDSPEAKER=host for another machine's)"
+    windows: "not: use a UDP datagram to port 9797 (README.md, The loudspeaker)"
+    linux: machines/loudspeaker
 
   - verb: help
     args: ""

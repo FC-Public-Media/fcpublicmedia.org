@@ -15,7 +15,7 @@ Today's: the HP t510 in the control rack ([`../thin-client/PROFILE.md`](../thin-
 | system | Alpine, installed to the box's own disk, no desktop, DHCP, the room's clock by chrony. [`install`](install), from digitization |
 | `fcpm` | management, by key only, with sudo. Its key: digitization's |
 | `git` | the repositories and intake. Every key it takes is forced through [`door`](door) (from #315), written from [`KEYHOLDERS`](KEYHOLDERS), which the box rereads from its own main every minute, so a key is a line by merged PR. A keyholder's remote is `git@origin.local:<owner>/<repo>`: every repository fetches and takes a push, but in one that lives on GitHub `main` and `github/*` are intake's (`door-hooks/pre-receive`, #318); any other branch or tag waits here, in view, for GitHub; `init <owner>/<repo>` is the secretary's; `dev on\|off\|status` is anyone's. Each action goes to `/srv/origin/.door/actions.ndjson`. Tests: `bin/test_origin_door.py` |
-| intake | [`intake`](intake), as `git`, every minute by cron ([`run-intake`](run-intake), log `/var/log/fcpm/intake.log`). It paces itself: GitHub every 15 minutes while dev is on, weekly while off, `--now` whenever. GitHub's main only, one GraphQL query for all; behind: fast-forward; ahead: left alone; both moved: a clean merge, or a conflict recorded in `/srv/origin/.intake/state.json` with main untouched. A new repository on GitHub under FC-Public-Media or NCCV-OPINION gets its bare repository here by itself; FCCN-ANTIBODY's are the ones already here. A repository GitHub lacks began here and is left alone. Signed in to GitHub as whoever approved [`github-login`](github-login) |
+| intake | [`intake`](intake), as `git`, every minute by cron ([`run-intake`](run-intake), log `/var/log/fcpm/intake.log`). It paces itself: GitHub every 15 minutes while dev is on, weekly while off, `--now` whenever. GitHub's main only, one GraphQL query for all; behind: fast-forward; ahead: left alone; both moved: a clean merge, or a conflict recorded in `/srv/origin/.intake/state.json` with main untouched. A new repository on GitHub under FC-Public-Media gets its bare repository here by itself; FCCN-ANTIBODY's are the ones already here. A repository GitHub lacks began here and is left alone. Signed in to GitHub as whoever approved [`github-login`](github-login) |
 | dev | the LAN's switch, `/srv/origin/.intake/dev`, through the door: `fcpm dev on\|off` from a workstation, or the board's switch |
 | relay | the origin's mode, `/srv/origin/.intake/relay`, through the door (`fcpm relay on\|off`). **On** (a full relay): on intake's pass it carries out to GitHub each branch and tag a keyholder pushed through the door since the last pass, fast-forward only, never forced, never `main` or `github/*`, never a repository that began here; one GitHub will not fast-forward (a rebase) is recorded as diverged in `actions.ndjson` and left for a person. Any other refusal is recorded as an error and tried again each pass. The origin never asks for GitHub's `workflow` scope: a branch that changes `.github/workflows` is refused, and workflows change on GitHub, by hand. Only what came through the door is carried, so a branch GitHub merged and deleted is not brought back. **Off** (LAN-only, or an outage): it pulls; what is pushed waits here. Tests: `bin/test_origin_relay.py`. Pushed to GitHub as the account `github-login` signed in |
 | repos | `/srv/origin/<owner>/<repo>`, bare, as on digitization. Nothing is rewritten or deleted (`receive.denyNonFastForwards`, `receive.denyDeletes`, for every repository on the box) |
@@ -78,3 +78,22 @@ Take the stick out and power on. Then sign its git account in to GitHub:
 and fill it from GitHub the first time with `ssh fcpm@origin.local sudo -u git /bin/sh /usr/local/lib/fcpm/run-intake --now`.
 A workstation's checkout follows it with `git remote set-url origin git@origin.local:/srv/origin/<owner>/<repo>`;
 digitization's `follow` does that, and every submodule, by itself.
+
+## Taking a project out
+
+How NCCV-OPINION came out (#401). For an owner, or for some of an owner's repositories:
+
+1. Look first. In each of its repositories, `main` = `github/main` and there are no other refs, and
+   `/srv/origin/.intake/carry.json` has nothing pending for it. Then GitHub holds all of it, and removing loses nothing.
+   A repository with no `github` remote began here: removing it is losing it.
+2. Look at its submodules. An engine that only this project calls on goes too. One that FCPM's own repositories
+   also call on stays.
+3. Take it out of [`intake`](intake)'s `KEEP`, by PR, or intake makes it again from GitHub.
+4. Install that intake: `machines/origin/install fcpm@origin.local` after the merge, or only that file before it.
+5. Remove it as `git`, under intake's lock:
+   `ssh fcpm@origin.local sudo -u git flock /srv/origin/.intake/lock rm -rf /srv/origin/<owner>[/<repo>]`.
+6. `ssh fcpm@origin.local sudo -u git /usr/local/lib/fcpm/intake --now`, then check: the directory has not come back,
+   and `.intake/state.json` does not name it.
+7. Do the same to any other copy (digitization's old `/srv/origin`).
+8. Search the checkout for the name. Whatever reads from the origin goes too. Whatever reads from GitHub
+   (a static site's `export_from: github`, a keychain group) stays until someone says otherwise.

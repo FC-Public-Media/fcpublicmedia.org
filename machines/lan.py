@@ -5,7 +5,7 @@
     python3 machines/lan.py publish    hold this machine's names up while this runs (a crew `keep` line)
 
 The profile whose `names` declares this host carries `lan.yml`: the domain, the names any machine
-may hold (`shared`), and its gear. <hostname>.<domain> is the machine's own directory, and each
+may hold (`shared`), bare `<label>.local` names it holds the same way (`bare`), and its gear. <hostname>.<domain> is the machine's own directory, and each
 piece of gear is a name one level deeper (atem-mini-pro.digitization.fcpublicmedia.local). Renaming
 the machine is its `names` line; nothing here repeats it. Avahi's avahi-publish holds each name,
 one process apiece; a shared name another machine holds is asked for again every 30 seconds, and
@@ -60,6 +60,8 @@ def load(where=None):
     names = {}
     for label, serves in (cfg.get("shared") or {}).items():
         names[domain if label == "@" else "%s.%s" % (str(label).lower(), domain)] = (serves, None)
+    for label, serves in (cfg.get("bare") or {}).items():
+        names["%s.local" % str(label).lower()] = (serves, None)
     own = "%s.%s" % (hostname(), domain)
     names[own] = ("directory", None)
     for gear in cfg.get("gear") or []:

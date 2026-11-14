@@ -10,9 +10,14 @@ or held with the reason. Nothing is refused at the door, and nothing is applied 
     replies.py friends              who signs for us: name and fingerprint
     replies.py trust <fp> <name>    add one (a phone's key, from a held reply or the wizard's page)
 
+Helms are peers (machines/helms.yml). A reply whose wizard another job's helm holds is not read for
+its meaning here: it is passed, as it came, to that helm's /drop, and moved to routed/. While that helm
+does not answer, it waits in the inbox and is passed on a later pass.
+
 Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDATA%\\media-node\\replies):
     inbox/      set down, not yet read         applied/     read, good, acted on
     held/       read, not acted on             state/<room>.json   what a room's page reads
+    routed/     passed to the helm that holds its wizard
     visits.ndjson   one line per check-in shown to us, timed when it was read
     asks/queue/     a question for the model (wizard:model+ask), waiting its turn; asks/answers/<nonce>.json
                     its answer, written by machines/digitization/asks; asks/recall.json what wizard:loop+recall
@@ -26,14 +31,18 @@ the payload's hash is still checked here and the reply is applied as `unverified
 import base64
 import datetime
 import hashlib
+import itertools
 import json
 import os
 import pathlib
+import re
 import secrets
 import shutil
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -47,6 +56,8 @@ MAX_BYTES = 64 * 1024          # a reply is words; a file in a form is a longer 
 SKEW = datetime.timedelta(days=1)   # `issued` may be this far from our clock: phones drift, bottles wait
 AGELESS = {"wizard:site+answers"}  # a form's answers are good however long they were kept; only a future `issued` is held
 NONCES_KEPT = 5000
+HELMS = pathlib.Path(os.environ.get("FCPM_HELMS") or ROOT / "machines" / "helms.yml")   # FCPM_HELMS: a test's own map
+ROUTE_TIMEOUT = 10
 
 
 def now():
@@ -110,9 +121,14 @@ def log(entry):
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+_arrivals = itertools.count()
+
+
 def name_for():
-    """Sorts by arrival (take() reads in name order), to the microsecond: a line of phones at once."""
-    return "%s-%s" % (datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"), secrets.token_hex(3))
+    """Sorts by arrival (take() reads in name order), to the microsecond: a line of phones at once. Windows' clock
+    can give two arrivals the same microsecond, so this door's own count of them comes before the random part."""
+    return "%s-%06d-%s" % (datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"),
+                           next(_arrivals) % 1000000, secrets.token_hex(3))
 
 
 def drop(data, origin="", kind="json"):
@@ -134,14 +150,14 @@ def drop_frames(frames, origin=""):
 
 
 def where(name):
-    """inbox, applied or held, with the last word said about it; None if never seen."""
-    for folder in ("inbox", "applied", "held"):
+    """inbox, routed, applied or held, with the last word said about it; None if never seen."""
+    for folder in ("inbox", "routed", "applied", "held"):
         if list((STATE / folder).glob(name + ".*")) if (STATE / folder).is_dir() else []:
             why = ""
             try:
                 for line in (STATE / "log.ndjson").read_text(encoding="utf-8").splitlines():
                     row = json.loads(line)
-                    if row.get("name") == name and row.get("verdict"):
+                    if row.get("name") == name and (row.get("verdict") or row.get("waiting")):
                         why = row.get("why", "")
             except (OSError, ValueError):
                 pass
@@ -411,9 +427,170 @@ def recall_reply(reply, meta):
     return None, "%d answer%s back in the loop (%s)" % (len(have), "" if len(have) == 1 else "s", mode)
 
 
+# ---- the models that are up (wizard:model+up), applied by the helm of the job that serves them ----
+
+MODELS = ROOT / "machines" / "production" / "models"
+PICK_LOG = "model-pick.log"
+
+
+def pick_command():
+    """How this helm says which models are up: its own job's model.ps1 pick, on the Windows bay that serves
+    them (production's, or a twin's that runs it: ../editing-bay-2/model.ps1). FCPM_MODEL_PICK (a JSON list)
+    stands in for it in a test."""
+    if os.environ.get("FCPM_MODEL_PICK"):
+        return json.loads(os.environ["FCPM_MODEL_PICK"])
+    if os.name != "nt":
+        return None
+    own = [ROOT / "machines" / j / "model.ps1" for j in sorted(wears())]
+    script = next((p for p in own if p.is_file()), ROOT / "machines" / "production" / "model.ps1")
+    return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "pick"]
+
+
+def model_up_reply(reply, meta):
+    """{up: [names]}: the models to be up on this bay, the whole line-up; any may be down, and
+    an empty list is none up.
+    model.ps1 pick is started and left to run (fetching a model takes minutes); its words go to model-pick.log."""
+    up = reply.get("up")
+    if not isinstance(up, list) or not all(isinstance(n, str) and n for n in up):
+        return "up: a list of model names"
+    known = {p.stem for p in MODELS.glob("*.yml")}
+    unknown = [n for n in up if n not in known]
+    if unknown:
+        return "not in the spread: %s" % ", ".join(unknown)
+    cmd = pick_command()
+    if not cmd:
+        return "this helm cannot run model.ps1 (not Windows)"
+    names = ",".join(up) or "none"
+    with open(STATE / PICK_LOG, "ab") as out:          # the pick keeps its own handle; ours closes
+        out.write(("\n%s %s, by %s\n" % (now().isoformat(timespec="seconds"), names, (meta or {}).get("by") or "unsigned")).encode())
+        out.flush()
+        subprocess.Popen(cmd + [names], stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, cwd=str(ROOT),
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return None, "up: %s; model.ps1 pick started (%s)" % (names, PICK_LOG)
+
+
+# ---- the site, onto Cloudflare Pages (wizard:site+deploy), by the helm of the job that holds the deploy ----
+
+DEPLOY_LOG = "deploy.log"
+_deploy = None         # the deploy this helm started, while it runs: one at a time
+
+
+def git_bash():
+    """Git's bash on Windows, never WSL's: deploy-site is a sh script."""
+    exe = shutil.which("git")
+    for p in pathlib.Path(exe).resolve().parents if exe else ():
+        if (p / "bin" / "bash.exe").exists():
+            return str(p / "bin" / "bash.exe")
+    return "bash"
+
+
+def deploy_command():
+    """bin/deploy-site, then its exit status into the log. FCPM_DEPLOY (a JSON list) stands in for it in a test."""
+    if os.environ.get("FCPM_DEPLOY"):
+        return json.loads(os.environ["FCPM_DEPLOY"])
+    return [git_bash() if os.name == "nt" else "sh", "-c", 'sh "$0"; echo "deploy-site: exit $?"',
+            str(ROOT / "bin" / "deploy-site")]
+
+
+def head():
+    out = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%H %s"], capture_output=True, text=True)
+    full, _, subject = out.stdout.strip().partition(" ")
+    return full, subject
+
+
+def deploying():
+    return _deploy is not None and _deploy.poll() is None
+
+
+def deploy_reply(reply, meta):
+    """{rev}: deploy what this helm's checkout holds, if it is that commit. deploy-site is started and left to
+    run (a few minutes); its words go to deploy.log."""
+    global _deploy
+    rev = str(reply.get("rev") or "").lower()
+    if not (7 <= len(rev) <= 40 and all(c in "0123456789abcdef" for c in rev)):
+        return "rev: the commit to deploy"
+    full, subject = head()
+    if not full.startswith(rev):
+        return "rev %s: this helm's checkout is at %s" % (rev[:7], full[:7] or "no commit")
+    if deploying():
+        return "a deploy is already running (%s)" % DEPLOY_LOG
+    STATE.mkdir(parents=True, exist_ok=True)
+    with open(STATE / DEPLOY_LOG, "ab") as out:
+        out.write(("\n%s %s %s, by %s\n" % (now().isoformat(timespec="seconds"), full[:7], subject,
+                                            (meta or {}).get("by") or "unsigned")).encode())
+        out.flush()
+        _deploy = subprocess.Popen(deploy_command(), stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                   cwd=str(ROOT), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return None, "deploy of %s started (%s)" % (full[:7], DEPLOY_LOG)
+
+
+# ---- a machine's newborn key (wizard:keys+birth), lodged at the keystore's helm for a board wizard to grant ----
+
+PETITIONS = "petitions"
+KEY_LINE = re.compile(r"(ssh-ed25519|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]{40,}={0,2}( [^\n]*)?")
+
+
+def birth_reply(reply, meta):
+    """{job, host, key}: a machine's own key, born there (machines/keys birth). Lodged here, never granted: a
+    grant is a board wizard's, by the keystore (docs/keystore.md). One file a petition, petitions/<nonce>.json."""
+    key = str(reply.get("key") or "").strip()
+    if not KEY_LINE.fullmatch(key):
+        return "key: one public key line (ssh-ed25519)"
+    job = str(reply.get("job") or "")
+    if not re.fullmatch(r"[a-z0-9-]+", job) or not (ROOT / "machines" / job / "PROFILE.md").is_file():
+        return "job: %r is no profile in machines/" % job
+    nonce = re.sub(r"[^A-Za-z0-9_-]", "", str(reply.get("nonce")))[:64]
+    folder = STATE / PETITIONS
+    folder.mkdir(parents=True, exist_ok=True)
+    petition = {"job": job, "host": str(reply.get("host") or ""), "key": key, "issued": reply.get("issued"),
+                "at": reply.get("at"), "trust": (meta or {}).get("trust"), "lodged": now().isoformat(timespec="seconds")}
+    (folder / ("%s.json" % nonce)).write_text(json.dumps(petition, indent=1) + "\n", encoding="utf-8")
+    return None, "lodged for the keystore: %s's key from %s (%s/%s.json)" % (job, petition["host"] or "?", PETITIONS, nonce)
+
+
+def helms():
+    return (load_yaml(HELMS).get("helms") or {}) if HELMS.is_file() else {}
+
+
+def wears():
+    """The jobs this machine wears (machines/binding: each profile's `names` against the host's own name).
+    FCPM_WEARS, a comma list, stands in for it."""
+    if os.environ.get("FCPM_WEARS") is not None:
+        return {j for j in os.environ["FCPM_WEARS"].split(",") if j}
+    path = ROOT / "machines" / "binding"                  # run as source: no __pycache__ beside the profiles
+    b = {"__name__": "binding", "__file__": str(path)}
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), b)
+    system = b["this_platform"]()
+    fact = b["actual"](system) if system else None
+    if not fact:
+        return set()
+    return {p.name for p in b["profiles"]() if (b["declared"](p).get(system) or "").casefold() == fact.casefold()}
+
+
+def holder(wizard, job=None):
+    """(job, its helm's address) when a job's helm holds this wizard; None when any helm applies it. When
+    several hold it (each bay's models), the reply's own `job` says which, and else the first listed does."""
+    held = [(j, (h or {}).get("at")) for j, h in helms().items() if wizard in ((h or {}).get("holds") or [])]
+    return next((o for o in held if o[0] == job), held[0] if held else None)
+
+
+def route(path, at):
+    """The bottle, byte for byte as it was kept, to another helm's /drop. Returns the name it was kept by there."""
+    if not at:
+        raise ValueError("it has no address in helms.yml yet")
+    req = urllib.request.Request(at.rstrip("/") + "/drop", path.read_bytes(),
+                                 {"Content-Type": "text/plain" if path.suffix == ".frames" else "application/json"})
+    with urllib.request.urlopen(req, timeout=ROUTE_TIMEOUT) as r:
+        return json.load(r).get("kept")
+
+
+_waiting = set()       # bottles already said to be waiting for a helm, so a long wait is one line
+
+
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
            "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply,
-           "wizard:loop+recall": recall_reply}
+           "wizard:loop+recall": recall_reply, "wizard:model+up": model_up_reply,
+           "wizard:site+deploy": deploy_reply, "wizard:keys+birth": birth_reply}
 
 
 def nonces():
@@ -465,7 +642,21 @@ def take():
             continue
         name = path.stem                      # the name has a dot of its own (the microseconds)
         reply, meta = read(path)
-        if reply is None:
+        owner = holder(str(reply.get("wizard") or ""), reply.get("job")) if reply is not None else None
+        if owner and owner[0] not in wears():
+            job, at = owner
+            try:
+                far = route(path, at)
+            except (urllib.error.URLError, OSError, ValueError) as exc:
+                if name not in _waiting:
+                    _waiting.add(name)
+                    log({"name": name, "waiting": job, "error": str(exc),
+                         "why": "for %s's helm at %s, which is not answering" % (job, (at or "no address").split("//")[-1])})
+                    out.append((name, "waiting", "for %s's helm (%s)" % (job, exc)))
+                continue
+            _waiting.discard(name)
+            verdict, why = "routed", "to %s's helm, kept there as %s" % (job, far)
+        elif reply is None:
             verdict, why = "held", meta
         else:
             res = examine(reply, meta)

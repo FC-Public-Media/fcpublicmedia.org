@@ -1,0 +1,27 @@
+# gear.yml: what editing bay 2's crew stands on; replaces ../gear.yml here. ../start.ps1 installs
+# every `provisioner: winget` package missing. No Claude Code here yet: the bay runs without an
+# agent. See PROFILE.md and docs/station.md.
+
+version: 1
+platform: windows
+
+gear:
+  - gear: git
+    for: everything; Git Bash is also the shell fcpm and ../sync run in
+    package: Git.Git
+    provisioner: winget
+    scope: machine            # as on bay 1; Windows asks once
+    updates: winget
+
+  - gear: gh
+    for: signing in to GitHub as FCPM, and pull requests. `gh auth login` is the desk's
+    package: GitHub.cli
+    provisioner: winget
+    updates: winget
+
+  - gear: uv
+    for: the crew's Python (machines/crew.py), and the helm it keeps (machines/kiosk/door.py)
+    package: astral-sh.uv
+    provisioner: winget
+    scope: user
+    updates: winget

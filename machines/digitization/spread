@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""spread: one question to every model bay 1 lists, the answers side by side, for a person to judge.
+
+    spread "TEXT" [--shape NAME] [--effort quick|considered] [--models a,b,...] [--seed N]
+    spread "TEXT" --file PATH ...      TEXT is the round's name; the input is the file's text
+    spread list                        the rounds kept, newest first
+
+A shape (machines/production/shapes/) wraps the input in its role and prompt and sets the answer's length and
+the effort, as asks does; without one the input is asked as it is, at quick. Every model gets the same words
+and the same seed, one at a time (bay 1 loads each when it is asked for, so the first answer from a model
+waits for its load). Nothing is scored here: a person reads the round and says which answers are good enough.
+
+A round is kept in ~/fcpm/spread/<when>/: round.json (what was asked, how, and every answer with its time,
+tokens and how it ended) and round.md (the same, to read). See machines/production/models/README.md.
+"""
+import datetime
+import importlib.machinery
+import importlib.util
+import json
+import pathlib
+import sys
+import time
+import urllib.error
+
+HERE = pathlib.Path(__file__).resolve().parent
+_load = importlib.machinery.SourceFileLoader("asks", str(HERE / "asks"))
+asks = importlib.util.module_from_spec(importlib.util.spec_from_loader("asks", _load))
+_load.exec_module(asks)
+
+ROUNDS = pathlib.Path.home() / "fcpm" / "spread"
+
+
+def messages(sh, text):
+    """The shape's role first and its prompt around the input; without a shape, the input as it is."""
+    if not sh:
+        return [{"role": "user", "content": text}]
+    out = [{"role": "system", "content": sh["role"]}] if sh.get("role") else []
+    return out + [{"role": "user", "content": (sh.get("prompt") or "{input}").replace("{input}", text)}]
+
+
+def ask_all(names, msgs, sh, seed, send=asks.post, clock=time.monotonic):
+    """Each model in turn: its answer, effort, finish, tokens and seconds, or the error it gave."""
+    out = []
+    for name in names:
+        model, t = asks.facts(name), clock()
+        try:
+            got = asks.complete(sh, msgs, seed, model, send)
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            got = {"text": "", "effort": None, "finish": None, "tokens": None, "error": str(e)[:200]}
+        got.update({"model": name, "seconds": round(clock() - t, 1), "model_sha256": (model.get("sha256") or "")[:12],
+                    "lab": model.get("lab"), "params": model.get("params")})
+        out.append(got)
+        print("spread: %-17s %6.1f s  %s" % (name, got["seconds"], got.get("error") or got["finish"]), flush=True)
+    return out
+
+
+def write(round_, folder):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "round.json").write_text(json.dumps(round_, ensure_ascii=False, indent=1), encoding="utf-8")
+    md = ["# %s" % round_["name"], "",
+          "%s · shape %s · effort %s · seed %d" % (round_["at"], round_["shape"] or "none", round_["effort"], round_["seed"]),
+          "", "```", round_["input"], "```", ""]
+    for a in round_["answers"]:
+        size = "%sB" % a["params"] if a.get("params") is not None else "?"
+        how = a.get("error") or "%s tokens, %s s, %s, ended %s" % (a["tokens"], a["seconds"], a["effort"], a["finish"])
+        md += ["## %s (%s, %s)" % (a["model"], a.get("lab") or "?", size), "", how, "", a["text"] or "(no answer)", ""]
+    (folder / "round.md").write_text("\n".join(md), encoding="utf-8")
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] == "list":
+        for p in sorted(ROUNDS.glob("*/round.json"), reverse=True):
+            r = json.loads(p.read_text(encoding="utf-8"))
+            print("%s  %-24s %d models  %s" % (p.parent.name, (r["shape"] or "none")[:24], len(r["answers"]), r["name"][:60]))
+        return 0
+    args, opts = [], {}
+    it = iter(argv[1:])
+    for a in it:
+        if a.startswith("--"):
+            opts[a[2:]] = next(it, "")
+        else:
+            args.append(a)
+    if len(args) != 1:
+        print(__doc__, file=sys.stderr)
+        return 2
+    name = args[0]
+    text = pathlib.Path(opts["file"]).read_text(encoding="utf-8") if opts.get("file") else name
+    sh = asks.shape(opts["shape"]) if opts.get("shape") else {}
+    if opts.get("shape") and not sh:
+        print("spread: no shape %s" % opts["shape"], file=sys.stderr)
+        return 2
+    if sh.get("limit") and len(text) > int(sh["limit"]):
+        print("spread: %s takes up to %s characters; this is %d" % (sh["shape"], sh["limit"], len(text)), file=sys.stderr)
+        return 2
+    sh = dict(sh, effort=opts.get("effort") or sh.get("effort") or "quick")
+    names = [n for n in opts["models"].split(",") if n] if opts.get("models") else [m["model"] for m in asks.joined()]
+    if not names:
+        print("spread: bay 1 lists no models (asleep, or fcpm model off)", file=sys.stderr)
+        return 1
+    seed = int(opts.get("seed") or 1)
+    at = datetime.datetime.now().astimezone()
+    round_ = {"name": name, "at": at.isoformat(timespec="seconds"), "shape": sh.get("shape"), "effort": sh["effort"],
+              "seed": seed, "input": text, "messages": messages(sh if opts.get("shape") else {}, text)}
+    round_["answers"] = ask_all(names, round_["messages"], sh, seed)
+    folder = ROUNDS / at.strftime("%Y-%m-%d-%H%M%S")
+    write(round_, folder)
+    print("spread: %s" % (folder / "round.md"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

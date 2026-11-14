@@ -36,9 +36,8 @@ The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}**
     <div class="field"><label for="book-email">Email</label><input id="book-email" name="email" type="email" autocomplete="email"></div>
   </div>
 
-  {%- comment -%} The week: one at a time, Tuesday to Saturday (the days in hosts.yml with hours).
-    A host's hours are cut into two-hour slots with an hour between, so 11–4 is 11–1 and 2–4.
-    The day is picked on the week, so it has no box of its own. Two rows of picks, alike on purpose:
+  {%- comment -%} The week: one at a time, the days in hosts.yml with hours, each host's hours cut into
+    its sessions. The day is picked on the week, so it has no box of its own. Two rows of picks, alike on purpose:
     the week shown with the start time, then the space with the host. {%- endcomment %}
   <div class="book-row">
     <div class="book-picks" role="group" aria-label="Week" data-weeks hidden>

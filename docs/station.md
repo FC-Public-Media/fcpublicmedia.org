@@ -30,12 +30,12 @@ DiscoveryWritten's workstation in the studio, is the prototype; FCPM copies its 
 |---|---|---|---|
 | production | [`production`](../machines/production/PROFILE.md) | `EDIT2` | sticker "editing bay 1"; Windows 11 Home, the strongest machine |
 | kiosk | [`kiosk`](../machines/kiosk/PROFILE.md) | `200-FCPANEDIT2` | the old editing bay 2, now the media node: door and screens ([kiosk.md](kiosk.md)) |
-| | [`editing-bay-2`](../machines/editing-bay-2/PROFILE.md) | unfilled | a macOS bay that schedules Cablecast material |
+| | [`editing-bay-2`](../machines/editing-bay-2/PROFILE.md) | `FCPMEDIT2` | "bay 2"; Windows, the twin of editing bay 1 |
 | | [`digitization`](../machines/digitization/PROFILE.md) | `digitization` | Debian: FCPM's git origin; takes the `digitization` crew from station-node |
 | | [`thin-client`](../machines/thin-client/PROFILE.md) | unfilled | a donated HP t510 in the control rack: the kiosk's overflow console, beside the scanner; to be reformatted |
-| | [`qr`](../machines/qr/PROFILE.md) | `qr` | a Raspberry Pi 3 with a camera: kiosk's pickup point at `qr.local`, carrying the scanner |
+| | [`bounce`](../machines/bounce/PROFILE.md) | `bounce` | a Raspberry Pi 3 with a camera: the member-site box prototype; its monitor shows the [`qr`](../machines/qr/PROFILE.md) console (worn by digitization at `qr.local`) |
 
-Both Windows names end in `EDIT2`; in conversation use the called name (`machines/<profile>/called`).
+All three Windows names end in `EDIT2`; in conversation use the called name (`machines/<profile>/called`).
 The bays share one account with a PIN; identity there is a browser profile. [Jobs](../machines/README.md).
 
 ## Profiles
@@ -79,7 +79,7 @@ in `fcpm`. Verbs are for people; a task names the tool itself, because a grant p
 | verb | does |
 |---|---|
 | (none) | the watcher, `machines/watch` |
-| `status`, `install` | `sync`; `install` also makes the people's working copy and the `fcpm weekly` task |
+| `status`, `install [JOB]` | `sync`; `install` also makes the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
 | `pull` | `bin/refs pull fcpublicmedia.org`, then `sync install` |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `~/code/bin/pool.ps1`; `bin/runnables` |
 | `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged; on the kiosk, the door fetches |
@@ -95,7 +95,11 @@ updates on this computer*. If edits and the latest change the same lines, it sto
 
 `fcpm weekly` runs at sign-in and 7am and works once a week: it pulls every mirror and fast-forwards
 the working copy, never merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). A bare
-machine starts from the start line in [README.md](../README.md), *Setting up a machine*.
+machine starts from the start line in [README.md](../README.md), *Setting up a machine*. It fetches
+[`machines/start.ps1`](../machines/start.ps1), which needs only winget: Git (machine-wide), this
+repository cloned or pulled into `~/code/refs/`, every `provisioner: winget` package in the job's
+`gear.yml` (else `machines/gear.yml`) not yet installed, then `fcpm install JOB`. A job whose `names`
+does not list the computer yet is put on all the same, with a warning.
 
 ## Sync and MANIFEST
 

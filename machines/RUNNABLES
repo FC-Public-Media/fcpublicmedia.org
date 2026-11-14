@@ -58,8 +58,9 @@ machines/fcpm                   | sh         | check                | read    | 
 machines/fcpm                   | sh         | help                 | read    | its verbs
 machines/fcpm                   | sh         | install              | desk    | put the profile on, settings and PATH included. A person's
 
-# The keychain (digitization). keys.yml is the ledger; no verb prints a value.
-machines/digitization/keys      | python     | -                    | read    | which keys are held and which are wanted, and where each lives
-machines/digitization/keys      | python     | check                | read    | the same, in fcpm check's words
-machines/digitization/keys      | python     | take *               | secret  | ask for one key in a window on this screen and store it
-machines/digitization/keys      | python     | run *                | secret  | run one command with key groups in its environment
+# The keychain: machines/<job>/keys.yml for each job this machine wears; no verb prints a value.
+machines/keys                   | python     | -                    | read    | which keys are held and which are wanted, and where each lives
+machines/keys                   | python     | check                | read    | the same, in fcpm check's words
+machines/keys                   | python     | take *               | secret  | ask for one key in a window on this screen and store it
+machines/keys                   | python     | run *                | secret  | run one command with key groups in its environment
+machines/drain                  | python     | -                    | outside | the site-worker's tanks into ~/fcpm/answers, emptied behind (the crew's drain line)

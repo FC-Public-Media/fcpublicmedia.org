@@ -1,5 +1,5 @@
 # A payload the bay took in. One file per arrival; the file is the record.
-# See ../../BAY.md. The procedure is ../model.ps1 install; the facts it pins are ../model.yml.
+# See ../../BAY.md. The procedure is ../model.ps1 install; the facts it pins are ../model.yml (the models' are ../models/).
 
 payload: llama-cpp
 version: b12047          # llama-server --version reports 0.8.0-dev

@@ -6,9 +6,9 @@
 # and replaced together: a test key beside a live one is how a checkout breaks quietly.
 # `form: env` files hold NAME=value lines; `form: raw` files hold the one value and nothing else.
 #
-#   machines/digitization/keys            what is held and what is wanted; never a value
-#   machines/digitization/keys take G K   asks for G's key K in a window on this screen
-#   machines/digitization/keys run G -- CMD   runs CMD with group G in its environment
+#   machines/keys            what is held and what is wanted; never a value (`fcpm keys`)
+#   machines/keys take G K   asks for G's key K in a window on this screen
+#   machines/keys run G -- CMD   runs CMD with group G in its environment
 #
 # `fcpm check` reads this file too. GitHub's repository secrets are not part of the keychain:
 # nothing here is kept there, and nothing that deploys relies on them. See PROFILE.md, Keys.
@@ -36,7 +36,7 @@ groups:
         prefix: rk_live_
         may: create Checkout Sessions, nothing else (a restricted key)
         from: "Stripe dashboard, live mode: Developers, API keys, Restricted keys"
-        issued: not held. An earlier one may exist only as a GitHub secret, which cannot be read back; issue a new one
+        issued: 2026-10-24, and put on the site-worker the same day
 
   stripe-sync:
     what: Reads the membership tiers out of Stripe for /join/; changes nothing.
@@ -52,7 +52,7 @@ groups:
   cloudflare:
     what: "deploys to FCPM's Cloudflare account (the org account): the Pages projects (fcpm-new for the site, fcpm-wix for the Wix copy) and the site-worker with its KV"
     form: env
-    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout; the crew's drain line (machines/digitization/drain), every hour: lists, reads and deletes in KV site-worker-answers"
+    used by: "wrangler pages deploy; keys run cloudflare stripe-test (or stripe-live) -- sh bin/deploy, in a site-worker checkout; the crew's drain line (machines/drain), every hour: lists, reads and deletes in KV site-worker-answers"
     keys:
       CLOUDFLARE_API_TOKEN:
         may: "Account: Cloudflare Pages Edit, Workers Scripts Edit, Workers KV Storage Edit; Zone (fcpublicmedia.org, once it is on the account): Zone Read, DNS Edit, Workers Routes Edit, for cloud.fcpublicmedia.org; FCPM's org account only"
@@ -74,40 +74,25 @@ groups:
         from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): My Profile, API Tokens, Create Token, Custom token: Zone, Zone, Read and Zone, DNS, Edit; Zone Resources: fcpublicmedia.org (add the zone first, pending, no nameserver change)"
         issued: not held
 
-  nccv:
-    what: "deploys NCCV's site (NCCV-OPINION/platform) to its Cloudflare Pages project `nccv`, held for NCCV until it has an account of its own; then this group's values are swapped and nothing else moves"
-    form: env
-    used by: "keys run nccv -- bin/deploy, in a NCCV-OPINION/platform checkout"
-    keys:
-      CLOUDFLARE_API_TOKEN:
-        may: "Account: Cloudflare Pages Edit, on the account holding Pages project nccv (today Autumn's business account, autumn-e2c, where anecdote.channel lives); nothing on FCPM's account"
-        from: "Cloudflare dashboard, the account holding Pages project nccv: My Profile, API Tokens, Create Token, Custom token: Account, Cloudflare Pages, Edit; Account Resources: that account only"
-        issued: not held
-      CLOUDFLARE_ACCOUNT_ID:
-        shape: hex32
-        may: names the account holding Pages project nccv (not secret; kept with its token)
-        from: "Cloudflare dashboard, the account holding Pages project nccv: the account's home page, Account ID"
-        issued: not held
-
   m365:
-    what: the site-worker adds rows to the log, a list on the Operations SharePoint site, and nothing else.
+    what: adds rows to the log, a list on the Operations SharePoint site, and nothing else.
     form: env
-    used by: "the site-worker's relays (join, rooms, classes, check-in), given to it as secrets"
+    used by: "nothing yet: the log's line, reading the drain's archive (~/fcpm/answers) on digitization, is not built"
     keys:
       M365_TENANT_ID:
         shape: guid
         may: names FCPM's Microsoft 365 tenant (not secret; kept with the other two)
         from: "entra.microsoft.com: App registrations, FCPM site-worker, Overview, Directory (tenant) ID"
-        issued: not held
+        issued: 2026-10-23, the existing "FC Public Media Booking" app's
       M365_CLIENT_ID:
         shape: guid
         may: names the app registration (not secret; kept with the other two)
         from: "entra.microsoft.com: App registrations, FCPM site-worker, Overview, Application (client) ID"
-        issued: not held
+        issued: 2026-10-23, the existing "FC Public Media Booking" app's
       M365_CLIENT_SECRET:
         may: "sign in as the app; Graph Sites.Selected, granted write on the Operations site only"
         from: "entra.microsoft.com: App registrations, FCPM site-worker, Certificates & secrets, New client secret (the Value, shown once)"
-        issued: not held. Expires on the date set when it was made; the ledger's issued line carries that date
+        issued: 2026-10-23, the existing "FC Public Media Booking" app's (kept for now; not granted the Operations site yet); its expiry was not recorded
 
   cablecast:
     what: changes to channel 97's Cablecast (reads need no key).

@@ -150,6 +150,18 @@ gear:
     restart-tier: app
     holds: "its profile, in ~/.config/fcpm-rest"
 
+  - gear: powershell
+    for: >
+      pwsh, PowerShell 7: runs the bays' PowerShell (model.ps1's functions, the
+      parser over every .ps1) in bin/test_model_ps1.py, so a Windows script is
+      tested here before a bay runs it. Microsoft's own .deb from its GitHub
+      release, checked against the release's digest; the toolbox keeps it.
+    package: powershell
+    provisioner: hand
+    updates: hand
+    restart-tier: app
+    holds: "nothing of its own"
+
   - gear: claude-code
     for: >
       The agent. Installed by hand with its own installer, so apt does not see it.

@@ -5,7 +5,8 @@
 #                              fast-forward the clean ones
 #   bin/refs status            one line per repo: branch, behind/ahead, dirty
 #   bin/refs work REPO BRANCH  new worktree at work/REPO@BRANCH, cut from origin/main
-#   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
+#   bin/refs done REPO BRANCH  remove that worktree (the branch is kept), its submodules too
+#                              when nothing in them is theirs alone
 #
 # refs/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. Its troves/
 # submodules follow to the commits it pins, private ones too; no other submodules.
@@ -93,6 +94,18 @@ case "${1:-status}" in
     git -C "$src" worktree add -b "$branch" "$dest" "origin/$def" && troves_one "$dest" && echo "$dest" ;;
   done)
     repo=${2:?repo name}; branch=${3:?branch name}
-    git -C "$REF/$repo" worktree remove "$WORK/$repo@${branch//\//-}" ;;
+    wt="$WORK/$repo@${branch//\//-}"
+    # Git will not remove a worktree that has ever had a submodule checked out, clean or not, and only
+    # --force skips that. Ours are pins (troves_one), so the check is ours: nothing uncommitted here or
+    # in a submodule, and no commit a submodule's remotes lack. Then --force, and only then.
+    if [ -d "$wt" ] && [ -d "$(git -C "$wt" rev-parse --git-dir 2>/dev/null)/modules" ]; then
+      [ -z "$(git -C "$wt" status --porcelain --ignore-submodules=none)" ] ||
+        { echo "refs: left $wt: it has changes (git status)" >&2; exit 1; }
+      own=$(git -C "$wt" submodule foreach --quiet --recursive \
+        '[ -z "$(git rev-list -n1 HEAD --branches --not --remotes 2>/dev/null)" ] || echo "$displaypath"')
+      [ -z "$own" ] || { echo "refs: left $wt: commits only these submodules have: $(echo $own)" >&2; exit 1; }
+      exec git -C "$REF/$repo" worktree remove --force "$wt"
+    fi
+    git -C "$REF/$repo" worktree remove "$wt" ;;
   *) sed -n '2,10p' "$0"; exit 1 ;;
 esac

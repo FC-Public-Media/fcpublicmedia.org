@@ -24,10 +24,17 @@ import yaml
 HERE = Path(__file__).resolve().parent            # machines/
 REPO = HERE.parent
 CODE = REPO.parent.parent                         # ~/code: refs/ and work/ beside each other
-PROFILE = "editing-bay-1"                         # where this machine keeps its state (one profile per machine)
+PROFILE = "editing-bay-1"                         # where production keeps its state: the profile's old name
 WINDOWS = os.name == "nt"
+
+
+def state_on_windows(crew):
+    """A crew's state folder: %LOCALAPPDATA%\\<crew>\\crew, but production's keeps its old name."""
+    return Path(os.environ.get("LOCALAPPDATA", Path.home())) / (PROFILE if crew == "production" else crew) / "crew"
+
+
 if WINDOWS:
-    STATE = Path(os.environ.get("LOCALAPPDATA", Path.home())) / PROFILE / "crew"
+    STATE = state_on_windows("production")        # main() moves it to the crew's own
     NO_WINDOW = 0x08000000 | 0x00000200           # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
 else:                                             # Linux: machines/crew.sh runs this as a systemd service
     STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "fcpm" / "crew"
@@ -115,7 +122,8 @@ def argv(svc):
     for tok in shlex.split(svc["start"]):
         if tok == "{python}":
             # Linux: the Python running the supervisor, which already has pyyaml (python3-yaml)
-            out += [uv(), "run", "--no-project", "--python", "3.12", "--with", "pyyaml"] if WINDOWS else [sys.executable]
+            # Windows: `uv run ... python FILE`, since uv spawns a file without .py as a program
+            out += [uv(), "run", "--no-project", "--python", "3.12", "--with", "pyyaml", "python"] if WINDOWS else [sys.executable]
             continue
         for k, v in fill.items():
             tok = tok.replace(k, v)
@@ -363,13 +371,16 @@ def tail(crew, name, n=30):
 
 
 def main():
+    global STATE
     a = sys.argv[1:]
     verb = a[0] if a else "status"
+    crew = (a[2] if len(a) > 2 else "production") if verb == "log" else (a[1] if len(a) > 1 else "production")
+    if WINDOWS:
+        STATE = state_on_windows(crew)
     if verb == "log":
         if len(a) < 2:
             sys.exit("crew.py log NAME [CREW]")
-        return tail(a[2] if len(a) > 2 else "production", a[1])
-    crew = a[1] if len(a) > 1 else "production"
+        return tail(crew, a[1])
     if not (HERE / crew / "services").exists():
         sys.exit(f"crew: no crew {crew} (machines/{crew}/services)")
     if verb == "serve":
