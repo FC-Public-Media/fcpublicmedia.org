@@ -18,6 +18,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
 | `check.sh` | each gear present (dpkg), the crew's supervisor up, origin.local answering as this checkout's origin, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, deep `.local` names resolving here, and every key in `keys.yml` held: `ok` or `WANTED` with the fix. `fcpm check` |
 | `keys.yml` | the keychain: every secret FCPM's deploys and jobs use, by group, and where each lives (`fcpm keys`, [`../keys`](../keys)). See Keys |
+| `gai.conf` | `/etc/gai.conf`: IPv4 first when a name has both addresses. See IPv6 |
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
 | role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
 
@@ -154,6 +155,14 @@ only the power button helped. Now there is a way out on its own:
   Claude's desktop app, and avoiding SSH, X, the session, `python3` (the crew, the door, pools) and Claude Code.
   The patterns have no spaces or quotes: systemd splits the line at spaces. `journalctl -u earlyoom` says what it
   ended; `earlyoom --dryrun -m 90 -s 100` shows what it would pick now.
+
+## IPv6
+
+The LAN's router hands out IPv6 addresses and a default route, but nothing past it answers (2026-11-14:
+IPv4 to Cablecast's API in half a second, IPv6 never). Programs that try IPv6 first wait on every address
+before falling back: Python's urllib waits its whole timeout on each, so a deploy's four Cablecast requests
+took most of an hour. `/etc/gai.conf` is `gai.conf`, which puts IPv4 first for every program on the box;
+IPv6 still works where it is the only way. The router is the real fix; this keeps the box steady meanwhile.
 
 ## The origin
 

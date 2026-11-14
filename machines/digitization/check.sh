@@ -50,6 +50,8 @@ cmp -s "$HERE/sysctl-zram.conf" /etc/sysctl.d/60-fcpm-zram.conf && [ "$(cat /pro
 say $? "the kernel leans on that swap" "sudo cp $HERE/sysctl-zram.conf /etc/sysctl.d/60-fcpm-zram.conf && sudo sysctl --system"
 cmp -s "$HERE/earlyoom.default" /etc/default/earlyoom && systemctl is-active -q earlyoom
 say $? "earlyoom ends the biggest process before memory runs out" "sudo cp $HERE/earlyoom.default /etc/default/earlyoom && sudo systemctl restart earlyoom"
+cmp -s "$HERE/gai.conf" /etc/gai.conf
+say $? "IPv4 first where a name has both" "sudo cp $HERE/gai.conf /etc/gai.conf"
 hosts='files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4'
 cmp -s "$HERE/mdns.allow" /etc/mdns.allow && [ "$(awk '$1 == "hosts:" { $1 = ""; sub(/^ /, ""); print }' /etc/nsswitch.conf)" = "$hosts" ]
 say $? "names deeper than two labels resolve here" \
