@@ -1,0 +1,24 @@
+#!/bin/sh
+# outfit -- the keychain job onto a running Alpine box, as root (./install sends it). Safe to run again;
+# it never touches what is held (/srv/keychain/held, identity.age). See PROFILE.md.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+LIB=/usr/local/lib/fcpm/keychain
+apk add -q age python3 openssh git
+
+# keys: the account every holder's key is forced into. Its home is the keychain itself.
+id keys >/dev/null 2>&1 || adduser -D -h /srv/keychain -s /bin/sh keys
+sed -i -E 's/^keys:!:/keys:*:/' /etc/shadow           # sshd refuses a locked account, even by key
+chmod 700 /srv/keychain
+
+install -d $LIB
+install -m 755 "$HERE/door" "$HERE/run-keys" $LIB/
+install -m 644 "$HERE/HOLDERS" $LIB/HOLDERS
+# Only the door's block, each key forced through it: an unforced key would be a shell.
+install -d -m 700 -o keys -g keys /srv/keychain/.ssh
+[ -f /srv/keychain/.ssh/authorized_keys ] || install -m 600 -o keys -g keys /dev/null /srv/keychain/.ssh/authorized_keys
+su -s /bin/sh keys -c "FCPM_HOLDERS=$LIB/HOLDERS python3 -I $LIB/door keys"
+echo '* * * * * /bin/sh /usr/local/lib/fcpm/keychain/run-keys' > /etc/crontabs/keys
+chmod 600 /etc/crontabs/keys
+rc-service crond status >/dev/null 2>&1 || rc-service crond start >/dev/null
+echo "OUTFITTED: keychain $(su -s /bin/sh keys -c "python3 -I $LIB/door serve keeper outfit" </dev/null)"

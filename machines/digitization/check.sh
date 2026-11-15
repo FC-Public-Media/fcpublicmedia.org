@@ -29,6 +29,8 @@ systemctl is-active -q fcpm-crew@digitization
 say $? "the crew's supervisor, fcpm-crew@digitization" "sudo sh machines/crew.sh install digitization"
 git ls-remote -q "${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}/FC-Public-Media/fcpublicmedia.org" main 2>/dev/null | grep -q .
 say $? "origin.local answers as this checkout's origin" "../origin/PROFILE.md: its git account, this machine's key in ../origin/KEYHOLDERS"
+ssh -o BatchMode=yes -o ConnectTimeout=10 "${FCPM_KEYCHAIN_SSH:-fcpm-keychain}" status 2>/dev/null | grep -q '^keychain: '
+say $? "the keychain answers this machine's key" "../keychain/PROFILE.md: ~/.ssh/config's fcpm-keychain, this machine's key in ../keychain/HOLDERS"
 mountpoint -q /srv/landing
 say $? "the landing mounted at /srv/landing" \
   "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"

@@ -1,0 +1,5 @@
+# What this machine should answer to. See ../digitization/names. The origin's box wears it until the
+# keychain has a box of its own.
+
+# platform   key        value
+linux        Hostname   origin

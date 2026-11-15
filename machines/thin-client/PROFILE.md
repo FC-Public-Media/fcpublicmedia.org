@@ -20,7 +20,8 @@ the machine is named (`names`).
 Model, serial, BIOS, memory, flash and hardware address are read from the box; the rest is from
 [parkytowers' t510 page](https://www.parkytowers.me.uk/thin/hp/t510/).
 
-Today it wears [`origin`](../origin/PROFILE.md), from its own flash since 2026-10-15; this job waits
+Today it wears [`origin`](../origin/PROFILE.md), from its own flash since 2026-10-15, and
+[`keychain`](../keychain/PROFILE.md) since 2026-11-14; this job waits
 for another box. Until then the origin was a Debian stick in an outside port, and someone pulling it
 on 2026-10-13 took the box down mid-run: nothing a job needs should hang outside a box.
 

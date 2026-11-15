@@ -1,0 +1,8 @@
+# HOLDERS: who may reach FCPM's keychain by key, through its door (./door), the only way into the
+# keychain box's `keys` account. Public halves only; revoking is emptying a line by merged PR. The box
+# rereads this file from the origin's main every minute. A holder is a job (machines/<job>/), and its
+# keys.yml names the protected groups it is handed. A keeper also inits, unlocks, locks and mints.
+
+# office    holder         key type and key                                                          since
+keeper      Autumn         -                                                                         -
+keeper      digitization   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDL8JGISv1fAIISOJDQTaV3z/p4ncm1kNuZ/zYecb/fO  2026-11-14
