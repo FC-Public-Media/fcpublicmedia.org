@@ -1,9 +1,10 @@
 # MANIFEST: what editing bay 1 carries of its own home, for `../sync`. See docs/station.md.
 #   mode    repo path (relative to this folder)   home path (relative to ~)
 
-# The root's instructions stay in the mirror; what is placed only points there.
+# The root names itself: CLAUDE.md -> AGENTS.md -> BAY1.md, which ends at the profile's code/AGENTS.md.
 mirror  home/code/CLAUDE.md    code/CLAUDE.md
 mirror  home/code/AGENTS.md    code/AGENTS.md
+mirror  home/code/BAY1.md      code/BAY1.md
 mirror  code/bin/refs          code/bin/refs
 mirror  code/bin/pool.ps1      code/bin/pool.ps1
 mirror  code/refs.wanted       code/refs.wanted

@@ -18,7 +18,7 @@ grants: [docs/station.md](../../docs/station.md).
 | file | what it is |
 |---|---|
 | `names`, `called` | `windows ComputerName EDIT2`; `production` |
-| `MANIFEST` | carries `code/`, the pointers in `home/code/`, the git ignore (`.pr`), `fcpm.cmd`, `~/.local/bin` on PATH, and the compiled GRANTS |
+| `MANIFEST` | carries `code/`, the root's instructions in `home/code/` (`CLAUDE.md` -> `AGENTS.md` -> `BAY1.md` -> `code/AGENTS.md`), the git ignore (`.pr`), `fcpm.cmd`, `~/.local/bin` on PATH, and the compiled GRANTS |
 | `code/` | the `~/code` root: `AGENTS.md` (read in place from the mirror), `bin/refs`, `bin/pool.ps1`, `refs.wanted` (the mirrors) |
 | `GRANTS` | admits the recorder's OBS cycle; denies stopping any process by name |
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
