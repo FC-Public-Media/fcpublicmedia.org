@@ -52,6 +52,18 @@ promise of privacy:
 - **Sealed.** Out in the open, perhaps, but encrypted. Readable only by whoever holds a key we granted.
   That grant is the keychain wing, below.
 
+### Reading is not the library's to offer
+
+The library has no machinery for reading a file. A file is readable because the library exists and
+holds it where it can be reached, whether it ought to be protected or is public. The library routes to
+what is there and does not stand between a reader and a plain file. Whoever reaches it reads it with
+whatever they already have.
+
+So the library has exactly one API for reading, and it is for sealed things only: **ask for a grant of
+a core**. A core opens a range, and the grantee decrypts that range themselves. The library hands over
+the means to read and never a value it has read. `fcpm library` follows the same rule. It reports where
+a holding is and what shape it has, and it never opens a file.
+
 Moving the board's documents off a shared cloud drive is the first job here. Members reached them too
 easily. Nothing has gone wrong, but nothing stopped it either.
 
@@ -136,7 +148,8 @@ For the library, that means:
   Then the pile can be read at whim by anyone intending to look. No redaction is applied, except where a
   value is entered and decrypted in advance to prove what it was.
 - **Cores, by range.** Protected values are read through a granted core, a private key that opens a
-  range of the pile. The grantee then reads the data themselves, and we never hand a value over. Ranges
+  range of the pile. This grant is the library's only reading API (see Reading, above). The grantee
+  reads the data themselves, and we never hand a value over. Ranges
   are measured in characters, the unit a value is read at. So a secrets pile is one flat buffer,
   something like an environment map with secrets marked plainly, and each entry's character positions
   are recorded as it goes in.
@@ -158,8 +171,9 @@ The pile is how a sealed value could sit in the open and still be granted by ran
 
 ## Next
 
-1. Bind holdings on the other machines (`machines/<job>/library.yml`), and have Helm read them. That
-   means a library page on the door, so a big Helm can read a little one's holdings and x-rays.
+1. Bind holdings on the other machines (`machines/<job>/library.yml`), and have Helm address them, so
+   a big Helm knows which holdings a little one keeps and where. Helm addresses and does not serve:
+   reading what is there means reaching it, the same as anywhere else (Reading, above).
 2. Caretaking: `.library/CARETAKING.md` and the annotation shape above, with the local model as the
    caretaker.
 3. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
