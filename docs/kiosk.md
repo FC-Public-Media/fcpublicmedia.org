@@ -289,6 +289,21 @@ this one; a board wizard grants it (docs/keystore.md, Birth):
 Applying it is lodging it, never granting it: `petitions/<nonce>.json` beside the replies. Held: a
 `key` that is not one ssh-ed25519 public line, or a `job` with no profile in `machines/`.
 
+### wizard:library+ask, wizard:library+urgent
+
+`/library/ask/` on the site: an ask of the library's receptionist. Ticking *This is urgent* makes it
+`wizard:library+urgent` instead. The asker picks the lane, so nothing behind the camera has to guess:
+
+```json
+{"schema": "fcpm.reply/v0", "wizard": "wizard:library+ask", "at": "7fa8e20", "to": "receptionist",
+ "words": "Which holding has the most video?", "issued": "2026-11-16T03:10:00-07:00", "nonce": "…"}
+```
+
+Production's helm holds both (`helms.yml`), so a reply caught anywhere is passed there. Applying it is
+setting it down in the library's inbox, `~/code/library/inbox/<lane>/`, one file per ask. A seat takes
+it from there on its round (docs/library.md, The receptionist's inbox). Held: no `words`, more than 2000
+characters, a `to` that is not a seat's name, or a `holding` that `library.yml` does not declare.
+
 ## Helms
 
 A helm is a door: the board and its pages, and the intake (Replies). Every machine may run one, and

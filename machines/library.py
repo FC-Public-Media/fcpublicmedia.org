@@ -11,6 +11,7 @@
     library.py release GRANT          the grant is done
     library.py grants                 who is at work, asked now (grants whose holder ended are lapsed)
     library.py console [--beat]       the console buffer: rewritten at most once a minute, however often read
+    library.py inbox [round|answer]   asks of the library, by lane: list them, take a round's, answer one
 
 The library says where things are and never reads them; an x-ray reads names, sizes, times and
 attributes, never what a file says. The profile comes from FCPM_PROFILE (fcpm sets it). The library
@@ -18,6 +19,7 @@ here is ~/code/library (FCPM_LIBRARY): one folder per branch, retain/ never push
 """
 import argparse
 import ctypes
+import json
 import os
 import socket
 import stat
@@ -776,6 +778,74 @@ def grants(args):
     print("\n".join(at_work(book(args.profile))))
 
 
+# ------------------------------------------------------------------------------ the inbox --
+# Asks of the library, set down by Helm (machines/kiosk/replies.py: wizard:library+ask, +urgent) in
+# ~/code/library/inbox/<lane>/. A round takes them lane by lane, in library.yml's order, each lane within its
+# budget; a taken ask moves to inbox/taken/, and an answered one to inbox/answered/, with its answer.
+# Moving is the claim: two rounds at once cannot take the same ask. docs/library.md, The receptionist's inbox.
+
+def lanes():
+    return (declared().get("inbox") or {}).get("lanes") or {}
+
+
+def tray(name):
+    d = location() / "inbox" / name
+    return sorted(d.glob("*.json")) if d.is_dir() else []
+
+
+def inbox_counts():
+    w = ", ".join(f"{lane} {len(tray(lane))}" for lane in lanes())
+    return f"{w or 'no lanes'} waiting; {len(tray('taken'))} taken, {len(tray('answered'))} answered"
+
+
+def inbox(args):
+    if args.what == "round":
+        return inbox_round()
+    if args.what == "answer":
+        return inbox_answer(args.nonce, args.words)
+    print(f"inbox     {inbox_counts()}")
+    for lane in [*lanes(), "taken"]:
+        for path in tray(lane):
+            e = json.loads(path.read_text(encoding="utf-8"))
+            words = " ".join(str(e.get("words", "")).split())
+            print(f"  {lane:8} {e.get('queued', '?')[:16]}  to {e.get('to', '?'):12} {e.get('holding') or '-':10}"
+                  f"  {words[:60]}{'...' if len(words) > 60 else ''}")
+
+
+def inbox_round():
+    """Take what this round may: every lane in order, each up to its budget. One JSON line per ask taken,
+    for the seat that runs the round; nothing printed means nothing was waiting."""
+    taken = location() / "inbox" / "taken"
+    taken.mkdir(parents=True, exist_ok=True)
+    for lane, cfg in lanes().items():
+        budget = (cfg or {}).get("budget", "all")
+        waiting = tray(lane)
+        for path in waiting if budget == "all" else waiting[:int(budget)]:
+            dest = taken / path.name
+            try:
+                os.replace(path, dest)                   # the claim: whoever moves it has it
+            except FileNotFoundError:
+                continue                                 # another round took it first
+            print(json.dumps(json.loads(dest.read_text(encoding="utf-8")), ensure_ascii=False))
+
+
+def inbox_answer(nonce, words):
+    if not nonce or not words:
+        sys.exit("library: inbox answer NONCE WORDS")
+    path = next((p for p in tray("taken") if p.stem.endswith("--" + nonce)), None)
+    if not path:
+        sys.exit(f"library: no taken ask {nonce} (fcpm library inbox)")
+    e = json.loads(path.read_text(encoding="utf-8"))
+    e.update(answered=iso(time.time()), answer=words)
+    out = location() / "inbox" / "answered" / path.name
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_suffix(".part")
+    tmp.write_text(json.dumps(e, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    os.replace(tmp, out)
+    path.unlink()
+    print(f"answered  {nonce}")
+
+
 # ---------------------------------------------------------------------------- the console --
 # A buffer, written out: what is going on in the library here, at a glance. Reading it never runs
 # the query; a stale buffer is rewritten at most once per BEAT, however many ask. Helm shows it.
@@ -796,6 +866,7 @@ def compose(profile):
     events = git(*g, "log", "refs/grants/book", "--since=1.hour", "--format=%(trailers:key=Event,valueonly)",
                  check=False).split()
     lines.append("hour      " + ", ".join(f"{events.count(e)} {e}" for e in ("issued", "released", "lapsed")))
+    lines.append(f"inbox     {inbox_counts()}")                # counts only: an ask's words are not for peers
     wt = retain(profile)
     for label in (declared().get("holdings") or {}):
         got = at_rev(wt, label) if wt and label in bindings(profile) else None
@@ -869,9 +940,13 @@ def main(argv):
     sub.add_parser("release").add_argument("grant")
     sub.add_parser("grants")
     sub.add_parser("console").add_argument("--beat", action="store_true")
+    ib = sub.add_parser("inbox")
+    ib.add_argument("what", nargs="?", default="list", choices=["list", "round", "answer"])
+    ib.add_argument("nonce", nargs="?")
+    ib.add_argument("words", nargs="?")
     args = p.parse_args(argv)
     {"xray": xray, "diff": diff, "summary": summary_of, "log": log, "where": where, "browse": browse, "grant": grant,
-     "release": release, "grants": grants, "console": console}.get(args.verb, status)(args)
+     "release": release, "grants": grants, "console": console, "inbox": inbox}.get(args.verb, status)(args)
 
 
 if __name__ == "__main__":
