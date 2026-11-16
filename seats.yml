@@ -39,7 +39,7 @@ seats:
     mission: "Go looking from the metadata; where something is not where it should be, file an error and stop."
     constitution: "#checker"
     reads: [record, holding]
-    writes: [errors, contracts]
+    writes: [errors, requests, contracts]
     out-of-scope:
       - Fixing anything it finds.
 
