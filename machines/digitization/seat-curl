@@ -1,0 +1,8 @@
+#!/bin/sh
+# curl for a seat's session (machines/digitization/seats): the real one, its response also kept in $SEAT_DUMP for the reply's cost line.
+here=$(dirname "$0")
+real=$(PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vx "$here" | paste -sd:) command -v curl)
+out=$("$real" "$@"); rc=$?
+[ -z "${SEAT_DUMP:-}" ] || printf '%s' "$out" > "$SEAT_DUMP"
+printf '%s' "$out"
+exit $rc

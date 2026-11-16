@@ -2735,6 +2735,17 @@ def asks_dir(name):
     return replies.STATE / "asks" / name
 
 
+def seats_called():
+    """The advocate seats any helm holds (machines/*/seats.yml) that advocate.yml declares: each name, mission, cadence."""
+    import replies
+    held = set()
+    for p in (ROOT / "machines").glob("*/seats.yml"):
+        held |= set((replies.load_yaml(p) or {}).get("seats") or {})
+    spec = replies.load_yaml(ROOT / "advocate.yml") if (ROOT / "advocate.yml").is_file() else {}
+    return [{"name": a["name"], "mission": a.get("mission") or "", "cadence": a.get("cadence") or "weekly"}
+            for a in spec.get("advocates") or [] if isinstance(a, dict) and a.get("name") in held]
+
+
 def ask_page():
     import replies
     limit = int((replies.load_yaml(ROOT / "machines" / "production" / "shapes" / "ask.yml") or {}).get("limit") or 1500)
@@ -2753,6 +2764,11 @@ def ask_page():
     <div class=code><canvas id=code role=img aria-label="Your question, as a code"></canvas><span id=read></span></div>
     <div class=bar><button id=drop type=button>Set it down here</button><span id=said></span></div>
   </section>
+  <section id=seats-call class=seats hidden><h2>Call a seat</h2>
+    <p class=lede>An advocate seat, run now. It works on its own branch here and its finished reply comes back in the
+    loop under the call's number. Ticked answers go with it, quoted whole.</p>
+    <label class=field><span>A note for it (if you like)</span><textarea id=seat-note rows=2 maxlength=400></textarea></label>
+    <ol id=seats></ol></section>
   <section id=loop-catch hidden><h2>From the loop</h2>
     <div class=bar><button id=catch type=button>Catch from the loop</button><span id=caught></span></div>
     <ol id=catching class=catching></ol>
@@ -2768,12 +2784,15 @@ def ask_page():
 <script type=application/json id=ask-config>%s</script>
 <script type=module src="/ask/ask.js?v=%s"></script>""" % (
         limit, json.dumps({"at": git("rev-parse", "--short", "HEAD") or "nogit", "limit": limit, "lan": True,
-                    "urgent": replies.URGENT}),
+                    "urgent": replies.URGENT, "seats": seats_called()}),
         e(git("rev-parse", "--short", "HEAD") or "0"))
     return shell("Ask the model", body, HOST_CSS + ASK_CSS)
 
 
 ASK_CSS = """
+.seats ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.6rem; }
+.seats li { display:flex; justify-content:space-between; align-items:center; gap:1rem; border-top:1px solid var(--rule); padding-top:.5rem; }
+.seats li p { margin:0; } .seats li .meta { font-size:.75rem; color:var(--soft); display:block; }
 textarea { font:inherit; font-size:1.1rem; padding:.55rem .7rem; border-radius:.6rem; border:1px solid var(--rule);
   background:var(--slate); color:var(--paper); resize:vertical; }
 details summary { color:var(--soft); font-size:.9rem; cursor:pointer; }
@@ -2794,7 +2813,7 @@ details summary { color:var(--soft); font-size:.9rem; cursor:pointer; }
 .notebook h2 { font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin:1rem 0 .4rem; }
 .notebook ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.8rem; }
 .notebook li { border-top:1px solid var(--rule); padding-top:.6rem; }
-.notebook .q { margin:0; font-weight:650; } .notebook .a { margin:.3rem 0; color:var(--soft); }
+.notebook .q { margin:0; font-weight:650; } .notebook .a { margin:.3rem 0; color:var(--soft); white-space:pre-wrap; }
 .notebook .meta { font-size:.75rem; color:var(--dim); display:block; }
 .notebook label { display:inline-flex; gap:.4rem; align-items:center; font-size:.85rem; margin-top:.3rem; }
 """

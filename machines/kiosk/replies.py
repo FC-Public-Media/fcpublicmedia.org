@@ -19,6 +19,8 @@ Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDAT
     held/       read, not acted on             state/<room>.json   what a room's page reads
     routed/     passed to the helm that holds its wizard
     visits.ndjson   one line per check-in shown to us, timed when it was read
+    seats/queue/    an advocate seat called in by hand (wizard:seat+run), waiting; machines/digitization/seats runs
+                    it, keeps seats/runs/<nonce>/, and files its finished reply as asks/answers/<nonce>.json
     asks/queue/     a question for the model (wizard:model+ask), waiting its turn; asks/answers/<nonce>.json
                     its answer, written by machines/digitization/asks; asks/recall.json what wizard:loop+recall
                     brought back into the loop
@@ -427,6 +429,39 @@ def recall_reply(reply, meta):
     return None, "%d answer%s back in the loop (%s)" % (len(have), "" if len(have) == 1 else "s", mode)
 
 
+# ---- an advocate seat called in by hand (wizard:seat+run), by the helm that holds the seat ----
+
+SEAT_QUOTES = 5        # earlier replies one call may quote in
+SEAT_QUOTED = 8000     # characters of them, all told
+
+
+def seat_reply(reply, meta):
+    """{seat, note?, quote?}: run this seat now. `quote` is earlier replies, whole, which the seat is shown as relayed
+    context. Queued as seats/queue/<queued>--<nonce>.json; machines/digitization/seats runs it and files the finished
+    reply under this call's nonce, the way an answer comes back in the public loop."""
+    seat = str(reply.get("seat") or "")
+    names = [a.get("name") for a in (load_yaml(ROOT / "advocate.yml").get("advocates") or []) if isinstance(a, dict)]
+    if seat not in names:
+        return "seat: %r is no seat in advocate.yml" % seat
+    nonce = str(reply.get("nonce") or "")
+    if not (8 <= len(nonce) <= 64 and all(ch.isascii() and (ch.isalnum() or ch in "-_") for ch in nonce)):
+        return "nonce: 8 to 64 letters, digits, dashes or underscores (the reply is filed under it)"
+    quote = reply.get("quote") or []
+    if not isinstance(quote, list) or len(quote) > SEAT_QUOTES or not all(isinstance(q, dict) for q in quote):
+        return "quote: a list of at most %d earlier replies" % SEAT_QUOTES
+    if len(json.dumps(quote, ensure_ascii=False)) > SEAT_QUOTED:
+        return "quote: more than %d characters" % SEAT_QUOTED
+    queued = now().isoformat(timespec="seconds")
+    entry = {"nonce": nonce, "seat": seat, "note": str(reply.get("note") or "")[:400], "quote": quote,
+             "issued": reply.get("issued"), "queued": queued, "wizard_at": reply.get("at"),
+             "by": meta.get("by"), "trust": meta.get("trust")}
+    folder = STATE / "seats" / "queue"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ("%s--%s.json" % (queued.replace(":", "-"), nonce))).write_text(
+        json.dumps(entry, ensure_ascii=False), encoding="utf-8")
+    return None, "the %s seat called in" % seat
+
+
 # ---- the models that are up (wizard:model+up), applied by the helm of the job that serves them ----
 
 MODELS = ROOT / "machines" / "production" / "models"
@@ -590,7 +625,7 @@ _waiting = set()       # bottles already said to be waiting for a helm, so a lon
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
            "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply,
            "wizard:loop+recall": recall_reply, "wizard:model+up": model_up_reply,
-           "wizard:site+deploy": deploy_reply, "wizard:keys+birth": birth_reply}
+           "wizard:site+deploy": deploy_reply, "wizard:keys+birth": birth_reply, "wizard:seat+run": seat_reply}
 
 
 def nonces():

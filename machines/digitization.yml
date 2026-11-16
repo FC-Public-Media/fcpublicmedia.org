@@ -17,6 +17,10 @@ serves:
     for: "the questions people showed us (wizard:model+ask), answered by bay 1's model one at a time, each labeled and kept under its nonce for the public loop; see digitization/PROFILE.md"
     start: "/usr/bin/python3 machines/digitization/asks"
 
+  - service: seats
+    for: "advocate seats called in by hand (wizard:seat+run): granted, admitted, run by the advocate engine on their own branch here, their finished reply in the public loop; see digitization/PROFILE.md#seats"
+    start: "/usr/bin/python3 machines/digitization/seats"
+
   - service: senders
     for: "who may deliver finished post work to the landing: authorized_keys's marked lines kept to post-senders.yml"
     start: "/usr/bin/python3 machines/digitization/post-receive senders"

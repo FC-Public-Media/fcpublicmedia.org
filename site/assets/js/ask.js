@@ -9,6 +9,8 @@
 //                 it into the next question; nothing points anywhere, so it works whichever model answers.
 //   carried       everyone else's answers this phone caught from the loop: it carries them to the people they
 //                 answer, who weren't there to read them, and "Show it" pours one again for another phone.
+//   seats         where the page lists them (the door's, from seats.yml): wizard:seat+run calls an advocate seat in
+//                 now, with a note and the ticked answers quoted whole; its finished reply comes back like an answer.
 // The reply is OpenAI-enough messages (a role and its text, the question last; no model, bay or session). Its
 // answer comes back in the public loop under the reply's nonce. Where the page may open a camera (a secure page:
 // the public site), "Catch from the loop" reads everything in it (catch.mjs). On the LAN this page also asks the
@@ -74,7 +76,8 @@ function paintNotebook() {
     const meta = Object.assign(document.createElement("span"), { className: "meta",
       textContent: [n.label, when(n.at || n.made), n.nonce && `…${n.nonce.slice(-6)}`].filter(Boolean).join(" · ") });
     const acts = Object.assign(document.createElement("div"), { className: "acts" });
-    acts.append(button("Use again", () => useAgain(n)));
+    const seat = n.reply && n.reply.wizard === "wizard:seat+run" && n.reply.seat;
+    acts.append(seat ? button("Call again", () => callSeat(seat)) : button("Use again", () => useAgain(n)));
     if (n.reply && !n.a) {
       acts.append(button("Show its code", () => show(n.nonce)));
       if (Date.now() - Date.parse(n.made) > URGENT) acts.append(button("Ask the loop for it", () => recall([n.nonce])));
@@ -146,6 +149,34 @@ function make() {
   for (const x of notebook) x.quote = false;
   paintCount();
   show(reply.nonce);
+}
+
+// Call a seat in: a notebook entry like a question, its reply the seat's finished one, under this call's nonce.
+function callSeat(seat) {
+  const quote = notebook.filter((x) => x.quote && x.a).map((x) => ({ in_reply_to: x.nonce, q: x.q, label: x.label, answer: x.a }));
+  const note = el("seat-note").value.trim();
+  const reply = { schema: "fcpm.reply/v0", wizard: "wizard:seat+run", at: C.at, issued: localIso(new Date()),
+                  nonce: nonce(), seat, note, quote };
+  notebook.push({ nonce: reply.nonce, reply, q: `Call the ${seat} seat` + (note ? `: ${note}` : ""), made: reply.issued,
+                  a: null, quote: false });
+  for (const x of notebook) x.quote = false;
+  el("seat-note").value = "";
+  save(NOTEBOOK, notebook);
+  paintCount();
+  show(reply.nonce);
+}
+
+function paintSeats() {
+  const seats = C.seats || [];
+  if (!el("seats-call")) return;
+  el("seats-call").hidden = !seats.length;
+  el("seats").replaceChildren(...seats.map((s) => {
+    const li = document.createElement("li");
+    const p = Object.assign(document.createElement("p"), { textContent: s.name });
+    p.append(Object.assign(document.createElement("span"), { className: "meta", textContent: `${s.mission} · ${s.cadence}` }));
+    li.append(p, button(`Call ${s.name}`, () => callSeat(s.name), false));
+    return li;
+  }));
 }
 
 // Bring answers back into the loop: one takes it over briefly (out of the way, then back to normal); several
@@ -295,6 +326,6 @@ el("forget").addEventListener("click", () => {
 });
 el("drop").hidden = !C.lan;
 el("loop-catch").hidden = !can();
-paintNotebook(); paintCarried(); paintCount();
+paintNotebook(); paintCarried(); paintCount(); paintSeats();
 if (showing) show(showing);
 if (pending().length) listen();

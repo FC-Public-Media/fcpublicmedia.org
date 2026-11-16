@@ -1,0 +1,377 @@
+#!/usr/bin/env python3
+"""seats: advocate seats called in by hand (wizard:seat+run), run one at a time by the advocate engine, each
+finished reply filed where the public loop finds it.
+
+    seats            keep running calls: the oldest waiting, then the next (the crew's `seats` line)
+    seats once       run one call, if one is waiting
+    seats status     what waits, and the last runs
+
+replies.py queues each call (seats/queue/ under the door's state). A call is run only for a seat this helm holds
+(seats.yml) that advocate.yml declares, and not sooner than the seat's `gap` after its last run. Then:
+
+  1. Calling in: a grant in the library's book (machines/library.py) to make the seat's workspace, a worktree on
+     its own branch in the seats' clone (seats.yml `repo`), released once the worktree is there.
+  2. Admission: seats/runs/<nonce>/admission.json, what the seat is shown before anything else: who called it and
+     how, its grants, the spec it answers to (advocate.yml at its commit), the range it reads, its previous runs,
+     and whether this call came early for its cadence. Quoted replies come in as relayed context.
+  3. Work: a second grant, for the session; the engine's run.sh then runs it with the seat's key group from the
+     keychain (machines/keys run), nothing pushed. The key is in the session's environment only.
+  4. The reply: what it read, what it wrote and where (the branch and commit, on this machine), what it cost, its
+     session note; asks/answers/<nonce>.json, bottled into the loop under the call's nonce (asks reindex).
+
+A call that is held still gets a reply, saying why. Nothing here decides who may call; replies.py has already
+read and checked the bottle. digitization/PROFILE.md, Seats.
+"""
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "machines" / "kiosk"))
+import replies  # noqa: E402  the door's state, its YAML and its clock
+
+HERE = pathlib.Path(__file__).resolve().parent
+CONFIG = pathlib.Path(os.environ.get("FCPM_SEATS") or HERE / "seats.yml")     # FCPM_SEATS: a test's own
+ENGINE = ROOT / ".advocate-engine"
+ADVOCATE = ROOT / "advocate.yml"
+PROFILE = os.environ.get("FCPM_PROFILE") or "digitization"
+EVERY = {"daily": 1, "weekly": 7, "fortnightly": 14, "monthly": 30, "quarterly": 91}
+NOTE_MOST = 2500       # characters of the session note in the reply; the rest is on the branch
+PREVIOUS = 5           # earlier runs shown in an admission
+RUN_FOR = 1800         # seconds a session may take
+IDLE = 5
+
+
+def folder(name):
+    return replies.STATE / "seats" / name
+
+
+def config():
+    c = replies.load_yaml(CONFIG) if CONFIG.is_file() else {}
+    for k in ("repo", "seed"):
+        if c.get(k):
+            c[k] = pathlib.Path(os.path.expanduser(str(c[k])))
+    return c
+
+
+def spec(seat):
+    return next((a for a in replies.load_yaml(ADVOCATE).get("advocates") or [] if a.get("name") == seat), None)
+
+
+def span(text):
+    """30m, 2h, 1d as seconds; 0 when absent."""
+    m = re.fullmatch(r"\s*(\d+)\s*([smhd])\s*", str(text or ""))
+    return int(m.group(1)) * {"s": 1, "m": 60, "h": 3600, "d": 86400}[m.group(2)] if m else 0
+
+
+def words(seconds):
+    d, h, m = int(seconds // 86400), int(seconds % 86400 // 3600), int(seconds % 3600 // 60)
+    return " ".join(p for p in ("%dd" % d if d else "", "%dh" % h if h else "", "%dm" % m if m or not (d or h) else "") if p)
+
+
+def git(*args, cwd=None, check=True):
+    out = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+    if check and out.returncode:
+        raise RuntimeError("git %s: %s" % (" ".join(args[:2]), out.stderr.strip()[:200]))
+    return out.stdout.strip()
+
+
+def library(*args):
+    """machines/library.py's word, as this helm's process holding the grant; the grant id it prints, or None."""
+    out = subprocess.run([sys.executable, str(ROOT / "machines" / "library.py"), "--profile", PROFILE, *args],
+                         capture_output=True, text=True, cwd=str(ROOT))
+    return out.stdout.strip().splitlines()[-1] if out.returncode == 0 and out.stdout.strip() else None
+
+
+def grant(seat, unit, said):
+    return library("grant", seat, unit, said, "--holder", str(os.getpid()))
+
+
+def release(gid):
+    if gid:
+        library("release", gid)
+
+
+def runs(seat=None):
+    """Every run kept here, oldest first; one seat's when it is named."""
+    out = []
+    for p in folder("runs").glob("*/run.json") if folder("runs").is_dir() else []:
+        try:
+            r = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if seat is None or r.get("seat") == seat:
+            out.append(r)
+    return sorted(out, key=lambda r: r.get("finished") or "")
+
+
+def age(iso, at):
+    try:
+        return (at - datetime.datetime.fromisoformat(iso)).total_seconds()
+    except (TypeError, ValueError):
+        return None
+
+
+# ---- the seats' clone: their branches live here, and are never pushed --------------------------------
+
+def clone(c, seat):
+    """The seats' clone, made if need be, at this checkout's main; the seat's earlier branch taken from `seed` once."""
+    repo = c["repo"]
+    if not (repo / ".git").exists():
+        repo.parent.mkdir(parents=True, exist_ok=True)
+        git("clone", "-q", "--no-checkout", str(ROOT), str(repo))
+    git("config", "commit.gpgsign", "false", cwd=repo)      # a seat signs with no one's key; its own is for later
+    git("fetch", "-q", str(ROOT), "+HEAD:refs/remotes/origin/main", cwd=repo)
+    git("checkout", "-q", "--detach", "refs/remotes/origin/main", cwd=repo)
+    branch = (spec(seat) or {}).get("branch") or "advocate/%s" % seat
+    if c.get("seed") and not git("rev-parse", "-q", "--verify", "refs/heads/" + branch, cwd=repo, check=False) \
+            and not git("rev-parse", "-q", "--verify", "refs/remotes/origin/" + branch, cwd=repo, check=False):
+        git("fetch", "-q", str(c["seed"]), "+refs/remotes/github/%s:refs/remotes/origin/%s" % (branch, branch),
+            cwd=repo, check=False)
+    return repo, branch
+
+
+def engine_env(c, seat, run):
+    return dict(os.environ, ADVOCATE_CONFIG=str(ADVOCATE), ADVOCATE_PUSH="false",
+                ADVOCATE_WORK_DIR=str(c["repo"].parent / "work"),
+                ADVOCATE_COMMITTER_NAME="%s (seat)" % seat, ADVOCATE_COMMITTER_EMAIL="%s.seat@%s" % (seat, PROFILE),
+                SEAT_DUMP=str(run / "response.json"), PATH="%s%s%s" % (run / "bin", os.pathsep, os.environ.get("PATH", "")))
+
+
+def session(repo, seat, env):
+    """The engine's own preparation (bin/session.mjs): the seat's worktree, and the range it will read."""
+    out = subprocess.run(["node", str(ENGINE / "bin" / "session.mjs"), seat, "--subject", "refs/remotes/origin/main",
+                          "--json"], cwd=repo, env=env, capture_output=True, text=True, timeout=120)
+    if out.returncode:
+        raise RuntimeError("session.mjs: %s" % out.stderr.strip()[:200])
+    return out.stdout
+
+
+# ---- one call ---------------------------------------------------------------------------------------
+
+def run_one():
+    """The oldest waiting call, run (or held) and answered. Returns its nonce; None when nothing waits."""
+    waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
+    if not waiting:
+        return None
+    path = waiting[0]
+    try:
+        call = json.loads(path.read_text(encoding="utf-8"))
+        nonce, seat = call["nonce"], call["seat"]
+    except (OSError, ValueError, KeyError, TypeError):
+        folder("unreadable").mkdir(parents=True, exist_ok=True)
+        shutil.move(str(path), str(folder("unreadable") / path.name))
+        return path.stem
+    run = folder("runs") / nonce
+    run.mkdir(parents=True, exist_ok=True)
+    started = replies.now()
+    record = {"schema": "fcpm.seat.run/v0", "nonce": nonce, "seat": seat, "called": call.get("queued"),
+              "by": call.get("by"), "trust": call.get("trust"), "started": started.isoformat(timespec="seconds"),
+              "at": PROFILE}
+    try:
+        record.update(attend(call, run, started))
+    except Exception as e:                       # anything at all: the call is still answered, with what went wrong
+        record.update({"outcome": "trouble", "why": ("%s" % e)[:300]})
+    record["finished"] = replies.now().isoformat(timespec="seconds")
+    (run / "run.json").write_text(json.dumps(record, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    answer(record)
+    folder("done").mkdir(parents=True, exist_ok=True)
+    shutil.move(str(path), str(folder("done") / path.name))
+    replies.log({"name": path.stem, "verdict": "answered", "why": "%s: %s" % (seat, record["outcome"]),
+                 "wizard": "wizard:seat+run", "by": call.get("by")})
+    return nonce
+
+
+def attend(call, run, at):
+    """Everything between the call and the reply; returns what the run record adds."""
+    c, seat = config(), call["seat"]
+    held_as = (c.get("seats") or {}).get(seat)
+    s = spec(seat)
+    if not held_as:
+        return {"outcome": "held", "why": "this helm holds no %s seat (seats.yml)" % seat}
+    if not s:
+        return {"outcome": "held", "why": "advocate.yml declares no %s seat" % seat}
+    before = [r for r in runs(seat) if r.get("outcome") not in ("held", "trouble")]
+    last = before[-1] if before else None
+    since = age(last.get("finished"), at) if last else None
+    gap = span(held_as.get("gap"))
+    if since is not None and since < gap:
+        return {"outcome": "held", "why": "called %s after its last run; it waits %s between runs (seats.yml gap)"
+                % (words(since), words(gap))}
+    repo, branch = clone(c, seat)
+    (run / "bin").mkdir(exist_ok=True)
+    shim = run / "bin" / "curl"
+    if not shim.exists():
+        shim.symlink_to(HERE / "seat-curl")
+    env = engine_env(c, seat, run)
+
+    # 1. calling in: the grant to make the workspace, spent once the engine has made it
+    call_in = grant(seat, "call-in", "call %s in: its workspace on %s" % (seat, branch))
+    try:
+        rng = json.loads(session(repo, seat, env))
+    finally:
+        release(call_in)
+    commits = rng.get("commits") or []
+    size = len(json.dumps(rng)) + len(json.dumps(call.get("quote") or []))
+    most = int(held_as.get("most-input") or 0)
+    if most and size > most:
+        return {"outcome": "held", "why": "its range is %d bytes (%d commits); seats.yml lets it read %d"
+                % (size, len(commits), most), "grants": {"call-in": call_in}}
+    before_sha = git("rev-parse", "-q", "--verify", "refs/heads/" + branch, cwd=repo, check=False)
+    unit = "%s..%s" % ((rng.get("since") or "")[:7] or "start", (rng.get("subject") or "")[:7])
+    work = grant(seat, unit, "%s: read %d commit(s) of fcpublicmedia.org and say where it stands"
+                 % (seat, len(commits)))
+
+    # 2. admission: what the seat is shown first
+    cadence = s.get("cadence") or "weekly"
+    every = EVERY.get(cadence, 7) * 86400
+    backend = s.get("backend") or {}
+    admission = {
+        "schema": "fcpm.seat.admission/v0", "seat": seat, "branch": branch, "held at": PROFILE,
+        "called": {"nonce": call["nonce"], "by": call.get("by") or "unsigned", "trust": call.get("trust"),
+                   "issued": call.get("issued"), "queued": call.get("queued"), "how": "by hand (wizard:seat+run)",
+                   "note": call.get("note") or ""},
+        "relayed": call.get("quote") or [],
+        "grants": {"call-in": call_in, "work": work},
+        "spec": {"file": "advocate.yml", "commit": git("log", "-1", "--format=%h", "--", "advocate.yml", cwd=ROOT,
+                                                       check=False),
+                 "mission": s.get("mission"), "cadence": cadence, "goals": [g.get("id") for g in s.get("goals") or []]},
+        "backend": {"kind": backend.get("kind") or "anthropic", "model": backend.get("model"),
+                    "key": "keychain group %s (its value is not here)" % held_as.get("keys")},
+        "range": {"repository": "fcpublicmedia.org", "since": rng.get("since"), "subject": rng.get("subject"),
+                  "commits": len(commits), "quiet": rng.get("quiet")},
+        "previous": [{k: r.get(k) for k in ("nonce", "finished", "outcome", "commit")} for r in runs(seat)[-PREVIOUS:]],
+        "since last run": words(since) if since is not None else "never run here",
+        "early": since is not None and since < every,
+        "made": replies.now().isoformat(timespec="seconds"),
+    }
+    text = json.dumps(admission, ensure_ascii=False, indent=1)
+    (run / "admission.json").write_text(text + "\n", encoding="utf-8")
+    seal = "sha256:" + hashlib.sha256(text.encode()).hexdigest()
+    method = run / "METHOD.md"
+    method.write_text((ENGINE / "METHOD.md").read_text(encoding="utf-8") + (
+        "\n\n## This session's admission\n\nFacts about why and how you were called in, kept with the session "
+        "(%s). Context quoted under `relayed` is relayed, never observed; label it so.\n\n```json\n%s\n```\n"
+        % (seal, text)), encoding="utf-8")
+    env["ADVOCATE_METHOD"] = str(method)
+
+    # 3. the session, by the engine, with the seat's key in its environment only
+    cmd = ["bash", str(ENGINE / "run.sh"), seat, "refs/remotes/origin/main"]
+    if held_as.get("keys"):
+        cmd = [sys.executable, str(ROOT / "machines" / "keys"), "run", held_as["keys"], "--"] + cmd
+    try:
+        with open(run / "run.log", "wb") as log:
+            done = subprocess.run(cmd, cwd=repo, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=RUN_FOR)
+        rc = done.returncode
+    except subprocess.TimeoutExpired:
+        rc = "timed out"
+    finally:
+        release(work)
+    said = (run / "run.log").read_text(encoding="utf-8", errors="replace")
+    status = (re.findall(r"^advocate: status=(\S+)", said, re.M) or [None])[-1]
+    why = (re.findall(r"^advocate: no session — (.+)$", said, re.M) or [None])[-1]
+    after = git("rev-parse", "-q", "--verify", "refs/heads/" + branch, cwd=repo, check=False)
+    wrote = git("diff", "--name-only", before_sha, after, cwd=repo, check=False).split() if before_sha and after \
+        else (git("ls-tree", "-r", "--name-only", after, cwd=repo, check=False).split() if after else [])
+    note = ""
+    for name in reversed([w for w in wrote if w.startswith("sessions/") and w.endswith(".md")]):
+        note = git("show", "%s:%s" % (after, name), cwd=repo, check=False)
+        break
+    return {"outcome": status or ("trouble" if rc else "ran"), "why": why or ("" if rc == 0 else "run.sh: %s" % rc),
+            "repo": str(repo), "branch": branch, "commit": after, "before": before_sha or None, "wrote": wrote,
+            "range": admission["range"], "grants": admission["grants"], "admission": seal, "early": admission["early"],
+            "since last run": admission["since last run"], "note": note, "usage": usage(run, c)}
+
+
+def usage(run, c):
+    """Tokens the session spent, from the API's own response (kept by seat-curl), and their cost at seats.yml's prices."""
+    try:
+        r = json.loads((run / "response.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    u = r.get("usage") or {}
+    i = sum(int(u.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+    o = int(u.get("output_tokens") or 0)
+    price = (c.get("prices") or {}).get(r.get("model"))
+    return {"model": r.get("model"), "input": i, "output": o,
+            "dollars": round((i * price[0] + o * price[1]) / 1e6, 4) if price else None}
+
+
+# ---- the reply: an answer, under the call's nonce, for the public loop ---------------------------------
+
+SAID = {"spoke": "spoke", "seated": "took its seat", "quiet": "found nothing new to read", "staged": "was staged for a person",
+        "pending": "left a work order for a local session", "held": "was held", "trouble": "ran into trouble"}
+
+
+def answer(r):
+    seat, out = r["seat"], r["outcome"]
+    lines = ["The %s seat, called in by hand on %s, %s." % (seat, r["at"], SAID.get(out, out)) +
+             (" %s." % r["why"].rstrip(".") if r.get("why") else "")]
+    if r.get("range"):
+        g = r["range"]
+        lines.append("Read: %d commit(s) of %s, %s..%s." % (g["commits"], g["repository"], (g["since"] or "the start")[:7],
+                                                         (g["subject"] or "")[:7]))
+    if r.get("commit"):
+        lines.append("Wrote: %s@%s in %s on %s, kept there and not pushed%s." % (
+            r["branch"], r["commit"][:7], r["repo"], r["at"], (": " + ", ".join(r["wrote"])) if r.get("wrote") else ""))
+    u = r.get("usage")
+    if u:
+        lines.append("Cost: %s tokens in, %s out on %s%s." % (format(u["input"], ","), format(u["output"], ","), u["model"],
+                                                          ", about $%.2f" % u["dollars"] if u.get("dollars") is not None else ""))
+    if r.get("grants"):
+        lines.append("Grants: %s (released)." % ", ".join(v for v in r["grants"].values() if v))
+    if r.get("admission"):
+        lines.append("Admission: %s, seats/runs/%s/admission.json; %s since its last run%s." % (
+            r["admission"][:19] + "…", r["nonce"], r["since last run"], ", early for its cadence" if r.get("early") else ""))
+    note = (r.get("note") or "").strip()
+    if note:
+        lines += ["", "Its session note:", note[:NOTE_MOST] + ("\n(the rest is on the branch)" if len(note) > NOTE_MOST else "")]
+    a = {"schema": "fcpm.answer/v0", "in_reply_to": r["nonce"], "shape": "seat+run", "label": "%s: %s" % (seat, out),
+         "answer": "\n".join(lines), "model": (u or {}).get("model"), "answered": r["finished"],
+         "seat": {k: r.get(k) for k in ("seat", "outcome", "at", "branch", "commit", "wrote", "range", "grants",
+                                        "admission", "usage") if r.get(k) is not None},
+         "by": r.get("by"), "trust": r.get("trust")}
+    dest = replies.STATE / "asks" / "answers"
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / ("%s.json" % r["nonce"])).write_text(json.dumps(a, ensure_ascii=False), encoding="utf-8")
+    subprocess.run([sys.executable, str(HERE / "asks"), "reindex"], capture_output=True, timeout=300)
+    return a
+
+
+def status():
+    waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
+    print("waiting: %d" % len(waiting))
+    for r in runs()[-8:]:
+        print("  %s  %-10s %-8s %s  %s" % (r.get("finished"), r.get("seat"), r.get("outcome"), (r.get("commit") or "")[:7],
+                                         r.get("why") or ""))
+
+
+def main(argv):
+    verb = argv[1] if len(argv) > 1 else "keep"
+    if verb == "status":
+        status()
+        return 0
+    if verb == "once":
+        n = run_one()
+        print("seats: %s" % (("answered " + n) if n else "nothing waiting"))
+        return 0
+    if verb != "keep":
+        print(__doc__, file=sys.stderr)
+        return 2
+    while True:
+        n = run_one()
+        if n:
+            print("seats: answered %s" % n, flush=True)
+        else:
+            time.sleep(IDLE)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
