@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const engine = (p) => import(new URL(`../.you-engine/${p}`, import.meta.url).href).catch(() => {
-  console.error("library-bottle: no .you-engine here (bin/refs pull hydrates it, its anecdote.channel inside)");
+  console.error("library-bottle: the bottle code (.you-engine) is not on this machine: `fcpm pull` fetches it");
   process.exit(3);
 });
 const subtle = globalThis.crypto.subtle;

@@ -49,7 +49,12 @@ case "$cmd" in
     # Only this repo: fcpm runs from it, and the other mirrors are reading
     # (Autumn, 2026-10-10). The reading mirrors are the weekly task's chore.
     "$CODE/bin/refs" pull "$(basename "$REPO")" || exit
-    exec "$HERE/sync" install ;;
+    "$HERE/sync" install || exit
+    # The public submodules (the engines, with theirs inside), by this repository's own word: the bin/refs
+    # that pulled may be the copy from before this pull placed a newer one, so a new engine arrives now and
+    # not on the next pull. The private ones (`update = none`) are bin/refs' to fetch.
+    GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet \
+      || echo "fcpm: an engine did not come down; fcpm pull again, and say so if it still does not" ;;
   dev)
     # The LAN's switch is the origin's (../origin/dev): while on, its intake
     # asks GitHub every 15 minutes; off, weekly (Autumn, 2026-10-13, 2026-10-21).
