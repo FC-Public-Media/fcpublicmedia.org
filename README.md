@@ -1,64 +1,51 @@
 # FC Public Media
 
 We are non-profit Public Media, formerly FCPAN-97.
-
 We serve Fort Collins, Colorado so that its public media can be filled with what they say.
 
-We built this to survive us.
+This repository runs as a collection of machines at our studio.
+Members interact with this on our own machines as though it our real backend,
+because it is.
 
-Contents:
-* `site/` our public site, and the build root: the configs live in it and Cloudflare builds from it.
-* `library/` holds the work we process for you for publishing, pick up or download. Read on.
-* `advocate.yml` declares in what ways we use API-driven agents to perform caretaking tasks.
+Staff and members use form wizards loadable from our website or from `fcpublicmedia.local`.
+These are shown to cameras, or issued over our wifi,
+to control merges, deployment, data queries, production configuration,
+and more from staff, contractors and members.
 
-## Setting up a machine
+This doesn't cost anything.
+Please Stand By for more!
 
-On a studio computer running Windows, paste this into any window, cmd or PowerShell. The
-word at the end is the computer's job: `production` (editing bay 1) or `editing-bay-2`.
+## [`site`](https://github.com/FC-Public-Media/fcpublicmedia.org/tree/main/site)
 
-    powershell -NoProfile -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/FC-Public-Media/fcpublicmedia.org/main/machines/start.ps1))) editing-bay-2"
+Our current website, running <https://fcpublicmedia.org>.
+We use Jekyll and Ruby, using Liquid templates.
 
-It installs Git if it is missing (Windows asks once), gets this repository or updates it,
-installs the job's gear, then puts the job's profile on. That includes `fcpm` on the PATH,
-the working copy people edit in and a weekly pull. From then on, type `fcpm`. Pasting it
-again is safe. See [`docs/station.md`](docs/station.md).
+## [`site-worker`](https://github.com/FC-Public-Media/site-worker/tree/main)
 
-## Site
+Our cloud data intake, running <https://cloud.fcpublicmedia.org>.
+Our LAN reaches out to drain this, and we reflect it back into the studio and M365 for internal operations.
 
-We use Ruby and Jekyll to construct our flat site, and Cloudflare to host. 
+## [`wix`](https://github.com/FC-Public-Media/wix/tree/main)
 
-The site deploys QR and passkey technology to support site functions without the presence
-of any backend. This is significant as a driver for our behavior: Cloud Companies want money
-per seat, and we don't think that's a good deal.
+Our flash-frozen old site, running <https://wix.fcpublicmedia.org>.
+We hope it still submits forms to our cloud intake but reliability is not actively monitored.
 
-## Library (`.library-engine`)
+## [`you`](https://github.com/FC-Public-Media/fcpublicmedia.org/tree/main/site/you)
 
-We use the civic-node pattern and FCCN-ANTIBODY's library driver.
+Our form wizards for generating cloud, LAN, or air-gapped request-response with our studio.
 
-The contents may fluctuate while we maintain the following:
+### Branches
 
-1. on-site APIs
-2. encrypted artifact delivery
-3. semi-managed multi-tenant standalone sites
-4. intermediate artifacts we use to build sites and video.
+## [`origin`](https://github.com/FC-Public-Media/fcpublicmedia.org/tree/origin)
 
-Some on-site APIs may be used by the public via self-service requests on our website.
-Transparency in our library tooling means that you can observe progress.
+Our canonical code sources, variously public or private.
+This is maintained automatically as we accept code into `main` branches on our LAN,
+and return the result by rolling these references.
 
-Digital artifacts for delivery may be published in their age-key encrypted form for the
-owner to retrieve with authorization. Alternatively, artifacts can be transferred using
-zero-point bandwidth technology.
+## [`council`](https://github.com/FC-Public-Media/fcpublicmedia.org/tree/council)
 
-## Self-maintenance (`.advocate-engine`)
+Local and remote intelligence on this code and direction,
+for the advice of non-technical nonprofit leadership.
+As advice, it is asked for in specific pieces,
+and its results are ignorable.
 
-We use the "advocate" driver to allocate our self-maintenance concerns to the code itself.
-
-Advocate "seats" represent our concerns in our own voice. We can and will spawn short-lived
-AI agents to read their advocate mindset and make notes on a dedicated non-merging branch.
-
-Advocates fold their reports to the [`council`](https://github.com/FC-Public-Media/fcpublicmedia.org/tree/council) branch.
-This is done to collate standing issues, recommendations and more, as seen from the
-perspectives of expert agents.
-
-Their research tasks are defined by us, and our Board of Directors implicitly need not
-endorse any resulting work. The Board's changing voice will always shape advocate council.
