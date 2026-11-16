@@ -55,6 +55,34 @@ fcpm:
     Instagram: https://www.instagram.com/fcpublicmedia/
     Newsletter: https://conta.cc/3G5YyWi
 
+  # /meet/, top to bottom. Each slot (top, left, right, bottom) is a colour (signal, paper, paper-alt,
+  # slate, record, masthead), a picture or video by path, or left out for the page's own colour.
+  # tilt: brand (rises to the right, like the mark) or mirror. photos: straight or tilted.
+  # See docs/site.md#tilt-stacks.
+  meet:
+    - title: In Town
+      body: Let's do coffee and keep it going.
+      aside:
+        eyebrow: Next
+        title: TBD
+      top: signal
+      left: /assets/img/studio.avif
+      right: /assets/img/studio.avif
+      bottom: /assets/video/wix-was.mp4
+
+    - title: Before Now
+      body: _Coming soon!_
+      tilt: mirror
+      left: paper-alt
+      right: paper-alt
+      bottom: signal
+
+    - title: The Board
+      include: board.html
+      left: slate
+      right: slate
+      bottom: paper-alt
+
   stream:
     cablecast: https://reflect-fcpublicmedia.cablecast.tv/internetchannel/watch-now?streamId=1
     cablecast2: https://ch97.fcpublicmedia.org/internetchannel/watch-now?streamId=2

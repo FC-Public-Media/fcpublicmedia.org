@@ -73,6 +73,32 @@ a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 - Liquid: `""` is truthy, so compare with `!= ""`; a line starting `2004.` becomes a list;
   `include` takes plain variables only; `contains` cannot be negated.
 
+## Tilt stacks
+
+`/meet/` is a tall stack of modules, each a window of words on the page's own colour, tilted on the
+brand angle and framed by four slots: `top`, `left`, `right` (portrait) and `bottom` (landscape). The
+stack is data: `fcpm.meet` in `site/_config.yml`, drawn by `_includes/tilt-stack.html`
+(`{% include tilt-stack.html modules=site.fcpm.<list> %}`), so another tall page (Learn) is one list away.
+
+| Key | |
+|---|---|
+| `title`, `eyebrow`, `body` | the window's words; `body` is Markdown |
+| `actions` | buttons, `Label: /url`; the first is primary |
+| `aside` | the side card: `eyebrow`, `title`, `when`, `body`, `actions` (a class or a meet to sign up for) |
+| `include` | a part computed from other data, e.g. `board.html` (the board, from `hosts.yml`) |
+| `top`, `left`, `right`, `bottom` | a colour token (`signal`, `paper`, `paper-alt`, `slate`, `record`, `masthead`), a picture or video by path (`.mp4`/`.webm`/`.mov` play muted while on screen), or absent for the page's colour |
+| `tilt` | `brand` (rises to the right, like the mark) or `mirror` |
+| `photos` | `straight` (stand up inside the tilted mask) or `tilted` (ride the angle) |
+| `id` | the anchor; the title, slugified, when absent (`#the-board`) |
+
+- The first module's top is tall, so its colour comes in under the masthead; every later top is a bar
+  the height of the masthead. Consecutive modules share an edge; a `mirror` between two `brand`s
+  makes a chevron where they meet, filled by the later module's top.
+- The window has a minimum height so the sides read as portraits; it grows with its words.
+- A frame runs `--bleed` past both sides of the screen and the stack clips it. On a phone a tall
+  window's top corner can cover its narrow side slot.
+- First module's pictures load at once; the rest load lazily.
+
 ## Data files
 
 | `site/_data/` | Holds |
@@ -80,7 +106,6 @@ a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 | `org.yml` | name, founding year, emails, phone, address, `legal`, `mission`, `hero_image`, `social` |
 | `nav.yml` | `primary` (header), `cta` (Donate); `label` with `items` makes a group. `elsewhere` is no menu: it names pages nothing links, so the header can still say which one you are on |
 | `featured.yml` | homepage cards: `kind`, `title`, `blurb`, `when`, `url`, `cta`, `starts`, `ends`; first is largest |
-| `community.yml` | `/meet/` `events` and `channels` (`primary: true` leads) |
 | `governance.yml` | board `meetings`, `minutes`, `documents` |
 | `board.yml` | roster: `name`, `role`, optional `office_hours`, `bio`, `photo` |
 | `facilities.yml` | bookable spaces; Video and Podcast Studio are coupled, so booking one blocks both |

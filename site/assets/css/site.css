@@ -804,6 +804,103 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .reel-toggle[aria-pressed="true"] .reel-icon-play { display: none; }
 .reel-toggle[aria-pressed="true"] .reel-icon-pause { display: block; }
 
+/* --- Tilt stacks: a tall page of tilted windows framed by slots; see docs/site.md#tilt-stacks --- */
+
+.tilt-stack {
+  --bleed: 6rem;
+  --window: 56rem;
+  --side: max(clamp(1.75rem, 8vw, 3rem), (100vw - var(--window)) / 2);
+  /* How far a frame's tilted edge leaves its box: half its width times sin 4deg (--brand-tilt). */
+  --overhang: calc((50vw + var(--bleed)) * 0.07);
+  overflow: clip;
+  padding-bottom: calc(var(--overhang) + 2rem);
+}
+
+.tilt-module { position: relative; --tilt: var(--brand-tilt); --top: var(--head-h); }
+.tilt-module:first-child { --top: clamp(4rem, 10vw, 9rem); }
+.tilt-module[data-tilt="mirror"] { --tilt: calc(-1 * var(--brand-tilt)); }
+
+.tilt-frame {
+  rotate: var(--tilt);
+  margin-inline: calc(-1 * var(--bleed));
+  display: grid;
+  grid-template-columns: calc(var(--bleed) + var(--side)) minmax(0, 1fr) calc(var(--bleed) + var(--side));
+  grid-template-rows: var(--top) auto max(10rem, var(--side));
+  grid-template-areas:
+    "top    top    top"
+    "left   window right"
+    "bottom bottom bottom";
+  background: var(--paper);
+}
+
+.tilt-slot {
+  position: relative;
+  overflow: hidden;
+  container-type: size;
+  background: var(--slot, var(--paper));
+}
+.tilt-top    { grid-area: top; margin-top: calc(-2 * var(--overhang) - 1rem); }
+.tilt-left   { grid-area: left; }
+.tilt-right  { grid-area: right; }
+.tilt-bottom { grid-area: bottom; }
+
+.tilt-slot > img,
+.tilt-slot > video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.tilt-slot > video { opacity: 0; transition: opacity 0.6s ease; }
+.tilt-slot > video.is-playing { opacity: 1; }
+
+/* Straight photos stand up inside the tilted mask, grown just enough to leave no corner bare. */
+@supports (width: 1cqw) {
+  .tilt-module[data-photos="straight"] .tilt-slot > :is(img, video) {
+    --over: calc(0.04 * (100cqw + 100cqh));
+    rotate: calc(-1 * var(--tilt));
+    inset: auto;
+    top: calc(-1 * var(--over)); left: calc(-1 * var(--over));
+    width: calc(100% + 2 * var(--over)); height: calc(100% + 2 * var(--over));
+  }
+}
+
+.tilt-window {
+  grid-area: window;
+  min-height: clamp(16rem, 36vw, 32rem);
+  background: var(--paper);
+  padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.25rem, 4vw, 3.5rem);
+}
+.tilt-upright {
+  rotate: calc(-1 * var(--tilt));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: clamp(1.5rem, 4vw, 3rem);
+  row-gap: 1.5rem;
+  align-items: start;
+}
+.tilt-words h2 { font-size: var(--step-3); }
+.tilt-words > p { max-width: var(--measure); }
+.tilt-words > :last-child { margin-bottom: 0; }
+
+.tilt-aside {
+  width: min(22rem, 100%);
+  border-left: 5px solid var(--signal);
+  padding-left: clamp(1rem, 2vw, 1.5rem);
+}
+.tilt-aside .eyebrow { color: var(--record-ink); }
+.tilt-aside h3 { font-size: var(--step-2); margin: 0 0 0.25em; }
+.tilt-aside-when { font-weight: 650; margin-bottom: 0.4em; }
+.tilt-aside .hero-actions { margin-top: 1.25rem; }
+
+@media (max-width: 56rem) {
+  .tilt-upright { grid-template-columns: minmax(0, 1fr); }
+  .tilt-aside { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) { .tilt-slot > video { transition: none; } }
+
 /* --- Embeds --------------------------------------------------------------- */
 
 .embed { margin: 0 0 1.5rem; width: 100%; }
