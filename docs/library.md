@@ -88,6 +88,13 @@ address itself is the sensitive thing. The binding says `needs: grant` and holds
 `where` says to ask. We can extract all of it for the asker, because asking is already the front
 door: the address comes with the grant, the same way a core does.
 
+**On another host, Helm asks.** A holding on another machine is addressed through that machine's helm
+(`../machines/helms.yml`): the job and the label, such as `production:attic`. Asking is the library's
+business, but only Helm works out how to reach another machine and get a grant. The grant layer can also
+say not now: the machine is down, or it is under a sensitive advisory (in live use for something else,
+say, so nothing should talk to it for a while). Either way, any one of our checkouts shows whether what
+you want is here or there. Not built.
+
 ## Holdings, and the attic
 
 A holding is a place with things in it. Its label is ours. `is:` gives the engine's word for the same
@@ -141,6 +148,13 @@ privately.
 
 **The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
 directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.
+
+**One `retain` branch, or one per machine?** Open; Autumn is deciding. Today each machine has its own
+`retain/<machine>`. The leaning is one `retain` branch we all work on, with a folder per machine. That
+way the record is canonical, and the hub's library knows everything when it needs to, because each
+machine knows what it holds and when that is out of date. A thing moved to another machine could be
+noticed by the machine it arrived on, which updates its own folder without touching anyone else's.
+Seeing it all aligned in one place is easier than finding pieces apart.
 
 ## X-rays
 
@@ -197,6 +211,13 @@ The passes are kept separate, and each builds on the one before:
 with a `build/` folder needs no note on `build/` for us to know it is there: the project's note can say
 so, and an agent that starts at the beginning of that entry's listing finds it.
 
+**A pass on request, toward a target layout.** A person studying a holding, say to categorize it and
+move it, can ask for a metadata pass instead of waiting for the next one. A place's decorum may give a
+target layout ("the layout we want is this; do your best"), and librarians sort toward it. Whatever a
+pass has not fitted into the layout is noted as outside it, at the top of what is not understood. Then
+the pass stops there: no librarian crawls a mixed pile whose structure it does not understand.
+`fcpm library xray` is the mechanical part of a pass; asking for the librarians' part is not built.
+
 A person's reach is unchanged. Whoever can reach a holding reads it (Reading, above).
 
 ## The keychain wing, and data piles (notes)
@@ -248,7 +269,8 @@ The pile is how a sealed value could sit in the open and still be granted by ran
 3. The librarians' constitution and the attic's and downloads' decorum, on the `librarians` branch,
    and the shape of a note, a summary and an error in `retain/`. Then a local model as the first
    caretaker.
-4. The lobby: compiled by `fcpm library`, from `library.yml` and what each holding exposes.
-5. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
+4. A pass on request, and target layouts in decorum.
+5. The lobby: compiled by `fcpm library`, from `library.yml` and what each holding exposes.
+6. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
    vocabulary every library would use, not just ours.
-6. The keychain pile, once the keystore holds its first values.
+7. The keychain pile, once the keystore holds its first values.
