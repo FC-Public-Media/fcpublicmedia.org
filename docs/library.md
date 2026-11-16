@@ -272,6 +272,94 @@ This is the larger reason to address things through the library. We point agents
 library, by holding and path, rather than at spots on a local disk. A spot on a disk means nothing to an
 agent. A holding comes with its decorum, its record, and its terms.
 
+## The grant book (design)
+
+A grant here is the engine's ordinary sense of the word: a delegation of capability, common, cheap, and
+boring ([`GRANTS.md`](https://github.com/FCCN-ANTIBODY/library.anecdote.channel/blob/main/GRANTS.md)).
+It is not a permission token, and for now it stops nothing. What it is for today is body language: who
+is at work, on what, and how often. Ten grants in an hour against one is worth seeing. (The crew's
+`GRANTS` file, which lists what a crew may run, and the keystore's grant of a key are the same mood,
+with different jobs.)
+
+Our first attempt designed the grant book before the library existed, on one computer, and the book
+never got to sit in plain view. This time the book is part of the library every machine already has,
+and no service runs it.
+
+### Two grants for one agent
+
+1. **Calling in.** The process that calls an agent in (the crew's supervisor, a scheduled task, a remote
+   control server) holds a grant to make that agent's worktree. It fabricates the worktree with `git
+   worktree add`; nothing is cloned. Once the worktree exists, the grant is spent and is not issued
+   again.
+2. **Work.** The agent that wakes, in its seat, holds a grant for its unit of work: the seat, the holding
+   and path, and a short description in its own words. There is no vocabulary of permissions to choose
+   from, because these are intelligent agents and the words are the grant. "Run the metadata pass for
+   the attic's projects" is granted behavior, and so is the preparation the job needs. The agent releases
+   the grant when it is done, or the grant lapses when its process ends.
+
+### Where the book is
+
+In the library's own repository, `~/code/library/.git`, as refs:
+
+- `refs/grants/live/<id>` is the grants in use right now. `git for-each-ref refs/grants/live` is who is at
+  work.
+- `refs/grants/book` is an append-only chain of commits: issued, released, lapsed, voted. `git log
+  refs/grants/book --since=1.hour` is how much.
+- Each entry is a commit. Its subject is the description. Its trailers are `Seat:`, `Unit:`, `Holder:`
+  (process id and start time), `Called-in-by:` (the parent grant), and `Job:`.
+
+Refs under `refs/grants/` are not a branch. A clone does not fetch them by default and `git branch` does
+not list them. They are in plain view to anyone who looks, but are not dumped on anyone. That is
+obscurity and not confidentiality, which is fine, because a grant is not a secret. The pre-push hook
+refuses `refs/grants/` the same way it refuses `retain/`. Whether one machine's book moves to the hub is
+the same decision as `retain`.
+
+Later, a grant's commit can be signed with the machine's own key from its birth ([keystore.md](keystore.md);
+on Windows, the ssh agent holds it). That gives claims bound to an ID, with nothing new in the
+cryptography. Credential Manager is not the place for grants: it holds secrets, and a grant is not one.
+It holds what a grant may later open, such as a core or a sealed address.
+
+### Liveness comes from the operating system
+
+A grant names its holder: the process id and the start time of the process that holds it. The
+operating system already knows whether that process is still running (`GetProcessTimes` on Windows,
+`/proc` on Linux), so we use what the environment gives us. A grant whose process ended without
+releasing it is lapsed, and whoever reads the book next records that. Nothing depends on an agent's
+manners. Later, the caller can follow the whole process tree it started: a Windows job object, or a
+systemd scope.
+
+### Asking, not doing: jobs are shared promises
+
+A seat can ask for work to be performed instead of running the scripts itself: a metadata pass, or an
+extractor's run. It asks, waits, is told it is done, lets go, and moves on. The job is named by what it
+is for, so identical asks share a name: `xray/attic`, or `extract/<extractor>/attic@<x-ray commit>`.
+
+The first asker creates `refs/jobs/<key>`. Git creates a ref only if it is absent, and does so
+atomically, so exactly one asker makes the job and every other finds it already there and waits on the
+same one. When the job is done, its ref points at the result, and the waiters see that and go. Ten
+seats noticing the same thing at once make one job: no congestion, no live pipes between agents, and no
+daemon. Waiting means reading a ref. A Windows named event could wake the waiters instead, later.
+
+Proved on bay 1 (2026-11-16): a second create-only `git update-ref` on the same job fails with exit 128,
+so its asker knows to wait; and any process's start time can be read through `GetProcessTimes`.
+
+### Votes
+
+When a seat closes a contract, it votes in the book: what it thinks is needed next. That might be a seat
+to come up ("an organizer for attic/Google Drive") or "next round, no problems", with a line saying why.
+The votes are the bucket that scheduling reads. Many votes for one seat means it should be scheduled. A
+cluster of the same unexpected complaint means something is wrong, perhaps a merge conflict that keeps
+work from landing. Seats collaborate through their branches, not through live connections, and a vote
+is how one asks for another to come up.
+
+### Up to the council
+
+An advocate seat reads the book the way it reads anything else: issuance rates, lapsed grants, clusters
+of votes. When every agent is being warned that the cloud drive is full and nothing works, that is not a
+fire. It is a finding for the council's report (the `council` branch), with the options attached when
+there are any, so it reaches the next board meeting as a problem brought, and maybe with its solutions.
+The advocates are not in charge of fixing it. Their job is to say that something needs to happen.
+
 ## The keychain wing, and data piles (notes)
 
 Not built. Kept so that the shape is here when it is wanted. A data pile
@@ -329,4 +417,7 @@ The pile is how a sealed value could sit in the open and still be granted by ran
    vocabulary every library would use, not just ours.
 7. Seats rooted in a project: maintenance and advice as a member's term of admission, once the engine
    says where the term is written.
-8. The keychain pile, once the keystore holds its first values.
+8. The grant book: `fcpm library grant` (issue, release, list, with OS liveness), `ask`/`wait` on
+   `refs/jobs/`, votes at a contract's close, and the hook refusing `refs/grants/`. Then an advocate
+   seat that reads it.
+9. The keychain pile, once the keystore holds its first values.
