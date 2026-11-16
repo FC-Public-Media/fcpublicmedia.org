@@ -22,7 +22,7 @@ KEYS = REPO / "machines" / "keys"
 
 def keys(*args, **env):
     return subprocess.run([sys.executable, "-I", str(KEYS), *args], capture_output=True, text=True,
-                          env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", **env))
+                          env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", FCPM_KEYCHAIN_SSH="keychain.invalid", **env))
 
 
 class Keys(unittest.TestCase):
@@ -59,7 +59,7 @@ class Keys(unittest.TestCase):
         (bin_ / "zenity").chmod(0o755)
         out = keys("take", "cloudflare", "CLOUDFLARE_ACCOUNT_ID", FCPM_KEYS_LEDGER=str(self.ledger),
                    PATH="%s:%s" % (bin_, os.environ["PATH"]))
-        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("keys: stored cloudflare CLOUDFLARE_ACCOUNT_ID", out.stdout)      # then flushed (here, to no keychain)
         self.assertIn("CLOUDFLARE_ACCOUNT_ID=sk-svc-typed-once", (self.tmp / "held" / "cloudflare.env").read_text())
         windows = (self.tmp / "windows").read_text()
         self.assertEqual(windows.count("--entry"), 1)                 # asked once, never again
