@@ -32,13 +32,14 @@ COLUMNS = ["path", "kind", "bytes", "modified", "created", "attrs"]
 ATTRS = [("R", 0x1), ("H", 0x2), ("S", 0x4), ("O", 0x1000), ("P", 0x40000), ("P", 0x400000)]
 LINKS = {0xA000000C, 0xA0000003}                  # symlink, junction; a cloud placeholder's tag is not a link
 
-# Every push passes this, so a retain/ branch cannot leave by accident. When the LAN's origin takes
-# retained branches, this is where it is let through, and nowhere else.
+# Every push passes this, so a retain/ branch, the grant book or a job cannot leave by accident. When
+# the LAN's origin takes them, this is where they are let through, and nowhere else. Kept current on use.
 PRE_PUSH = """#!/bin/sh
-# The library's retain/ branches stay on the media node's LAN; never pushed (docs/library.md, Retain).
+# What stays on the media node's LAN, never pushed: retain/ branches, the grant book, jobs.
+# docs/library.md, The library here and The grant book.
 while read local_ref local_sha remote_ref remote_sha; do
-  case "$remote_ref" in refs/heads/retain/*)
-    echo "library: $remote_ref is retained here and is never pushed" >&2; exit 1 ;;
+  case "$remote_ref" in refs/heads/retain/*|refs/grants/*|refs/jobs/*)
+    echo "library: $remote_ref is kept here and is never pushed" >&2; exit 1 ;;
   esac
 done
 exit 0
@@ -105,9 +106,14 @@ def git(*args, cwd=None, input=None, check=True):
 
 def retain(profile, make=False):
     """The retain/<profile> worktree, made on first use: a bare repository at the library's .git,
-    no remote, and a pre-push hook that refuses retain/. Returns None if not made and not asked to."""
+    no remote, and a pre-push hook that refuses retain/, refs/grants/ and refs/jobs/. Returns None if not
+    made and not asked to."""
     loc = location()
     wt, gd = loc / "retain", loc / ".git"
+    hook = gd / "hooks" / "pre-push"
+    if hook.parent.is_dir() and (not hook.exists() or hook.read_text(encoding="utf-8") != PRE_PUSH):
+        hook.write_text(PRE_PUSH, encoding="utf-8", newline="\n")
+        hook.chmod(0o755)
     if (wt / ".git").exists():
         return wt
     if not make:
@@ -120,7 +126,6 @@ def retain(profile, make=False):
                      ("user.email", "317985568+fcpm-public@users.noreply.github.com"),
                      ("commit.gpgsign", "false"), ("core.autocrlf", "false")]:
             git("--git-dir", str(gd), "config", k, v)
-        hook = gd / "hooks" / "pre-push"
         hook.write_text(PRE_PUSH, encoding="utf-8", newline="\n")
         hook.chmod(0o755)
     g = ["--git-dir", str(gd)]

@@ -78,6 +78,11 @@ class Library(unittest.TestCase):
         r = subprocess.run(["git", "push", str(remote), "HEAD"], cwd=self.retained(), capture_output=True, text=True)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("never pushed", r.stderr)
+        # The grant book and jobs stay too, whatever name they are pushed under.
+        r = subprocess.run(["git", "push", str(remote), "HEAD:refs/grants/book"], cwd=self.retained(),
+                           capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("refs/grants/book is kept here", r.stderr)
 
     def test_diff_folds_whole_folders(self):
         self.run_(library.xray)
