@@ -8,7 +8,7 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
   keys offer GROUP DEVICE   ask for GROUP's wanted keys on a one-time page only DEVICE on the tailnet can open
   keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment, and the
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
-  keys flush [--every S]   hand every key held here up to the keychain (machines/keychain), protected; `take` does
+  keys flush            hand every key held here up to the keychain (machines/keychain), protected; `take` does
                         it by itself, so a key stored here is never only here
   keys keychain         the keychain's state, and every key it holds (never a value)
   keys init | unlock | lock   make, open or close the keychain: a keeper's, the passphrase in a window on this screen
@@ -573,11 +573,6 @@ def main(argv):
         return 0
     if argv == ["flush"]:
         return flush(groups)
-    if argv[:2] == ["flush", "--every"] and len(argv) == 3:       # the crew's line: a key is never only here for long
-        while True:
-            flush(load())
-            sys.stdout.flush()
-            time.sleep(int(argv[2]))
     if argv[:1] == ["take"] and len(argv) == 3:
         return take(groups, argv[1], argv[2])
     if argv[:1] == ["offer"] and len(argv) == 3:
