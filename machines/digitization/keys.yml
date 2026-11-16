@@ -100,9 +100,9 @@ groups:
     used by: "machines/digitization/seats, as keys run anthropic-seats -- .advocate-engine/run.sh <seat>"
     keys:
       ADVOCATE_AGENT_KEY:
-        prefix: sk-ant-api
+        prefix: sk-ant-
         may: the Messages API; the spend limit on its Console workspace is the seats' whole budget
-        from: "the Claude Console: Settings, API keys, Create key (in the workspace kept for seats)"
+        from: "the Claude Console: an API key, or a service account's, in the workspace kept for seats"
         issued: 2026-11-15, by Autumn
 
   cablecast:

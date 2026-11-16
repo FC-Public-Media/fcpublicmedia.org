@@ -131,7 +131,7 @@ the file it lives in and what reads it. Values never enter the repository. A gro
 files beside it). Keys used together sit in one file, so a test key never meets a live one.
 
 - `keys` lists what is held and what is wanted, never a value; `fcpm check` says the same.
-- `keys take GROUP KEY` asks for a value in a window on this screen and refuses the wrong prefix.
+- `keys take GROUP KEY` asks for a value in a window on this screen, once, and always keeps it; a value not the kind `keys.yml` expects is kept and said (`fcpm check` shows it), never refused.
 - `keys offer GROUP DEVICE` asks for the group's wanted keys on a one-time page (an hour, closed once all are held) that only that tailnet device can open, for when nobody is at this screen.
 - `keys run GROUP... -- CMD` hands groups to one command as environment variables.
 - In a site-worker checkout (FC-Public-Media/site-worker): `keys run cloudflare stripe-live -- sh bin/deploy`

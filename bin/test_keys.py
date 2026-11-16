@@ -50,6 +50,22 @@ class Keys(unittest.TestCase):
         self.assertIn("stripe-live", keys(FCPM_WEARS="digitization").stdout)
         self.assertIn("holds no keychain", keys(FCPM_WEARS="kiosk").stdout)
 
+    @unittest.skipIf(os.name == "nt", "the window here is zenity")
+    def test_what_is_typed_is_kept_even_when_not_the_kind_expected(self):
+        bin_ = self.tmp / "bin"
+        bin_.mkdir()
+        (bin_ / "zenity").write_text('#!/bin/sh\necho "$@" >> "%s/windows"\ncase "$*" in *--entry*) echo sk-svc-typed-once;; esac\n'
+                                     % self.tmp)
+        (bin_ / "zenity").chmod(0o755)
+        out = keys("take", "cloudflare", "CLOUDFLARE_ACCOUNT_ID", FCPM_KEYS_LEDGER=str(self.ledger),
+                   PATH="%s:%s" % (bin_, os.environ["PATH"]))
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("CLOUDFLARE_ACCOUNT_ID=sk-svc-typed-once", (self.tmp / "held" / "cloudflare.env").read_text())
+        windows = (self.tmp / "windows").read_text()
+        self.assertEqual(windows.count("--entry"), 1)                 # asked once, never again
+        self.assertIn("Nothing needs typing again", windows)
+        self.assertNotIn("sk-svc-typed-once", out.stdout + out.stderr)
+
     def test_wanted_until_held_and_never_a_value(self):
         out = keys("check", FCPM_KEYS_LEDGER=str(self.ledger))
         self.assertEqual(out.returncode, 1)
