@@ -68,7 +68,9 @@ class Library(unittest.TestCase):
         self.run_(library.xray)
         git = lambda *a: subprocess.run(["git", *a], cwd=self.retained(), capture_output=True, text=True).stdout
         self.assertEqual(git("branch", "--show-current").strip(), "retain/test")
-        self.assertEqual(len(git("log", "--format=%h", "--", "attic/xray.tsv").split()), 2)
+        # Counted by subject, as library.looks does: a look within the same second changes nothing and
+        # is an empty commit, which a path-limited log would skip.
+        self.assertEqual(len(git("log", "--format=%h", *library.looks("attic")).split()), 2)
         self.assertIn("2 files", self.run_(library.log))
 
     def test_retain_refuses_to_be_pushed(self):
