@@ -250,6 +250,9 @@ class Library(unittest.TestCase):
             self.assertIn('no volume labelled "RAID Backup"', str(no.exception.code))
             library.by_label = lambda label: self.top                 # plugged in, on some letter
             self.assertEqual(library.place("attic", "test"), self.top)
+            library.bindings = lambda p: {"attic": {"label": "Google Drive", "in": "Board"}}
+            self.assertEqual(library.place("attic", "test"), self.top / "Board", "a folder on that volume")
+            library.bindings = lambda p: {"attic": {"label": "RAID Backup"}}
             volume = library.volume
             library.volume = lambda p: ("5EED-0001", "RAID Backup")
             try:

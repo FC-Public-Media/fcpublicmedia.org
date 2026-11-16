@@ -10,7 +10,7 @@ holdings:
   # Where it is meant to be (BAY1.md: E: is the LAN mount; post.yml, pools.yml, share.ps1 say E:), and
   # the label that proves it: a mismatch is told to a person, and nothing is x-rayed under the wrong name.
   enhance: {at: "E:/", label: "TO ENHANCE"}
-  drive: "E:/My Drive"        # Google Drive for desktop, streamed; the letter is wherever it mounted
+  drive: {label: "Google Drive", in: "My Drive"}   # Google Drive for desktop, streamed: found on whatever letter it mounts
   # Kept in the barn, unplugged: found by its label on whatever letter it gets, and simply "not plugged
   # in" otherwise. RAID 6 with one drive down (troves/buffalo-drivestation): an x-ray reads only names,
   # so take one before any copy; the copy off it should be the one heavy read it gets.

@@ -149,8 +149,9 @@ On bay 1 it is `~/Downloads`.
 into a folder). It is the cloud slice people drop files into to reach another of our computers, the
 cloud version of a shared drive on the LAN, beside OneDrive and Dropbox when those get their slices. It
 also holds the board's documents that are still there while they are moved off. It is a live line to a
-cloud source, as `refs/` is to GitHub. It is `is: intake` and `expects: sensitive`, and it is bound to
-wherever Google Drive mounted it (`E:/My Drive` today). An x-ray of a streamed drive reads only what the
+cloud source, as `refs/` is to GitHub. It is `is: intake` and `expects: sensitive`, and it is bound by its
+volume's label and the folder inside it (`{label: "Google Drive", in: "My Drive"}`), so it is found on
+whatever letter Google gives it (it moved from `E:` to `Z:`). An x-ray of a streamed drive reads only what the
 drive reports about each file, and downloads nothing.
 
 ### Members' projects

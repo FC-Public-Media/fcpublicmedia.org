@@ -93,6 +93,8 @@ def address(label, profile):
         # Bound by label alone: wherever that volume is plugged in, whatever letter it got. A drive kept
         # in the barn is usually unplugged, and then `at` is None, which is its ordinary state.
         found = by_label(a["label"])
+        if found and a.get("in"):                    # a folder on that volume: Google Drive's `My Drive`
+            found = found / a["in"]
         a["at"], a["by"] = (str(found) if found else None), "label"
     return a
 
