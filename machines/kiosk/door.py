@@ -21,6 +21,8 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
 
     GET /                  the board: an index by noun (board.yml), one row a page, lit by /board/now; then this machine's switches
     GET /board/now         what lights the board's rows now, by their `live` key
+    GET /jobs/<job>/       one job: its profile, who wears it, its helm, its crew's lines here
+    GET /qr/               the scanner's console as a page: its eyes, the inbox, what it last heard
     GET /verbs/            fcpm's verbs, as machines/fcpm.yml defines them, for this platform
     GET /ask/              wizard:model+ask, a question as a code; /loop/ the public loop of answers
     GET /kiosk/            the welcome screen
@@ -1057,7 +1059,7 @@ def verbs_here():
 BOARD = HERE / "board.yml"
 
 
-def board_rows(spec, named, domain):
+def board_rows(spec, domain):
     """board.yml's rows for one noun, with `from:` rows made from what this machine knows."""
     import replies
     host = socket.gethostname().split(".")[0].lower()
@@ -1077,28 +1079,154 @@ def board_rows(spec, named, domain):
         elif made == "seats":
             out += [{"title": s["name"], "href": "/ask/#seats-call", "says": s["mission"], "staff": True,
                      "live": "seat:%s" % s["name"]} for s in seats_called()]
+        elif made == "jobs":
+            out += [{"title": j["job"], "href": "/jobs/%s/" % j["job"], "says": j["says"], "live": "job:%s" % j["job"]}
+                    for j in jobs()]
         elif made == "wallpapers":
             out += [{"title": f.stem.replace("-1050x1680", "").replace("-", " ").capitalize() + " wallpaper",
                      "href": "/wallpaper/" + f.name, "says": "this panel's size"}
                     for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png"))]
         else:
             href = str(r.get("href") or "")
-            if ("{domain}" in href or "{host}" in href) and not named:
-                continue
             out.append(dict(r, href=href.replace("{domain}", domain).replace("{host}", host)))
     return out
 
 
+def binding():
+    """machines/binding, run as source (no __pycache__ beside the profiles): profiles(), declared(), this_platform()."""
+    b = {"__name__": "binding", "__file__": str(ROOT / "machines" / "binding")}
+    exec(compile((ROOT / "machines" / "binding").read_text(encoding="utf-8"), b["__file__"], "exec"), b)
+    return b
+
+
+def jobs():
+    """Every job in machines/ (a folder with a PROFILE.md): its name, its first line, the machines its `names` say
+    wear it, whether this one does, and its helm (helms.yml)."""
+    import replies
+    b, here, helms = binding(), replies.wears(), replies.helms()
+    out = []
+    for prof in b["profiles"]():
+        text = (prof / "PROFILE.md").read_text(encoding="utf-8")
+        para = next((l.strip() for l in text.split("\n\n")[1:] if l.strip() and not l.lstrip().startswith(("#", "|", "-", "`"))), "")
+        first = re.split(r"(?<=[.:;])\s", " ".join(para.split()), 1)[0].rstrip(".:;")
+        first = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", first).replace("`", "")
+        worn = sorted({str(v) for v in b["declared"](prof).values() if v})
+        out.append({"job": prof.name, "says": first[:110], "by": worn, "here": prof.name in here,
+                    "helm": (helms.get(prof.name) or {}).get("at") or "", "path": prof})
+    return out
+
+
+def job_now(j):
+    """A job's state for the board: its crew's lines where this machine wears it, else whether its helm answers."""
+    import urllib.request
+    crew = crew_lines(j["job"]) if j["here"] else None
+    if crew:
+        keep = [l for l in crew if l["kind"] == "keep"]
+        down = [l["name"] for l in keep if l["up"] is False]
+        if down:
+            return {"say": "here · down: %s" % ", ".join(down), "on": "bad"}
+        return {"say": "here · %d line%s" % (len(crew), "" if len(crew) == 1 else "s"), "on": "live"}
+    if j["here"]:
+        return {"say": "worn here"}
+    if j["helm"]:
+        try:
+            with urllib.request.urlopen(j["helm"].rstrip("/") + "/revision", timeout=2):
+                return {"say": "its helm answers", "on": "live"}
+        except Exception:
+            return {"say": "its helm is not answering", "on": "bad"}
+    return {"say": "worn by %s" % ", ".join(j["by"]) if j["by"] else "worn by no machine yet"}
+
+
+def crew_lines(job):
+    """The crew's lines for a job this machine wears (machines/<job>/services): each name, when, and whether it is up
+    (True, False, or None when the crew cannot tell), as `crew.py status` asks them."""
+    if not (ROOT / "machines" / job / "services").is_file():
+        return None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("crew", ROOT / "machines" / "crew.py")
+    crew = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(crew)
+    lines, _ = crew.order(job)
+    out = []
+    for l in lines:
+        kind, every = l["when"]
+        log = crew.STATE / ("%s.log" % l["name"])
+        out.append({"name": l["name"], "kind": kind, "every": every, "up": crew.alive(l["svc"]),
+                    "ran": time.strftime("%H:%M", time.localtime(log.stat().st_mtime)) if log.exists() else None,
+                    "for": l["svc"].get("for", "")})
+    return out
+
+
+def job_page(name):
+    """One job: what it is (its PROFILE.md), who wears it, its helm and what that holds, and its crew's lines here."""
+    import replies
+    j = next((x for x in jobs() if x["job"] == name), None)
+    if not j:
+        return None
+    holds = (replies.helms().get(name) or {}).get("holds") or []
+    facts = [("worn by", ", ".join(j["by"]) or "no machine yet"), ("here", "yes" if j["here"] else "no"),
+             ("helm", j["helm"] or "none listed"), ("holds", ", ".join(holds) or "nothing of its own")]
+    if name == "qr":
+        facts.append(("its screen", '<a href="/qr/">the scanner</a>'))
+    rows = "".join('<div class="row switch"><b>%s</b><span class=says>%s</span></div>' % (e(k), v if k == "its screen" else e(v))
+                   for k, v in facts)
+    lines = crew_lines(name) if j["here"] else None
+    crew = ""
+    if lines:
+        crew = "<section class=noun><h2>Its crew here</h2><div class=rows>%s</div></section>" % "".join(
+            '<div class="row%s"><b>%s</b><span class=says>%s</span><span class="state%s">%s</span></div>' % (
+                " live" if l["up"] else "", e(l["name"]), e(l["for"][:110]),
+                " live" if l["up"] else " bad" if l["up"] is False else "",
+                "up" if l["up"] else "DOWN" if l["up"] is False else
+                ("last ran %s" % l["ran"] if l["ran"] else "never ran") + ("" if l["kind"] == "keep" else ", %s %s" % (l["kind"], l["every"])))
+            for l in lines)
+    profile = (j["path"] / "PROFILE.md").read_text(encoding="utf-8")
+    body = """%s<main><section class=noun><h2>%s</h2><div class=rows>%s</div></section>%s
+<section class=noun><h2>Its profile</h2><pre class=profile>%s</pre></section></main>
+<footer class=bar><a href="/#jobs">Helm</a><code>machines/%s/PROFILE.md</code></footer>""" % (
+        masthead("Helm &middot; %s" % e(name)), e(name), rows, crew, e(profile), e(name))
+    return page("%s · Helm" % name, body, BOARD_CSS)
+
+
+QR_EVENTS = pathlib.Path.home() / ".local" / "state" / "fcpm" / "scanner" / "events.log"
+
+
+def qr_page():
+    """The scanner's console as a page: whether its eyes are here, what it last heard, and the door's inbox. The
+    picture stays on the screen the eyes paint (the Pi's); this is the rest of it, read from the scanner's own log."""
+    import replies
+    try:
+        rows = [json.loads(l) for l in QR_EVENTS.read_text(encoding="utf-8").splitlines()[-12:]]
+    except (OSError, ValueError):
+        rows = []
+    eyes = subprocess.run(["pgrep", "-f", "scanner/page.py"], capture_output=True).returncode == 0 if os.name != "nt" else None
+    events = "".join('<div class=row><b>%s</b><span class="says%s">%s</span></div>' % (
+        time.strftime("%a %H:%M", time.localtime(r.get("at") or 0)), " bad" if r.get("bad") else "", e(r.get("text")))
+        for r in reversed(rows)) or '<div class=row><span class=says>nothing yet</span></div>'
+    inbox = "".join('<div class="row%s"><b>%s</b><span class=says>%s</span><span class=state>%s</span></div>' % (
+        " live" if i["state"] in ("answering", "queued") else "", e((i.get("at") or "")[11:16]), e(i.get("what")),
+        e(i["state"] + (": " + i["why"] if i.get("why") else ""))) for i in replies.inbox(10)) \
+        or '<div class=row><span class=says>inbox zero</span></div>'
+    body = """%s<main><section class=noun><h2>Scanner</h2><div class=rows><div class="row%s"><b>eyes</b>
+<span class=says>%s</span></div></div></section>
+<section class=noun><h2>Inbox</h2><div class=rows>%s</div></section>
+<section class=noun><h2>Latest</h2><div class=rows>%s</div></section></main>
+<footer class=bar><a href="/#jobs">Helm</a><code>qr</code></footer><meta http-equiv=refresh content=10>""" % (
+        masthead("Helm &middot; qr"), " live" if eyes else "",
+        "connected: a camera is looking for codes, its picture on the Pi's screen" if eyes else
+        "not connected: nothing is reading codes", inbox, events)
+    return page("qr · Helm", body, BOARD_CSS)
+
+
 def board_page(here=False, host=""):
     """Helm's board: an index by noun (board.yml), one row a page, each row lit by what is happening now
-    (/board/now, asked after the page is up), staff functions marked; then this machine's switches. Names on the
-    LAN (www., ch97.) are rows only when the board was asked for by name. fcpm's verbs are /verbs/."""
+    (/board/now, asked after the page is up), staff functions marked; then this machine's switches. Every row shows
+    however the board was reached; a LAN name may not resolve from away. fcpm's verbs are /verbs/."""
     import replies
-    named = host.endswith(".local")
     domain = "fcpublicmedia.local"
     nouns = []
     for spec in (replies.load_yaml(BOARD).get("nouns") or []):
-        rows = board_rows(spec, named, domain)
+        rows = board_rows(spec, domain)
         if rows:
             nouns.append((spec["noun"], rows))
 
@@ -1194,6 +1322,10 @@ def board_now():
                                                          {"say": "nobody hosting"})(replies.room_now(room, cfg)))
     for s in seats_called():
         put("seat:%s" % s["name"], lambda name=s["name"]: seat_now(name))
+    for j in jobs():
+        put("job:%s" % j["job"], lambda j=j: job_now(j))
+    put("qr", lambda: {"say": "eyes connected", "on": "live"}
+        if subprocess.run(["pgrep", "-f", "scanner/page.py"], capture_output=True).returncode == 0 else {"say": "no eyes", "on": "bad"})
     return out
 
 
@@ -1279,13 +1411,15 @@ h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var
 .row .state.air { background:var(--record); color:var(--paper); font-weight:700; padding:.05rem .5rem; }
 .row .tag { font-style:normal; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em;
   color:var(--staff); }
+.row .state.bad, .row .says.bad { color:#ff7a66; font-weight:700; }
+.profile { margin:0; padding:1rem; background:var(--slate); color:var(--soft); white-space:pre-wrap; font-size:.85rem; }
 .row.staff { border-left-color:var(--staff); }
 .row.live { border-left-color:var(--signal); background:#2c323b; }
 a.row:hover, a.row:focus-visible { background:var(--ink); outline:none; }
 .switch form { margin:0; grid-column:3 / 5; justify-self:end; }
 @media (max-width: 40rem) {
   .row { grid-template-columns:1fr auto; } .row .says { grid-column:1 / -1; grid-row:2; }
-  .row .tag { display:none; } .switch form { grid-column:2; grid-row:1; }
+  .row .tag { display:none; } .switch form { grid-column:2; grid-row:1; } .row .state { white-space:normal; text-align:right; }
 }
 button { font:inherit; font-weight:650; background:var(--signal); color:var(--ink); border:0;
   padding:.45rem 1rem; cursor:pointer; }
@@ -3215,6 +3349,12 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, gear_page(gear))
             if route == "/":
                 return self.reply(200, board_page(self.here(), (self.headers.get("Host") or "").split(":")[0].rstrip(".").lower()))
+            if route in ("/qr", "/qr/"):
+                return self.reply(200, qr_page())
+            m = re.fullmatch(r"/jobs/([a-z0-9-]+)/?", route)
+            if m:
+                got = job_page(m.group(1))
+                return self.reply(200 if got else 404, got or "no such job")
             if route == "/board/now":
                 return self.reply(200, json.dumps(board_now()), TYPES[".json"])
             if route in ("/verbs", "/verbs/"):

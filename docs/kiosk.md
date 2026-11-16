@@ -306,8 +306,15 @@ characters, a `to` that is not a seat's name, or a `holding` that `library.yml` 
 
 ## The board
 
-Helm's board, at the bare name (`fcpublicmedia.local`), is our index: a menu of nouns (Sites, Streams, Screens,
-Rooms, Asks, Seats, Models, Machine), each a section of rows, one row a page here or a name on the LAN. It is the
+Helm's board, at the bare name (`fcpublicmedia.local`), is our index: a menu of nouns (Jobs, Sites, Streams, Screens,
+Rooms, Asks, Seats, Models, Machine), each a section of rows, one row a page here or a name on the LAN. Every row
+shows however the board was reached (by name or by tailnet number); a LAN name may not resolve from away.
+
+**Jobs** is every profile in `machines/`, with its first line and its state: where this machine wears it, its crew's
+lines (a kept line down is said, in red); elsewhere, whether its helm (`helms.yml`) answers, or which machines wear
+it. `/jobs/<job>/` is one job: who wears it, its helm and what that holds, its crew's lines here, and its PROFILE.md.
+`/qr/` is the scanner's console as a page: whether its eyes are connected, the door's inbox, and what it last heard
+(its own `events.log`); the camera's picture stays on the screen the eyes paint. It is the
 admin side of the public site and speaks its language: the masthead band, the yellow rule, a menu that is data.
 `machines/kiosk/board.yml` is that data (title, href, one line, `staff`, `live`), with `from:` rows made from what
 the machine knows (rooms, seats, wallpapers), so a static site can fill the same menu later.
