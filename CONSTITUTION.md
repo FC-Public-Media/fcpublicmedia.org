@@ -30,6 +30,7 @@ node's LAN:
 | a summary | in the note of the entry it summarises: of a listing, of what its metadata is like, of its timeline | labeler |
 | a move | `<LABEL>/moves/<date>-<short-name>.md`: from, to, when, why, so the next x-ray's `D` and `A` read as one move | organizer |
 | an error | `<LABEL>/errors/<date>-<short-name>.md`: the path, what the metadata said, what was found, when | checker, any seat |
+| a request for action | `<LABEL>/requests/<date>-<short-name>.md`: something only a person can put right, what was found, what was expected, and what to do. Lodged once, and closed when the person has acted | checker, any seat |
 | a proof | `<LABEL>/proofs/<extractor>/`: the example set (paths), and the metadata the person accepted for it | toolsmith |
 
 A note names roles, never people: "a board member's project", "the treasurer's records".
@@ -122,6 +123,12 @@ understood.
 Goes looking. Starting from the metadata, it finds things on the disk, which makes it the seat that
 reaches the holding itself. When something is not where the metadata says, it files an error and stops
 there.
+
+When the place itself is wrong, that is not an error in the metadata, and the checker does not file
+one. Examples: a holding's address now leads to another volume, because a drive letter moved or a cloud
+drive mounted where a LUN was (`fcpm library` says `ASK A PERSON`), or the place is missing. No seat can
+fix a place, so the checker lodges a request for action: what it found, what the binding expected, and
+what a person would need to do. Then it leaves the holding alone until a person has acted.
 
 ### Toolsmith
 
