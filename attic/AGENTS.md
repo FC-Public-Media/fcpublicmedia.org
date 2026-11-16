@@ -31,3 +31,8 @@ Assume a name or a number in anything. So:
 - Anything that looks like account details, logins, or keys: note it as a candidate for sealing (the
   keychain wing), and nothing of its contents.
 - Who expected to reach each thing is the open question here. Note the role you can infer, or ask.
+
+## Target layout
+
+None yet, so the organizer has nothing to do here. Autumn gives one when she knows what the attic should
+be sorted into.

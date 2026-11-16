@@ -22,3 +22,7 @@ Most of it is ordinary. Still private, since nobody was promised a read. So:
 - Read a file only to say what kind of thing it is.
 - Where a lot of one kind arrived together (a batch of images, an export), one note on the batch, not
   one per file.
+
+## Target layout
+
+None, and none expected: Downloads is passing through, so the organizer has nothing to do here.
