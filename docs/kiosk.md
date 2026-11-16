@@ -304,6 +304,21 @@ setting it down in the library's inbox, `~/code/library/inbox/<lane>/`, one file
 it from there on its round (docs/library.md, The receptionist's inbox). Held: no `words`, more than 2000
 characters, a `to` that is not a seat's name, or a `holding` that `library.yml` does not declare.
 
+## The board
+
+Helm's board, at the bare name (`fcpublicmedia.local`), is our index: a menu of nouns (Sites, Streams, Screens,
+Rooms, Asks, Seats, Models, Machine), each a section of rows, one row a page here or a name on the LAN. It is the
+admin side of the public site and speaks its language: the masthead band, the yellow rule, a menu that is data.
+`machines/kiosk/board.yml` is that data (title, href, one line, `staff`, `live`), with `from:` rows made from what
+the machine knows (rooms, seats, wallpapers), so a static site can fill the same menu later.
+
+Two things stand out on a row. **In action**: a row whose `live` state is happening gets a yellow state on the
+right and a yellow edge (red when it is on air), and its noun is underlined in the menu. **Staff**: a host's or
+keeper's function carries a blue edge and the word, marked rather than hidden. The states come from `/board/now`,
+asked after the page is up and every 30 seconds, each on its own, so a slow box never holds the page: the deploy,
+the relay's own `relay.json` and Cablecast's destinations, the loop, the asks, bay 1's models, each room's host,
+each seat's last run. Blue is the board's own until the brand carries a staff colour.
+
 ## Helms
 
 A helm is a door: the board and its pages, and the intake (Replies). Every machine may run one, and
