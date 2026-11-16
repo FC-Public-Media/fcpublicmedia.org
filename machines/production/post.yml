@@ -14,6 +14,6 @@ steps:
 # The key is this bay's own (ssh-keygen -t ed25519 -f ~/.ssh/fcpm-post -N ""); its public half, merged into
 # machines/digitization/post-senders.yml, is what lets it in. Until the key exists nothing is sent.
 deliver:
-  to: user@digitization.local
+  to: fcpm@digitization.local
   key: ~/.ssh/fcpm-post
   known_hosts: machines/digitization/known_hosts
