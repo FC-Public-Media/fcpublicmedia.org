@@ -245,6 +245,33 @@ the pass stops there: no librarian crawls a mixed pile whose structure it does n
 
 A person's reach is unchanged. Whoever can reach a holding reads it (Reading, above).
 
+## Seats rooted in a project (notes)
+
+Some seats will be especially active in maintaining one project held with us: someone's documents, or
+someone's git repository that they keep here so that, for example, its dependencies are kept up. That
+is just another seat, but its root is the project and not the core of the library. It is also a way a
+member can use our hardware: if they are willing to be a member, we can offer that kind of compute.
+
+The same seats can study projects to give advice. For example: "you're having a lot of trouble
+expressing this idea on this framework; a lot of other people are having more success here, and it
+would look like this stub." That is an advocate report, from the reconnaissance the engine already
+describes ([`SEATS.md`](https://github.com/FCCN-ANTIBODY/library.anecdote.channel/blob/main/SEATS.md)).
+Its finding is about the tool, not about them, and it is visible only from where the seat sits, across
+holdings.
+
+Two things carry over unchanged:
+
+- **Reading a project is a term of admission.** The engine's rule is that held content is inert, and
+  that a seat handed nothing reads nothing. A project opts into maintenance or advice when it comes in,
+  visibly, and can decline. Where that term is written (the bottle's manifest, most likely) is the
+  engine's open question, and is not improvised here.
+- **A project seat answers to the same constitution.** Its decorum is the project's own `AGENTS.md` on
+  the `librarians` branch, its contracts go into `retain/`, and it works with scripts, not hands.
+
+This is the larger reason to address things through the library. We point agents at parts of the
+library, by holding and path, rather than at spots on a local disk. A spot on a disk means nothing to an
+agent. A holding comes with its decorum, its record, and its terms.
+
 ## The keychain wing, and data piles (notes)
 
 Not built. Kept so that the shape is here when it is wanted. A data pile
@@ -300,4 +327,6 @@ The pile is how a sealed value could sit in the open and still be granted by ran
 5. The lobby: compiled by `fcpm library`, from `library.yml` and what each holding exposes.
 6. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
    vocabulary every library would use, not just ours.
-7. The keychain pile, once the keystore holds its first values.
+7. Seats rooted in a project: maintenance and advice as a member's term of admission, once the engine
+   says where the term is written.
+8. The keychain pile, once the keystore holds its first values.
