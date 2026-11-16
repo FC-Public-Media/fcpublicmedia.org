@@ -163,6 +163,12 @@ verbs:
     windows: "troves/pools/pools.py by uv"
     linux: "troves/pools/pools.py by uv"
 
+  - verb: library
+    args: "[status|xray LABEL|diff LABEL [XRAY]]"
+    says: "the library's holdings here: where each sits, and an x-ray of its shape (never its contents)"
+    windows: "machines/library.py by uv"
+    linux: "machines/library.py by uv"
+
   - verb: post
     args: "[status|run [STEP]|admit CONFIG|retry TAKE N]"
     says: "after release: the takes and their steps, as a page"

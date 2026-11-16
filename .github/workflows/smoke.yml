@@ -63,6 +63,9 @@ jobs:
           pip install --quiet pyyaml
           python3 site/bin/test_sync_feeds.py
 
+      - name: Test the library's x-ray
+        run: python3 bin/test_library.py
+
       - name: Test the tier reader
         run: python3 site/bin/test_sync_tiers.py
 

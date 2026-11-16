@@ -1,0 +1,5 @@
+# Where bay 1 keeps the library's holdings, for `fcpm library`. Labels are ../../library.yml's.
+# A holding's x-rays and notes sit inside it, in `.library/`, so they travel with it. Doc: docs/library.md.
+
+holdings:
+  attic: "D:/fcpm-audit"

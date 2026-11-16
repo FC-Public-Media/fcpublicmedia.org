@@ -126,6 +126,10 @@ case "$cmd" in
                 [ $# -eq $n ] && [ -n "$p" ] && set -- "$@" "$p"
                 exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/machines/crew.py" "$@" ;;
     esac ;;
+  library)
+    # The library's holdings on this machine (library.yml, machines/<profile>/library.yml).
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    FCPM_PROFILE=$(profile) exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/library.py" "$@" ;;
   post)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/post/post.py" "$@" ;;
