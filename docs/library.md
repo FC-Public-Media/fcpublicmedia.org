@@ -559,10 +559,20 @@ The pile is how a sealed value could sit in the open and still be granted by ran
 5. The lobby: compiled by `fcpm library`, from `library.yml` and what each holding exposes.
 6. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
    vocabulary every library would use, not just ours.
+   Later, and not yet: staged summary applied to our own code, to make a guide to it that can be tested.
+   That is the approachable way into this repository, rather than agent instructions written for other
+   agents about how to caretake it.
 7. Seats rooted in a project: maintenance and advice as a member's term of admission, once the engine
    says where the term is written.
 8. The receptionist's inbox, stage 2: answers back to the asker through the loop; a seat that runs
    `inbox round` on a schedule, within budget, under a grant; a priority call that brings one up at once.
+   **The board meeting's demonstration** is the measure. Someone shows a `/library/ask/` code to the camera,
+   asking a free-form question. The answer comes back to a monitor on the Raspberry Pi, and is clear and
+   coherent. It is fast, because it is a crawl of the metadata (summaries, x-rays, the console) and not of
+   anyone's files, so the only real wait is the model's thinking. Any agent may serve it, a small and cheap
+   one included: the point is that a new kind of developer can pick this up and know what is going on.
+   After that, members do it from their own phones, onboarded with a passkey (signed bottles on the LAN
+   first).
 9. The grant book, stage 2: Helm serves the console (bay 1 reads digitization's, and the other way
    round), a crew line keeps it beating, and `ask`/`wait` on `refs/jobs/`. Then votes at a contract's
    close, signed entries, and an advocate seat that reads the book.
