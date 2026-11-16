@@ -3,8 +3,10 @@
 The front doors, from any computer of ours (a personal one, such as Autumn's iMac, included). Short on
 purpose: learn the pattern, not the list. Checked 2026-11-04.
 
-**The pattern.** In the building, every job has a name under `fcpublicmedia.local`, and `helm` is the board.
-Away, there is one number: digitization's tailnet address. On the internet, the site is `fcpublicmedia.org`.
+**The pattern.** In the building, every job has a name under `fcpublicmedia.local`, and the bare name is
+Helm: the board, which only the LAN has, and of which there is only one. `www.` is the site, here as
+on the internet. Away, there is one number: digitization's tailnet address. On the internet, the site is
+`fcpublicmedia.org`.
 
 ## In the building (Helm, 10.209.1.x)
 
@@ -12,12 +14,12 @@ Macs and iPhones resolve these names as they are. Linux needs `mdns.allow` (mach
 
 | address | what |
 |---|---|
-| `helm.fcpublicmedia.local` | **the board**: the door's switches, the screens, fcpm's verbs |
-| `helm.fcpublicmedia.local/ask/` | ask the model, as a code for the camera |
-| `helm.fcpublicmedia.local/loop/` | the public loop: every answer today, for a big screen |
-| `helm.fcpublicmedia.local/room/podcast/` | the podcast studio's door (the iPad); `/host/?room=podcast` is staff check-in |
-| `helm.fcpublicmedia.local/broadcast/` | channel 97, out: its destinations |
-| `fcpublicmedia.local` (or `www.`) | the site, as built here |
+| `fcpublicmedia.local` | **Helm, the board**: the door's switches, the screens, fcpm's verbs. `helm.fcpublicmedia.local` still works |
+| `fcpublicmedia.local/ask/` | ask the model, as a code for the camera |
+| `fcpublicmedia.local/loop/` | the public loop: every answer today, for a big screen |
+| `fcpublicmedia.local/room/podcast/` | the podcast studio's door (the iPad); `/host/?room=podcast` is staff check-in |
+| `fcpublicmedia.local/broadcast/` | channel 97, out: its destinations |
+| `www.fcpublicmedia.local` | the site, as built here; `/library/ask/` asks the library's receptionist |
 | `wix.fcpublicmedia.local` | the Wix site, photocopied |
 | `ch97.fcpublicmedia.local` | channel 97's day; `/jukebox/` is the floor's playlist |
 | `digitization.fcpublicmedia.local` | this machine's directory; each piece of gear one level deeper (`aja-helo.digitization.…`) |

@@ -5,7 +5,6 @@ domain: fcpublicmedia.local
 
 # Names any machine may hold; the first to claim one has it, another asks again every 30 s.
 shared:
-  "@": site
   www: site
   wix: wix
   you: members       # member projects without a name of their own: you.fcpublicmedia.local/<show>/

@@ -1088,7 +1088,7 @@ def board_page(here=False, host=""):
     panels.append(("Screens", screens))
     sites = [tile("/deploy/", "Deploy", "fcpublicmedia.org, from main")]
     if named:
-        sites += [tile("http://%s/" % domain, "The site", "as built here"),
+        sites += [tile("http://www.%s/" % domain, "The site", "as built here"),
                   tile("http://wix.%s/" % domain, "The Wix copy", "photocopied"),
                   tile("http://%s.%s/" % (socket.gethostname().split(".")[0].lower(), domain),
                        "This machine's gear", "each piece, its facts")]

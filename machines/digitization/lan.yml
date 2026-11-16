@@ -7,9 +7,9 @@ domain: fcpublicmedia.local
 # Names any machine may hold. The first to claim one has it; another that asks keeps asking every
 # 30 seconds and takes it over when the holder goes. `@` is the domain itself.
 shared:
-  helm: board        # the board: the door's switches, screens and fcpm's verbs
-  "@": site          # the static job's sites (../static/sites.yml): the public site, the same as www
-  www: site
+  "@": board         # Helm: the board, the door's switches, screens and fcpm's verbs. The one name only the LAN has
+  helm: board        # the same board, by its older name, so links and posters made with it still work
+  www: site          # the static job's sites (../static/sites.yml): the public site, as built here. www is the site
   wix: wix           # the Wix site, photocopied, until the board retires it
   ch97: broadcast    # the broadcast job's page: the channel's day, laid, beside Cablecast's (broadcast/ch97)
 

@@ -131,7 +131,7 @@ with `offline: true` in its front matter (the check-in, `/you/`, `/submit/`, `/l
 still kept, and Show it still pours. Pages and files come from the network whenever there is one; the kept
 copy answers only when there isn't. The cache is named for the build's `revision` (the commit; `bin/deploy-site`
 stamps it), so each deploy replaces the last kit. `_headers` keeps `sw.js` itself uncached. Service workers
-need https: the LAN's `http://fcpublicmedia.local` copy registers nothing. On an iPhone, *Add to Home Screen*
+need https: the LAN's `http://www.fcpublicmedia.local` copy registers nothing. On an iPhone, *Add to Home Screen*
 (the manifest's `start_url` is `/check-in/`) is also what keeps Safari from clearing what the phone kept.
 `site/tests/offline.spec.js` proves it with the network off.
 
