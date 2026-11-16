@@ -198,6 +198,35 @@ class Library(unittest.TestCase):
         finally:
             library.bindings, library.volume = bindings, volume
 
+    def test_an_old_windows_disk_summarises_to_what_stands_out(self):
+        disk = pathlib.Path(self.tmp.name) / "old-machine"
+        for p, n in [("Windows/System32/kernel32.dll", 900), ("Program Files/Adobe/x.exe", 500),
+                     ("pagefile.sys", 4000), ("Users/Default/NTUSER.DAT", 10),
+                     ("Users/someone/AppData/Local/cache.bin", 700), ("Users/someone/NTUSER.DAT", 10),
+                     ("Users/someone/Videos/Show/take1.mov", 3000), ("Users/someone/Videos/Show/take2.mov", 3000),
+                     ("Users/someone/Documents/minutes.docx", 20), ("Projects2014/edit.prproj", 80)]:
+            (disk / p).parent.mkdir(parents=True, exist_ok=True)
+            (disk / p).write_bytes(b"z" * n)
+        self.top = disk
+        self.run_(library.xray)
+        text = (self.retained() / "attic" / "summary.txt").read_text(encoding="utf-8")
+        self.assertIn("stock     6 files", text, "Windows, Program Files, pagefile, Default, AppData, NTUSER fold")
+        stands = text.split("stands out", 1)[1]
+        self.assertIn("Users/someone/Videos", stands)
+        self.assertIn("Users/someone/Documents", stands)
+        self.assertIn("Projects2014", stands)
+        self.assertNotIn("AppData", stands)
+        self.assertNotIn("Windows", stands)
+        self.assertLess(stands.index("Users/someone/Videos"), stands.index("Projects2014"), "heaviest first")
+        self.assertIn(".mov 2", text)
+        self.assertNotIn("(loose files)", stands, "pagefile.sys is a loose file at the top, and stock")
+        self.assertEqual(library.place_of("pagefile.sys"), "pagefile.sys")
+        self.assertEqual(library.place_of("Users/someone/NTUSER.DAT"), "Users/someone/NTUSER.DAT")
+        self.assertEqual(library.place_of("a.txt"), "(loose files)")
+        self.assertEqual(library.place_of("Users/someone/notes.txt"), "Users/someone/(loose files)")
+        self.assertEqual(library.place_of("Shows", "d"), "Shows")
+        self.assertEqual(self.run_(library.summary_of), text, "the verb shows the same, from the x-ray alone")
+
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])
         for f in (REPO / "machines").glob("*/library.yml"):

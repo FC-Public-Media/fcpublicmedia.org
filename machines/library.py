@@ -5,6 +5,7 @@
     library.py xray LABEL             LABEL's shape into retain/LABEL/xray.tsv, one commit per look
     library.py diff LABEL [REV]       what changed since the last x-ray (or REV), as git status would
     library.py log LABEL              the x-rays of LABEL: when each was taken, and what it counted
+    library.py summary LABEL [REV]    what the last x-ray (or REV) comes to: weight, dates, kinds, what stands out
     library.py browse LABEL [PATH]    what the last x-ray saw at PATH, one level; the holding is not touched
     library.py grant SEAT UNIT WORDS  a work grant, held by the agent (or terminal) above; prints its id
     library.py release GRANT          the grant is done
@@ -278,6 +279,89 @@ def counted(rows):
     return len(files), sum(int(r["bytes"] or 0) for r in files)
 
 
+# --------------------------------------------------------------------------------- summary --
+# What a shape comes to, from the x-ray alone: where the weight is, when it was touched, what kinds of
+# file, and what stands out from a stock Windows install. Enough to decide whether a place is worth
+# diving into, without anyone reading a file. docs/library.md, Old data compacts to summaries.
+
+# Parts of a Windows disk every install has, folded into one line. Matched on a path's first part, or
+# (under Users/<someone>/) its third. Anything else is what stands out.
+STOCK_TOP = {"windows", "program files", "program files (x86)", "programdata", "$recycle.bin",
+             "$winreagent", "$windows.~bt", "$windows.~ws", "system volume information", "recovery",
+             "perflogs", "msocache", "config.msi", "onedrivetemp", "intel", "amd", "nvidia", "drivers",
+             "hiberfil.sys", "pagefile.sys", "swapfile.sys", "bootmgr", "boot", "documents and settings",
+             "inetpub", "xboxgames", "windows.old"}
+STOCK_USERS = {"default", "default user", "all users", "defaultapppool"}
+STOCK_HOME = {"appdata", "3d objects", "contacts", "favorites", "links", "saved games", "searches",
+              "application data", "local settings", "cookies", "nethood", "printhood", "recent",
+              "sendto", "start menu", "templates", "my documents", "intelgraphicsprofiles", "microsoft"}
+
+
+def place_of(path, kind="f"):
+    """The group a path is summarised under: its first part, or Users/<someone>/<folder> in a home.
+    Loose files share one group per level, so a folder of a thousand downloads is one line, not a thousand."""
+    parts = path.split("/")
+    if parts[0].lower() == "users" and len(parts) > 2:
+        whole = "/".join(parts[:3])
+        return whole if kind != "f" or len(parts) > 3 or stock(whole) else "/".join(parts[:2]) + "/(loose files)"
+    return parts[0] if kind != "f" or len(parts) > 1 or stock(parts[0]) else "(loose files)"
+
+
+def stock(group):
+    parts = group.lower().split("/")
+    if parts[0] != "users":
+        return parts[0] in STOCK_TOP or parts[0].startswith(("dumpstack.log", "$"))
+    if len(parts) > 1 and parts[1] in STOCK_USERS:
+        return True
+    return len(parts) > 2 and (parts[2] in STOCK_HOME or parts[2].startswith("ntuser"))
+
+
+def kinds(files, top=6):
+    by = {}
+    for r in files:
+        name = r["path"].rsplit("/", 1)[-1]
+        ext = name.rsplit(".", 1)[-1].lower() if "." in name[1:] else "(none)"
+        n, b = by.get(ext, (0, 0))
+        by[ext] = (n + 1, b + int(r["bytes"] or 0))
+    ranked = sorted(by.items(), key=lambda kv: -kv[1][1])[:top]
+    return ", ".join(f".{e} {n} ({size(b)})" if e != "(none)" else f"no extension {n} ({size(b)})"
+                     for e, (n, b) in ranked)
+
+
+def span(files):
+    days = sorted(r["modified"][:10] for r in files if r["modified"])
+    return f"{days[0]}..{days[-1]}" if days else "no dates"
+
+
+def summarize(head, rows):
+    files = [r for r in rows if r["kind"] == "f"]
+    n, b = counted(rows)
+    out = [f"summary   {head.get('xray', '?')} as x-rayed {head.get('taken', '?')}: {n} files, {size(b)},"
+           f" {sum(1 for r in rows if r['kind'] == 'd')} folders; modified {span(files)}",
+           f"kinds     {kinds(files) or 'none'}"]
+    groups = {}
+    for r in files:
+        groups.setdefault(place_of(r["path"], "f"), []).append(r)
+    for r in rows:                                   # an empty folder still stands somewhere
+        groups.setdefault(place_of(r["path"], r["kind"]), [])
+    folded = {g: fs for g, fs in groups.items() if stock(g)}
+    if folded:
+        fn = sum(len(fs) for fs in folded.values())
+        fb = sum(int(r["bytes"] or 0) for fs in folded.values() for r in fs)
+        out.append(f"stock     {fn} files, {size(fb)}, in {len(folded)} places a Windows install always has (folded)")
+    rest = sorted(((g, fs) for g, fs in groups.items() if g not in folded),
+                  key=lambda gf: -sum(int(r["bytes"] or 0) for r in gf[1]))
+    out.append(f"stands out  {len(rest)} place(s), heaviest first:")
+    for g, fs in rest:
+        gb = sum(int(r["bytes"] or 0) for r in fs)
+        out.append(f"  {g:44} {len(fs):6} files {size(gb):>9}  {span(fs)}  {kinds(fs, 3)}")
+    odd = [r for r in rows if r["kind"] in ("?", "l")]
+    if odd:
+        out.append(f"unread    {sum(r['kind'] == '?' for r in odd)} unreadable, {sum(r['kind'] == 'l' for r in odd)}"
+                   " links (recorded, not followed)")
+    return "\n".join(out) + "\n"
+
+
 # ---------------------------------------------------------------------------------- verbs --
 
 def status(args):
@@ -364,7 +448,10 @@ def xray(args):
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write(render(head, rows))
-    git("add", "--", f"{args.label}/xray.tsv", cwd=wt)
+    # Its summary goes with it, in the same commit: worked out from the x-ray, so always in step.
+    with open(out.with_name("summary.txt"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(summarize(head, rows))
+    git("add", "--", f"{args.label}/xray.tsv", f"{args.label}/summary.txt", cwd=wt)
     git("commit", "-q", "--allow-empty", "-m", f"xray {args.label}: {n} files, {size(b)}", cwd=wt)
     print(f"xray      {args.label}: {n} files, {size(b)}, {sum(1 for r in rows if r['kind'] == 'd')} folders")
     print(f"kept      {out} ({git('rev-parse', '--short', 'HEAD', cwd=wt).strip()} on retain/{args.profile})")
@@ -423,6 +510,16 @@ def diff(args):
         if not got:
             sys.exit(f"library: no x-ray of {args.label} at {args.rev} (fcpm library log {args.label})")
     summary(changes(got[1], walk(top)), f"since {got[0].get('taken', args.rev or 'the last')}")
+
+
+def summary_of(args):
+    """LABEL's summary, worked out from its last x-ray (or the one at REV). The holding is not touched."""
+    wt, got = last(args)
+    if args.rev:
+        got = at_rev(wt, args.label, args.rev)
+        if not got:
+            sys.exit(f"library: no x-ray of {args.label} at {args.rev} (fcpm library log {args.label})")
+    print(summarize(*got), end="")
 
 
 def log(args):
@@ -709,9 +806,10 @@ def main(argv):
     sub.add_parser("status")
     for verb in ("xray", "log"):
         sub.add_parser(verb).add_argument("label")
-    d = sub.add_parser("diff")
-    d.add_argument("label")
-    d.add_argument("rev", nargs="?")
+    for verb in ("diff", "summary"):
+        d = sub.add_parser(verb)
+        d.add_argument("label")
+        d.add_argument("rev", nargs="?")
     for verb in ("where", "browse"):
         v = sub.add_parser(verb)
         v.add_argument("label")
@@ -725,7 +823,7 @@ def main(argv):
     sub.add_parser("grants")
     sub.add_parser("console").add_argument("--beat", action="store_true")
     args = p.parse_args(argv)
-    {"xray": xray, "diff": diff, "log": log, "where": where, "browse": browse, "grant": grant,
+    {"xray": xray, "diff": diff, "summary": summary_of, "log": log, "where": where, "browse": browse, "grant": grant,
      "release": release, "grants": grants, "console": console}.get(args.verb, status)(args)
 
 
