@@ -34,5 +34,5 @@ Assume a name or a number in anything. So:
 
 ## Target layout
 
-None yet, so the organizer has nothing to do here. Autumn gives one when she knows what the attic should
+None yet, so the organizer has nothing to do here. The board gives one when it knows what the attic should
 be sorted into.
