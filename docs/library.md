@@ -2,7 +2,7 @@
 
 What FCPM's library is, where it keeps things, and what it can say about them. Built: `library.yml`, a
 machine's binding, `~/code/library` with its `retain/` record, and `fcpm library` (status, where,
-xray, diff, log, browse), on bay 1's attic and downloads; the `librarians` branch is seeded. The rest
+xray, diff, summary, log, browse), on bay 1's attic and downloads; the `librarians` branch is seeded. The rest
 is notes: the lobby, Helm addressing other machines' holdings, the ask, the librarians' passes, and the
 keychain wing as a data pile. The engine is
 `.library-engine` ([library.anecdote.channel](https://github.com/FCCN-ANTIBODY/library.anecdote.channel)).
@@ -222,6 +222,48 @@ Even the shape is not for just anyone to x-ray that deeply: we do not know for s
 
 Later, with `ffprobe` on the bay: a media column (container, duration, streams), still with nothing
 decoded.
+
+## Old data compacts to summaries
+
+Things in a library move off the shelf before they go anywhere else:
+
+1. **On the shelf.** In use, and put in front of people.
+2. **Off the shelf.** Still there, and reachable by anyone who goes in, but no longer put on anyone's
+   monitor. Most of our old machines are here: nobody has plugged them in, so nobody is missing them.
+3. **Summary.** The x-ray and what it comes to, kept in `retain/`, and nothing more. This is where
+   most old data should sit until someone makes a judgment call.
+4. **Judged.** Salvage something, keep the whole thing, or let it go. Wiping a machine for another use
+   waits for this step, and the summary is what the call is made on.
+
+`fcpm library summary LABEL [REV]` is the step from 2 to 3. Every x-ray writes one beside itself
+(`retain/<LABEL>/summary.txt`, in the same commit), worked out from the x-ray alone. It gives:
+
+- the totals and the dates;
+- the kinds of file, by weight;
+- the parts every Windows install has (`Windows`, `Program Files`, `ProgramData`, the page file, each
+  home's `AppData`, and so on), folded into one line;
+- what stands out, heaviest first. That is a line per top folder, or per folder inside a home
+  (`Users/<someone>/Videos`), with its dates and its main kinds of file. Loose files are one line per
+  level.
+
+That is the question to answer for an old machine, without reading a file: is there a file structure
+here that stands out from normal Windows, and is it worth diving in to salvage something? What we find
+in the Google Drive is mostly what succeeded these machines, and that helps the comparison.
+
+### The inventory wing
+
+A lot of this is our own inventorying. It is not necessarily private data, but it needs somewhere to be
+kept. The machines waiting for a judgment call (two old desktops, a laptop, the one meant for music,
+perhaps called "dj", and the kiosk, which is barely holding together) each become a holding once a copy
+of their disk is taken, or the disk is attached to a bay. Each is x-rayed, summarized and judged. A
+machine judged worth keeping may be rebuilt on something predictable (Alpine, say), with drivers looked
+into only where they matter.
+
+### `retain` is our half
+
+What sits in `retain/` is our half of things. Being here, at a machine on the media node's LAN, is a
+better sign that someone may look than any git account could be. That is why a retained branch never
+goes to GitHub, and why its summaries can say more than anything we publish.
 
 ## Librarians
 
