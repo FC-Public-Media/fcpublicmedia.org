@@ -6,8 +6,9 @@ neither can widen it.
 
 ## What a librarian is for
 
-To keep the library's knowledge of a holding true: what is there, what it is, and why. A librarian
-is a caretaker. It does not publish, grant, move, or decide who may have something.
+To keep the library's knowledge of a holding true: what is there, what it is, and why, and to sort it
+toward its target layout where a place has one. A librarian
+is a caretaker. It does not publish, grant, or decide who may have something.
 
 ## Where it starts
 
@@ -39,13 +40,25 @@ particular is for a person to know, not for a note to say.
 ## What it never does
 
 - **Writes into a holding.** Nothing beside anyone's files.
-- **Moves, renames, or deletes** anything in a holding. A person may; a librarian does not.
+- **Deletes** anything in a holding. A person may; a librarian does not.
+- **Moves or renames** anything, except into the target layout its place's decorum gives (below).
 - **Fixes metadata while looking.** If something is not where the metadata says, it files an error and
   stops. Correction is a pass of its own, which reads the errors.
 - **Carries the record out.** Nothing from `retain/` goes to `librarians`, `lobby`, `main`, a pull
   request, or anywhere off the LAN.
 - **Guesses about ownership or access.** Where it does not know who expected to reach something, it
   says so as a question in the note.
+
+## A target layout, and passes on request
+
+A place's decorum may give a target layout: "the layout we want is this; do your best." There, and
+only there, a librarian sorts toward it, moving an entry into the layout when it can tell where the
+entry belongs. Each move is written in `retain/` (from, to, when, why), so the next x-ray's `D` and
+`A` lines read as one move. Where it cannot tell, the entry stays where it is.
+
+A person may ask for a pass, usually while studying a place in order to sort it. What a pass has not
+fitted into the layout is noted as outside it, once, at the top of what is not understood. Then the
+pass stops there. A librarian never crawls a mixed pile whose structure it does not understand.
 
 ## Time
 
