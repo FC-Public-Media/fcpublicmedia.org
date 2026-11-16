@@ -1,0 +1,99 @@
+[submodule "FCCN-ANTIBODY/advocate.anecdote.channel"]
+	path = FCCN-ANTIBODY/advocate.anecdote.channel
+	url = ../../FCCN-ANTIBODY/advocate.anecdote.channel
+[submodule "FCCN-ANTIBODY/atlas.anecdote.channel"]
+	path = FCCN-ANTIBODY/atlas.anecdote.channel
+	url = ../../FCCN-ANTIBODY/atlas.anecdote.channel
+[submodule "FCCN-ANTIBODY/judgement"]
+	path = FCCN-ANTIBODY/judgement
+	url = ../../FCCN-ANTIBODY/judgement
+[submodule "FCCN-ANTIBODY/library.anecdote.channel"]
+	path = FCCN-ANTIBODY/library.anecdote.channel
+	url = ../../FCCN-ANTIBODY/library.anecdote.channel
+[submodule "FCCN-ANTIBODY/tell.anecdote.channel"]
+	path = FCCN-ANTIBODY/tell.anecdote.channel
+	url = ../../FCCN-ANTIBODY/tell.anecdote.channel
+[submodule "FC-Public-Media/aja-helo"]
+	path = FC-Public-Media/aja-helo
+	url = ../../FC-Public-Media/aja-helo
+[submodule "FC-Public-Media/atem-mini-pro"]
+	path = FC-Public-Media/atem-mini-pro
+	url = ../../FC-Public-Media/atem-mini-pro
+[submodule "FC-Public-Media/brand"]
+	path = FC-Public-Media/brand
+	url = ../../FC-Public-Media/brand
+[submodule "FC-Public-Media/broadcast"]
+	path = FC-Public-Media/broadcast
+	url = ../../FC-Public-Media/broadcast
+[submodule "FC-Public-Media/buffalo-drivestation"]
+	path = FC-Public-Media/buffalo-drivestation
+	url = ../../FC-Public-Media/buffalo-drivestation
+[submodule "FC-Public-Media/camera"]
+	path = FC-Public-Media/camera
+	url = ../../FC-Public-Media/camera
+[submodule "FC-Public-Media/contact-sheets"]
+	path = FC-Public-Media/contact-sheets
+	url = ../../FC-Public-Media/contact-sheets
+[submodule "FC-Public-Media/drobo"]
+	path = FC-Public-Media/drobo
+	url = ../../FC-Public-Media/drobo
+[submodule "FC-Public-Media/edgerouter-x"]
+	path = FC-Public-Media/edgerouter-x
+	url = ../../FC-Public-Media/edgerouter-x
+[submodule "FC-Public-Media/enhance"]
+	path = FC-Public-Media/enhance
+	url = ../../FC-Public-Media/enhance
+[submodule "FC-Public-Media/etc-colorsource-20"]
+	path = FC-Public-Media/etc-colorsource-20
+	url = ../../FC-Public-Media/etc-colorsource-20
+[submodule "FC-Public-Media/fcpublicmedia.org"]
+	path = FC-Public-Media/fcpublicmedia.org
+	url = ../../FC-Public-Media/fcpublicmedia.org
+[submodule "FC-Public-Media/game-intake"]
+	path = FC-Public-Media/game-intake
+	url = ../../FC-Public-Media/game-intake
+[submodule "FC-Public-Media/kiosk-screen"]
+	path = FC-Public-Media/kiosk-screen
+	url = ../../FC-Public-Media/kiosk-screen
+[submodule "FC-Public-Media/ki-pro"]
+	path = FC-Public-Media/ki-pro
+	url = ../../FC-Public-Media/ki-pro
+[submodule "FC-Public-Media/nest-cam"]
+	path = FC-Public-Media/nest-cam
+	url = ../../FC-Public-Media/nest-cam
+[submodule "FC-Public-Media/pools"]
+	path = FC-Public-Media/pools
+	url = ../../FC-Public-Media/pools
+[submodule "FC-Public-Media/post"]
+	path = FC-Public-Media/post
+	url = ../../FC-Public-Media/post
+[submodule "FC-Public-Media/ptz"]
+	path = FC-Public-Media/ptz
+	url = ../../FC-Public-Media/ptz
+[submodule "FC-Public-Media/recorder"]
+	path = FC-Public-Media/recorder
+	url = ../../FC-Public-Media/recorder
+[submodule "FC-Public-Media/rodecaster-pro-ii"]
+	path = FC-Public-Media/rodecaster-pro-ii
+	url = ../../FC-Public-Media/rodecaster-pro-ii
+[submodule "FC-Public-Media/roku"]
+	path = FC-Public-Media/roku
+	url = ../../FC-Public-Media/roku
+[submodule "FC-Public-Media/scanner"]
+	path = FC-Public-Media/scanner
+	url = ../../FC-Public-Media/scanner
+[submodule "FC-Public-Media/show-artificially"]
+	path = FC-Public-Media/show-artificially
+	url = ../../FC-Public-Media/show-artificially
+[submodule "FC-Public-Media/site-worker"]
+	path = FC-Public-Media/site-worker
+	url = ../../FC-Public-Media/site-worker
+[submodule "FC-Public-Media/stock"]
+	path = FC-Public-Media/stock
+	url = ../../FC-Public-Media/stock
+[submodule "FC-Public-Media/ti-89"]
+	path = FC-Public-Media/ti-89
+	url = ../../FC-Public-Media/ti-89
+[submodule "FC-Public-Media/wix"]
+	path = FC-Public-Media/wix
+	url = ../../FC-Public-Media/wix
