@@ -313,8 +313,10 @@ shows however the board was reached (by name or by tailnet number); a LAN name m
 **Jobs** is every profile in `machines/`, with its first line and its state: where this machine wears it, its crew's
 lines (a kept line down is said, in red); elsewhere, whether its helm (`helms.yml`) answers, or which machines wear
 it. `/jobs/<job>/` is one job: who wears it, its helm and what that holds, its crew's lines here, and its PROFILE.md.
-`/qr/` is the scanner's console as a page: whether its eyes are connected, the door's inbox, and what it last heard
-(its own `events.log`); the camera's picture stays on the screen the eyes paint. It is the
+`/qr/` is the scanner as a page. Opened on this machine's own screen (localhost, a secure page, so the browser may
+open a camera) it is the camera itself: the BRIO's picture, every code read, and a catch (a bottle's AC1 frames)
+set down at `/drop` once nothing new came for 8 seconds, as the scanner's `page.py` does. Anywhere it shows the Pi's
+eyes, the door's inbox, and what the scanner last heard (its own `events.log`), asked again every 10 seconds. It is the
 admin side of the public site and speaks its language: the masthead band, the yellow rule, a menu that is data.
 `machines/kiosk/board.yml` is that data (title, href, one line, `staff`, `live`), with `from:` rows made from what
 the machine knows (rooms, seats, wallpapers), so a static site can fill the same menu later.

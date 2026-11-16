@@ -1192,8 +1192,8 @@ QR_EVENTS = pathlib.Path.home() / ".local" / "state" / "fcpm" / "scanner" / "eve
 
 
 def qr_page():
-    """The scanner's console as a page: whether its eyes are here, what it last heard, and the door's inbox. The
-    picture stays on the screen the eyes paint (the Pi's); this is the rest of it, read from the scanner's own log."""
+    """The scanner as a page: on this machine's own screen, its camera (QR_JS); anywhere, the Pi's eyes, the door's
+    inbox, and what the scanner last heard (its own events.log)."""
     import replies
     try:
         rows = [json.loads(l) for l in QR_EVENTS.read_text(encoding="utf-8").splitlines()[-12:]]
@@ -1207,15 +1207,58 @@ def qr_page():
         " live" if i["state"] in ("answering", "queued") else "", e((i.get("at") or "")[11:16]), e(i.get("what")),
         e(i["state"] + (": " + i["why"] if i.get("why") else ""))) for i in replies.inbox(10)) \
         or '<div class=row><span class=says>inbox zero</span></div>'
-    body = """%s<main><section class=noun><h2>Scanner</h2><div class=rows><div class="row%s"><b>eyes</b>
-<span class=says>%s</span></div></div></section>
-<section class=noun><h2>Inbox</h2><div class=rows>%s</div></section>
-<section class=noun><h2>Latest</h2><div class=rows>%s</div></section></main>
-<footer class=bar><a href="/#jobs">Helm</a><code>qr</code></footer><meta http-equiv=refresh content=10>""" % (
+    body = """%s<main><section class=noun id=camera hidden><h2>This camera</h2><div class=rows>
+<video id=eye muted playsinline></video><div class=row><b id=cam-state>opening</b><span class=says id=cam-says></span></div>
+</div></section>
+<section class=noun id=eyes><h2>Eyes</h2><div class=rows><div class="row%s"><b>the Pi</b><span class=says>%s</span></div></div></section>
+<section class=noun id=inbox><h2>Inbox</h2><div class=rows>%s</div></section>
+<section class=noun id=latest><h2>Latest</h2><div class=rows>%s</div></section></main>
+<footer class=bar><a href="/#jobs">Helm</a><code>qr</code></footer>%s""" % (
         masthead("Helm &middot; qr"), " live" if eyes else "",
-        "connected: a camera is looking for codes, its picture on the Pi's screen" if eyes else
-        "not connected: nothing is reading codes", inbox, events)
-    return page("qr · Helm", body, BOARD_CSS)
+        "connected: its camera looks for codes, its picture on the Pi's screen" if eyes else "not connected",
+        inbox, events, QR_JS)
+    return page("qr · Helm", body, BOARD_CSS + QR_CSS)
+
+
+QR_CSS = """
+#eye { display:block; width:100%; max-height:60vh; background:#000; object-fit:contain; }
+"""
+
+# Where the page may open a camera (this machine's own screen, on localhost; a secure page), it is the scanner: the
+# picture, every code read, and a catch (a bottle's AC1 frames) set down at /drop once nothing new came for QUIET
+# seconds, as the scanner's page.py does. The rest of the page is asked again every 10 seconds, the camera left open.
+QR_JS = """<script type=module>
+import { can, watch } from "/ask/camera.mjs";
+const QUIET = 8000, $ = (id) => document.getElementById(id);
+let catchSet = new Set(), last = 0;
+const say = (state, says) => { $("cam-state").textContent = state; $("cam-says").textContent = says || ""; };
+async function setDown() {
+  if (!catchSet.size || Date.now() - last < QUIET) return;
+  const frames = [...catchSet]; catchSet = new Set();
+  try {
+    const r = await fetch("/drop", { method: "POST", headers: { "Content-Type": "text/plain" }, body: frames.join("\\n") });
+    say("set down", r.ok ? `${frames.length} frames, kept for the next pass` : "not kept: " + r.status);
+  } catch (e) { say("not set down", String(e)); }
+}
+if (can()) {
+  $("camera").hidden = false;
+  try {
+    await watch($("eye"), (text) => {
+      if (!text.startsWith("AC1")) return say("a code", "not a bottle");
+      catchSet.add(text); last = Date.now();
+      say("reading", `${catchSet.size} frames`);
+    }, { every: 120 });
+    say("looking", "show a code to this camera");
+  } catch (e) { say("no camera", String(e && e.message || e)); }
+  setInterval(setDown, 1000);
+}
+setInterval(async () => {
+  try {
+    const doc = new DOMParser().parseFromString(await (await fetch("/qr/", { cache: "no-store" })).text(), "text/html");
+    for (const id of ["eyes", "inbox", "latest"]) $(id).innerHTML = doc.getElementById(id).innerHTML;
+  } catch { /* the next time */ }
+}, 10000);
+</script>"""
 
 
 def board_page(here=False, host=""):
