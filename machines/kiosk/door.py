@@ -19,7 +19,8 @@
 One port that never moves (8080 taken: refuse), dual-stack, and no document root: only the
 surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
 
-    GET /                  the board: every page and wizard here as tiles, then this machine's switches
+    GET /                  the board: an index by noun (board.yml), one row a page, lit by /board/now; then this machine's switches
+    GET /board/now         what lights the board's rows now, by their `live` key
     GET /verbs/            fcpm's verbs, as machines/fcpm.yml defines them, for this platform
     GET /ask/              wizard:model+ask, a question as a code; /loop/ the public loop of answers
     GET /kiosk/            the welcome screen
@@ -1053,68 +1054,187 @@ def verbs_here():
     return plat, here, away
 
 
+BOARD = HERE / "board.yml"
+
+
+def board_rows(spec, named, domain):
+    """board.yml's rows for one noun, with `from:` rows made from what this machine knows."""
+    import replies
+    host = socket.gethostname().split(".")[0].lower()
+    out = []
+    for r in spec.get("rows") or []:
+        made = r.get("from")
+        if made == "rooms":
+            try:
+                for room, cfg in replies.rooms().items():
+                    t = cfg.get("title", room)
+                    out += [{"title": "%s, its door" % t, "href": "/room/%s/" % room, "says": "the hallway tablet",
+                             "staff": True},
+                            {"title": "%s, host check-in" % t, "href": "/host/?room=%s" % room,
+                             "says": "who hosts, and what is in the room", "staff": True, "live": "room:%s" % room}]
+            except Exception as exc:
+                log("board: rooms: %r" % exc)
+        elif made == "seats":
+            out += [{"title": s["name"], "href": "/ask/#seats-call", "says": s["mission"], "staff": True,
+                     "live": "seat:%s" % s["name"]} for s in seats_called()]
+        elif made == "wallpapers":
+            out += [{"title": f.stem.replace("-1050x1680", "").replace("-", " ").capitalize() + " wallpaper",
+                     "href": "/wallpaper/" + f.name, "says": "this panel's size"}
+                    for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png"))]
+        else:
+            href = str(r.get("href") or "")
+            if ("{domain}" in href or "{host}" in href) and not named:
+                continue
+            out.append(dict(r, href=href.replace("{domain}", domain).replace("{host}", host)))
+    return out
+
+
 def board_page(here=False, host=""):
-    """The board: every page and wizard this door serves, as tiles grouped into panels, then this machine's
-    switches. Pages under another name (ch97., the site, the Wix copy) are tiles only when the board was
-    asked for by name: by its tailnet number those names don't resolve. fcpm's verbs are /verbs/."""
+    """Helm's board: an index by noun (board.yml), one row a page, each row lit by what is happening now
+    (/board/now, asked after the page is up), staff functions marked; then this machine's switches. Names on the
+    LAN (www., ch97.) are rows only when the board was asked for by name. fcpm's verbs are /verbs/."""
+    import replies
     named = host.endswith(".local")
     domain = "fcpublicmedia.local"
+    nouns = []
+    for spec in (replies.load_yaml(BOARD).get("nouns") or []):
+        rows = board_rows(spec, named, domain)
+        if rows:
+            nouns.append((spec["noun"], rows))
 
-    def tile(href, title, says=""):
-        return '<a class=tile href="%s"><b>%s</b>%s</a>' % (
-            html.escape(href, quote=True), e(title), "<span>%s</span>" % e(says) if says else "")
-
-    panels = [("Ask", [tile("/ask/", "Ask the model", "a question, as a code for the camera"),
-                       tile("/loop/", "The loop", "every answer today, for a big screen"),
-                       tile("/models/", "Models", "which of bay 1's are up")])]
-    try:
-        import replies
-        for room, cfg in replies.rooms().items():
-            title = cfg.get("title", room)
-            panels.append((title, [tile("/room/%s/" % room, "At its door", "the hallway tablet"),
-                                   tile("/host/?room=%s" % room, "Host check-in", "from a phone on Helm")]))
-    except Exception as exc:
-        log("rooms: %r" % exc)
-    ch97 = [tile("/broadcast/", "Out", "where the channel goes: each destination")]
-    if named:
-        ch97 += [tile("http://ch97.%s/" % domain, "The day", "what airs, laid out"),
-                 tile("http://ch97.%s/jukebox/" % domain, "The jukebox", "the floor's playlist")]
-    panels.append(("Channel 97", ch97))
-    screens = [tile("/kiosk/", "Welcome screen", "check-in, Wi-Fi, who is on"),
-               tile("/idle/", "Idle screen", "the lamp pointed at the room"),
-               tile("/depot/", "Depot", "what is on the studio drive")]
-    screens += [tile("/wallpaper/" + f.name, f.stem.replace("-1050x1680", "").replace("-", " ").capitalize(),
-                     "wallpaper, this panel's size") for f in sorted(NAMED_DIRS["wallpaper"].glob("*1050x1680.png"))]
-    panels.append(("Screens", screens))
-    sites = [tile("/deploy/", "Deploy", "fcpublicmedia.org, from main")]
-    if named:
-        sites += [tile("http://www.%s/" % domain, "The site", "as built here"),
-                  tile("http://wix.%s/" % domain, "The Wix copy", "photocopied"),
-                  tile("http://%s.%s/" % (socket.gethostname().split(".")[0].lower(), domain),
-                       "This machine's gear", "each piece, its facts")]
-    panels.append(("Sites", sites))
+    def row(r):
+        return ('<a class="row%s" href="%s"%s><b>%s</b><span class=says>%s</span><span class=state></span>%s</a>' % (
+            " staff" if r.get("staff") else "", html.escape(r["href"], quote=True),
+            ' data-live="%s"' % e(r["live"]) if r.get("live") else "", e(r.get("title")), e(r.get("says")),
+            "<em class=tag>staff</em>" if r.get("staff") else ""))
 
     def button(action, label):
         return "<form method=post action=%s><button>%s</button></form>" % (action, label) if here else ""
 
     dev = DEV.exists()
-    switches = ["<div class=switch><b>GitHub</b><span>%s</span>%s</div>" % (
+    switches = ['<div class="row switch"><b>GitHub</b><span class=says>%s</span>%s</div>' % (
         "asked every few minutes" if dev else "asked weekly",
         button("/dev/off", "Back to weekly") if dev else button("/dev/on", "Every few minutes"))]
     key = key_state() if here else None
     if key:
-        switches.append("<div class=switch><b>Signing key</b><span>%s</span>%s</div>" % (
+        switches.append('<div class="row switch"><b>Signing key</b><span class=says>%s</span>%s</div>' % (
             "unlocked" if key == "unlocked" else "locked",
             "" if key == "unlocked" else button("/key/unlock", "Unlock")))
-    switches += ["<div class=switch><b>%s</b><span>%s</span></div>" % (
+    switches += ['<div class="row switch"><b>%s</b><span class=says>%s</span></div>' % (
         e(n["ssid"]), "Wi-Fi code ready" if n["ready"] else "no password here yet") for n in networks()]
+    nouns.append(("Machine", None))
 
-    grid = "".join("<section class=panel><h2>%s</h2><div class=tiles>%s</div></section>" % (e(t), "".join(ts))
-                   for t, ts in panels)
-    body = """%s<main>%s<section class=panel><h2>This machine</h2><div class=switches>%s</div></section></main>
-<footer class=bar><a href="/verbs/">fcpm's verbs</a><code>%s</code></footer>""" % (
-        masthead("%s &middot; the board" % e(socket.gethostname().lower())), grid, "".join(switches), e(revision()))
-    return page("The board", body, BOARD_CSS)
+    slug = lambda n: re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-")
+    menu = "".join('<a href="#%s">%s</a>' % (slug(n), e(n)) for n, _ in nouns)
+    sections = "".join('<section class=noun id="%s"><h2>%s</h2><div class=rows>%s</div></section>' % (
+        slug(n), e(n), "".join(row(r) for r in rows) if rows is not None else "".join(switches)) for n, rows in nouns)
+    body = """%s<nav class=nouns aria-label="Helm">%s</nav><main>%s</main>
+<footer class=bar><a href="/verbs/">fcpm's verbs</a><code>%s</code></footer>%s""" % (
+        masthead("Helm &middot; %s" % e(socket.gethostname().lower())), menu, sections, e(revision()), BOARD_JS)
+    return page("Helm", body, BOARD_CSS)
+
+
+def board_now():
+    """What lights the board's rows, by their `live`: {key: {"say": words, "on": "live" | "air" | ""}}. Each is asked
+    on its own; one that cannot answer says nothing, and the rest still come."""
+    import replies
+    out = {}
+
+    def put(key, fn):
+        try:
+            v = fn()
+            if v:
+                out[key] = v
+        except Exception as exc:
+            log("board: %s: %r" % (key, exc))
+
+    def deploy():
+        d = deploy_now()
+        if d.get("running"):
+            return {"say": "deploying %s" % d.get("head"), "on": "live"}
+        return {"say": "live at %s" % d["live"][:7]} if d.get("live") else None
+
+    def broadcast():
+        on = []
+        try:                                     # our relay's own word (machines/broadcast/relay), kept for any screen
+            r = json.loads((pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json").read_text(encoding="utf-8"))
+            if r.get("state") == "pushing":
+                on.append("YouTube %s" % (r.get("target") or ""))
+        except (OSError, ValueError):
+            pass
+        d = broadcast_now()
+        on += [x.get("name") for x in d.get("destinations") or [] if x.get("on")]
+        return {"say": "on air: %s" % ", ".join(on).strip(), "on": "air"} if on else {"say": d.get("why") or "off the air"}
+
+    def loop():
+        n = len(loop_now().get("bottles") or [])
+        return {"say": "%d on the air" % n, "on": "live"} if n else {"say": "quiet"}
+
+    def asks():
+        st = replies.asks_state() or {}
+        waiting = len(list(asks_dir("queue").glob("*.json"))) if asks_dir("queue").is_dir() else 0
+        if st.get("working"):
+            return {"say": "answering", "on": "live"}
+        if waiting:
+            return {"say": "%d waiting" % waiting, "on": "live"}
+        return {"say": "model up" if st.get("up") else "model asleep"}
+
+    def models():
+        m = models_now()
+        if not m.get("answering"):
+            return {"say": "bay 1 asleep"}
+        up = [x for x in m.get("models") or [] if x.get("state") == "loaded"]
+        return {"say": "%d up" % len(up), "on": "live" if up else ""}
+
+    for key, fn in (("deploy", deploy), ("broadcast", broadcast), ("loop", loop), ("asks", asks), ("models", models)):
+        put(key, fn)
+    for room, cfg in (replies.rooms() or {}).items():
+        put("room:%s" % room, lambda room=room, cfg=cfg: (lambda r: {"say": "%s until %s" % (r["host"], r["until"]),
+                                                                     "on": "live"} if r.get("hosting") else
+                                                         {"say": "nobody hosting"})(replies.room_now(room, cfg)))
+    for s in seats_called():
+        put("seat:%s" % s["name"], lambda name=s["name"]: seat_now(name))
+    return out
+
+
+def seat_now(name):
+    """A seat's state for the board: called and not yet answered, or its last run's outcome and day."""
+    import replies
+    q = replies.STATE / "seats" / "queue"
+    for p in q.glob("*.json") if q.is_dir() else []:
+        if json.loads(p.read_text(encoding="utf-8")).get("seat") == name:
+            return {"say": "at work", "on": "live"}
+    runs = []
+    for p in (replies.STATE / "seats" / "runs").glob("*/run.json"):
+        r = json.loads(p.read_text(encoding="utf-8"))
+        if r.get("seat") == name:
+            runs.append(r)
+    if not runs:
+        return {"say": "never called here"}
+    last = max(runs, key=lambda r: r.get("finished") or "")
+    return {"say": "%s %s" % (last.get("outcome"), (last.get("finished") or "")[:10])}
+
+
+BOARD_JS = """<script>
+(() => {
+  const light = async () => {
+    let now;
+    try { now = await (await fetch("/board/now", {cache: "no-store"})).json(); } catch { return; }
+    for (const row of document.querySelectorAll("[data-live]")) {
+      const s = now[row.dataset.live], state = row.querySelector(".state");
+      state.textContent = s ? s.say : "";
+      state.className = "state" + (s && s.on ? " " + s.on : "");
+      row.classList.toggle("live", Boolean(s && s.on));
+    }
+    for (const sec of document.querySelectorAll("section.noun")) {
+      const a = document.querySelector('.nouns a[href="#' + sec.id + '"]');
+      if (a) a.classList.toggle("lit", Boolean(sec.querySelector(".row.live")));
+    }
+  };
+  light();
+  setInterval(light, 30000);
+})();
+</script>"""
 
 
 def verbs_page():
@@ -1140,17 +1260,33 @@ BOARD_CSS = """
 .masthead .words span { font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; color:var(--soft); }
 .masthead .where { margin-left:auto; color:var(--dim); font-size:.9rem; }
 main { max-width:60rem; margin:1.4rem auto 4.5rem; padding:0 16px; display:flex; flex-direction:column; gap:1.6rem; }
-h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--signal); margin:0 0 .6rem; }
-.tiles, .switches { display:grid; grid-template-columns:repeat(auto-fill, minmax(13.5rem, 1fr)); gap:10px; }
-.tile { display:flex; flex-direction:column; gap:.3rem; padding:1rem 1.1rem 1.05rem; background:var(--slate);
-  color:var(--paper); text-decoration:none; border-left:4px solid var(--signal); min-height:4.2rem; }
-.tile b { font-size:1.15rem; font-weight:720; line-height:1.15; }
-.tile span { font-size:.85rem; color:var(--dim); line-height:1.3; }
-.tile:hover, .tile:focus-visible { background:var(--signal); color:var(--ink); outline:none; }
-.tile:hover span, .tile:focus-visible span { color:var(--ink); }
-.switch { display:flex; flex-direction:column; gap:.3rem; padding:.9rem 1.1rem; background:var(--slate); }
-.switch b { font-size:1rem; } .switch span { font-size:.85rem; color:var(--dim); }
-.switch form { margin-top:.4rem; }
+h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--signal); margin:0 0 .5rem; }
+.nouns { position:sticky; top:0; z-index:2; display:flex; gap:1.3rem; overflow-x:auto; background:var(--ink);
+  padding:.65rem max(16px, calc(50vw - 30rem)) 0; border-bottom:1px solid var(--slate); }
+.nouns a { color:var(--soft); text-decoration:none; font-weight:650; white-space:nowrap; padding-bottom:.45rem;
+  border-bottom:3px solid transparent; }
+.nouns a:hover, .nouns a:focus-visible { color:var(--paper); }
+.nouns a.lit { color:var(--paper); border-bottom-color:var(--signal); }
+.noun { scroll-margin-top:3.4rem; }
+.rows { display:flex; flex-direction:column; background:var(--slate); }
+.row { --staff:#7cc4d8; display:grid; grid-template-columns:minmax(9rem, 14rem) 1fr auto auto; align-items:baseline;
+  gap:.15rem 1rem; padding:.55rem .9rem .55rem .75rem; border-left:4px solid transparent; color:var(--paper);
+  text-decoration:none; }
+.row + .row { border-top:1px solid var(--ink); }
+.row b { font-weight:700; } .row .says { color:var(--soft); font-size:.88rem; min-width:0; }
+.row .state { font-size:.8rem; color:var(--soft); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.row .state.live { background:var(--signal); color:var(--ink); font-weight:700; padding:.05rem .5rem; }
+.row .state.air { background:var(--record); color:var(--paper); font-weight:700; padding:.05rem .5rem; }
+.row .tag { font-style:normal; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em;
+  color:var(--staff); }
+.row.staff { border-left-color:var(--staff); }
+.row.live { border-left-color:var(--signal); background:#2c323b; }
+a.row:hover, a.row:focus-visible { background:var(--ink); outline:none; }
+.switch form { margin:0; grid-column:3 / 5; justify-self:end; }
+@media (max-width: 40rem) {
+  .row { grid-template-columns:1fr auto; } .row .says { grid-column:1 / -1; grid-row:2; }
+  .row .tag { display:none; } .switch form { grid-column:2; grid-row:1; }
+}
 button { font:inherit; font-weight:650; background:var(--signal); color:var(--ink); border:0;
   padding:.45rem 1rem; cursor:pointer; }
 .bar { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:space-between; gap:1rem;
@@ -3079,6 +3215,8 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, gear_page(gear))
             if route == "/":
                 return self.reply(200, board_page(self.here(), (self.headers.get("Host") or "").split(":")[0].rstrip(".").lower()))
+            if route == "/board/now":
+                return self.reply(200, json.dumps(board_now()), TYPES[".json"])
             if route in ("/verbs", "/verbs/"):
                 return self.reply(200, verbs_page())
             if route == "/revision":
