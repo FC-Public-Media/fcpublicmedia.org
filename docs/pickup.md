@@ -3,9 +3,9 @@
 How things travel in and out of FC Public Media without anyone being logged in to anything: the QR pickup
 station, the iced bottle that is the wire format, the outbox, and the cloud box. Built: the station's intake
 (`qr.local/drop`, `replies.py`), the loop for `model+ask` answers (`machines/digitization/asks`), the
-library's inbox ([library.md](library.md#the-receptionists-inbox)), and the iced bottle's codec
-(`you.anecdote.channel/bottle/`, not mounted here yet). The rest is the design, in the order it is built
-(Steps, at the end).
+library's inbox ([library.md](library.md#the-receptionists-inbox)), the iced bottle's codec (`.you-engine`,
+`you.anecdote.channel/bottle/`), and the library's outbox of iced answers. The rest is the design, in the
+order it is built (Steps, at the end).
 
 ## The pickup station
 
@@ -38,9 +38,9 @@ The unit that travels is the **iced bottle**: the smallest, pristine form of wha
   it came from (its signer), and what it carries (its hash). It is the same bytes a phone's camera would
   have assembled.
 
-The codec is built: `you.anecdote.channel/bottle/bottle.mjs` (`bottle(bytes, identity)` to the GIF, and
+The codec is `you.anecdote.channel/bottle/bottle.mjs` (`bottle(bytes, identity)` to the GIF, and
 `unbottle(gif)` back, verified), with a sealed variant for named recipients (`sealed.test.mjs`). FCPM mounts
-it as `.you-engine` (planned since the library-and-wizards plan; Steps, 1).
+it as `.you-engine`. An answer of 87 bytes is a 3-frame GIF of 73-pixel codes, 2.6 KB.
 
 ### Why iced: a reply that speaks for itself
 
@@ -88,10 +88,12 @@ the cloud box, unless they show the code to a camera.
 
 ## Steps
 
-1. **Mount `.you-engine`** in this repository, so the codec is ours to call (bay 1).
+1. **Mount `.you-engine`** in this repository, so the codec is ours to call (bay 1). Built: pinned as a
+   submodule, and `bin/refs` hydrates public submodules, with theirs inside, on every pull.
 2. **The library's outbox.** `fcpm library inbox answer` also writes the answer as an iced bottle of kind
    `fcpm.answer`, keyed by the ask's nonce, into `~/code/library/outbox/`. It records the transfer's id in
-   `retain/`, so that a bottle which comes back can be proved ours (bay 1).
+   `retain/`, so that a bottle which comes back can be proved ours (bay 1). Built: `machines/library-bottle.mjs`,
+   signed by the keychain's `library` group (`fcpm library signer mint`, once).
 3. **The station accepts an answer from a peer helm.** `replies.py` takes a bottle of kind `fcpm.answer` at
    `/drop`, verifies it, and puts it where `asks` keeps answers, so `asks reindex` plays it in the loop
    (digitization: `asks` and the intake are its).

@@ -497,8 +497,16 @@ lane in `library.yml`, with its own wizard, so that we can pull that string on p
 - `fcpm library inbox round` is what a seat runs. It takes this round's asks, lanes in order and each within
   its budget, moves them to `inbox/taken/`, and prints one JSON line per ask. Moving a file is the claim, so
   two rounds at once never take the same ask.
-- `fcpm library inbox answer NONCE WORDS` files the answer in `inbox/answered/`. How an answer travels back
-  to the asker (the loop, the way `model+ask` answers do) is not built yet.
+- `fcpm library inbox answer NONCE WORDS` files the answer in `inbox/answered/`, and bottles it for the
+  outbox: an iced bottle of kind `fcpm.answer`, keyed by the ask's nonce and signed by the library's own key,
+  at `~/code/library/outbox/<nonce>.gif` ([pickup.md](pickup.md#the-iced-bottle)). Its transfer id is
+  recorded in `retain/` (`outbox/issued.tsv`), so a bottle that comes back can be proved ours.
+  `fcpm library outbox` lists the outbox, and `outbox make` bottles anything answered but not bottled yet.
+  Delivering it to the station's loop is the next step ([pickup.md](pickup.md#steps), 3 and 4).
+- `fcpm library signer` shows the library's bottling identity by its fingerprint, never its value.
+  `signer mint` makes it once, on purpose, into this machine's keychain (the `library` group in its
+  `keys.yml`); it refuses if one is held, because a new identity makes every reader that trusted the old one
+  see a stranger. Without one, an answer is still filed, and simply waits to be bottled.
 
 The console shows the inbox as counts only. An ask's words are for the library, not for its peers. A
 priority call made on demand, such as calling a seat up at once for an urgent ask, would be another string

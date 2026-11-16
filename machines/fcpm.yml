@@ -164,7 +164,7 @@ verbs:
     linux: "troves/pools/pools.py by uv"
 
   - verb: library
-    args: "[status|where|xray|diff|summary|log|browse LABEL ...|grant SEAT UNIT WORDS|release GRANT|grants|console|inbox [round|answer]]"
+    args: "[status|where|xray|diff|summary|log|browse LABEL ...|grant SEAT UNIT WORDS|release GRANT|grants|console|inbox [round|answer]|outbox [make]|signer [mint]]"
     says: "the library here (~/code/library): its holdings and their shapes (never contents), who is at work, and its console"
     windows: "machines/library.py by uv"
     linux: "machines/library.py by uv"

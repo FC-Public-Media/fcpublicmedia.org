@@ -19,3 +19,13 @@ groups:
         may: names FCPM's Cloudflare account, the org account (not secret; kept with its token)
         from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): the account's home page, Account ID"
         issued: not held
+
+  library:
+    what: "the library's bottling identity: it signs every iced bottle the library issues (an answer from its outbox), saying 'the library on bay 1 bottled these bytes', so a bottle that comes back can be proved ours (docs/pickup.md)"
+    form: env
+    used by: "machines/library.py (fcpm library inbox answer, outbox), through machines/library-bottle.mjs"
+    keys:
+      LIBRARY_SIGNER:
+        may: "signs the library's iced bottles, and nothing else. An Ed25519 key, pkcs8, base64"
+        from: "fcpm library signer mint, once, on purpose, on this machine. A new one makes every reader that trusted the old one see a stranger"
+        issued: not held

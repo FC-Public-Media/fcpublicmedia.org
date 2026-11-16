@@ -8,8 +8,9 @@
 #   bin/refs done REPO BRANCH  remove that worktree (the branch is kept), its submodules too
 #                              when nothing in them is theirs alone
 #
-# refs/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. Its troves/
-# submodules follow to the commits it pins, private ones too; no other submodules.
+# refs/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. Its submodules
+# follow to the commits it pins: the public ones (engines, such as .you-engine) with theirs inside, and
+# troves/, private, too.
 # Git Bash only. See docs/station.md, Sessions.
 
 set -u
@@ -25,6 +26,12 @@ default_branch() {
 # private ones, which say `update = none` so that CI's token never tries them.
 troves_one() {
   local d=$1 user
+  # The public ones first, and theirs inside them: `update = none` (troves/, wix, the private engines)
+  # keeps a plain update off the private ones, which --checkout below reaches.
+  if [ -f "$d/.gitmodules" ]; then
+    GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$d" submodule update --init --recursive --quiet >/dev/null 2>&1 \
+      || printf '%-34s submodules: UPDATE FAILED\n' "$(basename "$d")"
+  fi
   git -C "$d" config -f .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null | grep -q ' troves/' || return 0
   # Never a sign-in prompt (a pull runs headless): the account is the one origin's URL names.
   user=$(git -C "$d" remote get-url origin 2>/dev/null | sed -n 's#^https://\([^@/]*\)@github\.com/.*#\1#p')

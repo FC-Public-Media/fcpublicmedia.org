@@ -12,6 +12,8 @@
     library.py grants                 who is at work, asked now (grants whose holder ended are lapsed)
     library.py console [--beat]       the console buffer: rewritten at most once a minute, however often read
     library.py inbox [round|answer]   asks of the library, by lane: list them, take a round's, answer one
+    library.py signer [mint]          the library's bottling identity: its fingerprint, or make it once
+    library.py outbox [make]          answers as iced bottles: what is there, and bottle any not yet
 
 The library says where things are and never reads them; an x-ray reads names, sizes, times and
 attributes, never what a file says. The profile comes from FCPM_PROFILE (fcpm sets it). The library
@@ -21,6 +23,7 @@ import argparse
 import ctypes
 import json
 import os
+import shutil
 import socket
 import stat
 import subprocess
@@ -802,7 +805,7 @@ def inbox(args):
     if args.what == "round":
         return inbox_round()
     if args.what == "answer":
-        return inbox_answer(args.nonce, args.words)
+        return inbox_answer(args.nonce, args.words, args.profile)
     print(f"inbox     {inbox_counts()}")
     for lane in [*lanes(), "taken"]:
         for path in tray(lane):
@@ -829,7 +832,7 @@ def inbox_round():
             print(json.dumps(json.loads(dest.read_text(encoding="utf-8")), ensure_ascii=False))
 
 
-def inbox_answer(nonce, words):
+def inbox_answer(nonce, words, profile=""):
     if not nonce or not words:
         sys.exit("library: inbox answer NONCE WORDS")
     path = next((p for p in tray("taken") if p.stem.endswith("--" + nonce)), None)
@@ -844,6 +847,111 @@ def inbox_answer(nonce, words):
     os.replace(tmp, out)
     path.unlink()
     print(f"answered  {nonce}")
+    bottle_answer(e, profile)
+
+
+# ----------------------------------------------------------------------------- the outbox --
+# An answer goes out as an iced bottle (docs/pickup.md): its bytes, signed by the library's own key (the
+# keychain's `library` group), cut by .you-engine's codec into a GIF of QR frames, one module a pixel, read
+# back before it is kept. ~/code/library/outbox/<nonce>.gif, with what it says of itself in <nonce>.json.
+# Each bottle's transfer id is recorded in retain/ (outbox/issued.tsv), so one that comes back can be
+# proved ours: we made this, and here it is unchanged.
+
+def keychain():
+    """machines/keys, run as source (no bytecode beside the profiles): its groups, store and gear."""
+    path = HERE / "keys"
+    k = {"__name__": "keys", "__file__": str(path)}
+    exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), k)
+    return k
+
+
+def bottler(*args, input=None, key=None):
+    """machines/library-bottle.mjs, by the bay's own Node (the gear's `at:`), else the one on PATH."""
+    k = keychain()
+    node = shutil.which("node", path=os.pathsep.join(k["gear_folders"]() + [os.environ.get("PATH", "")]))
+    if not node:
+        return None, "no Node on this machine"
+    env = dict(os.environ, **({"LIBRARY_SIGNER": key} if key else {}))
+    r = subprocess.run([node, str(HERE / "library-bottle.mjs"), *args], input=input, capture_output=True, env=env)
+    return r, r.stderr.decode("utf-8", "replace").strip()
+
+
+def signer_key():
+    """The library's signer: (keychain module, its group, the key or None). The value is never printed."""
+    k = keychain()
+    group = k["load"]().get("library")
+    if not group:
+        sys.exit("library: this machine's keys.yml has no `library` group (machines/<job>/keys.yml)")
+    return k, group, k["read"](group).get("LIBRARY_SIGNER")
+
+
+def signer(args):
+    k, group, key = signer_key()
+    if args.what == "mint":
+        if key:
+            sys.exit("library: there is a signer already. A new one makes every reader that trusted it see a "
+                     "stranger; move the old one away yourself if you mean it")
+        r, why = bottler("mint")
+        if not r or r.returncode:
+            sys.exit(f"library: no signer minted: {why}")
+        made = json.loads(r.stdout)
+        k["store"](group, "LIBRARY_SIGNER", made["key"])
+        print(f"minted    the library's signer, {made['fingerprint']}")
+        print("kept      in this machine's keychain (fcpm keys); `fcpm keys flush` hands it up to the keychain")
+        return
+    if not key:
+        print("signer    none: fcpm library signer mint, once, on purpose")
+        return
+    r, why = bottler("who", key=key)
+    print(f"signer    {r.stdout.decode().strip() if r and r.returncode == 0 else 'held, but unread: ' + why}")
+
+
+def bottle_answer(e, profile):
+    """One answered ask as an iced bottle in the outbox, its id recorded in retain/. False when it could not
+    be bottled; the answer stays filed, and `fcpm library outbox make` tries again."""
+    _, _, key = signer_key()
+    if not key:
+        print("not yet   bottled: no signer (fcpm library signer mint); the answer is filed")
+        return False
+    payload = json.dumps({"schema": "fcpm.answer/v0", "nonce": e["nonce"], "answer": e["answer"],
+                          "answered": e["answered"], "seat": e.get("to"), "lane": e.get("lane"),
+                          "from": f"the library on {profile or socket.gethostname()}"},
+                         ensure_ascii=False).encode("utf-8")
+    box = location() / "outbox"
+    box.mkdir(parents=True, exist_ok=True)
+    gif = box / f"{e['nonce']}.gif"
+    r, why = bottler("bottle", "fcpm.answer", str(gif), input=payload, key=key)
+    if not r or r.returncode:
+        print(f"not yet   bottled: {why}; the answer is filed")
+        return False
+    meta = json.loads(r.stdout) | {"nonce": e["nonce"], "made": iso(time.time())}
+    (box / f"{e['nonce']}.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
+    wt = retain(profile, make=True)
+    issued = wt / "outbox" / "issued.tsv"
+    issued.parent.mkdir(parents=True, exist_ok=True)
+    new = not issued.exists()
+    with open(issued, "a", encoding="utf-8", newline="\n") as f:
+        if new:
+            f.write("id\tkind\tnonce\tmade\tby\n")
+        f.write(f"{meta['id']}\t{meta['kind']}\t{e['nonce']}\t{meta['made']}\t{meta['by']}\n")
+    git("add", "--", "outbox/issued.tsv", cwd=wt)
+    git("commit", "-q", "-m", f"issued {meta['kind']} {e['nonce']}", cwd=wt)
+    print(f"bottled   {gif.name}: {meta['frames']} frames, {meta['gif']} bytes, {meta['id'][:23]}...")
+    return True
+
+
+def outbox(args):
+    box = location() / "outbox"
+    bottled = {p.stem for p in box.glob("*.gif")} if box.is_dir() else set()
+    waiting = [p for p in tray("answered") if json.loads(p.read_text(encoding="utf-8"))["nonce"] not in bottled]
+    if args.what == "make":
+        for p in waiting:
+            bottle_answer(json.loads(p.read_text(encoding="utf-8")), args.profile)
+        return
+    print(f"outbox    {len(bottled)} bottled; {len(waiting)} answered and not bottled yet")
+    for name in sorted(bottled):
+        meta = json.loads((box / f"{name}.json").read_text(encoding="utf-8"))
+        print(f"  {name:24} {meta.get('made', '?')[:16]}  {meta.get('kind')}  {meta.get('frames')} frames")
 
 
 # ---------------------------------------------------------------------------- the console --
@@ -944,9 +1052,12 @@ def main(argv):
     ib.add_argument("what", nargs="?", default="list", choices=["list", "round", "answer"])
     ib.add_argument("nonce", nargs="?")
     ib.add_argument("words", nargs="?")
+    sub.add_parser("signer").add_argument("what", nargs="?", default="show", choices=["show", "mint"])
+    sub.add_parser("outbox").add_argument("what", nargs="?", default="list", choices=["list", "make"])
     args = p.parse_args(argv)
     {"xray": xray, "diff": diff, "summary": summary_of, "log": log, "where": where, "browse": browse, "grant": grant,
-     "release": release, "grants": grants, "console": console, "inbox": inbox}.get(args.verb, status)(args)
+     "release": release, "grants": grants, "console": console, "inbox": inbox,
+     "signer": signer, "outbox": outbox}.get(args.verb, status)(args)
 
 
 if __name__ == "__main__":

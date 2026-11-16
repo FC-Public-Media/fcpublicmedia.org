@@ -34,12 +34,20 @@ class Library(unittest.TestCase):
         (self.top / "Board" / "Minutes" / "2024.docx").write_bytes(b"SECRET WORDS")
         (self.top / "clip.MP4").write_bytes(b"x" * 300)
         os.environ["FCPM_LIBRARY"] = str(root / "library")
+        # A keychain of the test's own: the library's group, held nowhere real. FCPM_WEARS lets the keychain
+        # find a bay's Node by its gear's `at:`; anywhere else, the Node on PATH.
+        ledger = root / "keys.yml"
+        ledger.write_text(yaml.safe_dump({"dir": str(root / "keys"), "groups": {"library": {
+            "form": "env", "keys": {"LIBRARY_SIGNER": {"issued": "not held"}}}}}), encoding="utf-8")
+        os.environ["FCPM_KEYS_LEDGER"] = str(ledger)
+        os.environ["FCPM_WEARS"] = "production"
         self._place = library.place
         library.place = lambda label, profile: self.top
 
     def tearDown(self):
         library.place = self._place
-        os.environ.pop("FCPM_LIBRARY", None)
+        for k in ("FCPM_LIBRARY", "FCPM_KEYS_LEDGER", "FCPM_WEARS"):
+            os.environ.pop(k, None)
         self.tmp.cleanup()
 
     def run_(self, fn, **kw):
@@ -294,6 +302,44 @@ class Library(unittest.TestCase):
         self.assertIn("inbox     urgent 0, ask 0 waiting; 3 taken, 1 answered", library.compose("test"),
                       "the console shows counts, never an ask's words")
         self.assertNotIn("ordinary", library.compose("test"))
+
+    def test_an_answer_without_a_signer_is_filed_and_waits_to_be_bottled(self):
+        n, _ = self.ask("which holding has the most video?")
+        self.run_(library.inbox, what="round", nonce=None, words=None)
+        out = self.run_(library.inbox, what="answer", nonce=n, words="downloads")
+        self.assertIn("no signer (fcpm library signer mint)", out)
+        self.assertEqual(len(library.tray("answered")), 1)
+        self.assertIn("0 bottled; 1 answered and not bottled yet", self.run_(library.outbox, what="list"))
+        self.assertIn("signer    none", self.run_(library.signer, what="show"))
+
+    @unittest.skipUnless((REPO / ".you-engine" / "bottle" / "bottle.mjs").is_file()
+                         and (REPO / ".you-engine" / "anecdote.channel" / "composer").is_dir(),
+                         ".you-engine is not checked out here (bin/refs pull hydrates it)")
+    def test_an_answer_goes_out_as_an_iced_bottle_that_proves_itself(self):
+        r, why = library.bottler("who")
+        if r is None:
+            self.skipTest(why)
+        minted = self.run_(library.signer, what="mint")
+        self.assertIn("minted    the library's signer, key:sha256:", minted)
+        with self.assertRaises(SystemExit):
+            self.run_(library.signer, what="mint")                     # never a second identity by accident
+        self.assertIn("signer    key:sha256:", self.run_(library.signer, what="show"))
+        self.assertNotIn(library.signer_key()[2], minted + self.run_(library.signer, what="show"), "never the key")
+        n, _ = self.ask("which holding has the most video?")
+        self.run_(library.inbox, what="round", nonce=None, words=None)
+        out = self.run_(library.inbox, what="answer", nonce=n, words="downloads, by far")
+        self.assertIn(f"bottled   {n}.gif", out)
+        gif = library.location() / "outbox" / f"{n}.gif"
+        self.assertEqual(gif.read_bytes()[:6], b"GIF89a")
+        meta = json.loads(gif.with_suffix(".json").read_text(encoding="utf-8"))
+        back, said = library.bottler("open", str(gif))
+        self.assertEqual(back.returncode, 0, said)
+        self.assertEqual(json.loads(said)["by"], meta["by"], "signed by the library's signer")
+        answer = json.loads(back.stdout)
+        self.assertEqual((answer["schema"], answer["nonce"], answer["answer"]), ("fcpm.answer/v0", n, "downloads, by far"))
+        issued = (self.retained() / "outbox" / "issued.tsv").read_text(encoding="utf-8")
+        self.assertIn(meta["id"], issued, "recorded, so one that comes back can be proved ours")
+        self.assertIn("1 bottled; 0 answered", self.run_(library.outbox, what="list"))
 
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])
