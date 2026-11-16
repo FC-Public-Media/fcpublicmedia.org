@@ -4,13 +4,14 @@
 #   href    a path here, or a URL; {domain} and {host} are filled in, and a row with either shows only by name
 #   says    one line, what it is for
 #   staff   a host's or keeper's function (marked, not hidden)
-#   live    the state that lights the row: deploy, broadcast, loop, asks, models, room:<room>, seat:<seat>
+#   live    the state that lights the row: deploy, broadcast, loop, asks, models, workshed, room:<room>, seat:<seat>
 #   from    rows made from what this machine knows: rooms, seats, wallpapers
 nouns:
   - noun: Sites
     rows:
       - {title: The site, href: "http://www.{domain}/", says: "fcpublicmedia.org as built here"}
       - {title: Deploy, href: /deploy/, says: "fcpublicmedia.org to the web, from main", staff: true, live: deploy}
+      - {title: Workshed, href: /workshed/, says: "what is being worked on here, each on its own port", staff: true, live: workshed}
       - {title: The Wix copy, href: "http://wix.{domain}/", says: "the old site, photocopied"}
       - {title: Gear, href: "http://{host}.{domain}/", says: "this machine's gear, each piece and its facts"}
   - noun: Streams

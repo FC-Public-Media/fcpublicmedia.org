@@ -1186,7 +1186,12 @@ def board_now():
         up = [x for x in m.get("models") or [] if x.get("state") == "loaded"]
         return {"say": "%d up" % len(up), "on": "live" if up else ""}
 
-    for key, fn in (("deploy", deploy), ("broadcast", broadcast), ("loop", loop), ("asks", asks), ("models", models)):
+    def workshed():
+        up = [w for w in shed().everything()["worktrees"] if w["running"]]
+        return {"say": "%d up" % len(up) if up else "", "on": "live" if up else ""}
+
+    for key, fn in (("deploy", deploy), ("broadcast", broadcast), ("loop", loop), ("asks", asks), ("models", models),
+                    ("workshed", workshed)):
         put(key, fn)
     for room, cfg in (replies.rooms() or {}).items():
         put("room:%s" % room, lambda room=room, cfg=cfg: (lambda r: {"say": "%s until %s" % (r["host"], r["until"]),
@@ -3186,6 +3191,14 @@ class Door(BaseHTTPRequestHandler):
         mine = here and (self.headers.get("Origin") or "null") in (
             "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
             "http://localhost:%d" % PORT, "http://127.0.0.1:%d" % PORT)
+        if mine and route == "/workshed/do":                 # its servers answer on this computer only
+            try:
+                ask = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024)))
+            except ValueError:
+                ask = None
+            if not isinstance(ask, dict):
+                return self.reply(400, json.dumps({"ok": False, "said": "asks in JSON"}), TYPES[".json"])
+            return self.reply(200, json.dumps(workshed_do(ask)), TYPES[".json"])
         if mine and route in ("/key/unlock", "/dev/on", "/dev/off"):
             if route == "/key/unlock":
                 key_unlock()                                   # answered on this screen
@@ -3298,6 +3311,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, models_page())
             if route == "/models/now":
                 return self.reply(200, json.dumps(models_now()), TYPES[".json"])
+            if route in ("/workshed", "/workshed/"):
+                return self.reply(200, workshed_page(self.here()))
+            if route == "/workshed/now":
+                return self.reply(200, json.dumps(workshed_now(self.here())), TYPES[".json"])
             if route in ("/deploy", "/deploy/"):
                 return self.reply(200, deploy_page())
             if route == "/deploy/now":
@@ -4430,6 +4447,148 @@ MODELS_JS = """<script>
       .catch(function () { said.textContent = 'This machine is not answering'; delete said.dataset.busy; });
   };
   now(); setInterval(now, 10000);
+})();
+</script>"""
+
+
+# -------------------------------------------------------------------- workshed --
+# THE WORKSHED (../workshed.py, docs/workshed.md): each worktree someone is working in, its port, whether it is
+# up, and its site's pages, the changed ones first. Shown to all; started, stopped and made from this computer
+# only, since what it serves is on localhost and answers to nobody else.
+def shed():
+    if str(ROOT / "machines") not in sys.path:
+        sys.path.append(str(ROOT / "machines"))
+    was, sys.dont_write_bytecode = sys.dont_write_bytecode, True   # machines/ holds only profiles (test_binding)
+    try:
+        import workshed
+    finally:
+        sys.dont_write_bytecode = was
+    return workshed
+
+
+def workshed_now(here=False):
+    d = shed().everything()
+    if not here:                                                # where things are on the disk is this computer's business
+        for k in ("root", "log", "node", "engine"):
+            d[k] = "here" if d[k] else ""
+        for w in d["worktrees"]:
+            w["path"] = ""
+    d["here"] = here
+    return d
+
+
+def workshed_do(ask):
+    """A board button: start, stop or make one. Says what happened in a sentence, as the verb does."""
+    import contextlib
+    import io
+    w = shed()
+    said = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(said):
+            if ask.get("do") == "start":
+                w.start(str(ask["name"]))
+            elif ask.get("do") == "stop":
+                w.stop(str(ask["name"]))
+            elif ask.get("do") == "new":
+                w.new(str(ask["branch"]).strip())
+            else:
+                return {"ok": False, "said": "asks for start, stop or new"}
+    except w.Wrong as exc:
+        return {"ok": False, "said": str(exc)}
+    except (KeyError, TypeError):
+        return {"ok": False, "said": "asks for a name (or a branch, for new)"}
+    log("workshed: %s %s, from the board" % (ask.get("do"), ask.get("name") or ask.get("branch")))
+    return {"ok": True, "said": said.getvalue().strip()}
+
+
+def workshed_page(here=False):
+    make = """<form id=new class=new><label>Something new to work on: <input name=branch required
+pattern="[A-Za-z0-9][A-Za-z0-9._\\-]*" placeholder="meet-photos, christmas, ..."></label>
+<button>Make a worktree for it</button></form>""" if here else ""
+    body = """%s<main>
+<h2>Workshed</h2>
+<p class=dim>Each card is a worktree: a copy of a site on its own branch, kept for as long as someone works in it.
+Start one and it is built whole and served on its own port, here on this computer, and built again each time a
+file in it is saved. Its pages are listed with the ones its branch changes first. %s</p>
+%s<section id=list></section>
+<p class=dim id=said></p>
+<p class=dim>From a terminal: <code>fcpm workshed</code>, and <code>fcpm workshed check NAME</code> for what is
+done and what is wrong, a line each. Everything done is on the workshed's log (<code>fcpm workshed log</code>).</p>
+</main>%s""" % (masthead("%s &middot; workshed" % e(socket.gethostname().lower())),
+                "" if here else "Its pages open on this computer only, so starting and opening them is done there.",
+                make, WORKSHED_JS)
+    return page("Workshed", body, WORKSHED_CSS)
+
+
+WORKSHED_CSS = BOARD_CSS + """
+#list { display:grid; grid-template-columns:repeat(auto-fill, minmax(22rem, 1fr)); gap:.8rem; margin:1.2rem 0; }
+.wt { display:flex; flex-direction:column; gap:.4rem; padding:1rem 1.2rem; background:var(--slate); color:var(--dim);
+  border-left:4px solid transparent; }
+.wt.up { border-left-color:var(--signal); color:var(--paper); }
+.wt h3 { margin:0; font-size:1.3rem; color:var(--paper); } .wt .where { font-size:.85rem; }
+.wt .state { font-size:.8rem; text-transform:uppercase; letter-spacing:.1em; }
+.wt.up .state { color:var(--signal); } .wt .wrong { color:#ff7b72; }
+.wt .acts { display:flex; gap:.5rem; flex-wrap:wrap; } .wt .acts a, .wt .acts button { font-size:.95rem; }
+.wt ul { list-style:none; margin:.2rem 0 0; padding:0; columns:2; font-size:.9rem; }
+.wt li { break-inside:avoid; } .wt li.changed a, .wt li.changed span { color:var(--signal); font-weight:700; }
+.wt a { color:inherit; } .wt.up a { color:var(--paper); }
+.new { display:flex; gap:.6rem; align-items:end; flex-wrap:wrap; margin:1rem 0; }
+.new input { font:inherit; padding:.4rem .6rem; min-width:16rem; }
+#said { min-height:1.4em; }
+"""
+
+
+WORKSHED_JS = """<script>
+(function () {
+  var list = document.getElementById('list'), said = document.getElementById('said'), here = false;
+  function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+  function ask(body) {
+    said.textContent = body.do === 'new' ? 'Making ' + body.branch + '...' : (body.do === 'start' ? 'Starting ' : 'Stopping ') + body.name + '...';
+    return fetch('/workshed/do', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); }).then(function (k) { said.textContent = k.said; now(); })
+      .catch(function () { said.textContent = 'This machine is not answering'; });
+  }
+  function card(w) {
+    var c = el('article', 'wt' + (w.running ? ' up' : ''));
+    c.append(el('h3', null, w.branch), el('span', 'where', w.shed + ' / ' + w.repo + (w.port ? ', port ' + w.port : '')));
+    c.append(el('span', 'state', w.running ? (w.ok === false ? 'up, but its build failed' : 'up') : 'stopped'));
+    if (w.running && w.ok === false) c.append(el('span', 'wrong', w.error));
+    if (w.gaps && w.gaps.length) c.append(el('span', 'wrong', 'Not built as the real site would be: ' + w.gaps.join('; ')));
+    var bits = [];
+    if (w.ahead) bits.push(w.ahead + ' commit' + (w.ahead === 1 ? '' : 's') + ' past main');
+    if (w.dirty) bits.push('changes not committed');
+    if (w.changed_other.length) bits.push(w.changed_other.length + ' other file' + (w.changed_other.length === 1 ? '' : 's') + ' changed');
+    c.append(el('span', null, bits.length ? bits.join(', ') : 'the same as main'));
+    var acts = el('div', 'acts');
+    if (w.running) { var o = el('a', null, 'Open'); o.href = w.url; o.target = '_blank'; acts.append(o); }
+    if (here && w.site) {
+      var b = el('button', null, w.running ? 'Stop' : 'Start');
+      b.onclick = function () { b.disabled = true; ask({do: w.running ? 'stop' : 'start', name: w.name}); };
+      acts.append(b);
+    }
+    c.append(acts);
+    if (w.pages.length) {
+      var ul = el('ul'), changed = {};
+      w.changed_pages.forEach(function (u) { changed[u] = 1; });
+      w.pages.slice().sort(function (a, b) { return (changed[b.url] || 0) - (changed[a.url] || 0); }).forEach(function (p) {
+        var li = el('li', changed[p.url] ? 'changed' : ''), a = el(w.running ? 'a' : 'span', null, p.title || p.url);
+        if (w.running) { a.href = 'http://localhost:' + w.port + p.url; a.target = '_blank'; }
+        a.title = p.url; li.append(a); ul.append(li);
+      });
+      c.append(ul);
+    }
+    return c;
+  }
+  function draw(d) {
+    here = d.here;
+    list.replaceChildren.apply(list, d.worktrees.map(card));
+    if (!d.worktrees.length) list.append(el('p', 'dim', 'Nothing in the workshed yet.'));
+    if (!d.engine || !d.node) said.textContent = 'This computer cannot build sites yet: fcpm workshed check says what is missing.';
+  }
+  function now() { fetch('/workshed/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
+  var form = document.getElementById('new');
+  if (form) form.onsubmit = function (ev) { ev.preventDefault(); ask({do: 'new', branch: form.branch.value}).then(function () { form.reset(); }); };
+  now(); setInterval(now, 5000);
 })();
 </script>"""
 

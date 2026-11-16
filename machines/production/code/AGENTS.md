@@ -45,6 +45,8 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
 - Never work or commit in `refs/`. Each change gets `work/REPO@BRANCH` from `bin/refs work REPO
   BRANCH` (off `origin/main`), one session per worktree, its branch named for its purpose. A `gh stack`
   gets one worktree, `work/REPO@<stack>`, and its layers are switched inside it.
+- `workshed/` is a person's, not a session's: their worktrees, kept while they work (`docs/workshed.md`).
+  Asked to help there, work in the worktree they show you, and make or serve one only by `fcpm workshed`.
 - Commit each step as it lands; a draft Autumn wants to read first stays unpushed until she says. Push
   before telling her a PR is ready. Once it merges: `bin/refs done REPO BRANCH` and `bin/refs pull`;
   never reuse the worktree, and put any later commit in a new PR.
