@@ -95,6 +95,13 @@ say not now: the machine is down, or it is under a sensitive advisory (in live u
 say, so nothing should talk to it for a while). Either way, any one of our checkouts shows whether what
 you want is here or there. Not built.
 
+**Libraries can ask each other.** When librarians disagree about something, the files may be in
+different places, and reaching a consensus means asking the other library. A librarian can do that by
+asking Helm to put a query to the other library's own front door: what does it hold, and what has it
+noted, about this? That is its own kind of information access. It is not reading a file (Reading,
+above), and it is not a grant of a core. It is one library answering another about its own record. The
+answer goes into the asker's `retain/`, alongside the disagreement it was asked to settle. Not built.
+
 ## Holdings, and the attic
 
 A holding is a place with things in it. Its label is ours. `is:` gives the engine's word for the same
