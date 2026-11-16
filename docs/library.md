@@ -366,7 +366,8 @@ agent. A holding comes with its decorum, its record, and its terms.
 ## The grant book
 
 Built (stage 1): `fcpm library grant SEAT UNIT WORDS`, `release GRANT`, `grants`, and the console,
-below. A grant's holder is found by walking up from `fcpm` past shells and interpreters, so it is the
+below. The first caller-in is digitization's `seats` (advocate seats called in by hand; machines/digitization/PROFILE.md,
+Seats), which holds both grants for a call as itself. A grant's holder is found by walking up from `fcpm` past shells and interpreters, so it is the
 agent that asked (on bay 1, `claude.exe`) or a person's terminal. Not yet: jobs (`ask`, `wait`), votes,
 signing, and Helm serving the console.
 

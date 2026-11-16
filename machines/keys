@@ -4,7 +4,7 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
 
   keys                  each key: held or WANTED, and where it lives
   keys check            the same in `fcpm check`'s words; exit 1 if any is wanted
-  keys take GROUP KEY   ask for one value in a window on this screen, check its prefix, store it
+  keys take GROUP KEY   ask for one value in a window on this screen and keep it; a surprise in its shape is said
   keys offer GROUP DEVICE   ask for GROUP's wanted keys on a one-time page only DEVICE on the tailnet can open
   keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment, and the
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
@@ -158,6 +158,20 @@ def ask(title, text):
     return done.stdout.strip() if done.returncode == 0 else None
 
 
+def tell(title, text):
+    """A note on this screen, closed by the person; never blocks a command that has no screen."""
+    if WINDOWS:
+        import tkinter
+        from tkinter import messagebox
+        root = tkinter.Tk()
+        root.withdraw()
+        messagebox.showinfo(title, text, parent=root)
+        root.destroy()
+        return
+    env = dict(os.environ, DISPLAY=os.environ.get("DISPLAY", ":0"))
+    subprocess.run(["zenity", "--info", "--width", "480", "--title", title, "--text", text], capture_output=True, env=env)
+
+
 def ask_tk(title, text):
     """Windows: the same hidden entry, by the Tk that uv's Python carries."""
     import tkinter
@@ -202,17 +216,18 @@ def take(groups, name, key):
     if spec.get("shape"):
         text += {"guid": "\nIt looks like 00000000-0000-0000-0000-000000000000",
                  "hex32": "\nIt is 32 letters and digits, 0-9 and a-f"}[spec["shape"]]
-    for _ in range(3):
-        value = ask(f"Keychain: {name}", text)
-        if value is None:
-            sys.exit("keys: the window was closed; nothing stored")
-        if fits(spec, value):
-            store(group, key, value)
-            print(f"keys: stored {name} {key} in {short(group['path'])}")
-            return flush({name: group})
+    value = ask(f"Keychain: {name}", text)
+    if value is None:
+        sys.exit("keys: the window was closed; nothing stored")
+    store(group, key, value)             # what a person typed is always kept; a surprise in its shape is said, not refused
+    print(f"keys: stored {name} {key} in {short(group['path'])}")
+    if not fits(spec, value):
         kind = f"start with {prefix}" if prefix else f"look like a {spec.get('shape')}"
-        text = f"That one does not {kind}. Paste the {key} again.\n\n" + text
-    sys.exit("keys: three tries without the right kind of key; nothing stored")
+        said = (f"Kept. It does not {kind}, as keys.yml expected, so `fcpm check` will say so "
+                f"until keys.yml or the key is set right. Nothing needs typing again.")
+        print(f"keys: {said}")
+        tell(f"Keychain: {name}", said)
+    return flush({name: group})
 
 
 def tailnet(device):
@@ -234,7 +249,7 @@ def offer(groups, name, device, minutes=60):
 
     def wanted():
         held = read(group)
-        return [k for k, spec in group["keys"].items() if not held.get(k) or not fits(spec, held[k])]
+        return [k for k, spec in group["keys"].items() if not held.get(k)]
 
     def page(note=""):
         rows = "".join(
@@ -276,12 +291,10 @@ def offer(groups, name, device, minutes=60):
                 value = (form.get(key) or [""])[0].strip()
                 if not value:
                     continue
-                if fits(group["keys"][key], value):
-                    store(group, key, value)
-                    notes.append(f"Kept {key}.")
-                    print(f"keys: stored {name} {key} in {short(group['path'])}", flush=True)
-                else:
-                    notes.append(f"{key} was not the right kind; nothing kept for it.")
+                store(group, key, value)           # kept whatever its shape, as keys take does; a surprise is said
+                print(f"keys: stored {name} {key} in {short(group['path'])}", flush=True)
+                notes.append(f"Kept {key}." if fits(group["keys"][key], value) else
+                             f"Kept {key}. It is not the kind keys.yml expected, so fcpm check will say so; nothing needs sending again.")
             self.answer(200, page("".join(f"<p>{html.escape(n)}</p>" for n in notes)))
 
         def log_message(self, *args):

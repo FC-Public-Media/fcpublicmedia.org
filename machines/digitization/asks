@@ -52,7 +52,7 @@ CONSOLE = {"blockSize": 20, "overhead": 6, "qr": "L"}     # qr.local's text scre
 STATE_FILE = "state.json"         # who answers, whether it's up, what it's on: what qr.local's inbox bar says
 LOOP_MOST = 40                    # the most answers the loop carries at once
 PUBLIC = ("schema", "in_reply_to", "shape", "label", "answer", "effort", "finish", "model", "model_sha256",
-          "seed", "answered")     # what an answer's bottle carries: not who signed, not the question
+          "seed", "answered", "seat")   # what an answer's bottle carries: not who signed, not the question
 MODEL_YML = ROOT / "machines" / "production" / "model.yml"
 SPREAD = ROOT / "machines" / "production" / "models"
 URL = "http://%s/v1/chat/completions" % os.environ.get("FCPM_MODEL_AT", "10.209.1.20:9931")

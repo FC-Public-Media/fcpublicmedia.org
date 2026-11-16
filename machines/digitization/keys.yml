@@ -94,6 +94,17 @@ groups:
         from: "entra.microsoft.com: App registrations, FCPM site-worker, Certificates & secrets, New client secret (the Value, shown once)"
         issued: 2026-10-23, the existing "FC Public Media Booking" app's (kept for now; not granted the Operations site yet); its expiry was not recorded
 
+  anthropic-seats:
+    what: the Claude API, for advocate seats' sessions and nothing else.
+    form: env
+    used by: "machines/digitization/seats, as keys run anthropic-seats -- .advocate-engine/run.sh <seat>"
+    keys:
+      ADVOCATE_AGENT_KEY:
+        prefix: sk-ant-
+        may: the Messages API; the spend limit on its Console workspace is the seats' whole budget
+        from: "the Claude Console: an API key, or a service account's, in the workspace kept for seats"
+        issued: 2026-11-15, by Autumn
+
   cablecast:
     what: changes to channel 97's Cablecast (reads need no key).
     form: raw

@@ -49,7 +49,7 @@ question becomes a code for the camera at FC Public Media; nothing is sent from 
   .ask .notebook ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .8rem; }
   .ask .notebook li { border-top: 1px solid #2c3138; padding-top: .6rem; }
   .ask .notebook .q { margin: 0; font-weight: 650; }
-  .ask .notebook .a { margin: .3rem 0; color: #b7bcc3; }
+  .ask .notebook .a { margin: .3rem 0; color: #b7bcc3; white-space: pre-wrap; }
   .ask .notebook .meta { font-size: .75rem; color: #8a9099; display: block; }
   .ask .notebook label { display: inline-flex; gap: .4rem; align-items: center; font-size: .85rem; margin-top: .3rem; }
 </style>

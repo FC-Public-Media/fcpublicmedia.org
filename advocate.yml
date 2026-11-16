@@ -16,7 +16,10 @@ mission: >
 
 advocates:
   - name: payments
-    session: local
+    session: hosted              # called in by hand at digitization's helm (wizard:seat+run, machines/digitization/seats.yml)
+    backend:
+      kind: anthropic
+      model: claude-opus-5-5
     mission: Can this organisation take money through its own website, and does the way it does it still work?
     constitution: "#payments"
     cadence: monthly

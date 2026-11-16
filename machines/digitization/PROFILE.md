@@ -90,6 +90,38 @@ twice: the loop's frames, and console frames (20 bytes a frame, each with its QR
 modules, printed in half blocks on the 51-column screen). `asks` keeps `asks/state.json` (what it answers, by
 whom, up or off, what it is on, any trouble), and `replies.inbox()` lists what the door took, newest first.
 
+## Seats
+
+An advocate seat (advocate.yml) can be called in by hand from the ask page's "Call a seat" (`wizard:seat+run`: the
+seat's name, a note, and any ticked answers quoted whole). The bottle goes to this helm (helms.yml holds the
+wizard), `replies.py` queues it, and `seats` (crew line) runs one call at a time. `seats.yml` says which seats this
+helm holds, the keychain group each session's key comes from, the least time between runs (`gap`), and the most a
+session may read (`most-input`). What a seat is and which model it calls (`backend:`) stay in advocate.yml.
+
+A call is run in four steps, each kept under `seats/runs/<nonce>/` in the door's state:
+
+1. **Calling in.** A grant in the library's book (`fcpm library grants` shows it) to make the seat's workspace with
+   the engine's own `session.mjs`: a worktree on `advocate/<seat>` in the seats' clone (`seats.yml` `repo`, a
+   clone of this checkout, signing off: a seat signs with nobody's key). The grant is released once the worktree is
+   there. A seat's earlier branch is taken once from `seed` (GitHub's copy, as the ref clone fetched it).
+2. **Admission.** `admission.json`: who called it, with what note and trust; both grant ids; the spec it answers to
+   (advocate.yml's commit, mission, cadence, goals); the backend and the name of the key group (never its value);
+   the range it reads; its previous runs; how long since the last, and whether this call is early for its
+   cadence. The engine is handed it as the last section of METHOD.md, with its sha256, and quoted replies as
+   relayed context. A call sooner than `gap`, or a range over `most-input`, is held instead.
+3. **Work.** A second grant, for the session. The engine's `run.sh` runs it under `keys run <group>`, so the key is
+   in that process's environment and nowhere else; `ADVOCATE_PUSH=false` keeps the branch on this machine. The
+   API's response is kept as `response.json` (`seat-curl` stands in for curl on the session's PATH), for its tokens.
+4. **The reply.** `run.json`, and an answer under the call's nonce (`asks/answers/<nonce>.json`, shape `seat+run`),
+   bottled into the public loop like any answer. It says what the seat did, what it read, what it wrote and where
+   (`advocate/<seat>@<commit>` in the seats' clone on this machine), what it cost at `seats.yml`'s prices, the
+   grants and the admission's hash, and its session note. Whole, it is enough to quote into the next call.
+
+A held call, or one that ran into trouble, is answered too, with the reason. `machines/digitization/seats status`
+lists what waits and the last runs. The seats' branches are not pushed: their address is this machine and the
+seats' clone, and an archive later only changes that label. Only the API's Messages call leaves the building; the
+session sees commit subjects and its own files, never the repository's contents.
+
 ## Keys
 
 This machine holds FCPM's secrets for now (decided 2026-10-23), and deploys that need them run here by hand.
@@ -99,7 +131,7 @@ the file it lives in and what reads it. Values never enter the repository. A gro
 files beside it). Keys used together sit in one file, so a test key never meets a live one.
 
 - `keys` lists what is held and what is wanted, never a value; `fcpm check` says the same.
-- `keys take GROUP KEY` asks for a value in a window on this screen and refuses the wrong prefix.
+- `keys take GROUP KEY` asks for a value in a window on this screen, once, and always keeps it; a value not the kind `keys.yml` expects is kept and said (`fcpm check` shows it), never refused.
 - `keys offer GROUP DEVICE` asks for the group's wanted keys on a one-time page (an hour, closed once all are held) that only that tailnet device can open, for when nobody is at this screen.
 - `keys run GROUP... -- CMD` hands groups to one command as environment variables.
 - In a site-worker checkout (FC-Public-Media/site-worker): `keys run cloudflare stripe-live -- sh bin/deploy`

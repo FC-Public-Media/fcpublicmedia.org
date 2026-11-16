@@ -1,0 +1,13 @@
+# seats.yml: the advocate seats this helm calls in (wizard:seat+run), with which key, and how close together.
+# What a seat is (mission, goals, cadence, backend) is advocate.yml's; this is only where it is held. PROFILE.md, Seats.
+repo: ~/fcpm/seats/fcpublicmedia.org     # the seats' own clone of this checkout: their branches stay in it, never pushed
+seed: ~/code/ref/fcpublicmedia.org       # a seat's earlier branch is taken from here once (refs/remotes/github/advocate/<seat>)
+
+prices:                                  # dollars a million tokens, input and output, for the reply's cost line
+  claude-opus-5-5: [4, 20]
+
+seats:
+  payments:
+    keys: anthropic-seats                # the keychain group its session's key comes from (machines/digitization/keys.yml)
+    gap: 30m                             # a call sooner than this after the last run is held, with the reason
+    most-input: 200000                   # bytes of session input; a bigger range is held, never sent

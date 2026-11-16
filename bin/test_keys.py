@@ -22,7 +22,7 @@ KEYS = REPO / "machines" / "keys"
 
 def keys(*args, **env):
     return subprocess.run([sys.executable, "-I", str(KEYS), *args], capture_output=True, text=True,
-                          env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", **env))
+                          env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", FCPM_KEYCHAIN_SSH="keychain.invalid", **env))
 
 
 class Keys(unittest.TestCase):
@@ -49,6 +49,22 @@ class Keys(unittest.TestCase):
         self.assertNotIn("stripe", out)                               # digitization's groups are not bay 1's
         self.assertIn("stripe-live", keys(FCPM_WEARS="digitization").stdout)
         self.assertIn("holds no keychain", keys(FCPM_WEARS="kiosk").stdout)
+
+    @unittest.skipIf(os.name == "nt", "the window here is zenity")
+    def test_what_is_typed_is_kept_even_when_not_the_kind_expected(self):
+        bin_ = self.tmp / "bin"
+        bin_.mkdir()
+        (bin_ / "zenity").write_text('#!/bin/sh\necho "$@" >> "%s/windows"\ncase "$*" in *--entry*) echo sk-svc-typed-once;; esac\n'
+                                     % self.tmp)
+        (bin_ / "zenity").chmod(0o755)
+        out = keys("take", "cloudflare", "CLOUDFLARE_ACCOUNT_ID", FCPM_KEYS_LEDGER=str(self.ledger),
+                   PATH="%s:%s" % (bin_, os.environ["PATH"]))
+        self.assertIn("keys: stored cloudflare CLOUDFLARE_ACCOUNT_ID", out.stdout)      # then flushed (here, to no keychain)
+        self.assertIn("CLOUDFLARE_ACCOUNT_ID=sk-svc-typed-once", (self.tmp / "held" / "cloudflare.env").read_text())
+        windows = (self.tmp / "windows").read_text()
+        self.assertEqual(windows.count("--entry"), 1)                 # asked once, never again
+        self.assertIn("Nothing needs typing again", windows)
+        self.assertNotIn("sk-svc-typed-once", out.stdout + out.stderr)
 
     def test_wanted_until_held_and_never_a_value(self):
         out = keys("check", FCPM_KEYS_LEDGER=str(self.ledger))
