@@ -10,7 +10,7 @@
 
 sites:
   site:
-    serve: ["@", www]
+    serve: [www]                        # the bare name is Helm's (../digitization/lan.yml)
     build: machines/static/site-build   # Jekyll, from site/
     from: [site, machines/static]
   wix:

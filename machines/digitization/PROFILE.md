@@ -13,7 +13,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `rsync`, `zenity`, `npm`, `avahi-utils`, `vivaldi-stable`, `firefox-esr`; Claude Code by hand |
 | the door | `../kiosk/door.py serve` on loopback :8081 behind nginx's port 80 (the `static` job's `nginx.conf`), started at login by `at-login` (`fcpm-digitization.desktop` in `/etc/xdg/autostart`), then Vivaldi opens maximized with its page as a pinned tab, never a window of its own (`open-page`). `digitization.local` on the LAN; at `localhost` the board also offers **Unlock** for the signing key, its passphrase asked on this screen (`../kiosk/askpass`) |
 | `rest` | the screen never blanks or powers down (X and XFCE's power manager both told). Ten minutes without input, `../../brand/idle` comes up full screen, the mark and the clock, read from the checkout; the first touch takes it away. Started by `at-login` beside the door |
-| static sites | the public site and the Wix copy are the [`static`](../static/CREW.md) job's, which this machine also wears; nginx serves their names (`fcpublicmedia.local`, `www.`, `wix.`) itself and hands every other name to the door |
+| static sites | the public site and the Wix copy are the [`static`](../static/CREW.md) job's, which this machine also wears; nginx serves their names (`www.`, `wix.`) itself and hands every other name, the bare one included, to the door |
 | `lan.yml`, `mdns.allow` | the names this machine answers to under `fcpublicmedia.local`, held up by the crew's `names keep` line (`../lan.py publish`). See Names |
 | the podcast studio's door | an iPad Air 2 in a landscape holder at the hallway door shows `http://digitization.local/room/podcast/` (Safari: Add to Home Screen, then Guided Access; the page never dims). Staff check in from their own phone on Helm at `http://digitization.local/host/?room=podcast` (`wizard:kiosk+host`); the replies land under `~/.local/state/media-node/replies` and `../kiosk/replies.py status` reads them. [`docs/kiosk.md`](../../docs/kiosk.md), Rooms and Replies |
 | `check.sh` | each gear present (dpkg), the crew's supervisor up, origin.local answering as this checkout's origin, the clock synced and on Fort Collins time, SSH keys only, the door behind nginx, every LAN name held and served, deep `.local` names resolving here, and every key in `keys.yml` held: `ok` or `WANTED` with the fix. `fcpm check` |
@@ -29,8 +29,8 @@ People reach things here by name, as deep as DNS goes, each an mDNS name of this
 
 | name | serves |
 |---|---|
-| `helm.fcpublicmedia.local` | the board. Shared: any machine may hold it; the first to claim it does, and another asks again every 30 s, so it takes over when the holder goes |
-| `fcpublicmedia.local`, `www.fcpublicmedia.local` | the public site, built here (shared the same way; the [`static`](../static/CREW.md) job) |
+| `fcpublicmedia.local` | Helm, the board: the bare name, because only the LAN has it and there is one. `helm.fcpublicmedia.local` is the same board by its older name. Shared: any machine may hold it; the first to claim it does, and another asks again every 30 s, so it takes over when the holder goes |
+| `www.fcpublicmedia.local` | the public site, built here (shared the same way; the [`static`](../static/CREW.md) job). `www` is the site |
 | `wix.fcpublicmedia.local` | the Wix site, photocopied, until the board retires it (shared; `static`) |
 | `digitization.fcpublicmedia.local` | this machine's directory: its gear, and the shared names with who holds each |
 | `atem-mini-pro.digitization.fcpublicmedia.local`, `aja-helo.…`, `rodecaster-pro-ii.…` | one piece of gear, named for its trove: its facts (`instrument.yml`) and where it is now, discovered (mDNS or this USB), never declared |

@@ -8,7 +8,7 @@ takes the push and serves it. One job on its own box (decided 2026-10-21): its d
 |---|---|
 | `names` | who wears the job: `static` (the host, its own box); `digitization` until static.local serves |
 | `sites.yml` | every site, where it is served (`serve`: a LAN name, or a path under one), and how a workstation makes it (`build` and `from`; `root`; `export: owner/repo`; none: its own project pushes it) |
-| `lan.yml` | the names the host holds by mDNS: `fcpublicmedia.local`, `www.`, `wix.`, `you.` |
+| `lan.yml` | the names the host holds by mDNS: `www.`, `wix.`, `you.` (the bare `fcpublicmedia.local` is Helm's) |
 | `nginx-host.conf` | the host's port 80: a name with a site is files, by Host (the file, `.html`, a folder's `index.html`, the site's `404.html`), with Range, ETag and gzip, and `frame-ancestors`: `'none'` for every site, `'self'` for one whose sites.yml says `frame: self` (one that opens its own pages in iframes); `.md` as `text/markdown`, `.mjs` as JavaScript; a member's site is a name of its own (`<show>.you.fcpublicmedia.local`) or a path under `you.` |
 | `receive` | the host's deploy door, forced on every key of its `deploy` account: rsync into a hard-linked copy of what is up (only what changed crosses; 260 bytes for a one-page change on a 50 MB site), then `current` flips; the one before stays. A key pushes only its sites. `receive status` on its screen |
 | `KEYHOLDERS` | who may push which sites: `sites holder key since`; `*` or `wix` or `site,wix`. A line by merged PR, then `install fcpm@static.local` |
@@ -20,7 +20,7 @@ takes the push and serves it. One job on its own box (decided 2026-10-21): its d
 
 | site | served at | made by |
 |---|---|---|
-| `site` | `fcpublicmedia.local`, `www.fcpublicmedia.local` | a workstation, from `site/` |
+| `site` | `www.fcpublicmedia.local` | a workstation, from `site/` |
 | `wix` | `wix.fcpublicmedia.local` | a workstation, `wix/site` as it sits ([FC-Public-Media/wix](https://github.com/FC-Public-Media/wix)) |
 
 Everything is served here first. A site goes to the cloud only once it is right on the LAN, and
