@@ -127,3 +127,8 @@
 	url = https://fcpm-public@github.com/FC-Public-Media/roku.git
 	update = none
 	ignore = untracked
+[submodule ".you-engine"]
+	path = .you-engine
+	url = https://github.com/FCCN-ANTIBODY/you.anecdote.channel.git
+	# The bottle codec: the iced bottle, a GIF of QR frames and back (docs/pickup.md). The library bottles its
+	# answers with it (machines/library-bottle.mjs); it carries anecdote.channel as a submodule of its own.
