@@ -475,6 +475,34 @@ when it is fresh.
   console is not published on the network. Helm holds it up as a proof, so that people can answer
   their own questions, and when they can't, they know what to ask for. That is stage 2.
 
+### The receptionist's inbox
+
+An ask of the library comes in like any other wizard's reply: someone forms it on `/library/ask/`, shows it
+to a camera wherever one is (digitization's, today), and Helm passes it to the helm that holds the library
+(production's, in `helms.yml`). That helm sets it down in the library's own inbox,
+`~/code/library/inbox/<lane>/`, one file per ask. It does not need a live agent. The ask waits there until a
+seat picks it up.
+
+**A lane is a wizard, chosen by whoever asks.** No dispatcher reads a request and decides what it wants,
+because a dispatcher would get that wrong. When a different behaviour is needed, it is written down as a
+lane in `library.yml`, with its own wizard, so that we can pull that string on purpose:
+
+| lane | wizard | budget per round |
+|---|---|---|
+| `urgent` | `wizard:library+urgent` | all of them, before any other lane |
+| `ask` | `wizard:library+ask` | 2, oldest first; the rest wait for the next round |
+
+- `fcpm library inbox` lists what is waiting, lane by lane.
+- `fcpm library inbox round` is what a seat runs. It takes this round's asks, lanes in order and each within
+  its budget, moves them to `inbox/taken/`, and prints one JSON line per ask. Moving a file is the claim, so
+  two rounds at once never take the same ask.
+- `fcpm library inbox answer NONCE WORDS` files the answer in `inbox/answered/`. How an answer travels back
+  to the asker (the loop, the way `model+ask` answers do) is not built yet.
+
+The console shows the inbox as counts only. An ask's words are for the library, not for its peers. A
+priority call made on demand, such as calling a seat up at once for an urgent ask, would be another string
+of its own, written as one.
+
 ## The keychain wing, and data piles (notes)
 
 Not built. Kept so that the shape is here when it is wanted. A data pile
@@ -532,7 +560,9 @@ The pile is how a sealed value could sit in the open and still be granted by ran
    vocabulary every library would use, not just ours.
 7. Seats rooted in a project: maintenance and advice as a member's term of admission, once the engine
    says where the term is written.
-8. The grant book, stage 2: Helm serves the console (bay 1 reads digitization's, and the other way
+8. The receptionist's inbox, stage 2: answers back to the asker through the loop; a seat that runs
+   `inbox round` on a schedule, within budget, under a grant; a priority call that brings one up at once.
+9. The grant book, stage 2: Helm serves the console (bay 1 reads digitization's, and the other way
    round), a crew line keeps it beating, and `ask`/`wait` on `refs/jobs/`. Then votes at a contract's
    close, signed entries, and an advocate seat that reads the book.
-9. The keychain pile, once the keystore holds its first values.
+10. The keychain pile, once the keystore holds its first values.

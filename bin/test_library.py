@@ -7,6 +7,7 @@ came, went and changed, a whole folder as one line; browse reads only the x-ray.
 """
 import contextlib
 import io
+import json
 import os
 import pathlib
 import subprocess
@@ -250,6 +251,49 @@ class Library(unittest.TestCase):
             self.assertIsNotNone(library.at_rev(self.retained(), "attic"))
         finally:
             library.bindings, library.by_label = bindings, by_label
+
+    def ask(self, words, wizard="wizard:library+ask", **more):
+        sys.path.insert(0, str(REPO / "machines" / "kiosk"))
+        import replies
+        replies.LIBRARY = library.location()
+        reply = {"schema": "fcpm.reply/v0", "wizard": wizard, "words": words,
+                 "nonce": os.urandom(6).hex(), **more}
+        return reply["nonce"], replies.library_reply(reply, {"by": "a phone", "trust": "unverified"})
+
+    def test_an_ask_is_set_down_in_the_lane_its_wizard_names(self):
+        sys.path.insert(0, str(REPO / "machines" / "kiosk"))
+        import replies
+        self.assertIn("wizard:library+ask", replies.WIZARDS)
+        self.assertIn("wizard:library+urgent", replies.WIZARDS)
+        self.assertEqual(replies.holder("wizard:library+ask")[0], "production")
+        self.assertEqual(replies.holder("wizard:library+urgent")[0], "production")
+        n, out = self.ask("what is in the attic's biggest folder?", holding="attic")
+        self.assertIsNone(out[0])
+        self.assertIn("receptionist, in its ask lane", out[1])
+        self.assertEqual(len(library.tray("ask")), 1)
+        _, out = self.ask("the drive is full", wizard="wizard:library+urgent")
+        self.assertIn("urgent lane", out[1])
+        self.assertIn("is not in library.yml", self.ask("x", holding="nowhere")[1])
+        self.assertIn("characters", self.ask("x" * 3000)[1])
+        self.assertIn("a seat's name", self.ask("x", to="Not A Seat!")[1])
+
+    def test_a_round_takes_urgent_first_then_ordinary_within_budget(self):
+        for i in range(3):
+            self.ask(f"ordinary {i}")
+        n_urgent, _ = self.ask("urgent", wizard="wizard:library+urgent")
+        self.assertIn("urgent 1, ask 3 waiting", self.run_(library.inbox, what="list", nonce=None, words=None))
+        first = [json.loads(line) for line in self.run_(library.inbox, what="round", nonce=None, words=None).splitlines()]
+        self.assertEqual([e["lane"] for e in first], ["urgent", "ask", "ask"], "urgent first; the ask lane's budget is 2")
+        self.assertEqual(len(library.tray("ask")), 1, "the rest wait for the next round")
+        self.assertIn(f"answered  {n_urgent}", self.run_(library.inbox, what="answer", nonce=n_urgent, words="look at H:"))
+        done = json.loads(library.tray("answered")[0].read_text(encoding="utf-8"))
+        self.assertEqual((done["nonce"], done["answer"]), (n_urgent, "look at H:"))
+        second = self.run_(library.inbox, what="round", nonce=None, words=None).splitlines()
+        self.assertEqual(len(second), 1)
+        self.assertEqual(self.run_(library.inbox, what="round", nonce=None, words=None), "", "nothing waiting")
+        self.assertIn("inbox     urgent 0, ask 0 waiting; 3 taken, 1 answered", library.compose("test"),
+                      "the console shows counts, never an ask's words")
+        self.assertNotIn("ordinary", library.compose("test"))
 
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])

@@ -87,3 +87,18 @@ holdings:
     disposition: private
     expects: sensitive        # it is where the board's documents were; most files are placeholders here
     xray: shape
+
+# The receptionist's inbox: asks of the library that came by a wizard, through Helm, kept in the library
+# here (~/code/library/inbox/<lane>/) until a seat takes them. Each lane is its own wizard, chosen by
+# whoever asks, so no dispatcher has to guess what a request wants. Lanes are taken in this order.
+# A different behaviour is a new lane, written here. Doc: docs/library.md, The receptionist's inbox.
+inbox:
+  lanes:
+    urgent:
+      wizard: wizard:library+urgent
+      for: "an ask somebody called urgent: taken before any other, whatever the round's budget"
+      budget: all              # every urgent ask waiting is taken on the next round, or one called up for it
+    ask:
+      wizard: wizard:library+ask
+      for: "an ordinary ask of the library: taken in rounds, oldest first"
+      budget: 2                # asks one round takes; the rest wait for the next

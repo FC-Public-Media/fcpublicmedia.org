@@ -24,6 +24,8 @@ Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDAT
                     brought back into the loop
 A form's reply (wizard:site+answers) goes where the tanks' replies go: the drain's archive,
 ~/fcpm/answers/<tank>/ ($FCPM_ANSWERS), one file per reply, in the site-worker's record shape.
+An ask of the library (wizard:library+ask, +urgent) goes to the library's own inbox, ~/code/library/inbox/<lane>/
+($FCPM_LIBRARY), at the helm that holds it; machines/library.py takes it from there (docs/library.md).
     log.ndjson  one line per arrival and per verdict        nonces.json   replies already applied
 The signature is read by the composer (verify-bottle.mjs, Node, troves/scanner/composer); without it
 the payload's hash is still checked here and the reply is applied as `unverified`. docs/kiosk.md, Replies.
@@ -548,6 +550,44 @@ def birth_reply(reply, meta):
     return None, "lodged for the keystore: %s's key from %s (%s/%s.json)" % (job, petition["host"] or "?", PETITIONS, nonce)
 
 
+# ---- an ask of the library (wizard:library+ask, +urgent), set down in the library's inbox at its helm ----
+
+LIBRARY = pathlib.Path(os.environ.get("FCPM_LIBRARY") or pathlib.Path.home() / "code" / "library")
+LIBRARY_LANES = {"wizard:library+ask": "ask", "wizard:library+urgent": "urgent"}
+LIBRARY_LIMIT = 2000
+
+
+def library_reply(reply, meta):
+    """{words, to?, holding?}: an ask of the library, for its receptionist unless `to` names another seat.
+    Its lane is its wizard, which the asker chose: nothing here decides what a request wants. Set down, one
+    file an ask, in ~/code/library/inbox/<lane>/, for a seat to take on its round (machines/library.py inbox)."""
+    words = reply.get("words")
+    if not isinstance(words, str) or not words.strip():
+        return "words: what you ask of the library"
+    if len(words) > LIBRARY_LIMIT:
+        return "words: %d characters; the library takes %d" % (len(words), LIBRARY_LIMIT)
+    to = str(reply.get("to") or "receptionist")
+    if not re.fullmatch(r"[a-z][a-z-]{1,31}", to):
+        return "to: a seat's name, such as receptionist"
+    holding = reply.get("holding")
+    declared = (load_yaml(ROOT / "library.yml") or {}).get("holdings") or {}
+    if holding is not None and holding not in declared:
+        return "holding: %r is not in library.yml" % holding
+    nonce = str(reply.get("nonce") or "")
+    if not (8 <= len(nonce) <= 64 and all(ch.isascii() and (ch.isalnum() or ch in "-_") for ch in nonce)):
+        return "nonce: 8 to 64 letters, digits, dashes or underscores (the answer is filed under it)"
+    lane = LIBRARY_LANES[reply.get("wizard")]
+    queued = now().isoformat(timespec="seconds")
+    entry = {"nonce": nonce, "lane": lane, "to": to, "holding": holding, "words": words,
+             "issued": reply.get("issued"), "queued": queued, "by": (meta or {}).get("by"),
+             "trust": (meta or {}).get("trust"), "wizard_at": reply.get("at")}
+    folder = LIBRARY / "inbox" / lane
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ("%s--%s.json" % (queued.replace(":", "-"), nonce))).write_text(
+        json.dumps(entry, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    return None, "an ask for the library's %s, in its %s lane (%d characters)" % (to, lane, len(words))
+
+
 def helms():
     return (load_yaml(HELMS).get("helms") or {}) if HELMS.is_file() else {}
 
@@ -590,7 +630,8 @@ _waiting = set()       # bottles already said to be waiting for a helm, so a lon
 WIZARDS = {"wizard:kiosk+host": host_reply, "wizard:kiosk+checkin": checkin_reply,
            "wizard:site+answers": answers_reply, "wizard:model+ask": ask_reply,
            "wizard:loop+recall": recall_reply, "wizard:model+up": model_up_reply,
-           "wizard:site+deploy": deploy_reply, "wizard:keys+birth": birth_reply}
+           "wizard:site+deploy": deploy_reply, "wizard:keys+birth": birth_reply,
+           "wizard:library+ask": library_reply, "wizard:library+urgent": library_reply}
 
 
 def nonces():
