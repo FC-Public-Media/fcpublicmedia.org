@@ -84,11 +84,44 @@ def address(label, profile):
         sys.exit(f"library: {profile or 'this machine'} keeps no '{label}' (machines/{profile}/library.yml)")
     a = {"store": "filesystem", "at": at} if isinstance(at, str) else dict(at)
     a.setdefault("store", "filesystem")
+    if a["store"] == "filesystem" and a.get("label") and not a.get("at"):
+        # Bound by label alone: wherever that volume is plugged in, whatever letter it got. A drive kept
+        # in the barn is usually unplugged, and then `at` is None, which is its ordinary state.
+        found = by_label(a["label"])
+        a["at"], a["by"] = (str(found) if found else None), "label"
     return a
+
+
+def by_label(label):
+    """The root of the mounted volume carrying this label, wherever it was given a letter; None if no
+    such volume is plugged in here."""
+    if os.name == "nt":
+        K = ctypes.windll.kernel32
+        K.SetErrorMode(0x8001)                       # no "insert a disk" box for an empty card reader
+        mask = K.GetLogicalDrives()
+        for i in range(26):
+            root = f"{chr(65 + i)}:\\"
+            if mask >> i & 1 and K.GetDriveTypeW(root) in (2, 3, 4):     # removable, fixed, network
+                buf = ctypes.create_unicode_buffer(261)
+                if K.GetVolumeInformationW(root, buf, 261, None, None, None, None, 0) and buf.value == label:
+                    return Path(root)
+        return None
+    dev = Path("/dev/disk/by-label") / label.replace(" ", "\\x20")
+    if not dev.exists():
+        return None
+    real = os.path.realpath(dev)
+    with open("/proc/mounts") as f:
+        for line in f:
+            d, mnt = line.split()[:2]
+            if os.path.realpath(d) == real:
+                return Path(mnt.replace("\\040", " "))
+    return None
 
 
 def place(label, profile):
     a = address(label, profile)
+    if a.get("by") == "label" and not a.get("at"):
+        sys.exit(f"library: {label} is not plugged in here: no volume labelled \"{a['label']}\"")
     if a["store"] != "filesystem" or a.get("needs") == "grant" or not a.get("at"):
         sys.exit(f"library: {label} is not on this machine's disk ({a['store']}): fcpm library where {label}")
     return Path(os.path.expanduser(a["at"]))
@@ -385,6 +418,13 @@ def status(args):
             print(f"  {label:9} not kept here ({terms})")
             continue
         a = address(label, args.profile)
+        if a.get("by") == "label" and not a.get("at"):
+            last = at_rev(wt, label) if wt else None
+            print(f"  {label:9} not plugged in: no volume labelled \"{a['label']}\" here ({terms})")
+            if last:
+                n, b = counted(last[1])
+                print(f"  {'':9} the last x-ray, {last[0].get('taken', '?')}: {n} files, {size(b)}")
+            continue
         if a["store"] != "filesystem" or a.get("needs") == "grant" or not a.get("at"):
             print(f"  {label:9} {a['store']}: fcpm library where {label} ({terms})")
             continue
@@ -414,7 +454,12 @@ def where(args):
         print(f"address   sealed: reaching {args.label} takes credentials up front, so the address comes")
         print(f"          with a grant. Ask for one; the library does not hand it out here (docs/library.md)")
         return
-    at = a.get("at", "")
+    at = a.get("at") or ""
+    if a.get("by") == "label":
+        print(f"label     \"{a['label']}\", on whatever letter it mounts")
+        if not at:
+            print("at        not plugged in here")
+            return
     if a["store"] == "filesystem":
         top = Path(os.path.expanduser(at))
         print(f"at        {top / args.path if args.path else top}")
@@ -758,7 +803,9 @@ def compose(profile):
             n, b = counted(got[1])
             lines.append(f"x-rayed   {label}: {got[0].get('taken', '?')}, {n} files, {size(b)}")
         a = address(label, profile) if label in bindings(profile) else {}
-        if a.get("store") == "filesystem" and a.get("at") and a.get("needs") != "grant":
+        if a.get("by") == "label" and not a.get("at"):
+            lines.append(f"unplugged {label}: no volume labelled \"{a['label']}\" here")
+        elif a.get("store") == "filesystem" and a.get("at") and a.get("needs") != "grant":
             m = moved(Path(os.path.expanduser(a["at"])), got[0] if got else {}, a.get("label"))
             if m:
                 lines.append(f"  {label}: {m}")

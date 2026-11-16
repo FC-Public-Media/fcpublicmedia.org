@@ -68,6 +68,16 @@ holdings:
     expects: ordinary         # members' takes and their working files
     xray: shape
 
+  buffalo:
+    is: intake
+    holds: "the Buffalo DriveStation's RAID Backup volume (NTFS, about 19 TB used): the old Mac backup
+      that once ran this place, among other things. Kept unplugged. We need to know whether anything on it
+      matters before we can cut it loose"
+    lifecycle: transient
+    disposition: private
+    expects: sensitive        # an old backup of everything; assume a name or a number in anything
+    xray: shape
+
   drive:
     is: intake
     holds: "the organization's Google Drive, mounted as a drive (streamed, not mirrored to a folder): the

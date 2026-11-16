@@ -259,6 +259,25 @@ of their disk is taken, or the disk is attached to a bay. Each is x-rayed, summa
 machine judged worth keeping may be rebuilt on something predictable (Alpine, say), with drivers looked
 into only where they matter.
 
+### The barn: big drives, kept unplugged
+
+Some old machines had big drives, bigger than the Drobo can take. Their dumps may live on one large
+drive that stays unplugged, a barn. Then "the whole dump is over there" is something the library can
+say. The Buffalo DriveStation is a candidate barn, once what it holds now is known.
+
+A barn drive is bound by its **label alone** (`buffalo: {label: "RAID Backup"}`). Plugged in, it is
+found on whatever letter it was given. Unplugged, `fcpm library` says "not plugged in" and shows its
+last x-ray, and the console lists it as unplugged. That is its ordinary state, not an alarm. This is
+the opposite of a binding that names a letter and a label (`{at: "E:/", label: ...}`): for that one, a
+wrong volume is a person's to put right.
+
+The Buffalo is the first target. Its RAID Backup volume (NTFS, about 19 TB used) holds the old Mac
+backup that once ran this place. We do not care about it as such. We need to know whether it is safe to
+cut loose. It is RAID 6 with one drive down ([troves/buffalo-drivestation](https://github.com/FC-Public-Media/buffalo-drivestation)),
+so the order is: x-ray it first, which reads only names, and let its summary say whether anything is
+worth the one heavy read a copy would be. It is bound on the kiosk, where it was measured, and on bay 1,
+whichever it is plugged into.
+
 ### `retain` is our half
 
 What sits in `retain/` is our half of things. Being here, at a machine on the media node's LAN, is a

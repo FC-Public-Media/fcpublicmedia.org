@@ -227,6 +227,30 @@ class Library(unittest.TestCase):
         self.assertEqual(library.place_of("Shows", "d"), "Shows")
         self.assertEqual(self.run_(library.summary_of), text, "the verb shows the same, from the x-ray alone")
 
+    def test_a_drive_bound_by_label_is_found_wherever_it_mounts_or_is_simply_unplugged(self):
+        bindings, by_label = library.bindings, library.by_label
+        library.place = self._place
+        try:
+            library.bindings = lambda p: {"attic": {"label": "RAID Backup"}}
+            library.by_label = lambda label: None                     # in the barn, unplugged
+            a = library.address("attic", "test")
+            self.assertEqual((a["at"], a["by"]), (None, "label"))
+            self.assertIn("not plugged in here", self.run_(library.where))
+            with self.assertRaises(SystemExit) as no:
+                self.run_(library.xray)
+            self.assertIn('no volume labelled "RAID Backup"', str(no.exception.code))
+            library.by_label = lambda label: self.top                 # plugged in, on some letter
+            self.assertEqual(library.place("attic", "test"), self.top)
+            volume = library.volume
+            library.volume = lambda p: ("5EED-0001", "RAID Backup")
+            try:
+                self.run_(library.xray)
+            finally:
+                library.volume = volume
+            self.assertIsNotNone(library.at_rev(self.retained(), "attic"))
+        finally:
+            library.bindings, library.by_label = bindings, by_label
+
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])
         for f in (REPO / "machines").glob("*/library.yml"):
