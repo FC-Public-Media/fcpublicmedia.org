@@ -1,12 +1,15 @@
 # board.yml: Helm's index, by noun, the menu at the bare name (fcpublicmedia.local). Each noun is a section; each
 # row is a page here or a name on the LAN. A static site can fill the same menu from this file. docs/kiosk.md, The board.
 #
-#   href    a path here, or a URL; {domain} and {host} are filled in, and a row with either shows only by name
+#   href    a path here, or a URL; {domain} and {host} are filled in (a name may not resolve from away)
 #   says    one line, what it is for
 #   staff   a host's or keeper's function (marked, not hidden)
-#   live    the state that lights the row: deploy, broadcast, loop, asks, models, workshed, room:<room>, seat:<seat>
-#   from    rows made from what this machine knows: rooms, seats, wallpapers
+#   live    the state that lights the row: deploy, broadcast, loop, asks, models, workshed, qr, room:<r>, seat:<s>, job:<j>
+#   from    rows made from what this machine knows: jobs (every machines/ profile), rooms, seats, wallpapers
 nouns:
+  - noun: Jobs
+    rows:
+      - {from: jobs}
   - noun: Sites
     rows:
       - {title: The site, href: "http://www.{domain}/", says: "fcpublicmedia.org as built here"}
@@ -25,6 +28,7 @@ nouns:
       - {title: Idle, href: /idle/, says: "the lamp pointed at the room"}
       - {title: The loop, href: /loop/, says: "every answer of the last ten minutes, for a big screen", live: loop}
       - {title: Depot, href: /depot/, says: "what is on the studio drive"}
+      - {title: Scanner, href: /qr/, says: "the camera's console: its eyes, the inbox, what it last heard", live: qr}
       - {from: wallpapers}
   - noun: Rooms
     rows:

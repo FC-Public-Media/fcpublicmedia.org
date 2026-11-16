@@ -11,3 +11,5 @@ senders         every 1m    machines/digitization
 # The tanks, hourly: KV keeps a reply until something deletes it, so there is no rush, and a pass that finds
 # nothing still costs one list operation (1,000 a day on the free plan); hourly is 24.
 drain           every 1h    machines/digitization
+# Every key held here, up to FCPM's keychain (../keychain); the same value is kept once.
+flush           every 15m   machines/digitization
