@@ -205,10 +205,20 @@ committed. It holds the instructions, kept apart from the data.
 "Librarians" is a mixed bag: many people and agents work the metadata, each in a role. It is the
 advocate engine's seat system, scoped to the library. The seats are named on the `librarians` branch
 (`seats.yml`, provisional names): a receptionist at the front door, a labeler, an organizer (the only
-seat that moves anything), a checker (the one that reaches the disk), and a corrector. Each seat takes
+seat that moves anything), a checker (the one that reaches the disk), a toolsmith, and a corrector. Each seat takes
 up a unit or two of work at a time. Before it starts, it writes a contract for that work into
 `retain/`: what it will read and write, what it will leave alone, and when it stops. A contract only
 narrows what the constitution and the place's decorum already allow.
+
+**Scripts, not hands.** A whole set of files is a scriptable task. Seats never read through a set file
+by file, burning tokens. They handle a single file only when it was asked for, and only when they are
+sure what it is. The right metadata is found once, in a pass a person supervises live: they describe
+what to gather and correct its shape until it is right, laying down the constitution as they talk
+instead of typing it up. That pass ends in an **extractor**, a script on `main` holding no paths and no
+data. The extractor is proved against the example set the pass used, and that set and the accepted
+metadata are kept in `retain/`. A passing proof shows the mapping is good; a failing one is how we
+notice it broke, and the toolsmith seat mends it. Proved extractors run on a schedule, in step with the
+x-ray, so no seat thinks about the run, and the seats check what comes out and raise what looks wrong.
 
 The passes are kept separate, and each builds on the one before:
 
@@ -284,7 +294,9 @@ The pile is how a sealed value could sit in the open and still be granted by ran
 3. The librarians' constitution and the attic's and downloads' decorum, on the `librarians` branch,
    and the shape of a note, a summary and an error in `retain/`. Then a local model as the first
    caretaker.
-4. A pass on request, and target layouts in decorum.
+4. A pass on request, and target layouts in decorum. A supervised pass ends in an extractor, with
+   `fcpm library` running it, proving it against its example set, and scheduling it with the x-ray.
+   The first candidate is the members' projects in the attic.
 5. The lobby: compiled by `fcpm library`, from `library.yml` and what each holding exposes.
 6. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
    vocabulary every library would use, not just ours.
