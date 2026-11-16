@@ -202,6 +202,14 @@ are there at all, and what they are for. Decorum is written per place, never per
 `attic/<folder>/AGENTS.md` only where a folder needs its own. That slice of the structure is what gets
 committed. It holds the instructions, kept apart from the data.
 
+"Librarians" is a mixed bag: many people and agents work the metadata, each in a role. It is the
+advocate engine's seat system, scoped to the library. The seats are named on the `librarians` branch
+(`seats.yml`, provisional names): a receptionist at the front door, a labeler, an organizer (the only
+seat that moves anything), a checker (the one that reaches the disk), and a corrector. Each seat takes
+up a unit or two of work at a time. Before it starts, it writes a contract for that work into
+`retain/`: what it will read and write, what it will leave alone, and when it stops. A contract only
+narrows what the constitution and the place's decorum already allow.
+
 The passes are kept separate, and each builds on the one before:
 
 1. **The x-ray**, by `fcpm library xray`. No agent is involved.
