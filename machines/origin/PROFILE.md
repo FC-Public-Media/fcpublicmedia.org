@@ -3,8 +3,9 @@
 FCPM's canonical git origin, on its own box (decided 2026-10-21: digitization released it). The box
 does the work itself: it takes GitHub's main into every repository ([`intake`](intake)), keeps the
 LAN's dev switch ([`dev`](dev)), and paints its own screen. Every workstation is a client: it
-follows main from here and pushes here through its [`door`](door), by a key in [`KEYHOLDERS`](KEYHOLDERS). One job on this box:
-nothing else is put on it.
+follows main from here and pushes here through its [`door`](door), by a key in [`KEYHOLDERS`](KEYHOLDERS). Until FCPM has another box, this one also wears the
+[`keychain`](../keychain/PROFILE.md), and the library will join them: the control box, what every
+other machine gives up to the controller.
 
 The job is the whole of it. Any box that boots Alpine can wear it; nothing here asks what the box is.
 Today's: the HP t510 in the control rack ([`../thin-client/PROFILE.md`](../thin-client/PROFILE.md)).

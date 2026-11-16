@@ -1,0 +1,71 @@
+# keychain
+
+FCPM's one keychain. Every key FCPM holds ends up here, and every machine asks here for it. There are
+no machines holding keychains of their own. A machine may hold a key for a while (a deploy token in
+`~/.config/fcpm/keys/`), but that is a local hold, and it is flushed up here. That is how it works
+for every machine; no program chooses to do it. We administer machines that the public uses, so we
+decide what each one's canonical key is. A machine's own identity is made here and handed to it.
+It is never born on the machine and reported back.
+
+Until FCPM has another box, the origin's box wears it (`names`: the HP t510, [`../thin-client`](../thin-client/PROFILE.md)),
+beside [`origin`](../origin/PROFILE.md). The library joins them there. This is the control box: what
+every other machine gives up to the controller.
+
+| | |
+|---|---|
+| `names` | `linux Hostname origin`: `origin.local`, while the origin's box wears it |
+| `keys` | the account every holder's key is forced into, through [`door`](door). Its home `/srv/keychain` is the keychain itself |
+| holders | [`HOLDERS`](HOLDERS): `office holder key since`. A holder is a job. The box rereads the file from the origin's main every minute ([`run-keys`](run-keys)), so a holder is a line added by merged PR. Offices: `keeper` (inits, unlocks, locks, mints, is handed every protected key) and any other (puts, is handed what is its own) |
+| at rest | `held/<group>/<key>/<time>.age`: every version, sealed with age to the keychain's own recipient. `meta.json` beside it records the class, for whom, by whom and when, and a salted print, so the same value put twice is held once. The identity that opens them is `identity.age`, sealed under the passphrase. All of it is ciphertext, safe to copy for backup |
+| open | `unlock` opens the identity into memory (`/dev/shm/keychain`) until the box restarts or `lock`. Putting needs no unlock (sealing takes only the recipient), so flushing works while it is locked. Handing out needs it unlocked |
+| log | `/srv/keychain/actions.ndjson`: every put, get, refusal, mint, unlock and lock, with the holder |
+| tests | `bin/test_keychain_door.py` (needs age; the box has it) |
+
+## Protected and secret
+
+When a key is put or made here it is one of two classes. Nothing has to decide: it is `protected`
+unless someone says `secret`.
+
+- **protected**: the one who made it has it already. The keychain hands it to a keeper, back to
+  its maker, and to any holder whose job's `keys.yml` names its group (on the origin's main). A deploy
+  token is protected.
+- **secret**: lodged for one holder, and handed to that holder only. Its maker never gets it back,
+  a keeper included. A machine's ssh identity is secret: `mint ssh editing-bay-2` makes it here,
+  prints the public half, and keeps the private half for editing-bay-2 to ask for.
+
+## From a machine
+
+`fcpm keys` (machines/keys) is the same on every machine:
+
+    fcpm keys take G K        stores it here and flushes it up at once
+    fcpm keys flush           every key held here, up (the crew's `flush` line does it every 15 min)
+    fcpm keys run G -- CMD    a key not held here comes from the keychain, into CMD's environment only
+    fcpm keys keychain        its state and what it holds, never a value
+    fcpm keys init | unlock | lock     a keeper's; the passphrase in a window on this screen
+    fcpm keys mint ssh FOR    a keeper's
+
+A machine reaches the door as `~/.ssh/config`'s `fcpm-keychain` (`keys@origin.local` by its own key).
+
+## Installing it
+
+    machines/keychain/install fcpm@origin.local       outfits it; touches nothing held
+    fcpm keys init                                   once: makes the identity under a keeper's passphrase
+
+After a power cut the keychain comes back locked. Puts still land. A keeper's `fcpm keys unlock`
+opens it again, the same as the signing key needs the board's Unlock after a reboot.
+
+## Not built yet
+
+- **A new machine claiming its identity.** A wiped, donated computer has no key the door knows.
+  `mint ssh FOR` (and `code FOR`) gives a one-time code, good for 7 days, that the person setting up the machine
+  carries to it. `door claim` trades it once for the secret, and `fcpm keys claim CODE` keeps it as
+  `~/.ssh/fcpm-<job>` (on Windows, in the OpenSSH agent alone). Both are built and tested. What is
+  not built is the way in: a `claim` account on the box that takes no key and no password and runs
+  only `door claim`. That loosens the box's sshd, so it waits for Autumn's yes. Then start.ps1 asks for the code,
+  and the GitHub signing key follows (one token, `admin:ssh_signing_key`, held here and used here,
+  so the key is registered without leaving), then its KEYHOLDERS line by PR.
+- **Moving digitization's raw files** (Cablecast, YouTube) behind `keys run` like the env groups.
+- **The library** on this box. Transcripts and notes, in wings: one per engine or concern, and
+  branches that hold more aisles and are never merged. A resident's scratch space is outside git
+  altogether. It needs storage the box can lose without losing itself: a card or SSD in one of the
+  t510's inside USB sockets. The flash has 400 MB free.
