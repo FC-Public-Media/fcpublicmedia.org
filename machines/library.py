@@ -6,6 +6,10 @@
     library.py diff LABEL [REV]       what changed since the last x-ray (or REV), as git status would
     library.py log LABEL              the x-rays of LABEL: when each was taken, and what it counted
     library.py browse LABEL [PATH]    what the last x-ray saw at PATH, one level; the holding is not touched
+    library.py grant SEAT UNIT WORDS  a work grant, held by the agent (or terminal) above; prints its id
+    library.py release GRANT          the grant is done
+    library.py grants                 who is at work, asked now (grants whose holder ended are lapsed)
+    library.py console [--beat]       the console buffer: rewritten at most once a minute, however often read
 
 The library says where things are and never reads them; an x-ray reads names, sizes, times and
 attributes, never what a file says. The profile comes from FCPM_PROFILE (fcpm sets it). The library
@@ -97,7 +101,7 @@ def location():
 
 def git(*args, cwd=None, input=None, check=True):
     # Bytes both ways: a text pipe on Windows turns LF into CRLF, and mktree takes the CR into a name.
-    r = subprocess.run(["git", *args], cwd=cwd, input=input.encode("utf-8") if input else None,
+    r = subprocess.run(["git", *args], cwd=cwd, input=input.encode("utf-8") if input is not None else None,
                        capture_output=True)
     if check and r.returncode:
         sys.exit(f"library: git {' '.join(args[:2])}: {r.stderr.decode('utf-8', 'replace').strip()}")
@@ -419,6 +423,244 @@ def browse(args):
               + (f"  [{r['attrs']}]" if r["attrs"] else ""))
 
 
+# ------------------------------------------------------------------------- the grant book --
+# Who is at work: refs in the library's own repository. refs/grants/live/<id> is a grant in use;
+# refs/grants/book is every issue, release and lapse, a commit each. A grant names its holder
+# process, and the operating system says whether it still runs. docs/library.md, The grant book.
+
+ZERO = "0" * 40
+BEAT = 60                                           # seconds the console is fresh for
+# Walked past when finding who holds a grant: the shells and interpreters between an agent and us.
+PASSING = {"python", "pythonw", "uv", "uvx", "sh", "bash", "dash", "zsh", "cmd", "powershell", "pwsh",
+           "conhost", "git", "env", "fcpm", "timeout"}
+
+if os.name == "nt":
+    K32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    K32.OpenProcess.restype = ctypes.c_void_p
+    K32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+    K32.CloseHandle.argtypes = [ctypes.c_void_p]
+    K32.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    K32.GetProcessTimes.argtypes = [ctypes.c_void_p] + [ctypes.c_void_p] * 4
+    K32.CreateToolhelp32Snapshot.restype = ctypes.c_void_p
+    K32.Process32FirstW.argtypes = K32.Process32NextW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+
+    class ENTRY(ctypes.Structure):
+        _fields_ = [("size", ctypes.c_ulong), ("usage", ctypes.c_ulong), ("pid", ctypes.c_ulong),
+                    ("heap", ctypes.c_size_t), ("module", ctypes.c_ulong), ("threads", ctypes.c_ulong),
+                    ("ppid", ctypes.c_ulong), ("base", ctypes.c_long), ("flags", ctypes.c_ulong),
+                    ("exe", ctypes.c_wchar * 260)]
+
+
+def started(pid):
+    """When process pid started, as an opaque string; None if it is not running; "unknown" if this
+    account may not look (it is then taken to be running)."""
+    if os.name == "nt":
+        h = K32.OpenProcess(0x1000, False, pid)     # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return "unknown" if ctypes.get_last_error() == 5 else None
+        try:
+            code = ctypes.c_ulong()
+            if K32.GetExitCodeProcess(h, ctypes.byref(code)) and code.value != 259:   # STILL_ACTIVE
+                return None
+            t = [ctypes.c_ulonglong() for _ in range(4)]
+            return str(t[0].value) if K32.GetProcessTimes(h, *(ctypes.byref(x) for x in t)) else "unknown"
+        finally:
+            K32.CloseHandle(h)
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            return f.read().rsplit(")", 1)[1].split()[19]
+    except OSError:
+        return None
+
+
+def processes():
+    """pid -> (parent pid, name), for the whole machine."""
+    out = {}
+    if os.name == "nt":
+        snap = K32.CreateToolhelp32Snapshot(2, 0)   # TH32CS_SNAPPROCESS
+        e = ENTRY()
+        e.size = ctypes.sizeof(ENTRY)
+        ok = K32.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            out[e.pid] = (e.ppid, e.exe)
+            ok = K32.Process32NextW(snap, ctypes.byref(e))
+        K32.CloseHandle(snap)
+        return out
+    for d in Path("/proc").iterdir():
+        if d.name.isdigit():
+            try:
+                s = (d / "stat").read_text()
+                out[int(d.name)] = (int(s.rsplit(")", 1)[1].split()[1]), s[s.index("(") + 1:s.rindex(")")])
+            except (OSError, ValueError):
+                pass
+    return out
+
+
+def plain(name):
+    n = name.lower().removesuffix(".exe")
+    return "python" if n.startswith("python") else n
+
+
+def holder():
+    """The process a grant asked for from here belongs to: the first one above us that is not a shell
+    or an interpreter. For an agent, the agent; for a person, their terminal."""
+    procs, pid = processes(), os.getpid()
+    for _ in range(32):
+        ppid, name = procs.get(pid, (0, ""))
+        if plain(name) not in PASSING or not ppid or ppid not in procs:
+            return pid, name
+        pid = ppid
+    return pid, procs.get(pid, (0, ""))[1]
+
+
+def book(profile):
+    retain(profile, make=True)                      # the library's repository, made if need be
+    return ["--git-dir", str(location() / ".git")]
+
+
+def enter(g, event, grant, subject, trailers=()):
+    """Append one entry to refs/grants/book, which only ever moves forward from where it was read."""
+    tree = git(*g, "mktree", input="").strip()
+    msg = " ".join(subject.split()) + "\n\n" + "".join(
+        f"{k}: {v}\n" for k, v in [("Event", event), ("Grant", grant), *trailers])
+    for _ in range(8):
+        head = git(*g, "rev-parse", "-q", "--verify", "refs/grants/book", check=False).strip()
+        c = git(*g, "commit-tree", tree, *(["-p", head] if head else []), input=msg).strip()
+        if subprocess.run(["git", *g, "update-ref", "refs/grants/book", c, head or ZERO],
+                          capture_output=True).returncode == 0:
+            return c
+    sys.exit("library: the grant book kept moving; try again")
+
+
+FIELDS = ["id", "commit", "subject", "Seat", "Unit", "Holder", "Name", "when"]
+
+
+def live(g):
+    # Fields end in NUL and records in SOH: a trailer's value is not to be trusted to keep off newlines.
+    fmt = "%00".join(["%(refname:lstrip=3)", "%(objectname)", "%(contents:subject)",
+                      *(f"%(trailers:key={k},valueonly,separator=)" for k in FIELDS[3:7]),
+                      "%(creatordate:unix)"]) + "%01"
+    out = git(*g, "for-each-ref", f"--format={fmt}", "refs/grants/live")
+    return [dict(zip(FIELDS, (v.strip() for v in rec.split("\0")))) for rec in out.split("\x01") if rec.strip()]
+
+
+def sweep(g):
+    """Grants whose holder has gone, without releasing them, are entered as lapsed. Returns the rest."""
+    kept = []
+    for gr in live(g):
+        pid, _, start = gr["Holder"].partition("@")
+        now = started(int(pid)) if pid.isdigit() else None
+        if now is None or (now != "unknown" and now != start):
+            enter(g, "lapsed", gr["id"], f"lapsed: {gr['subject']}", [("Seat", gr["Seat"]), ("Unit", gr["Unit"])])
+            git(*g, "update-ref", "-d", f"refs/grants/live/{gr['id']}", gr["commit"], check=False)
+        else:
+            kept.append(gr)
+    return kept
+
+
+def grant(args):
+    g = book(args.profile)
+    pid, name = (args.holder, "") if args.holder else holder()
+    start = started(pid)
+    if start is None:
+        sys.exit(f"library: process {pid} is not running; a grant needs a holder")
+    if not name:
+        name = processes().get(pid, (0, "?"))[1]
+    gid = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{args.seat}-{os.urandom(2).hex()}"
+    c = enter(g, "issued", gid, args.description, [("Seat", args.seat), ("Unit", args.unit),
+              ("Holder", f"{pid}@{start}"), ("Name", name), ("Host", socket.gethostname())])
+    git(*g, "update-ref", f"refs/grants/live/{gid}", c, ZERO)
+    print(gid)
+
+
+def release(args):
+    g = book(args.profile)
+    gr = next((x for x in live(g) if x["id"] == args.grant), None)
+    if not gr:
+        sys.exit(f"library: no grant {args.grant} in use (fcpm library grants)")
+    enter(g, "released", gr["id"], f"released: {gr['subject']}", [("Seat", gr["Seat"]), ("Unit", gr["Unit"])])
+    git(*g, "update-ref", "-d", f"refs/grants/live/{gr['id']}", gr["commit"])
+    print(f"released  {gr['id']}")
+
+
+def at_work(g):
+    rows = sweep(g)
+    if not rows:
+        return ["at work   no one"]
+    out = [f"at work   {len(rows)}"]
+    for gr in sorted(rows, key=lambda x: x["when"]):
+        since = time.strftime("%H:%MZ", time.gmtime(int(gr["when"] or 0)))
+        out.append(f"  {gr['Seat']:12} {gr['Unit']:28} since {since}  \"{gr['subject']}\""
+                   f"  ({gr['Name']} {gr['Holder'].partition('@')[0]})")
+    return out
+
+
+def grants(args):
+    print("\n".join(at_work(book(args.profile))))
+
+
+# ---------------------------------------------------------------------------- the console --
+# A buffer, written out: what is going on in the library here, at a glance. Reading it never runs
+# the query; a stale buffer is rewritten at most once per BEAT, however many ask. Helm shows it.
+
+def buffer():
+    return location() / "console.txt"
+
+
+def compose(profile):
+    g = book(profile)
+    now = time.time()
+    lines = [f"console   {profile or 'this machine'} on {socket.gethostname()}, written {iso(now)};"
+             f" fresh until {iso(now + BEAT)}"]
+    lines += at_work(g)
+    jobs = git(*g, "for-each-ref", "--format=%(refname:lstrip=2)  %(contents:subject)", "refs/jobs").splitlines()
+    lines.append(f"jobs      {len(jobs) or 'none'}")
+    lines += [f"  {j}" for j in jobs]
+    events = git(*g, "log", "refs/grants/book", "--since=1.hour", "--format=%(trailers:key=Event,valueonly)",
+                 check=False).split()
+    lines.append("hour      " + ", ".join(f"{events.count(e)} {e}" for e in ("issued", "released", "lapsed")))
+    wt = retain(profile)
+    for label in (declared().get("holdings") or {}):
+        got = at_rev(wt, label) if wt and label in bindings(profile) else None
+        if got:
+            n, b = counted(got[1])
+            lines.append(f"x-rayed   {label}: {got[0].get('taken', '?')}, {n} files, {size(b)}")
+    return "\n".join(lines) + "\n"
+
+
+def refresh(profile):
+    """Rewrite the buffer if it is stale and nobody else is already rewriting it."""
+    path, lock = buffer(), location() / "console.lock"
+    if path.exists() and time.time() - path.stat().st_mtime < BEAT:
+        return
+    book(profile)                                    # on a machine whose library is not made yet
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        if time.time() - lock.stat().st_mtime < 2 * BEAT:
+            return                                   # someone is writing it; theirs will do
+        lock.unlink(missing_ok=True)                 # left by a writer that died
+        return refresh(profile)
+    try:
+        os.close(fd)
+        tmp = path.with_suffix(".part")
+        tmp.write_text(compose(profile), encoding="utf-8", newline="\n")
+        os.replace(tmp, path)
+    finally:
+        lock.unlink(missing_ok=True)
+
+
+def console(args):
+    if args.beat:                                    # what a crew line or Helm runs: keep it fresh
+        while True:
+            refresh(args.profile)
+            time.sleep(BEAT)
+    refresh(args.profile)
+    path = buffer()
+    text = path.read_text(encoding="utf-8") if path.exists() else "console   not written yet\n"
+    print(text, end="")
+
+
 def main(argv):
     sys.stdout.reconfigure(errors="backslashreplace")   # a console's code page cannot spell every name
     p = argparse.ArgumentParser(prog="fcpm library", description=__doc__.split("\n\n")[0])
@@ -434,8 +676,17 @@ def main(argv):
         v = sub.add_parser(verb)
         v.add_argument("label")
         v.add_argument("path", nargs="?")
+    gr = sub.add_parser("grant")
+    gr.add_argument("seat")
+    gr.add_argument("unit")
+    gr.add_argument("description")
+    gr.add_argument("--holder", type=int, help="the process holding it (default: the agent or terminal above)")
+    sub.add_parser("release").add_argument("grant")
+    sub.add_parser("grants")
+    sub.add_parser("console").add_argument("--beat", action="store_true")
     args = p.parse_args(argv)
-    {"xray": xray, "diff": diff, "log": log, "where": where, "browse": browse}.get(args.verb, status)(args)
+    {"xray": xray, "diff": diff, "log": log, "where": where, "browse": browse, "grant": grant,
+     "release": release, "grants": grants, "console": console}.get(args.verb, status)(args)
 
 
 if __name__ == "__main__":

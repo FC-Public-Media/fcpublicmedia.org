@@ -272,7 +272,12 @@ This is the larger reason to address things through the library. We point agents
 library, by holding and path, rather than at spots on a local disk. A spot on a disk means nothing to an
 agent. A holding comes with its decorum, its record, and its terms.
 
-## The grant book (design)
+## The grant book
+
+Built (stage 1): `fcpm library grant SEAT UNIT WORDS`, `release GRANT`, `grants`, and the console,
+below. A grant's holder is found by walking up from `fcpm` past shells and interpreters, so it is the
+agent that asked (on bay 1, `claude.exe`) or a person's terminal. Not yet: jobs (`ask`, `wait`), votes,
+signing, and Helm serving the console.
 
 A grant here is the engine's ordinary sense of the word: a delegation of capability, common, cheap, and
 boring ([`GRANTS.md`](https://github.com/FCCN-ANTIBODY/library.anecdote.channel/blob/main/GRANTS.md)).
@@ -360,6 +365,25 @@ fire. It is a finding for the council's report (the `council` branch), with the 
 there are any, so it reaches the next board meeting as a problem brought, and maybe with its solutions.
 The advocates are not in charge of fixing it. Their job is to say that something needs to happen.
 
+### The console
+
+The console is what Helm will show: who is at work, the jobs, the last hour's grants, and the last
+x-rays, flat, at a glance. It is a buffer, `~/code/library/console.txt`, written out whole. It is not
+a tailed log. The only thing it guarantees is when it was written: its first line says when, and until
+when it is fresh.
+
+- **Reading it never runs the query.** `fcpm library console` shows the buffer. If the buffer is older
+  than a minute, it is rewritten first, but only by the one reader that takes the lock; everyone else
+  is shown what is there. So it is impossible, by construction, to ask too often: a hundred readers in
+  a minute cause one rewrite, and nobody hammers the grant book to find out what is going on.
+- **`fcpm library console --beat`** rewrites it every minute, for a crew line or Helm to keep it warm.
+  A session starts no service, so nothing runs this yet.
+- **Helm serves the file as it is, and runs none of the code.** A librarian on bay 2 asks bay 1's Helm
+  for the console and can see whether an agent is already working on something, ask for one, watch it
+  start working, and watch it stop, all on its own. Bay 1 can do the same with digitization. The
+  console is not published on the network. Helm holds it up as a proof, so that people can answer
+  their own questions, and when they can't, they know what to ask for. That is stage 2.
+
 ## The keychain wing, and data piles (notes)
 
 Not built. Kept so that the shape is here when it is wanted. A data pile
@@ -417,7 +441,7 @@ The pile is how a sealed value could sit in the open and still be granted by ran
    vocabulary every library would use, not just ours.
 7. Seats rooted in a project: maintenance and advice as a member's term of admission, once the engine
    says where the term is written.
-8. The grant book: `fcpm library grant` (issue, release, list, with OS liveness), `ask`/`wait` on
-   `refs/jobs/`, votes at a contract's close, and the hook refusing `refs/grants/`. Then an advocate
-   seat that reads it.
+8. The grant book, stage 2: Helm serves the console (bay 1 reads digitization's, and the other way
+   round), a crew line keeps it beating, and `ask`/`wait` on `refs/jobs/`. Then votes at a contract's
+   close, signed entries, and an advocate seat that reads the book.
 9. The keychain pile, once the keystore holds its first values.

@@ -129,6 +129,44 @@ class Library(unittest.TestCase):
         finally:
             library.bindings = bindings
 
+    def test_a_grant_lapses_when_its_holder_ends(self):
+        worker = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        try:
+            out = self.run_(library.grant, seat="labeler", unit="attic/Board", description="label the board's records",
+                            holder=worker.pid)
+            gid = out.strip()
+            g = library.book("test")
+            self.assertEqual([x["id"] for x in library.live(g)], [gid])
+            self.assertIn("label the board's records", self.run_(library.grants))
+        finally:
+            worker.kill()
+            worker.wait()
+        self.assertIn("no one", self.run_(library.grants))
+        events = library.git(*g, "log", "refs/grants/book", "--format=%(trailers:key=Event,valueonly,separator=)").split()
+        self.assertEqual(events, ["lapsed", "issued"])
+
+    def test_release_ends_a_grant(self):
+        gid = self.run_(library.grant, seat="checker", unit="downloads", description="look", holder=os.getpid()).strip()
+        self.assertIn(f"released  {gid}", self.run_(library.release, grant=gid))
+        self.assertIn("no one", self.run_(library.grants))
+        with self.assertRaises(SystemExit):
+            self.run_(library.release, grant=gid)
+
+    def test_the_console_is_rewritten_at_most_once_a_beat(self):
+        self.assertIn("at work   no one", self.run_(library.console, beat=False))
+        path = library.buffer()
+        first = path.read_text(encoding="utf-8")
+        gid = self.run_(library.grant, seat="labeler", unit="attic", description="busy", holder=os.getpid()).strip()
+        self.assertEqual(self.run_(library.console, beat=False), first, "fresh: shown as written, not asked again")
+        old = time.time() - library.BEAT - 1
+        os.utime(path, (old, old))
+        lock = library.location() / "console.lock"
+        lock.write_text("")                                         # someone else is writing it
+        self.assertEqual(self.run_(library.console, beat=False), first, "one writer at a time")
+        lock.unlink()
+        self.assertIn("busy", self.run_(library.console, beat=False), "stale: written again")
+        self.run_(library.release, grant=gid)
+
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])
         for f in (REPO / "machines").glob("*/library.yml"):
