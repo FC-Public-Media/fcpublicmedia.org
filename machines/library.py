@@ -5,6 +5,7 @@
     library.py xray LABEL             LABEL's shape into retain/LABEL/xray.tsv, one commit per look
     library.py diff LABEL [REV]       what changed since the last x-ray (or REV), as git status would
     library.py log LABEL              the x-rays of LABEL: when each was taken, and what it counted
+    library.py summary LABEL [REV]    what the last x-ray (or REV) comes to: weight, dates, kinds, what stands out
     library.py browse LABEL [PATH]    what the last x-ray saw at PATH, one level; the holding is not touched
     library.py grant SEAT UNIT WORDS  a work grant, held by the agent (or terminal) above; prints its id
     library.py release GRANT          the grant is done
@@ -83,11 +84,44 @@ def address(label, profile):
         sys.exit(f"library: {profile or 'this machine'} keeps no '{label}' (machines/{profile}/library.yml)")
     a = {"store": "filesystem", "at": at} if isinstance(at, str) else dict(at)
     a.setdefault("store", "filesystem")
+    if a["store"] == "filesystem" and a.get("label") and not a.get("at"):
+        # Bound by label alone: wherever that volume is plugged in, whatever letter it got. A drive kept
+        # in the barn is usually unplugged, and then `at` is None, which is its ordinary state.
+        found = by_label(a["label"])
+        a["at"], a["by"] = (str(found) if found else None), "label"
     return a
+
+
+def by_label(label):
+    """The root of the mounted volume carrying this label, wherever it was given a letter; None if no
+    such volume is plugged in here."""
+    if os.name == "nt":
+        K = ctypes.windll.kernel32
+        K.SetErrorMode(0x8001)                       # no "insert a disk" box for an empty card reader
+        mask = K.GetLogicalDrives()
+        for i in range(26):
+            root = f"{chr(65 + i)}:\\"
+            if mask >> i & 1 and K.GetDriveTypeW(root) in (2, 3, 4):     # removable, fixed, network
+                buf = ctypes.create_unicode_buffer(261)
+                if K.GetVolumeInformationW(root, buf, 261, None, None, None, None, 0) and buf.value == label:
+                    return Path(root)
+        return None
+    dev = Path("/dev/disk/by-label") / label.replace(" ", "\\x20")
+    if not dev.exists():
+        return None
+    real = os.path.realpath(dev)
+    with open("/proc/mounts") as f:
+        for line in f:
+            d, mnt = line.split()[:2]
+            if os.path.realpath(d) == real:
+                return Path(mnt.replace("\\040", " "))
+    return None
 
 
 def place(label, profile):
     a = address(label, profile)
+    if a.get("by") == "label" and not a.get("at"):
+        sys.exit(f"library: {label} is not plugged in here: no volume labelled \"{a['label']}\"")
     if a["store"] != "filesystem" or a.get("needs") == "grant" or not a.get("at"):
         sys.exit(f"library: {label} is not on this machine's disk ({a['store']}): fcpm library where {label}")
     return Path(os.path.expanduser(a["at"]))
@@ -278,6 +312,89 @@ def counted(rows):
     return len(files), sum(int(r["bytes"] or 0) for r in files)
 
 
+# --------------------------------------------------------------------------------- summary --
+# What a shape comes to, from the x-ray alone: where the weight is, when it was touched, what kinds of
+# file, and what stands out from a stock Windows install. Enough to decide whether a place is worth
+# diving into, without anyone reading a file. docs/library.md, Old data compacts to summaries.
+
+# Parts of a Windows disk every install has, folded into one line. Matched on a path's first part, or
+# (under Users/<someone>/) its third. Anything else is what stands out.
+STOCK_TOP = {"windows", "program files", "program files (x86)", "programdata", "$recycle.bin",
+             "$winreagent", "$windows.~bt", "$windows.~ws", "system volume information", "recovery",
+             "perflogs", "msocache", "config.msi", "onedrivetemp", "intel", "amd", "nvidia", "drivers",
+             "hiberfil.sys", "pagefile.sys", "swapfile.sys", "bootmgr", "boot", "documents and settings",
+             "inetpub", "xboxgames", "windows.old"}
+STOCK_USERS = {"default", "default user", "all users", "defaultapppool"}
+STOCK_HOME = {"appdata", "3d objects", "contacts", "favorites", "links", "saved games", "searches",
+              "application data", "local settings", "cookies", "nethood", "printhood", "recent",
+              "sendto", "start menu", "templates", "my documents", "intelgraphicsprofiles", "microsoft"}
+
+
+def place_of(path, kind="f"):
+    """The group a path is summarised under: its first part, or Users/<someone>/<folder> in a home.
+    Loose files share one group per level, so a folder of a thousand downloads is one line, not a thousand."""
+    parts = path.split("/")
+    if parts[0].lower() == "users" and len(parts) > 2:
+        whole = "/".join(parts[:3])
+        return whole if kind != "f" or len(parts) > 3 or stock(whole) else "/".join(parts[:2]) + "/(loose files)"
+    return parts[0] if kind != "f" or len(parts) > 1 or stock(parts[0]) else "(loose files)"
+
+
+def stock(group):
+    parts = group.lower().split("/")
+    if parts[0] != "users":
+        return parts[0] in STOCK_TOP or parts[0].startswith(("dumpstack.log", "$"))
+    if len(parts) > 1 and parts[1] in STOCK_USERS:
+        return True
+    return len(parts) > 2 and (parts[2] in STOCK_HOME or parts[2].startswith("ntuser"))
+
+
+def kinds(files, top=6):
+    by = {}
+    for r in files:
+        name = r["path"].rsplit("/", 1)[-1]
+        ext = name.rsplit(".", 1)[-1].lower() if "." in name[1:] else "(none)"
+        n, b = by.get(ext, (0, 0))
+        by[ext] = (n + 1, b + int(r["bytes"] or 0))
+    ranked = sorted(by.items(), key=lambda kv: -kv[1][1])[:top]
+    return ", ".join(f".{e} {n} ({size(b)})" if e != "(none)" else f"no extension {n} ({size(b)})"
+                     for e, (n, b) in ranked)
+
+
+def span(files):
+    days = sorted(r["modified"][:10] for r in files if r["modified"])
+    return f"{days[0]}..{days[-1]}" if days else "no dates"
+
+
+def summarize(head, rows):
+    files = [r for r in rows if r["kind"] == "f"]
+    n, b = counted(rows)
+    out = [f"summary   {head.get('xray', '?')} as x-rayed {head.get('taken', '?')}: {n} files, {size(b)},"
+           f" {sum(1 for r in rows if r['kind'] == 'd')} folders; modified {span(files)}",
+           f"kinds     {kinds(files) or 'none'}"]
+    groups = {}
+    for r in files:
+        groups.setdefault(place_of(r["path"], "f"), []).append(r)
+    for r in rows:                                   # an empty folder still stands somewhere
+        groups.setdefault(place_of(r["path"], r["kind"]), [])
+    folded = {g: fs for g, fs in groups.items() if stock(g)}
+    if folded:
+        fn = sum(len(fs) for fs in folded.values())
+        fb = sum(int(r["bytes"] or 0) for fs in folded.values() for r in fs)
+        out.append(f"stock     {fn} files, {size(fb)}, in {len(folded)} places a Windows install always has (folded)")
+    rest = sorted(((g, fs) for g, fs in groups.items() if g not in folded),
+                  key=lambda gf: -sum(int(r["bytes"] or 0) for r in gf[1]))
+    out.append(f"stands out  {len(rest)} place(s), heaviest first:")
+    for g, fs in rest:
+        gb = sum(int(r["bytes"] or 0) for r in fs)
+        out.append(f"  {g:44} {len(fs):6} files {size(gb):>9}  {span(fs)}  {kinds(fs, 3)}")
+    odd = [r for r in rows if r["kind"] in ("?", "l")]
+    if odd:
+        out.append(f"unread    {sum(r['kind'] == '?' for r in odd)} unreadable, {sum(r['kind'] == 'l' for r in odd)}"
+                   " links (recorded, not followed)")
+    return "\n".join(out) + "\n"
+
+
 # ---------------------------------------------------------------------------------- verbs --
 
 def status(args):
@@ -301,6 +418,13 @@ def status(args):
             print(f"  {label:9} not kept here ({terms})")
             continue
         a = address(label, args.profile)
+        if a.get("by") == "label" and not a.get("at"):
+            last = at_rev(wt, label) if wt else None
+            print(f"  {label:9} not plugged in: no volume labelled \"{a['label']}\" here ({terms})")
+            if last:
+                n, b = counted(last[1])
+                print(f"  {'':9} the last x-ray, {last[0].get('taken', '?')}: {n} files, {size(b)}")
+            continue
         if a["store"] != "filesystem" or a.get("needs") == "grant" or not a.get("at"):
             print(f"  {label:9} {a['store']}: fcpm library where {label} ({terms})")
             continue
@@ -330,7 +454,12 @@ def where(args):
         print(f"address   sealed: reaching {args.label} takes credentials up front, so the address comes")
         print(f"          with a grant. Ask for one; the library does not hand it out here (docs/library.md)")
         return
-    at = a.get("at", "")
+    at = a.get("at") or ""
+    if a.get("by") == "label":
+        print(f"label     \"{a['label']}\", on whatever letter it mounts")
+        if not at:
+            print("at        not plugged in here")
+            return
     if a["store"] == "filesystem":
         top = Path(os.path.expanduser(at))
         print(f"at        {top / args.path if args.path else top}")
@@ -364,7 +493,10 @@ def xray(args):
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write(render(head, rows))
-    git("add", "--", f"{args.label}/xray.tsv", cwd=wt)
+    # Its summary goes with it, in the same commit: worked out from the x-ray, so always in step.
+    with open(out.with_name("summary.txt"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(summarize(head, rows))
+    git("add", "--", f"{args.label}/xray.tsv", f"{args.label}/summary.txt", cwd=wt)
     git("commit", "-q", "--allow-empty", "-m", f"xray {args.label}: {n} files, {size(b)}", cwd=wt)
     print(f"xray      {args.label}: {n} files, {size(b)}, {sum(1 for r in rows if r['kind'] == 'd')} folders")
     print(f"kept      {out} ({git('rev-parse', '--short', 'HEAD', cwd=wt).strip()} on retain/{args.profile})")
@@ -423,6 +555,16 @@ def diff(args):
         if not got:
             sys.exit(f"library: no x-ray of {args.label} at {args.rev} (fcpm library log {args.label})")
     summary(changes(got[1], walk(top)), f"since {got[0].get('taken', args.rev or 'the last')}")
+
+
+def summary_of(args):
+    """LABEL's summary, worked out from its last x-ray (or the one at REV). The holding is not touched."""
+    wt, got = last(args)
+    if args.rev:
+        got = at_rev(wt, args.label, args.rev)
+        if not got:
+            sys.exit(f"library: no x-ray of {args.label} at {args.rev} (fcpm library log {args.label})")
+    print(summarize(*got), end="")
 
 
 def log(args):
@@ -661,7 +803,9 @@ def compose(profile):
             n, b = counted(got[1])
             lines.append(f"x-rayed   {label}: {got[0].get('taken', '?')}, {n} files, {size(b)}")
         a = address(label, profile) if label in bindings(profile) else {}
-        if a.get("store") == "filesystem" and a.get("at") and a.get("needs") != "grant":
+        if a.get("by") == "label" and not a.get("at"):
+            lines.append(f"unplugged {label}: no volume labelled \"{a['label']}\" here")
+        elif a.get("store") == "filesystem" and a.get("at") and a.get("needs") != "grant":
             m = moved(Path(os.path.expanduser(a["at"])), got[0] if got else {}, a.get("label"))
             if m:
                 lines.append(f"  {label}: {m}")
@@ -709,9 +853,10 @@ def main(argv):
     sub.add_parser("status")
     for verb in ("xray", "log"):
         sub.add_parser(verb).add_argument("label")
-    d = sub.add_parser("diff")
-    d.add_argument("label")
-    d.add_argument("rev", nargs="?")
+    for verb in ("diff", "summary"):
+        d = sub.add_parser(verb)
+        d.add_argument("label")
+        d.add_argument("rev", nargs="?")
     for verb in ("where", "browse"):
         v = sub.add_parser(verb)
         v.add_argument("label")
@@ -725,7 +870,7 @@ def main(argv):
     sub.add_parser("grants")
     sub.add_parser("console").add_argument("--beat", action="store_true")
     args = p.parse_args(argv)
-    {"xray": xray, "diff": diff, "log": log, "where": where, "browse": browse, "grant": grant,
+    {"xray": xray, "diff": diff, "summary": summary_of, "log": log, "where": where, "browse": browse, "grant": grant,
      "release": release, "grants": grants, "console": console}.get(args.verb, status)(args)
 
 

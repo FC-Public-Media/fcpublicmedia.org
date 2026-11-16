@@ -1,0 +1,6 @@
+# Where the kiosk keeps the library's holdings, for `fcpm library`. Labels are ../../library.yml's.
+# The Buffalo was measured from here (troves/buffalo-drivestation); bound by its label, it is found on
+# whatever letter it gets, and is simply "not plugged in" otherwise. Doc: docs/library.md.
+
+holdings:
+  buffalo: {label: "RAID Backup"}
