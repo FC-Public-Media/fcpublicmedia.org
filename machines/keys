@@ -365,9 +365,15 @@ def keeper(verb):
     """init or unlock: the keychain's passphrase, asked in a window on this screen, sent once."""
     text = "The keychain's passphrase." if verb == "unlock" else \
         "A passphrase for FCPM's keychain: 8 characters at least. Whoever holds it can open every key."
-    phrase = ask(f"Keychain: {verb}", text)
-    if phrase is None:
-        sys.exit("keys: the window was closed; nothing sent")
+    for _ in range(3):
+        phrase = ask(f"Keychain: {verb}", text)
+        if phrase is None:
+            sys.exit("keys: the window was closed; nothing sent")
+        if len(phrase) >= 8:
+            break
+        text = f"That was {len(phrase)} characters; it takes 8 at least.\n\n" + text
+    else:
+        sys.exit("keys: three tries under 8 characters; nothing sent")
     if verb == "init" and ask("Keychain: init", "The same passphrase again.") != phrase:
         sys.exit("keys: the two did not match; nothing sent")
     print("keys: the keychain is working on it (a minute on its box)")
