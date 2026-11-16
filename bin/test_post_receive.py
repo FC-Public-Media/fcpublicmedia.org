@@ -43,7 +43,7 @@ class Receive(unittest.TestCase):
                       "copy": {"run": [sys.executable, "-c",
                                        "import shutil,sys,glob;[shutil.copy(f,sys.argv[2]) for f in glob.glob(sys.argv[1]+'/*')]",
                                        "{in}", "{out}"]}},
-            "deliver": {"to": "user@digitization.local", "key": str(self.bay / "key")}}))
+            "deliver": {"to": "fcpm@digitization.local", "key": str(self.bay / "key")}}))
 
     def post(self, *args, ok=True):
         r = subprocess.run([sys.executable, str(POST), *args], env=self.env, capture_output=True, text=True)
