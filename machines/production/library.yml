@@ -1,5 +1,8 @@
 # Where bay 1 keeps the library's holdings, for `fcpm library`. Labels are ../../library.yml's.
-# A holding's x-rays and notes sit inside it, in `.library/`, so they travel with it. Doc: docs/library.md.
+# A path is a filesystem address; any other store is a mapping (`store:`, and `needs: grant` when the
+# address itself carries credentials). An x-ray and notes sit inside the holding, in `.library/`.
+# Doc: docs/library.md.
 
 holdings:
   attic: "D:/fcpm-audit"
+  downloads: "~/Downloads"

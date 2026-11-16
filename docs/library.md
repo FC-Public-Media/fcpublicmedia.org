@@ -1,8 +1,9 @@
 # The library
 
 What FCPM's library is, where it keeps things, and what it can say about them. Built: `library.yml`, a
-machine's binding, and `fcpm library` (status, xray, diff), first on bay 1's attic. The rest is notes:
-Helm reading other machines' libraries, caretaking, and the keychain wing as a data pile. The engine is
+machine's binding, and `fcpm library` (status, where, xray, diff, browse), on bay 1's attic and
+downloads. The rest is notes: Helm addressing other machines' holdings, the ask, caretaking, and the
+keychain wing as a data pile. The engine is
 `.library-engine` ([library.anecdote.channel](https://github.com/FCCN-ANTIBODY/library.anecdote.channel)).
 
 ## What it is for
@@ -67,6 +68,22 @@ a holding is and what shape it has, and it never opens a file.
 Moving the board's documents off a shared cloud drive is the first job here. Members reached them too
 easily. Nothing has gone wrong, but nothing stopped it either.
 
+## Where things are
+
+The library does not read things, but it has no trouble saying where they are. How to address a
+holding is not the secret part, so the library resolves it for whoever asks: `fcpm library where LABEL
+[PATH]` gives the store and the address.
+
+A machine's binding is the address. A bare path is the filesystem's. Any other store is a mapping
+that names its store, and what the address means follows from the store. For example, an IPFS holding
+is addressed by its content, with no path at all (the engine's `store:`).
+
+**An address that carries credentials is part of a grant.** Some places cannot be reached at all
+without credentials up front, such as a share whose connection string has to log in. For those, the
+address itself is the sensitive thing. The binding says `needs: grant` and holds no address, and
+`where` says to ask. We can extract all of it for the asker, because asking is already the front
+door: the address comes with the grant, the same way a core does.
+
 ## Holdings, and the attic
 
 A holding is a place with things in it. Its label is ours. `is:` gives the engine's word for the same
@@ -81,6 +98,12 @@ it is `D:/fcpm-audit`.
 The attic is addressable before anything has been written about it. `fcpm library` gives what a disk
 knows by itself: the machine, the path, the volume's serial and label, and whether the folder is there.
 That is the attic's coordinates.
+
+**Downloads** is the second holding, and follows the same plan with fewer expectations. It is whatever a
+browser on the computer was asked to fetch: installers, exports, and members' files passing through.
+It is `is: intake` and `disposition: private` too, but `expects: ordinary`, where the attic `expects:
+sensitive`. If this system ever needs to understand downloads, the library is how it addresses them.
+On bay 1 it is `~/Downloads`.
 
 ### Members' projects
 
@@ -117,7 +140,22 @@ public, and an attic's file names name people.
 Later, with `ffprobe` on the bay: a media column (container, duration, streams), still with nothing
 decoded.
 
-## Caretaking (notes)
+## Agents work from metadata, never the disk
+
+Agents are layered over the metadata and never given free access to a disk. Each layer builds on the
+one below it:
+
+1. **The x-ray**, by `fcpm library xray`: the shape, with no agent involved.
+2. **Caretakers** build metadata on top of it (Caretaking, below).
+3. **The librarian** browses what is there by leaning on that metadata, as part of an ask. `fcpm
+   library browse LABEL [PATH]` is its tool. It lists one level of the last x-ray, with sizes, times
+   and counts, and never touches the holding. A file that has gone since still shows until the next
+   x-ray, which is the point: the librarian reads what the library knew, not what the disk says now.
+
+A person's reach is unchanged. Whoever can reach a holding reads it (Reading, above). The rule is about
+the agents we run: they get the x-ray, the notes and `where`, and never a free walk of the disk.
+
+### Caretaking (notes)
 
 A holding's `.library/` is also where the library leaves notes for caretaking agents. That means a
 local model doing annotation that needs no thinking: it reads x-ray rows and writes them back into our
@@ -174,8 +212,10 @@ The pile is how a sealed value could sit in the open and still be granted by ran
 1. Bind holdings on the other machines (`machines/<job>/library.yml`), and have Helm address them, so
    a big Helm knows which holdings a little one keeps and where. Helm addresses and does not serve:
    reading what is there means reaching it, the same as anywhere else (Reading, above).
-2. Caretaking: `.library/CARETAKING.md` and the annotation shape above, with the local model as the
+2. The ask: one front door for a grant, which hands over a core or a sealed address, and may seat the
+   librarian to browse for the asker.
+3. Caretaking: `.library/CARETAKING.md` and the annotation shape above, with the local model as the
    caretaker.
-3. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
+4. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
    vocabulary every library would use, not just ours.
-4. The keychain pile, once the keystore holds its first values.
+5. The keychain pile, once the keystore holds its first values.

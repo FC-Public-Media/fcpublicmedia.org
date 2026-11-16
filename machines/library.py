@@ -2,9 +2,12 @@
 
     library.py [status] [--profile P]     the branches, and this machine's holdings and their coordinates
     library.py xray LABEL [--profile P]   write LABEL's shape to .library/xray/<when>.tsv inside it
-    library.py diff LABEL [XRAY] [...]    what changed since the last x-ray (or XRAY), as git status would
+    library.py diff LABEL [XRAY]          what changed since the last x-ray (or XRAY), as git status would
+    library.py where LABEL [PATH]         how to address LABEL, or PATH in it: the store, and the address
+    library.py browse LABEL [PATH]        what the last x-ray saw at PATH, one level; the disk is not touched
 
-An x-ray reads names, sizes, times and attributes, never what a file says. See docs/library.md.
+The library tells where things are and never reads them; an x-ray reads names, sizes, times and
+attributes, never what a file says. browse is the librarian's: metadata only. See docs/library.md.
 """
 import argparse
 import ctypes
@@ -42,13 +45,23 @@ def bindings(profile):
     return (load(p).get("holdings") or {}) if profile and p.is_file() else {}
 
 
-def place(label, profile):
+def address(label, profile):
+    """A binding as an address: a bare path is the filesystem's; anything else says its store."""
     if label not in (declared().get("holdings") or {}):
         sys.exit(f"library: no holding '{label}' in library.yml")
     at = bindings(profile).get(label)
     if not at:
         sys.exit(f"library: {profile or 'this machine'} keeps no '{label}' (machines/{profile}/library.yml)")
-    return Path(os.path.expanduser(at))
+    a = {"store": "filesystem", "at": at} if isinstance(at, str) else dict(at)
+    a.setdefault("store", "filesystem")
+    return a
+
+
+def place(label, profile):
+    a = address(label, profile)
+    if a["store"] != "filesystem" or a.get("needs") == "grant" or not a.get("at"):
+        sys.exit(f"library: {label} is not on this machine's disk ({a['store']}): fcpm library where {label}")
+    return Path(os.path.expanduser(a["at"]))
 
 
 def iso(t):
@@ -173,9 +186,12 @@ def status(args):
     print(f"holdings  on {args.profile or 'this machine (no profile)'}:")
     for label, h in (lib.get("holdings") or {}).items():
         at = bound.get(label)
-        terms = f"{h.get('is', '?')}, {h.get('disposition', '?')}"
+        terms = f"{h.get('is', '?')}, {h.get('disposition', '?')}, expects {h.get('expects', '?')}"
         if not at:
             print(f"  {label:9} not kept here ({terms})")
+            continue
+        if not isinstance(at, str):
+            print(f"  {label:9} {at.get('store', '?')}: fcpm library where {label} ({terms})")
             continue
         top = Path(os.path.expanduser(at))
         if not top.is_dir():
@@ -268,7 +284,55 @@ def diff(args):
     summary(changes(read(base)[1], walk(top)), f"since {base.stem}")
 
 
+def where(args):
+    a = address(args.label, args.profile)
+    print(f"store     {a['store']}")
+    if a.get("needs") == "grant":
+        # The address carries credentials, so the address is part of what a grant hands over.
+        print(f"address   sealed: reaching {args.label} takes credentials up front, so the address comes")
+        print(f"          with a grant. Ask for one; the library does not hand it out here (docs/library.md)")
+        return
+    at = a.get("at", "")
+    if a["store"] == "filesystem":
+        top = Path(os.path.expanduser(at))
+        print(f"at        {top / args.path if args.path else top}")
+        print(f"on        {socket.gethostname()}, volume {volume(top)[0]}" if top.exists() else "on        missing here")
+    else:
+        print(f"at        {at}{'/' + args.path if args.path else ''}")
+
+
+def browse(args):
+    """One level of the last x-ray, as a listing. Reads the x-ray, never the holding."""
+    shots = xrays(place(args.label, args.profile))
+    if not shots:
+        sys.exit(f"library: {args.label} has no x-ray yet: fcpm library xray {args.label}")
+    head, rows = read(shots[-1])
+    at = (args.path or "").strip("/").replace("\\", "/")
+    pre = at + "/" if at else ""
+    if at and not any(r["path"] == at and r["kind"] == "d" for r in rows):
+        sys.exit(f"library: the x-ray of {head.get('taken', shots[-1].stem)} has no folder '{at}'")
+    kids, inside = {}, {}
+    for r in rows:
+        if not r["path"].startswith(pre) or r["path"] == at:
+            continue
+        rest = r["path"][len(pre):]
+        name = rest.split("/", 1)[0]
+        if "/" not in rest:
+            kids[name] = r
+        if r["kind"] == "f":
+            n, b = inside.get(name, (0, 0))
+            inside[name] = (n + 1, b + int(r["bytes"] or 0))
+    print(f"browse    {args.label}/{at} as x-rayed {head.get('taken', shots[-1].stem)}")
+    for name in sorted(kids, key=str.lower):
+        r = kids[name]
+        n, b = inside.get(name, (0, 0))
+        what = f"{n} files, {size(b)}" if r["kind"] == "d" else size(b) if r["kind"] == "f" else r["kind"]
+        print(f"  {r['kind']} {r['modified'][:10]:10} {what:>22}  {name}{'/' if r['kind'] == 'd' else ''}"
+              + (f"  [{r['attrs']}]" if r["attrs"] else ""))
+
+
 def main(argv):
+    sys.stdout.reconfigure(errors="backslashreplace")   # a console's code page cannot spell every name
     p = argparse.ArgumentParser(prog="fcpm library", description=__doc__.split("\n\n")[0])
     p.add_argument("--profile", default=os.environ.get("FCPM_PROFILE", ""))
     sub = p.add_subparsers(dest="verb")
@@ -278,8 +342,12 @@ def main(argv):
     d = sub.add_parser("diff")
     d.add_argument("label")
     d.add_argument("xray", nargs="?")
+    for verb in ("where", "browse"):
+        v = sub.add_parser(verb)
+        v.add_argument("label")
+        v.add_argument("path", nargs="?")
     args = p.parse_args(argv)
-    {"xray": xray, "diff": diff}.get(args.verb, status)(args)
+    {"xray": xray, "diff": diff, "where": where, "browse": browse}.get(args.verb, status)(args)
 
 
 if __name__ == "__main__":

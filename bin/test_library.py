@@ -77,6 +77,31 @@ class Library(unittest.TestCase):
         self.run_(library.xray)
         self.assertIn("changes   none", self.run_(library.diff))
 
+    def test_browse_reads_the_xray_not_the_disk(self):
+        self.run_(library.xray)
+        (self.top / "Board" / "Minutes" / "2024.docx").unlink()   # gone from disk, still in the x-ray
+        out = self.run_(library.browse, path="")
+        self.assertIn("Board/", out)
+        self.assertIn("1 files, 12 B", out)
+        self.assertIn("2024.docx", self.run_(library.browse, path="Board/Minutes"))
+        with self.assertRaises(SystemExit):
+            self.run_(library.browse, path="Nowhere")
+
+    def test_where_tells_the_address_unless_it_is_sealed(self):
+        bindings = library.bindings
+        try:
+            library.bindings = lambda p: {"attic": str(self.top)}
+            self.assertIn(str(self.top / "Board"), self.run_(library.where, path="Board"))
+            library.bindings = lambda p: {"attic": {"store": "smb", "needs": "grant"}}
+            out = self.run_(library.where, path=None)
+            self.assertIn("store     smb", out)
+            self.assertIn("comes\n          with a grant", out)
+            library.place = self._place
+            with self.assertRaises(SystemExit):                       # no x-ray of what it cannot reach
+                self.run_(library.xray)
+        finally:
+            library.bindings = bindings
+
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])
         for f in (REPO / "machines").glob("*/library.yml"):

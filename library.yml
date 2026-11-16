@@ -1,5 +1,5 @@
 # Who our library is: its branches by purpose, and the holdings it addresses by label. No paths:
-# each machine binds a label to a place in machines/<profile>/library.yml. `fcpm library` reads both.
+# each machine binds a label to an address in machines/<profile>/library.yml. `fcpm library` reads both.
 # Engine: .library-engine (library.anecdote.channel). Doc: docs/library.md.
 
 # Each branch says what it is for. Only main is merged into; the others are separate concerns, kept
@@ -29,5 +29,15 @@ holdings:
       members' projects, and the board's older documents. Heavy, and we are not sure how it all got there"
     lifecycle: transient
     disposition: private
+    expects: sensitive        # board records and members' work: assume a name or a number in it
     # What fcpm library xray records of it: names, sizes and times. Never what a file says.
+    xray: shape
+
+  downloads:
+    is: intake
+    holds: "whatever a browser on this computer was asked to fetch: installers, exports, members'
+      files passing through. Same plan as the attic, with fewer expectations of what lands"
+    lifecycle: transient
+    disposition: private
+    expects: ordinary         # mostly not sensitive; private still, since nobody was promised a read
     xray: shape
