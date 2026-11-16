@@ -91,7 +91,10 @@ person, or the next seat, sees who was working on what.
 
 ## The seats
 
-Provisional names; the board renames them.
+Provisional names; the board renames them. These seats are rooted in the library. A seat can also be
+rooted in one project held with us, such as maintaining a member's repository or advising on it. Such a
+seat reads the project only when the project opted in on admission. Its decorum is that project's
+`AGENTS.md` here, and everything above binds it the same.
 
 ### Receptionist
 
