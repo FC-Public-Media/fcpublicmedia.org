@@ -31,7 +31,7 @@ into. The others are separate concerns: kept beside main, never merged into it.
 |---|---|---|
 | `main` | what we publish and what we run | |
 | `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton |
-| `origin` | working state: the map of the origin our computers fast-forward from | not made |
+| `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded |
@@ -39,6 +39,19 @@ into. The others are separate concerns: kept beside main, never merged into it.
 
 Working state and publishing are kept apart this way. The library had begun to gather working
 state, and the origin's map was part of it.
+
+### `refs/` stays; the origin is a branch of the library
+
+Every bay keeps `~/code/refs/`, a tidy set of read-only mirrors, each a live line to its cloud source
+(GitHub). `refs/` does not move into the library, and the library does not replace it. It stands as a
+machine's nomination of its own concern: what it wants to hear from the cloud version. Station-node had
+nothing like it, only a project folder holding the history of everything, and that was its mistake.
+
+The **origin** is a branch of the library: the actual origin, holding canonical submodule references to
+what we consider worth working on. FCPM's computers fast-forward from it. So there are two lists, and
+they are allowed to differ: `refs/` is what a machine watches, and the `origin` branch is what we keep.
+Who carries changes between GitHub and the origin is open. A crew might take over the merge relay
+(`fcpm relay`).
 
 ## Who can see
 
@@ -122,6 +135,14 @@ browser on the computer was asked to fetch: installers, exports, and members' fi
 It is `is: intake` and `disposition: private` too, but `expects: ordinary`, where the attic `expects:
 sensitive`. If this system ever needs to understand downloads, the library is how it addresses them.
 On bay 1 it is `~/Downloads`.
+
+**Drive** is the organization's Google Drive, mounted on bay 1 as a drive (streamed, not mirrored down
+into a folder). It is the cloud slice people drop files into to reach another of our computers, the
+cloud version of a shared drive on the LAN, beside OneDrive and Dropbox when those get their slices. It
+also holds the board's documents that are still there while they are moved off. It is a live line to a
+cloud source, as `refs/` is to GitHub. It is `is: intake` and `expects: sensitive`, and it is bound to
+wherever Google Drive mounted it (`E:/My Drive` today). An x-ray of a streamed drive reads only what the
+drive reports about each file, and downloads nothing.
 
 ### Members' projects
 

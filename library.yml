@@ -13,7 +13,9 @@ branches:
     for: "holdings in git: the tenant list (trade/), city/, voices/; a skeleton (docs/members.md)"
     merges: never
   origin:
-    for: "working state: the map of the origin FCPM's computers fast-forward from (machines/origin)"
+    for: "the actual origin: canonical submodule references to what we consider worth working on, which
+      FCPM's computers fast-forward from (machines/origin). Not refs/: that stays each machine's live line
+      to its cloud sources, and its nomination of what it is concerned with there"
     merges: never
     made: false
   archives:
@@ -55,4 +57,14 @@ holdings:
     lifecycle: transient
     disposition: private
     expects: ordinary         # mostly not sensitive; private still, since nobody was promised a read
+    xray: shape
+
+  drive:
+    is: intake
+    holds: "the organization's Google Drive, mounted as a drive (streamed, not mirrored to a folder): the
+      cloud slice people drop files in to reach another of our computers, and the board's documents still
+      there while they are moved off. A live line to a cloud source, as refs/ is to GitHub"
+    lifecycle: transient
+    disposition: private
+    expects: sensitive        # it is where the board's documents were; most files are placeholders here
     xray: shape

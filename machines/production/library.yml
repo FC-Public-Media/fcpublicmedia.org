@@ -7,3 +7,4 @@
 holdings:
   attic: "D:/fcpm-audit"
   downloads: "~/Downloads"
+  drive: "E:/My Drive"        # Google Drive for desktop, streamed; the letter is wherever it mounted
