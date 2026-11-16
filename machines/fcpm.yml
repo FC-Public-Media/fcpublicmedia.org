@@ -164,8 +164,8 @@ verbs:
     linux: "troves/pools/pools.py by uv"
 
   - verb: library
-    args: "[status|where LABEL [PATH]|xray LABEL|diff LABEL [XRAY]|browse LABEL [PATH]]"
-    says: "the library's holdings here: how to address each, an x-ray of its shape, and browsing that x-ray (never contents)"
+    args: "[status|where LABEL [PATH]|xray LABEL|diff LABEL [REV]|log LABEL|browse LABEL [PATH]]"
+    says: "the library here (~/code/library): how to address each holding, its shape x-rayed into retain/, and browsing that (never contents)"
     windows: "machines/library.py by uv"
     linux: "machines/library.py by uv"
 

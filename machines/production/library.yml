@@ -1,6 +1,7 @@
 # Where bay 1 keeps the library's holdings, for `fcpm library`. Labels are ../../library.yml's.
 # A path is a filesystem address; any other store is a mapping (`store:`, and `needs: grant` when the
-# address itself carries credentials). An x-ray and notes sit inside the holding, in `.library/`.
+# address itself carries credentials). Nothing is written into a holding: its x-rays are kept in
+# ~/code/library/retain (retain/production), never beside the files.
 # Doc: docs/library.md.
 
 holdings:

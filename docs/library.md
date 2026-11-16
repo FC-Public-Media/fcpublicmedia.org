@@ -1,8 +1,9 @@
 # The library
 
 What FCPM's library is, where it keeps things, and what it can say about them. Built: `library.yml`, a
-machine's binding, and `fcpm library` (status, where, xray, diff, browse), on bay 1's attic and
-downloads. The rest is notes: Helm addressing other machines' holdings, the ask, caretaking, and the
+machine's binding, `~/code/library` with its `retain/` record, and `fcpm library` (status, where,
+xray, diff, log, browse), on bay 1's attic and downloads; the `librarians` branch is seeded. The rest
+is notes: the lobby, Helm addressing other machines' holdings, the ask, the librarians' passes, and the
 keychain wing as a data pile. The engine is
 `.library-engine` ([library.anecdote.channel](https://github.com/FCCN-ANTIBODY/library.anecdote.channel)).
 
@@ -32,6 +33,9 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton |
 | `origin` | working state: the map of the origin our computers fast-forward from | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
+| `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
+| `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded |
+| `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. Never pushed | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
 state, and the origin's map was part of it.
@@ -116,6 +120,28 @@ project's files come off the Drive into the attic, and the x-ray of their arriva
 the project was. We study each one as a file format, as something someone did, and not for its
 content. Production's pipeline should understand a project shaped like that.
 
+## The library here: a folder per branch
+
+On each machine, the library is `~/code/library`. It holds one folder per branch the machine keeps,
+each a worktree of the library's repository (`~/code/library/.git`). Everything is in folders, and
+past the top level a folder name says which branch you are on. That is why each concern gets a
+branch and not a nesting inside another.
+
+| folder | branch | goes |
+|---|---|---|
+| `retain/` | `retain/<machine>` | nowhere: it stays here, on the media node's LAN |
+| `librarians/` | `librarians` | to GitHub. Instructions, never data |
+| `lobby/` | `lobby` | to GitHub. Compiled from what is publishable: directions to the rest, and nothing else |
+
+**`retain` is a marker.** A branch named `retain/…` is never pushed to GitHub and never published. The
+library's repository has no GitHub remote, and its pre-push hook refuses `retain/` anywhere. If we ever
+move a retained branch, to the LAN's origin say, that is a change we all notice together, made at the
+hook and nowhere else. Retained branches are our own operational history: we are chronicling it,
+privately.
+
+**The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
+directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.
+
 ## X-rays
 
 `fcpm library xray LABEL` takes a picture of a holding's shape. It writes one row per entry: path, kind
@@ -124,49 +150,54 @@ attributes are `R` read-only, `H` hidden, `S` system, `O` offline, and `P` pinne
 `P` mark a cloud placeholder, where the name is here and the bytes are not. Opening a file is never
 part of an x-ray. A link is recorded and not followed.
 
-The x-ray goes inside the holding, at `.library/xray/<when>.tsv`, so it travels with the holding. The
-first line gives the coordinates and the totals. `.library/` itself is never x-rayed.
+The x-ray goes to `retain/<LABEL>/xray.tsv`, and each look is a commit on `retain/<machine>`. So the
+metadata is version-tracked, even though the bytes are not and never will be. Nothing is written into a
+holding. A sidecar beside every download would confuse whoever uses the folder, and would go when they
+delete. Turning Downloads into a git repository is out of the question. The first line of an x-ray gives
+the coordinates and the totals.
 
-`fcpm library diff LABEL [XRAY]` compares the holding now against its last x-ray, or the one named.
-It works like `git status`: `A` came, `D` went, `M` changed size or time. A folder that came or went
-whole is shown as one line, with its count and size. An x-ray also prints what changed since the one
-before.
+- `fcpm library diff LABEL [REV]` compares the holding now against its last x-ray, or the one at
+  `REV`. It works like `git status`: `A` came, `D` went, `M` changed size or time. A folder that came or
+  went whole is one line, with its count and size. An x-ray also prints what changed since the one
+  before.
+- `fcpm library log LABEL` lists the looks, one line each.
 
-That is as much of git as the attic gets. We do not version-track these bytes and will not try to. An
-x-ray is a lightweight glimpse of what git would have shown. Because it sits beside the holding, it
-stays exactly as private as the holding, and none of it comes into this repository. The repository is
-public, and an attic's file names name people.
+We know roughly when something arrived, as of the look that first saw it. We are not hooking the file
+system. This is about what sits at rest. Something in flight may have no metadata yet, and waits until a
+look, or an agent, notices it.
+
+None of it comes into this repository. The repository is public, and an attic's file names name people.
+Even the shape is not for just anyone to x-ray that deeply: we do not know for sure what is in there.
 
 Later, with `ffprobe` on the bay: a media column (container, duration, streams), still with nothing
 decoded.
 
-## Agents work from metadata, never the disk
+## Librarians
 
-Agents are layered over the metadata and never given free access to a disk. Each layer builds on the
-one below it:
+The library's code does not read files. Librarian agents will have to, because they are the caretakers.
+So they answer to a constitution, on the `librarians` branch, and to each place's decorum: why things
+are there at all, and what they are for. Decorum is written per place, never per item. It is an
+`AGENTS.md` in that place's own folder shape on the `librarians` branch: `attic/AGENTS.md`, and
+`attic/<folder>/AGENTS.md` only where a folder needs its own. That slice of the structure is what gets
+committed. It holds the instructions, kept apart from the data.
 
-1. **The x-ray**, by `fcpm library xray`: the shape, with no agent involved.
-2. **Caretakers** build metadata on top of it (Caretaking, below).
-3. **The librarian** browses what is there by leaning on that metadata, as part of an ask. `fcpm
-   library browse LABEL [PATH]` is its tool. It lists one level of the last x-ray, with sizes, times
-   and counts, and never touches the holding. A file that has gone since still shows until the next
-   x-ray, which is the point: the librarian reads what the library knew, not what the disk says now.
+The passes are kept separate, and each builds on the one before:
 
-A person's reach is unchanged. Whoever can reach a holding reads it (Reading, above). The rule is about
-the agents we run: they get the x-ray, the notes and `where`, and never a free walk of the disk.
+1. **The x-ray**, by `fcpm library xray`. No agent is involved.
+2. **Caretakers** write metadata into `retain/`. A file becomes a folder in the metadata tree once
+   there is something to write about it. Only the noteworthy get one. Summaries can be prepared ahead:
+   of a listing, of what its metadata is like, of its timeline.
+3. **Librarians** look for things starting from the metadata. `fcpm library browse LABEL [PATH]` lists
+   one level of the last x-ray and never touches the holding. Where a librarian goes on to the disk, and
+   finds something is not where the metadata says it should be, it files an error in `retain/` and
+   stops there.
+4. **Correction** is a pass of its own: it reads the errors and fixes the metadata.
 
-### Caretaking (notes)
+**Start at the top of an entry's listing.** A note sits on the highest entry it is true of. A project
+with a `build/` folder needs no note on `build/` for us to know it is there: the project's note can say
+so, and an agent that starts at the beginning of that entry's listing finds it.
 
-A holding's `.library/` is also where the library leaves notes for caretaking agents. That means a
-local model doing annotation that needs no thinking: it reads x-ray rows and writes them back into our
-shape, the way a utility script would, without us writing scripts that break. This is FCPM's utility
-and lives here, never as an agent skill. Not built. The shape when it is:
-
-- The duty is written down in the holding (`.library/CARETAKING.md`) and points here.
-- Annotations sit in the holding, keyed by path and by the x-ray they were made against. What is it
-  (a member's project, a board record, media, unknown), and what role expected to reach it. That
-  answers who expected access, which is open for the attic.
-- A diff shows an annotation whose path has gone.
+A person's reach is unchanged. Whoever can reach a holding reads it (Reading, above).
 
 ## The keychain wing, and data piles (notes)
 
@@ -214,8 +245,10 @@ The pile is how a sealed value could sit in the open and still be granted by ran
    reading what is there means reaching it, the same as anywhere else (Reading, above).
 2. The ask: one front door for a grant, which hands over a core or a sealed address, and may seat the
    librarian to browse for the asker.
-3. Caretaking: `.library/CARETAKING.md` and the annotation shape above, with the local model as the
+3. The librarians' constitution and the attic's and downloads' decorum, on the `librarians` branch,
+   and the shape of a note, a summary and an error in `retain/`. Then a local model as the first
    caretaker.
-4. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
+4. The lobby: compiled by `fcpm library`, from `library.yml` and what each holding exposes.
+5. Upstream: put branches-by-purpose, the attic and the x-ray to the engine as a petition. They are
    vocabulary every library would use, not just ours.
-5. The keychain pile, once the keystore holds its first values.
+6. The keychain pile, once the keystore holds its first values.

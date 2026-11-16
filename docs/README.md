@@ -11,7 +11,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`site.md`](site.md) | the site: layout, build, pages, data, tests, deploy, domain, redirects |
 | [`programming.md`](programming.md) | Cablecast, the schedule, feeds, shows, classes and class mode |
 | [`members.md`](members.md) | tenancy, member sites, publishing, ejection, the directory, the library branch |
-| [`library.md`](library.md) | the library: branches by purpose, where things are, holdings (attic, downloads), x-rays, agents on metadata, the keychain wing |
+| [`library.md`](library.md) | the library: branches by purpose, where things are, holdings, `~/code/library` and `retain/`, x-rays, librarians, the keychain wing |
 | [`payments.md`](payments.md) | the transactions, who processes each, prices, keys |
 | [`identity.md`](identity.md) | passkeys, claims, devices, check-in, authorize |
 | [`keystore.md`](keystore.md) | a machine's own key (birth, granted by merge), and the keystore that holds real secrets |

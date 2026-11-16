@@ -3,7 +3,9 @@
 # Engine: .library-engine (library.anecdote.channel). Doc: docs/library.md.
 
 # Each branch says what it is for. Only main is merged into; the others are separate concerns, kept
-# beside it on purpose and never merged.
+# beside it on purpose and never merged. On a machine, the library is ~/code/library, a folder per branch
+# it keeps (a worktree each). `retain/` is the marker for what stays on the media node's LAN: it is
+# never pushed to GitHub and never published, and moving it between us is something we all notice.
 branches:
   main:
     for: "what we publish and what we run: the site, the machines, and this declaration"
@@ -18,6 +20,19 @@ branches:
     for: "what the library keeps after it stops being worked on; not assigned yet"
     merges: never
     made: false
+  lobby:
+    for: "the way in: compiled from what is publishable, thin, and only directions to the rest"
+    merges: never
+    made: false
+  librarians:
+    for: "what librarian agents answer to: their constitution, and each place's decorum as AGENTS.md
+      files in that place's own folder shape. Instructions, never data"
+    merges: never
+  retain/<machine>:
+    for: "a machine's own record: each holding's x-ray, one commit per look, and later the notes,
+      summaries and errors its librarians write. Our operational history, kept private"
+    merges: never
+    pushes: never
 
 # A holding is a place with things in it. Its label is ours; `is:` is the engine's word for the same
 # thing (.library-engine/residency.yml). `disposition` is who has been promised a read: none of these is
