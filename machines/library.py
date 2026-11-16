@@ -865,8 +865,25 @@ def keychain():
     return k
 
 
+def engine():
+    """The bottle code, .you-engine with anecdote.channel inside it: fetched here, once, when this checkout
+    lacks it (a public submodule: no sign-in, no prompt). None when it is here; else why it is not."""
+    want = [REPO / ".you-engine" / "bottle" / "bottle.mjs", REPO / ".you-engine" / "anecdote.channel" / "composer"]
+    if all(p.exists() for p in want):
+        return None
+    print("fetching  the bottle code (.you-engine), once")
+    r = subprocess.run(["git", "-C", str(REPO), "submodule", "update", "--init", "--recursive", "--", ".you-engine"],
+                       capture_output=True, env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never"))
+    if r.returncode == 0 and all(p.exists() for p in want):
+        return None
+    return "the bottle code (.you-engine) is not on this machine and could not be fetched; `fcpm pull` fetches it"
+
+
 def bottler(*args, input=None, key=None):
     """machines/library-bottle.mjs, by the bay's own Node (the gear's `at:`), else the one on PATH."""
+    why = engine()
+    if why:
+        return None, why
     k = keychain()
     node = shutil.which("node", path=os.pathsep.join(k["gear_folders"]() + [os.environ.get("PATH", "")]))
     if not node:
