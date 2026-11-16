@@ -163,6 +163,12 @@ verbs:
     windows: "troves/pools/pools.py by uv"
     linux: "troves/pools/pools.py by uv"
 
+  - verb: library
+    args: "[status|where|xray|diff|log|browse LABEL ...|grant SEAT UNIT WORDS|release GRANT|grants|console]"
+    says: "the library here (~/code/library): its holdings and their shapes (never contents), who is at work, and its console"
+    windows: "machines/library.py by uv"
+    linux: "machines/library.py by uv"
+
   - verb: post
     args: "[status|run [STEP]|admit CONFIG|retry TAKE N]"
     says: "after release: the takes and their steps, as a page"

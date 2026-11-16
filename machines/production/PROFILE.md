@@ -18,7 +18,7 @@ grants: [docs/station.md](../../docs/station.md).
 | file | what it is |
 |---|---|
 | `names`, `called` | `windows ComputerName EDIT2`; `production` |
-| `MANIFEST` | carries `code/`, the pointers in `home/code/`, the git ignore (`.pr`), `fcpm.cmd`, `~/.local/bin` on PATH, and the compiled GRANTS |
+| `MANIFEST` | carries `code/`, the root's instructions in `home/code/` (`CLAUDE.md` -> `AGENTS.md` -> `BAY1.md` -> `code/AGENTS.md`), the git ignore (`.pr`), `fcpm.cmd`, `~/.local/bin` on PATH, and the compiled GRANTS |
 | `code/` | the `~/code` root: `AGENTS.md` (read in place from the mirror), `bin/refs`, `bin/pool.ps1`, `refs.wanted` (the mirrors) |
 | `GRANTS` | admits the recorder's OBS cycle; denies stopping any process by name |
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
@@ -27,6 +27,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `model.ps1`, `model.yml`, `models/`, `shapes/` | `fcpm model`: the language models, an instrument answering the switched network only (llama.cpp serving the models picked from the spread in [`models/`](models/README.md)); its effort words, the shapes it offers, and the contexts it keeps |
 | `helm.ps1` | `fcpm helm`: this bay's helm, the crew's `helm` line (the door's intake and pages only, on 8080), which takes what a peer helm passes it ([`../helms.yml`](../helms.yml)); its one rule |
 | `keys.yml` | its own keychain (`fcpm keys`, [`../keys`](../keys)): a Cloudflare token for the site's deploy and the tanks' drain. See Deploy |
+| `library.yml` | where this bay keeps the library's holdings: the attic, `D:/fcpm-audit`, and downloads, `~/Downloads` (`fcpm library`, [docs/library.md](../../docs/library.md)) |
 | `pools.yml`, `post.yml` | `fcpm pools` ([troves/pools](../../troves/pools/README.md)), `fcpm post` ([troves/post](../../troves/post/README.md)) |
 
 ## Inbound

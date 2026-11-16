@@ -52,7 +52,8 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
   tiliv` if missed). We push as `fcpm-public`; `gh` is `~/.local/bin/gh.exe`. Autumn merges; within
   5 minutes the door rebases `media-node` onto `main`. No global git identity: each repo has its own.
 - Change this file in a worktree (`machines/production/code/AGENTS.md`); it is read from the mirror.
-  Never edit the root's `CLAUDE.md` or `AGENTS.md`: `fcpm install` restores them.
+  The root's `CLAUDE.md`, `AGENTS.md` and `BAY1.md` come from `home/code/`; edit them there, never at the
+  root: `fcpm install` restores them.
 - A session starts no service, keeps no live checkout and runs nothing long; nothing revives it.
 - Reach other machines outward only: code by commit, media through the depot, talk by session
   message. Peers: `kiosk` (media-node), `digitization` (station-node, where `rodecaster` captures).
