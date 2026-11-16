@@ -2,6 +2,10 @@
 title: Check-In Poster
 permalink: /check-in/poster/
 sitemap: false
+studio:
+  kind: poster
+  says: "The code on the wall that opens your pass at /check-in/"
+  reaches: "a printer"
 ---
 
 {%- assign ci = site.data.checkin -%}
