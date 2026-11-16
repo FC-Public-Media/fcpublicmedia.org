@@ -1,5 +1,5 @@
 // library-ask.js — wizard:library+ask, or wizard:library+urgent when ticked: an ask of the library's
-// receptionist as a bottle, for a camera at FC Public Media (site/you/wizards/library.md). The lane is the
+// receptionist as a bottle, for a camera at FC Public Media (site/studio/library.md). The lane is the
 // asker's choice. Nothing is sent from here: replies.py reads the bottle at the helm that holds the library.
 
 import { pour, nonce, localIso } from "./bottle.js";

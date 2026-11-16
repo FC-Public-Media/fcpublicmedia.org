@@ -5,6 +5,10 @@ theme_color: "#121417"
 sitemap: false
 offline: true
 permalink: /library/ask/
+studio:
+  kind: code
+  says: "Ask the library's receptionist: what we hold, where it is, who is working on it"
+  reaches: "a camera in the building"
 ---
 
 {%- comment -%}

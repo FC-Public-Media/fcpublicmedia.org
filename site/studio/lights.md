@@ -4,6 +4,10 @@ layout: pass
 theme_color: "#ffffff"
 sitemap: false
 permalink: /lights/
+studio:
+  kind: code
+  says: "Keep the screens awake until a time, or let them sleep"
+  reaches: "the kiosk's camera"
 ---
 
 {%- comment -%} A code shown to the kiosk camera: keep screens awake until a time. See docs/kiosk.md. {%- endcomment %}

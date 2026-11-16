@@ -291,7 +291,7 @@ Applying it is lodging it, never granting it: `petitions/<nonce>.json` beside th
 
 ### wizard:library+ask, wizard:library+urgent
 
-`/library/ask/` on the site: an ask of the library's receptionist. Ticking *This is urgent* makes it
+`/library/ask/` on the site (`site/studio/library.md`): an ask of the library's receptionist. Ticking *This is urgent* makes it
 `wizard:library+urgent` instead. The asker picks the lane, so nothing behind the camera has to guess:
 
 ```json

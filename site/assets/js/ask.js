@@ -1,5 +1,5 @@
 // ask.js — wizard:model+ask, a question for the model as a bottle: the door's /ask/ on the LAN, and the
-// public site's /ask/ (site/you/wizards/ask.md). The parts, and a way back to blank:
+// public site's /ask/ (site/studio/ask.md). The parts, and a way back to blank:
 //   the box       the question being written, and the asker's own instructions if they want any
 //   the outbox    the code of the message being shown: what goes to the camera (or is set down on the LAN)
 //   the notebook  every message this phone made, from the moment its code was made, its answer filled in when

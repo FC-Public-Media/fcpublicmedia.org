@@ -37,6 +37,7 @@ Views by #: (none) the list, #reply-<reference>, #show-<reference>. {%- endcomme
     <p class="pass-actions">
       <a class="btn" href="{{ '/check-in/#visits' | relative_url }}">Visits</a>
       <a class="btn" href="{{ '/check-in/#device' | relative_url }}">This phone</a>
+      <a class="btn" href="{{ '/studio/' | relative_url }}">The studio</a>
     </p>
   </div>
 </section>

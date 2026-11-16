@@ -2,6 +2,10 @@
 title: Guest Wi-Fi Poster
 permalink: /wifi/poster/
 sitemap: false
+studio:
+  kind: poster
+  says: "The guest Wi-Fi's code, for the wall"
+  reaches: "a printer"
 ---
 
 {%- assign wifi = site.data.wifi -%}

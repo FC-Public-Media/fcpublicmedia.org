@@ -5,6 +5,10 @@ theme_color: "#121417"
 sitemap: false
 offline: true
 permalink: /ask/
+studio:
+  kind: code
+  says: "Ask the model a question; its answer comes back in the loop on the big screen"
+  reaches: "a camera in the building"
 ---
 
 {%- comment -%}

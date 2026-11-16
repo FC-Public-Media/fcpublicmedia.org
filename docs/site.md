@@ -14,7 +14,8 @@ booking, submissions) are hand-offs to other services ([payments.md](payments.md
 | `*.md`, `index.html`, `404.html` | one file per page; the filename is the URL |
 | `_layouts/` | `default`, `page`, `pass` (`/check-in/`, `/lights/`) |
 | `_includes/` | `head`, `header`, `footer`, `show-card` and smaller parts |
-| `you/` | the member's own pages. `/check-in/`, `/authorize/` and `/lights/` keep their old URLs by `permalink` (a printed QR, an issued claim link, the kiosk camera); the rest are `/you/:name/` |
+| `you/` | what is yours: your pass (`/check-in/`), `/you/`, authorize, devices, settings, upload. `/check-in/` and `/authorize/` keep their old URLs by `permalink` (a printed QR, an issued claim link); the rest are `/you/:name/` |
+| `studio/` | what a phone can do at the studio: codes for our cameras (`/ask/`, `/library/ask/`, `/lights/`) and posters for our walls (`/check-in/poster/`, `/wifi/poster/`), each at its own `permalink`. Each says what it is in its front matter (`studio: {kind: code or poster, says, reaches}`), and `/studio/` lists them from that, so a new one appears there by describing itself. The pass is yours; the poster that leads to it is the studio's |
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
 | `member-sites/` | built member sites, by `bin/build-sites.py --publish` ([members.md](members.md)); `bin/deploy-site` runs it |
 | `bin/`, `tests/` | tooling, syncs and Python tests; Playwright tests. Both excluded from the build |
