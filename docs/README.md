@@ -17,6 +17,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`pickup.md`](pickup.md) | how things travel: the QR pickup station, the iced bottle (the wire format), the outbox, the cloud box |
 | [`keystore.md`](keystore.md) | a machine's own key (birth, granted by merge), and the keystore that holds real secrets |
 | [`station.md`](station.md) | the station: machines, profiles, fcpm, sync, grants, runnables, the bay, engines |
+| [`workshed.md`](workshed.md) | the workshed: a worktree each for whoever is working on something, its site served on its own port, the Helm's `/workshed/` |
 | [`kiosk.md`](kiosk.md) | the kiosk screen, dim mode, the kiosk's door |
 | [`services.md`](services.md) | designs taken far enough to resume: scheduling, digitization, sign-in, production's door |
 | [`advocate.md`](advocate.md) | the constitution the advocate seats answer to (`../advocate.yml`) |

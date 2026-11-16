@@ -119,7 +119,8 @@ is left). `mirror` copies the machine's files back into a `work/` worktree for a
 ## Sessions
 
 - A machine's root is `~/code`: read-only mirrors in `refs/` and a worktree per branch in
-  `work/REPO@BRANCH`, kept by `bin/refs`. Its instructions are the profile's `code/AGENTS.md`, which
+  `work/REPO@BRANCH`, kept by `bin/refs`. A person's worktrees, kept as long as they work in them, are
+  in `workshed/` ([workshed.md](workshed.md)). Its instructions are the profile's `code/AGENTS.md`, which
   `~/code/CLAUDE.md` points at in the mirror (`@refs/fcpublicmedia.org/machines/<profile>/...`).
 - At sign-in the root runs an unnamed Remote Control server, `claude remote-control`, with its
   one home session. Only with that session does the server read its bookmark

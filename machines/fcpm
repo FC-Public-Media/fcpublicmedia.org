@@ -135,6 +135,10 @@ case "$cmd" in
     # The library's holdings on this machine (library.yml, machines/<profile>/library.yml).
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     FCPM_PROFILE=$(profile) exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/library.py" "$@" ;;
+  workshed)
+    # Worktrees someone works in, each served on its own port (~/code/workshed, docs/workshed.md).
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 "$HERE/workshed.py" "$@" ;;
   post)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/post/post.py" "$@" ;;
