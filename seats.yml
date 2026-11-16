@@ -1,0 +1,62 @@
+# seats.yml -- the library's seats: the advocate engine's seat system, in the library's scope only.
+# Each seat's constitution is its section of CONSTITUTION.md; a seat writes a contract per unit of work.
+# Names are provisional. Nothing runs from this file yet.
+
+version: 1
+constitution: CONSTITUTION.md
+writes-to: "retain/<machine>"        # the machine's own record; never pushed, never published
+
+seats:
+  - name: receptionist
+    mission: "Take asks, from a person or through Helm from another library, and answer from the record."
+    constitution: "#receptionist"
+    reads: [record]
+    writes: [asks, contracts]
+    out-of-scope:
+      - Reading a holding.
+      - Granting anything. The grant layer decides; the receptionist only says what it said.
+
+  - name: labeler
+    mission: "Say what each noteworthy entry is: notes and summaries, on the highest entry each is true of."
+    constitution: "#labeler"
+    reads: [record, files-where-decorum-allows]
+    writes: [notes, contracts, errors]
+    out-of-scope:
+      - Moving anything.
+      - Quoting a file.
+
+  - name: organizer
+    mission: "Sort a place toward the target layout its decorum gives, and record each move."
+    constitution: "#organizer"
+    reads: [record, files-where-decorum-allows]
+    writes: [moves, notes, contracts, errors]
+    moves: within-target-layout      # the only seat that does
+    out-of-scope:
+      - Places without a target layout.
+      - Deleting.
+
+  - name: checker
+    mission: "Go looking from the metadata; where something is not where it should be, file an error and stop."
+    constitution: "#checker"
+    reads: [record, holding]
+    writes: [errors, contracts]
+    out-of-scope:
+      - Fixing anything it finds.
+
+  - name: toolsmith
+    mission: "Turn a supervised pass into an extractor, prove it against its example set, and keep it proved."
+    constitution: "#toolsmith"
+    reads: [record, example-set]
+    writes: [extractors, example-sets, contracts, errors]
+    out-of-scope:
+      - Reading beyond the example set; the extractor reads the rest.
+      - Running an extractor that is not proved where it points.
+
+  - name: corrector
+    mission: "Read the errors and fix the metadata, asking another library through Helm where knowledge disagrees."
+    constitution: "#corrector"
+    reads: [record, other-libraries-through-helm]
+    writes: [notes, errors, contracts]
+    out-of-scope:
+      - Reaching another machine except through Helm.
+      - Asking another library for a file.
