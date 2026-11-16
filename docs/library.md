@@ -101,6 +101,15 @@ address itself is the sensitive thing. The binding says `needs: grant` and holds
 `where` says to ask. We can extract all of it for the asker, because asking is already the front
 door: the address comes with the grant, the same way a core does.
 
+**A place can move out from under its address.** Drive letters are handed out when volumes mount, and
+the order can change. On 2026-11-16, Google Drive mounted at `E:` while the Drobo was detached, and the
+Drobo came back as `H:`. A binding can say which volume it expects (`{at: "E:/", label: "TO ENHANCE"}`),
+and every x-ray records the volume it saw. When the volume at an address is not the expected one,
+`fcpm library`, its console, and `xray` say `ASK A PERSON`. `xray` then refuses, so that nothing is
+recorded under another place's name. The library changes no binding and no letter. Putting it right is
+a person's job. Noticing it, and lodging it as a request for action, is a librarian's
+([constitution](https://github.com/FC-Public-Media/fcpublicmedia.org/blob/librarians/CONSTITUTION.md)).
+
 **On another host, Helm asks.** A holding on another machine is addressed through that machine's helm
 (`../machines/helms.yml`): the job and the label, such as `production:attic`. Asking is the library's
 business, but only Helm works out how to reach another machine and get a grant. The grant layer can also

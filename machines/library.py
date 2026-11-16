@@ -250,6 +250,29 @@ def size(n):
         n /= 1024
 
 
+def moved(top, head, expect=None):
+    """Whether the volume at a holding's address is the one it should be: the label its binding expects,
+    and the volume its last x-ray saw. A drive letter that went to something else (a cloud drive mounting
+    where a LUN was) is noticed here, and is a person's to put right: the library only says so. None
+    when all is as it was, or when there is no telling."""
+    if not top.is_dir():
+        if not head and not expect:
+            return None
+        return f"ASK A PERSON: {top} is not there" + (f"; the last x-ray saw it on volume {head['volume']}"
+                                                       if head.get("volume") else "")
+    serial, vlabel = volume(top)
+    if expect and vlabel != expect:
+        return (f"ASK A PERSON: {top} is volume {serial}" + (f" \"{vlabel}\"" if vlabel else "")
+                + f", and the binding expects \"{expect}\". A drive letter may have moved; nothing is"
+                + " x-rayed there until it is put right")
+    was, was_label = head.get("volume"), head.get("label", "").replace("_", " ")
+    if was and serial != was:
+        return (f"ASK A PERSON: {top} is now on volume {serial}" + (f" \"{vlabel}\"" if vlabel else "")
+                + f"; the last x-ray saw volume {was}" + (f" \"{was_label}\"" if was_label else "")
+                + ". A drive letter may have moved; the binding is not changed here")
+    return None
+
+
 def counted(rows):
     files = [r for r in rows if r["kind"] == "f"]
     return len(files), sum(int(r["bytes"] or 0) for r in files)
@@ -277,21 +300,26 @@ def status(args):
         if not at:
             print(f"  {label:9} not kept here ({terms})")
             continue
-        if not isinstance(at, str):
-            print(f"  {label:9} {at.get('store', '?')}: fcpm library where {label} ({terms})")
+        a = address(label, args.profile)
+        if a["store"] != "filesystem" or a.get("needs") == "grant" or not a.get("at"):
+            print(f"  {label:9} {a['store']}: fcpm library where {label} ({terms})")
             continue
+        at = a["at"]
         top = Path(os.path.expanduser(at))
+        last = at_rev(wt, label) if wt else None
+        m = moved(top, last[0] if last else {}, a.get("label"))
         if not top.is_dir():
             print(f"  {label:9} {at}: missing ({terms})")
-            continue
-        serial, vlabel = volume(top)
-        print(f"  {label:9} {at} on {socket.gethostname()}, volume {serial}" + (f" \"{vlabel}\"" if vlabel else "") + f" ({terms})")
-        last = at_rev(wt, label) if wt else None
-        if not last:
-            print(f"  {'':9} not x-rayed yet: fcpm library xray {label}")
-            continue
-        n, b = counted(last[1])
-        print(f"  {'':9} {len(git('log', '--format=%h', *looks(label), cwd=wt).split())} x-ray(s); the last, {last[0].get('taken', '?')}: {n} files, {size(b)}")
+        else:
+            serial, vlabel = volume(top)
+            print(f"  {label:9} {at} on {socket.gethostname()}, volume {serial}" + (f" \"{vlabel}\"" if vlabel else "") + f" ({terms})")
+            if not last:
+                print(f"  {'':9} not x-rayed yet: fcpm library xray {label}")
+            else:
+                n, b = counted(last[1])
+                print(f"  {'':9} {len(git('log', '--format=%h', *looks(label), cwd=wt).split())} x-ray(s); the last, {last[0].get('taken', '?')}: {n} files, {size(b)}")
+        if m:
+            print(f"  {'':9} {m}")
 
 
 def where(args):
@@ -315,6 +343,10 @@ def xray(args):
     top = place(args.label, args.profile)
     if not top.is_dir():
         sys.exit(f"library: {top} is not there")
+    bound = bindings(args.profile).get(args.label)
+    expect = bound.get("label") if isinstance(bound, dict) else None
+    if expect and volume(top)[1] != expect:
+        sys.exit(f"library: {moved(top, {}, expect)}")   # never record one volume under another's name
     rows = walk(top)
     n, b = counted(rows)
     serial, vlabel = volume(top)
@@ -325,6 +357,9 @@ def xray(args):
         head["label"] = vlabel.replace(" ", "_")
     wt = retain(args.profile, make=True)
     before = at_rev(wt, args.label)
+    m = moved(top, before[0]) if before else None
+    if m:
+        print(f"note      {m}")
     out = wt / args.label / "xray.tsv"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
@@ -625,6 +660,11 @@ def compose(profile):
         if got:
             n, b = counted(got[1])
             lines.append(f"x-rayed   {label}: {got[0].get('taken', '?')}, {n} files, {size(b)}")
+        a = address(label, profile) if label in bindings(profile) else {}
+        if a.get("store") == "filesystem" and a.get("at") and a.get("needs") != "grant":
+            m = moved(Path(os.path.expanduser(a["at"])), got[0] if got else {}, a.get("label"))
+            if m:
+                lines.append(f"  {label}: {m}")
     return "\n".join(lines) + "\n"
 
 

@@ -59,6 +59,15 @@ holdings:
     expects: ordinary         # mostly not sensitive; private still, since nobody was promised a read
     xray: shape
 
+  enhance:
+    is: intake
+    holds: "the Drobo's TO ENHANCE volume, over iSCSI: what waits to be enhanced, and post's tank (POST,
+      DOORS). Production's own pipeline writes here"
+    lifecycle: transient
+    disposition: private
+    expects: ordinary         # members' takes and their working files
+    xray: shape
+
   drive:
     is: intake
     holds: "the organization's Google Drive, mounted as a drive (streamed, not mirrored to a folder): the
