@@ -14,6 +14,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`library.md`](library.md) | the library: branches by purpose, where things are, holdings, `~/code/library` and `retain/`, x-rays, summaries and the inventory wing, librarians and their seats, project seats, the grant book, the keychain wing |
 | [`payments.md`](payments.md) | the transactions, who processes each, prices, keys |
 | [`identity.md`](identity.md) | passkeys, claims, devices, check-in, authorize |
+| [`pickup.md`](pickup.md) | how things travel: the QR pickup station, the iced bottle (the wire format), the outbox, the cloud box |
 | [`keystore.md`](keystore.md) | a machine's own key (birth, granted by merge), and the keystore that holds real secrets |
 | [`station.md`](station.md) | the station: machines, profiles, fcpm, sync, grants, runnables, the bay, engines |
 | [`kiosk.md`](kiosk.md) | the kiosk screen, dim mode, the kiosk's door |
