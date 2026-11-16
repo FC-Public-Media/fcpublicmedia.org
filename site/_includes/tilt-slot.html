@@ -1,0 +1,15 @@
+{%- comment -%} One slot of a tilt module: a colour token, an image or a video by path, or nothing. See docs/site.md#tilt-stacks. {%- endcomment -%}
+{%- assign _v = include.value | default: "" | strip -%}
+{%- assign _media = false -%}
+{%- if _v contains "/" -%}{%- assign _media = true -%}{%- endif -%}
+{%- assign _ext = _v | split: "." | last | downcase -%}
+<div class="tilt-slot tilt-{{ include.where }}"
+  {%- if _v != "" and _media == false %} style="--slot: var(--{{ _v }})"{% endif %} aria-hidden="true">
+  {%- if _media -%}
+    {%- if _ext == "mp4" or _ext == "webm" or _ext == "mov" or _ext == "m4v" %}
+    <video src="{{ _v }}" preload="none" muted loop playsinline disablepictureinpicture tabindex="-1" data-tilt-video></video>
+    {%- else %}
+    <img src="{{ _v }}" alt="" decoding="async"{% unless include.eager %} loading="lazy"{% endunless %}>
+    {%- endif -%}
+  {%- endif %}
+</div>
