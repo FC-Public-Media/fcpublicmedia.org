@@ -30,6 +30,7 @@ node's LAN:
 | a summary | in the note of the entry it summarises: of a listing, of what its metadata is like, of its timeline | labeler |
 | a move | `<LABEL>/moves/<date>-<short-name>.md`: from, to, when, why, so the next x-ray's `D` and `A` read as one move | organizer |
 | an error | `<LABEL>/errors/<date>-<short-name>.md`: the path, what the metadata said, what was found, when | checker, any seat |
+| a proof | `<LABEL>/proofs/<extractor>/`: the example set (paths), and the metadata the person accepted for it | toolsmith |
 
 A note names roles, never people: "a board member's project", "the treasurer's records".
 
@@ -67,6 +68,8 @@ The end of a supervised pass is an **extractor**: a script that pulls that metad
   metadata well. A proof that fails is how we notice that something broke.
 - **The toolsmith tends it.** When a proof fails, the toolsmith mends the extractor until the proof
   passes again ("ah, yes, it is getting the metadata again"), or raises the failure.
+- **It is code, so it lives on `main`, beside `fcpm library`.** It holds no paths and no data. Its
+  proofs stay in `retain/`, because an example set is real entries from a real place.
 - **It runs on a schedule, in step with the x-ray.** With a script doing the work, no seat handles every
   file, or even thinks about the run. The seats generate the metadata, check it, and raise what does
   not look right.
