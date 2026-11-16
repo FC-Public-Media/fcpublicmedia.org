@@ -1,0 +1,8 @@
+#!/bin/sh
+# run-keys -- every minute on the keychain's box, from the keys account's crontab (outfit): the door's
+# keys as HOLDERS says on the origin's own main (the installed copy until main has one).
+LIB=/usr/local/lib/fcpm/keychain
+H=$HOME/HOLDERS
+git -c safe.directory='*' -C /srv/origin/FC-Public-Media/fcpublicmedia.org show main:machines/keychain/HOLDERS > "$H.new" 2>/dev/null &&
+  [ -s "$H.new" ] && mv "$H.new" "$H" || { rm -f "$H.new"; cp "$LIB/HOLDERS" "$H"; }
+FCPM_HOLDERS=$H python3 -I $LIB/door keys

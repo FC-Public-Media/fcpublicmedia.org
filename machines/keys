@@ -8,11 +8,22 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
   keys offer GROUP DEVICE   ask for GROUP's wanted keys on a one-time page only DEVICE on the tailnet can open
   keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment, and the
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
+  keys flush [--every S]   hand every key held here up to the keychain (machines/keychain), protected; `take` does
+                        it by itself, so a key stored here is never only here
+  keys keychain         the keychain's state, and every key it holds (never a value)
+  keys init | unlock | lock   make, open or close the keychain: a keeper's, the passphrase in a window on this screen
+  keys code FOR         a new one-time claim code for FOR's identity (a keeper's)
+  keys mint ssh FOR     a new ssh identity for the machine FOR, made on the keychain and lodged there as FOR's
+                        secret: only FOR is ever handed its private half; the public half is printed
+  keys claim CODE       this machine's identity, minted on the keychain for its job and carried here as a
+                        one-time code: kept as ~/.ssh/fcpm-<job> (on Windows, by the OpenSSH agent alone)
   keys birth            this machine's own key, made here once: the private half never leaves (on Windows,
                         it is held by the OpenSSH agent and no file keeps it); the public half is shown, as
                         text and as a QR code, and lodged once at this machine's helm, which passes it to
                         the keystore's for a board wizard to grant (docs/keystore.md, Birth)
 
+`run` takes a key this machine does not hold from the keychain, into the command's environment only.
+FCPM_KEYCHAIN_SSH is how ssh reaches the keychain's door (default fcpm-keychain, a ~/.ssh/config name).
 FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test;
 FCPM_BIRTH_FILE keeps a born key's private half in a file, as on Linux, so a test never touches the agent;
 FCPM_BIRTH_HELM is the helm a test's petition is set down at.
@@ -216,6 +227,7 @@ def take(groups, name, key):
                 f"until keys.yml or the key is set right. Nothing needs typing again.")
         print(f"keys: {said}")
         tell(f"Keychain: {name}", said)
+    return flush({name: group})
 
 
 def tailnet(device):
@@ -309,9 +321,13 @@ def run(groups, names, command):
         if group["form"] != "env":
             sys.exit(f"keys: {name} is one raw value; its job reads {short(group['path'])} itself")
         held = read(group)
+        for k in [k for k in group["keys"] if not held.get(k)]:
+            done = keychain("get", name, k)
+            if done.returncode == 0 and done.stdout:
+                held[k] = done.stdout
         missing = [k for k in group["keys"] if not held.get(k)]
         if missing:
-            sys.exit(f"keys: {name} lacks {', '.join(missing)}: keys take {name} {missing[0]}")
+            sys.exit(f"keys: {name} lacks {', '.join(missing)}, here and on the keychain: keys take {name} {missing[0]}")
         env.update({k: held[k] for k in group["keys"]})
     env["PATH"] = os.pathsep.join(gear_folders() + [env.get("PATH", "")])
     exe = shutil.which(command[0], path=env["PATH"])                    # Windows: npx is npx.cmd
@@ -320,6 +336,45 @@ def run(groups, names, command):
     if WINDOWS:
         sys.exit(subprocess.run([exe] + command[1:], env=env).returncode)
     os.execve(exe, command, env)
+
+def keychain(*words, stdin=""):
+    """One verb at the keychain's door (machines/keychain/door), by this machine's key."""
+    to = os.environ.get("FCPM_KEYCHAIN_SSH", "fcpm-keychain")
+    try:
+        return subprocess.run([ssh_tool("ssh"), "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", to, *words],
+                              input=stdin, capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(words, 1, "", "the keychain did not answer in 5 minutes")
+
+
+def flush(groups):
+    """Every key held here, put to the keychain. The keychain keeps the same value once."""
+    failed = 0
+    for name, group in groups.items():
+        for key, value in read(group).items():
+            if key not in group["keys"] or not value:
+                continue
+            done = keychain("put", name, key, stdin=value)
+            said = (done.stdout or done.stderr).strip().removeprefix("door: ")
+            print(f"keys: keychain {said or 'did not answer'}" if done.returncode == 0 else f"keys: {name} {key} NOT flushed: {said}")
+            failed += done.returncode != 0
+    return 1 if failed else 0
+
+
+def keeper(verb):
+    """init or unlock: the keychain's passphrase, asked in a window on this screen, sent once."""
+    text = "The keychain's passphrase." if verb == "unlock" else \
+        "A passphrase for FCPM's keychain: 8 characters at least. Whoever holds it can open every key."
+    phrase = ask(f"Keychain: {verb}", text)
+    if phrase is None:
+        sys.exit("keys: the window was closed; nothing sent")
+    if verb == "init" and ask("Keychain: init", "The same passphrase again.") != phrase:
+        sys.exit("keys: the two did not match; nothing sent")
+    print("keys: the keychain is working on it (a minute on its box)")
+    done = keychain(verb, stdin=phrase + "\n")
+    print((done.stdout or done.stderr).strip())
+    return done.returncode
+
 
 # Windows' own OpenSSH: its agent is a service that keeps a key across restarts, and Git's ssh does not speak to it.
 OPENSSH = pathlib.Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "OpenSSH"
@@ -450,15 +505,73 @@ def birth():
     return show_birth(job, pub)
 
 
+def claim(code):
+    """Trade a one-time code for the identity the keychain minted for this machine's job, and keep it."""
+    jobs = wears()
+    if not jobs:
+        sys.exit("keys: this machine wears no job, so its key would have no name (machines/binding)")
+    job, ssh = jobs[0], pathlib.Path.home() / ".ssh"
+    key, pub = ssh / f"fcpm-{job}", ssh / f"fcpm-{job}.pub"
+    if pub.exists():
+        sys.exit(f"keys: {short(pub)} is here already; take it away to claim another")
+    host = os.environ.get("FCPM_KEYCHAIN_CLAIM", "claim@" + os.environ.get("FCPM_KEYCHAIN_HOST", "origin.local"))
+    done = subprocess.run([ssh_tool("ssh"), "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", host, code.strip().lower()],
+                          capture_output=True, text=True, timeout=300)
+    if done.returncode or "PRIVATE KEY" not in done.stdout:
+        sys.exit(f"keys: the keychain did not hand it over: {done.stderr.strip() or done.stdout.strip()}")
+    ssh.mkdir(parents=True, exist_ok=True)
+    made = pathlib.Path(tempfile.mkdtemp(prefix="fcpm-claim-"))
+    try:
+        fd = os.open(made / "key", os.O_WRONLY | os.O_CREAT, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as out:
+            out.write(done.stdout)
+        public = subprocess.run([ssh_tool("ssh-keygen"), "-y", "-f", str(made / "key")], capture_output=True, text=True, check=True).stdout
+        if agent_held():
+            if not agent_running():
+                start_agent()
+            added = agent(str(made / "key"))
+            if added.returncode:
+                sys.exit(f"keys: the agent did not take the key ({added.stderr.strip()}); claim again with a new code")
+        else:
+            shutil.copyfile(made / "key", key)
+            if not WINDOWS:
+                os.chmod(key, 0o600)
+        pub.write_text(public.strip() + f" {job} (FCPM)\n", encoding="utf-8")
+    finally:
+        shutil.rmtree(made, ignore_errors=True)
+    print(f"keys: {job}'s identity is here: {short(pub)}")
+    return 0
+
+
 def main(argv):
     if WINDOWS:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if argv == ["birth"]:
         return birth()
+    if argv[:1] == ["claim"] and len(argv) == 2:
+        return claim(argv[1])
+    if argv in (["init"], ["unlock"]):
+        return keeper(argv[0])
+    if argv in (["lock"], ["keychain"]) or (argv[:2] == ["mint", "ssh"] and len(argv) == 3) or \
+            (argv[:1] == ["code"] and len(argv) == 2):
+        if argv == ["keychain"]:
+            argv = ["status"]
+            print(keychain("status").stdout, end="")
+            argv = ["list"]
+        done = keychain(*argv)
+        print((done.stdout + done.stderr).rstrip())
+        return done.returncode
     groups = load()
     if not groups and argv[:1] != ["run"]:
         print(f"keys: this machine holds no keychain ({', '.join(wears()) or 'it wears no job'})")
         return 0
+    if argv == ["flush"]:
+        return flush(groups)
+    if argv[:2] == ["flush", "--every"] and len(argv) == 3:       # the crew's line: a key is never only here for long
+        while True:
+            flush(load())
+            sys.stdout.flush()
+            time.sleep(int(argv[2]))
     if argv[:1] == ["take"] and len(argv) == 3:
         return take(groups, argv[1], argv[2])
     if argv[:1] == ["offer"] and len(argv) == 3:

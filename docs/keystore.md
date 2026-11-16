@@ -1,5 +1,10 @@
 # The keystore
 
+**Built since: [`machines/keychain`](../machines/keychain/PROFILE.md), FCPM's one keychain, on the
+origin's box.** Decided by Autumn: the keychain controls each machine's canonical key, because we
+administer machines the public uses. An identity is minted there and claimed by its machine. Birth, below, is
+what a machine does only until it can claim one. Every key held anywhere is flushed up to it.
+
 How an FCPM machine comes by its keys, with no operator in the path. A machine's own key is born on
 it and lodged with the keystore; a real secret (a token, a stream key) sits sealed there. Either way a
 board wizard grants it. Built: birth and its petition (`fcpm keys birth`, `wizard:keys+birth`); the
