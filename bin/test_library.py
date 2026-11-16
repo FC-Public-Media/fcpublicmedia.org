@@ -167,6 +167,37 @@ class Library(unittest.TestCase):
         self.assertIn("busy", self.run_(library.console, beat=False), "stale: written again")
         self.run_(library.release, grant=gid)
 
+    def test_a_volume_that_changed_under_a_holding_is_noticed(self):
+        self.run_(library.xray)
+        head = library.at_rev(self.retained(), "attic")[0]
+        self.assertIsNone(library.moved(self.top, head), "same volume: nothing to say")
+        volume = library.volume
+        try:
+            library.volume = lambda p: ("1983-1116", "Google Drive")      # a cloud drive took the letter
+            m = library.moved(self.top, head)
+            self.assertIn("ASK A PERSON", m)
+            self.assertIn('"Google Drive"', m)
+            self.assertIn("ASK A PERSON", self.run_(library.xray), "an x-ray says so as it looks")
+        finally:
+            library.volume = volume
+        self.assertIn("is not there", library.moved(self.top / "gone", head))
+
+    def test_a_binding_that_expects_a_label_refuses_the_wrong_volume(self):
+        bindings, volume = library.bindings, library.volume
+        try:
+            library.bindings = lambda p: {"attic": {"at": str(self.top), "label": "TO ENHANCE"}}
+            library.volume = lambda p: ("1983-1116", "Google Drive")
+            self.assertIn('expects "TO ENHANCE"', library.moved(self.top, {}, "TO ENHANCE"))
+            with self.assertRaises(SystemExit) as no:
+                self.run_(library.xray)
+            self.assertIn("ASK A PERSON", str(no.exception.code))
+            self.assertIsNone(library.at_rev(self.retained(), "attic") if self.retained().exists() else None)
+            library.volume = lambda p: ("ABCD-0001", "TO ENHANCE")
+            self.run_(library.xray)
+            self.assertIsNotNone(library.at_rev(self.retained(), "attic"))
+        finally:
+            library.bindings, library.volume = bindings, volume
+
     def test_every_binding_names_a_declared_holding(self):
         declared = set(yaml.safe_load((REPO / "library.yml").read_text(encoding="utf-8"))["holdings"])
         for f in (REPO / "machines").glob("*/library.yml"):
