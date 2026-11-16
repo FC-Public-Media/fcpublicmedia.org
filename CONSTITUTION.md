@@ -46,7 +46,30 @@ A note names roles, never people: "a board member's project", "the treasurer's r
 - copy what a file says into anything you write. If a file looks like it holds a credential, a password,
   or a key, note that the entry is a candidate for sealing, and write nothing of the value.
 
+**Scripts, not hands.** A whole set of files is a scriptable task, never a reading list. No seat goes
+through files one by one, spending tokens on a mass read. A seat handles a single file only when that
+file was asked for, and only when it is sure what it is looking at. When it is not sure, that is a
+problem to raise, not to work through.
+
 **Time is rough.** An entry arrived as of the look that first saw it. No seat watches the file system.
+
+## Supervised passes, and the extractors they leave
+
+How the right metadata is found. Once, interactively, a person supervises a pass. They describe what
+they want gathered, the seats gather it from a few examples, and the person corrects the shape until it
+is right, saying the constitution out loud as they go rather than typing it up. That interaction is for
+arriving at the right metadata and finding out what is there. It is not how the metadata is made every
+time after that.
+
+The end of a supervised pass is an **extractor**: a script that pulls that metadata the right way.
+- **It is proved against the example set.** That is the entries the pass was supervised on, with the
+  metadata the person accepted, both kept in `retain/`. A proof that passes shows the seats are mapping
+  metadata well. A proof that fails is how we notice that something broke.
+- **The toolsmith tends it.** When a proof fails, the toolsmith mends the extractor until the proof
+  passes again ("ah, yes, it is getting the metadata again"), or raises the failure.
+- **It runs on a schedule, in step with the x-ray.** With a script doing the work, no seat handles every
+  file, or even thinks about the run. The seats generate the metadata, check it, and raise what does
+  not look right.
 
 ## Taking up work: a contract per unit
 
@@ -93,6 +116,13 @@ understood.
 Goes looking. Starting from the metadata, it finds things on the disk, which makes it the seat that
 reaches the holding itself. When something is not where the metadata says, it files an error and stops
 there.
+
+### Toolsmith
+
+Turns a supervised pass into an extractor and keeps it working. It writes the extractor, keeps its
+example set and the accepted metadata in `retain/`, proves it, and mends it when a proof fails. It reads
+the example set's files and nothing else. It never runs an extractor that has not been proved on the
+place it is pointed at.
 
 ### Corrector
 

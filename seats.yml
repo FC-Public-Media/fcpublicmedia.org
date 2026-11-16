@@ -43,6 +43,15 @@ seats:
     out-of-scope:
       - Fixing anything it finds.
 
+  - name: toolsmith
+    mission: "Turn a supervised pass into an extractor, prove it against its example set, and keep it proved."
+    constitution: "#toolsmith"
+    reads: [record, example-set]
+    writes: [extractors, example-sets, contracts, errors]
+    out-of-scope:
+      - Reading beyond the example set; the extractor reads the rest.
+      - Running an extractor that is not proved where it points.
+
   - name: corrector
     mission: "Read the errors and fix the metadata, asking another library through Helm where knowledge disagrees."
     constitution: "#corrector"
