@@ -60,6 +60,16 @@ A person may ask for a pass, usually while studying a place in order to sort it.
 fitted into the layout is noted as outside it, once, at the top of what is not understood. Then the
 pass stops there. A librarian never crawls a mixed pile whose structure it does not understand.
 
+## When libraries disagree
+
+What this library knows may disagree with what another library knows, often because the files are
+in different places. A librarian may then ask the other library, and only through Helm: Helm puts the
+query to that library's own front door. The librarian never reaches the other machine itself. The
+query asks what the other library holds and has noted about the thing. It never asks for a file, and
+it is not a grant. The answer is written into `retain/` beside the disagreement. If the two still do
+not agree, the librarian files an error and leaves it for a person or the correction pass. If the
+other library says not now, the librarian waits.
+
 ## Time
 
 Roughly. An entry arrived as of the look that first saw it. Librarians do not watch the file system,
