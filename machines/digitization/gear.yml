@@ -22,6 +22,7 @@ gear:
       The LAN's lines (docs/lines.md): this machine's reader key, and opening what a pile tells it.
     package: age
     provisioner: apt
+    answers: [age]            # ../../tell.yml needs
     updates: apt
     restart-tier: app
     holds: "nothing of its own; the reader key is in ~/.local/state/fcpm/lines"

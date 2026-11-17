@@ -79,7 +79,8 @@ Tests: `bin/test_lines.py`:
     fcpm lines serve                    my copy, as files: lines.<host>.fcpublicmedia.local (lan.yml `lines: true`; the crew's `lines` line)
 
 A first tell bears the pile and is refused, because the reader hears nothing yet. Once the reader says
-what it hears, the next one lands. A machine needs `age`, `jq`, `openssl` and `bash`.
+what it hears, the next one lands. A machine needs `age`, `jq`, `openssl` and `bash`: [`../tell.yml`](../tell.yml) `needs:` names them,
+and each machine's gear answers them.
 
 ## Not built
 

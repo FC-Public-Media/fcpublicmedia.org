@@ -16,12 +16,30 @@ foreach ($l in Get-Content (Join-Path $Here "gear.yml")) {
     elseif ($cur -and $l -match '^\s*at:\s*"?([^"#]+)"?') { $cur.at = [Environment]::ExpandEnvironmentVariables($Matches[1].Trim().Replace('\\', '\')) }
     elseif ($cur -and $l -match '^\s*package:\s*(\S+)') { $cur.package = $Matches[1] }
     elseif ($cur -and $l -match '^\s*provisioner:\s*(\S+)') { $cur.prov = $Matches[1] }
+    elseif ($cur -and $l -match '^\s*answers:\s*\[([^\]]*)\]') { $cur.answers = @($Matches[1] -split '[,\s]+' | Where-Object { $_ }) }
 }
 foreach ($e in $entries) {
-    if ($e.at) { Say (Test-Path $e.at) "gear $($e.gear) at $($e.at)" "provisioner: $($e.prov)" }
+    $e.ok = $true
+    if ($e.at) { $e.ok = Test-Path $e.at; Say $e.ok "gear $($e.gear) at $($e.at)" "provisioner: $($e.prov)" }
     elseif ($e.package) {
-        $hit = winget list --id $e.package --exact --accept-source-agreements 2>$null | Select-String -SimpleMatch $e.package
-        Say ([bool]$hit) "gear $($e.gear) ($($e.package))" "winget install --id $($e.package) --exact"
+        $e.ok = [bool](winget list --id $e.package --exact --accept-source-agreements 2>$null | Select-String -SimpleMatch $e.package)
+        Say $e.ok "gear $($e.gear) ($($e.package))" "winget install --id $($e.package) --exact"
+    }
+}
+
+# Needs, from the Tell (../../tell.yml `needs:`): each must be answered by gear above that is here.
+$tell = Join-Path $Here "../../tell.yml"
+if (Test-Path $tell) {
+    $inNeeds = $false
+    foreach ($l in Get-Content $tell) {
+        if ($l -match '^needs:') { $inNeeds = $true; continue }
+        if ($inNeeds -and $l -match '^\S') { $inNeeds = $false }
+        if ($inNeeds -and $l -match '^\s*-\s*program:\s*(\S+)') {
+            $need = $Matches[1]
+            $by = @($entries | Where-Object { $_.answers -contains $need })
+            if (-not $by) { Say $false "need $need (tell.yml)" "no gear here answers it: add one to gear.yml" }
+            else { $g = $by[0]; Say $g.ok "need $need (tell.yml), by gear $($g.gear)" "see gear $($g.gear)" }
+        }
     }
 }
 
