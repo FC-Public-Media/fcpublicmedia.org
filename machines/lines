@@ -50,7 +50,7 @@ def me():
     jobs = [p.name for p in b["profiles"]() if fact and (b["declared"](p).get(system) or "").casefold() == fact.casefold()]
     if not jobs:
         sys.exit("lines: this machine wears no job, so it has no name on the lines (machines/binding)")
-    return jobs[0]
+    return fact.lower() if fact.lower() in jobs else jobs[0]          # the job named for the machine, if one is
 
 
 def key():
