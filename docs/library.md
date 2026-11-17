@@ -33,13 +33,20 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton; the LAN's |
 | `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
-| `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
+| `lobby` | first contact and orientation: takes people to things on other branches | not made |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
-| `retain/studies` | studies: a flat list of what we are working out, in our own words. Distilled before anything is published. The LAN's | begun |
+| `retain/studies` | studies: a flat list of what we are working out, in our own words. The working half: what settles is summarized into a released branch. The LAN's | on origin.local |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
 state, and the origin's map was part of it.
+
+**The library is where things go by default** (Autumn, 2026-11-17). Most of what we do is stored here,
+not in a folder on whichever computer did it. A session's context stays on its machine, and sessions
+often can't see each other, so work kept loose ties people to the one computer that holds it. In the
+library, any machine on the LAN reads it from the origin. Then what we did is summarized into released
+branches, because the reason to do it at all is to publish it: we heal local access, and we show the
+work in the open so others can see how. Released branches have no names yet.
 
 ### `refs/` stays; the origin is a branch of the library
 
@@ -178,7 +185,7 @@ branch and not a nesting inside another.
 | `retain/` | `retain/<machine>` | to origin.local, after each commit, and never past it |
 | `studies/` | `retain/studies` | to origin.local, like `retain/`, and never past it |
 | `librarians/` | `librarians` | to origin.local, and never past it. Instructions, never data |
-| `lobby/` | `lobby` | to GitHub. Compiled from what is publishable: directions to the rest, and nothing else |
+| `lobby/` | `lobby` | to GitHub. First contact and orientation: directions to things on other branches, and nothing else |
 
 **`retain` is the LAN's earmark, not this machine's.** A branch named `retain/…` goes to the LAN's
 origin (origin.local), eagerly: `fcpm library` pushes it after each commit, when the library has a
@@ -196,8 +203,9 @@ the origin, without asking an agent or opening a session on the machine that wro
 
 Retained branches are our own operational history, chronicled on the LAN.
 
-**The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
-directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.
+**The lobby** is first contact. It orients people and takes them to things on other branches, the
+released ones first: what is here, where it is, what each place exposes, and how to ask. It holds
+directions, never the things themselves. Not made yet.
 
 **One `retain` branch, or one per machine?** Open; Autumn is deciding. Today each machine has its own
 `retain/<machine>`. The leaning is one `retain` branch we all work on, with a folder per machine. That
