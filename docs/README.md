@@ -15,6 +15,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`payments.md`](payments.md) | the transactions, who processes each, prices, keys |
 | [`identity.md`](identity.md) | passkeys, claims, devices, check-in, authorize |
 | [`pickup.md`](pickup.md) | how things travel: the QR pickup station, the iced bottle (the wire format), the outbox, the cloud box |
+| [`lines.md`](lines.md) | the LAN's lines: machines tell each other things by data piles through the origin, each pile's shape signed in |
 | [`keystore.md`](keystore.md) | a machine's own key (birth, granted by merge), and the keystore that holds real secrets |
 | [`station.md`](station.md) | the station: machines, profiles, fcpm, sync, grants, runnables, the bay, engines |
 | [`consoles.md`](consoles.md) | consoles, a screen each that a helm keeps written, and places, an origin branch's repositories as a listing |

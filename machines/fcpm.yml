@@ -60,6 +60,12 @@ verbs:
     windows: machines/keys
     linux: machines/keys
 
+  - verb: lines
+    args: "[reader|hear WRITER CHANNEL...|tell READER CHANNEL FILE...|read WRITER]"
+    says: "this machine's lines on the LAN: data piles told and read through the origin (docs/lines.md)"
+    windows: "not: Git Bash with age.exe and jq.exe, not tried yet"
+    linux: machines/lines
+
   - verb: relay
     args: "[status|on|off]"
     says: "the origin's mode: on, what is pushed there goes out to GitHub every 15 minutes; off, LAN-only"

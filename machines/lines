@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""lines -- this machine's lines on the LAN: a pile it tells each neighbor, and one each neighbor tells it.
+They meet at the origin, LAN-only (docs/lines.md). The pins are retain/lines, each machine its own folder:
+
+    lines/<me>/reader.age.pub     what a pile to me is sealed to
+    lines/<me>/signer.pub         the key my commits are signed with
+    lines/<me>/out/<reader>       the pile I tell <reader>, pinned where I last told
+    lines/<me>/in/<writer>        the pile <writer> tells me, pinned where I last read
+
+  lines                         every line: what I told and was read, what is waiting for me
+  lines reader                  make my reader key, once, and publish it with my signer
+  lines hear WRITER [CHANNEL...]  what I hear on WRITER's pile to me, signed into its shape; none: nothing
+  lines tell READER CHANNEL FILE...   seal FILEs to READER on CHANNEL and push them
+  lines read WRITER             open what WRITER told me since my pin, into the workshed, and move the pin
+
+A pile is retain/pile/<writer>.<reader>, data-pile's drop channel (.pile-engine): every entry sealed
+to the reader's key, the manifest signed by the writer's. It is born with its keyholders
+(keys/allowed_signers: writer and reader), its shape (shape/hears, empty: it hears nothing) and the hook
+that plays it (hooks/admit, ./pile-admit), all signed in. The origin's lines-gate plays that hook.
+FCPM_LINES_ME, FCPM_LINES_KEY, FCPM_LINES_HOME and FCPM_ORIGIN_URL stand in for a test.
+"""
+import json
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+HERE = pathlib.Path(__file__).resolve().parent
+ENGINE = HERE.parent / ".pile-engine"
+HOME = pathlib.Path(os.environ.get("FCPM_LINES_HOME", pathlib.Path.home() / ".local/state/fcpm/lines"))
+REPO = HOME / "git"
+WORKSHED = HOME / "workshed"
+READER_KEY = HOME / "reader.age"
+URL = os.environ.get("FCPM_ORIGIN_URL", "fcpm-origin:/srv/origin") + "/FC-Public-Media/fcpublicmedia.org"
+SLICE = "refs/remotes/origin/retain/lines"
+NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*")
+
+
+def me():
+    if os.environ.get("FCPM_LINES_ME"):
+        return os.environ["FCPM_LINES_ME"]
+    b = {"__name__": "binding", "__file__": str(HERE / "binding")}
+    exec(compile((HERE / "binding").read_text(encoding="utf-8"), str(HERE / "binding"), "exec"), b)
+    system = b["this_platform"]()
+    fact = b["actual"](system) if system else None
+    jobs = [p.name for p in b["profiles"]() if fact and (b["declared"](p).get(system) or "").casefold() == fact.casefold()]
+    if not jobs:
+        sys.exit("lines: this machine wears no job, so it has no name on the lines (machines/binding)")
+    return jobs[0]
+
+
+def key():
+    if os.environ.get("FCPM_LINES_KEY"):
+        return pathlib.Path(os.environ["FCPM_LINES_KEY"])
+    own = pathlib.Path.home() / ".ssh" / f"fcpm-{me()}"
+    return own if own.exists() else pathlib.Path.home() / ".ssh/origin-standby"
+
+
+def git(*args, input=None, env=None, check=True):
+    done = subprocess.run(["git", "-C", str(REPO), *args], input=input, capture_output=True, text=True,
+                          env=dict(os.environ, **(env or {})))
+    if check and done.returncode:
+        sys.exit(f"lines: git {args[0]}: {done.stderr.strip()}")
+    return done.stdout.strip() if check else done
+
+
+def fetch():
+    if not REPO.exists():
+        REPO.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-q", "--bare", str(REPO)], check=True)
+        git("remote", "add", "origin", URL)
+        git("config", "remote.origin.fetch", "+refs/heads/retain/line*:refs/remotes/origin/retain/line*")
+        git("config", "--add", "remote.origin.fetch", "+refs/heads/retain/pile/*:refs/remotes/origin/retain/pile/*")
+    git("fetch", "-q", "origin")
+
+
+def rev(ref):
+    done = git("rev-parse", "-q", "--verify", ref + "^{commit}", check=False)
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
+def show(ref, path):
+    done = git("show", f"{ref}:{path}", check=False)
+    return done.stdout if done.returncode == 0 else None
+
+
+def pin(path):
+    """The commit a gitlink in the slice names, or None."""
+    out = git("ls-tree", SLICE, path, check=False).stdout.split()
+    return out[2] if len(out) >= 3 and out[0] == "160000" else None
+
+
+def pile_ref(writer, reader):
+    """The newest generation of the pile writer tells reader, as a remote ref, or None."""
+    refs = git("for-each-ref", "--format=%(refname)", f"refs/remotes/origin/retain/pile/{writer}.{reader}*").split()
+    refs = [r for r in refs if re.fullmatch(rf".*/{re.escape(writer)}\.{re.escape(reader)}(\.g[0-9]+)?", r)]
+    return max(refs, key=lambda r: int(r.rsplit(".g", 1)[1]) if ".g" in r.rsplit("/", 1)[1] else 1, default=None)
+
+
+def signed(tree, parents, message):
+    k = key()
+    args = ["-c", "gpg.format=ssh", "-c", f"user.signingkey={k}", "commit-tree", tree, "-S"]
+    for p in parents:
+        args += ["-p", p]
+    who = {"GIT_AUTHOR_NAME": me(), "GIT_AUTHOR_EMAIL": f"{me()}@lines.fcpublicmedia.local",
+           "GIT_COMMITTER_NAME": me(), "GIT_COMMITTER_EMAIL": f"{me()}@lines.fcpublicmedia.local"}
+    return git(*args, "-m", message, env=who)
+
+
+def push(sha, ref):
+    done = git("push", "-q", "origin", f"{sha}:refs/heads/{ref}", check=False)
+    if done.returncode:
+        said = [l.split("origin: ", 1)[-1] for l in done.stderr.splitlines() if "origin: " in l]
+        return said[-1] if said else done.stderr.strip().splitlines()[-1]
+    return None
+
+
+def mine(changes):
+    """Put my folder's changes on retain/lines: {path: text | ('link', sha)}. Tries again on a race."""
+    for _ in range(3):
+        fetch()
+        tip = rev(SLICE)
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {"GIT_INDEX_FILE": str(pathlib.Path(tmp) / "index")}
+            git("read-tree", tip or "--empty", env=env)
+            for path, value in changes.items():
+                if isinstance(value, tuple):
+                    git("update-index", "--add", "--cacheinfo", f"160000,{value[1]},{path}", env=env)
+                else:
+                    blob = git("hash-object", "-w", "--stdin", input=value)
+                    git("update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
+            tree = git("write-tree", env=env)
+        if tip and git("rev-parse", f"{tip}^{{tree}}") == tree:
+            return
+        said = push(signed(tree, [tip] if tip else [], f"lines: {me()}: " + ", ".join(sorted(changes))), "retain/lines")
+        if not said:
+            return
+        if "non-fast-forward" not in said and "fetch first" not in said:
+            sys.exit(f"lines: the origin said: {said}")
+    sys.exit("lines: retain/lines moved three times under me; try again")
+
+
+def engine(tool, tree, *args, env=None):
+    done = subprocess.run(["bash", str(ENGINE / "bin" / tool), "--dir", str(tree), *args], capture_output=True,
+                          env=dict(os.environ, DP_SITE=str(tree), **(env or {})))
+    if done.returncode:
+        sys.exit(f"lines: {tool}: {done.stderr.decode(errors='replace').strip()}")
+    return done.stdout
+
+
+def unpack(sha, into):
+    data = subprocess.run(["git", "-C", str(REPO), "archive", sha], capture_output=True, check=True).stdout
+    subprocess.run(["tar", "-xf", "-", "-C", str(into)], input=data, check=True)
+
+
+def count(sha):
+    text = show(sha, "inbox/manifest.json") if sha else None
+    return len(json.loads(text)["entries"]) if text else 0
+
+
+def reader():
+    fetch()
+    if not READER_KEY.exists():
+        READER_KEY.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["age-keygen", "-o", str(READER_KEY)], check=True, capture_output=True)
+        os.chmod(READER_KEY, 0o600)
+    pub = subprocess.run(["age-keygen", "-y", str(READER_KEY)], capture_output=True, text=True, check=True).stdout.strip()
+    mine({f"lines/{me()}/reader.age.pub": pub + "\n", f"lines/{me()}/signer.pub": pathlib.Path(str(key()) + ".pub").read_text()})
+    print(f"lines: {me()} reads with {pub}")
+
+
+def hear(writer, channels):
+    fetch()
+    ref = pile_ref(writer, me())
+    tip = rev(ref) if ref else None
+    if not tip:
+        sys.exit(f"lines: {writer} has no pile to {me()} yet; its first `lines tell {me()}` bears one")
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = pathlib.Path(tmp)
+        unpack(tip, tree)
+        (tree / "shape").mkdir(exist_ok=True)
+        (tree / "shape/hears").write_text("".join(c + "\n" for c in channels))
+        sha = signed(tree_of(tree), [tip], f"shape: {me()} hears {' '.join(channels) or 'nothing'} from {writer}")
+    said = push(sha, ref.split("refs/remotes/origin/", 1)[1])
+    if said:
+        sys.exit(f"lines: the origin said: {said}")
+    print(f"lines: {me()} hears {' '.join(channels) or 'nothing'} from {writer}")
+
+
+def tell(to, channel, files):
+    if not NAME.fullmatch(to) or not NAME.fullmatch(channel):
+        sys.exit("lines: tell READER CHANNEL FILE...")
+    fetch()
+    ref = pile_ref(me(), to)
+    tip = rev(ref) if ref else None
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = pathlib.Path(tmp) / "pile"
+        tree.mkdir()
+        parents = []
+        if tip:
+            unpack(tip, tree)
+            parents = [tip]
+        else:
+            age = (show(SLICE, f"lines/{to}/reader.age.pub") or "").strip()
+            theirs = (show(SLICE, f"lines/{to}/signer.pub") or "").split()
+            if not age or len(theirs) < 2:
+                sys.exit(f"lines: {to} has no reader key yet (lines/{to}/); it runs `lines reader` first")
+            pub = pathlib.Path(str(key()) + ".pub").read_text().split()
+            fpr = subprocess.run(["ssh-keygen", "-lf", str(key()) + ".pub"], capture_output=True, text=True).stdout.split()[1]
+            (tree / "keys").mkdir()
+            (tree / "keys/drop.signers").write_text(f"drop {pub[0]} {pub[1]}\n")
+            (tree / "keys/pile.age.pub").write_text(age + "\n")
+            (tree / "keys/allowed_signers").write_text(
+                f"{me()}@lines.fcpublicmedia.local {pub[0]} {pub[1]}\n{to}@lines.fcpublicmedia.local {theirs[0]} {theirs[1]}\n")
+            (tree / "shape").mkdir()
+            (tree / "shape/hears").write_text("")
+            (tree / "hooks").mkdir()
+            shutil.copyfile(HERE / "pile-admit", tree / "hooks/admit")
+            (tree / "pile.yml").write_text(
+                f"# The pile {me()} tells {to}, on the LAN's lines (docs/lines.md).\n"
+                f"id: {me()}.{to}\nscope: fcpm-lan\nwriter: {me()}\nreader: {to}\n"
+                f"sources:\n  - name: drop\n    signer: {fpr}\nage_recipient: {age}\n")
+            ref = f"refs/remotes/origin/retain/pile/{me()}.{to}"
+            born = signed(tree_of(tree), [], f"pile {me()}.{to}: born, sealed to {to}'s reader key; hears nothing yet")
+            said = push(born, f"retain/pile/{me()}.{to}")
+            if said:
+                sys.exit(f"lines: the origin said: {said}")
+            parents = [born]
+        engine("drop-pack", tree, "--sign", str(key()), *[str(pathlib.Path(f).resolve()) for f in files])
+        sha = signed(tree_of(tree), parents, f"tell {to}: {channel}, {len(files)} entr{'y' if len(files) == 1 else 'ies'}\n\nTell-Channel: {channel}")
+    branch = ref.split("refs/remotes/origin/", 1)[1]
+    said = push(sha, branch)
+    mine({f"lines/{me()}/out/{to}": ("link", parents[0] if said else sha)})
+    if said:
+        sys.exit(f"lines: the origin said: {said}")
+    print(f"lines: told {to} on {channel}: {count(sha)} entries in {branch}")
+
+
+def tree_of(folder):
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {"GIT_INDEX_FILE": str(pathlib.Path(tmp) / "index")}
+        git(f"--work-tree={folder}", "add", "-A", ".", env=env)
+        return git("write-tree", env=env)
+
+
+def read(writer):
+    fetch()
+    ref = pile_ref(writer, me())
+    tip = rev(ref) if ref else None
+    if not tip:
+        sys.exit(f"lines: {writer} has told {me()} nothing yet")
+    seen = pin(f"lines/{me()}/in/{writer}")
+    start = count(seen) if seen and git("merge-base", "--is-ancestor", seen, tip, check=False).returncode == 0 else 0
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = pathlib.Path(tmp)
+        unpack(tip, tree)
+        engine("verify", tree, "--source", "drop")
+        manifest = json.loads((tree / "inbox/manifest.json").read_text())["entries"]
+        out = WORKSHED / writer
+        out.mkdir(parents=True, exist_ok=True)
+        for e in manifest[start:]:
+            data = engine("decrypt", tree, "--source", "drop", "--seq", str(e["seq"]), env={"DP_IDENTITY_FILE": str(READER_KEY)})
+            dest = out / f"{e['seq']:06d}"
+            dest.write_bytes(data)
+            print(f"lines: {writer} #{e['seq']} entered {e['created_at']}, read now: {dest}")
+    mine({f"lines/{me()}/in/{writer}": ("link", tip)})
+    if start == len(manifest):
+        print(f"lines: nothing new from {writer}")
+
+
+def status():
+    fetch()
+    who = me()
+    print(f"lines: {who}" + ("" if (show(SLICE, f"lines/{who}/reader.age.pub")) else "  (no reader key: lines reader)"))
+    names = set()
+    for r in git("for-each-ref", "--format=%(refname:lstrip=5)", "refs/remotes/origin/retain/pile").split():
+        w, rd = r.split(".")[:2]
+        names |= {rd} if w == who else ({w} if rd == who else set())
+    for n in sorted(names):
+        out_ref, in_ref = pile_ref(who, n), pile_ref(n, who)
+        told = count(rev(out_ref)) if out_ref else 0
+        read_there = count(pin(f"lines/{n}/in/{who}"))
+        waiting = count(rev(in_ref)) if in_ref else 0
+        read_here = count(pin(f"lines/{who}/in/{n}"))
+        print(f"  {n:16} out {told} told, {read_there} read there   in {waiting - read_here} waiting of {waiting}"
+              f"   hears {' '.join((show(in_ref, 'shape/hears') or '').split()) if in_ref else '-'}")
+
+
+def main(argv):
+    if not argv:
+        return status()
+    if argv == ["reader"]:
+        return reader()
+    if argv[0] == "hear" and len(argv) >= 2:
+        return hear(argv[1], argv[2:])
+    if argv[0] == "tell" and len(argv) >= 4:
+        return tell(argv[1], argv[2], argv[3:])
+    if argv[0] == "read" and len(argv) == 2:
+        return read(argv[1])
+    sys.exit(__doc__.strip())
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
