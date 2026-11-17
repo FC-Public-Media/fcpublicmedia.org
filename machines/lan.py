@@ -47,7 +47,7 @@ def profile(host=None):
 
 
 def load(where=None):
-    """{name: (serves, gear)} for this machine: serves is board, site, directory or gear."""
+    """{name: (serves, gear)} for this machine: serves is board, site, directory, gear or lines."""
     where = where or profile()
     f = where / "lan.yml" if where else None
     if not f or not f.is_file():
@@ -66,6 +66,8 @@ def load(where=None):
     names[own] = ("directory", None)
     for gear in cfg.get("gear") or []:
         names["%s.%s" % (gear, own)] = ("gear", gear)
+    if cfg.get("lines"):
+        names["lines.%s" % own] = ("lines", None)         # its copy of the LAN's lines, as files (../docs/lines.md)
     return names
 
 

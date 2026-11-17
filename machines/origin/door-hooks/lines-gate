@@ -2,6 +2,9 @@
 """lines-gate OLD NEW REF -- what the origin takes on the LAN's lines (../../../docs/lines.md). Run by
 pre-receive for every repository, with the pusher's holder name in FCPM_DOOR_HOLDER.
 
+lines-gate --check OLD NEW REF -- the same rules a reader plays on a pile it fetched, from wherever it
+came: nothing about who pushed it, everything about who signed it. FCPM_LINES_SLICE names the slice's ref.
+
   retain/lines              each machine writes only its own folder, lines/<holder>/
   retain/pile/W.R[.gN]      the pile W tells R. Every commit is signed by a key the pile names
                             (keys/allowed_signers, from its birth) and pushed by its signer. W's commits
@@ -24,6 +27,7 @@ PILE = re.compile(rf"refs/heads/retain/pile/({NAME})\.({NAME})(\.g[0-9]+)?")
 BLOCK = re.compile(r"inbox/[0-9]{6}\.(enc|kage)")
 AGE = re.compile(r"age1[ac-hj-np-z02-9]{58}")
 DOMAIN = "@lines.fcpublicmedia.local"
+SLICE = os.environ.get("FCPM_LINES_SLICE", "refs/heads/retain/lines")
 BIRTH = ("pile.yml", "keys/drop.signers", "keys/pile.age.pub", "keys/allowed_signers", "hooks/admit")
 
 
@@ -85,19 +89,21 @@ def birth(new, ref, holder, writer, reader):
     if f"writer: {writer}" not in yml or f"reader: {reader}" not in yml:
         no(ref, f"a new pile says `writer: {writer}` and `reader: {reader}` in pile.yml")
     to = (show(root, "keys/pile.age.pub") or "").strip()
-    if not AGE.fullmatch(to) or to != (show("refs/heads/retain/lines", f"lines/{reader}/reader.age.pub") or "").strip():
+    if not AGE.fullmatch(to) or to != (show(SLICE, f"lines/{reader}/reader.age.pub") or "").strip():
         no(ref, f"a new pile is sealed to {reader}'s own reader key, lines/{reader}/reader.age.pub")
     for path in BIRTH:
         if show(root, path) is None:
             no(ref, f"a new pile is born with {path}")
     if {p for _, p in changed(EMPTY, root)} - set(BIRTH) - {"shape/hears"}:
         no(ref, "a pile's birth holds its shape and keys, nothing told yet")
-    if signer(root, show(root, "keys/allowed_signers"), ref) != writer or holder != writer:
+    if signer(root, show(root, "keys/allowed_signers"), ref) != writer or holder not in (None, writer):
         no(ref, f"{writer} bears its own pile, signed and pushed by itself")
     return root
 
 
 def pile(old, new, ref, holder, writer, reader):
+    if holder is not None and holder != writer and holder != reader:
+        no(ref, f"{holder} neither tells nor reads this pile")
     base = old if old != ZERO else birth(new, ref, holder, writer, reader)
     signers = show(base, "keys/allowed_signers")
     for commit in git("rev-list", "--reverse", f"{base}..{new}").split():
@@ -105,7 +111,7 @@ def pile(old, new, ref, holder, writer, reader):
         if len(parents) != 1:
             no(ref, f"{commit[:9]} is a merge; a pile is one line")
         who = signer(commit, signers, ref)
-        if who != holder:
+        if holder is not None and who != holder:
             no(ref, f"{commit[:9]} is {who}'s; {holder} pushes only its own")
         paths = changed(parents[0], commit)
         if who == reader:
@@ -136,14 +142,14 @@ def pile(old, new, ref, holder, writer, reader):
                 no(ref, "data-pile verify: " + ((done.stderr or done.stdout).strip().splitlines() or ["failed"])[-1])
 
 
-def main(old, new, ref):
-    holder = os.environ.get("FCPM_DOOR_HOLDER")
-    if not holder:
+def main(old, new, ref, check=False):
+    holder = None if check else os.environ.get("FCPM_DOOR_HOLDER")
+    if not holder and not check:
         no(ref, "the LAN's lines are written through the door, as a keyholder")
     if new == ZERO:
         no(ref, "a line is never deleted")
     if ref == "refs/heads/retain/lines":
-        return lines(old, new, ref, holder)
+        return None if check else lines(old, new, ref, holder)
     m = PILE.fullmatch(ref)
     if not m:
         no(ref, "a pile is retain/pile/<writer>.<reader>, or .g2 and on for a new generation")
@@ -151,4 +157,7 @@ def main(old, new, ref):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:4])
+    if sys.argv[1:2] == ["--check"]:
+        main(*sys.argv[2:5], check=True)
+    else:
+        main(*sys.argv[1:4])

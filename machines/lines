@@ -6,12 +6,17 @@ They meet at the origin, LAN-only (docs/lines.md). The pins are retain/lines, ea
     lines/<me>/signer.pub         the key my commits are signed with
     lines/<me>/out/<reader>       the pile I tell <reader>, pinned where I last told
     lines/<me>/in/<writer>        the pile <writer> tells me, pinned where I last read
+    lines/<me>/serves             where my copy of all of it can be fetched, read-only, with the origin away
 
   lines                         every line: what I told and was read, what is waiting for me
   lines reader                  make my reader key, once, and publish it with my signer
   lines hear WRITER [CHANNEL...]  what I hear on WRITER's pile to me, signed into its shape; none: nothing
   lines tell READER CHANNEL FILE...   seal FILEs to READER on CHANNEL and push them
-  lines read WRITER             open what WRITER told me since my pin, into the workshed, and move the pin
+  lines read WRITER             check what WRITER told me since my pin, open it into the workshed, move the pin
+  lines serve                   keep my copy of the lines as files a neighbor can fetch (FCPM_LINES_SERVE)
+
+Where a pile came from proves nothing: a reader plays the origin's own rules on it (lines-gate --check)
+before opening anything. The origin is where we meet; any neighbor's copy will do when it is away.
 
 A pile is retain/pile/<writer>.<reader>, data-pile's drop channel (.pile-engine): every entry sealed
 to the reader's key, the manifest signed by the writer's. It is born with its keyholders
@@ -21,6 +26,7 @@ FCPM_LINES_ME, FCPM_LINES_KEY, FCPM_LINES_HOME and FCPM_ORIGIN_URL stand in for 
 """
 import json
 import os
+import platform
 import pathlib
 import re
 import shutil
@@ -37,6 +43,11 @@ WORKSHED = HOME / "workshed"
 READER_KEY = HOME / "reader.age"
 URL = os.environ.get("FCPM_ORIGIN_URL", "fcpm-origin:/srv/origin") + "/FC-Public-Media/fcpublicmedia.org"
 SLICE = "refs/remotes/origin/retain/lines"
+GATE = HERE / "origin/door-hooks/lines-gate"
+ZERO = "0" * 40
+SITES = pathlib.Path("/var/lib/fcpm/sites")
+SERVE = pathlib.Path(os.environ["FCPM_LINES_SERVE"]) if os.environ.get("FCPM_LINES_SERVE") else \
+    (SITES / "lines/current" if SITES.is_dir() else None)
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*")
 
 
@@ -62,7 +73,7 @@ def key():
 
 def git(*args, input=None, env=None, check=True):
     done = subprocess.run(["git", "-C", str(REPO), *args], input=input, capture_output=True, text=True,
-                          env=dict(os.environ, **(env or {})))
+                          env=dict(os.environ, GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=10", **(env or {})))
     if check and done.returncode:
         sys.exit(f"lines: git {args[0]}: {done.stderr.strip()}")
     return done.stdout.strip() if check else done
@@ -75,7 +86,24 @@ def fetch():
         git("remote", "add", "origin", URL)
         git("config", "remote.origin.fetch", "+refs/heads/retain/line*:refs/remotes/origin/retain/line*")
         git("config", "--add", "remote.origin.fetch", "+refs/heads/retain/pile/*:refs/remotes/origin/retain/pile/*")
-    git("fetch", "-q", "origin")
+    if git("fetch", "-q", "origin", check=False).returncode == 0:
+        return "origin"
+    for url in neighbors():                    # fast-forward only: a neighbor's copy never moves a line back
+        got = git("fetch", "-q", url, "refs/heads/retain/line*:refs/remotes/origin/retain/line*",
+                  "refs/heads/retain/pile/*:refs/remotes/origin/retain/pile/*", check=False)
+        if "fatal" not in got.stderr:
+            return url
+    sys.exit("lines: neither the origin nor any neighbor answered")
+
+
+def neighbors():
+    """Where the others serve their copies, by the slice as last fetched."""
+    out = git("ls-tree", "-r", "--name-only", SLICE, "lines", check=False).stdout.split()
+    urls = []
+    for path in out:
+        if path.endswith("/serves") and not path.startswith(f"lines/{me()}/"):
+            urls += (show(SLICE, path) or "").split()
+    return urls
 
 
 def rev(ref):
@@ -254,7 +282,14 @@ def read(writer):
     if not tip:
         sys.exit(f"lines: {writer} has told {me()} nothing yet")
     seen = pin(f"lines/{me()}/in/{writer}")
-    start = count(seen) if seen and git("merge-base", "--is-ancestor", seen, tip, check=False).returncode == 0 else 0
+    if not (seen and git("merge-base", "--is-ancestor", seen, tip, check=False).returncode == 0):
+        seen = None
+    start = count(seen)
+    check = subprocess.run([sys.executable, "-I", str(GATE), "--check", seen or ZERO, tip, "refs/heads/" + ref.split("refs/remotes/origin/", 1)[1]],
+                           capture_output=True, text=True, env=dict(os.environ, GIT_DIR=str(REPO), FCPM_LINES_SLICE=SLICE,
+                                                                    FCPM_PILE_ENGINE=str(ENGINE)))
+    if check.returncode:
+        sys.exit(f"lines: {writer}'s pile does not hold up here: {check.stdout.strip().split(': ', 2)[-1]}")
     with tempfile.TemporaryDirectory() as tmp:
         tree = pathlib.Path(tmp)
         unpack(tip, tree)
@@ -267,9 +302,31 @@ def read(writer):
             dest = out / f"{e['seq']:06d}"
             dest.write_bytes(data)
             print(f"lines: {writer} #{e['seq']} entered {e['created_at']}, read now: {dest}")
-    mine({f"lines/{me()}/in/{writer}": ("link", tip)})
+    try:
+        mine({f"lines/{me()}/in/{writer}": ("link", tip)})
+    except SystemExit as e:
+        print(f"lines: read; the pin waits for the origin ({e})")
     if start == len(manifest):
         print(f"lines: nothing new from {writer}")
+
+
+def serve():
+    """My copy of the lines, as files nginx serves read-only (lines.<host>.fcpublicmedia.local), and where."""
+    if not SERVE:
+        sys.exit("lines: nowhere to serve from (FCPM_LINES_SERVE)")
+    fetch()
+    if not (SERVE / "HEAD").exists():
+        SERVE.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-q", "--bare", str(SERVE)], check=True)
+    git("push", "-q", str(SERVE), "refs/remotes/origin/retain/*:refs/heads/retain/*", check=False)
+    subprocess.run(["git", "-C", str(SERVE), "update-server-info"], check=True)
+    host = os.environ.get("FCPM_LINES_URL") or f"http://lines.{platform.node().split('.')[0].lower()}.fcpublicmedia.local/"
+    link = SITES / "by-name" / host.split("//", 1)[-1].strip("/")
+    if SITES.is_dir() and SERVE.parent.parent == SITES and not link.exists():
+        link.symlink_to(f"../{SERVE.parent.name}/{SERVE.name}")
+    if (show(SLICE, f"lines/{me()}/serves") or "").split() != [host]:
+        mine({f"lines/{me()}/serves": host + "\n"})
+    print(f"lines: served at {host}")
 
 
 def status():
@@ -299,6 +356,8 @@ def main(argv):
         return hear(argv[1], argv[2:])
     if argv[0] == "tell" and len(argv) >= 4:
         return tell(argv[1], argv[2], argv[3:])
+    if argv == ["serve"]:
+        return serve()
     if argv[0] == "read" and len(argv) == 2:
         return read(argv[1])
     sys.exit(__doc__.strip())

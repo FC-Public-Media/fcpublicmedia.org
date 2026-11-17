@@ -32,11 +32,11 @@ class Lines(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
-    def lines(self, who, *args, door=None):
+    def lines(self, who, *args, door=None, env=None):
         home = self.tmp / who
         env = dict(os.environ, FCPM_LINES_ME=who, FCPM_LINES_KEY=str(home / "key"), FCPM_LINES_HOME=str(home / "lines"),
                    FCPM_ORIGIN_URL=str(self.tmp / "origin"), FCPM_DOOR_HOLDER=door or who,
-                   FCPM_PILE_ENGINE=str(ROOT / ".pile-engine"))
+                   FCPM_PILE_ENGINE=str(ROOT / ".pile-engine"), **(env or {}))
         return subprocess.run([sys.executable, str(LINES), *args], capture_output=True, text=True, env=env, cwd=self.tmp)
 
     def note(self, name, text):
@@ -83,6 +83,45 @@ class Lines(unittest.TestCase):
         pushed_as = self.lines("digitization", "tell", "production", "keychain", self.note("e", "x"), door="production")
         self.assertEqual(pushed_as.returncode, 1)
         self.assertIn("bears its own pile", pushed_as.stderr)
+
+    def told_once(self):
+        for who in ("digitization", "production"):
+            self.lines(who, "reader")
+        self.lines("digitization", "tell", "production", "keychain", self.note("a", "first"))
+        self.lines("production", "hear", "digitization", "keychain")
+        told = self.lines("digitization", "tell", "production", "keychain", self.note("c", "your identity"))
+        self.assertEqual(told.returncode, 0, told.stderr)
+
+    def test_a_neighbor_serves_the_lines_with_the_origin_away(self):
+        self.told_once()
+        served = self.tmp / "served"
+        done = self.lines("digitization", "serve", env={"FCPM_LINES_SERVE": str(served), "FCPM_LINES_URL": str(served)})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.lines("production")                                         # production learns where digitization serves
+        (self.tmp / "origin").rename(self.tmp / "away")
+        read = self.lines("production", "read", "digitization")
+        self.assertEqual(read.returncode, 0, read.stderr)
+        self.assertIn("the pin waits for the origin", read.stdout)
+        got = [p.read_text() for p in (self.tmp / "production/lines/workshed/digitization").iterdir()]
+        self.assertEqual(got, ["your identity"])
+
+    def test_a_forged_pile_is_refused_wherever_it_came_from(self):
+        self.told_once()
+        evil = self.tmp / "evil"
+        subprocess.run(["git", "clone", "-q", "--mirror", str(self.tmp / "origin/FC-Public-Media/fcpublicmedia.org"), str(evil)], check=True)
+        pile = "refs/heads/retain/pile/digitization.production"
+        tip = subprocess.run(["git", "-C", str(evil), "rev-parse", pile], capture_output=True, text=True).stdout.strip()
+        blob = subprocess.run(["git", "-C", str(evil), "hash-object", "-w", "--stdin"], input="gossip\n", capture_output=True, text=True).stdout.strip()
+        env = dict(os.environ, GIT_INDEX_FILE=str(self.tmp / "evil.index"), GIT_DIR=str(evil))
+        subprocess.run(["git", "read-tree", tip], env=env, check=True)
+        subprocess.run(["git", "update-index", "--cacheinfo", f"100644,{blob},shape/hears"], env=env, check=True)
+        tree = subprocess.run(["git", "write-tree"], env=env, capture_output=True, text=True).stdout.strip()
+        forged = subprocess.run(["git", "-c", "user.name=production", "-c", "user.email=production@lines.fcpublicmedia.local",
+                                 "commit-tree", tree, "-p", tip, "-m", "shape: hears gossip"], env=env, capture_output=True, text=True).stdout.strip()
+        check = subprocess.run([sys.executable, str(ROOT / "machines/origin/door-hooks/lines-gate"), "--check", "0" * 40, forged, pile],
+                               capture_output=True, text=True, env=dict(os.environ, GIT_DIR=str(evil), FCPM_PILE_ENGINE=str(ROOT / ".pile-engine")))
+        self.assertEqual(check.returncode, 1)
+        self.assertIn("not signed by a key this pile names", check.stdout)
 
 
 if __name__ == "__main__":

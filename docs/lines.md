@@ -7,6 +7,17 @@ writes, one reads. Two machines that talk both ways have two lines.
 Everything here stays on the LAN. The origin holds it (`retain/` is never carried to GitHub,
 [`../machines/origin/intake`](../machines/origin/intake) `LAN_ONLY`), and the origin is the gate.
 
+## Where it lives proves nothing
+
+The origin is where we meet, not what we trust. A pile is good wherever it is found: on the origin, on a
+neighbor, carried across the QR air gap, or fetched over plain HTTP. Its keyholders, its shape and the
+hook that plays the shape are signed into it, so a reader plays the origin's own rules on what it
+fetched (`lines-gate --check`) before it opens anything. What the origin centralizes is provisioning:
+minting an identity, first contact, a person's yes. A machine once provisioned acts as itself: it
+keeps its keys, checks for itself, and with the origin away fetches from any neighbor's copy
+(`lines/<name>/serves`). Writes wait for the origin. Nothing here is secret but what is sealed:
+the branches, the pins and the keyholder lists are plain.
+
 ## The slice: `retain/lines`
 
 One branch every machine shares, in fcpublicmedia.org at the origin. Each machine writes only its own
@@ -16,6 +27,7 @@ folder, so pushes never collide:
     lines/<me>/signer.pub         the key my commits are signed with (ssh)
     lines/<me>/out/<reader>       the pile I tell <reader>, pinned where I last told
     lines/<me>/in/<writer>        the pile <writer> tells me, pinned where I last read
+    lines/<me>/serves             where my copy of all of it can be fetched, read-only
 
 Each line shows twice, once from each end. The writer's pin is what was sent and the reader's is what
 was read: the gap is what waits, and the time between them is the delay. The pins are gitlinks,
@@ -51,8 +63,11 @@ push through the origin's door, which now tells it the pusher. It takes:
 - from the reader, only `shape/hears`.
 
 The shape is part of the signed payload, so what a pile refuses is something its keyholders signed.
-Tests: `bin/test_lines.py` (a pile that hears nothing, then one shape, then an answer back; another's folder; a
-push by someone who did not sign).
+Tests: `bin/test_lines.py`:
+- a pile that hears nothing, then one shape, then an answer back;
+- another machine's folder, and a push by someone who did not sign;
+- a read from a neighbor's copy with the origin away;
+- a forged pile, refused by the reader's own check.
 
 ## On a machine
 
@@ -60,7 +75,8 @@ push by someone who did not sign).
     fcpm lines reader                   once: my reader key (kept in ~/.local/state/fcpm/lines) and signer, published
     fcpm lines hear WRITER CHANNEL...   what I hear on WRITER's pile to me
     fcpm lines tell READER CHANNEL FILE...
-    fcpm lines read WRITER              into the workshed (~/.local/state/fcpm/lines/workshed), never a tracked tree
+    fcpm lines read WRITER              checked here, then into the workshed (~/.local/state/fcpm/lines/workshed), never a tracked tree
+    fcpm lines serve                    my copy, as files: lines.<host>.fcpublicmedia.local (lan.yml `lines: true`; the crew's `lines` line)
 
 A first tell bears the pile and is refused, because the reader hears nothing yet. Once the reader says
 what it hears, the next one lands. A machine needs `age`, `jq`, `openssl` and `bash`.
