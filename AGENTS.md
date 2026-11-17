@@ -25,8 +25,9 @@ The one running piece is the site-worker, a repository of its own (FC-Public-Med
 
 ## Studies
 
-A study is a folder on the `studies` branch, flat: the study in our words, and every file tree made
-during it, written out. Check it out, work on it, commit, push, like any branch. Never `main`, never a bundle.
+A study is a folder on `retain/studies` (the LAN's), flat: the study in our words, and every file tree made
+during it, written out. From the cloud, which can't reach it, commit the folder to the `studies` branch on
+GitHub; it is taken in as it came. Never `main`, never a bundle.
 
 ## Wix
 
