@@ -18,29 +18,14 @@ install -m 644 "$HERE/HOLDERS" $LIB/HOLDERS
 install -d -m 700 -o keys -g keys /srv/keychain/.ssh
 [ -f /srv/keychain/.ssh/authorized_keys ] || install -m 600 -o keys -g keys /dev/null /srv/keychain/.ssh/authorized_keys
 su -s /bin/sh keys -c "FCPM_HOLDERS=$LIB/HOLDERS python3 -I $LIB/door keys"
-# claim: no key and no password, and sshd runs nothing for it but `door claim`, as keys. A new machine
-# trades its one-time code there for the identity minted for it; a wrong or used code gets nothing.
-apk add -q sudo
-id claim >/dev/null 2>&1 || adduser -D -H -h /var/empty -s /bin/sh claim
-sed -i -E 's/^claim:[^:]*:/claim::/' /etc/shadow
-CLAIM="/usr/bin/python3 -I $LIB/door claim"
-printf 'Defaults:claim env_keep += "SSH_ORIGINAL_COMMAND"\nclaim ALL=(keys) NOPASSWD: %s\n' "$CLAIM" > /etc/sudoers.d/fcpm-claim
-chmod 440 /etc/sudoers.d/fcpm-claim
-sed -i '/^# BEGIN keychain claim/,/^# END keychain claim/d' /etc/ssh/sshd_config
-cat >> /etc/ssh/sshd_config <<C
-# BEGIN keychain claim: machines/keychain/outfit
-Match User claim
-  PasswordAuthentication yes
-  PermitEmptyPasswords yes
-  KbdInteractiveAuthentication no
-  PubkeyAuthentication no
-  DisableForwarding yes
-  PermitTTY no
-  ForceCommand sudo -n -u keys $CLAIM
-# END keychain claim
-C
-sshd -t
-rc-service sshd reload >/dev/null
+# No account answers without a key: what a machine is lodged is delivered through the data pile.
+if grep -q '^# BEGIN keychain claim' /etc/ssh/sshd_config; then
+  sed -i '/^# BEGIN keychain claim/,/^# END keychain claim/d' /etc/ssh/sshd_config
+  sshd -t && rc-service sshd reload >/dev/null
+fi
+rm -f /etc/sudoers.d/fcpm-claim
+! id claim >/dev/null 2>&1 || deluser claim
+rm -rf /srv/keychain/claims
 
 echo '* * * * * /bin/sh /usr/local/lib/fcpm/keychain/run-keys' > /etc/crontabs/keys
 chmod 600 /etc/crontabs/keys
