@@ -22,12 +22,17 @@ removes a worktree with changes in it.
 
 What each server says (its builds, its pages) is under `%LOCALAPPDATA%\editing-bay-1\workshed\`.
 
+Where the machine has a library, the workshed writes in its grant book ([library.md](library.md#the-grant-book)),
+seat `workshed`: a worktree made is a grant spent at once, and a served one is a grant its server's own process
+holds, released on stop or lapsed when the process ends. The `library` and `workshed` consoles show both
+([consoles.md](consoles.md)). No library is made to hold one.
+
 ## Doing it
 
 | | |
 |---|---|
 | `fcpm workshed` | every worktree: up or stopped, its port, what its branch changes (pages by URL) |
-| `fcpm workshed new BRANCH [--shed S] [--repo R]` | a worktree for BRANCH: following `origin/BRANCH` if it is there, else new from `origin/main` |
+| `fcpm workshed new BRANCH [--shed S] [--repo R] [--from REV]` | a worktree for BRANCH: following `origin/BRANCH` if it is there, else new from `origin/main`, or from REV (an origin's pin). R may be `<owner>/<repo>`, as `fcpm places` lists it |
 | `fcpm workshed start NAME` / `stop NAME` | its server, in the background. `serve NAME` keeps it in the window |
 | `fcpm workshed check [NAME]` | each thing it needs, a line each, `ok` or `WRONG` with what to do; exits 1 if any is wrong |
 | `fcpm workshed log [NAME]` | the workshed's log, or that worktree's server's |
@@ -69,7 +74,7 @@ under a second, and again on every save. Never one page alone: the header, the f
 
 - **The loudspeaker.** The workshed's log is the stream for now. Its lines belong on the loudspeaker
   (`fcpm hear`), and the loudspeaker runs on digitization only, on Linux.
-- **A shed from an origin branch.** The `origin` branch pins every repository by `owner/repo`. A shed per
-  origin branch, its worktrees following what moved there, and a loudspeaker line when a pin moves, are the
-  next step; worktrees here are not tied to `refs/` beyond being made from it.
+- **A shed that follows its origin branch.** A worktree can be made at an origin's pin, in the shed named for
+  the branch, from what `fcpm places` lists ([consoles.md](consoles.md#places)). Nothing yet moves it when the
+  pin moves, or says so on a console.
 - **jekyll-enough from the origin.** It is in `refs/` today, and not yet among the origin's pins.

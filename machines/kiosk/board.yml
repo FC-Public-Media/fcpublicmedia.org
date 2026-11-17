@@ -39,6 +39,10 @@ nouns:
   - noun: Seats
     rows:
       - {from: seats}
+  - noun: Consoles
+    rows:
+      - {title: Consoles, href: /consoles, says: "what this helm holds up to read, a screen each, in plain text"}
+      - {title: Places, href: /places, says: "the origin's repositories, and where each one is here"}
   - noun: Models
     rows:
       - {title: Bay 1's models, href: /models/, says: "which are up", staff: true, live: models}

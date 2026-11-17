@@ -164,10 +164,22 @@ verbs:
     linux: "troves/pools/pools.py by uv"
 
   - verb: workshed
-    args: "[new BRANCH [--shed SHED] [--repo REPO]|start NAME|stop NAME|serve NAME|check [NAME]|log [NAME]|remove NAME]"
+    args: "[new BRANCH [--shed SHED] [--repo REPO|OWNER/REPO] [--from REV]|start NAME|stop NAME|serve NAME|check [NAME]|log [NAME]|remove NAME]"
     says: "worktrees someone works in (~/code/workshed), each site built whole and served on its own port; the Helm's /workshed/"
     windows: "machines/workshed.py by uv"
     linux: "machines/workshed.py by uv (it needs a Node and jekyll-enough: fcpm workshed check)"
+
+  - verb: consoles
+    args: "[NAME|beat]"
+    says: "what this machine holds up to read, a screen each, written whole on its beat (~/code/consoles); the Helm's /consoles"
+    windows: "machines/consoles.py by uv"
+    linux: "machines/consoles.py by uv"
+
+  - verb: places
+    args: "[BRANCH]"
+    says: "an origin branch's repositories, a row each: its worktree, its mirror, or offered (Fighter's location providers read it); the Helm's /places"
+    windows: "machines/places.py by uv"
+    linux: "machines/places.py by uv"
 
   - verb: library
     args: "[status|where|xray|diff|summary|log|browse LABEL ...|grant SEAT UNIT WORDS|release GRANT|grants|console|inbox [round|answer]|outbox [make]|signer [mint]]"

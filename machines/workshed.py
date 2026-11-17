@@ -1,9 +1,11 @@
 """workshed -- where a person sits down to work on something, a worktree each, and sees it run.
 
     fcpm workshed                         every worktree in the workshed: branch, changes, port, running
-    fcpm workshed new BRANCH [--shed SHED] [--repo REPO]
+    fcpm workshed new BRANCH [--shed SHED] [--repo REPO] [--from REV]
                                           a worktree for BRANCH (dev and fcpublicmedia.org unless named),
-                                          cut from origin/main, or following origin's BRANCH if it is there
+                                          cut from origin/main (or REV: an origin's pin), or following
+                                          origin's BRANCH if it is there. REPO may be OWNER/REPO, as
+                                          `fcpm places` lists it
     fcpm workshed start NAME              build its site whole and serve it on its port, in the background
     fcpm workshed stop NAME               stop that
     fcpm workshed serve NAME              the same, in this window, until Ctrl+C
@@ -15,7 +17,9 @@ The workshed is ~/code/workshed/<shed>/<repo>@<branch>: worktrees of ~/code/refs
 someone works in them. NAME is that path from <shed>, or just <repo>@<branch>, or just <branch>, when only one
 worktree has it. Each gets a port of its own (4100 and up) the first time, and keeps it. The Helm's /workshed/
 page shows the same and starts and stops them. Every step says what it did on the workshed's log,
-~/code/workshed/workshed.log, one line each. Doc: docs/workshed.md.
+~/code/workshed/workshed.log, one line each, and in the library's grant book when this machine has a library:
+a worktree made is a grant spent at once, and a server is a grant its own process holds until it stops.
+Doc: docs/workshed.md.
 """
 import json
 import os
@@ -55,7 +59,9 @@ def note(what):
 
 
 def git(*args, cwd=None, check=True):
-    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # Never a sign-in prompt: the helm may run this with nobody at the screen (door.py's pulls do the same).
+    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=dict(os.environ, GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0"))
     if check and r.returncode:
         raise Wrong("git %s: %s" % (" ".join(args), (r.stderr or r.stdout).strip()))
     return r.stdout.strip()
@@ -191,13 +197,15 @@ def describe(w):
         else:
             other.append(f)
     dirty = bool(git("status", "--porcelain", cwd=path, check=False)) if (path / ".git").exists() else False
-    ahead = git("rev-list", "--count", "origin/main..HEAD", cwd=path, check=False) if (path / ".git").exists() else ""
+    count = lambda r: git("rev-list", "--count", r, cwd=path, check=False) if (path / ".git").exists() else ""
+    ahead, behind = count("origin/main..HEAD"), count("HEAD..origin/main")    # behind: cut from an older pin
     return {"name": name, "shed": w["shed"], "repo": w["repo"], "branch": w["branch"], "path": str(path),
             "site": root is not None, "port": port, "running": up is not None,
             "built": (up or {}).get("at"), "ok": (up or {}).get("ok"), "error": (up or {}).get("error"),
             "gaps": (up or {}).get("gaps") or [], "url": "http://localhost:%d/" % port if port else None,
             "pages": list(by_source.values()), "changed_pages": sorted(set(pages_changed)), "changed_other": other,
-            "dirty": dirty, "ahead": int(ahead) if ahead.isdigit() else 0}
+            "dirty": dirty, "ahead": int(ahead) if ahead.isdigit() else 0,
+            "behind": int(behind) if behind.isdigit() else 0}
 
 
 def everything():
@@ -208,8 +216,19 @@ def everything():
 
 
 # -------------------------------------------------------------------- verbs --
-def new(branch, shed=DEFAULT_SHED, repo=DEFAULT_REPO):
-    src = CODE / "refs" / repo
+def mirror_of(repo):
+    """refs/<repo> for a bare name, or for OWNER/REPO when that mirror's origin is OWNER/REPO."""
+    if "/" not in repo:
+        return CODE / "refs" / repo
+    m = _sibling("places").mirror(repo)
+    if m is None:
+        raise Wrong("no mirror of %s in refs/ (refs.wanted, then fcpm pull)" % repo)
+    return m
+
+
+def new(branch, shed=DEFAULT_SHED, repo=DEFAULT_REPO, start_at=None):
+    src = mirror_of(repo)
+    repo = src.name
     if not (src / ".git").exists():
         raise Wrong("no %s in refs/ to make a worktree from (refs.wanted lists what fcpm pull keeps)" % repo)
     if git("check-ref-format", "--branch", branch, check=False) != branch or "/" in shed or not shed:
@@ -219,22 +238,68 @@ def new(branch, shed=DEFAULT_SHED, repo=DEFAULT_REPO):
     if path.exists():
         raise Wrong("%s is already in the workshed, at %s" % (name, path))
     git("fetch", "--quiet", "origin", cwd=src, check=False)
+    if start_at and not git("rev-parse", "--verify", "--quiet", start_at + "^{commit}", cwd=src, check=False):
+        raise Wrong("%s is not a commit in refs/%s (fcpm pull, or the pin is not fetched here)" % (start_at, repo))
     mine = git("rev-parse", "--verify", "--quiet", "refs/heads/" + branch, cwd=src, check=False)
     theirs = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + branch, cwd=src, check=False)
     path.parent.mkdir(parents=True, exist_ok=True)
     if mine:                  # git refuses a branch checked out in another worktree, and says where
         git("worktree", "add", str(path), branch, cwd=src)
         how = "the branch already here"
-    elif theirs:
+    elif theirs and not start_at:
         git("worktree", "add", "--track", "-b", branch, str(path), "origin/" + branch, cwd=src)
         how = "following origin/%s" % branch
     else:
-        git("worktree", "add", "--no-track", "-b", branch, str(path), "origin/main", cwd=src)
-        how = "new, from origin/main"
+        git("worktree", "add", "--no-track", "-b", branch, str(path), start_at or "origin/main", cwd=src)
+        how = "new, from %s" % (start_at or "origin/main")
     port = port_of(name, give=True)
     note("%s: made (%s), port %d" % (name, how, port))
+    spent = book_grant(name, "made %s (%s), port %d" % (name, how, port))
+    if spent:
+        book_release(spent)                       # a calling-in grant: spent once the worktree exists
     say("made %s (%s)\n  at %s\n  port %d: fcpm workshed start %s" % (name, how, path, port, branch))
     return name
+
+
+def _sibling(name):
+    if str(HERE) not in sys.path:
+        sys.path.append(str(HERE))
+    was, sys.dont_write_bytecode = sys.dont_write_bytecode, True     # machines/ holds only profiles (test_binding)
+    try:
+        return __import__(name)
+    finally:
+        sys.dont_write_bytecode = was
+
+
+def book_grant(unit, words, holder=None):
+    """A grant in the library's book (docs/library.md, The grant book), seat `workshed`: its id, or None when
+    this machine has no library, or it cannot be asked. Never makes a library to hold one."""
+    try:
+        import contextlib
+        import io
+        from types import SimpleNamespace
+        lib = _sibling("library")
+        if not (lib.location() / ".git").exists():
+            return None
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            lib.grant(SimpleNamespace(profile=os.environ.get("FCPM_PROFILE", ""), holder=holder, seat="workshed",
+                                      unit=unit, description=words))
+        return out.getvalue().strip() or None
+    except (Exception, SystemExit) as exc:
+        note("%s: the grant book did not take it: %s" % (unit, " ".join(str(exc).split())))
+        return None
+
+
+def book_release(gid):
+    try:
+        import contextlib
+        import io
+        from types import SimpleNamespace
+        with contextlib.redirect_stdout(io.StringIO()):
+            _sibling("library").release(SimpleNamespace(profile=os.environ.get("FCPM_PROFILE", ""), grant=gid))
+    except (Exception, SystemExit):
+        pass                                      # gone already: the book records a lapse when it next reads
 
 
 def _command(w, port):
@@ -278,6 +343,9 @@ def start(name, wait=15):
                          creationflags=flags, start_new_session=(os.name != "nt"), cwd=str(w["path"]))
     (d / "pid").write_text(str(p.pid), encoding="utf-8")
     note("%s: started on port %d (pid %d)" % (name, port, p.pid))
+    gid = book_grant(name, "serve %s on port %d" % (name, port), holder=p.pid)
+    if gid:
+        (d / "grant").write_text(gid, encoding="utf-8")
     for _ in range(wait * 4):
         time.sleep(0.25)
         up = serving(w, port, timeout=0.5)
@@ -311,6 +379,11 @@ def stop(name):
         except OSError:
             pass
     (d / "pid").unlink(missing_ok=True)
+    try:
+        book_release((d / "grant").read_text(encoding="utf-8").strip())
+        (d / "grant").unlink()
+    except OSError:
+        pass
     note("%s: stopped (pid %d)" % (name, pid))
     say("%s stopped" % name)
 
@@ -393,6 +466,8 @@ def status():
         bits = []
         if d["ahead"]:
             bits.append("%d commit%s past main" % (d["ahead"], "" if d["ahead"] == 1 else "s"))
+        if d["behind"]:
+            bits.append("%d behind main" % d["behind"])
         if d["dirty"]:
             bits.append("changes not committed")
         if d["changed_pages"]:
@@ -416,12 +491,11 @@ def tail(name=None):
 def main(argv):
     verb, args = (argv[0] if argv else "status"), argv[1:]
     opts = {}
-    while "--shed" in args or "--repo" in args:
-        for k in ("--shed", "--repo"):
-            if k in args:
-                i = args.index(k)
-                opts[k[2:]] = args[i + 1] if i + 1 < len(args) else ""
-                del args[i:i + 2]
+    for k, as_ in (("--shed", "shed"), ("--repo", "repo"), ("--from", "start_at")):
+        while k in args:
+            i = args.index(k)
+            opts[as_] = args[i + 1] if i + 1 < len(args) else ""
+            del args[i:i + 2]
     try:
         if verb == "status":
             return status()

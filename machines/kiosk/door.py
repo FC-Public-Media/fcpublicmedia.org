@@ -2,7 +2,8 @@
 
     door.py serve              become the door, on [::]:8080 (FCPM_DOOR_PORT moves it; FCPM_DOOR_BIND=127.0.0.1
                                puts it behind a front such as digitization's nginx, FCPM_DOOR_FRONT its port;
-                               FCPM_DOOR_WATCH=replies keeps only the intake, for a helm that is not the media node)
+                               FCPM_DOOR_WATCH=replies keeps only the intake, for a helm that is not the media node;
+                               `consoles` in it keeps ../consoles.py's pages written, each on its beat)
     door.py supervise          run `serve`, restart it when it exits, pull in the background, follow its folder if a pull moves it
     door.py screens [--launch|--reset]  are the screens up, each in its own browser; put them back
     door.py startup            what starts the door at logon, and does it point here
@@ -3498,6 +3499,18 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, workshed_page(self.here()))
             if route == "/workshed/now":
                 return self.reply(200, json.dumps(workshed_now(self.here())), TYPES[".json"])
+            # Consoles: what this helm holds up to read, a screen each (../consoles.py, docs/consoles.md). The list
+            # is Fighter's CONSOLES, with this helm's addresses for paths; a page is served as it was last written.
+            if route in ("/consoles", "/consoles/"):
+                base = "http://%s" % (self.headers.get("Host") or "localhost:%d" % PORT)
+                return self.reply(200, machines_module("consoles").listing(base), TYPES[".txt"])
+            m = re.fullmatch(r"/consoles/([a-z-]+)", route)
+            if m and m.group(1) in machines_module("consoles").CONSOLES:
+                return self.reply(200, machines_module("consoles").read(m.group(1)), TYPES[".txt"])
+            # Places: an origin branch's repositories, as Fighter's location providers read them (../places.py).
+            m = re.fullmatch(r"/places(?:/([A-Za-z0-9._/-]+))?/?", route)
+            if m:
+                return self.reply(200, machines_module("places").listing(m.group(1)), TYPES[".txt"])
             if route in ("/deploy", "/deploy/"):
                 return self.reply(200, deploy_page())
             if route == "/deploy/now":
@@ -3614,6 +3627,8 @@ def serve():
                        ("camera", watch_camera), ("replies", watch_replies)):
         if job in WATCH:
             threading.Thread(target=watch, args=(server,) if job == "commit" else (), daemon=True).start()
+    if "consoles" in WATCH:
+        machines_module("consoles").keep()
     log("door up on %s:%d from %s at %s%s" % ("[::]" if BIND == "::" else BIND, PORT, ROOT, git("rev-parse", "--short", "HEAD"),
                                                  "; %d LAN names" % len(NAMES) if NAMES else ""))
     server.serve_forever()
@@ -4638,15 +4653,19 @@ MODELS_JS = """<script>
 # THE WORKSHED (../workshed.py, docs/workshed.md): each worktree someone is working in, its port, whether it is
 # up, and its site's pages, the changed ones first. Shown to all; started, stopped and made from this computer
 # only, since what it serves is on localhost and answers to nobody else.
-def shed():
+def machines_module(name):
+    """A tool in machines/ (workshed, consoles, places), imported without leaving __pycache__ there."""
     if str(ROOT / "machines") not in sys.path:
         sys.path.append(str(ROOT / "machines"))
     was, sys.dont_write_bytecode = sys.dont_write_bytecode, True   # machines/ holds only profiles (test_binding)
     try:
-        import workshed
+        return importlib.import_module(name)
     finally:
         sys.dont_write_bytecode = was
-    return workshed
+
+
+def shed():
+    return machines_module("workshed")
 
 
 def workshed_now(here=False):
@@ -4739,6 +4758,7 @@ WORKSHED_JS = """<script>
     if (w.gaps && w.gaps.length) c.append(el('span', 'wrong', 'Not built as the real site would be: ' + w.gaps.join('; ')));
     var bits = [];
     if (w.ahead) bits.push(w.ahead + ' commit' + (w.ahead === 1 ? '' : 's') + ' past main');
+    if (w.behind) bits.push(w.behind + ' behind main');
     if (w.dirty) bits.push('changes not committed');
     if (w.changed_other.length) bits.push(w.changed_other.length + ' other file' + (w.changed_other.length === 1 ? '' : 's') + ' changed');
     c.append(el('span', null, bits.length ? bits.join(', ') : 'the same as main'));
