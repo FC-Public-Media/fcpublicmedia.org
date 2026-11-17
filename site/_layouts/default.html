@@ -12,17 +12,19 @@
     <div class="wrap site-foot-inner">
 
       <div>
+        <div class="foot-hours">
         {%- for day_span in site.data.hosts.days -%}
           {%- if day_span[1][0] -%}
-            {{ day_span[0] }}: {{ day_span[1][0] | modulo: 12 }}
+            <span>{{ day_span[0] }}</span>: {{ day_span[1][0] | modulo: 12 }}
             {%- unless forloop.last -%},&nbsp;{%- endunless -%}
           {%- else -%}
-            {{ day_span[0] }}: {{ day_span[1] }}
+            <span>{{ day_span[0] }}</span>: <span>{{ day_span[1] }}</span>
             <br>
           {%- endif -%}
         {%- endfor -%}
+        </div>
 
-        <address>
+        <address translate="no">
           {{ site.fcpm.address.venue }}<br>
           {{ site.fcpm.address.street }}<br>
           {{ site.fcpm.address.city }}
@@ -31,7 +33,7 @@
         </address>
       </div>
 
-      <p>
+      <p translate="no">
         {%- for email_kv in site.fcpm.email -%}
         <a href="mailto:{{ email_kv[1] }}">
           {{- email_kv[0] -}}
@@ -48,6 +50,14 @@
             <span>Match system colours</span>
           </label>
         </p>
+        {%- if site.data.strings %}
+        <p class="lang-choice" data-lang-choice role="group" aria-label="Language" hidden>
+          <button type="button" data-lang="en" lang="en" translate="no">English</button>
+          {%- for _l in site.data.strings %}
+          <button type="button" data-lang="{{ _l[0] }}" lang="{{ _l[0] }}" translate="no">{{ _l[1].name }}</button>
+          {%- endfor %}
+        </p>
+        {%- endif %}
         <p><a href="https://wix.fcpublicmedia.org" class="muted">Old site</a></p>
       </div>
 
@@ -60,6 +70,7 @@
   </footer>
 
   <script src="{{ '/assets/js/theme.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
+  <script src="{{ '/assets/js/lang.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
   <script src="{{ '/assets/js/onair.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>
 </body>
 </html>

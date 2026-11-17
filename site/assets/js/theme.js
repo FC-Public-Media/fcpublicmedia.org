@@ -1,32 +1,18 @@
 // Footer "Match my system colours" toggle: light by default, dark when following a dark system.
 // See docs/site.md.
 
+import { read as recall, remember } from './prefs.js';
+
 const STORE = 'theme';
 const FOLLOW = 'system';
 const FIXED = 'light';
 
-let inMemory = null;
-
 function read() {
-  let stored = null;
-  try {
-    stored = localStorage.getItem(STORE);
-  } catch (error) {
-    stored = null;
-  }
-  const pref = stored || inMemory || FIXED;
   // Anything but `light` (including a stored `dark`) means follow the system.
-  return pref === FIXED ? FIXED : FOLLOW;
+  return (recall(STORE) || FIXED) === FIXED ? FIXED : FOLLOW;
 }
 
-function write(value) {
-  inMemory = value;
-  try {
-    localStorage.setItem(STORE, value);
-  } catch (error) {
-    // Storage blocked: the choice holds in memory for this page only.
-  }
-}
+const write = (value) => remember(STORE, value);
 
 const systemIsDark = () =>
   window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
