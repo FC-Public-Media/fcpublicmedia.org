@@ -328,8 +328,10 @@ def answer(r):
     if r.get("grants"):
         lines.append("Grants: %s (released)." % ", ".join(v for v in r["grants"].values() if v))
     if r.get("admission"):
-        lines.append("Admission: %s, seats/runs/%s/admission.json; %s since its last run%s." % (
-            r["admission"][:19] + "…", r["nonce"], r["since last run"], ", early for its cadence" if r.get("early") else ""))
+        last = r["since last run"]
+        lines.append("Admission: %s, seats/runs/%s/admission.json; %s%s." % (
+            r["admission"][:19] + "…", r["nonce"], "its first run here" if last == "never run here" else
+            "%s since its last run" % last, ", early for its cadence" if r.get("early") else ""))
     note = (r.get("note") or "").strip()
     if note:
         lines += ["", "Its session note:", note[:NOTE_MOST] + ("\n(the rest is on the branch)" if len(note) > NOTE_MOST else "")]
@@ -341,7 +343,10 @@ def answer(r):
     dest = replies.STATE / "asks" / "answers"
     dest.mkdir(parents=True, exist_ok=True)
     (dest / ("%s.json" % r["nonce"])).write_text(json.dumps(a, ensure_ascii=False), encoding="utf-8")
-    subprocess.run([sys.executable, str(HERE / "asks"), "reindex"], capture_output=True, timeout=300)
+    got = subprocess.run([sys.executable, str(HERE / "asks"), "reindex"], capture_output=True, text=True, timeout=300)
+    if got.returncode or "index of" not in got.stdout:
+        print("seats: the loop was not made again for %s: %s" % (r["nonce"], (got.stderr or got.stdout).strip()[-300:]),
+              flush=True)
     return a
 
 

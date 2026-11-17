@@ -111,7 +111,9 @@ shift. `orientation`, or no tags, helps with anything.
 
 ## Dim
 
-Every page on a studio screen falls to the same dim, in any orientation.
+Every page on a studio screen falls to the same dim, in any orientation: the welcome screen, the depot, classes,
+files, class mode and the wall. Helm's own pages (the board, jobs, the scanner, models, deploy, broadcast, the
+hallway tablet, ask and the loop) are for people, not rooms, and never dim (`shell()` in `door.py`).
 
 | | owes | never |
 |---|---|---|
@@ -314,8 +316,10 @@ shows however the board was reached (by name or by tailnet number); a LAN name m
 lines (a kept line down is said, in red); elsewhere, whether its helm (`helms.yml`) answers, or which machines wear
 it. `/jobs/<job>/` is one job: who wears it, its helm and what that holds, its crew's lines here, and its PROFILE.md.
 `/qr/` is the scanner as a page. Opened on this machine's own screen (localhost, a secure page, so the browser may
-open a camera) it is the camera itself: the BRIO's picture, every code read, and a catch (a bottle's AC1 frames)
-set down at `/drop` once nothing new came for 8 seconds, as the scanner's `page.py` does. Anywhere it shows the Pi's
+open a camera) it is the camera itself: the BRIO's picture, and under it every frame hit as a mark, yellow when the
+frame is new and muted when already seen. Each bottle in view gets a bar of chunks, one per block it needs, lit as
+they are recovered (`catch.mjs`). A bottle is set down at `/drop`, as its frames, the moment it is whole, or once
+nothing new came for 8 seconds, as the scanner's `page.py` does. Anywhere it shows the Pi's
 eyes, the door's inbox, and what the scanner last heard (its own `events.log`), asked again every 10 seconds. It is the
 admin side of the public site and speaks its language: the masthead band, the yellow rule, a menu that is data.
 `machines/kiosk/board.yml` is that data (title, href, one line, `staff`, `live`), with `from:` rows made from what
