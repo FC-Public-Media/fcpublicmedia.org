@@ -20,6 +20,10 @@ https://github.com/FCCN-ANTIBODY/jekyll-enough.git
 https://github.com/DiscoveryWritten/discoverywritten.com.git
 # The site-worker, private: the drain's own code (machines/drain), beside fcpublicmedia.org.
 https://fcpm-public@github.com/FC-Public-Media/site-worker.git
+# Fighter and station-node, private, where fcpm-public is a collaborator (2026-11-16): kept here because they
+# are not FCPM's to pin in the origin. Named with the account, so a headless fetch never asks who.
+https://fcpm-public@github.com/tiliv/fighter.git
+https://fcpm-public@github.com/tiliv/station-node.git
 # Troves: private, so named with the account, as origin is; a bare URL makes a headless clone ask who.
 https://fcpm-public@github.com/FC-Public-Media/aja-helo.git
 https://fcpm-public@github.com/FC-Public-Media/atem-mini-pro.git
