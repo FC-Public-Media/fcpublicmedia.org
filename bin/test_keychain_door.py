@@ -82,6 +82,17 @@ class Door(unittest.TestCase):
         self.assertIn("PRIVATE KEY", self.door("machine", "editing-bay-2", "get identity-editing-bay-2 ssh").stdout)
         self.assertEqual(self.door("machine", "production", "mint ssh x").returncode, 1)
 
+    def test_a_backup_is_the_store_and_a_keepers(self):
+        self.made()
+        self.door("keeper", "digitization", "put cloudflare TOKEN", "abc123")
+        env = dict(self.env, SSH_ORIGINAL_COMMAND="backup")
+        tar = subprocess.run([sys.executable, str(DOOR), "serve", "keeper", "digitization"], capture_output=True, env=env)
+        names = subprocess.run(["tar", "-tf", "-"], input=tar.stdout, capture_output=True).stdout.decode().split()
+        self.assertIn("identity.age", names)
+        self.assertIn("held/cloudflare/TOKEN/meta.json", names)
+        self.assertNotIn(b"abc123", tar.stdout)
+        self.assertEqual(self.door("machine", "production", "backup").returncode, 1)
+
     def test_nothing_held_is_plain(self):
         self.made()
         self.door("keeper", "digitization", "put cloudflare TOKEN", "plainly-visible-token")

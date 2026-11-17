@@ -12,6 +12,10 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
                         it by itself, so a key stored here is never only here
   keys keychain         the keychain's state, and every key it holds (never a value)
   keys init | unlock | lock   make, open or close the keychain: a keeper's, the passphrase in a window on this screen
+  keys backup [DIR]     the whole keychain, as one tar of ciphertext, into DIR (default ~/.local/state/fcpm/keychain);
+                        a keeper's. Copy it to the card: it opens with nothing but the passphrase
+  keys proof FILE       open a backup here with the passphrase (a window) and check every key in it against its
+                        print, never showing one: the proof that the keychain survives its box
   keys mint ssh FOR     a new ssh identity for the machine FOR, made on the keychain and lodged there as FOR's
                         secret: only FOR is ever handed its private half; the public half is printed
   keys birth            this machine's own key, made here once: the private half never leaves (on Windows,
@@ -508,11 +512,75 @@ def birth():
     return show_birth(job, pub)
 
 
+def backup(folder):
+    """The keychain's whole store, as the box hands it, into one dated tar; then what it holds."""
+    folder = pathlib.Path(folder or pathlib.Path.home() / ".local/state/fcpm/keychain")
+    folder.mkdir(parents=True, exist_ok=True)
+    out = folder / f"keychain-{time.strftime('%Y-%m-%dT%H%M%S')}.tar"
+    to = os.environ.get("FCPM_KEYCHAIN_SSH", "fcpm-keychain")
+    fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        done = subprocess.run([ssh_tool("ssh"), "-o", "BatchMode=yes", to, "backup"], stdout=f, stderr=subprocess.PIPE)
+    names = subprocess.run(["tar", "-tf", str(out)], capture_output=True, text=True).stdout.split()
+    held = sum(1 for n in names if n.endswith("/meta.json"))
+    if done.returncode or "identity.age" not in names:
+        out.unlink(missing_ok=True)
+        sys.exit(f"keys: no backup: {done.stderr.decode(errors='replace').strip()}")
+    print(f"keys: {out}: {held} key(s), {out.stat().st_size} bytes, all ciphertext but the salt")
+    return 0
+
+
+def proof(path):
+    """Open a backup with the passphrase, as a new box would, and check each key against its print."""
+    import hashlib
+    import pty
+    phrase = ask("Keychain: proof", f"The keychain's passphrase, to open the backup {pathlib.Path(path).name} here.")
+    if phrase is None:
+        sys.exit("keys: the window was closed")
+    with tempfile.TemporaryDirectory(dir="/dev/shm" if os.path.isdir("/dev/shm") else None) as tmp:
+        subprocess.run(["tar", "-xf", str(path), "-C", tmp], check=True)
+        ident = pathlib.Path(tmp) / "identity"
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.execvp("age", ["age", "-d", "-o", str(ident), str(pathlib.Path(tmp) / "identity.age")])
+        seen = b""
+        while True:
+            try:
+                chunk = os.read(fd, 1024)
+            except OSError:
+                break
+            if not chunk:
+                break
+            seen += chunk.lower()
+            if b"passphrase" in seen:
+                os.write(fd, phrase.encode() + b"\n")
+                seen = b""
+        os.close(fd)
+        if os.waitpid(pid, 0)[1] or not ident.exists():
+            sys.exit("keys: that passphrase does not open this backup")
+        salt = (pathlib.Path(tmp) / "salt").read_text().strip()
+        good = bad = 0
+        for meta_path in sorted(pathlib.Path(tmp).glob("held/*/*/meta.json")):
+            meta = json.loads(meta_path.read_text())
+            value = subprocess.run(["age", "-d", "-i", str(ident), str(meta_path.parent / f"{meta['version']}.age")],
+                                   capture_output=True).stdout.decode()
+            ok = hashlib.sha256((salt + value).encode()).hexdigest()[:16] == meta["print"]
+            good, bad = good + ok, bad + (not ok)
+            if not ok:
+                print(f"keys: {meta_path.parent.parent.name} {meta_path.parent.name} does NOT open to its print")
+    print(f"keys: {path}: opened with the passphrase alone; {good} of {good + bad} key(s) open to their prints")
+    return 1 if bad else 0
+
+
 def main(argv):
     if WINDOWS:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if argv == ["birth"]:
         return birth()
+    if argv[:1] == ["backup"] and len(argv) <= 2:
+        return backup(argv[1] if len(argv) == 2 else None)
+    if argv[:1] == ["proof"] and len(argv) == 2:
+        return proof(argv[1])
     if argv in (["init"], ["unlock"]):
         return keeper(argv[0])
     if argv in (["lock"], ["keychain"]) or (argv[:2] == ["mint", "ssh"] and len(argv) == 3):
