@@ -14,8 +14,8 @@ The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local de
 
 Relay (.intake/relay, `relay on|off`): on, the origin is a full relay. On the same pass it carries out
 to GitHub each branch and tag a keyholder pushed through the door since the last pass (the door's
-log says which): fast-forward only, never forced, never main or github/*, and never a repository
-that began here. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
+log says which): fast-forward only, never forced, never main or github/*, never a repository
+that began here, and never the library's branches (LAN_ONLY), which are the LAN's in every repository. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
 person. Only what was pushed through the door is ever carried, so a branch GitHub merged and
 deleted is not brought back. Off, the origin is LAN-only: it pulls, and what is pushed waits here.
 Runs as the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
@@ -46,6 +46,20 @@ def kept(full):
     """Whether the origin keeps owner/repo: by KEEP's prefix for an owner there, else what is here."""
     owner, name = full.split("/", 1)
     return owner not in KEEP or name.startswith(KEEP[owner])
+# The library's branches, in any repository: kept on the LAN and never carried to GitHub, whatever
+# relay says (Autumn, 2026-11-16: library content leaves GitHub outright, and the origin is the gate).
+# Each is a branch and everything under it: `retain` covers retain/production and the rest.
+LAN_ONLY = ("retain", "library", "librarians")
+
+
+def lan_only(r):
+    """Whether a ref is one of the library's branches, which stay here."""
+    if not r.startswith("refs/heads/"):
+        return False
+    name = r[len("refs/heads/"):]
+    return any(name == b or name.startswith(b + "/") for b in LAN_ONLY)
+
+
 WEEK = datetime.timedelta(days=7)
 DEV_EVERY = datetime.timedelta(minutes=15)
 
@@ -231,6 +245,9 @@ def carry():
         p = os.path.join(ORIGIN, full)
         if not git(p, "config", "remote.github.url", check=False).stdout.strip():
             continue                    # began here: it stays here
+        if lan_only(r):
+            rows.append({"repo": full, "ref": r, "state": "lan only", "did": "the library's: kept here, never carried"})
+            continue
         sha = ref(p, r)
         if not sha:
             continue

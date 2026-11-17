@@ -10,6 +10,7 @@ import io
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -88,12 +89,28 @@ class Library(unittest.TestCase):
         subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
         r = subprocess.run(["git", "push", str(remote), "HEAD"], cwd=self.retained(), capture_output=True, text=True)
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn("never pushed", r.stderr)
+        self.assertIn("only origin.local takes it", r.stderr)
         # The grant book and jobs stay too, whatever name they are pushed under.
         r = subprocess.run(["git", "push", str(remote), "HEAD:refs/grants/book"], cwd=self.retained(),
                            capture_output=True, text=True)
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn("refs/grants/book is kept here", r.stderr)
+        self.assertIn("refs/grants/book is kept on the LAN", r.stderr)
+
+    def test_retain_goes_to_the_lans_origin_and_nowhere_else(self):
+        # The hook as git runs it: the remote's name and URL as arguments, the refs on stdin.
+        self.run_(library.xray)
+        sh = shutil.which("sh")
+        if not sh:
+            self.skipTest("no sh to run the hook")
+        hook = pathlib.Path(self.tmp.name) / "pre-push"
+        hook.write_text(library.PRE_PUSH, encoding="utf-8", newline="\n")
+        line = "refs/heads/retain/test abc refs/heads/retain/test 000\n"
+        ask = lambda url: subprocess.run([sh, str(hook), "origin", url], input=line, capture_output=True, text=True)
+        for url in ("git@origin.local:FC-Public-Media/library", "ssh://git@origin.local/FC-Public-Media/library"):
+            self.assertEqual(ask(url).returncode, 0, url)
+        for url in ("git@github.com:FC-Public-Media/library", "https://github.com/origin.local/library",
+                    "git@not-origin.local.example:x/y"):
+            self.assertNotEqual(ask(url).returncode, 0, url)
 
     def test_diff_folds_whole_folders(self):
         self.run_(library.xray)

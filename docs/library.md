@@ -30,13 +30,13 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | branch | for | state |
 |---|---|---|
 | `main` | what we publish and what we run | |
-| `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton |
+| `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton; the LAN's |
 | `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
-| `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded |
-| `retain/studies` | studies: a flat list of what we are working out, in our own words. Distilled before anything is published. Never pushed | begun |
-| `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. Never pushed | bay 1 |
+| `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
+| `retain/studies` | studies: a flat list of what we are working out, in our own words. Distilled before anything is published. The LAN's | begun |
+| `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
 state, and the origin's map was part of it.
@@ -175,16 +175,26 @@ branch and not a nesting inside another.
 
 | folder | branch | goes |
 |---|---|---|
-| `retain/` | `retain/<machine>` | nowhere: it stays here, on the media node's LAN |
-| `studies/` | `retain/studies` | nowhere, like `retain/` |
-| `librarians/` | `librarians` | to GitHub. Instructions, never data |
+| `retain/` | `retain/<machine>` | to origin.local, after each commit, and never past it |
+| `studies/` | `retain/studies` | to origin.local, like `retain/`, and never past it |
+| `librarians/` | `librarians` | to origin.local, and never past it. Instructions, never data |
 | `lobby/` | `lobby` | to GitHub. Compiled from what is publishable: directions to the rest, and nothing else |
 
-**`retain` is a marker.** A branch named `retain/…` is never pushed to GitHub and never published. The
-library's repository has no GitHub remote, and its pre-push hook refuses `retain/` anywhere. If we ever
-move a retained branch, to the LAN's origin say, that is a change we all notice together, made at the
-hook and nowhere else. Retained branches are our own operational history: we are chronicling it,
-privately.
+**`retain` is the LAN's earmark, not this machine's.** A branch named `retain/…` goes to the LAN's
+origin (origin.local), eagerly: `fcpm library` pushes it after each commit, when the library has a
+remote there, and otherwise it waits here for the next one. It never goes past the origin: not to
+GitHub, never published. That is what makes it a directory: anyone on the LAN reads the record from
+the origin, without asking an agent or opening a session on the machine that wrote it (Autumn,
+2026-11-16). Two gates hold it there:
+
+- **The machine's pre-push hook** lets `retain/`, `refs/grants/` and `refs/jobs/` go to origin.local and
+  refuses every other remote. The library's repository has no GitHub remote either.
+- **The origin's relay** never carries the library's branches to GitHub (`LAN_ONLY` in
+  [`intake`](../machines/origin/intake): `retain/*`, `library`, `librarians`), in any repository,
+  whatever relay says. Library content leaves GitHub outright, and the origin is the gate that knows
+  it. A branch pushed there is recorded as `lan only` and stays.
+
+Retained branches are our own operational history, chronicled on the LAN.
 
 **The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
 directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.
@@ -412,8 +422,7 @@ In the library's own repository, `~/code/library/.git`, as refs:
 Refs under `refs/grants/` are not a branch. A clone does not fetch them by default and `git branch` does
 not list them. They are in plain view to anyone who looks, but are not dumped on anyone. That is
 obscurity and not confidentiality, which is fine, because a grant is not a secret. The pre-push hook
-refuses `refs/grants/` the same way it refuses `retain/`. Whether one machine's book moves to the hub is
-the same decision as `retain`.
+treats `refs/grants/` as it treats `retain/`: origin.local takes it, and nothing else does.
 
 Later, a grant's commit can be signed with the machine's own key from its birth ([keystore.md](keystore.md);
 on Windows, the ssh agent holds it). That gives claims bound to an ID, with nothing new in the

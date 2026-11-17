@@ -4,14 +4,15 @@
 
 # Each branch says what it is for. Only main is merged into; the others are separate concerns, kept
 # beside it on purpose and never merged. On a machine, the library is ~/code/library, a folder per branch
-# it keeps (a worktree each). `retain/` is the marker for what stays on the media node's LAN: it is
-# never pushed to GitHub and never published, and moving it between us is something we all notice.
+# it keeps (a worktree each). `pushes: lan` marks what is the LAN's: it goes to origin.local, eagerly,
+# and never past it; the origin's relay will not carry it to GitHub (machines/origin/intake, LAN_ONLY).
 branches:
   main:
     for: "what we publish and what we run: the site, the machines, and this declaration"
   library:
     for: "holdings in git: the tenant list (trade/), city/, voices/; a skeleton (docs/members.md)"
     merges: never
+    pushes: lan
   origin:
     for: "the actual origin: canonical submodule references to what we consider worth working on, which
       FCPM's computers fast-forward from (machines/origin). Not refs/: that stays each machine's live line
@@ -30,16 +31,17 @@ branches:
     for: "what librarian agents answer to: their constitution, and each place's decorum as AGENTS.md
       files in that place's own folder shape. Instructions, never data"
     merges: never
+    pushes: lan
   retain/studies:
     for: "studies: a flat list of what we are working out, in our own words, before any of it is decided.
       What settles is distilled into something publishable; a study itself never is"
     merges: never
-    pushes: never
+    pushes: lan
   retain/<machine>:
     for: "a machine's own record: each holding's x-ray, one commit per look, and later the notes,
-      summaries and errors its librarians write. Our operational history, kept private"
+      summaries and errors its librarians write. Our operational history, kept on the LAN"
     merges: never
-    pushes: never
+    pushes: lan
 
 # A holding is a place with things in it. Its label is ours; `is:` is the engine's word for the same
 # thing (.library-engine/residency.yml). `disposition` is who has been promised a read: none of these is

@@ -80,8 +80,8 @@ verbs:
     linux: "not: the pool is editing bay 1's"
 
   - verb: crew
-    args: "[status|install|uninstall|check|log NAME|serve]"
-    says: "this machine's crew: its one service and what it keeps"
+    args: "[status|install|uninstall|check|log NAME|restart [LINE...]|serve]"
+    says: "this machine's crew: its one service and what it keeps; restart has it read its order again and restart its lines"
     windows: "machines/crew.ps1; crew.py by uv"
     linux: "machines/crew.sh (fcpm-crew@<job>); crew.py by python3"
 

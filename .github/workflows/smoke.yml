@@ -72,6 +72,9 @@ jobs:
       - name: Test the consoles and places
         run: python3 bin/test_consoles.py
 
+      - name: Test the crew's supervisor
+        run: python3 bin/test_crew.py
+
       - name: Test the tier reader
         run: python3 site/bin/test_sync_tiers.py
 
