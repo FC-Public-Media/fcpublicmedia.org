@@ -35,7 +35,7 @@ Begun 2026-11-17. The site first, then what we run. First run: fcpublicmedia.org
         └── strings-report.mjs      new   the scorecard, --missing, --unused
     docs/site.md                    changed: Languages
     docs/OPEN.md, docs/README.md    changed: one line each
-    docs/library.md, library.yml    changed: retain/studies declared
+    docs/library.md, library.yml    changed: the studies branch declared (#453)
 
 ## Why, as Autumn put it
 
