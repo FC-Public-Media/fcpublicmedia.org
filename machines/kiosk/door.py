@@ -1209,11 +1209,11 @@ def qr_page():
         e(i["state"] + (": " + i["why"] if i.get("why") else ""))) for i in replies.inbox(10)) \
         or '<div class=row><span class=says>inbox zero</span></div>'
     body = """%s<main><section class=noun id=camera hidden><h2>This camera</h2><div class=rows>
-<video id=eye muted playsinline></video><div class=hits id=hits></div><ol class=bottles id=bottles></ol>
+<video id=eye muted playsinline></video><div class=hits id=hits></div>
 <div class=row><b id=cam-state>opening</b><span class=says id=cam-says></span></div>
 </div></section>
 <section class=noun id=eyes><h2>Eyes</h2><div class=rows><div class="row%s"><b>the Pi</b><span class=says>%s</span></div></div></section>
-<section class=noun id=inbox><h2>Inbox</h2><div class=rows>%s</div></section>
+<section class=noun><h2>Inbox</h2><ol class=bottles id=bottles></ol><div class=rows id=inbox>%s</div></section>
 <section class=noun id=latest><h2>Latest</h2><div class=rows>%s</div></section></main>
 <footer class=bar><a href="/#jobs">Helm</a><code>qr</code></footer>%s""" % (
         masthead("Helm &middot; qr"), " live" if eyes else "",
@@ -1233,68 +1233,85 @@ QR_CSS = """
 .bottles .chunks { display:flex; gap:2px; height:12px; }
 .bottles .chunks i { flex:1; max-width:22px; background:var(--ink); }
 .bottles .chunks i.got { background:var(--signal); }
+.bottles li { background:var(--slate); border-left:4px solid var(--signal); }
+.bottles li.hit { background:#3a3220; } .bottles li.held { border-left-color:#ff7a66; }
 .bottles li.done .chunks i { background:var(--signal); } .bottles .n { color:var(--soft); font-size:.85rem; }
 """
 
 # Where the page may open a camera (this machine's own screen, on localhost; a secure page), it is the scanner. Every
-# code read is a hit in the strip, yellow when its frame is new and muted when already seen; each bottle in view gets
-# a bar of its blocks, lit as they are recovered (catch.mjs). A bottle is set down at /drop, as its frames, the moment
-# it is whole, or once nothing new came for QUIET seconds, as the scanner's page.py does. The rest of the page is
-# asked again every 10 seconds, the camera left open.
+# code read is a hit in the strip, yellow when its frame is new and muted when already seen. Each bottle (its id is in
+# every frame) is a row at the top of the inbox while it is in view: a bar of its blocks lit as they are recovered
+# (catch.mjs), lit again by every hit, repeats too. It is set down at /drop the moment it is whole, or once nothing new
+# came for QUIET seconds, and its row then follows the drop (/drop/<name>) to applied or held, with the door's reason.
 QR_JS = """<script type=module>
 import { can, readAll } from "/ask/camera.mjs";
 import { catcher } from "/ask/catch.mjs";
-const QUIET = 8000, STRIP = 90, $ = (id) => document.getElementById(id);
-const seen = new Set(), frames = new Map(), last = new Map(), dropped = new Set();
-const c = catcher(() => false);
+const QUIET = 8000, STRIP = 90, SHOWN = 120000, $ = (id) => document.getElementById(id);
+const seen = new Set(), got = new Map(), c = catcher(() => false);
 let looks = 0, since = Date.now();
 const say = (state, says) => { $("cam-state").textContent = state; $("cam-says").textContent = says || ""; };
+const one = (id) => { if (!got.has(id)) got.set(id, { frames: new Set(), last: 0, newest: 0, kept: null, where: null }); return got.get(id); };
 function hit(isNew) {
   const strip = $("hits"), i = document.createElement("i");
   i.className = isNew ? "new" : "seen";
   strip.append(i);
   while (strip.children.length > STRIP) strip.firstChild.remove();
 }
+function said(b, g) {
+  if (g.where && g.where.state) return g.where.state + (g.where.why ? ": " + g.where.why : "");
+  if (g.kept) return "set down, waiting for the next pass";
+  return b && b.total ? `building · ${b.have} of ${b.total}` : `building · ${g.frames.size} frames`;
+}
 function paint() {
-  $("bottles").replaceChildren(...c.bottles.filter((b) => frames.has(b.id)).slice(-4).map((b) => {
-    const li = document.createElement("li"), bar = document.createElement("span");
-    li.className = b.done ? "done" : "";
+  const now = Date.now(), rows = [...got.entries()].filter(([, g]) => now - g.last < SHOWN).sort((x, y) => y[1].last - x[1].last);
+  $("bottles").replaceChildren(...rows.map(([id, g]) => {
+    const b = c.bottles.find((x) => x.id === id), li = document.createElement("li"), bar = document.createElement("span");
+    li.className = [(b && b.done) || g.kept ? "done" : "", now - g.last < 600 ? "hit" : "",
+                    g.where && g.where.state === "held" ? "held" : ""].join(" ");
     bar.className = "chunks";
-    for (let k = 0; k < (b.total || 1); k++) bar.append(Object.assign(document.createElement("i"), { className: k < b.have ? "got" : "" }));
-    li.append(Object.assign(document.createElement("b"), { textContent: "…" + b.id.slice(-6) }), bar,
-              Object.assign(document.createElement("span"), { className: "n",
-                textContent: dropped.has(b.id) ? "set down" : b.total ? `${b.have} of ${b.total}` : `${frames.get(b.id).size} frames` }));
+    for (let k = 0; k < ((b && b.total) || 1); k++) bar.append(Object.assign(document.createElement("i"), { className: b && k < b.have ? "got" : "" }));
+    li.append(Object.assign(document.createElement("b"), { textContent: "…" + id.slice(-6) }), bar,
+              Object.assign(document.createElement("span"), { className: "n", textContent: said(b, g) }));
     return li;
   }));
 }
+async function follow(g) {
+  for (let i = 0; i < 40 && !(g.where && ["applied", "held", "routed"].includes(g.where.state)); i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try { g.where = await (await fetch("/drop/" + g.kept, { cache: "no-store" })).json(); } catch { /* the next time */ }
+    paint();
+  }
+}
 async function setDown(id) {
-  if (dropped.has(id)) return;
-  dropped.add(id);
+  const g = got.get(id);
+  if (g.kept || g.dropping) return;
+  g.dropping = true;
   try {
-    const r = await fetch("/drop", { method: "POST", headers: { "Content-Type": "text/plain" }, body: [...frames.get(id)].join("\\n") });
-    say(r.ok ? "set down" : "not kept", r.ok ? "a bottle, kept for the next pass" : String(r.status));
-  } catch (e) { dropped.delete(id); say("not set down", String(e)); }
+    const r = await fetch("/drop", { method: "POST", headers: { "Content-Type": "text/plain" }, body: [...g.frames].join("\\n") });
+    if (r.ok) { g.kept = (await r.json()).kept; follow(g); } else say("not kept", String(r.status));
+  } catch (e) { say("not set down", String(e)); }
+  g.dropping = false;
   paint();
 }
-async function look(video, g, canvas) {
+async function look(video, gc, canvas) {
   if (video.videoWidth) {
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    g.drawImage(video, 0, 0);
+    gc.drawImage(video, 0, 0);
     looks++;
-    for (const text of readAll(g, canvas.width, canvas.height)) {
+    for (const text of readAll(gc, canvas.width, canvas.height)) {
       const isNew = !seen.has(text);
       hit(isNew);
-      if (!isNew || !text.startsWith("AC1|")) continue;
-      seen.add(text);
-      const id = text.split("|")[3];
-      if (!frames.has(id)) frames.set(id, new Set());
-      frames.get(id).add(text); last.set(id, Date.now());
+      if (!text.startsWith("AC1|")) continue;
+      const g = one(text.split("|")[3]);
+      g.last = Date.now();
+      if (!isNew) continue;
+      seen.add(text); g.frames.add(text); g.newest = Date.now();
       await c.feed(text);
-      if (c.bottles.find((b) => b.id === id && b.done)) setDown(id);
+      if (c.bottles.find((b) => b.id === text.split("|")[3] && b.done)) setDown(text.split("|")[3]);
     }
     paint();
   }
-  setTimeout(() => look(video, g, canvas), 60);
+  setTimeout(() => look(video, gc, canvas), 60);
 }
 if (can()) {
   $("camera").hidden = false;
@@ -1306,10 +1323,11 @@ if (can()) {
     const canvas = document.createElement("canvas");
     look(video, canvas.getContext("2d", { willReadFrequently: true }), canvas);
     setInterval(() => {
-      for (const [id, at] of last) if (Date.now() - at > QUIET) setDown(id);
+      for (const [id, g] of got) if (!g.kept && g.frames.size && Date.now() - g.newest > QUIET) setDown(id);
       const s = (Date.now() - since) / 1000;
       say("looking", `${(looks / s).toFixed(1)} looks a second · ${seen.size} frames seen`);
       looks = 0; since = Date.now();
+      paint();
     }, 2000);
   } catch (e) { say("no camera", String(e && e.message || e)); }
 }
@@ -3543,7 +3561,7 @@ class Door(BaseHTTPRequestHandler):
                 return self.file(inside(COMPOSER, tail))
             if route in ("/host/qr-encode.mjs", "/js/qr-encode.mjs"):
                 return self.file(ROOT / "site" / "assets" / "js" / "qr-encode.mjs")
-            if route.startswith("/drop/") and re.fullmatch(r"[0-9TZ.]+-[0-9a-f]+", tail):
+            if route.startswith("/drop/") and re.fullmatch(r"[0-9TZ.]+(-[0-9]{6})?-[0-9a-f]+", tail):
                 import replies
                 got = replies.where(tail)
                 return self.reply(200 if got else 404, json.dumps(got or {"name": tail, "state": None}), TYPES[".json"])
