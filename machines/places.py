@@ -31,7 +31,7 @@ HOME_REPO = "fcpublicmedia.org"                 # the repository whose branches 
 
 def git(cwd, *args):
     r = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", env=dict(os.environ, MSYS_NO_PATHCONV="1"))
+                       errors="replace", env=dict(os.environ, MSYS_NO_PATHCONV="1", GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0"))
     return r.stdout if r.returncode == 0 else None
 
 

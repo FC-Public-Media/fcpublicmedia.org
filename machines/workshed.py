@@ -59,7 +59,9 @@ def note(what):
 
 
 def git(*args, cwd=None, check=True):
-    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    # Never a sign-in prompt: the helm may run this with nobody at the screen (door.py's pulls do the same).
+    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=dict(os.environ, GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0"))
     if check and r.returncode:
         raise Wrong("git %s: %s" % (" ".join(args), (r.stderr or r.stdout).strip()))
     return r.stdout.strip()
