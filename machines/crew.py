@@ -5,10 +5,18 @@
     crew.py status [CREW]      each line: what it is, and whether it is up, asked now
     crew.py check  [CREW]      status, failing if a kept line is down (the after-boot test)
     crew.py log NAME [CREW]    the end of one line's log
+    crew.py restart CREW [LINE...]
+                               ask the supervisor to read its order and menus again and restart the lines it
+                               started (every one, unless named), and wait to see it done
+
+The supervisor writes <crew>.beat in its state folder on every pass: its pid, when it started, the hash of the
+crew.py it runs, and when it last looked. That is how anyone, in any Windows session, knows it is there.
 
 See machines/README.md. Nothing here remembers: whether a line is up is asked each time.
 """
 import ctypes
+import hashlib
+import json
 import os
 import re
 import shlex
@@ -197,7 +205,10 @@ def single(crew):
     k = ctypes.windll.kernel32
     k.CreateMutexW.restype = ctypes.c_void_p
     single.h = k.CreateMutexW(None, False, f"Local\\fcpm-crew-{crew}")
-    return k.GetLastError() != 183   # ERROR_ALREADY_EXISTS
+    err = k.GetLastError()
+    if not single.h:                 # a scheduled task's sign-in may not make one: its beat keeps it one (serve)
+        say(f"{crew}: no mutex here (error {err}); the beat alone keeps one supervisor")
+    return err != 183   # ERROR_ALREADY_EXISTS
 
 
 def supervising(crew):
@@ -220,9 +231,22 @@ def supervising(crew):
 
 # --- running ---------------------------------------------------------------------
 
+def git_tools():
+    """Git for Windows' own bin folders (sh, bash, the coreutils), which a scheduled task's PATH lacks: a
+    line that runs `sh` (pools, post, through machines/sync) fails there with no file found."""
+    g = shutil.which("git")
+    if not WINDOWS or not g or shutil.which("sh"):
+        return []
+    root = Path(g).resolve().parents[1]               # ...\Git\cmd\git.exe -> ...\Git
+    return [str(d) for d in (root / "bin", root / "usr" / "bin") if d.is_dir()]
+
+
 def start(line):
     svc = line["svc"]
     env = dict(os.environ, **{k: str(v) for k, v in (svc.get("env") or {}).items()})
+    tools = git_tools()
+    if tools:
+        env["PATH"] = os.pathsep.join([env.get("PATH", "")] + tools)
     cwd = (svc.get("cwd") or "{repo}").replace("{code}", str(CODE)).replace("{repo}", str(REPO))
     STATE.mkdir(parents=True, exist_ok=True)
     log = open(STATE / f"{line['name']}.log", "a", encoding="utf-8")
@@ -247,15 +271,102 @@ def stop(p):
     subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True, creationflags=NO_WINDOW)
 
 
+BEAT_STALE = 30                                   # seconds without a pass before the supervisor is not there
+
+
+def code_hash():
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
+
+
+def beat_file(crew):
+    return STATE / f"{crew}.beat"
+
+
+def heartbeat(crew, started, code):
+    """Rewritten whole each pass: anyone can see the supervisor, whatever session they are in."""
+    STATE.mkdir(parents=True, exist_ok=True)
+    tmp = STATE / f".{crew}.beat.{os.getpid()}"
+    tmp.write_text(json.dumps({"pid": os.getpid(), "started": started, "code": code, "at": time.time(),
+                               "repo": str(REPO)}), encoding="utf-8")
+    for _ in range(10):
+        try:
+            os.replace(tmp, beat_file(crew))
+            return
+        except PermissionError:                       # a reader has it open this instant
+            time.sleep(0.05)
+    tmp.unlink(missing_ok=True)
+
+
+def beat(crew):
+    """The supervisor's last word, and how long ago: ({...}, seconds) or (None, None)."""
+    try:
+        b = json.loads(beat_file(crew).read_text(encoding="utf-8"))
+        return b, time.time() - float(b.get("at", 0))
+    except (OSError, ValueError):
+        return None, None
+
+
+def pid_alive(pid):
+    """Whether a process is running, from any session: on Windows, one the asker may not open (another
+    sign-in's) is there; only a pid with no process behind it is gone."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if not WINDOWS:
+        try:
+            os.kill(pid, 0)
+            return True
+        except PermissionError:
+            return True
+        except OSError:
+            return False
+    k = ctypes.windll.kernel32
+    k.OpenProcess.restype = ctypes.c_void_p
+    h = k.OpenProcess(0x1000, False, pid)             # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return k.GetLastError() == 5                  # access denied: there, and not ours to open
+    code = ctypes.c_ulong()
+    ok = k.GetExitCodeProcess(ctypes.c_void_p(h), ctypes.byref(code))
+    k.CloseHandle(ctypes.c_void_p(h))
+    return bool(ok) and code.value == 259             # STILL_ACTIVE
+
+
+def supervised(crew):
+    """(beat, seconds since) when a supervisor is there now: a fresh beat from a live process."""
+    b, age = beat(crew)
+    return (b, age) if b and age is not None and age < BEAT_STALE and pid_alive(b.get("pid")) else (None, None)
+
+
+def request_file(crew):
+    return STATE / f"{crew}.restart"
+
+
 def serve(crew):
+    b, age = supervised(crew)
+    if b and b.get("pid") != os.getpid():
+        sys.exit(f"crew: {crew} is already supervised on this machine (pid {b.get('pid')}, seen {int(age)}s ago)")
     if not single(crew):
         sys.exit(f"crew: {crew} is already supervised on this machine")
+    started, running_code = time.time(), code_hash()
     f = HERE / crew / "services"
     say(f"{crew}: supervising ({'with' if has_desktop() else 'without'} a desktop), {REPO}")
     mine, wait, last, upsince = {}, {}, {}, {}
     seen, lines = None, []
     while True:
         now = time.time()
+        heartbeat(crew, started, running_code)
+        asked = None
+        req = request_file(crew)
+        if req.exists():                              # `crew.py restart`: read everything again, restart what is named
+            try:
+                asked = req.read_text(encoding="utf-8").split()
+                req.unlink()
+            except OSError:
+                asked = None
+            if asked is not None:
+                seen = None
+                say(f"{crew}: restart asked: {' '.join(asked) or 'every line it started'}")
         try:
             m = f.stat().st_mtime
         except OSError:
@@ -272,6 +383,16 @@ def serve(crew):
             for name in list(mine):   # a line taken out stops being kept, and what this started of it stops
                 if name not in [l["name"] for l in lines]:
                     stop(mine.pop(name)); say(f"{name}: no longer ordered; stopped")
+        if asked is not None:
+            ordered = [l["name"] for l in lines]
+            for name in asked or ordered:
+                if name not in ordered:
+                    say(f"{name}: not in {crew}'s order; nothing to restart")
+                elif name in mine:
+                    stop(mine.pop(name)); last[name] = wait[name] = 0
+                    say(f"{name}: stopped, to start again with what it reads now")
+                elif asked:
+                    say(f"{name}: not running from this supervisor; it starts when it is due")
         desk = has_desktop()
         for line in lines:
             name, svc, (kind, every) = line["name"], line["svc"], line["when"]
@@ -344,8 +465,30 @@ def desktop(crew):
 
 def status(crew, strict=False):
     lines, bad = order(crew)
-    sup = supervising(crew)
-    print(f"{crew:16} {'supervised here' if sup else 'NOT SUPERVISED: nothing keeps these lines'}")
+    b, age = supervised(crew)
+    sup = b is not None
+    last_b, last_age = beat(crew)
+    if sup:
+        older = b.get("code") != code_hash()
+        print(f"{crew:16} supervised here (pid {b.get('pid')}, up since "
+              f"{time.strftime('%m-%d %H:%M', time.localtime(b.get('started', 0)))}, seen {int(age)}s ago)")
+        if older:
+            print(f"{'':16} its crew.py is older than this one: restarting the computer, or an administrator's"
+                  f" `fcpm crew install`, starts the new one")
+    elif last_b is not None:
+        print(f"{crew:16} NOT SUPERVISED: its supervisor (pid {last_b.get('pid')}) was last seen {int(last_age)}s ago"
+              f"{'' if pid_alive(last_b.get('pid')) else ', and that process is gone'}")
+    elif supervising(crew):
+        print(f"{crew:16} supervised here (an older supervisor, which keeps no beat)")
+        sup = True
+    elif (STATE / "crew.log").exists() and time.time() - (STATE / "crew.log").stat().st_mtime < 900:
+        # An older supervisor, in a session whose mutex this one cannot see, and with no beat: its log is the sign.
+        said = int(time.time() - (STATE / "crew.log").stat().st_mtime)
+        print(f"{crew:16} likely supervised: an older supervisor keeps no beat, and its log moved {said}s ago;"
+              f" restarting the computer starts one that `fcpm crew restart` can ask")
+        sup = True
+    else:
+        print(f"{crew:16} NOT SUPERVISED: nothing keeps these lines")
     down = 0
     for l in lines:
         svc, (kind, every) = l["svc"], l["when"]
@@ -361,6 +504,37 @@ def status(crew, strict=False):
         print(f"  not run: {b}")
     if strict and (down or not sup):
         sys.exit(1)
+
+
+def restart(crew, names):
+    b, age = supervised(crew)
+    if b is None:
+        log = STATE / "crew.log"
+        if log.exists() and time.time() - log.stat().st_mtime < 900:
+            sys.exit(f"crew: {crew}'s supervisor is an older one, which cannot be asked; restarting the computer"
+                     f" starts one that can")
+        sys.exit(f"crew: nothing is supervising {crew} to ask (fcpm crew status); restarting the computer starts it")
+    log = STATE / "crew.log"
+    mark = log.stat().st_size if log.exists() else 0
+    STATE.mkdir(parents=True, exist_ok=True)
+    tmp = request_file(crew).with_suffix(".part")
+    tmp.write_text(" ".join(names) + "\n", encoding="utf-8")
+    os.replace(tmp, request_file(crew))
+    print(f"asked {crew}'s supervisor to read its order again and restart {' '.join(names) or 'every line it started'}")
+    for _ in range(60):                               # its pass is every 2 s
+        time.sleep(0.5)
+        if not request_file(crew).exists():
+            break
+    else:
+        request_file(crew).unlink(missing_ok=True)
+        sys.exit("crew: the supervisor did not take it in 30 s (fcpm crew status)")
+    time.sleep(6)                                     # long enough to see what it started again
+    with open(log, "r", encoding="utf-8", errors="replace") as f:
+        f.seek(mark)
+        for line in f.read().splitlines():
+            print("  " + line)
+    print()
+    status(crew)
 
 
 def tail(crew, name, n=30):
@@ -389,6 +563,8 @@ def main():
         return desktop(crew)
     if verb in ("status", "check"):
         return status(crew, strict=verb == "check")
+    if verb == "restart":
+        return restart(crew, a[2:])
     sys.exit(__doc__.split("\n\n")[1])
 
 
