@@ -35,7 +35,7 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
-| `retain/studies` | studies: a flat list of what we are working out, in our own words. Distilled before anything is published. The LAN's | begun |
+| `retain/studies` | studies: a folder each, the study in our own words and every file tree made during it. The LAN's | begun |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
@@ -195,6 +195,11 @@ the origin, without asking an agent or opening a session on the machine that wro
   it. A branch pushed there is recorded as `lan only` and stays.
 
 Retained branches are our own operational history, chronicled on the LAN.
+
+**Studies** are a folder each in `studies/`, flat: the study in our own words, confusion included, and
+every file tree made during it, written out. `fcpm library study NAME FOLDER` files FOLDER as
+`studies/NAME/`, replacing what was there, in one commit, and sends it on like `retain/`. `fcpm library
+study` lists them. What settles is distilled into something publishable; a study itself never is.
 
 **The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
 directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.

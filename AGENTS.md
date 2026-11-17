@@ -23,6 +23,14 @@ only to augment our capabilities on the LAN.
 Deploying it means `bin/deploy-site`: build `site/`, upload `_site` to the Cloudflare Pages project `fcpm-new`. Nothing else deploys it.
 The one running piece is the site-worker, a repository of its own (FC-Public-Media/site-worker).
 
+## Studies
+
+A study is filed in the library, written out: a folder in `~/code/library/studies/` (`retain/studies`)
+holding the study in our words and every file tree made during it.
+`fcpm library study NAME FOLDER` files it and sends it to origin.local, never past it.
+Never a bundle, an attachment, or GitHub. A session off the LAN hands over the folder as files,
+and the first session on the LAN files it.
+
 ## Wix
 
 Without exception, any Wix connectors or ready authorizations shall be

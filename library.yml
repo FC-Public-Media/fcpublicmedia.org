@@ -33,8 +33,9 @@ branches:
     merges: never
     pushes: lan
   retain/studies:
-    for: "studies: a flat list of what we are working out, in our own words, before any of it is decided.
-      What settles is distilled into something publishable; a study itself never is"
+    for: "studies: a folder each, flat: what we are working out, in our own words, and every file tree made
+      during it, written out (fcpm library study). What settles is distilled into something publishable;
+      a study itself never is"
     merges: never
     pushes: lan
   retain/<machine>:
