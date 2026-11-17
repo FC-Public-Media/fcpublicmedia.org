@@ -1186,7 +1186,7 @@ def job_page(name):
 <section class=noun><h2>Its profile</h2><pre class=profile>%s</pre></section></main>
 <footer class=bar><a href="/#jobs">Helm</a><code>machines/%s/PROFILE.md</code></footer>""" % (
         masthead("Helm &middot; %s" % e(name)), e(name), rows, crew, e(profile), e(name))
-    return page("%s · Helm" % name, body, BOARD_CSS)
+    return shell("%s · Helm" % name, body, BOARD_CSS)
 
 
 QR_EVENTS = pathlib.Path.home() / ".local" / "state" / "fcpm" / "scanner" / "events.log"
@@ -1209,49 +1209,127 @@ def qr_page():
         e(i["state"] + (": " + i["why"] if i.get("why") else ""))) for i in replies.inbox(10)) \
         or '<div class=row><span class=says>inbox zero</span></div>'
     body = """%s<main><section class=noun id=camera hidden><h2>This camera</h2><div class=rows>
-<video id=eye muted playsinline></video><div class=row><b id=cam-state>opening</b><span class=says id=cam-says></span></div>
+<video id=eye muted playsinline></video><div class=hits id=hits></div>
+<div class=row><b id=cam-state>opening</b><span class=says id=cam-says></span></div>
 </div></section>
 <section class=noun id=eyes><h2>Eyes</h2><div class=rows><div class="row%s"><b>the Pi</b><span class=says>%s</span></div></div></section>
-<section class=noun id=inbox><h2>Inbox</h2><div class=rows>%s</div></section>
+<section class=noun><h2>Inbox</h2><ol class=bottles id=bottles></ol><div class=rows id=inbox>%s</div></section>
 <section class=noun id=latest><h2>Latest</h2><div class=rows>%s</div></section></main>
 <footer class=bar><a href="/#jobs">Helm</a><code>qr</code></footer>%s""" % (
         masthead("Helm &middot; qr"), " live" if eyes else "",
         "connected: its camera looks for codes, its picture on the Pi's screen" if eyes else "not connected",
         inbox, events, QR_JS)
-    return page("qr · Helm", body, BOARD_CSS + QR_CSS)
+    return shell("qr · Helm", body, BOARD_CSS + QR_CSS)
 
 
 QR_CSS = """
 #eye { display:block; width:100%; max-height:60vh; background:#000; object-fit:contain; }
+.hits { display:flex; gap:2px; height:14px; padding:6px .75rem; overflow:hidden; justify-content:flex-end; background:var(--ink); }
+.hits i { flex:none; width:8px; height:14px; background:var(--slate); }
+.hits i.new { background:var(--signal); } .hits i.seen { background:#a8841a; opacity:.55; }
+.bottles { list-style:none; margin:0; padding:0; }
+.bottles li { display:grid; grid-template-columns:7rem 1fr auto; gap:.8rem; align-items:center; padding:.45rem .75rem;
+  border-top:1px solid var(--ink); font-variant-numeric:tabular-nums; }
+.bottles .chunks { display:flex; gap:2px; height:12px; }
+.bottles .chunks i { flex:1; max-width:22px; background:var(--ink); }
+.bottles .chunks i.got { background:var(--signal); }
+.bottles li { background:var(--slate); border-left:4px solid var(--signal); }
+.bottles li.hit { background:#3a3220; } .bottles li.held { border-left-color:#ff7a66; }
+.bottles li.done .chunks i { background:var(--signal); } .bottles .n { color:var(--soft); font-size:.85rem; }
 """
 
-# Where the page may open a camera (this machine's own screen, on localhost; a secure page), it is the scanner: the
-# picture, every code read, and a catch (a bottle's AC1 frames) set down at /drop once nothing new came for QUIET
-# seconds, as the scanner's page.py does. The rest of the page is asked again every 10 seconds, the camera left open.
+# Where the page may open a camera (this machine's own screen, on localhost; a secure page), it is the scanner. Every
+# code read is a hit in the strip, yellow when its frame is new and muted when already seen. Each bottle (its id is in
+# every frame) is a row at the top of the inbox while it is in view: a bar of its blocks lit as they are recovered
+# (catch.mjs), lit again by every hit, repeats too. It is set down at /drop the moment it is whole, or once nothing new
+# came for QUIET seconds, and its row then follows the drop (/drop/<name>) to applied or held, with the door's reason.
 QR_JS = """<script type=module>
-import { can, watch } from "/ask/camera.mjs";
-const QUIET = 8000, $ = (id) => document.getElementById(id);
-let catchSet = new Set(), last = 0;
+import { can, readAll } from "/ask/camera.mjs";
+import { catcher } from "/ask/catch.mjs";
+const QUIET = 8000, STRIP = 90, SHOWN = 120000, $ = (id) => document.getElementById(id);
+const seen = new Set(), got = new Map(), c = catcher(() => false);
+let looks = 0, since = Date.now();
 const say = (state, says) => { $("cam-state").textContent = state; $("cam-says").textContent = says || ""; };
-async function setDown() {
-  if (!catchSet.size || Date.now() - last < QUIET) return;
-  const frames = [...catchSet]; catchSet = new Set();
+const one = (id) => { if (!got.has(id)) got.set(id, { frames: new Set(), last: 0, newest: 0, kept: null, where: null }); return got.get(id); };
+function hit(isNew) {
+  const strip = $("hits"), i = document.createElement("i");
+  i.className = isNew ? "new" : "seen";
+  strip.append(i);
+  while (strip.children.length > STRIP) strip.firstChild.remove();
+}
+function said(b, g) {
+  if (g.where && g.where.state) return g.where.state + (g.where.why ? ": " + g.where.why : "");
+  if (g.kept) return "set down, waiting for the next pass";
+  return b && b.total ? `building · ${b.have} of ${b.total}` : `building · ${g.frames.size} frames`;
+}
+function paint() {
+  const now = Date.now(), rows = [...got.entries()].filter(([, g]) => now - g.last < SHOWN).sort((x, y) => y[1].last - x[1].last);
+  $("bottles").replaceChildren(...rows.map(([id, g]) => {
+    const b = c.bottles.find((x) => x.id === id), li = document.createElement("li"), bar = document.createElement("span");
+    li.className = [(b && b.done) || g.kept ? "done" : "", now - g.last < 600 ? "hit" : "",
+                    g.where && g.where.state === "held" ? "held" : ""].join(" ");
+    bar.className = "chunks";
+    for (let k = 0; k < ((b && b.total) || 1); k++) bar.append(Object.assign(document.createElement("i"), { className: b && k < b.have ? "got" : "" }));
+    li.append(Object.assign(document.createElement("b"), { textContent: "…" + id.slice(-6) }), bar,
+              Object.assign(document.createElement("span"), { className: "n", textContent: said(b, g) }));
+    return li;
+  }));
+}
+async function follow(g) {
+  for (let i = 0; i < 40 && !(g.where && ["applied", "held", "routed"].includes(g.where.state)); i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try { g.where = await (await fetch("/drop/" + g.kept, { cache: "no-store" })).json(); } catch { /* the next time */ }
+    paint();
+  }
+}
+async function setDown(id) {
+  const g = got.get(id);
+  if (g.kept || g.dropping) return;
+  g.dropping = true;
   try {
-    const r = await fetch("/drop", { method: "POST", headers: { "Content-Type": "text/plain" }, body: frames.join("\\n") });
-    say("set down", r.ok ? `${frames.length} frames, kept for the next pass` : "not kept: " + r.status);
+    const r = await fetch("/drop", { method: "POST", headers: { "Content-Type": "text/plain" }, body: [...g.frames].join("\\n") });
+    if (r.ok) { g.kept = (await r.json()).kept; follow(g); } else say("not kept", String(r.status));
   } catch (e) { say("not set down", String(e)); }
+  g.dropping = false;
+  paint();
+}
+async function look(video, gc, canvas) {
+  if (video.videoWidth) {
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    gc.drawImage(video, 0, 0);
+    looks++;
+    for (const text of readAll(gc, canvas.width, canvas.height)) {
+      const isNew = !seen.has(text);
+      hit(isNew);
+      if (!text.startsWith("AC1|")) continue;
+      const g = one(text.split("|")[3]);
+      g.last = Date.now();
+      if (!isNew) continue;
+      seen.add(text); g.frames.add(text); g.newest = Date.now();
+      await c.feed(text);
+      if (c.bottles.find((b) => b.id === text.split("|")[3] && b.done)) setDown(text.split("|")[3]);
+    }
+    paint();
+  }
+  setTimeout(() => look(video, gc, canvas), 60);
 }
 if (can()) {
   $("camera").hidden = false;
   try {
-    await watch($("eye"), (text) => {
-      if (!text.startsWith("AC1")) return say("a code", "not a bottle");
-      catchSet.add(text); last = Date.now();
-      say("reading", `${catchSet.size} frames`);
-    }, { every: 120 });
-    say("looking", "show a code to this camera");
+    const video = $("eye");
+    video.srcObject = await navigator.mediaDevices.getUserMedia({ audio: false,
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } } });   // each look reads nine regions: more looks beat more pixels
+    await video.play();
+    const canvas = document.createElement("canvas");
+    look(video, canvas.getContext("2d", { willReadFrequently: true }), canvas);
+    setInterval(() => {
+      for (const [id, g] of got) if (!g.kept && g.frames.size && Date.now() - g.newest > QUIET) setDown(id);
+      const s = (Date.now() - since) / 1000;
+      say("looking", `${(looks / s).toFixed(1)} looks a second · ${seen.size} frames seen`);
+      looks = 0; since = Date.now();
+      paint();
+    }, 2000);
   } catch (e) { say("no camera", String(e && e.message || e)); }
-  setInterval(setDown, 1000);
 }
 setInterval(async () => {
   try {
@@ -1303,7 +1381,7 @@ def board_page(here=False, host=""):
     body = """%s<nav class=nouns aria-label="Helm">%s</nav><main>%s</main>
 <footer class=bar><a href="/verbs/">fcpm's verbs</a><code>%s</code></footer>%s""" % (
         masthead("Helm &middot; %s" % e(socket.gethostname().lower())), menu, sections, e(revision()), BOARD_JS)
-    return page("Helm", body, BOARD_CSS)
+    return shell("Helm", body, BOARD_CSS)
 
 
 def board_now():
@@ -1430,7 +1508,7 @@ def verbs_page():
 <footer class=bar><a href="/">the board</a><code>machines/fcpm.yml</code></footer>""" % (
         masthead("%s &middot; fcpm" % e(socket.gethostname().lower())),
         plat.capitalize(), verbs, plat.capitalize(), elsewhere)
-    return page("fcpm's verbs", body, BOARD_CSS)
+    return shell("fcpm's verbs", body, BOARD_CSS)
 
 BOARD_CSS = """
 .masthead { display:flex; align-items:center; gap:.8rem; padding:18px max(16px, calc(50vw - 30rem));
@@ -3301,7 +3379,7 @@ class Door(BaseHTTPRequestHandler):
 
     def file(self, path):
         if path is None:
-            return self.reply(404, page("Not here", "<p>Nothing by that name.</p>"))
+            return self.reply(404, shell("Not here", "<p>Nothing by that name.</p>"))
         data = path.read_bytes()
         if path.suffix.lower() == ".html":
             data = with_poll(data.decode("utf-8")).encode("utf-8")
@@ -3483,7 +3561,7 @@ class Door(BaseHTTPRequestHandler):
                 return self.file(inside(COMPOSER, tail))
             if route in ("/host/qr-encode.mjs", "/js/qr-encode.mjs"):
                 return self.file(ROOT / "site" / "assets" / "js" / "qr-encode.mjs")
-            if route.startswith("/drop/") and re.fullmatch(r"[0-9TZ.]+-[0-9a-f]+", tail):
+            if route.startswith("/drop/") and re.fullmatch(r"[0-9TZ.]+(-[0-9]{6})?-[0-9a-f]+", tail):
                 import replies
                 got = replies.where(tail)
                 return self.reply(200 if got else 404, json.dumps(got or {"name": tail, "state": None}), TYPES[".json"])
@@ -3573,7 +3651,7 @@ class Door(BaseHTTPRequestHandler):
             return self.file(None)
         except Exception as exc:          # a broken data file is a page, not a dead door
             log("error on %s: %r" % (route, exc))
-            return self.reply(500, page("Something is wrong",
+            return self.reply(500, shell("Something is wrong",
                 "<main style='padding:5vh'><h1>This screen could not be drawn.</h1><p>%s</p></main>"
                 % e(repr(exc))))
 
@@ -4577,7 +4655,7 @@ big one) and serves them. Nothing is up until it is picked. A model up but not a
 <p><button id=keep>Keep this line-up</button></p></form>
 <p class=dim id=said></p></main>%s""" % (masthead("%s &middot; models" % e(socket.gethostname().lower())),
                                          e(revision()), MODELS_JS)
-    return page("Bay 1's models", body, MODELS_CSS)
+    return shell("Bay 1's models", body, MODELS_CSS)
 
 
 MODELS_CSS = BOARD_CSS + """
@@ -4719,7 +4797,7 @@ done and what is wrong, a line each. Everything done is on the workshed's log (<
 </main>%s""" % (masthead("%s &middot; workshed" % e(socket.gethostname().lower())),
                 "" if here else "Its pages open on this computer only, so starting and opening them is done there.",
                 make, WORKSHED_JS)
-    return page("Workshed", body, WORKSHED_CSS)
+    return shell("Workshed", body, WORKSHED_CSS)
 
 
 WORKSHED_CSS = BOARD_CSS + """
@@ -4865,7 +4943,7 @@ with that machine's own key.</p>
 <p><button id=go disabled>Deploy</button></p>
 <p class=dim id=said></p><pre id=log></pre></main>%s""" % (masthead("%s &middot; deploy" % e(socket.gethostname().lower())),
                                                       DEPLOY_JS)
-    return page("Deploy the site", body, DEPLOY_CSS)
+    return shell("Deploy the site", body, DEPLOY_CSS)
 
 
 DEPLOY_CSS = BOARD_CSS + """
@@ -4948,7 +5026,7 @@ def broadcast_page():
 Standby is ours, on YouTube's backup: stopped, nothing but the 350 reaches YouTube, until it is started again.</p>
 <section class=here id=dests></section>
 <p class=dim id=said></p></main>%s""" % (masthead("%s &middot; broadcast" % e(socket.gethostname().lower())), BROADCAST_JS)
-    return page("Channel 97, out", body, BROADCAST_CSS)
+    return shell("Channel 97, out", body, BROADCAST_CSS)
 
 
 # ---------------------------------------------------------------------- helo --
@@ -5096,7 +5174,7 @@ def preview_page():
         html.escape(words.get("alt", "The studio's cameras, as the recorder receives them"), quote=True),
         e(words.get("input", "Input")), e(words.get("stream", "Streaming")), e(words.get("record", "Recording")),
         e(words.get("free", "Card free")), PREVIEW_JS.replace("@WORDS@", json.dumps(w)))
-    return page(words.get("head", "Cameras"), body, PREVIEW_CSS)
+    return shell(words.get("head", "Cameras"), body, PREVIEW_CSS)
 
 
 def keep_helo_clock():
