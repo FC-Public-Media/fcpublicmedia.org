@@ -97,7 +97,10 @@ rm -rf /srv/git/git-shell-commands                   # every key is forced throu
 # git (./github-login); until then intake says GitHub is out of reach, on the screen too.
 install -d $LIB; install -m 755 "$HERE/intake" "$HERE/run-intake" "$HERE/door" $LIB/
 install -m 644 "$HERE/KEYHOLDERS" $LIB/KEYHOLDERS
-install -d $LIB/door-hooks; install -m 755 "$HERE/door-hooks/pre-receive" $LIB/door-hooks/
+install -d $LIB/door-hooks; install -m 755 "$HERE/door-hooks/pre-receive" "$HERE/door-hooks/lines-gate" $LIB/door-hooks/
+# The LAN's lines: the gate plays data-pile's verify (bash, jq, openssl) on every pile pushed here.
+apk add -q bash jq openssl tar
+rm -rf $LIB/pile-engine; cp -r "$HERE/pile-engine" $LIB/pile-engine; chmod -R a+rX $LIB/pile-engine
 install -d -o git -g git /var/log/fcpm /srv/origin/.intake
 # The git account's keys: only the door's block, each key forced through it. An unforced key would be
 # a shell, so the file starts empty and only `door keys` writes it (run-intake keeps it as KEYHOLDERS says).

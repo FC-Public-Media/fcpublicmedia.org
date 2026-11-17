@@ -17,6 +17,15 @@ gear:
     restart-tier: app
     holds: "nothing of its own"
 
+  - gear: age
+    for: >
+      The LAN's lines (docs/lines.md): this machine's reader key, and opening what a pile tells it.
+    package: age
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own; the reader key is in ~/.local/state/fcpm/lines"
+
   - gear: git
     for: >
       The origin's bare repositories and every checkout in ~/code.

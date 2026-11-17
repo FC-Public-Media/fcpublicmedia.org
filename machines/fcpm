@@ -78,6 +78,9 @@ case "$cmd" in
     # keychain holds `cloudflare`. With SITE DIR: a finished site onto the static host (static/deploy).
     case "${1:-}" in ""|--build) exec "$REPO/bin/deploy-site" "$@" ;; esac
     exec "$HERE/static/deploy" "$@" ;;
+  lines)
+    # This machine's lines on the LAN: piles told and read through the origin (docs/lines.md).
+    exec python3 "$HERE/lines" "$@" ;;
   keys)
     # The keychain of the jobs this machine wears (keys; each job's keys.yml).
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*)

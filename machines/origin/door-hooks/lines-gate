@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""lines-gate OLD NEW REF -- what the origin takes on the LAN's lines (../../../docs/lines.md). Run by
+pre-receive for every repository, with the pusher's holder name in FCPM_DOOR_HOLDER.
+
+lines-gate --check OLD NEW REF -- the same rules a reader plays on a pile it fetched, from wherever it
+came: nothing about who pushed it, everything about who signed it. FCPM_LINES_SLICE names the slice's ref.
+
+  retain/lines              each machine writes only its own folder, lines/<holder>/
+  retain/pile/W.R[.gN]      the pile W tells R. Every commit is signed by a key the pile names
+                            (keys/allowed_signers, from its birth) and pushed by its signer. W's commits
+                            only add entries, each admitted by the pile's own hooks/admit (its shape,
+                            played from the pile as it stood before); R's only change shape/hears.
+                            The entries before are untouched, and data-pile's verify passes.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+ZERO = "0" * 40
+EMPTY = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+ENGINE = os.environ.get("FCPM_PILE_ENGINE", "/usr/local/lib/fcpm/pile-engine")
+NAME = r"[A-Za-z0-9][A-Za-z0-9-]*"
+PILE = re.compile(rf"refs/heads/retain/pile/({NAME})\.({NAME})(\.g[0-9]+)?")
+BLOCK = re.compile(r"inbox/[0-9]{6}\.(enc|kage)")
+AGE = re.compile(r"age1[ac-hj-np-z02-9]{58}")
+DOMAIN = "@lines.fcpublicmedia.local"
+SLICE = os.environ.get("FCPM_LINES_SLICE", "refs/heads/retain/lines")
+BIRTH = ("pile.yml", "keys/drop.signers", "keys/pile.age.pub", "keys/allowed_signers", "hooks/admit")
+
+
+def git(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+
+
+def show(rev, path):
+    done = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
+    return done.stdout if done.returncode == 0 else None
+
+
+def changed(old, new):
+    out = git("diff", "--name-status", "--no-renames", old, new)
+    return [tuple(line.split("\t", 1)) for line in out.splitlines()]
+
+
+def no(ref, why):
+    print(f"origin: {ref}: {why}")
+    sys.exit(1)
+
+
+def entries(rev):
+    text = show(rev, "inbox/manifest.json") if rev != EMPTY else None
+    return json.loads(text)["entries"] if text else []
+
+
+def unpack(rev, into):
+    data = subprocess.run(["git", "archive", rev], capture_output=True, check=True).stdout
+    subprocess.run(["tar", "-xf", "-", "-C", into], input=data, check=True)
+
+
+def signer(commit, signers, ref):
+    """Who signed commit, by the pile's own keyholder list; refused if it is no one on it."""
+    with tempfile.NamedTemporaryFile("w", suffix=".signers") as f:
+        f.write(signers)
+        f.flush()
+        done = subprocess.run(["git", "-c", f"gpg.ssh.allowedSignersFile={f.name}", "verify-commit", commit],
+                              capture_output=True, text=True)
+    email = git("log", "-1", "--format=%ce", commit).strip()
+    if done.returncode or not email.endswith(DOMAIN):
+        no(ref, f"{commit[:9]} is not signed by a key this pile names")
+    return email[:-len(DOMAIN)]
+
+
+def lines(old, new, ref, holder):
+    mine = f"lines/{holder}/"
+    for _, path in changed(old if old != ZERO else EMPTY, new):
+        if not path.startswith(mine):
+            no(ref, f"{holder} writes only {mine}; {path} is another's")
+
+
+def birth(new, ref, holder, writer, reader):
+    root = git("rev-list", "--max-parents=0", new).split()
+    if len(root) != 1:
+        no(ref, "a pile has one birth")
+    root = root[0]
+    yml = (show(root, "pile.yml") or "").splitlines()
+    if f"writer: {writer}" not in yml or f"reader: {reader}" not in yml:
+        no(ref, f"a new pile says `writer: {writer}` and `reader: {reader}` in pile.yml")
+    to = (show(root, "keys/pile.age.pub") or "").strip()
+    if not AGE.fullmatch(to) or to != (show(SLICE, f"lines/{reader}/reader.age.pub") or "").strip():
+        no(ref, f"a new pile is sealed to {reader}'s own reader key, lines/{reader}/reader.age.pub")
+    for path in BIRTH:
+        if show(root, path) is None:
+            no(ref, f"a new pile is born with {path}")
+    if {p for _, p in changed(EMPTY, root)} - set(BIRTH) - {"shape/hears"}:
+        no(ref, "a pile's birth holds its shape and keys, nothing told yet")
+    if signer(root, show(root, "keys/allowed_signers"), ref) != writer or holder not in (None, writer):
+        no(ref, f"{writer} bears its own pile, signed and pushed by itself")
+    return root
+
+
+def pile(old, new, ref, holder, writer, reader):
+    if holder is not None and holder != writer and holder != reader:
+        no(ref, f"{holder} neither tells nor reads this pile")
+    base = old if old != ZERO else birth(new, ref, holder, writer, reader)
+    signers = show(base, "keys/allowed_signers")
+    for commit in git("rev-list", "--reverse", f"{base}..{new}").split():
+        parents = git("rev-list", "--parents", "-n1", commit).split()[1:]
+        if len(parents) != 1:
+            no(ref, f"{commit[:9]} is a merge; a pile is one line")
+        who = signer(commit, signers, ref)
+        if holder is not None and who != holder:
+            no(ref, f"{commit[:9]} is {who}'s; {holder} pushes only its own")
+        paths = changed(parents[0], commit)
+        if who == reader:
+            if any(p != "shape/hears" for _, p in paths):
+                no(ref, f"{reader} changes only what it hears, shape/hears")
+            continue
+        if who != writer:
+            no(ref, f"{who} neither tells nor reads this pile")
+        for status, path in paths:
+            if path != "inbox/manifest.json" and (status != "A" or not BLOCK.fullmatch(path)):
+                no(ref, f"a pile only takes new entries; {path} ({status}) is not one")
+        said = git("log", "-1", "--format=%(trailers:key=Tell-Channel,valueonly)", commit).split()
+        with tempfile.TemporaryDirectory() as tmp:
+            unpack(parents[0], tmp)
+            done = subprocess.run(["python3", "-I", "hooks/admit", *said[:1]], cwd=tmp, capture_output=True,
+                                  text=True, timeout=20)
+        if done.returncode or len(said) != 1:
+            no(ref, f"{commit[:9]}: the pile's shape {(done.stderr or done.stdout).strip() or 'refuses it'}")
+    before, after = entries(old if old != ZERO else EMPTY), entries(new)
+    if after[:len(before)] != before:
+        no(ref, "the entries before this push are not untouched")
+    if after:
+        with tempfile.TemporaryDirectory() as tmp:
+            unpack(new, tmp)
+            done = subprocess.run(["bash", f"{ENGINE}/bin/verify", "--dir", tmp, "--source", "drop"],
+                                  capture_output=True, text=True, env=dict(os.environ, DP_SITE=tmp))
+            if done.returncode:
+                no(ref, "data-pile verify: " + ((done.stderr or done.stdout).strip().splitlines() or ["failed"])[-1])
+
+
+def main(old, new, ref, check=False):
+    holder = None if check else os.environ.get("FCPM_DOOR_HOLDER")
+    if not holder and not check:
+        no(ref, "the LAN's lines are written through the door, as a keyholder")
+    if new == ZERO:
+        no(ref, "a line is never deleted")
+    if ref == "refs/heads/retain/lines":
+        return None if check else lines(old, new, ref, holder)
+    m = PILE.fullmatch(ref)
+    if not m:
+        no(ref, "a pile is retain/pile/<writer>.<reader>, or .g2 and on for a new generation")
+    return pile(old, new, ref, holder, m.group(1), m.group(2))
+
+
+if __name__ == "__main__":
+    if sys.argv[1:2] == ["--check"]:
+        main(*sys.argv[2:5], check=True)
+    else:
+        main(*sys.argv[1:4])
