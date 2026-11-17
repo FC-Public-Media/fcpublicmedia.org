@@ -525,7 +525,7 @@ of its own, written as one.
 
 ## The keychain wing, and data piles (notes)
 
-Not built. Kept so that the shape is here when it is wanted. A data pile
+Not built. Kept so that the shape is here when it is wanted ([pile-lines.md](pile-lines.md) designs the lines beside each entry). A data pile
 ([data-pile](https://github.com/FCCN-ANTIBODY/data-pile)) holds the shape of what it is looking for,
 and that shape can change. What arrives either matches it or doesn't get in. The pile assembles
 disparate data under one idea. Because the reader fetches the pile and measures it themselves, the
