@@ -1,0 +1,13 @@
+# library-stays-on-the-lan
+
+Goal: retain/ is a LAN earmark, not "this machine only". The library's record travels to
+origin.local eagerly and never past it; origin is the gate that knows library branches are not
+GitHub's (Autumn, 2026-11-16).
+
+- [x] intake: LAN-only branches (retain/*, library, librarians) are never carried to GitHub; recorded as "lan only"
+- [x] test_origin_relay: a LAN-only push stays on the origin
+- [x] library.py pre-push: retain/, refs/grants/, refs/jobs/ may go to origin.local, nowhere else
+- [x] library.py: after each commit on retain, push it to origin.local if the library has that remote (waits here otherwise)
+- [x] test_library: the hook lets origin.local through and refuses anything else
+- [x] docs: library.md, origin PROFILE
+- [ ] gaps for Autumn: bay 1's workstation key in KEYHOLDERS; `init FC-Public-Media/library` (the secretary's office)

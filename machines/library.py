@@ -17,7 +17,7 @@
 
 The library says where things are and never reads them; an x-ray reads names, sizes, times and
 attributes, never what a file says. The profile comes from FCPM_PROFILE (fcpm sets it). The library
-here is ~/code/library (FCPM_LIBRARY): one folder per branch, retain/ never pushed. docs/library.md.
+here is ~/code/library (FCPM_LIBRARY): one folder per branch, retain/ the LAN's (origin.local, never past it). docs/library.md.
 """
 import argparse
 import ctypes
@@ -42,14 +42,17 @@ COLUMNS = ["path", "kind", "bytes", "modified", "created", "attrs"]
 ATTRS = [("R", 0x1), ("H", 0x2), ("S", 0x4), ("O", 0x1000), ("P", 0x40000), ("P", 0x400000)]
 LINKS = {0xA000000C, 0xA0000003}                  # symlink, junction; a cloud placeholder's tag is not a link
 
-# Every push passes this, so a retain/ branch, the grant book or a job cannot leave by accident. When
-# the LAN's origin takes them, this is where they are let through, and nowhere else. Kept current on use.
+# Every push passes this, so a retain/ branch, the grant book or a job cannot leave the LAN by accident.
+# The LAN's origin takes them (Autumn, 2026-11-16: retain is the LAN's earmark, not this machine's), and
+# this is where they are let through to it, and nowhere else. Kept current on use.
+LAN_ORIGIN = "origin.local"
 PRE_PUSH = """#!/bin/sh
-# What stays on the media node's LAN, never pushed: retain/ branches, the grant book, jobs.
-# docs/library.md, The library here and The grant book.
+# What stays on the media node's LAN: retain/ branches, the grant book, jobs. They go to origin.local
+# and nowhere else. docs/library.md, The library here and The grant book.
+case "$2" in origin.local:*|*@origin.local:*|ssh://origin.local[/:]*|ssh://*@origin.local[/:]*) exit 0 ;; esac
 while read local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in refs/heads/retain/*|refs/grants/*|refs/jobs/*)
-    echo "library: $remote_ref is kept here and is never pushed" >&2; exit 1 ;;
+    echo "library: $remote_ref is kept on the LAN; only origin.local takes it" >&2; exit 1 ;;
   esac
 done
 exit 0
@@ -58,8 +61,8 @@ exit 0
 RETAIN_README = """# retain/{profile}
 
 The library's own record on {profile}: the shape of each holding, one commit per x-ray, and later the
-notes and summaries its caretakers write. Retained: kept on the media node's LAN, never pushed to
-GitHub and never published. `fcpm library` writes it; nothing here is a copy of anyone's file.
+notes and summaries its caretakers write. Retained: the LAN's. It goes to origin.local after each
+commit, and never past it: not to GitHub, never published. `fcpm library` writes it; nothing here is a copy of anyone's file.
 See docs/library.md in fcpublicmedia.org.
 
     <holding>/xray.tsv    the shape, as last x-rayed; its history is this branch's log
@@ -151,7 +154,8 @@ def git(*args, cwd=None, input=None, check=True):
 
 def retain(profile, make=False):
     """The retain/<profile> worktree, made on first use: a bare repository at the library's .git,
-    no remote, and a pre-push hook that refuses retain/, refs/grants/ and refs/jobs/. Returns None if not
+    no remote, and a pre-push hook that lets retain/, refs/grants/ and refs/jobs/ go to origin.local and
+    nowhere else. Returns None if not
     made and not asked to."""
     loc = location()
     wt, gd = loc / "retain", loc / ".git"
@@ -182,6 +186,17 @@ def retain(profile, make=False):
         git(*g, "update-ref", f"refs/heads/{branch}", commit)
     git(*g, "worktree", "add", "-q", str(wt), branch)
     return wt
+
+
+def transit(wt):
+    """Hand this machine's retain/ to the LAN's origin, eagerly, after each commit on it: only when the
+    library has a remote at origin.local. Out of reach, it waits here and the next commit tries again."""
+    url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=wt, capture_output=True, text=True).stdout.strip()
+    if LAN_ORIGIN not in url:
+        return
+    env = dict(os.environ, GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=5")
+    r = subprocess.run(["git", "push", "-q", "origin", "HEAD"], cwd=wt, capture_output=True, text=True, env=env)
+    print(f"lan       {'on ' + LAN_ORIGIN if r.returncode == 0 else 'waits here: ' + (r.stderr.strip().splitlines() or ['?'])[-1]}")
 
 
 def looks(label):
@@ -409,7 +424,7 @@ def status(args):
     print("library   library.yml; engine .library-engine (library.anecdote.channel)")
     for i, (name, b) in enumerate((lib.get("branches") or {}).items()):
         tail = [t for t, on in [("never merged", b.get("merges") == "never"),
-                                ("never pushed", b.get("pushes") == "never"),
+                                ("never pushed", b.get("pushes") == "never"), ("the LAN's only", b.get("pushes") == "lan"),
                                 ("not made yet", b.get("made") is False)] if on]
         print(f"{'branches' if i == 0 else '':9} {name:18} {b.get('for', '')}" + (f" ({'; '.join(tail)})" if tail else ""))
     wt = retain(args.profile)
@@ -507,6 +522,7 @@ def xray(args):
     git("commit", "-q", "--allow-empty", "-m", f"xray {args.label}: {n} files, {size(b)}", cwd=wt)
     print(f"xray      {args.label}: {n} files, {size(b)}, {sum(1 for r in rows if r['kind'] == 'd')} folders")
     print(f"kept      {out} ({git('rev-parse', '--short', 'HEAD', cwd=wt).strip()} on retain/{args.profile})")
+    transit(wt)
     if before:
         summary(changes(before[1], rows), f"since {before[0].get('taken', 'the last')}")
 
@@ -955,6 +971,7 @@ def bottle_answer(e, profile):
         f.write(f"{meta['id']}\t{meta['kind']}\t{e['nonce']}\t{meta['made']}\t{meta['by']}\n")
     git("add", "--", "outbox/issued.tsv", cwd=wt)
     git("commit", "-q", "-m", f"issued {meta['kind']} {e['nonce']}", cwd=wt)
+    transit(wt)
     print(f"bottled   {gif.name}: {meta['frames']} frames, {meta['gif']} bytes, {meta['id'][:23]}...")
     return True
 
