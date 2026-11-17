@@ -138,7 +138,16 @@ case "$cmd" in
   workshed)
     # Worktrees someone works in, each served on its own port (~/code/workshed, docs/workshed.md).
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 "$HERE/workshed.py" "$@" ;;
+    # pyyaml and the profile: what the library's grant book needs to record a worktree made and a port served.
+    FCPM_PROFILE=$(profile) PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/workshed.py" "$@" ;;
+  consoles)
+    # What this machine holds up to read, a screen each (~/code/consoles, docs/consoles.md).
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    FCPM_PROFILE=$(profile) PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/consoles.py" "$@" ;;
+  places)
+    # An origin branch's repositories, as a listing Fighter's location providers read.
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 "$HERE/places.py" "$@" ;;
   post)
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/post/post.py" "$@" ;;

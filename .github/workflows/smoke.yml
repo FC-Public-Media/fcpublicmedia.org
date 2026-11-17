@@ -69,6 +69,9 @@ jobs:
       - name: Test the workshed
         run: python3 bin/test_workshed.py
 
+      - name: Test the consoles and places
+        run: python3 bin/test_consoles.py
+
       - name: Test the tier reader
         run: python3 site/bin/test_sync_tiers.py
 

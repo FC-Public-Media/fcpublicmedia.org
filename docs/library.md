@@ -369,8 +369,9 @@ agent. A holding comes with its decorum, its record, and its terms.
 Built (stage 1): `fcpm library grant SEAT UNIT WORDS`, `release GRANT`, `grants`, and the console,
 below. The first caller-in is digitization's `seats` (advocate seats called in by hand; machines/digitization/PROFILE.md,
 Seats), which holds both grants for a call as itself. A grant's holder is found by walking up from `fcpm` past shells and interpreters, so it is the
-agent that asked (on bay 1, `claude.exe`) or a person's terminal. Not yet: jobs (`ask`, `wait`), votes,
-signing, and Helm serving the console.
+agent that asked (on bay 1, `claude.exe`) or a person's terminal. The workshed is the second: a worktree made is
+a grant spent at once, and a served one is held by its server ([workshed.md](workshed.md)). Helm serves the
+console ([consoles.md](consoles.md)). Not yet: jobs (`ask`, `wait`), votes, and signing.
 
 A grant here is the engine's ordinary sense of the word: a delegation of capability, common, cheap, and
 boring ([`GRANTS.md`](https://github.com/FCCN-ANTIBODY/library.anecdote.channel/blob/main/GRANTS.md)).
@@ -470,7 +471,7 @@ when it is fresh.
   is shown what is there. So it is impossible, by construction, to ask too often: a hundred readers in
   a minute cause one rewrite, and nobody hammers the grant book to find out what is going on.
 - **`fcpm library console --beat`** rewrites it every minute, for a crew line or Helm to keep it warm.
-  A session starts no service, so nothing runs this yet.
+  Production's helm keeps it warm, as its `library` console ([consoles.md](consoles.md)).
 - **Helm serves the file as it is, and runs none of the code.** A librarian on bay 2 asks bay 1's Helm
   for the console and can see whether an agent is already working on something, ask for one, watch it
   start working, and watch it stop, all on its own. Bay 1 can do the same with digitization. The

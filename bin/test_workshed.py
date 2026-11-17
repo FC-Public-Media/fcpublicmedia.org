@@ -20,6 +20,7 @@ import unittest
 REPO = pathlib.Path(__file__).resolve().parents[1]
 sys.dont_write_bytecode = True                    # machines/ holds only profiles and their tools (test_binding)
 sys.path.insert(0, str(REPO / "machines"))
+import places  # noqa: E402
 import workshed  # noqa: E402
 
 
@@ -49,6 +50,11 @@ class Workshed(unittest.TestCase):
         workshed.CODE, workshed.SHED = code, code / "workshed"
         workshed.LOG, workshed.PORTS = code / "workshed" / "workshed.log", code / "workshed" / "ports.json"
         workshed.STATE = root / "state"
+        self.places_code, places.CODE = places.CODE, code
+        # The library is the test's own, and not made unless a test makes it: never a real grant book.
+        self.library_was = os.environ.get("FCPM_LIBRARY")
+        os.environ["FCPM_LIBRARY"] = str(root / "library")
+        self.seed = subprocess.run(["git", "rev-parse", "HEAD"], cwd=seed, capture_output=True, text=True).stdout.strip()
 
     def tearDown(self):
         # The test's own worktrees, while workshed still points at the test's code root, and only inside it: a
@@ -60,6 +66,11 @@ class Workshed(unittest.TestCase):
                                cwd=workshed.CODE / "refs" / w["repo"], capture_output=True)
         for k, v in self.saved.items():
             setattr(workshed, k, v)
+        places.CODE = self.places_code
+        if self.library_was is None:
+            os.environ.pop("FCPM_LIBRARY", None)
+        else:
+            os.environ["FCPM_LIBRARY"] = self.library_was
         self.tmp.cleanup()
 
     def new(self, branch, **kw):
@@ -145,6 +156,44 @@ class Workshed(unittest.TestCase):
         (root / "site").mkdir()
         (root / "site" / "_config.yml").write_text("")
         self.assertEqual(workshed.build_root(root), root / "site")
+
+    def test_owner_repo_and_a_pin(self):
+        # main moves on past the pin, so a worktree at the pin is not a worktree at main
+        root, demo = pathlib.Path(self.tmp.name), workshed.CODE / "refs" / "demo"
+        (root / "seed" / "later.md").write_text("later\n")
+        git("add", ".", cwd=root / "seed")
+        git("commit", "-q", "-m", "later", cwd=root / "seed")
+        git("push", "-q", str(root / "origin.git"), "main", cwd=root / "seed")
+        git("fetch", "-q", "origin", cwd=demo)
+        git("remote", "set-url", "origin", "https://github.com/Owner/demo.git", cwd=demo)   # as a mirror's origin reads
+        with contextlib.redirect_stdout(io.StringIO()):
+            name = workshed.new("visit", shed="origin", repo="Owner/demo", start_at=self.seed[:12])
+        self.assertEqual(name, "origin/demo@visit")
+        head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                              cwd=workshed.SHED / "origin" / "demo@visit").stdout.strip()
+        self.assertEqual(head, self.seed)
+        with self.assertRaises(workshed.Wrong):
+            workshed.new("elsewhere", repo="Someone/demo")          # a mirror of another owner's demo is not it
+        with self.assertRaises(workshed.Wrong):
+            workshed.new("nowhere", repo="Owner/demo", start_at="0" * 40)
+
+    def test_no_library_is_made_to_hold_a_grant(self):
+        self.new("meet-photos")
+        self.assertFalse(pathlib.Path(os.environ["FCPM_LIBRARY"]).exists())
+
+    def test_a_worktree_made_is_a_grant_spent(self):
+        lib = workshed._sibling("library")
+        lib.retain("", make=True)                                 # this test's own library
+        self.new("meet-photos")
+        log = subprocess.run(["git", "--git-dir", str(lib.location() / ".git"), "log", "refs/grants/book",
+                              "--format=%s|%(trailers:key=Event,valueonly,separator=)|%(trailers:key=Seat,valueonly,separator=)"],
+                             capture_output=True, text=True).stdout.splitlines()
+        self.assertEqual(log[0].split("|")[1:], ["released", "workshed"])
+        self.assertEqual(log[1].split("|")[1:], ["issued", "workshed"])
+        self.assertIn("made dev/demo@meet-photos", log[1])
+        live = subprocess.run(["git", "--git-dir", str(lib.location() / ".git"), "for-each-ref", "refs/grants/live"],
+                              capture_output=True, text=True).stdout
+        self.assertEqual(live, "")
 
     def test_engines_are_looked_for_from_the_code_root(self):
         os.environ.pop("FCPM_JEKYLL_ENOUGH", None)
