@@ -261,7 +261,7 @@ member data pile ──registers to──▶ our Tell ──registers to──�
 
 | file | |
 |---|---|
-| `tell.yml` | our Tell: `id`, `name`, `url`, `scope`, `reports`. The signer is read from `keys/tell.fpr`, never copied in |
+| `tell.yml` | our Tell: `id`, `name`, `url`, `scope`, `reports`. The signer is read from `keys/tell.fpr`, never copied in. `needs:` names the programs holding our lines takes; machines answer them in gear ([station.md](station.md)) |
 | `atlas.yml` | our Atlas; read only to peer with another Atlas |
 | `keys/tell.pub`, `keys/tell.signers`, `keys/tell.fpr` | the Tell's public signer, written with LF endings because piles compare them byte for byte. A pile pins `tell.fpr` |
 | `_data/tells.yml` | the Tells our Atlas lists. Registration appends to it, and fails if `_data/` is missing |
