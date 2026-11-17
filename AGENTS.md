@@ -23,6 +23,11 @@ only to augment our capabilities on the LAN.
 Deploying it means `bin/deploy-site`: build `site/`, upload `_site` to the Cloudflare Pages project `fcpm-new`. Nothing else deploys it.
 The one running piece is the site-worker, a repository of its own (FC-Public-Media/site-worker).
 
+## Studies
+
+A study is a folder on the `studies` branch, flat: the study in our words, and every file tree made
+during it, written out. Check it out, work on it, commit, push, like any branch. Never `main`, never a bundle.
+
 ## Wix
 
 Without exception, any Wix connectors or ready authorizations shall be
