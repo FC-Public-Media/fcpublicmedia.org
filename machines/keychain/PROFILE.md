@@ -59,9 +59,8 @@ opens it again, the same as the signing key needs the board's Unlock after a reb
 - **A new machine claiming its identity.** A wiped, donated computer has no key the door knows.
   `mint ssh FOR` (and `code FOR`) gives a one-time code, good for 7 days, that the person setting up the machine
   carries to it. `door claim` trades it once for the secret, and `fcpm keys claim CODE` keeps it as
-  `~/.ssh/fcpm-<job>` (on Windows, in the OpenSSH agent alone). Both are built and tested. What is
-  not built is the way in: a `claim` account on the box that takes no key and no password and runs
-  only `door claim`. That loosens the box's sshd, so it waits for Autumn's yes. Then start.ps1 asks for the code,
+  `~/.ssh/fcpm-<job>` (on Windows, in the OpenSSH agent alone). The way in is the `claim` account
+  ([`outfit`](outfit)): no key and no password, and sshd runs only `door claim` for it, as `keys`. Then start.ps1 asks for the code,
   and the GitHub signing key follows (one token, `admin:ssh_signing_key`, held here and used here,
   so the key is registered without leaving), then its KEYHOLDERS line by PR.
 - **Moving digitization's raw files** (Cablecast, YouTube) behind `keys run` like the env groups.
