@@ -24,7 +24,8 @@ branches:
     merges: never
     made: false
   lobby:
-    for: "the way in: compiled from what is publishable, thin, and only directions to the rest"
+    for: "first contact and orientation: what is here and where, taking people to things on other branches.
+      Thin: directions, never the things themselves"
     merges: never
     made: false
   librarians:
@@ -34,7 +35,8 @@ branches:
     pushes: lan
   retain/studies:
     for: "studies: a flat list of what we are working out, in our own words, before any of it is decided.
-      What settles is distilled into something publishable; a study itself never is"
+      The working half: what settles is summarized into a released branch, because the point is to show the
+      work in the open"
     merges: never
     pushes: lan
   retain/<machine>:
