@@ -16,6 +16,7 @@ What a holder may ask (`ssh keys@HOST <verb> ...`):
                                   the public half printed (and the private one too, if protected)
     init | unlock                 the passphrase on stdin; a keeper's
     lock                          a keeper's
+    backup                        the whole keychain as a tar on stdout, all of it ciphertext but the salt: a keeper's
 
 `protected`: whoever made it has it already; the keychain hands it to a keeper, or to a holder whose
 job's keys.yml names its group. `secret`: handed to FOR alone, never to its maker, a keeper included.
@@ -302,6 +303,14 @@ def serve(office, holder):
         if not keeper:
             sys.exit("door: minting is a keeper's")
         return mint(args[1], bool(args[2:]), office, holder)
+    if verb == "backup" and not args:
+        if not keeper:
+            sys.exit("door: a backup is a keeper's")
+        note(office, holder, verb="backup")
+        kept = [n for n in ("identity.age", "recipient", "salt", "held", "public", "actions.ndjson") if (STORE / n).exists()]
+        sys.stdout.flush()
+        subprocess.run(["tar", "-C", str(STORE), "-cf", "-", *kept], check=True)
+        return None
     if verb in ("init", "unlock", "lock") and not args:
         if not keeper:
             sys.exit(f"door: {verb} is a keeper's")
