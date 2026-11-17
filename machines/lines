@@ -14,6 +14,8 @@ They meet at the origin, LAN-only (docs/lines.md). The pins are retain/lines, ea
   lines tell READER CHANNEL FILE...   seal FILEs to READER on CHANNEL and push them
   lines read WRITER             check what WRITER told me since my pin, open it into the workshed, move the pin
   lines serve                   keep my copy of the lines as files a neighbor can fetch (FCPM_LINES_SERVE)
+  lines run                     this machine's tell, one pass (the crew's `tell` line): read every line I hear on,
+                                then serve my copy. The lines are its to carry, not the origin's
 
 Where a pile came from proves nothing: a reader plays the origin's own rules on it (lines-gate --check)
 before opening anything. The origin is where we meet; any neighbor's copy will do when it is away.
@@ -329,6 +331,23 @@ def serve():
     print(f"lines: served at {host}")
 
 
+def run():
+    """One pass of this machine's tell: every pile to me whose shape names something, read; then served."""
+    fetch()
+    for ref in git("for-each-ref", "--format=%(refname)", "refs/remotes/origin/retain/pile").split():
+        writer, reader = ref.rsplit("/", 1)[1].split(".")[:2]
+        if reader != me() or ref != pile_ref(writer, reader) or not (show(ref, "shape/hears") or "").split():
+            continue
+        if rev(ref) == pin(f"lines/{me()}/in/{writer}"):
+            continue
+        try:
+            read(writer)
+        except SystemExit as e:
+            print(f"lines: {writer}: {e}")
+    if SERVE:
+        serve()
+
+
 def status():
     fetch()
     who = me()
@@ -358,6 +377,8 @@ def main(argv):
         return tell(argv[1], argv[2], argv[3:])
     if argv == ["serve"]:
         return serve()
+    if argv == ["run"]:
+        return run()
     if argv[0] == "read" and len(argv) == 2:
         return read(argv[1])
     sys.exit(__doc__.strip())

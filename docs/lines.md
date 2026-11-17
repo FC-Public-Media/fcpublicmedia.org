@@ -18,6 +18,14 @@ keeps its keys, checks for itself, and with the origin away fetches from any nei
 (`lines/<name>/serves`). Writes wait for the origin. Nothing here is secret but what is sealed:
 the branches, the pins and the keyholder lists are plain.
 
+## Each machine's tell carries its own lines
+
+Carrying the lines is each machine's tell installation's job (the crew's `tell` line, `fcpm lines
+run`): every pass it reads what it has said it hears, checks it, moves its pins and serves its copy.
+The lines matter to the machine whose lines they are. The origin holding them is never the sign
+for the origin to do anything with them: it is a place to meet, and its gate turns away what no
+keyholder signed.
+
 ## The slice: `retain/lines`
 
 One branch every machine shares, in fcpublicmedia.org at the origin. Each machine writes only its own
