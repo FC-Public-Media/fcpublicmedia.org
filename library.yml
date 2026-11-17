@@ -32,6 +32,11 @@ branches:
       files in that place's own folder shape. Instructions, never data"
     merges: never
     pushes: lan
+  retain/studies:
+    for: "studies: a flat list of what we are working out, in our own words, before any of it is decided.
+      What settles is distilled into something publishable; a study itself never is"
+    merges: never
+    pushes: lan
   retain/<machine>:
     for: "a machine's own record: each holding's x-ray, one commit per look, and later the notes,
       summaries and errors its librarians write. Our operational history, kept on the LAN"

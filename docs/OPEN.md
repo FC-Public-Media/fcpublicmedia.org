@@ -57,6 +57,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Someone has to enter community events as a standing job. site/_data/community.yml
 - `page` layout prints no `<h1>`; accessibility audits flag it. site/_layouts/page.html
 - Check `/watch/` renders `## Podcasts` as a heading (a trimming Liquid comment precedes it). site/watch.md
+- Spanish covers every page's header and footer, the homepage, `/meet/` and `/watch/`'s own words, unreviewed by a Spanish speaker; the rest, the scripts' messages and any pictures are not started. site/_data/strings/es.yml
 
 ## Board review
 

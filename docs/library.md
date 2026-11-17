@@ -35,6 +35,7 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
+| `retain/studies` | studies: a flat list of what we are working out, in our own words. Distilled before anything is published. The LAN's | begun |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
@@ -175,6 +176,7 @@ branch and not a nesting inside another.
 | folder | branch | goes |
 |---|---|---|
 | `retain/` | `retain/<machine>` | to origin.local, after each commit, and never past it |
+| `studies/` | `retain/studies` | to origin.local, like `retain/`, and never past it |
 | `librarians/` | `librarians` | to origin.local, and never past it. Instructions, never data |
 | `lobby/` | `lobby` | to GitHub. Compiled from what is publishable: directions to the rest, and nothing else |
 

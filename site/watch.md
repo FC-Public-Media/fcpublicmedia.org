@@ -42,7 +42,7 @@ title: Watch
 
 **By category:**
 
-<ul class="rows rows-tight">
+<ul class="rows rows-tight" translate="no">
 {% for category in cc.categories %}
   {%- assign anchor = category.name | slugify -%}
   <a href="#{{ anchor }}" style="color: var(--record-ink)">{{ category.name }} <span style="color: var(--ink)">({{ category.count }})</span></a>
@@ -73,9 +73,9 @@ title: Watch
   {% assign label = group.name %}
   {% if label == "" %}{% assign label = "Uncategorized" %}{% endif %}
 
-  <h3 id="{{ label | slugify }}">{{ label }} <span class="muted">{{ group.size }}</span></h3>
+  <h3 id="{{ label | slugify }}" translate="no">{{ label }} <span class="muted">{{ group.size }}</span></h3>
 
-  <ul class="rows rows-archive" data-archive>
+  <ul class="rows rows-archive" data-archive translate="no">
     {% for show in group.items %}
       {%- comment -%} Stringify the id: an integer silently fails to index the JSON object. {%- endcomment %}
       {%- assign key = show.id | append: "" -%}

@@ -8,7 +8,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 |---|---|
 | [`addresses.md`](addresses.md) | the front doors: the names in the building, the one number away, the site |
 | [`OPEN.md`](OPEN.md) | everything not built, not decided, or known wrong |
-| [`site.md`](site.md) | the site: layout, build, pages, data, tests, deploy, domain, redirects |
+| [`site.md`](site.md) | the site: layout, build, pages, languages, data, tests, deploy, domain, redirects |
 | [`programming.md`](programming.md) | Cablecast, the schedule, feeds, shows, classes and class mode |
 | [`members.md`](members.md) | tenancy, member sites, publishing, ejection, the directory, the library branch |
 | [`library.md`](library.md) | the library: branches by purpose, where things are, holdings, `~/code/library` and `retain/`, x-rays, summaries and the inventory wing, librarians and their seats, project seats, the grant book, the keychain wing |
