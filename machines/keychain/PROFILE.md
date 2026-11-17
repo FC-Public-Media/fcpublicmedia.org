@@ -56,14 +56,11 @@ opens it again, the same as the signing key needs the board's Unlock after a reb
 
 ## Not built yet
 
-- **A new machine claiming its identity.** A wiped, donated computer has no key the door knows.
-  `mint ssh FOR` (and `code FOR`) gives a one-time code, good for 7 days, that the person setting up the machine
-  carries to it. `door claim` trades it once for the secret, and `fcpm keys claim CODE` keeps it as
-  `~/.ssh/fcpm-<job>` (on Windows, in the OpenSSH agent alone). Both are built and tested. What is
-  not built is the way in: a `claim` account on the box that takes no key and no password and runs
-  only `door claim`. That loosens the box's sshd, so it waits for Autumn's yes. Then start.ps1 asks for the code,
-  and the GitHub signing key follows (one token, `admin:ssh_signing_key`, held here and used here,
-  so the key is registered without leaving), then its KEYHOLDERS line by PR.
+- **Delivery, through the data pile.** Nothing is handed out by a code carried between computers, a
+  card, or an account that answers without a key. A lodged secret is sealed to the asking machine's own
+  key and set down in a data pile that machine listens on, by tell; the library's LAN-only branches at the
+  origin carry it. A new machine's first key comes the same way, from the machine provisioning it. Bay 1's
+  identity (`identity-production`, minted 2026-11-17) waits here for that.
 - **Moving digitization's raw files** (Cablecast, YouTube) behind `keys run` like the env groups.
 - **The library** on this box. Transcripts and notes, in wings: one per engine or concern, and
   branches that hold more aisles and are never merged. A resident's scratch space is outside git

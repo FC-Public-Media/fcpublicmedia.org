@@ -82,17 +82,6 @@ class Door(unittest.TestCase):
         self.assertIn("PRIVATE KEY", self.door("machine", "editing-bay-2", "get identity-editing-bay-2 ssh").stdout)
         self.assertEqual(self.door("machine", "production", "mint ssh x").returncode, 1)
 
-    def test_a_claim_code_hands_the_identity_once(self):
-        self.made()
-        minted = self.door("keeper", "digitization", "mint ssh editing-bay-2").stdout
-        code = minted.split("claim ", 1)[1].split()[0]
-        env = dict(self.env, SSH_ORIGINAL_COMMAND=code)
-        claim = lambda: subprocess.run([sys.executable, str(DOOR), "claim"], capture_output=True, text=True, env=env)
-        self.assertIn("PRIVATE KEY", claim().stdout)
-        self.assertEqual(claim().returncode, 1)
-        env["SSH_ORIGINAL_COMMAND"] = "aaaa-bbbb-cccc-dddd-eeee"
-        self.assertEqual(claim().returncode, 1)
-
     def test_nothing_held_is_plain(self):
         self.made()
         self.door("keeper", "digitization", "put cloudflare TOKEN", "plainly-visible-token")

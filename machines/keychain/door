@@ -5,8 +5,6 @@ value except to the one it is for. See PROFILE.md.
 
     door keys                     write HOLDERS into the account's authorized_keys (run-keys, each minute)
     door serve OFFICE HOLDER      sshd runs this for a holder's key; never by hand
-    door claim                    sshd runs this for the `claim` account, which needs no key: `ssh claim@HOST CODE`
-                                  hands a minted identity to the new machine carrying its one-time code
 
 What a holder may ask (`ssh keys@HOST <verb> ...`):
 
@@ -15,9 +13,7 @@ What a holder may ask (`ssh keys@HOST <verb> ...`):
     put GROUP KEY [secret FOR]    the value on stdin, sealed at once; locked or open. `protected` by default
     get GROUP KEY                 the value, to the holder it is for; only while open
     mint ssh FOR [protected]      a new ssh identity for FOR: its private half lodged as a secret for FOR,
-                                  the public half printed (and the private one too, if protected), and a
-                                  one-time claim code that hands the secret to the machine that carries it
-    code FOR                      a new claim code for FOR's identity; the one before stops working
+                                  the public half printed (and the private one too, if protected)
     init | unlock                 the passphrase on stdin; a keeper's
     lock                          a keeper's
 
@@ -26,7 +22,6 @@ job's keys.yml names its group. `secret`: handed to FOR alone, never to its make
 Values are sealed with age to the keychain's own recipient, so putting needs no unlock; the identity
 that opens them is kept under the passphrase, and only in memory while open. Standard library and age.
 """
-import base64
 import datetime
 import hashlib
 import json
@@ -51,8 +46,6 @@ BEGIN = "# BEGIN keychain door: from machines/keychain/HOLDERS, written by `door
 END = "# END keychain door"
 TYPES = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "ecdsa-sha2-nistp256", "sk-ecdsa-sha2-nistp256@openssh.com"}
 KEEPERS = {"keeper"}
-CLAIM_DAYS = 7
-CODE = re.compile(r"[a-z2-7]{4}(-[a-z2-7]{4}){4}")
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
@@ -268,47 +261,7 @@ def mint(for_, protected, office, holder):
     (STORE / "public").mkdir(exist_ok=True)
     (STORE / "public" / f"{for_}.pub").write_text(public)
     note(office, holder, verb="mint", group=group, protected=protected)
-    sys.stdout.write(public + (private if protected else code(for_, office, holder)))
-
-
-def code(for_, office, holder):
-    """A one-time code that hands identity-FOR's ssh secret to whoever carries it, for CLAIM_DAYS."""
-    if not latest(slot(f"identity-{for_}", "ssh")):
-        sys.exit(f"door: no identity for {for_} here; mint ssh {for_}")
-    raw = base64.b32encode(secrets.token_bytes(13)).decode().lower()[:20]
-    text = "-".join(raw[i:i + 4] for i in range(0, 20, 4))
-    claims = STORE / "claims"
-    claims.mkdir(exist_ok=True)
-    for old in claims.glob("*.json"):
-        if json.loads(old.read_text())["for"] == for_:
-            old.unlink()
-    until = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=CLAIM_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    (claims / f"{hashlib.sha256(text.encode()).hexdigest()}.json").write_text(json.dumps({"for": for_, "until": until}) + "\n")
-    note(office, holder, verb="code", until=until, **{"for": for_})
-    return f"claim {text}  (once, until {until[:10]}: fcpm keys claim {text})\n"
-
-
-def claim():
-    """The claim account: the code in SSH_ORIGINAL_COMMAND, the identity's private half out, once."""
-    text = os.environ.get("SSH_ORIGINAL_COMMAND", "").strip().lower()
-    path = STORE / "claims" / f"{hashlib.sha256(text.encode()).hexdigest()}.json"
-    if not CODE.fullmatch(text) or not path.exists():
-        note("claim", "-", verb="claim", refused=True)
-        sys.exit("door: no such claim code")
-    held = json.loads(path.read_text())
-    if held["until"] < now():
-        path.unlink()
-        sys.exit("door: that claim code is past its day; a keeper's `code` makes another")
-    ident = identity()
-    if not ident:
-        sys.exit("door: the keychain is locked; the code still holds, once a keeper unlocks it")
-    group = f"identity-{held['for']}"
-    meta = latest(slot(group, "ssh"))
-    value = subprocess.run(["age", "-d", "-i", str(ident), str(slot(group, "ssh") / f"{meta['version']}.age")],
-                           capture_output=True, check=True).stdout
-    path.unlink()
-    note("claim", held["for"], verb="claim", group=group, version=meta["version"])
-    sys.stdout.buffer.write(value)
+    sys.stdout.write(public + (private if protected else ""))
 
 
 def listing():
@@ -349,10 +302,6 @@ def serve(office, holder):
         if not keeper:
             sys.exit("door: minting is a keeper's")
         return mint(args[1], bool(args[2:]), office, holder)
-    if verb == "code" and len(args) == 1 and NAME.fullmatch(args[0]):
-        if not keeper:
-            sys.exit("door: a claim code is a keeper's")
-        return sys.stdout.write(code(args[0], office, holder))
     if verb in ("init", "unlock", "lock") and not args:
         if not keeper:
             sys.exit(f"door: {verb} is a keeper's")
@@ -365,8 +314,6 @@ def main(argv):
     os.umask(0o077)
     if argv == ["keys"]:
         return keys()
-    if argv == ["claim"]:
-        return claim()
     if len(argv) == 3 and argv[0] == "serve":
         return serve(argv[1], argv[2])
     sys.exit(__doc__.strip())
