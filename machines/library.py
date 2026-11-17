@@ -14,7 +14,6 @@
     library.py inbox [round|answer]   asks of the library, by lane: list them, take a round's, answer one
     library.py signer [mint]          the library's bottling identity: its fingerprint, or make it once
     library.py outbox [make]          answers as iced bottles: what is there, and bottle any not yet
-    library.py study [NAME FOLDER]    the studies; or FOLDER, written out, filed as NAME in retain/studies
 
 The library says where things are and never reads them; an x-ray reads names, sizes, times and
 attributes, never what a file says. The profile comes from FCPM_PROFILE (fcpm sets it). The library
@@ -57,13 +56,6 @@ while read local_ref local_sha remote_ref remote_sha; do
   esac
 done
 exit 0
-"""
-
-STUDIES_README = """# retain/studies
-
-Studies: a folder each, flat. The study in our own words, and every file tree made during it, written
-out. Retained: the LAN's. It goes to origin.local after each commit, and never past it. Filed by
-`fcpm library study NAME FOLDER`. See docs/library.md in fcpublicmedia.org.
 """
 
 RETAIN_README = """# retain/{profile}
@@ -160,12 +152,13 @@ def git(*args, cwd=None, input=None, check=True):
     return r.stdout.decode("utf-8")
 
 
-def worktree(folder, branch, readme, make=False, who=""):
-    """The library's FOLDER, a worktree of BRANCH, made on first use: a bare repository at the library's
-    .git, no remote, and a pre-push hook that lets retain/, refs/grants/ and refs/jobs/ go to origin.local
-    and nowhere else. Returns None if not made and not asked to."""
+def retain(profile, make=False):
+    """The retain/<profile> worktree, made on first use: a bare repository at the library's .git,
+    no remote, and a pre-push hook that lets retain/, refs/grants/ and refs/jobs/ go to origin.local and
+    nowhere else. Returns None if not
+    made and not asked to."""
     loc = location()
-    wt, gd = loc / folder, loc / ".git"
+    wt, gd = loc / "retain", loc / ".git"
     hook = gd / "hooks" / "pre-push"
     if hook.parent.is_dir() and (not hook.exists() or hook.read_text(encoding="utf-8") != PRE_PUSH):
         hook.write_text(PRE_PUSH, encoding="utf-8", newline="\n")
@@ -174,10 +167,11 @@ def worktree(folder, branch, readme, make=False, who=""):
         return wt
     if not make:
         return None
+    branch = f"retain/{profile or 'this-machine'}"
     if not gd.exists():
         loc.mkdir(parents=True, exist_ok=True)
         git("init", "--bare", "-q", str(gd))
-        for k, v in [("user.name", f"FCPM library on {who or socket.gethostname()}"),
+        for k, v in [("user.name", f"FCPM library on {profile or socket.gethostname()}"),
                      ("user.email", "317985568+fcpm-public@users.noreply.github.com"),
                      ("commit.gpgsign", "false"), ("core.autocrlf", "false")]:
             git("--git-dir", str(gd), "config", k, v)
@@ -186,18 +180,12 @@ def worktree(folder, branch, readme, make=False, who=""):
     g = ["--git-dir", str(gd)]
     if git(*g, "rev-parse", "--verify", "-q", f"refs/heads/{branch}", check=False).strip() == "":
         # An orphan branch, its first commit the README: no history it did not make itself.
-        blob = git(*g, "hash-object", "-w", "--stdin", input=readme).strip()
+        blob = git(*g, "hash-object", "-w", "--stdin", input=RETAIN_README.format(profile=profile)).strip()
         tree = git(*g, "mktree", input=f"100644 blob {blob}\tREADME.md\n").strip()
-        first = readme.splitlines()[0].lstrip("# ")
-        commit = git(*g, "commit-tree", tree, "-m", f"{first}: the library's own record here").strip()
+        commit = git(*g, "commit-tree", tree, "-m", f"retain/{profile}: the library's own record here").strip()
         git(*g, "update-ref", f"refs/heads/{branch}", commit)
     git(*g, "worktree", "add", "-q", str(wt), branch)
     return wt
-
-
-def retain(profile, make=False):
-    return worktree("retain", f"retain/{profile or 'this-machine'}", RETAIN_README.format(profile=profile),
-                    make, profile)
 
 
 def transit(wt):
@@ -1072,38 +1060,6 @@ def console(args):
     print(text, end="")
 
 
-def study(args):
-    """The studies, or FOLDER filed as NAME: its whole tree written into studies/NAME/, replacing what was
-    there, one commit, then to origin.local. A study's own words are retained; nothing here is published."""
-    if not args.name:
-        wt = worktree("studies", "retain/studies", STUDIES_README)
-        if not wt:
-            print("studies   none filed here yet")
-            return
-        for d in sorted(p for p in wt.iterdir() if p.is_dir() and p.name != ".git"):
-            n = sum(1 for f in d.rglob("*") if f.is_file())
-            when = git("log", "-1", "--format=%cs", "--", d.name, cwd=wt).strip()
-            print(f"study     {d.name}: {n} files, {when}")
-        return
-    if not args.name.replace("-", "").isalnum() or args.name != args.name.lower():
-        sys.exit("library: a study's name is lowercase words and hyphens")
-    src = Path(args.folder or "").resolve()
-    if not src.is_dir():
-        sys.exit(f"library: {src} is not a folder; a study is filed as one")
-    wt = worktree("studies", "retain/studies", STUDIES_README, make=True, who=args.profile)
-    dest = wt / args.name
-    if src == dest:
-        sys.exit("library: that is already the filed study; commit it with git, or file from a copy")
-    shutil.rmtree(dest, ignore_errors=True)
-    shutil.copytree(src, dest, ignore=shutil.ignore_patterns(".git"))
-    n = sum(1 for f in dest.rglob("*") if f.is_file())
-    git("add", "-A", "--", args.name, cwd=wt)
-    git("commit", "-q", "--allow-empty", "-m", f"study {args.name}: {n} files", cwd=wt)
-    print(f"study     {args.name}: {n} files")
-    print(f"kept      {dest} ({git('rev-parse', '--short', 'HEAD', cwd=wt).strip()} on retain/studies)")
-    transit(wt)
-
-
 def main(argv):
     sys.stdout.reconfigure(errors="backslashreplace")   # a console's code page cannot spell every name
     p = argparse.ArgumentParser(prog="fcpm library", description=__doc__.split("\n\n")[0])
@@ -1134,13 +1090,10 @@ def main(argv):
     ib.add_argument("words", nargs="?")
     sub.add_parser("signer").add_argument("what", nargs="?", default="show", choices=["show", "mint"])
     sub.add_parser("outbox").add_argument("what", nargs="?", default="list", choices=["list", "make"])
-    st = sub.add_parser("study")
-    st.add_argument("name", nargs="?")
-    st.add_argument("folder", nargs="?")
     args = p.parse_args(argv)
     {"xray": xray, "diff": diff, "summary": summary_of, "log": log, "where": where, "browse": browse, "grant": grant,
      "release": release, "grants": grants, "console": console, "inbox": inbox,
-     "signer": signer, "outbox": outbox, "study": study}.get(args.verb, status)(args)
+     "signer": signer, "outbox": outbox}.get(args.verb, status)(args)
 
 
 if __name__ == "__main__":

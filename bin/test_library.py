@@ -112,34 +112,6 @@ class Library(unittest.TestCase):
                     "git@not-origin.local.example:x/y"):
             self.assertNotEqual(ask(url).returncode, 0, url)
 
-    def test_a_study_is_filed_whole_and_kept_on_the_lan(self):
-        made = pathlib.Path(self.tmp.name) / "made"
-        (made / "tree" / "site").mkdir(parents=True)
-        (made / "README.md").write_text("# a study\n", encoding="utf-8")
-        (made / "tree" / "site" / "es.yml").write_text("name: x\n", encoding="utf-8")
-        out = self.run_(library.study, name="a-word", folder=str(made))
-        self.assertIn("study     a-word: 2 files", out)
-        wt = library.location() / "studies"
-        git = lambda *a: subprocess.run(["git", *a], cwd=wt, capture_output=True, text=True, check=True).stdout
-        self.assertEqual(git("branch", "--show-current").strip(), "retain/studies")
-        self.assertEqual(sorted(git("ls-files").split()),
-                         ["README.md", "a-word/README.md", "a-word/tree/site/es.yml"])
-        # Filed again, it is the folder as it is now: what went from it goes from the study.
-        (made / "tree" / "site" / "es.yml").unlink()
-        self.run_(library.study, name="a-word", folder=str(made))
-        self.assertNotIn("a-word/tree/site/es.yml", git("ls-files"))
-        self.assertIn("a-word: 1 files", self.run_(library.study, name=None, folder=None))
-        remote = pathlib.Path(self.tmp.name) / "remote.git"
-        subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
-        r = subprocess.run(["git", "push", str(remote), "HEAD"], cwd=wt, capture_output=True, text=True)
-        self.assertIn("only origin.local takes it", r.stderr)
-
-    def test_a_study_is_a_folder_with_a_plain_name(self):
-        with self.assertRaises(SystemExit):
-            self.run_(library.study, name="A Word", folder=self.tmp.name)
-        with self.assertRaises(SystemExit):
-            self.run_(library.study, name="a-word", folder=str(pathlib.Path(self.tmp.name) / "missing"))
-
     def test_diff_folds_whole_folders(self):
         self.run_(library.xray)
         (self.top / "Pride B Roll").mkdir()

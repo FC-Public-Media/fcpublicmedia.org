@@ -34,8 +34,8 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
+| `studies` | a folder each: what we are working out, in our own words, and every file tree made during it. On GitHub; down to the LAN once nominated | begun |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
-| `retain/studies` | studies: a folder each, the study in our own words and every file tree made during it. The LAN's | begun |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
@@ -176,7 +176,7 @@ branch and not a nesting inside another.
 | folder | branch | goes |
 |---|---|---|
 | `retain/` | `retain/<machine>` | to origin.local, after each commit, and never past it |
-| `studies/` | `retain/studies` | to origin.local, like `retain/`, and never past it |
+| `studies/` | `studies` | to GitHub, where a cloud session commits too; down here once a machine nominates it |
 | `librarians/` | `librarians` | to origin.local, and never past it. Instructions, never data |
 | `lobby/` | `lobby` | to GitHub. Compiled from what is publishable: directions to the rest, and nothing else |
 
@@ -196,10 +196,9 @@ the origin, without asking an agent or opening a session on the machine that wro
 
 Retained branches are our own operational history, chronicled on the LAN.
 
-**Studies** are a folder each in `studies/`, flat: the study in our own words, confusion included, and
-every file tree made during it, written out. `fcpm library study NAME FOLDER` files FOLDER as
-`studies/NAME/`, replacing what was there, in one commit, and sends it on like `retain/`. `fcpm library
-study` lists them. What settles is distilled into something publishable; a study itself never is.
+**Studies** are a folder each on `studies`, flat: the study in our own words, confusion included, and
+every file tree made during it, written out. It is checked out, worked on and committed like any branch,
+from the LAN or the cloud. What settles is distilled into something publishable on `main`.
 
 **The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
 directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.

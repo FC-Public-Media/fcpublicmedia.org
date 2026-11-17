@@ -27,15 +27,14 @@ branches:
     for: "the way in: compiled from what is publishable, thin, and only directions to the rest"
     merges: never
     made: false
+  studies:
+    for: "studies: a folder each, flat: what we are working out, in our own words, and every file tree
+      made during it, written out. On GitHub, so a cloud session commits to it too. Intake takes only
+      main, so it comes down to the LAN once a machine nominates it. Distilled before anything is published"
+    merges: never
   librarians:
     for: "what librarian agents answer to: their constitution, and each place's decorum as AGENTS.md
       files in that place's own folder shape. Instructions, never data"
-    merges: never
-    pushes: lan
-  retain/studies:
-    for: "studies: a folder each, flat: what we are working out, in our own words, and every file tree made
-      during it, written out (fcpm library study). What settles is distilled into something publishable;
-      a study itself never is"
     merges: never
     pushes: lan
   retain/<machine>:

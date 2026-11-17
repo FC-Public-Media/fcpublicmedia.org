@@ -25,11 +25,8 @@ The one running piece is the site-worker, a repository of its own (FC-Public-Med
 
 ## Studies
 
-A study is filed in the library, written out: a folder in `~/code/library/studies/` (`retain/studies`)
-holding the study in our words and every file tree made during it.
-`fcpm library study NAME FOLDER` files it and sends it to origin.local, never past it.
-Never a bundle, an attachment, or GitHub. A session off the LAN hands over the folder as files,
-and the first session on the LAN files it.
+A study is a folder on the `studies` branch, flat: the study in our words, and every file tree made
+during it, written out. Check it out, work on it, commit, push, like any branch. Never `main`, never a bundle.
 
 ## Wix
 
