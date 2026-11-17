@@ -129,6 +129,19 @@ class Relay(unittest.TestCase):
         self.git("push", "-q", "door:FC-Public-Media/lan", "main", cwd=w)
         self.assertEqual(self.intake.carry(), [])
 
+    def test_the_librarys_branches_stay_on_the_lan(self):
+        w = self.work()
+        self.commit(w, "f")
+        for b in ("retain/production", "library", "librarians"):
+            self.git("push", "-q", "origin", f"HEAD:refs/heads/{b}", cwd=w)
+        self.git("push", "-q", "origin", "HEAD:refs/heads/library-notes", cwd=w)   # only a name alike
+        rows = {r["ref"]: r["state"] for r in self.intake.carry()}
+        self.assertEqual(rows, {"refs/heads/retain/production": "lan only", "refs/heads/library": "lan only",
+                                "refs/heads/librarians": "lan only", "refs/heads/library-notes": "carried"})
+        for b in ("retain/production", "library", "librarians"):
+            self.assertEqual(self.on_github(f"refs/heads/{b}"), "", f"{b} reached GitHub")
+        self.assertEqual(self.intake.carry(), [], "a LAN-only branch is not tried again")
+
     def test_main_is_never_carried(self):
         w = self.work()
         self.commit(w, "e")
