@@ -119,12 +119,15 @@ case "$cmd" in
       # Linux: this machine's own job, by crew.sh (fcpm-crew@<job>), and crew.py by python3.
       case "${1:-status}" in
         status|install|uninstall) exec sh "$HERE/crew.sh" "${1:-status}" "$(profile)" ;;
+        restart) shift; exec python3 "$REPO/machines/crew.py" restart "$(profile)" "$@" ;;
         *) exec python3 "$REPO/machines/crew.py" "$@" ;;
       esac ;;
     esac
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     case "${1:-status}" in
       status|install|uninstall) p=$(profile); ps1 "$REPO/machines/crew.ps1" "${1:-status}" ${p:+"$p"} ;;   # this machine's crew's task, and what it keeps; install is an administrator's
+      restart)  # the supervisor reads its order and menus again, and restarts what it started (or the lines named)
+                shift; p=$(profile); exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/machines/crew.py" restart "${p:-production}" "$@" ;;
       episodes) shift; exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/episodes.py" "${@:-status}" ;;
       *)        # crew.py's crew is its last word (`log NAME [CREW]`, `check [CREW]`): this machine's, unless named
                 p=$(profile); n=1; [ "$1" = log ] && n=2

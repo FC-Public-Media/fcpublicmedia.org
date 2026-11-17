@@ -4,7 +4,8 @@ pools           keep        troves/pools
 episodes        every 5m    troves/pools
 post            keep        troves/post
 screen          every 1m    troves/kiosk-screen
-jukebox         keep        machines/jukebox
+# Held off (2026-11-16): no ffmpeg on this bay yet, so it stopped every 5 minutes. Uncomment once it has one.
+# jukebox         keep        machines/jukebox
 helm            keep        machines/production
 
 # Held off: no Claude at startup. Uncomment to keep it.
