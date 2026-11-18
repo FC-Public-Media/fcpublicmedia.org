@@ -1,0 +1,51 @@
+#!/bin/sh
+# helm-wifi [ROOT] -- as root: the radio joins FC Public Media Helm instead of making the island; the password on stdin.
+# ROOT is a mounted card's root (default /, the box itself). The island's units stay installed, only not started.
+set -eu
+root=${1:-/}
+ssid=${HELM_SSID:-FC Public Media Helm}
+psk=$(cat)
+[ ${#psk} -ge 8 ] || { echo "helm-wifi: no password on stdin"; exit 1; }
+nm=$root/etc/NetworkManager/system-connections
+[ -d "$nm" ] || { echo "helm-wifi: no $nm"; exit 1; }
+
+umask 077
+cat > "$nm/fcpm-helm.nmconnection" <<END
+[connection]
+id=fcpm-helm
+type=wifi
+interface-name=wlan0
+autoconnect=true
+autoconnect-priority=20
+
+[wifi]
+mode=infrastructure
+ssid=$ssid
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=$psk
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+END
+chown 0:0 "$nm/fcpm-helm.nmconnection"
+if [ -f "$nm/fcpm-bounce.nmconnection" ]; then
+	if grep -q '^autoconnect=' "$nm/fcpm-bounce.nmconnection"; then
+		sed -i 's/^autoconnect=.*/autoconnect=false/' "$nm/fcpm-bounce.nmconnection"
+	else
+		sed -i '/^\[connection\]/a autoconnect=false' "$nm/fcpm-bounce.nmconnection"
+	fi
+fi
+for u in fcpm-bounce-wall fcpm-bounce-dns fcpm-bounce; do
+	rm -f "$root/etc/systemd/system/multi-user.target.wants/$u.service"
+done
+if [ "$root" = / ]; then
+	systemctl stop fcpm-bounce fcpm-bounce-dns fcpm-bounce-wall 2>/dev/null || true
+	nft delete table inet fcpm_bounce 2>/dev/null || true
+	nmcli con reload && nmcli con up fcpm-helm >/dev/null
+fi
+echo "helm-wifi: wlan0 joins \"$ssid\"; the island is off (delete fcpm-helm, then sudo sh install, for the island again)"
