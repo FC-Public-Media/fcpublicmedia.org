@@ -7,7 +7,8 @@ Begun 2026-11-17. The site first, then what we run. First run: fcpublicmedia.org
 
     a-word-of-spanish/
     ├── README.md        the study
-    ├── scorecard.tsv    strings-report.mjs on main at ff5bdc5: each page, its strings, how many in Spanish
+    ├── review.md        for the Spanish reader: four questions, then every line, English beside Spanish
+    ├── scorecard.tsv    strings-report.mjs: each page, its strings, how many in Spanish
     └── missing-es.yml   strings-report.mjs --missing es: every string not translated yet, by page, to fill in
 
 ## The tree it made (fcpublicmedia.org, #447)
@@ -80,13 +81,13 @@ Words a script writes later are not in it.
 | reserve | 80 | 379 | 19 |
 | submit | 62 | 288 | 20 |
 | meet | 48 | 90 | 48 |
-| check-in | 44 | 154 | 0 |
+| check-in | 44 | 154 | 44 |
 | check-in poster | 27 | 129 | 19 |
 | authorize | 52 | 404 | 19 |
 | upload | 59 | 362 | 19 |
 | settings | 48 | 248 | 19 |
 | devices | 41 | 208 | 19 |
-| **the whole site, once each** | **414** | **2,431** | **74** |
+| **the whole site, once each** | **414** | **2,431** | **118** |
 
 The 19 on most pages is the header and footer. Beyond that:
 
@@ -133,8 +134,9 @@ fluent translator and a review, not a project. The hard part is not volume.
 - **Offices, not officers**: "Presidencia", "Tesorería", so no title has to guess anyone's gender.
 - **Day codes** (T, W, R, F, Sat) are keys of one letter. Any other lone "T" on a page would turn into
   "Mar" too. None does today.
-- **Auto-Spanish for Spanish devices.** Right for reaching people; risky while the Spanish is
-  unreviewed. Making it opt-in is one line in `lang.js` and one in `head.html`.
+- **Spanish devices wait for a reader.** `follow_device: false` in `es.yml` (#457): a phone set to
+  Spanish gets English until a Spanish speaker has read `review.md` and the line says true. The footer's
+  Español works for anyone, now.
 - **Back to English reloads the page.** With storage blocked the reload forgets the choice, and the
   device decides again.
 
@@ -158,9 +160,12 @@ fluent translator and a review, not a project. The hard part is not volume.
 - **Text runs longer.** The header's breakpoints are sized for English words. The Spanish menu words
   were picked short (Mira, Aprende, Conoce, Reserva, Únete, Envía), and every page is now tested at
   360px in Spanish for sideways scroll.
-- **The building.** The check-in pass is 0 of 44. The door QR, the kiosk and the posters are where a
+- **The building.** The check-in pass is 44 of 44 now (#457), with its script's fixed messages. Its
+  messages built around a value (a distance, a time) and the browser's confirm dialogs are still English. The door QR, the kiosk and the posters are where a
   Spanish speaker meets us in person. The kiosk and the wizards are not the site's build.
-- **Pictures with English in them.** Part of the photo hunt: note which ones have a sign in them.
+- **Pictures with English in them.** Looked 2026-11-18: the studio photo, the six shots in the
+  homepage's video, and the logo carry no English but our name and a distant EXIT sign. Nothing to
+  swap today. New photos from the hunt get the same look before they go up.
 
 ## The device, the You engine, the cloud drop
 
@@ -179,7 +184,5 @@ fluent translator and a review, not a project. The hard part is not volume.
 
 - Who reads the Spanish, and is that a member, a volunteer, or someone paid?
 - Fort Collins' Hispanic or Latino share, from the Census, before it goes in front of the board.
-- Opt-in or automatic, for the board meeting.
-- Which images have English in them.
 - Whether the scorecard should ever be a gate. Today it is a report: an English edit leaves the old
   Spanish unused, never wrong, and nothing goes red.

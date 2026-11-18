@@ -62,7 +62,6 @@
   "Monday": ""
   "First": ""
   "Last": ""
-  "Email": ""
   "Phone": ""
   "Topics": ""
   "Needs": ""
@@ -111,7 +110,6 @@
   "Studio": ""
   "bookings@fcpublicmedia.org": ""
   "The Center for Creativity studio at 200 Mathews St shares a block with Old Town Library. Our equipment and software are yours to use while on-site.": ""  # markup
-  "Name": ""
   "Week": ""  # aria-label
   "This week": ""
   "Next week": ""
@@ -198,49 +196,6 @@
   "Description & credits": ""
   "Scheduling (optional)": ""
   "Received. Reference .": ""  # markup
-  # check-in
-  "Check In": ""  # title
-  "Your pass": ""  # aria-label
-  "Use a contact card": ""
-  "Confirmed": ""
-  "This phone's name": ""
-  "This phone": ""
-  "Check in": ""
-  "Running late? Come anyway.": ""
-  "I'm planning to come": ""
-  "You're coming. Check in when you get here.": ""
-  "This browser won't save anything": ""
-  "Private browsing? Use the paper log by the door.": ""
-  "Checking where you are…": ""
-  "Not at the studio yet": ""
-  "Held. Leave this open and it finishes when you arrive.": ""
-  "Directions": ""
-  "Check again": ""
-  "Cancel": ""
-  "Location is off": ""
-  "Turn it on for this site, or use the paper log.": ""
-  "Try again": ""
-  "That didn't work": ""
-  "Welcome.": ""
-  "Show it": ""
-  "Check in again": ""
-  "More": ""  # aria-label
-  "Show": ""
-  "Visits": ""
-  "Yours": ""
-  "Pass": ""
-  "No visits yet.": ""
-  "Your check-in, as a moving code for our camera": ""  # aria-label
-  "Identifier": ""
-  "First used": ""
-  "Kept": ""
-  "Only while the browser allows. Save a copy, or add this to your Home Screen": ""
-  "Save a copy": ""
-  "Restore from a file": ""
-  "Email confirmed until": ""
-  "Remove confirmed email": ""
-  "Ask us to confirm your email.": ""  # markup
-  "Forget this phone": ""
   # check-in-poster
   "Check-In Poster": ""  # title
   "Print this page. The code below points at . If that URL ever changes, regenerate the code with — a printed code with the wrong URL is worse than no code at all.": ""
