@@ -15,3 +15,6 @@ drain           every 1h    machines/digitization
 flush           every 15m   machines/digitization
 # This machine's tell: it carries its own lines, reading what it hears and serving its copy (../../docs/lines.md).
 tell            every 5m    machines/digitization
+# The library shed, kept to origin.local's branches; the city's shapes into its library branch, once a day.
+shed            every 5m    machines/digitization
+city            at 04:17    machines/digitization

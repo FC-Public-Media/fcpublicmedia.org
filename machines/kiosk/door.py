@@ -3473,6 +3473,10 @@ class Door(BaseHTTPRequestHandler):
             return
         return self.reply(404, "", TYPES[".txt"])
 
+    def query(self):
+        import urllib.parse
+        return {k: v[-1] for k, v in urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "").items()}
+
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
@@ -3577,6 +3581,13 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, workshed_page(self.here()))
             if route == "/workshed/now":
                 return self.reply(200, json.dumps(workshed_now(self.here())), TYPES[".json"])
+            # The library's search: a shed's worktrees, every word in any order (../workshed.py, docs/workshed.md, Search).
+            if route in ("/library", "/library/"):
+                return self.reply(200, library_page(self.query()))
+            if route == "/library/search":
+                return self.reply(200, json.dumps(library_search(self.query())), TYPES[".json"])
+            if route == "/library/read":
+                return self.reply(200, library_read(self.query()))
             # Consoles: what this helm holds up to read, a screen each (../consoles.py, docs/consoles.md). The list
             # is Fighter's CONSOLES, with this helm's addresses for paths; a page is served as it was last written.
             if route in ("/consoles", "/consoles/"):
@@ -4870,6 +4881,162 @@ WORKSHED_JS = """<script>
   var form = document.getElementById('new');
   if (form) form.onsubmit = function (ev) { ev.preventDefault(); ask({do: 'new', branch: form.branch.value}).then(function () { form.reset(); }); };
   now(); setInterval(now, 5000);
+})();
+</script>"""
+
+
+# --------------------------------------------------------------------- library --
+# THE LIBRARY'S SEARCH: pick a shed, give words in any order, get every file in its worktrees that holds them all,
+# as a list. A fact in a file read here is itself a search, so one thing leads to the next. docs/workshed.md, Search.
+def library_words(q):
+    import shlex
+    try:
+        return shlex.split(q or "")
+    except ValueError:
+        return (q or "").split()
+
+
+def library_search(q):
+    every = shed().sheds()
+    name = q.get("shed") or ("library" if "library" in every else (every[0] if every else ""))
+    if not every:
+        return {"sheds": [], "shed": "", "hits": [], "total": 0, "files": 0, "said": "No shed in the workshed here yet."}
+    try:
+        d = shed().search(name, library_words(q.get("q")))
+    except shed().Wrong as exc:
+        return {"sheds": every, "shed": name, "hits": [], "total": 0, "files": 0, "said": str(exc)}
+    d["sheds"] = every
+    return d
+
+
+def library_said(d):
+    if d.get("said"):
+        return d["said"]
+    more = ", the first %d" % len(d["hits"]) if d["total"] > len(d["hits"]) else ""
+    return "%d of %d in %s%s, %d ms" % (d["total"], d["files"], d["shed"], more, d.get("ms", 0))
+
+
+def library_hit(d, h):
+    """One hit as the page lists it; the script draws the same."""
+    import urllib.parse
+    href = "/library/read?" + urllib.parse.urlencode({"shed": d["shed"], "wt": h["worktree"], "path": h["path"]})
+    def lit(line):
+        low, marks, at, out = line.lower(), [], 0, ""
+        for w in d["words"]:
+            i = low.find(w)
+            if i >= 0:
+                marks.append((i, i + len(w)))
+        for a, b in sorted(marks):
+            if a >= at:
+                out += e(line[at:a]) + "<mark>" + e(line[a:b]) + "</mark>"
+                at = b
+        return out + e(line[at:])
+    more = ' <i>+%d</i>' % h["more"] if h.get("more") else ""
+    lines = '<span class=ln>%s%s</span>' % (" &middot; ".join(lit(x) for x in h["lines"]), more) if h["lines"] else ""
+    return '<li><a href="%s">%s</a><span class=at>%s &middot; %s</span>%s</li>' % (
+        e(href), e(h["title"]), e(h["branch"]), e(h["object"]), lines)
+
+
+def library_page(q):
+    d = library_search(q)
+    sheds = "".join('<option%s>%s</option>' % (" selected" if s == d["shed"] else "", e(s)) for s in d["sheds"])
+    body = """%s<main>
+<form id=ask class=ask role=search action="/library/"><select name=shed aria-label="Shed">%s</select>
+<input name=q type=search autofocus autocomplete=off value="%s" placeholder="words, any order: route 14 park" aria-label="Words">
+</form>
+<p class=dim id=said>%s</p>
+<ol id=hits class=hits>%s</ol>
+</main>%s""" % (masthead("%s &middot; library" % e(socket.gethostname().lower())), sheds, e(q.get("q") or ""),
+                e(library_said(d)), "".join(library_hit(d, h) for h in d["hits"]), LIBRARY_JS)
+    return shell("Library", body, LIBRARY_CSS)
+
+
+def library_read(q):
+    import urllib.parse
+    s, wt, path = q.get("shed", ""), q.get("wt", ""), q.get("path", "")
+    try:
+        text = shed().read(s, wt, path)
+    except shed().Wrong as exc:
+        return shell("Library", "%s<main><p>%s</p></main>" % (masthead("library"), e(str(exc))), LIBRARY_CSS)
+    def find(v):
+        return "/library/?" + urllib.parse.urlencode({"shed": s, "q": v})
+    out = []
+    for line in text.splitlines()[:3000]:
+        m = re.match(r"^(\s*(?:-\s+|[A-Za-z][\w ]*:\s+))(.+)$", line)
+        if path.endswith((".yml", ".yaml")) and m:
+            v = m.group(2).strip().strip('"')
+            link = ('<a href="%s" rel=noopener>%s</a>' % (e(v), e(v)) if re.match(r"https?://", v)
+                    else '<a href="%s">%s</a>' % (e(find(v)), e(m.group(2))))
+            out.append(e(m.group(1)) + link)
+        else:
+            out.append(e(line))
+    head = '<p class=dim><a href="/library/?%s">%s</a> &middot; %s:%s</p>' % (
+        e(urllib.parse.urlencode({"shed": s})), e(s), e(wt.split("@", 1)[-1].replace("~", "/")), e(path))
+    return shell(path.rsplit("/", 1)[-1], "%s<main>%s<pre class=read>%s</pre></main>" % (
+        masthead("library"), head, "\n".join(out)), LIBRARY_CSS)
+
+
+LIBRARY_CSS = BOARD_CSS + """
+main { gap:.8rem; }
+.ask { display:flex; gap:.5rem; position:sticky; top:0; background:var(--ink); padding:.6rem 0; }
+.ask input, .ask select { font:inherit; padding:.45rem .6rem; background:var(--slate); color:var(--paper); border:0; }
+.ask input { flex:1; min-width:0; font-size:1.1rem; }
+#said { margin:0; min-height:1.2em; font-size:.85rem; font-variant-numeric:tabular-nums; }
+.hits { list-style:none; margin:0; padding:0; background:var(--slate); }
+.hits li { padding:.4rem .8rem; } .hits li + li { border-top:1px solid var(--ink); }
+.hits a { color:var(--paper); font-weight:650; text-decoration:none; } .hits a:hover { text-decoration:underline; }
+.hits .at { color:var(--dim); font-size:.78rem; margin-left:.5rem; overflow-wrap:anywhere; }
+.hits .ln { display:block; color:var(--soft); font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hits mark { background:none; color:var(--signal); font-weight:700; } .hits i { color:var(--dim); font-style:normal; }
+.read { margin:0; padding:1rem; background:var(--slate); color:var(--soft); white-space:pre-wrap; font-size:.9rem;
+  overflow-wrap:anywhere; } .read a { color:var(--paper); }
+.dim a { color:var(--paper); }
+"""
+
+
+LIBRARY_JS = """<script>
+(function () {
+  var form = document.getElementById('ask'), hits = document.getElementById('hits'), said = document.getElementById('said');
+  var params = new URLSearchParams(location.search), timer = null, asked = 0;
+  function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+  function lit(span, line, words) {
+    var low = line.toLowerCase(), at = 0, marks = [];
+    words.forEach(function (w) { var i = low.indexOf(w); if (i >= 0) marks.push([i, i + w.length]); });
+    marks.sort(function (a, b) { return a[0] - b[0]; }).forEach(function (m) {
+      if (m[0] < at) return;
+      span.append(line.slice(at, m[0]), el('mark', null, line.slice(m[0], m[1]))); at = m[1];
+    });
+    span.append(line.slice(at));
+  }
+  function draw(d) {
+    var pick = form.shed;
+    if (pick.options.length !== d.sheds.length) {
+      pick.replaceChildren.apply(pick, d.sheds.map(function (s) { var o = el('option', null, s); o.value = s; return o; }));
+    }
+    pick.value = d.shed;
+    said.textContent = d.said || (d.total + ' of ' + d.files + ' in ' + d.shed + (d.total > d.hits.length ? ', the first ' + d.hits.length : '') + ', ' + d.ms + ' ms');
+    hits.replaceChildren.apply(hits, d.hits.map(function (h) {
+      var li = el('li'), a = el('a', null, h.title);
+      a.href = '/library/read?' + new URLSearchParams({shed: d.shed, wt: h.worktree, path: h.path});
+      li.append(a, el('span', 'at', h.branch + ' \u00b7 ' + h.object));
+      if (h.lines.length) {
+        var ln = el('span', 'ln');
+        h.lines.forEach(function (l, i) { if (i) ln.append(' \u00b7 '); lit(ln, l, d.words); });
+        if (h.more) ln.append(' ', el('i', null, '+' + h.more));
+        li.append(ln);
+      }
+      return li;
+    }));
+  }
+  function ask() {
+    var n = ++asked, q = {shed: form.shed.value || params.get('shed') || '', q: form.q.value};
+    history.replaceState(null, '', '?' + new URLSearchParams(q));
+    fetch('/library/search?' + new URLSearchParams(q), {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { if (n === asked) draw(d); }).catch(function () { said.textContent = 'This machine is not answering'; });
+  }
+  form.onsubmit = function (ev) { ev.preventDefault(); ask(); };
+  form.q.oninput = function () { clearTimeout(timer); timer = setTimeout(ask, 120); };
+  form.shed.onchange = ask;
 })();
 </script>"""
 
