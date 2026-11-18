@@ -1,5 +1,7 @@
-# Spanish. Keys are the English as a page says it; docs/site.md#languages. Unreviewed.
+# Spanish. Keys are the English as a page says it; docs/site.md#languages.
 name: Español
+# True once a Spanish speaker has read it: then a device set to Spanish gets it with no choice made.
+follow_device: false
 
 strings:
   # Every page
@@ -84,6 +86,64 @@ strings:
   Longest since aired: Más tiempo sin transmitirse
   Aired most recently: Transmitidos más recientemente
   Title A–Z: Título A–Z
+
+  # Check-in
+  Name: Nombre
+  Email: Correo electrónico
+  Check In: Registro
+  Your pass: Tu pase
+  Use a contact card: Usar una tarjeta de contacto
+  Confirmed: Confirmado
+  This phone's name: Nombre de este teléfono
+  This phone: Este teléfono
+  Check in: Registrarme
+  Running late? Come anyway.: ¿Vas tarde? Ven de todos modos.
+  I'm planning to come: Pienso ir
+  You're coming. Check in when you get here.: Vienes. Regístrate cuando llegues.
+  This browser won't save anything: Este navegador no guardará nada
+  Private browsing? Use the paper log by the door.: ¿Navegación privada? Usa el registro en papel junto a la puerta.
+  Checking where you are…: Comprobando dónde estás…
+  Not at the studio yet: Aún no estás en el estudio
+  Held. Leave this open and it finishes when you arrive.: En espera. Deja esto abierto y se completa cuando llegues.
+  Directions: Cómo llegar
+  Check again: Comprobar otra vez
+  Cancel: Cancelar
+  Location is off: La ubicación está desactivada
+  Turn it on for this site, or use the paper log.: Actívala para este sitio, o usa el registro en papel.
+  Try again: Intentar otra vez
+  That didn't work: No funcionó
+  Welcome.: Te damos la bienvenida.
+  Show it: Muéstralo
+  Check in again: Registrarme otra vez
+  More: Más
+  Show: Mostrar
+  Visits: Visitas
+  Yours: Lo tuyo
+  Pass: Pase
+  No visits yet.: Aún no hay visitas.
+  Your check-in, as a moving code for our camera: Tu registro, como un código en movimiento para nuestra cámara
+  Identifier: Identificador
+  First used: Primer uso
+  Kept: Se guarda
+  Only while the browser allows. Save a copy, or add this to your Home Screen: Solo mientras el navegador lo permita. Guarda una copia, o agrégalo a tu pantalla de inicio
+  Until you delete it: Hasta que lo borres
+  Save a copy: Guardar una copia
+  Restore from a file: Restaurar desde un archivo
+  Email confirmed until: Correo confirmado hasta
+  Remove confirmed email: Quitar el correo confirmado
+  Ask us to confirm your email.: '<a href="mailto:info@fcpublicmedia.org">Pídenos</a> que confirmemos tu correo.'
+  Forget this phone: Olvidar este teléfono
+  Happening now: Ahora mismo
+  Starting soon: Empieza pronto
+  I'm here for the class: Vine a la clase
+  Check in first, then show it here.: Regístrate primero y luego muéstralo aquí.
+  Deleted. A new device identifier has been generated.: Borrado. Se generó un nuevo identificador de dispositivo.
+  That link has expired. Ask us for a new one and it will work again.: Ese enlace caducó. Pídenos uno nuevo y volverá a funcionar.
+  "That link looks incomplete. Email clients sometimes break long links across lines; try opening it from the original message.": "Ese enlace parece incompleto. Algunos programas de correo cortan los enlaces largos; intenta abrirlo desde el mensaje original."
+  This browser cannot check the link. Your address can still be entered by hand below.: Este navegador no puede comprobar el enlace. Aún puedes escribir tu dirección abajo.
+  That link could not be used.: No se pudo usar ese enlace.
+  Your browser would not let this page save anything, so nothing was recorded.: Tu navegador no dejó que esta página guardara nada, así que no se registró nada.
+  Your location could not be determined.: No se pudo determinar tu ubicación.
 
   # 404
   Page not found: Página no encontrada

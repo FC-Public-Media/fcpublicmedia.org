@@ -13,6 +13,13 @@ async function other(request) {
   return { code, file, strings: file.strings || {} };
 }
 
+/** A context whose visitor already chose CODE in the footer. */
+async function choosing(browser, code, options = {}) {
+  const context = await browser.newContext({ locale: 'en-US', ...options });
+  await context.addInitScript((c) => { try { localStorage.setItem('lang', c); } catch (e) { /* blocked */ } }, code);
+  return context;
+}
+
 const navWords = (page) => page.locator('.site-nav .nav-word').allTextContents();
 const said = (strings, english) => english.map((w) => strings[w.trim()] ?? w.trim());
 
@@ -40,18 +47,25 @@ test.describe('languages', () => {
     await context.close();
   });
 
-  test('a device that prefers another language gets it with no choice made', async ({ browser, request }) => {
-    const { code, strings } = await other(request);
+  test('a device set to another language gets it only once its file says to follow', async ({ browser, request }) => {
+    const { code, file, strings } = await other(request);
     const english = await browser.newContext({ locale: 'en-US' });
-    const englishWords = await navWords(await (async () => { const p = await english.newPage(); await p.goto('/'); return p; })());
+    const englishPage = await english.newPage();
+    await englishPage.goto('/');
+    const englishWords = await navWords(englishPage);
     await english.close();
 
     const context = await browser.newContext({ locale: code });
     const page = await context.newPage();
     await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('lang', code);
     await expect(page.locator('html')).not.toHaveAttribute('data-lang-pending', /.*/);
-    expect((await navWords(page)).map((w) => w.trim())).toEqual(said(strings, englishWords));
+    if (file.follow_device) {
+      await expect(page.locator('html')).toHaveAttribute('lang', code);
+      expect((await navWords(page)).map((w) => w.trim())).toEqual(said(strings, englishWords));
+    } else {
+      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+      expect(await navWords(page)).toEqual(englishWords);
+    }
     await context.close();
   });
 
@@ -78,11 +92,11 @@ test.describe('languages', () => {
 
   test('what says translate="no" is left as it is', async ({ browser, request }) => {
     const { code } = await other(request);
-    const read = async (locale) => {
-      const context = await browser.newContext({ locale });
+    const read = async (lang) => {
+      const context = await choosing(browser, lang);
       const page = await context.newPage();
       await page.goto('/');
-      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await expect(page.locator('html')).toHaveAttribute('lang', lang);
       const words = await page.locator('[translate="no"]').allTextContents();
       await context.close();
       return words;
@@ -108,7 +122,7 @@ test.describe('languages', () => {
 
   test('with no network, a kit page still comes in the chosen language', async ({ browser, request }) => {
     const { code } = await other(request);
-    const context = await browser.newContext({ locale: code });
+    const context = await choosing(browser, code);
     const page = await context.newPage();
     await page.goto('/check-in/');
     await page.evaluate(async () => {
@@ -127,7 +141,7 @@ test.describe('languages', () => {
 
   test('survives storage being blocked', async ({ browser, request }) => {
     const { code } = await other(request);
-    const context = await browser.newContext({ locale: code });
+    const context = await browser.newContext({ locale: 'en-US' });
     await context.addInitScript(() => {
       Object.defineProperty(window, 'localStorage', {
         get() { throw new DOMException('The operation is insecure.', 'SecurityError'); },
@@ -137,8 +151,9 @@ test.describe('languages', () => {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
+    await page.locator(`[data-lang="${code}"]`).click();
     await expect(page.locator('html')).toHaveAttribute('lang', code);
-    // Nothing can keep a choice across the reload, so the device decides again; it must not throw.
+    // Nothing can keep a choice across the reload; it must not throw.
     await Promise.all([page.waitForEvent('load'), page.locator('[data-lang="en"]').click()]);
     expect(errors).toEqual([]);
     await context.close();
@@ -155,7 +170,7 @@ test.describe('languages', () => {
   for (const { path, name } of PAGES) {
     test(`${name} does not scroll sideways in another language`, async ({ browser, request }) => {
       const { code } = await other(request);
-      const context = await browser.newContext({ locale: code, viewport: { width: 360, height: 740 } });
+      const context = await choosing(browser, code, { viewport: { width: 360, height: 740 } });
       const page = await context.newPage();
       await page.goto(path);
       await expect(page.locator('html')).toHaveAttribute('lang', code);
