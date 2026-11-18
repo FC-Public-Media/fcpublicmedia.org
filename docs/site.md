@@ -110,8 +110,9 @@ offline kit keeps.
   first (a value with markup brings its own links), else its separate pieces, then `alt`, `title`,
   `aria-label`, `placeholder` and the page title. A key not in the file stays English, so a file can be
   partial. Words a script writes later are caught as they appear.
-- The choice is the footer's, beside the colours. With none made, the device's languages decide. Until it is
-  on, `_includes/head.html` keeps the page unseen, for 2.5s at most. Back to English is a reload.
+- The choice is the footer's, beside the colours. With none made, a device set to a language gets it only
+  where its file says `follow_device: true`, once a speaker has read it. Until it is on,
+  `_includes/head.html` keeps the page unseen, for 2.5s at most. Back to English is a reload.
 - `translate="no"` keeps a part as it is: names, addresses, email, everything from Cablecast. A browser's own
   translator honours it too.
 - `assets/js/prefs.js` keeps the device's choices (`theme`, `lang`) in localStorage, and copies them to the

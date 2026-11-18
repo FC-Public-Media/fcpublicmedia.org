@@ -8,17 +8,19 @@ import { read, remember } from './prefs.js';
 const ENGLISH = 'en';
 const meta = document.querySelector('meta[name="fcpm-strings"]');
 const offered = (meta?.dataset.langs || '').split(' ').filter(Boolean);
+// The languages a device's own setting may choose: those a Spanish speaker, say, has read.
+const followed = (meta?.dataset.follow || '').split(' ').filter(Boolean);
 const root = document.documentElement;
 
 const known = (code) => code === ENGLISH || offered.includes(code);
 
-/** The stored choice, else the first of the device's languages we have, else English. */
+/** The stored choice, else the first of the device's languages we follow, else English. */
 function chosen() {
   const stored = read('lang');
   if (stored && known(stored)) return stored;
   for (const tag of navigator.languages || [navigator.language || '']) {
     const base = String(tag).toLowerCase().split('-')[0];
-    if (known(base)) return base;
+    if (base === ENGLISH || followed.includes(base)) return base;
   }
   return ENGLISH;
 }
