@@ -320,7 +320,7 @@ def serve():
     if not (SERVE / "HEAD").exists():
         SERVE.mkdir(parents=True, exist_ok=True)
         subprocess.run(["git", "init", "-q", "--bare", str(SERVE)], check=True)
-    git("push", "-q", str(SERVE), "refs/remotes/origin/retain/*:refs/heads/retain/*", check=False)
+    git("push", "-q", "--force", "--prune", str(SERVE), "refs/remotes/origin/retain/*:refs/heads/retain/*")  # exactly mine
     subprocess.run(["git", "-C", str(SERVE), "update-server-info"], check=True)
     host = os.environ.get("FCPM_LINES_URL") or f"http://lines.{platform.node().split('.')[0].lower()}.fcpublicmedia.local/"
     link = SITES / "by-name" / host.split("//", 1)[-1].strip("/")

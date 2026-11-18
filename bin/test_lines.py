@@ -32,11 +32,12 @@ class Lines(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
-    def lines(self, who, *args, door=None, env=None):
+    def lines(self, who, *args, door=None, extra=None):
         home = self.tmp / who
         env = dict(os.environ, FCPM_LINES_ME=who, FCPM_LINES_KEY=str(home / "key"), FCPM_LINES_HOME=str(home / "lines"),
                    FCPM_ORIGIN_URL=str(self.tmp / "origin"), FCPM_DOOR_HOLDER=door or who,
-                   FCPM_PILE_ENGINE=str(ROOT / ".pile-engine"), **(env or {}))
+                   FCPM_PILE_ENGINE=str(ROOT / ".pile-engine"), FCPM_LINES_SERVE=str(home / "served"))
+        env.update(extra or {})
         return subprocess.run([sys.executable, str(LINES), *args], capture_output=True, text=True, env=env, cwd=self.tmp)
 
     def note(self, name, text):
@@ -62,6 +63,9 @@ class Lines(unittest.TestCase):
         self.assertEqual(read.returncode, 0, read.stderr)
         self.assertIn("read now", read.stdout)
         self.assertNotIn("read now", self.lines("production", "run").stdout)       # a second pass: nothing new
+        served = subprocess.run(["git", "-C", str(self.tmp / "production/served"), "for-each-ref", "--format=%(objectname)"],
+                                capture_output=True, text=True).stdout.split()
+        self.assertTrue(served, "a pass serves the copy, and only into its own folder")
         got = list((self.tmp / "production/lines/workshed/digitization").iterdir())
         self.assertEqual([p.read_text() for p in got], ["your identity"])
 
@@ -97,7 +101,7 @@ class Lines(unittest.TestCase):
     def test_a_neighbor_serves_the_lines_with_the_origin_away(self):
         self.told_once()
         served = self.tmp / "served"
-        done = self.lines("digitization", "serve", env={"FCPM_LINES_SERVE": str(served), "FCPM_LINES_URL": str(served)})
+        done = self.lines("digitization", "serve", extra={"FCPM_LINES_SERVE": str(served), "FCPM_LINES_URL": str(served)})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.lines("production")                                         # production learns where digitization serves
         (self.tmp / "origin").rename(self.tmp / "away")
