@@ -1,0 +1,27 @@
+#!/bin/sh
+# landing -- the landing as a logical volume on this disk, shared to the LAN as `landing` (SMB). Run as root; idempotent.
+# Usage: sudo sh machines/digitization/landing [SIZE]   (SIZE for lvcreate -L, default 690G; never resized here)
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+VG=digitization-vg LV=landing OWNER=fcpm
+dev=/dev/$VG/$LV
+
+[ -e "$dev" ] || lvcreate -y -L "${1:-690G}" -n "$LV" "$VG"
+blkid -o value -s TYPE "$dev" >/dev/null 2>&1 || mkfs.ext4 -q -m 0 -L fcpm-landing "$dev"
+grep -q '^LABEL=fcpm-landing ' /etc/fstab ||
+  echo 'LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2' >> /etc/fstab
+mkdir -p /srv/landing
+mountpoint -q /srv/landing || mount /srv/landing
+for d in recordings post samples jukebox; do install -d -o "$OWNER" -g "$OWNER" "/srv/landing/$d"; done
+chown "$OWNER:$OWNER" /srv/landing
+
+dpkg-query -W -f='${Status}' samba 2>/dev/null | grep -q "install ok installed" ||
+  DEBIAN_FRONTEND=noninteractive apt-get install -y samba
+cmp -s "$HERE/smb.conf" /etc/samba/smb.conf || { cp "$HERE/smb.conf" /etc/samba/smb.conf; systemctl restart smbd; }
+systemctl disable --now nmbd 2>/dev/null || true
+# The share's password is the one typed into this machine's screen; it is never in the repo.
+if ! pdbedit -L 2>/dev/null | grep -q "^$OWNER:"; then
+  pw=$(DISPLAY=${DISPLAY:-:0} zenity --entry --hide-text --title "The landing share" \
+    --text "A password for the landing share (user $OWNER), for the Mac's Connect to Server" 2>/dev/null)
+  [ -n "$pw" ] && printf '%s\n%s\n' "$pw" "$pw" | smbpasswd -s -a "$OWNER"
+fi

@@ -33,7 +33,9 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 "${FCPM_KEYCHAIN_SSH:-fcpm-keychain}" 
 say $? "the keychain answers this machine's key" "../keychain/PROFILE.md: ~/.ssh/config's fcpm-keychain, this machine's key in ../keychain/HOLDERS"
 mountpoint -q /srv/landing
 say $? "the landing mounted at /srv/landing" \
-  "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"
+  "sudo sh machines/digitization/landing"
+cmp -s "$HERE/smb.conf" /etc/samba/smb.conf && systemctl is-active -q smbd
+say $? "the landing shared as smb://digitization.local/landing" "sudo sh machines/digitization/landing"
 [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ]
 say $? "the clock synchronized from the network" "sudo timedatectl set-ntp true"
 [ "$(timedatectl show -p Timezone --value 2>/dev/null)" = America/Denver ]

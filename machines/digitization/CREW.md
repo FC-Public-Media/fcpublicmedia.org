@@ -14,7 +14,7 @@ A role is filled by a member: any machine, on any platform, that meets the role'
 
 The tank is the Drobo B810i's 1 TB NTFS partition, attached over iSCSI to one initiator and shared from `E:\` as SMB `enhance`: capture writes, production reads and writes. Production's pools read every disk a capture rests on, in place, so capture's scratch is shared too, with production's read grant. What lands on the tank, and in what shape, is declared here; the tank host only keeps the share up.
 
-The landing is digitization's own disk, the first stop on this machine: any ext4 disk labelled `fcpm-landing`, mounted at `/srv/landing` (decided 2026-10-15, beside the tank, not yet instead of it). A capture member delivers into `recordings/landed/` in the depot's shape, by rsync over SSH; no SMB until something else needs it. The pools page is served here, from the landing, and production is granted the page rather than a share ([`pools.yml`](pools.yml)).
+The landing is digitization's own disk, the first stop on this machine: any ext4 disk labelled `fcpm-landing`, mounted at `/srv/landing` (decided 2026-10-15, beside the tank, not yet instead of it). A capture member delivers into `recordings/landed/` in the depot's shape, by rsync over SSH. Since 2026-11-18 the landing is a logical volume on this machine's own disk (`landing`, which makes it and installs the share) and is shared as `smb://digitization.local/landing` (the tailnet number away), so a Mac drops into it from Finder. The pools page is served here, from the landing, and production is granted the page rather than a share ([`pools.yml`](pools.yml)).
 
 ## Gear
 
