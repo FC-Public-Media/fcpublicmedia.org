@@ -10,6 +10,6 @@ still shows the [`qr`](../qr/PROFILE.md) console over its leash. Machines: [docs
 | `names` | `linux Hostname bounce` (it was `qr`). Login `fcpm` by key only; password login is off |
 | radio | the onboard Broadcom: AP mode, 2.4 GHz only. The bounce's island network |
 | camera | a Logitech BRIO on the front hub, aimed at a phone dock. The Camera Module v2 (imx219) is not detected and unused |
-| monitor | Samsung LF24T40, portrait with its top to the right. Dark at 1080p from this Pi, fine at 720p: `video=HDMI-A-1:1280x720@60D fbcon=rotate:3` |
+| monitor | the biggest TV we own (model not yet written down), landscape, bolted upside down. It loses the picture at 720p, so 1080p is pinned from boot and it syncs once: `video=HDMI-A-1:1920x1080@60D fbcon=rotate:2` (the eyes draw at any turn) |
 | front hub | VIA VL813 hub with an Alcor AU6477 card reader (SD, CF, SM/xD, MS); keyboard and mouse here too. A Pi 3 shares about 1.2 A across its USB ports: a ring light here trips over-current |
 | eyes | `eyes.service` on tty1 from `~/qr` (`QR_STATE`), leashed to the qr page on digitization by `~/.ssh/eyes`. Login on Alt+F2 |
