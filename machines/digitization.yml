@@ -21,6 +21,14 @@ serves:
     for: "advocate seats called in by hand (wizard:seat+run): granted, admitted, run by the advocate engine on their own branch here, their finished reply in the public loop; see digitization/PROFILE.md#seats"
     start: "/usr/bin/python3 machines/digitization/seats"
 
+  - service: shed
+    for: "the library shed's worktrees (~/code/workshed/library) kept up to their origin branches, fast-forward only, never with changes; what /library/ searches (../docs/workshed.md, Search)"
+    start: "/usr/bin/python3 machines/workshed.py follow library"
+
+  - service: city
+    for: "the city's shapes (parks, natural areas, Transfort's routes and stops) and its open-data catalog, written into the library shed's library branch once a day and pushed to origin.local; a source unchanged costs the city a 304 (../docs/library.md, The city)"
+    start: "/usr/bin/python3 bin/city-shapes.py {code}/workshed/library/fcpublicmedia.org@library --commit --catalog"
+
   - service: senders
     for: "who may deliver finished post work to the landing: authorized_keys's marked lines kept to post-senders.yml"
     start: "/usr/bin/python3 machines/digitization/post-receive senders"

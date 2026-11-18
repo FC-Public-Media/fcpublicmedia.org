@@ -308,7 +308,7 @@ characters, a `to` that is not a seat's name, or a `holding` that `library.yml` 
 
 ## The board
 
-Helm's board, at the bare name (`fcpublicmedia.local`), is our index: a menu of nouns (Jobs, Sites, Streams, Screens,
+Helm's board, at the bare name (`fcpublicmedia.local`), is our index: a menu of nouns (Jobs, Sites, Library, Streams, Screens,
 Rooms, Asks, Seats, Models, Machine), each a section of rows, one row a page here or a name on the LAN. Every row
 shows however the board was reached (by name or by tailnet number); a LAN name may not resolve from away.
 

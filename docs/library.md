@@ -30,7 +30,7 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | branch | for | state |
 |---|---|---|
 | `main` | what we publish and what we run | |
-| `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton; the LAN's |
+| `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | `city/` on origin.local; the LAN's |
 | `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | first contact and orientation: takes people to things on other branches | not made |
@@ -222,6 +222,22 @@ way the record is canonical, and the hub's library knows everything when it need
 machine knows what it holds and when that is out of date. A thing moved to another machine could be
 noticed by the machine it arrived on, which updates its own folder without touching anyone else's.
 Seeing it all aligned in one place is easier than finding pieces apart.
+
+### The city
+
+`library/city/` on the `library` branch is Fort Collins as the city and Transfort publish it, as facts we
+can search: `parks/` and `natural-areas/` (a folder each: `facts.yml` and `shape.geojson`), `transit/routes/`
+(the same), `transit/stops/` (a file each), and `catalog.md`, both open-data portals as one list. Every place
+names the city's own page for it first, then the stops within a five-minute walk (400 m of its edge) and their
+routes, and every stop and route names the places near it, so any one of them leads to the others. The city
+holds the shapes and the pages; nothing in the open data links one to the other, so the join is ours, by name,
+asked of the city's site once a week, and the places it could not find are listed in `city/README.md`.
+
+`bin/city-shapes.py` writes it, the digitization crew's `city` line, once a day, into the library shed's
+checkout of the branch, and pushes it to origin.local. Each source is asked whether it changed (ETag,
+Last-Modified), so a quiet day costs the city a 304 and writes the same bytes. We follow; we are never the
+authority, and never instant. Transfort's data is redistributed under its own terms: the data, never its
+marks, and said to be unofficial. The study behind it is `open-data/` on `retain/studies`.
 
 ## X-rays
 

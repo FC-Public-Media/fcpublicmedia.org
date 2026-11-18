@@ -12,9 +12,11 @@
     fcpm workshed check [NAME]            each thing it needs, said done or wrong, one line each; exit 1 if wrong
     fcpm workshed log [NAME]              the workshed's log (one worktree's server, if named), last 40 lines
     fcpm workshed remove NAME             take the worktree away (never with changes; the branch is kept)
+    fcpm workshed follow [SHED]           bring each clean worktree up to its origin branch, fast-forward only
+    fcpm workshed search SHED [WORDS]     everything in SHED's worktrees that has every word, in any order
 
 The workshed is ~/code/workshed/<shed>/<repo>@<branch>: worktrees of ~/code/refs/<repo>, kept as long as
-someone works in them. NAME is that path from <shed>, or just <repo>@<branch>, or just <branch>, when only one
+someone works in them; a branch's slash is a ~ in its folder's name. NAME is that path from <shed>, or just <repo>@<branch>, or just <branch>, when only one
 worktree has it. Each gets a port of its own (4100 and up) the first time, and keeps it. The Helm's /workshed/
 page shows the same and starts and stops them. Every step says what it did on the workshed's log,
 ~/code/workshed/workshed.log, one line each, and in the library's grant book when this machine has a library:
@@ -24,6 +26,7 @@ Doc: docs/workshed.md.
 import json
 import os
 import pathlib
+import re
 import shutil
 import socket
 import subprocess
@@ -104,7 +107,7 @@ def worktrees():
         for shed in sorted(p for p in SHED.iterdir() if p.is_dir() and not p.name.startswith(".")):
             for wt in sorted(p for p in shed.iterdir() if p.is_dir() and "@" in p.name):
                 out.append({"name": "%s/%s" % (shed.name, wt.name), "shed": shed.name, "path": wt,
-                            "repo": wt.name.split("@", 1)[0], "branch": wt.name.split("@", 1)[1]})
+                            "repo": wt.name.split("@", 1)[0], "branch": wt.name.split("@", 1)[1].replace("~", "/")})
     return out
 
 
@@ -215,6 +218,157 @@ def everything():
             "worktrees": [describe(w) for w in worktrees()]}
 
 
+# ------------------------------------------------------------------- search --
+# A shed is searched as it stands: every worktree in it, every text file in those, where it is. docs/workshed.md, Search.
+TEXT = {".md", ".markdown", ".yml", ".yaml", ".json", ".tsv", ".csv", ".txt"}
+BIGGEST = 512 * 1024
+_read = {}                                         # path: (mtime, size, title, text); the door keeps it between asks
+
+
+def sheds():
+    return sorted({w["shed"] for w in worktrees()})
+
+
+def _object(rel):
+    """What a file stands for: its folder, when it is that folder's README.md or facts.yml."""
+    parts = rel.split("/")
+    return "/".join(parts[:-1]) if len(parts) > 1 and parts[-1] in ("README.md", "facts.yml") else rel
+
+
+def _load(f, st):
+    hit = _read.get(f)
+    if hit and hit[0] == st.st_mtime_ns and hit[1] == st.st_size:
+        return hit
+    text = f.read_text(encoding="utf-8", errors="replace")
+    title = ""
+    for line in text.splitlines()[:40]:
+        m = re.match(r"#\s+(.+)|name:\s*(.+)|title:\s*(.+)", line.strip())
+        if m:
+            title = next(g for g in m.groups() if g).strip().strip('"')
+            break
+    _read[f] = (st.st_mtime_ns, st.st_size, title, text)
+    return _read[f]
+
+
+def _files(root):
+    for d, dirs, files in os.walk(root):
+        dirs[:] = sorted(x for x in dirs if not x.startswith("."))
+        for n in sorted(files):
+            f = pathlib.Path(d) / n
+            if not n.startswith(".") and f.suffix.lower() in TEXT:
+                yield f
+
+
+def _pattern(term):
+    """A word matches where a word starts (park: parks, Parkwood); a number only whole (14: not 1478)."""
+    tail = r"(?![0-9])" if term.isdigit() else ""
+    return re.compile(r"(?<![a-z0-9])" + re.escape(term) + tail)
+
+
+def _matched(text, pats, title):
+    """The lines that hold a word, a list's item with its key before it (routes near: Route 14), the title's own
+    line left out (it is already the hit's name)."""
+    out, key = [], ""
+    for raw in text.splitlines():
+        ln = raw.strip()
+        m = re.match(r"([A-Za-z][\w ]*):\s*$", ln)
+        if m:
+            key = m.group(1)
+            continue
+        if not raw.startswith((" ", "-")):
+            key = ""
+        bare = re.sub(r"https?://\S+", "", ln).lower()                    # a word inside an address is not a fact
+        if not pats or not any(p.search(bare) for p in pats):
+            continue
+        if ln.startswith("- ") and key:
+            ln = "%s: %s" % (key, ln[2:])
+        if title and ln.lower().endswith(title.lower()) and len(ln) - len(title) < 12:
+            continue
+        out.append(ln)
+    return out
+
+
+def search(shed, words, limit=200):
+    """Every file in SHED's worktrees holding every word (in its path or its text), the closest first.
+    A word with spaces in it (quoted, from a terminal) is a phrase."""
+    terms = [" ".join(w.lower().split()) for w in words if w.strip()]
+    pats = [_pattern(t) for t in terms]
+    trees = [w for w in worktrees() if w["shed"] == shed]
+    if not trees:
+        raise Wrong("no shed %s in the workshed (%s)" % (shed, ", ".join(sheds()) or "it is empty"))
+    began, hits, files = time.time(), [], 0
+    for w in trees:
+        for f in _files(w["path"]):
+            try:
+                st = f.stat()
+                if st.st_size > BIGGEST:
+                    continue
+                _, _, title, text = _load(f, st)
+            except OSError:
+                continue
+            files += 1
+            rel = f.relative_to(w["path"]).as_posix()
+            low = text.lower()
+            where = rel.lower().replace("/", " ").replace("-", " ") + "\n" + low
+            if not all(p.search(where) for p in pats):
+                continue
+            head = (title + " " + _object(rel).replace("/", " ").replace("-", " ")).lower()
+            lines = _matched(text, pats, title)
+            hits.append({"worktree": w["name"], "branch": w["branch"], "path": rel, "object": _object(rel),
+                         "title": title or _object(rel).rsplit("/", 1)[-1], "lines": lines[:4], "more": max(0, len(lines) - 4),
+                         "_rank": (-sum(bool(p.search(head)) for p in pats), rel.count("/"), rel)})
+    hits.sort(key=lambda h: h.pop("_rank"))
+    return {"shed": shed, "words": terms, "worktrees": [w["name"] for w in trees], "files": files,
+            "total": len(hits), "hits": hits[:limit], "ms": int((time.time() - began) * 1000)}
+
+
+def read(shed, worktree, path):
+    """One file of a shed, as text: only from a worktree in that shed, only a text file inside it."""
+    w = next((x for x in worktrees() if x["shed"] == shed and x["name"] == worktree), None)
+    if w is None:
+        raise Wrong("no worktree %s in the shed %s" % (worktree, shed))
+    f = (w["path"] / path).resolve()
+    if w["path"].resolve() not in f.parents or f.suffix.lower() not in TEXT | {".geojson"} or not f.is_file():
+        raise Wrong("%s is not a text file in %s" % (path, worktree))
+    return f.read_text(encoding="utf-8", errors="replace")
+
+
+def follow(shed=None):
+    """Each worktree (in SHED, or all) moved up to its origin branch: fetched, fast-forward only, never with changes."""
+    for w in worktrees():
+        if shed and w["shed"] != shed:
+            continue
+        p = w["path"]
+        if not git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", cwd=p, check=False):
+            say("%s  follows nothing" % w["name"])
+            continue
+        if git("status", "--porcelain", cwd=p, check=False):
+            say("%s  has changes; left as it is" % w["name"])
+            continue
+        git("fetch", "--quiet", "origin", w["branch"], cwd=p, check=False)
+        was = git("rev-parse", "--short", "HEAD", cwd=p)
+        r = subprocess.run(["git", "merge", "--ff-only", "--quiet", "@{u}"], cwd=p, capture_output=True, text=True)
+        now = git("rev-parse", "--short", "HEAD", cwd=p)
+        if r.returncode:
+            say("%s  cannot fast-forward (%s); left at %s" % (w["name"], (r.stderr.strip().splitlines() or ["?"])[-1], was))
+        elif now != was:
+            note("%s: followed origin/%s, %s to %s" % (w["name"], w["branch"], was, now))
+            say("%s  %s to %s" % (w["name"], was, now))
+        else:
+            say("%s  current at %s" % (w["name"], now))
+    return 0
+
+
+def found(shed, words):
+    d = search(shed, words)
+    for h in d["hits"]:
+        say("%s  %s:%s" % (h["title"], h["branch"], h["path"]))
+        for ln in h["lines"]:
+            say("    " + ln[:160])
+    say("%d of %d files in %s (%s), %d ms" % (d["total"], d["files"], shed, ", ".join(d["worktrees"]), d["ms"]))
+    return 0
+
+
 # -------------------------------------------------------------------- verbs --
 def mirror_of(repo):
     """refs/<repo> for a bare name, or for OWNER/REPO when that mirror's origin is OWNER/REPO."""
@@ -233,7 +387,7 @@ def new(branch, shed=DEFAULT_SHED, repo=DEFAULT_REPO, start_at=None):
         raise Wrong("no %s in refs/ to make a worktree from (refs.wanted lists what fcpm pull keeps)" % repo)
     if git("check-ref-format", "--branch", branch, check=False) != branch or "/" in shed or not shed:
         raise Wrong("%s is not a name a branch can have: letters, digits and dashes are safe" % branch)
-    path = SHED / shed / ("%s@%s" % (repo, branch))
+    path = SHED / shed / ("%s@%s" % (repo, branch.replace("/", "~")))
     name = "%s/%s" % (shed, path.name)
     if path.exists():
         raise Wrong("%s is already in the workshed, at %s" % (name, path))
@@ -509,6 +663,10 @@ def main(argv):
             return 0
         if verb == "check" and len(args) <= 1:
             return check(*args)
+        if verb == "follow" and len(args) <= 1:
+            return follow(*args)
+        if verb == "search" and args:
+            return found(args[0], args[1:])
         if verb == "log" and len(args) <= 1:
             tail(*args)
             return 0
