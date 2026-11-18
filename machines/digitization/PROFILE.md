@@ -203,6 +203,8 @@ drive. Once zram fills, every page read back from it costs a seek (about 7 ms), 
   nothing. `carve` keeps the partition table in `/var/backups/fcpm-buffalo-*.sfdisk` (`sfdisk` takes it back),
   shrinks the NTFS, then adds the partition. `on` writes the fstab line (old fstab kept as
   `/etc/fstab.before-buffalo-swap`). All but `status` run as root: `SUDO_ASKPASS=../kiosk/askpass sudo -A`.
+- Carved 2026-11-18: `sda3`, 16 GiB, in use. ntfsresize leaves the NTFS marked for a check; `ntfsfix -d` clears it
+  before Linux mounts it read-write.
 
 ## IPv6
 
