@@ -29,9 +29,8 @@ branches:
     merges: never
     made: false
   studies:
-    for: "studies: a folder each, flat: what we are working out, in our own words, and every file tree
-      made during it, written out. On GitHub, so a cloud session commits to it too. Intake takes only
-      main, so it comes down to the LAN once a machine nominates it. Distilled before anything is published"
+    for: "the cloud line for studies: a cloud session can't reach the LAN, so it commits a study here, a folder
+      each. We take each folder into retain/studies as it came"
     merges: never
   librarians:
     for: "what librarian agents answer to: their constitution, and each place's decorum as AGENTS.md
@@ -39,9 +38,9 @@ branches:
     merges: never
     pushes: lan
   retain/studies:
-    for: "studies: a flat list of what we are working out, in our own words, before any of it is decided.
-      The working half: what settles is summarized into a released branch, because the point is to show the
-      work in the open"
+    for: "studies, a folder each: what we are working out, in our own words, and every file tree made during
+      it, written out. Where we keep what we do; what comes in on the cloud line is taken in as it came. The
+      working half: what settles is summarized into a released branch, to show the work in the open"
     merges: never
     pushes: lan
   retain/<machine>:

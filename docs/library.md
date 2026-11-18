@@ -34,8 +34,8 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
 | `lobby` | first contact and orientation: takes people to things on other branches | not made |
-| `retain/studies` | what we are working out, in our own words. The working half: what settles is summarized into a released branch. The LAN's | on origin.local |
-| `studies` | a folder each: what we are working out, in our own words. The working half but in public to be drawn down from GitHub; down to the LAN once nominated | begun |
+| `retain/studies` | studies, a folder each: what we are working out, in our own words. Where we keep them; the cloud line's are taken in as they came. The LAN's | on origin.local |
+| `studies` | the cloud line for studies: a cloud session commits a study here, and we take it into `retain/studies` | begun |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
@@ -184,7 +184,7 @@ branch and not a nesting inside another.
 | folder | branch | goes |
 |---|---|---|
 | `retain/` | `retain/<machine>` | to origin.local, after each commit, and never past it |
-| `studies/` | `studies` | to GitHub, where a cloud session commits too; down here once a machine nominates it |
+| `studies/` | `retain/studies` | to origin.local, like `retain/`, and never past it |
 | `librarians/` | `librarians` | to origin.local, and never past it. Instructions, never data |
 | `lobby/` | `lobby` | to GitHub. First contact and orientation: directions to things on other branches, and nothing else |
 
@@ -205,10 +205,12 @@ the origin, without asking an agent or opening a session on the machine that wro
 Retained branches are our own operational history, chronicled on the LAN.
 
 **Studies** are a folder each on `retain/studies`, flat: the study in our own words, confusion included, and
-every file tree made during it, written out. It is checked out, worked on and committed like any branch,
-from the LAN or the cloud. What settles is distilled into something publishable on `main`. Cloud-made studies
-might arrive on `studies` branches. We should treat cloud-received content as-is because it is our job to
-learn from outside study too, where our rules don't matter at the point of their authorship.
+every file tree made during it, written out. That is where we keep what we do. A cloud session can't reach
+the LAN, so its studies come in on the cloud line: the `studies` branch on GitHub, or a pull request. We take
+that payload as it came, its folder byte for byte, and note in `retain/studies`' README where it came from
+(the branch or pull request, its commit, the session). It may not be how we would have written it, but it was
+shared that way, so it is valid: it is our job to learn from outside study too, where our rules don't matter
+at the point of their authorship. What settles is summarized into a released branch.
 
 **The lobby** is first contact. It orients people and takes them to things on other branches, the
 released ones first: what is here, where it is, what each place exposes, and how to ask. It holds
