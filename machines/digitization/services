@@ -13,5 +13,5 @@ senders         every 1m    machines/digitization
 drain           every 1h    machines/digitization
 # Every key held here, up to FCPM's keychain (../keychain); the same value is kept once.
 flush           every 15m   machines/digitization
-# This machine's copy of the LAN's lines, served read-only for its neighbors (../../docs/lines.md).
-lines           every 5m    machines/digitization
+# This machine's tell: it carries its own lines, reading what it hears and serving its copy (../../docs/lines.md).
+tell            every 5m    machines/digitization

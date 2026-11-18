@@ -58,8 +58,10 @@ class Lines(unittest.TestCase):
         told = self.lines("digitization", "tell", "production", "keychain", self.note("c", "your identity"))
         self.assertEqual(told.returncode, 0, told.stderr)
 
-        read = self.lines("production", "read", "digitization")
+        read = self.lines("production", "run")
         self.assertEqual(read.returncode, 0, read.stderr)
+        self.assertIn("read now", read.stdout)
+        self.assertNotIn("read now", self.lines("production", "run").stdout)       # a second pass: nothing new
         got = list((self.tmp / "production/lines/workshed/digitization").iterdir())
         self.assertEqual([p.read_text() for p in got], ["your identity"])
 
