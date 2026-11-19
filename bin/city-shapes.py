@@ -127,10 +127,8 @@ def write(path, text):
 
 
 def feature_json(props, geometry):
-    """One feature, coordinates at about a metre (6 places), keys sorted: the same shape writes the same bytes."""
-    def r(c):
-        return [r(x) for x in c] if isinstance(c, list) and c and isinstance(c[0], list) else [round(x, 6) for x in c]
-    g = {"type": geometry["type"], "coordinates": r(geometry["coordinates"])}
+    """One feature, its coordinates as the source gave them, keys sorted: the same shape writes the same bytes."""
+    g = {"type": geometry["type"], "coordinates": geometry["coordinates"]}
     return json.dumps({"type": "Feature", "properties": props, "geometry": g}, sort_keys=True, separators=(",", ":")) + "\n"
 
 
@@ -182,37 +180,37 @@ class Place:
 
 
 # ---------------------------------------------------------------------- build --
+def as_is(v):
+    """A source's value as it sent it: its own text for a number (json.loads(parse_float=str)), never rounded or cast."""
+    return None if v is None or (isinstance(v, str) and not v.strip()) else v
+
+
 def places(layer, kind, data, meta, checked, misses):
-    """The city's polygons as Places, each with its facts and shape (written later, once stops are known)."""
+    """The city's polygons as Places, each with its facts and shape (written later, once stops are known). Every value
+    is the layer's own; ours are only the thing's id, its page (asked of the city's site) and what is near it."""
     out = []
-    for f in json.loads(data)["features"]:
-        p = f["properties"]
+    shown = json.loads(data, parse_float=str)["features"]
+    for f, said in zip(json.loads(data)["features"], shown):
+        p = said["properties"]
         raw = (p.get("PARKNAME") or p.get("NA_NAME") or "").strip()
         if not raw or not f.get("geometry"):
             continue
-        name = titled(raw)
-        place = Place(kind, name, f["geometry"])
+        place = Place(kind, raw, f["geometry"])
         where = PAGES + ("Parks/" if kind == "park" else "Natural-Areas/")
-        page = next((where + n for n in page_names(name) if page_answers(where + n, checked)), None)
+        page = next((where + n for n in page_names(titled(raw)) if page_answers(where + n, checked)), None)
         if not page:
-            misses.append("%s: %s" % (kind, name))
-        pid = slug(name)
+            misses.append("%s: %s" % (kind, raw))
+        pid = slug(raw)
         place.id = pid
         root = ("park", pid) if kind == "park" else ("natural-area", pid)
-        facts = [root, root + ("name", name), root + ("page", page or "none found")]
-        if kind == "park":
-            addr = " ".join(str(p.get(k) or "").strip() for k in ("NUMBER_", "FDPRE", "PRE_TYPE", "FENAME", "FTYPE", "FDSUF"))
-            ptype = re.sub(r" park$", "", (p.get("PARKTYPE") or "").strip().lower())
-            facts += [root + ("type", ptype) if ptype else None,
-                      root + ("address", titled(" ".join(addr.split()))) if addr.strip() else None,
-                      root + ("acres", round(float(p["ACRESTTL"]), 2)) if p.get("ACRESTTL") else None,
-                      root + ("opened", int(p["YEAR"])) if p.get("YEAR") else None,
-                      root + ("parking", "off street", int(p.get("PRKNGOFFST") or 0)) if p.get("PRKNGOFFST") else None,
-                      root + ("parking", "on street", int(p.get("PRKNGONST") or 0)) if p.get("PRKNGONST") else None]
-        else:
-            facts += [root + ("managed by", titled(p.get("MANAGER1") or "").lower()) if p.get("MANAGER1") else None,
-                      root + ("acres", round(float(p["ACRES"]), 2)) if p.get("ACRES") else None,
-                      root + ("old site", "fcgov..com/naturalareas/%s" % p["WEBSITE"]) if p.get("WEBSITE") else None]
+        facts = [root, root + ("name", raw), root + ("page", page or "none found")]
+        fields = ((("type", "PARKTYPE"), ("address", "number", "NUMBER_"), ("address", "prefix", "FDPRE"),
+                   ("address", "prefix type", "PRE_TYPE"), ("address", "street", "FENAME"), ("address", "street type", "FTYPE"),
+                   ("address", "suffix", "FDSUF"), ("acres", "ACRESTTL"), ("acres", "developed", "ACRESDEV"),
+                   ("acres", "undeveloped", "ACRESUNDEV"), ("opened", "YEAR"), ("parking", "off street", "PRKNGOFFST"),
+                   ("parking", "on street", "PRKNGONST"))
+                  if kind == "park" else (("managed by", "MANAGER1"), ("acres", "ACRES"), ("website", "WEBSITE")))
+        facts += [root + tuple(k[:-1]) + (as_is(p.get(k[-1])),) for k in fields if as_is(p.get(k[-1])) is not None]
         facts.append(root + ("source", layer.replace("_", " ").lower() + " layer", "objectid", p.get("OBJECTID")))
         place.root = root
         place.facts, place.feature = [x for x in facts if x], f
@@ -250,8 +248,7 @@ def route_id(r):
 
 
 def route_name(r):
-    s = r["route_short_name"]
-    return "Route %s" % s if s.isdigit() else titled(r["route_long_name"] or s)
+    return r["route_long_name"] or r["route_short_name"]
 
 
 def stop_id(s):
@@ -318,22 +315,24 @@ def build(out, catalog=False):
         write(out / folder / place.id / "shape.geojson", feature_json({"name": place.name}, place.feature["geometry"]))
 
     version = info.get("feed_version", "")
-    window = "%s to %s" % (fmt_day(info.get("feed_start_date")), fmt_day(info.get("feed_end_date")))
+    window = "%s to %s" % (info.get("feed_start_date") or "unknown", info.get("feed_end_date") or "unknown")
     for rid, r in sorted(routes.items(), key=lambda x: sort_route(x[0])):
         root = ("route", route_id(r))
         mine = sorted((s for s, rs in stop_routes.items() if rid in rs), key=lambda s: stop_id(stops[s]))
         near = sorted({(p.root[0], p.id) for s in mine for p in stop_near.get(s, [])})
-        rows = [root, root + ("name", route_name(r)), root + ("page", r.get("route_url")) if r.get("route_url") else None,
-                root + ("colour", "#" + r["route_color"]) if r.get("route_color") else None,
-                root + ("schedule", "from", fmt_day(info.get("feed_start_date"))),
-                root + ("schedule", "to", fmt_day(info.get("feed_end_date")))]
+        rows = [root, root + ("name", route_name(r))]
+        rows += [root + (k, as_is(r.get(f))) for k, f in (("short name", "route_short_name"), ("long name", "route_long_name"),
+                                                            ("page", "route_url"), ("colour", "route_color"),
+                                                            ("text colour", "route_text_color"), ("type", "route_type"))
+                 if as_is(r.get(f)) is not None]
+        rows += [root + ("schedule", k, info[f]) for k, f in (("from", "feed_start_date"), ("to", "feed_end_date")) if info.get(f)]
         rows += [root + ("near",) + k for k in near]
         rows += [root + ("stop", stop_id(stops[s])) for s in mine]
         rows.append(root + ("source", "transfort gtfs", version))
         put(out / "transit" / "routes" / root[1] / "city.scopes", rows)
         lines, seen_lines = [], set()
         for sh in sorted(route_shapes.get(rid, ())):
-            pts = [[round(lon, 6), round(lat, 6)] for _, lon, lat in sorted(shapes.get(sh, []))]
+            pts = [[lon, lat] for _, lon, lat in sorted(shapes.get(sh, []))]
             if len(pts) > 1 and json.dumps(pts) not in seen_lines:
                 seen_lines.add(json.dumps(pts))
                 lines.append(pts)
@@ -342,13 +341,15 @@ def build(out, catalog=False):
                   feature_json({"name": route_name(r)}, {"type": "MultiLineString", "coordinates": lines}))
     for sid, s in stops.items():
         root = ("stop", stop_id(s))
-        rows = [root, root + ("name", titled(s["stop_name"]))]
+        rows = [root, root + ("name", s["stop_name"])]
+        rows += [root + (k, as_is(s.get(f))) for k, f in (("code", "stop_code"), ("description", "stop_desc"),
+                                                            ("wheelchair boarding", "wheelchair_boarding")) if as_is(s.get(f)) is not None]
         rows += [root + ("route", route_id(routes[r])) for r in sorted(stop_routes.get(sid, ()), key=sort_route) if r in routes]
         rows += [root + ("near",) + k for k in sorted({(p.root[0], p.id) for p in stop_near.get(sid, [])})]
         rows.append(root + ("source", "transfort gtfs", version))
         put(out / "transit" / "stops" / root[1] / "city.scopes", rows)
         write(out / "transit" / "stops" / root[1] / "shape.geojson",
-              feature_json({"name": titled(s["stop_name"])}, {"type": "Point", "coordinates": [float(s["stop_lon"]), float(s["stop_lat"])]}))
+              feature_json({"name": s["stop_name"]}, {"type": "Point", "coordinates": [float(s["stop_lon"]), float(s["stop_lat"])]}))
 
     if catalog:
         with tempfile.TemporaryDirectory() as tmp:
@@ -372,10 +373,6 @@ def sort_route(rid):
     return (0, int(rid), "") if rid.isdigit() else (1, 0, rid)
 
 
-def fmt_day(d):
-    return "%s-%s-%s" % (d[:4], d[4:6], d[6:]) if d and len(d) == 8 else "unknown"
-
-
 README = """# The city's shapes
 
 Fort Collins' parks, natural areas and Transfort's bus routes and stops, a folder each, as lines we can search:
@@ -383,6 +380,7 @@ Fort Collins' parks, natural areas and Transfort's bus routes and stops, a folde
 folder, `city.scopes` is this reader's lines and `shape.geojson` the shape; other readers add their own `.scopes`
 beside them and never change these. Every place names the city's own page for it (`page`), then the stops within
 {near} m of its edge (a five-minute walk) and their routes, and every stop and route names the places near it.
+Every value is the city's or Transfort's own, as sent: nothing is rounded, recased or renamed.
 Written by `bin/city-shapes.py` from what the city publishes, asked once a day whether anything changed. We are not
 the authority on any of it.
 
