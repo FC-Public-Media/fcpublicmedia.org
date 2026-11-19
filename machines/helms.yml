@@ -2,15 +2,22 @@
 # wizards only that job's helm can apply. Helms are peers: a reply set down at any of them is applied
 # there, or passed as it came to the helm that holds its wizard (replies.py, route). Nothing else
 # commands one machine from another. docs/kiosk.md, Helms.
+# `letter` is the one character a screen's title bar shows for it (the scanner's page: lit when its helm answers,
+# green when it has joined that screen's intake); `called` is what the building calls it, as an intake names it.
 helms:
   digitization:
+    letter: D
     at: http://digitization.local
     holds: [wizard:site+deploy, wizard:keys+birth, wizard:seat+run]   # keys+birth: the keystore starts here (docs/keystore.md)
   production:
+    letter: "1"
+    called: bay 1
     at: http://10.209.1.20:8080
     holds: [wizard:model+up, wizard:library+ask, wizard:library+urgent]   # the library here: docs/library.md
   # Bay 2's models, the same wizard: only a reply naming `job: editing-bay-2` comes here (replies.py,
   # holder). It has no address on the switched network yet, so such a reply waits until `at:` is filled.
   editing-bay-2:
+    letter: "2"
+    called: bay 2
     at: ""
     holds: [wizard:model+up, wizard:library+ask, wizard:library+urgent]   # the library here: docs/library.md
