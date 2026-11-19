@@ -239,17 +239,17 @@ class Workshed(unittest.TestCase):
         self.facts()
         self.new("christmas")                                     # in dev: not searched from library
         d = workshed.search("library", ["spring"])
-        self.assertTrue(all(h["worktree"] == "library/demo@facts" for h in d["hits"]))
+        self.assertTrue(all(h["tree"] == "library/demo@facts" for h in d["hits"]))
         self.assertNotIn("city/shape.geojson", [h["path"] for h in d["hits"]])
         with self.assertRaises(workshed.Wrong):
             workshed.search("attic", ["spring"])
 
     def test_read_stays_inside_its_worktree(self):
         self.facts()
-        self.assertIn("Spring Park", workshed.read("library", "library/demo@facts", "city/parks/spring-park/README.md"))
+        self.assertIn("Spring Park", workshed.read("library/demo@facts", "city/parks/spring-park/README.md"))
         for path in ("../../../origin.git/config", "/etc/passwd", "city"):
             with self.assertRaises(workshed.Wrong):
-                workshed.read("library", "library/demo@facts", path)
+                workshed.read("library/demo@facts", path)
 
     def things(self):
         self.new("things", shed="library")
@@ -279,10 +279,57 @@ class Workshed(unittest.TestCase):
         self.assertEqual([h["object"] for h in d["hits"]], ["city/parks/spring"])
         d = workshed.search("library", ["fort collins", "stop 1478"])
         self.assertEqual([h["object"] for h in d["hits"]], ["city/parks/oak"])
-        text = workshed.read("library", "library/demo@things", "city/parks/spring")
+        text = workshed.read("library/demo@things", "city/parks/spring")
         self.assertEqual(text.splitlines(), ["# city.scopes", "park.spring", "park.spring.name.Spring Park",
                                              "park.spring.near.route.14", "# osm.scopes", "park.spring.has.playground",
                                              "# worn, from city/WORN.scopes", "city.fort-collins"])
+
+    def origin_with_things(self):
+        """The origin gets a branch of things; refs/demo fetches it and is taken for a mirror of the LAN's origin."""
+        root, seed = pathlib.Path(self.tmp.name), pathlib.Path(self.tmp.name) / "seed"
+        git("checkout", "-q", "-b", "things", "main", cwd=seed)
+        (seed / "city" / "parks" / "spring").mkdir(parents=True)
+        (seed / "city" / "WORN.scopes").write_text("city.fort-collins\n")
+        (seed / "city" / "parks" / "spring" / "city.scopes").write_text("park.spring\npark.spring.near.route.14\n")
+        git("add", ".", cwd=seed)
+        git("commit", "-q", "-m", "things", cwd=seed)
+        git("push", "-q", str(root / "origin.git"), "things", cwd=seed)
+        mirror = workshed.CODE / "refs" / "demo"
+        git("fetch", "-q", "origin", cwd=mirror)
+        git("remote", "set-url", "origin", "origin-standby:/srv/origin/x/demo", cwd=mirror)
+        return mirror
+
+    def test_wheres_are_the_sheds_then_each_mirrors_branches(self):
+        self.origin_with_things()
+        self.new("christmas")
+        got = [w["where"] for w in workshed.wheres()]
+        self.assertEqual(got, ["shed:dev", "every:demo", "branch:demo@main", "branch:demo@christmas", "branch:demo@things"])
+
+    def test_a_branch_is_searched_from_git_without_a_checkout(self):
+        self.origin_with_things()
+        d = workshed.search("branch:demo@things", ["route 14"])
+        self.assertEqual([(h["object"], h["tree"]) for h in d["hits"]], [("city/parks/spring", "branch:demo@things")])
+        self.assertEqual(workshed.search("branch:demo@main", ["route 14"])["total"], 0)
+        self.assertEqual(workshed.search("every:demo", ["fort collins", "route 14"])["total"], 1)     # worn, from git
+        with self.assertRaises(workshed.Wrong):
+            workshed.search("branch:demo@nowhere", ["x"])
+
+    def test_the_same_file_on_many_branches_is_one_hit(self):
+        self.origin_with_things()
+        d = workshed.search("every:demo", ["meet"])
+        self.assertEqual([(h["path"], h["branch"], h["also"]) for h in d["hits"]],
+                         [("site/meet.md", "main", ["christmas", "things"])])
+
+    def test_a_thing_is_read_from_a_branch(self):
+        self.origin_with_things()
+        self.assertEqual(workshed.read("branch:demo@things", "city/parks/spring").splitlines(),
+                         ["# city.scopes", "park.spring", "park.spring.near.route.14", "# worn, from city/WORN.scopes",
+                          "city.fort-collins"])
+        self.assertIn("hi", workshed.read("branch:demo@main", "site/meet.md"))
+        for tree, path in (("branch:demo@main", "../seed/site/meet.md"), ("branch:demo@nowhere", "site/meet.md"),
+                           ("branch:demo@main", "site")):
+            with self.assertRaises(workshed.Wrong):
+                workshed.read(tree, path)
 
     def test_follow_fast_forwards_a_clean_worktree_only(self):
         self.new("christmas")

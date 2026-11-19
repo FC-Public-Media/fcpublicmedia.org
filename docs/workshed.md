@@ -38,7 +38,8 @@ holds, released on stop or lapsed when the process ends. The `library` and `work
 | `fcpm workshed log [NAME]` | the workshed's log, or that worktree's server's |
 | `fcpm workshed remove NAME` | the worktree goes; its branch stays. Never with changes |
 | `fcpm workshed follow [SHED]` | each clean worktree brought up to its origin branch, fast-forward only; one with changes is left as it is |
-| `fcpm workshed search SHED [WORDS]` | everything in SHED's worktrees holding every word, in any order ([Search](#search)) |
+| `fcpm workshed search WHERE [WORDS]` | everything in WHERE holding every word, in any order: a shed's name, `branch:REPO@BRANCH` or `every:REPO` ([Search](#search)) |
+| `fcpm workshed wheres` | what a search can be kept to |
 
 NAME is `<shed>/<repo>@<branch>`, or the shorter `<repo>@<branch>` or `<branch>` when only one worktree has it.
 
@@ -77,8 +78,14 @@ under a second, and again on every save. Never one page alone: the header, the f
 A shed is searchable as it stands. Whatever worktrees are in it are what a search reads, every text file in
 them (Markdown, YAML, JSON, TSV, CSV, text; nothing over half a megabyte), where it is: no index to keep, no
 list of what counts. Putting a worktree in a shed is how something becomes searchable, and someone working
-in the shed can see everything else in it, which is the point when cross-referencing. You pick a shed, not a
-branch; a shed is a short list, the branches are too many.
+in the shed can see everything else in it, which is the point when cross-referencing.
+
+A search can also be kept to one branch, or every branch, of a repository whose mirror in `refs/` follows the
+LAN's origin, read straight from git's objects with no checkout. That is for when you don't know where
+something is: a shed only finds what someone checked out. Picking a place is a blinder, so what is not from
+there is not sifted at all. Content git already holds once is read once, so every branch of fcpublicmedia.org
+(113, about 2,000 distinct files) is as quick as a shed after the first ask. The same file on several branches is
+one hit saying how many others hold it; a file that differs between branches is a hit per version.
 
 Most of what is searched is **things**: a folder holding `.scopes` files ([Scopes](#scopes)). The words come
 in any order, and a thing is a hit when its lines, together, say every one of them, where words side by side
@@ -90,11 +97,13 @@ first, those whose own line opens with the ask (Route 14 for `route 14`) before 
 each with the lines that said it. It is kept in memory by the Helm between asks (the city with its layers:
 about 1,300 files in a little over 100 ms), so ask as often as you like.
 
-The Helm's `/library/` is the same search for anyone: a shed, the words, the list. Reading a thing shows every
+The Helm's `/library/` is the same search for anyone: where to look (the worksheds, then each repository's
+branches, `every branch` first), the words, the list. Reading a thing shows every
 reader's lines under its file's name, then what it wears; each line is a search of its last two parts
-(`route.14` asks `route 14`), and an address goes there. `/library/search?shed=&q=`
-answers the same as JSON. The `library` shed on digitization holds `library` (the city) and
-`retain/studies`, and the crew's `shed` line keeps them to origin.local's branches every 5 minutes.
+(`route.14` asks `route 14`), and an address goes there. `/library/search?where=&q=`
+answers the same as JSON (`where` is `shed:NAME`, `branch:REPO@BRANCH` or `every:REPO`; `fcpm workshed wheres`
+lists them). The `library` shed on digitization holds `library` (the city) and
+`retain/studies`, and the crew's `shed` line keeps them to origin.local's branches every 5 minutes, fetching every mirror too.
 
 ### Scopes
 
