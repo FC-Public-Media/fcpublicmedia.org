@@ -1,0 +1,9 @@
+# HOLDERS.projects: who may reach the projects keychain by key, through its door (./door), the only way
+# into the keychain box's `projects` account. Public-run projects: keys for work FCPM supports for others,
+# kept apart from operations' keychain (HOLDERS). Same rules: public halves only, revoking is emptying a
+# line by merged PR, reread from the origin's main every minute; a holder's keys.projects.yml names the
+# groups it is handed.
+
+# office    holder         key type and key                                                          since
+keeper      Autumn         -                                                                         -
+keeper      digitization   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDL8JGISv1fAIISOJDQTaV3z/p4ncm1kNuZ/zYecb/fO  2026-11-19

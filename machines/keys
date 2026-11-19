@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """keys -- the keychain this machine holds for the jobs it wears: machines/<job>/keys.yml, for each job
-this machine's name is in (machines/binding). Never prints a value. The same on Linux and Windows.
+this machine's name is in (machines/binding), and machines/<job>/keys.NAME.yml for a secondary keychain
+kept apart from operations' (`projects`: public-run projects). Never prints a value. The same on Linux and Windows.
 
   keys                  each key: held or WANTED, and where it lives
   keys check            the same in `fcpm check`'s words; exit 1 if any is wanted
@@ -10,8 +11,8 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
   keys flush            hand every key held here up to the keychain (machines/keychain), protected; `take` does
                         it by itself, so a key stored here is never only here
-  keys keychain         the keychain's state, and every key it holds (never a value)
-  keys init | unlock | lock   make, open or close the keychain: a keeper's, the passphrase in a window on this screen
+  keys keychain [NAME]  the keychain's state, and every key it holds (never a value); NAME for a secondary
+  keys init | unlock | lock [NAME]   make, open or close the keychain: a keeper's, the passphrase in a window on this screen
   keys backup [DIR]     the whole keychain, as one tar of ciphertext, into DIR (default ~/.local/state/fcpm/keychain);
                         a keeper's. Copy it to the card: it opens with nothing but the passphrase
   keys proof FILE       open a backup here with the passphrase (a window) and check every key in it against its
@@ -24,7 +25,8 @@ this machine's name is in (machines/binding). Never prints a value. The same on 
                         the keystore's for a board wizard to grant (docs/keystore.md, Birth)
 
 `run` takes a key this machine does not hold from the keychain, into the command's environment only.
-FCPM_KEYCHAIN_SSH is how ssh reaches the keychain's door (default fcpm-keychain, a ~/.ssh/config name).
+FCPM_KEYCHAIN_SSH is how ssh reaches the keychain's door (default fcpm-keychain, a ~/.ssh/config name), and
+FCPM_KEYCHAIN_SSH_<NAME> a secondary's (default fcpm-<name>).
 FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test;
 FCPM_BIRTH_FILE keeps a born key's private half in a file, as on Linux, so a test never touches the agent;
 FCPM_BIRTH_HELM is the helm a test's petition is set down at.
@@ -52,6 +54,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 SHAPES = {"guid": re.compile(r"[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}"),
           "hex32": re.compile(r"[0-9a-f]{32}")}
 WINDOWS = os.name == "nt"
+NAME = re.compile(r"[a-z][a-z0-9-]*")
 
 
 def home(path):
@@ -71,10 +74,16 @@ def wears():
     return [p.name for p in b["profiles"]() if (b["declared"](p).get(system) or "").casefold() == fact.casefold()]
 
 
+def chain_of(path):
+    """keys.yml is operations' keychain; keys.NAME.yml is the secondary NAME's."""
+    parts = path.name.split(".")
+    return parts[1] if len(parts) == 3 else "keychain"
+
+
 def ledgers():
     if os.environ.get("FCPM_KEYS_LEDGER"):
-        return [pathlib.Path(os.environ["FCPM_KEYS_LEDGER"])]
-    return [HERE / job / "keys.yml" for job in wears() if (HERE / job / "keys.yml").is_file()]
+        return [pathlib.Path(p) for p in os.environ["FCPM_KEYS_LEDGER"].split(os.pathsep)]
+    return [f for job in wears() for f in [HERE / job / "keys.yml", *sorted((HERE / job).glob("keys.*.yml"))] if f.is_file()]
 
 
 def load():
@@ -85,6 +94,7 @@ def load():
         for name, group in (ledger.get("groups") or {}).items():
             if name not in groups:
                 group["path"] = home(group.get("file") or f"{ledger['dir']}/{name}.env")
+                group["keychain"] = chain_of(path)
                 groups[name] = group
     return groups
 
@@ -323,7 +333,7 @@ def run(groups, names, command):
             sys.exit(f"keys: {name} is one raw value; its job reads {short(group['path'])} itself")
         held = read(group)
         for k in [k for k in group["keys"] if not held.get(k)]:
-            done = keychain("get", name, k)
+            done = keychain("get", name, k, chain=group["keychain"])
             if done.returncode == 0 and done.stdout:
                 held[k] = done.stdout
         missing = [k for k in group["keys"] if not held.get(k)]
@@ -338,9 +348,10 @@ def run(groups, names, command):
         sys.exit(subprocess.run([exe] + command[1:], env=env).returncode)
     os.execve(exe, command, env)
 
-def keychain(*words, stdin=""):
-    """One verb at the keychain's door (machines/keychain/door), by this machine's key."""
-    to = os.environ.get("FCPM_KEYCHAIN_SSH", "fcpm-keychain")
+def keychain(*words, stdin="", chain="keychain"):
+    """One verb at a keychain's door (machines/keychain/door), by this machine's key."""
+    to = os.environ.get("FCPM_KEYCHAIN_SSH", "fcpm-keychain") if chain == "keychain" else \
+        os.environ.get(f"FCPM_KEYCHAIN_SSH_{chain.upper()}", f"fcpm-{chain}")
     try:
         return subprocess.run([ssh_tool("ssh"), "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", to, *words],
                               input=stdin, capture_output=True, text=True, timeout=300)
@@ -355,17 +366,18 @@ def flush(groups):
         for key, value in read(group).items():
             if key not in group["keys"] or not value:
                 continue
-            done = keychain("put", name, key, stdin=value)
+            done = keychain("put", name, key, stdin=value, chain=group["keychain"])
             said = (done.stdout or done.stderr).strip().removeprefix("door: ")
             print(f"keys: keychain {said or 'did not answer'}" if done.returncode == 0 else f"keys: {name} {key} NOT flushed: {said}")
             failed += done.returncode != 0
     return 1 if failed else 0
 
 
-def keeper(verb):
+def keeper(verb, chain="keychain"):
     """init or unlock: the keychain's passphrase, asked in a window on this screen, sent once."""
-    text = "The keychain's passphrase." if verb == "unlock" else \
-        "A passphrase for FCPM's keychain: 8 characters at least. Whoever holds it can open every key."
+    whose = "FCPM's keychain" if chain == "keychain" else f"the {chain} keychain"
+    text = f"The passphrase of {whose}." if verb == "unlock" else \
+        f"A passphrase for {whose}: 8 characters at least. Whoever holds it can open every key in it."
     for _ in range(3):
         phrase = ask(f"Keychain: {verb}", text)
         if phrase is None:
@@ -378,7 +390,7 @@ def keeper(verb):
     if verb == "init" and ask("Keychain: init", "The same passphrase again.") != phrase:
         sys.exit("keys: the two did not match; nothing sent")
     print("keys: the keychain is working on it (a minute on its box)")
-    done = keychain(verb, stdin=phrase + "\n")
+    done = keychain(verb, stdin=phrase + "\n", chain=chain)
     print((done.stdout or done.stderr).strip())
     return done.returncode
 
@@ -581,14 +593,17 @@ def main(argv):
         return backup(argv[1] if len(argv) == 2 else None)
     if argv[:1] == ["proof"] and len(argv) == 2:
         return proof(argv[1])
-    if argv in (["init"], ["unlock"]):
-        return keeper(argv[0])
-    if argv in (["lock"], ["keychain"]) or (argv[:2] == ["mint", "ssh"] and len(argv) == 3):
+    chain = argv[1] if argv[:1] in (["init"], ["unlock"], ["lock"], ["keychain"]) and len(argv) == 2 else "keychain"
+    if chain != "keychain" and not NAME.fullmatch(chain):
+        sys.exit(f"keys: {chain} is not a keychain's name")
+    if argv[:1] in (["init"], ["unlock"]) and len(argv) <= 2:
+        return keeper(argv[0], chain)
+    if argv[:1] in (["lock"], ["keychain"]) and len(argv) <= 2 or (argv[:2] == ["mint", "ssh"] and len(argv) == 3):
+        argv = argv if argv[:1] == ["mint"] else argv[:1]
         if argv == ["keychain"]:
-            argv = ["status"]
-            print(keychain("status").stdout, end="")
+            print(keychain("status", chain=chain).stdout, end="")
             argv = ["list"]
-        done = keychain(*argv)
+        done = keychain(*argv, chain=chain)
         print((done.stdout + done.stderr).rstrip())
         return done.returncode
     groups = load()

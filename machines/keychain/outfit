@@ -1,23 +1,27 @@
 #!/bin/sh
 # outfit -- the keychain job onto a running Alpine box, as root (./install sends it). Safe to run again;
-# it never touches what is held (/srv/keychain/held, identity.age). See PROFILE.md.
+# it never touches what is held (held/, identity.age). `outfit` is operations' keychain, in the `keys`
+# account at /srv/keychain; `outfit NAME` is a secondary, in the NAME account at /srv/keychain-NAME. See PROFILE.md.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 LIB=/usr/local/lib/fcpm/keychain
+CHAIN=${1:-keychain}
+if [ "$CHAIN" = keychain ]; then ACCOUNT=keys STORE=/srv/keychain; else ACCOUNT=$CHAIN STORE=/srv/keychain-$CHAIN; fi
 apk add -q age python3 openssh git
 
-# keys: the account every holder's key is forced into. Its home is the keychain itself.
-id keys >/dev/null 2>&1 || adduser -D -h /srv/keychain -s /bin/sh keys
-sed -i -E 's/^keys:!:/keys:*:/' /etc/shadow           # sshd refuses a locked account, even by key
-chmod 700 /srv/keychain
+# The account every holder's key is forced into. Its home is the keychain itself.
+id "$ACCOUNT" >/dev/null 2>&1 || adduser -D -h "$STORE" -s /bin/sh "$ACCOUNT"
+sed -i -E "s/^$ACCOUNT:!:/$ACCOUNT:*:/" /etc/shadow     # sshd refuses a locked account, even by key
+chmod 700 "$STORE"
 
 install -d $LIB
 install -m 755 "$HERE/door" "$HERE/run-keys" $LIB/
-install -m 644 "$HERE/HOLDERS" $LIB/HOLDERS
+for f in "$HERE"/HOLDERS*; do install -m 644 "$f" $LIB/; done
+HOLDERS=$LIB/HOLDERS; [ "$CHAIN" = keychain ] || HOLDERS=$LIB/HOLDERS.$CHAIN
 # Only the door's block, each key forced through it: an unforced key would be a shell.
-install -d -m 700 -o keys -g keys /srv/keychain/.ssh
-[ -f /srv/keychain/.ssh/authorized_keys ] || install -m 600 -o keys -g keys /dev/null /srv/keychain/.ssh/authorized_keys
-su -s /bin/sh keys -c "FCPM_HOLDERS=$LIB/HOLDERS python3 -I $LIB/door keys"
+install -d -m 700 -o "$ACCOUNT" -g "$ACCOUNT" "$STORE/.ssh"
+[ -f "$STORE/.ssh/authorized_keys" ] || install -m 600 -o "$ACCOUNT" -g "$ACCOUNT" /dev/null "$STORE/.ssh/authorized_keys"
+su -s /bin/sh "$ACCOUNT" -c "FCPM_KEYCHAIN_NAME=$CHAIN FCPM_HOLDERS=$HOLDERS python3 -I $LIB/door keys"
 # No account answers without a key: what a machine is lodged is delivered through the data pile.
 if grep -q '^# BEGIN keychain claim' /etc/ssh/sshd_config; then
   sed -i '/^# BEGIN keychain claim/,/^# END keychain claim/d' /etc/ssh/sshd_config
@@ -27,7 +31,7 @@ rm -f /etc/sudoers.d/fcpm-claim
 ! id claim >/dev/null 2>&1 || deluser claim
 rm -rf /srv/keychain/claims
 
-echo '* * * * * /bin/sh /usr/local/lib/fcpm/keychain/run-keys' > /etc/crontabs/keys
-chmod 600 /etc/crontabs/keys
+echo "* * * * * /bin/sh /usr/local/lib/fcpm/keychain/run-keys $CHAIN" > "/etc/crontabs/$ACCOUNT"
+chmod 600 "/etc/crontabs/$ACCOUNT"
 rc-service crond status >/dev/null 2>&1 || rc-service crond start >/dev/null
-echo "OUTFITTED: keychain $(su -s /bin/sh keys -c "python3 -I $LIB/door serve keeper outfit" </dev/null)"
+echo "OUTFITTED: $CHAIN $(su -s /bin/sh "$ACCOUNT" -c "FCPM_KEYCHAIN_NAME=$CHAIN python3 -I $LIB/door serve keeper outfit" </dev/null)"

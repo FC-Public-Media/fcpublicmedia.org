@@ -86,6 +86,29 @@ class Keys(unittest.TestCase):
         self.assertIn("no nonesuch-command", keys("run", "cloudflare", "--", "nonesuch-command",
                                                   FCPM_KEYS_LEDGER=str(self.ledger)).stderr)
 
+    def test_a_secondary_ledgers_groups_go_to_their_own_keychain(self):
+        projects = self.tmp / "keys.projects.yml"
+        projects.write_text(textwrap.dedent(f"""\
+            dir: {self.tmp}/projects
+            groups:
+              layers:
+                what: a test group
+                form: env
+                keys:
+                  CLOUDFLARE_API_TOKEN: {{may: deploy, from: a test}}
+            """))
+        bin_ = self.tmp / "bin"
+        bin_.mkdir()
+        (bin_ / "ssh").write_text('#!/bin/sh\necho "$@" >> "%s/asked"\nprintf from-the-keychain\n' % self.tmp)
+        (bin_ / "ssh").chmod(0o755)
+        env = dict(FCPM_KEYS_LEDGER=os.pathsep.join([str(self.ledger), str(projects)]), PATH="%s:%s" % (bin_, os.environ["PATH"]))
+        keys("run", "layers", "--", "true", **env)
+        keys("run", "cloudflare", "--", "true", **env)
+        asked = (self.tmp / "asked").read_text().splitlines()
+        self.assertTrue(asked and all(l.split()[-3:-1] == ["get", "layers"] for l in asked if "fcpm-projects" in l), asked)
+        self.assertTrue(all("fcpm-projects" in l for l in asked if " layers " in l), asked)
+        self.assertTrue(all("keychain.invalid" in l for l in asked if " cloudflare " in l), asked)
+
     def test_birth_makes_one_key_and_shows_only_its_public_half(self):
         home = dict(HOME=str(self.tmp), USERPROFILE=str(self.tmp), FCPM_BIRTH_FILE="1",
                     FCPM_BIRTH_HELM="http://127.0.0.1:9")                # nothing answers: never this machine's helm

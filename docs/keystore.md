@@ -1,6 +1,6 @@
 # The keystore
 
-**Built since: [`machines/keychain`](../machines/keychain/PROFILE.md), FCPM's one keychain, on the
+**Built since: [`machines/keychain`](../machines/keychain/PROFILE.md), FCPM's one keychain for operations (public-run projects keep theirs apart, beside it), on the
 origin's box.** Decided by Autumn: the keychain controls each machine's canonical key, because we
 administer machines the public uses. An identity is minted there and claimed by its machine. Birth, below, is
 what a machine does only until it can claim one. Every key held anywhere is flushed up to it.

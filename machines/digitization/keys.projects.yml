@@ -1,0 +1,21 @@
+# Keys for public-run projects: work FCPM supports for others, outside its own operations. Same shape as
+# keys.yml, but these go to the projects keychain (machines/keychain, `projects`) and never to operations'.
+#
+#   fcpm keys offer layers DEVICE      asks for them on a one-time page on the tailnet
+#   fcpm keys run layers -- CMD        runs CMD with them in its environment
+
+dir: ~/.config/fcpm/projects
+
+groups:
+  layers:
+    what: "deploys Layers, the monthly picture Spirit Crossing Clubhouse's sister clubhouses take turns adding to, to Autumn's business Cloudflare account (autumn-e2c): its Pages project and R2 bucket, both named layers"
+    form: env
+    used by: "keys run layers -- npx wrangler@4 pages deploy, in a layers checkout"
+    keys:
+      CLOUDFLARE_API_TOKEN:
+        may: "Account: Cloudflare Pages Edit, Workers R2 Storage Edit; autumn-e2c only"
+        from: "Cloudflare dashboard, autumn-e2c: My Profile, API Tokens, Create Token, Custom token, those two permissions"
+      CLOUDFLARE_ACCOUNT_ID:
+        shape: hex32
+        may: names autumn-e2c (not secret; kept with its token)
+        from: "Cloudflare dashboard, autumn-e2c: the account's home page, Account ID"
