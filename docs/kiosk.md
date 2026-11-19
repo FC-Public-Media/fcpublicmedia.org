@@ -314,7 +314,12 @@ shows however the board was reached (by name or by tailnet number); a LAN name m
 
 **Jobs** is every profile in `machines/`, with its first line and its state: where this machine wears it, its crew's
 lines (a kept line down is said, in red); elsewhere, whether its helm (`helms.yml`) answers, or which machines wear
-it. `/jobs/<job>/` is one job: who wears it, its helm and what that holds, its crew's lines here, and its PROFILE.md.
+it. **Spend** is what this helm has paid the API, from the seats' own records (`seats/runs/<nonce>/run.json`): the month's
+total on the board, and `/spend/` every call: when, which seat, who called it and how far it was trusted, the call's
+number, what it read, the tokens the API counted and their price at `seats.yml`'s. `/spend/now` is the same as JSON,
+and `machines/digitization/seats status` says the month's total. Nothing here asks the vendor.
+
+`/jobs/<job>/` is one job: who wears it, its helm and what that holds, its crew's lines here, and its PROFILE.md.
 `/qr/` is the scanner as a page. Opened on this machine's own screen (localhost, a secure page, so the browser may
 open a camera) it is the camera itself: the BRIO's picture, and under it every frame hit as a mark, yellow when the
 frame is new and muted when already seen. Every frame names its bottle, so each bottle in view is a row at the top

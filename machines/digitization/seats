@@ -4,7 +4,7 @@ finished reply filed where the public loop finds it.
 
     seats            keep running calls: the oldest waiting, then the next (the crew's `seats` line)
     seats once       run one call, if one is waiting
-    seats status     what waits, and the last runs
+    seats status     what waits, what this month has cost, and the last runs
 
 replies.py queues each call (seats/queue/ under the door's state). A call is run only for a seat this helm holds
 (seats.yml) that advocate.yml declares, and not sooner than the seat's `gap` after its last run. Then:
@@ -353,6 +353,10 @@ def answer(r):
 def status():
     waiting = sorted(folder("queue").glob("*.json")) if folder("queue").is_dir() else []
     print("waiting: %d" % len(waiting))
+    this = time.strftime("%Y-%m")
+    month = [r for r in runs() if (r.get("finished") or "").startswith(this)]
+    print("spent this month: $%.2f on %d call%s" % (sum((r.get("usage") or {}).get("dollars") or 0 for r in month),
+                                                  len(month), "" if len(month) == 1 else "s"))
     for r in runs()[-8:]:
         print("  %s  %-10s %-8s %s  %s" % (r.get("finished"), r.get("seat"), r.get("outcome"), (r.get("commit") or "")[:7],
                                          r.get("why") or ""))

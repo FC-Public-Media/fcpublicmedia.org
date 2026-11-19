@@ -22,6 +22,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
 
     GET /                  the board: an index by noun (board.yml), one row a page, lit by /board/now; then this machine's switches
     GET /board/now         what lights the board's rows now, by their `live` key
+    GET /spend/, /spend/now   every paid call (the seats' runs): who, what it read, tokens and dollars; by month
     GET /jobs/<job>/       one job: its profile, who wears it, its helm, its crew's lines here
     GET /qr/               the scanner's console as a page: its eyes, the inbox, what it last heard
     GET /verbs/            fcpm's verbs, as machines/fcpm.yml defines them, for this platform
@@ -1449,11 +1450,71 @@ def board_now():
                                                          {"say": "nobody hosting"})(replies.room_now(room, cfg)))
     for s in seats_called():
         put("seat:%s" % s["name"], lambda name=s["name"]: seat_now(name))
+    put("spend", spend_now)
     for j in jobs():
         put("job:%s" % j["job"], lambda j=j: job_now(j))
     put("qr", lambda: {"say": "eyes connected", "on": "live"}
         if subprocess.run(["pgrep", "-f", "scanner/page.py"], capture_output=True).returncode == 0 else {"say": "no eyes", "on": "bad"})
     return out
+
+
+def spent():
+    """Every paid call this helm made (the seats' runs, seats/runs/<nonce>/run.json), newest first, each with who called
+    it, what it read and what the API said it used, priced at seats.yml's prices; and the totals by month."""
+    import replies
+    rows = []
+    for p in (replies.STATE / "seats" / "runs").glob("*/run.json") if (replies.STATE / "seats" / "runs").is_dir() else []:
+        try:
+            r = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        u = r.get("usage") or {}
+        rows.append({"at": r.get("finished") or r.get("started") or "", "seat": r.get("seat"), "outcome": r.get("outcome"),
+                     "by": r.get("by") or "unsigned", "trust": r.get("trust"), "nonce": r.get("nonce"),
+                     "commits": (r.get("range") or {}).get("commits"), "model": u.get("model"),
+                     "input": u.get("input") or 0, "output": u.get("output") or 0, "dollars": u.get("dollars") or 0.0,
+                     "commit": r.get("commit")})
+    rows.sort(key=lambda r: r["at"], reverse=True)
+    months = {}
+    for r in rows:
+        m = months.setdefault(r["at"][:7], {"month": r["at"][:7], "calls": 0, "paid": 0, "dollars": 0.0, "input": 0, "output": 0})
+        m["calls"] += 1
+        m["paid"] += 1 if r["input"] else 0
+        for k in ("dollars", "input", "output"):
+            m[k] += r[k]
+    return {"calls": rows, "months": sorted(months.values(), key=lambda m: m["month"], reverse=True)}
+
+
+def spend_now():
+    m = (spent()["months"] or [None])[0]
+    this = time.strftime("%Y-%m")
+    if not m or m["month"] != this:
+        return {"say": "nothing spent this month"}
+    return {"say": "$%.2f this month · %d call%s" % (m["dollars"], m["calls"], "" if m["calls"] == 1 else "s")}
+
+
+def spend_page():
+    """What this helm has spent on the API, call by call: when, which seat, who called it and how far it was trusted,
+    the call's number, what it read, the tokens the API counted and their price. Nothing here asks the vendor."""
+    s = spent()
+    months = "".join('<div class="row switch"><b>%s</b><span class=says>%d call%s, %s tokens in, %s out</span>'
+                     '<span class="state live">$%.2f</span></div>' % (
+                         e(m["month"]), m["calls"], "" if m["calls"] == 1 else "s", format(m["input"], ","),
+                         format(m["output"], ","), m["dollars"]) for m in s["months"]) \
+        or '<div class=row><span class=says>nothing spent yet</span></div>'
+    calls = "".join('<div class=row><b>%s</b><span class=says>%s · %s · %s · …%s%s</span>'
+                    '<span class=state>%s</span></div>' % (
+                        e(r["at"][:16].replace("T", " ")), e(r["seat"]), e(r["outcome"]),
+                        "an unsigned call" if r["by"] == "unsigned" else "called by %s (%s)" % (e(r["by"]), e(r["trust"])),
+                        e((r["nonce"] or "")[-6:]), " · read %d commits" % r["commits"] if r["commits"] else "",
+                        "%s in, %s out, %s · $%.2f" % (format(r["input"], ","), format(r["output"], ","), e(r["model"]), r["dollars"])
+                        if r["input"] else "no API call")
+                    for r in s["calls"]) or '<div class=row><span class=says>no calls yet</span></div>'
+    body = """%s<main><section class=noun><h2>By month</h2><div class=rows>%s</div></section>
+<section class=noun><h2>Every call</h2><div class=rows>%s</div></section></main>
+<footer class=bar><a href="/#spend">Helm</a><code>/spend/now</code></footer>""" % (
+        masthead("Helm &middot; spend"), months, calls)
+    return shell("Spend · Helm", body, BOARD_CSS)
 
 
 def seat_now(name):
@@ -3488,6 +3549,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, gear_page(gear))
             if route == "/":
                 return self.reply(200, board_page(self.here(), (self.headers.get("Host") or "").split(":")[0].rstrip(".").lower()))
+            if route in ("/spend", "/spend/"):
+                return self.reply(200, spend_page())
+            if route == "/spend/now":
+                return self.reply(200, json.dumps(spent()), TYPES[".json"])
             if route in ("/qr", "/qr/"):
                 return self.reply(200, qr_page())
             m = re.fullmatch(r"/jobs/([a-z0-9-]+)/?", route)
