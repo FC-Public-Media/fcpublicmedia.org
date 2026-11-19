@@ -225,9 +225,11 @@ Seeing it all aligned in one place is easier than finding pieces apart.
 
 ### The city
 
-`library/city/` on the `library` branch is Fort Collins as the city and Transfort publish it, as facts we
-can search: `parks/` and `natural-areas/` (a folder each: `facts.yml` and `shape.geojson`), `transit/routes/`
-(the same), `transit/stops/` (a file each), and `catalog.md`, both open-data portals as one list. Every place
+`library/city/` on the `library` branch is Fort Collins as the city and Transfort publish it, as things we
+can search ([workshed.md, Scopes](workshed.md#scopes)): `parks/`, `natural-areas/`, `transit/routes/` and
+`transit/stops/`, a folder each holding `shape.geojson` and `city.scopes`, its lines
+(`park.spring-park.near.route.14`), all wearing `city.fort-collins`; and `catalog.md`, both open-data portals
+as one list. Every place
 names the city's own page for it first, then the stops within a five-minute walk (400 m of its edge) and their
 routes, and every stop and route names the places near it, so any one of them leads to the others. The city
 holds the shapes and the pages; nothing in the open data links one to the other, so the join is ours, by name,
@@ -238,6 +240,14 @@ checkout of the branch, and pushes it to origin.local. Each source is asked whet
 Last-Modified), so a quiet day costs the city a 304 and writes the same bytes. We follow; we are never the
 authority, and never instant. Transfort's data is redistributed under its own terms: the data, never its
 marks, and said to be unofficial. The study behind it is `open-data/` on `retain/studies`.
+
+**Layers.** `bin/city-layers.py` adds readers on top, each writing its own `.scopes` beside `city.scopes` and
+folders of its own things, the crew's `layers` line, after the city's: `districts` (the council district,
+precinct, and state senate and house districts a place or stop is in; `districts/<n>/` with its member),
+`trails` (the named trails within 50 m of a place; `trails/<name>/`: surface, dogs, bikes, length), and `osm`
+(what OpenStreetMap maps inside a park or natural area: playgrounds, dog parks, toilets, fields and their
+sport; Overpass asked at most weekly, © OpenStreetMap contributors, ODbL). Together they answer
+`playground route max` or `field tennis district 6`. `city/layers.md` says when each last read.
 
 ## X-rays
 

@@ -212,7 +212,7 @@ class Workshed(unittest.TestCase):
         self.new("facts", shed="library")
         root = workshed.SHED / "library" / "demo@facts"
         (root / "city" / "parks" / "spring-park").mkdir(parents=True)
-        (root / "city" / "parks" / "spring-park" / "facts.yml").write_text(
+        (root / "city" / "parks" / "spring-park" / "README.md").write_text(
             "name: Spring Park\nkind: park\nroutes near:\n  - Route 14\n")
         (root / "city" / "stops").mkdir(parents=True)
         (root / "city" / "stops" / "1478.yml").write_text("name: Harmony & Hinsdale\nkind: bus stop\ncode: 1478\n")
@@ -246,10 +246,43 @@ class Workshed(unittest.TestCase):
 
     def test_read_stays_inside_its_worktree(self):
         self.facts()
-        self.assertIn("Spring Park", workshed.read("library", "library/demo@facts", "city/parks/spring-park/facts.yml"))
+        self.assertIn("Spring Park", workshed.read("library", "library/demo@facts", "city/parks/spring-park/README.md"))
         for path in ("../../../origin.git/config", "/etc/passwd", "city"):
             with self.assertRaises(workshed.Wrong):
                 workshed.read("library", "library/demo@facts", path)
+
+    def things(self):
+        self.new("things", shed="library")
+        root = workshed.SHED / "library" / "demo@things"
+        (root / "city").mkdir()
+        (root / "city" / "WORN.scopes").write_text("city.fort-collins\n")
+        for rel, lines in (("city/parks/spring", "park.spring\npark.spring.name.Spring Park\npark.spring.near.route.14\n"),
+                           ("city/parks/oak", "park.oak\npark.oak.near.stop.1478\n"),
+                           ("city/routes/14", "route.14\nroute.14.name.Route 14\nroute.14.near.park.spring\n")):
+            (root / rel).mkdir(parents=True)
+            (root / rel / "city.scopes").write_text(lines)
+        (root / "city" / "parks" / "spring" / "osm.scopes").write_text("park.spring.has.playground\n")
+        return root
+
+    def test_a_folder_of_scopes_is_a_thing_found_by_its_lines(self):
+        self.things()
+        d = workshed.search("library", ["park", "route", "14"])
+        self.assertEqual([h["object"] for h in d["hits"]], ["city/parks/spring", "city/routes/14"])
+        self.assertEqual(d["hits"][0]["title"], "Spring Park")
+        self.assertTrue(d["hits"][0]["scopes"])
+        self.assertEqual([h["object"] for h in workshed.search("library", ["route 14"])["hits"]][0], "city/routes/14")
+        self.assertEqual(workshed.search("library", ["park", "14"])["total"], 0)       # 14 alone is not a route
+
+    def test_a_thing_is_every_readers_lines_and_what_it_wears(self):
+        self.things()
+        d = workshed.search("library", ["playground", "route 14"])
+        self.assertEqual([h["object"] for h in d["hits"]], ["city/parks/spring"])
+        d = workshed.search("library", ["fort collins", "stop 1478"])
+        self.assertEqual([h["object"] for h in d["hits"]], ["city/parks/oak"])
+        text = workshed.read("library", "library/demo@things", "city/parks/spring")
+        self.assertEqual(text.splitlines(), ["# city.scopes", "park.spring", "park.spring.name.Spring Park",
+                                             "park.spring.near.route.14", "# osm.scopes", "park.spring.has.playground",
+                                             "# worn, from city/WORN.scopes", "city.fort-collins"])
 
     def test_follow_fast_forwards_a_clean_worktree_only(self):
         self.new("christmas")

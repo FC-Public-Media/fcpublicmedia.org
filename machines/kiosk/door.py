@@ -5025,10 +5025,16 @@ def library_read(q):
         return shell("Library", "%s<main><p>%s</p></main>" % (masthead("library"), e(str(exc))), LIBRARY_CSS)
     def find(v):
         return "/library/?" + urllib.parse.urlencode({"shed": s, "q": v})
+    things = path.endswith(".scopes") or "." not in path.rsplit("/", 1)[-1]
     out = []
     for line in text.splitlines()[:3000]:
         m = re.match(r"^(\s*(?:-\s+|[A-Za-z][\w ]*:\s+))(.+)$", line)
-        if path.endswith((".yml", ".yaml")) and m:
+        if things and line.strip() and not line.startswith("#"):
+            p = machines_module("scopes").parts(line.strip())
+            ask = " ".join(p[-2:]) if len(p) > 1 else p[0]
+            href = p[-1] if re.match(r"https?://", p[-1]) else find(ask)                 # an address goes there
+            out.append('<a href="%s">%s</a>' % (e(href), e(line)))
+        elif path.endswith((".yml", ".yaml")) and m:
             v = m.group(2).strip().strip('"')
             link = ('<a href="%s" rel=noopener>%s</a>' % (e(v), e(v)) if re.match(r"https?://", v)
                     else '<a href="%s">%s</a>' % (e(find(v)), e(m.group(2))))

@@ -49,11 +49,11 @@ class Words(unittest.TestCase):
         self.assertIn("Edora-Park", cs.page_names("Edora Community Park"))
         self.assertIn("Oak-Street-Plaza", cs.page_names("Oak St Plaza Park"))
 
-    def test_yml_quotes_only_what_yaml_needs(self):
-        out = cs.yml({"name": "Spring Park", "colour": "#a4c639", "kind": "yes", "acres": 16.99, "none": None,
-                      "stops": ["121 Harmony & Hinsdale"], "empty": []})
-        self.assertEqual(out, 'name: Spring Park\ncolour: "#a4c639"\nkind: "yes"\nacres: 16.99\n'
-                              'stops:\n  - 121 Harmony & Hinsdale\n')
+    def test_put_writes_each_line_once_with_its_dots_doubled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            f = pathlib.Path(tmp) / "x" / "city.scopes"
+            cs.put(f, [("park", "spring-park"), ("park", "spring-park", "acres", 16.99), None, ("park", "spring-park")])
+            self.assertEqual(f.read_text(), "park.spring-park\npark.spring-park.acres.16..99\n")
 
     def test_near_is_inside_or_within_reach_of_the_edge(self):
         p = cs.Place("park", "Square", SQUARE)
@@ -78,21 +78,77 @@ class Build(unittest.TestCase):
                 with contextlib.redirect_stdout(io.StringIO()):
                     cs.build(out)
                     first = {p: p.read_bytes() for p in out.rglob("*") if p.is_file()}
+                    (out / "parks" / "spring-park" / "osm.scopes").write_text("park.spring-park.has.playground\n")
                     cs.build(out)
                     second = {p: p.read_bytes() for p in out.rglob("*") if p.is_file()}
             finally:
                 cs.fetch, cs.page_answers, cs.CACHE = was
-            self.assertEqual(first, second)
-            park = (out / "parks" / "spring-park" / "facts.yml").read_text()
-            self.assertIn("city page: https://www.fortcollins.gov/Parks-and-Natural-Areas-Directory/Parks/Spring-Park", park)
-            self.assertIn("routes near:\n  - Route 14\n", park)
-            self.assertIn("stops near:\n  - 121 Harmony & Hinsdale\n", park)
-            stop = (out / "transit" / "stops" / "999.yml").read_text()
-            self.assertNotIn("parks near", stop)
-            route = (out / "transit" / "routes" / "14" / "facts.yml").read_text()
-            self.assertIn("parks near:\n  - Spring Park\n", route)
-            self.assertIn("schedule: 2026-08-17 to 2027-01-16", route)
-            self.assertIn("unofficial, not endorsed by Transfort", route)
+            self.assertEqual(first, {p: b for p, b in second.items() if p.name != "osm.scopes"})
+            self.assertTrue((out / "parks" / "spring-park" / "osm.scopes").exists())     # another reader's: left alone
+            self.assertEqual((out / "WORN.scopes").read_text(), "city.fort-collins\n")
+            park = (out / "parks" / "spring-park" / "city.scopes").read_text().splitlines()
+            self.assertEqual(park[0], "park.spring-park")
+            self.assertIn("park.spring-park.page.https://www..fortcollins..gov/Parks-and-Natural-Areas-Directory/Parks/Spring-Park", park)
+            self.assertIn("park.spring-park.near.route.14", park)
+            self.assertIn("park.spring-park.near.stop.121", park)
+            self.assertIn("park.spring-park.type.neighborhood", park)
+            stop = (out / "transit" / "stops" / "999" / "city.scopes").read_text()
+            self.assertNotIn("near", stop)
+            route = (out / "transit" / "routes" / "14" / "city.scopes").read_text().splitlines()
+            self.assertIn("route.14.near.park.spring-park", route)
+            self.assertIn("route.14.schedule.to.2027-01-16", route)
+            self.assertIn("route.14.stop.121", route)
+
+
+
+lspec = importlib.util.spec_from_file_location("city_layers", HERE / "city-layers.py")
+cl = importlib.util.module_from_spec(lspec)
+lspec.loader.exec_module(cl)
+BIG = {"type": "Polygon", "coordinates": [[[-105.2, 40.4], [-104.9, 40.4], [-104.9, 40.7], [-105.2, 40.7], [-105.2, 40.4]]]}
+
+
+class Layers(unittest.TestCase):
+    def test_each_layer_writes_its_own_lines_and_only_those(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            city = pathlib.Path(tmp) / "library" / "city"
+            park, stop = city / "parks" / "spring-park", city / "transit" / "stops" / "121"
+            park.mkdir(parents=True)
+            stop.mkdir(parents=True)
+            (park / "shape.geojson").write_text(cs.feature_json({}, SQUARE))
+            (park / "city.scopes").write_text("park.spring-park\n")
+            (stop / "shape.geojson").write_text(cs.feature_json({}, {"type": "Point", "coordinates": [-105.075, 40.565]}))
+            sources = {
+                "districts.geojson": json.dumps({"features": [{"properties": {"DIST": 3, "PRECT": 318, "NAME": "TRICIA CANONICO",
+                                                                             "SENATE": 14, "HOUSE": 53}, "geometry": BIG}]}).encode(),
+                "trails.geojson": json.dumps({"features": [{"properties": {"TRAILLABEL": "Spring Creek Trail", "DOGS": "Leash",
+                                                                          "SURFACETYPE": "unknown", "Shape__Length": 1500},
+                                                           "geometry": {"type": "LineString", "coordinates": [[-105.09, 40.565], [-105.06, 40.565]]}},
+                                                          {"properties": {"NAME": "NONE-1"}, "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]}}]}).encode()}
+            was = cl.cs.fetch, cl.overpass
+            cl.cs.fetch = lambda name, url: (sources[name], {"modified": "today"})
+            cl.overpass = lambda t: {"elements": [{"lat": 40.565, "lon": -105.075, "tags": {"leisure": "pitch", "sport": "soccer"}},
+                                                  {"lat": 40.565, "lon": -105.075, "tags": {"leisure": "playground"}},
+                                                  {"lat": 40.9, "lon": -105.075, "tags": {"amenity": "toilets"}}]}
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    cl.main([str(pathlib.Path(tmp))])
+                    cl.main([str(pathlib.Path(tmp)), "osm"])          # read again: the same lines, not twice
+            finally:
+                cl.cs.fetch, cl.overpass = was
+            self.assertEqual((park / "city.scopes").read_text(), "park.spring-park\n")
+            self.assertEqual((park / "districts.scopes").read_text().splitlines()[0], "park.spring-park.in.district.3")
+            self.assertIn("stop.121.in.state senate.14", (stop / "districts.scopes").read_text())
+            self.assertIn("district.3.member.Tricia Canonico", (city / "districts" / "3" / "districts.scopes").read_text())
+            self.assertIn("district.3.has.park.spring-park", (city / "districts" / "3" / "districts.scopes").read_text())
+            self.assertEqual((park / "trails.scopes").read_text(), "park.spring-park.near.trail.spring-creek-trail\n")
+            trail = (city / "trails" / "spring-creek-trail" / "trails.scopes").read_text()
+            self.assertIn("trail.spring-creek-trail.dogs.leash", trail)
+            self.assertIn("trail.spring-creek-trail.length km.1..5", trail)
+            self.assertNotIn("unknown", trail)
+            self.assertFalse((city / "trails" / "none-1").exists())
+            self.assertEqual((park / "osm.scopes").read_text(),
+                             "park.spring-park.has.field.soccer\npark.spring-park.has.playground\n")
+            self.assertIn("ODbL", (city / "layers.md").read_text())
 
 
 if __name__ == "__main__":

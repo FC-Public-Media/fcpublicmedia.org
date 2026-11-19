@@ -80,18 +80,36 @@ list of what counts. Putting a worktree in a shed is how something becomes searc
 in the shed can see everything else in it, which is the point when cross-referencing. You pick a shed, not a
 branch; a shed is a short list, the branches are too many.
 
-The words come in any order, and a file is a hit when every one of them is in its path or its text: a word
-where a word starts (`park` finds parks), a number whole (`14` is not `1478`), a quoted phrase as written. A
-fact leads to the next: `route 14 park` gives Route 14 and every park near it. A file named `README.md` or
-`facts.yml` stands for its folder. Hits come as a list, those whose name holds the words first, each with
-the lines that matched, a list's item with its key (`routes near: Route 14`). It is fast because it is
-small and kept in memory by the Helm between asks (the library shed: about 600 files in under 100 ms), so ask
-as often as you like.
+Most of what is searched is **things**: a folder holding `.scopes` files ([Scopes](#scopes)). The words come
+in any order, and a thing is a hit when its lines, together, say every one of them, where words side by side
+in the ask are side by side in one line: `park route 14` is a thing with a `park` line and a `route.14` line,
+the Venn of two facts. A word matches a whole word, and a number never stands alone when more was asked, so
+`park 14` finds no park. Any other text file is a hit when every word is in its path or its text (a word where
+a word starts, a number whole); a file named `README.md` stands for its folder. Hits come as a list, things
+first, those whose own line opens with the ask (Route 14 for `route 14`) before those that only mention it,
+each with the lines that said it. It is kept in memory by the Helm between asks (the city with its layers:
+about 1,300 files in a little over 100 ms), so ask as often as you like.
 
-The Helm's `/library/` is the same search for anyone: a shed, the words, the list. Reading a hit shows the
-file with every fact a search of its own words and every address a link out. `/library/search?shed=&q=`
+The Helm's `/library/` is the same search for anyone: a shed, the words, the list. Reading a thing shows every
+reader's lines under its file's name, then what it wears; each line is a search of its last two parts
+(`route.14` asks `route 14`), and an address goes there. `/library/search?shed=&q=`
 answers the same as JSON. The `library` shed on digitization holds `library` (the city) and
 `retain/studies`, and the crew's `shed` line keeps them to origin.local's branches every 5 minutes.
+
+### Scopes
+
+Metadata is flat: a line is a dotted scope, the value a part like any other, and there is no nesting, no `=`,
+and no join. `park.lee-martinez-community-park.near.route.14`. A key repeats for each value (`near.route.5`,
+`near.route.14`), structure is more dots, and long chains without peers are fine. A literal dot in a part is
+`..` (`acres.89..56`); that is the only sequence with a meaning. `machines/scopes.py` reads and writes them.
+
+A folder holding `.scopes` files is a thing, and its lines are all of them together. Each file is one reader's:
+a reader writes only its own (`city.scopes`, `districts.scopes`, `osm.scopes`) and never another's, so a reader
+can be dropped and read again, and two that disagree both stand, for the weirdness to show. A `WORN.scopes` is
+worn by everything below its folder: what the branch, or part of it, is outright (`city.fort-collins`), said
+once in the branch itself and never plastered on every thing. The roots are anecdote's top words: `city` for
+public documents and the city governing, `land` for what was there before it, `trade` for an organization's
+own. The study is `flat-scopes/` on `retain/studies`.
 
 Searching is not reading what a holding says: a shed holds what was put in it to be read. A shed with
 grants of its own is a later thought; nothing here hides one shed from another.
