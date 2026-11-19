@@ -69,13 +69,17 @@ def helm():
              "revision  %s" % (git("log", "-1", "--format=%h %cs %s") or "?")[:COLS - 10]]
     holds = sorted({w for j in worn for w in ((every.get(j) or {}).get("holds") or [])})
     lines.append("holds     %s" % (", ".join(holds) or "nothing only it applies"))
-    lines.append("peers")
+    lines.append("helms     letter, job, its door, joined this one's intake")
+    asks = replies.asks_state() or {}
     for job, h in every.items():
+        h = h or {}
+        at = h.get("at") or ""
         if job in worn:
-            continue
-        at = (h or {}).get("at") or ""
-        state = "no address yet" if not at else ("answering" if answers(at.rstrip("/") + "/revision") else "not answering")
-        lines.append("  %-14s %-15s %s" % (job, state, at))
+            state, joined = "here", "intake"
+        else:
+            state = "no address yet" if not at else ("answering" if answers(at.rstrip("/") + "/revision") else "not answering")
+            joined = "joined" if state == "answering" and asks.get("up") and asks.get("by") == h.get("called") else ""
+        lines.append("  %s %-14s %-15s %-7s %s" % (str(h.get("letter") or job[:1].upper())[:1], job, state, joined, at))
     return lines
 
 
