@@ -126,3 +126,13 @@ groups:
         may: publish to FCPM's YouTube live stream
         from: "YouTube Studio: Go live, Stream, Stream key"
         issued: 2026-10-21
+
+  wifi-helm:
+    what: the password of the studio's Wi-Fi, FC Public Media Helm, so a box with no wire can join Helm.
+    form: env
+    used by: "keys run wifi-helm -- sh -c 'printf %s \"$HELM_WIFI_PSK\" | sudo -A machines/bounce/helm-wifi ROOT', for the bounce Pi's card"
+    keys:
+      HELM_WIFI_PSK:
+        may: join FC Public Media Helm, as any person's phone does
+        from: "whoever keeps the studio's Wi-Fi (the router's admin page)"
+        issued: 2026-11-18, by Autumn
