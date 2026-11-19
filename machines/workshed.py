@@ -220,7 +220,7 @@ def everything():
 
 # ------------------------------------------------------------------- search --
 # A shed is searched as it stands: every worktree in it, every text file in those, where it is. docs/workshed.md, Search.
-TEXT = {".md", ".markdown", ".yml", ".yaml", ".json", ".tsv", ".csv", ".txt"}
+TEXT = {".md", ".markdown", ".yml", ".yaml", ".json", ".tsv", ".csv", ".txt", ".scopes"}
 BIGGEST = 512 * 1024
 _read = {}                                         # path: (mtime, size, title, text); the door keeps it between asks
 
@@ -230,9 +230,9 @@ def sheds():
 
 
 def _object(rel):
-    """What a file stands for: its folder, when it is that folder's README.md or facts.yml."""
+    """What a file stands for: its folder, when it is that folder's README.md."""
     parts = rel.split("/")
-    return "/".join(parts[:-1]) if len(parts) > 1 and parts[-1] in ("README.md", "facts.yml") else rel
+    return "/".join(parts[:-1]) if len(parts) > 1 and parts[-1] == "README.md" else rel
 
 
 def _load(f, st):
@@ -289,15 +289,18 @@ def _matched(text, pats, title):
 
 
 def search(shed, words, limit=200):
-    """Every file in SHED's worktrees holding every word (in its path or its text), the closest first.
-    A word with spaces in it (quoted, from a terminal) is a phrase."""
+    """Every thing and file in SHED's worktrees that says every word, the closest first. A thing is a folder of
+    .scopes files, found by its lines (scopes.find: "route 14" is a route.14 line); any other text file holds every
+    word in its path or its text. A word with spaces in it (quoted, from a terminal) is a phrase."""
     terms = [" ".join(w.lower().split()) for w in words if w.strip()]
     pats = [_pattern(t) for t in terms]
     trees = [w for w in worktrees() if w["shed"] == shed]
     if not trees:
         raise Wrong("no shed %s in the workshed (%s)" % (shed, ", ".join(sheds()) or "it is empty"))
+    scopes = _sibling("scopes")
     began, hits, files = time.time(), [], 0
     for w in trees:
+        worn, own = {}, {}
         for f in _files(w["path"]):
             try:
                 st = f.stat()
@@ -308,6 +311,10 @@ def search(shed, words, limit=200):
                 continue
             files += 1
             rel = f.relative_to(w["path"]).as_posix()
+            if f.suffix == ".scopes":
+                folder = rel.rsplit("/", 1)[0] if "/" in rel else ""
+                (worn if f.name == scopes.WORN else own).setdefault(folder, []).extend(scopes.lines_of(text))
+                continue
             low = text.lower()
             where = rel.lower().replace("/", " ").replace("-", " ") + "\n" + low
             if not all(p.search(where) for p in pats):
@@ -316,19 +323,40 @@ def search(shed, words, limit=200):
             lines = _matched(text, pats, title)
             hits.append({"worktree": w["name"], "branch": w["branch"], "path": rel, "object": _object(rel),
                          "title": title or _object(rel).rsplit("/", 1)[-1], "lines": lines[:4], "more": max(0, len(lines) - 4),
-                         "_rank": (-sum(bool(p.search(head)) for p in pats), rel.count("/"), rel)})
+                         "_rank": (2, -sum(bool(p.search(head)) for p in pats), rel.count("/"), rel)})
+        for folder, lines in own.items():
+            wear = [x for at, ls in worn.items() if at in ("", folder) or folder.startswith(at + "/") for x in ls]
+            said = scopes.find(terms, lines + wear) if terms else (lines[:1], 0, True)
+            if said is None:
+                continue
+            used, runs, opens = said
+            used = [x[len(lines[0]) + 1:] if x.startswith(lines[0] + ".") else x for x in used]   # the thing's name is the title
+            hits.append({"worktree": w["name"], "branch": w["branch"], "path": folder, "object": folder, "scopes": True,
+                         "title": scopes.title(lines) or folder.rsplit("/", 1)[-1], "lines": used[:4],
+                         "more": max(0, len(used) - 4), "_rank": (0 if opens else 1, runs, folder.count("/"), folder)})
     hits.sort(key=lambda h: h.pop("_rank"))
     return {"shed": shed, "words": terms, "worktrees": [w["name"] for w in trees], "files": files,
             "total": len(hits), "hits": hits[:limit], "ms": int((time.time() - began) * 1000)}
 
 
 def read(shed, worktree, path):
-    """One file of a shed, as text: only from a worktree in that shed, only a text file inside it."""
+    """One file of a shed, as text, or one thing: every reader's .scopes in its folder, then what it wears from the
+    WORN.scopes above it. Only from a worktree in that shed, only inside it."""
     w = next((x for x in worktrees() if x["shed"] == shed and x["name"] == worktree), None)
     if w is None:
         raise Wrong("no worktree %s in the shed %s" % (worktree, shed))
+    root = w["path"].resolve()
     f = (w["path"] / path).resolve()
-    if w["path"].resolve() not in f.parents or f.suffix.lower() not in TEXT | {".geojson"} or not f.is_file():
+    if f.is_dir() and root in f.parents and any(f.glob("*.scopes")):
+        out = []
+        for s in sorted(f.glob("*.scopes")):
+            out += ["# %s" % s.name, s.read_text(encoding="utf-8", errors="replace").rstrip("\n")]
+        for up in reversed([p for p in [f, *f.parents] if p == root or root in p.parents]):
+            if (up / "WORN.scopes").is_file() and up != f:
+                out += ["# worn, from %s" % ((up / "WORN.scopes").relative_to(root).as_posix()),
+                        (up / "WORN.scopes").read_text(encoding="utf-8", errors="replace").rstrip("\n")]
+        return "\n".join(out) + "\n"
+    if root not in f.parents or f.suffix.lower() not in TEXT | {".geojson"} or not f.is_file():
         raise Wrong("%s is not a text file in %s" % (path, worktree))
     return f.read_text(encoding="utf-8", errors="replace")
 
