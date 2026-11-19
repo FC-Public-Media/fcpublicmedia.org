@@ -1,14 +1,16 @@
 #!/bin/sh
 # install -- the keychain job onto a running box, from any checkout whose keys manage it (today digitization's).
 #
-#   machines/keychain/install fcpm@HOST
+#   machines/keychain/install fcpm@HOST [NAME]
 #
-# Sends ./door, ./HOLDERS, ./run-keys and ./outfit, and runs the outfit with sudo. Nothing held is
-# touched. Making the keychain the first time (its passphrase) is `fcpm keys init`. See PROFILE.md.
+# Sends ./door, ./HOLDERS*, ./run-keys and ./outfit, and runs the outfit with sudo; NAME outfits a
+# secondary keychain (`projects`) beside operations' own. Nothing held is
+# touched. Making it the first time (its passphrase) is `fcpm keys init [NAME]`. See PROFILE.md.
 set -eu
 cd "$(dirname "$0")"
 TARGET=${1:?fcpm@HOST}
-tar -cf - door HOLDERS run-keys outfit | ssh -o BatchMode=yes "$TARGET" \
-  'rm -rf /tmp/fcpm-keychain && mkdir /tmp/fcpm-keychain && tar -xf - -C /tmp/fcpm-keychain && sudo sh /tmp/fcpm-keychain/outfit; rm -rf /tmp/fcpm-keychain' |
+CHAIN=${2:-keychain}
+tar -cf - door HOLDERS* run-keys outfit | ssh -o BatchMode=yes "$TARGET" \
+  'rm -rf /tmp/fcpm-keychain && mkdir /tmp/fcpm-keychain && tar -xf - -C /tmp/fcpm-keychain && sudo sh /tmp/fcpm-keychain/outfit '"$CHAIN"'; rm -rf /tmp/fcpm-keychain' |
   tee /dev/stderr | grep -q '^OUTFITTED: ' || { echo "The outfit did not finish."; exit 1; }
-echo "$TARGET: keychain outfitted from $(git rev-parse --short HEAD)."
+echo "$TARGET: $CHAIN outfitted from $(git rev-parse --short HEAD)."

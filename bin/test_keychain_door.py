@@ -24,6 +24,7 @@ class Door(unittest.TestCase):
         repo = self.tmp / "repo"
         (repo / "machines/production").mkdir(parents=True)
         (repo / "machines/production/keys.yml").write_text("dir: x\n\ngroups:\n  cloudflare:\n    what: y\n")
+        (repo / "machines/production/keys.projects.yml").write_text("dir: x\n\ngroups:\n  layers:\n    what: y\n")
         for a in (["init", "-q", "-b", "main"], ["add", "."], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"]):
             subprocess.run(["git", "-C", str(repo), *a], check=True)
         self.env = dict(os.environ, FCPM_KEYCHAIN=str(self.tmp / "store"), FCPM_KEYCHAIN_OPEN=str(self.tmp / "open"),
@@ -92,6 +93,19 @@ class Door(unittest.TestCase):
         self.assertIn("held/cloudflare/TOKEN/meta.json", names)
         self.assertNotIn(b"abc123", tar.stdout)
         self.assertEqual(self.door("machine", "production", "backup").returncode, 1)
+
+    def test_a_secondary_hands_out_by_its_own_ledgers(self):
+        self.env["FCPM_KEYCHAIN_NAME"] = "projects"
+        self.made()
+        self.door("keeper", "digitization", "put layers TOKEN", "abc123")
+        self.door("keeper", "digitization", "put cloudflare TOKEN", "abc123")
+        self.assertEqual(self.door("machine", "production", "get layers TOKEN").stdout, "abc123")
+        self.assertEqual(self.door("machine", "production", "get cloudflare TOKEN").returncode, 1)
+        holders = self.tmp / "HOLDERS.projects"
+        holders.write_text("keeper digitization ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDL8JGISv1fAIISOJDQTaV3z/p4ncm1kNuZ/zYecb/fO x\n")
+        env = dict(self.env, FCPM_HOLDERS=str(holders), FCPM_AUTHORIZED_KEYS=str(self.tmp / "ak"))
+        subprocess.run([sys.executable, str(DOOR), "keys"], env=env, check=True, capture_output=True)
+        self.assertIn('command="FCPM_KEYCHAIN_NAME=projects python3', (self.tmp / "ak").read_text())
 
     def test_nothing_held_is_plain(self):
         self.made()

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""door — the keychain's SSH door: FCPM's one canonical keychain, on the box that wears `keychain`.
-Every key the `keys` account takes is forced through here, as its holder (HOLDERS). Never prints a
-value except to the one it is for. See PROFILE.md.
+"""door — the keychain's SSH door, on the box that wears `keychain`. FCPM_KEYCHAIN_NAME says which: `keychain`
+(the default) is operations' canonical one, in the `keys` account, with HOLDERS and each job's keys.yml; any
+other is a secondary kept apart from it (`projects`: public-run projects), in the account of that name, with
+HOLDERS.<name> and each job's keys.<name>.yml. Every key the account takes is forced through here, as its
+holder. Never prints a value except to the one it is for. See PROFILE.md.
 
     door keys                     write HOLDERS into the account's authorized_keys (run-keys, each minute)
     door serve OFFICE HOLDER      sshd runs this for a holder's key; never by hand
@@ -37,9 +39,13 @@ import sys
 import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
-STORE = pathlib.Path(os.environ.get("FCPM_KEYCHAIN", "/srv/keychain"))
-OPEN = pathlib.Path(os.environ.get("FCPM_KEYCHAIN_OPEN", "/dev/shm/keychain"))
-HOLDERS = pathlib.Path(os.environ.get("FCPM_HOLDERS", HERE / "HOLDERS"))
+CHAIN = os.environ.get("FCPM_KEYCHAIN_NAME", "keychain")
+PRIMARY = CHAIN == "keychain"
+FOLDER = "keychain" if PRIMARY else f"keychain-{CHAIN}"
+STORE = pathlib.Path(os.environ.get("FCPM_KEYCHAIN", f"/srv/{FOLDER}"))
+OPEN = pathlib.Path(os.environ.get("FCPM_KEYCHAIN_OPEN", f"/dev/shm/{FOLDER}"))
+HOLDERS = pathlib.Path(os.environ.get("FCPM_HOLDERS", HERE / ("HOLDERS" if PRIMARY else f"HOLDERS.{CHAIN}")))
+LEDGER = "keys.yml" if PRIMARY else f"keys.{CHAIN}.yml"
 AUTHORIZED = pathlib.Path(os.environ.get("FCPM_AUTHORIZED_KEYS", STORE / ".ssh/authorized_keys"))
 SCRATCH = os.environ.get("FCPM_SCRATCH", "/dev/shm")                 # memory: a minted private half never touches a disk
 LEDGERS = os.environ.get("FCPM_LEDGERS", "/srv/origin/FC-Public-Media/fcpublicmedia.org")
@@ -68,7 +74,8 @@ def holders():
 
 
 def keys():
-    lines = [f'command="python3 -I {HERE / "door"} serve {o} {h}",restrict {k}' for o, h, k in holders()]
+    named = "" if PRIMARY else f"FCPM_KEYCHAIN_NAME={CHAIN} "
+    lines = [f'command="{named}python3 -I {HERE / "door"} serve {o} {h}",restrict {k}' for o, h, k in holders()]
     old = AUTHORIZED.read_text().splitlines() if AUTHORIZED.exists() else []
     kept, inside = [], False
     for line in old:
@@ -210,9 +217,9 @@ def seal(group, key, value, cls, for_, office, holder):
 
 
 def named_in_ledger(holder, group):
-    """True when machines/<holder>/keys.yml on the origin's main names group."""
+    """True when machines/<holder>/<LEDGER> on the origin's main names group."""
     try:
-        text = subprocess.run(["git", "-c", f"safe.directory={LEDGERS}", "-C", LEDGERS, "show", f"main:machines/{holder}/keys.yml"],
+        text = subprocess.run(["git", "-c", f"safe.directory={LEDGERS}", "-C", LEDGERS, "show", f"main:machines/{holder}/{LEDGER}"],
                               capture_output=True, text=True, check=True).stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False

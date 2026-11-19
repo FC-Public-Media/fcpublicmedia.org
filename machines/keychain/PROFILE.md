@@ -1,6 +1,6 @@
 # keychain
 
-FCPM's one keychain. Every key FCPM holds ends up here, and every machine asks here for it. There are
+FCPM's one keychain for operations. Every key FCPM's operations hold ends up here, and every machine asks here for it. There are
 no machines holding keychains of their own. A machine may hold a key for a while (a deploy token in
 `~/.config/fcpm/keys/`), but that is a local hold, and it is flushed up here. That is how it works
 for every machine; no program chooses to do it. We administer machines that the public uses, so we
@@ -45,6 +45,24 @@ unless someone says `secret`.
     fcpm keys mint ssh FOR    a keeper's
 
 A machine reaches the door as `~/.ssh/config`'s `fcpm-keychain` (`keys@origin.local` by its own key).
+
+## A secondary keychain: projects
+
+Keys for public-run projects (work FCPM supports for others, such as Layers for Spirit Crossing
+Clubhouse's sister clubhouses) are kept apart from operations. Nothing about them mixes: they have their own
+store, passphrase, holders and ledgers, and the same door serves them.
+
+| | operations | `projects` |
+|---|---|---|
+| account, store | `keys`, `/srv/keychain` | `projects`, `/srv/keychain-projects` |
+| holders | [`HOLDERS`](HOLDERS) | [`HOLDERS.projects`](HOLDERS.projects) |
+| a job's ledger | `machines/<job>/keys.yml` | `machines/<job>/keys.projects.yml` |
+| from a machine | `fcpm-keychain` | `fcpm-projects` (`projects@origin.local`) |
+| making, opening | `fcpm keys init`, `unlock` | `fcpm keys init projects`, `unlock projects` |
+| installing | `install fcpm@origin.local` | `install fcpm@origin.local projects` |
+
+`take`, `offer`, `run` and `flush` find a group's keychain from the ledger it is in. `backup` and
+`proof` are operations' only for now.
 
 ## Installing it
 
