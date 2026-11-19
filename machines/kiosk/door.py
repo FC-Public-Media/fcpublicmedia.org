@@ -4961,30 +4961,50 @@ def library_words(q):
         return (q or "").split()
 
 
+def library_where(q, wheres):
+    """Where a search is kept to: asked for (where=, or the older shed=), else the library shed, else the first."""
+    asked = q.get("where") or ("shed:" + q["shed"] if q.get("shed") else "")
+    known = [w["where"] for w in wheres]
+    return asked if asked in known else ("shed:library" if "shed:library" in known else (known[0] if known else ""))
+
+
 def library_search(q):
-    every = shed().sheds()
-    name = q.get("shed") or ("library" if "library" in every else (every[0] if every else ""))
-    if not every:
-        return {"sheds": [], "shed": "", "hits": [], "total": 0, "files": 0, "said": "No shed in the workshed here yet."}
+    wheres = shed().wheres()
+    where = library_where(q, wheres)
+    if not where:
+        return {"wheres": [], "where": "", "hits": [], "total": 0, "files": 0, "words": [], "said": "Nothing here to search yet."}
     try:
-        d = shed().search(name, library_words(q.get("q")))
+        d = shed().search(where, library_words(q.get("q")))
     except shed().Wrong as exc:
-        return {"sheds": every, "shed": name, "hits": [], "total": 0, "files": 0, "said": str(exc)}
-    d["sheds"] = every
+        return {"wheres": wheres, "where": where, "hits": [], "total": 0, "files": 0, "words": [], "said": str(exc)}
+    d["wheres"] = wheres
     return d
+
+
+def library_label(d):
+    """The picked place as a sentence says it: the shed's name, or the repository and branch."""
+    for w in d["wheres"]:
+        if w["where"] == d["where"]:
+            return w["label"] if w["group"] == "Worksheds" else "%s, %s" % (w["where"].split(":", 1)[1].split("@")[0], w["label"])
+    return d["where"]
 
 
 def library_said(d):
     if d.get("said"):
         return d["said"]
     more = ", the first %d" % len(d["hits"]) if d["total"] > len(d["hits"]) else ""
-    return "%d of %d in %s%s, %d ms" % (d["total"], d["files"], d["shed"], more, d.get("ms", 0))
+    return "%d of %d in %s%s, %d ms" % (d["total"], d["files"], library_label(d), more, d.get("ms", 0))
+
+
+def library_also(h):
+    n = len(h.get("also") or ())
+    return " (and %d other branch%s)" % (n, "" if n == 1 else "es") if n else ""
 
 
 def library_hit(d, h):
     """One hit as the page lists it; the script draws the same."""
     import urllib.parse
-    href = "/library/read?" + urllib.parse.urlencode({"shed": d["shed"], "wt": h["worktree"], "path": h["path"]})
+    href = "/library/read?" + urllib.parse.urlencode({"where": d["where"], "tree": h["tree"], "path": h["path"]})
     def lit(line):
         low, marks, at, out = line.lower(), [], 0, ""
         for w in d["words"]:
@@ -4998,33 +5018,44 @@ def library_hit(d, h):
         return out + e(line[at:])
     more = ' <i>+%d</i>' % h["more"] if h.get("more") else ""
     lines = '<span class=ln>%s%s</span>' % (" &middot; ".join(lit(x) for x in h["lines"]), more) if h["lines"] else ""
-    return '<li><a href="%s">%s</a><span class=at>%s &middot; %s</span>%s</li>' % (
-        e(href), e(h["title"]), e(h["branch"]), e(h["object"]), lines)
+    return '<li><a href="%s">%s</a><span class=at>%s &middot; %s%s</span>%s</li>' % (
+        e(href), e(h["title"]), e(h["branch"]), e(h["object"]), e(library_also(h)), lines)
+
+
+def library_options(d):
+    """The picker: each shed, then each mirrored repository's branches, grouped."""
+    out, group = [], None
+    for w in d["wheres"]:
+        if w["group"] != group:
+            out.append(("</optgroup>" if group else "") + '<optgroup label="%s">' % e(w["group"]))
+            group = w["group"]
+        out.append('<option value="%s"%s>%s</option>' % (e(w["where"]), " selected" if w["where"] == d["where"] else "", e(w["label"])))
+    return "".join(out) + ("</optgroup>" if group else "")
 
 
 def library_page(q):
     d = library_search(q)
-    sheds = "".join('<option%s>%s</option>' % (" selected" if s == d["shed"] else "", e(s)) for s in d["sheds"])
     body = """%s<main>
-<form id=ask class=ask role=search action="/library/"><select name=shed aria-label="Shed">%s</select>
+<form id=ask class=ask role=search action="/library/"><select name=where aria-label="Where to look">%s</select>
 <input name=q type=search autofocus autocomplete=off value="%s" placeholder="words, any order: route 14 park" aria-label="Words">
 </form>
 <p class=dim id=said>%s</p>
 <ol id=hits class=hits>%s</ol>
-</main>%s""" % (masthead("%s &middot; library" % e(socket.gethostname().lower())), sheds, e(q.get("q") or ""),
+</main>%s""" % (masthead("%s &middot; library" % e(socket.gethostname().lower())), library_options(d), e(q.get("q") or ""),
                 e(library_said(d)), "".join(library_hit(d, h) for h in d["hits"]), LIBRARY_JS)
     return shell("Library", body, LIBRARY_CSS)
 
 
 def library_read(q):
     import urllib.parse
-    s, wt, path = q.get("shed", ""), q.get("wt", ""), q.get("path", "")
+    where, path = q.get("where") or ("shed:" + q["shed"] if q.get("shed") else ""), q.get("path", "")
+    tree = q.get("tree") or q.get("wt", "")
     try:
-        text = shed().read(s, wt, path)
+        text = shed().read(tree, path)
     except shed().Wrong as exc:
         return shell("Library", "%s<main><p>%s</p></main>" % (masthead("library"), e(str(exc))), LIBRARY_CSS)
     def find(v):
-        return "/library/?" + urllib.parse.urlencode({"shed": s, "q": v})
+        return "/library/?" + urllib.parse.urlencode({"where": where, "q": v})
     things = path.endswith(".scopes") or "." not in path.rsplit("/", 1)[-1]
     out = []
     for line in text.splitlines()[:3000]:
@@ -5041,8 +5072,9 @@ def library_read(q):
             out.append(e(m.group(1)) + link)
         else:
             out.append(e(line))
+    branch = tree.split("@", 1)[-1].replace("~", "/")
     head = '<p class=dim><a href="/library/?%s">%s</a> &middot; %s:%s</p>' % (
-        e(urllib.parse.urlencode({"shed": s})), e(s), e(wt.split("@", 1)[-1].replace("~", "/")), e(path))
+        e(urllib.parse.urlencode({"where": where})), e(where.partition(":")[2] or "library"), e(branch), e(path))
     return shell(path.rsplit("/", 1)[-1], "%s<main>%s<pre class=read>%s</pre></main>" % (
         masthead("library"), head, "\n".join(out)), LIBRARY_CSS)
 
@@ -5080,16 +5112,13 @@ LIBRARY_JS = """<script>
     span.append(line.slice(at));
   }
   function draw(d) {
-    var pick = form.shed;
-    if (pick.options.length !== d.sheds.length) {
-      pick.replaceChildren.apply(pick, d.sheds.map(function (s) { var o = el('option', null, s); o.value = s; return o; }));
-    }
-    pick.value = d.shed;
-    said.textContent = d.said || (d.total + ' of ' + d.files + ' in ' + d.shed + (d.total > d.hits.length ? ', the first ' + d.hits.length : '') + ', ' + d.ms + ' ms');
+    var opt = form.where.options[form.where.selectedIndex];
+    said.textContent = d.said || (d.total + ' of ' + d.files + ' in ' + (opt ? opt.textContent : d.where) + (d.total > d.hits.length ? ', the first ' + d.hits.length : '') + ', ' + d.ms + ' ms');
     hits.replaceChildren.apply(hits, d.hits.map(function (h) {
       var li = el('li'), a = el('a', null, h.title);
-      a.href = '/library/read?' + new URLSearchParams({shed: d.shed, wt: h.worktree, path: h.path});
-      li.append(a, el('span', 'at', h.branch + ' \u00b7 ' + h.object));
+      a.href = '/library/read?' + new URLSearchParams({where: d.where, tree: h.tree, path: h.path});
+      var n = (h.also || []).length;
+      li.append(a, el('span', 'at', h.branch + ' \u00b7 ' + h.object + (n ? ' (and ' + n + ' other branch' + (n === 1 ? '' : 'es') + ')' : '')));
       if (h.lines.length) {
         var ln = el('span', 'ln');
         h.lines.forEach(function (l, i) { if (i) ln.append(' \u00b7 '); lit(ln, l, d.words); });
@@ -5100,14 +5129,14 @@ LIBRARY_JS = """<script>
     }));
   }
   function ask() {
-    var n = ++asked, q = {shed: form.shed.value || params.get('shed') || '', q: form.q.value};
+    var n = ++asked, q = {where: form.where.value, q: form.q.value};
     history.replaceState(null, '', '?' + new URLSearchParams(q));
     fetch('/library/search?' + new URLSearchParams(q), {cache: 'no-store'}).then(function (r) { return r.json(); })
       .then(function (d) { if (n === asked) draw(d); }).catch(function () { said.textContent = 'This machine is not answering'; });
   }
   form.onsubmit = function (ev) { ev.preventDefault(); ask(); };
   form.q.oninput = function () { clearTimeout(timer); timer = setTimeout(ask, 120); };
-  form.shed.onchange = ask;
+  form.where.onchange = ask;
 })();
 </script>"""
 

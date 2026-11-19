@@ -13,7 +13,9 @@
     fcpm workshed log [NAME]              the workshed's log (one worktree's server, if named), last 40 lines
     fcpm workshed remove NAME             take the worktree away (never with changes; the branch is kept)
     fcpm workshed follow [SHED]           bring each clean worktree up to its origin branch, fast-forward only
-    fcpm workshed search SHED [WORDS]     everything in SHED's worktrees that has every word, in any order
+    fcpm workshed search WHERE [WORDS]    everything in WHERE that has every word, in any order: a shed's name, or
+                                          branch:REPO@BRANCH or every:REPO, read from the origin's mirror in refs/
+    fcpm workshed wheres                  what a search can be kept to
 
 The workshed is ~/code/workshed/<shed>/<repo>@<branch>: worktrees of ~/code/refs/<repo>, kept as long as
 someone works in them; a branch's slash is a ~ in its folder's name. NAME is that path from <shed>, or just <repo>@<branch>, or just <branch>, when only one
@@ -240,13 +242,7 @@ def _load(f, st):
     if hit and hit[0] == st.st_mtime_ns and hit[1] == st.st_size:
         return hit
     text = f.read_text(encoding="utf-8", errors="replace")
-    title = ""
-    for line in text.splitlines()[:40]:
-        m = re.match(r"#\s+(.+)|name:\s*(.+)|title:\s*(.+)", line.strip())
-        if m:
-            title = next(g for g in m.groups() if g).strip().strip('"')
-            break
-    _read[f] = (st.st_mtime_ns, st.st_size, title, text)
+    _read[f] = (st.st_mtime_ns, st.st_size, _title(text), text)
     return _read[f]
 
 
@@ -288,63 +284,181 @@ def _matched(text, pats, title):
     return out
 
 
-def search(shed, words, limit=200):
-    """Every thing and file in SHED's worktrees that says every word, the closest first. A thing is a folder of
-    .scopes files, found by its lines (scopes.find: "route 14" is a route.14 line); any other text file holds every
-    word in its path or its text. A word with spaces in it (quoted, from a terminal) is a phrase."""
+def _title(text):
+    for line in text.splitlines()[:40]:
+        m = re.match(r"#\s+(.+)|name:\s*(.+)|title:\s*(.+)", line.strip())
+        if m:
+            return next(g for g in m.groups() if g).strip().strip('"')
+    return ""
+
+
+def mirrors():
+    """The refs/ mirrors whose origin is the LAN's: their branches can be searched without a checkout."""
+    out = []
+    for src in sorted((CODE / "refs").glob("*")) if (CODE / "refs").is_dir() else []:
+        url = git("remote", "get-url", "origin", cwd=src, check=False) if (src / ".git").exists() else ""
+        if re.search(r"origin\.local|^origin-standby:|^fcpm-origin:", url):
+            out.append(src)
+    return out
+
+
+def heads(src):
+    """A mirror's branches on the origin and the commit each is at, main first, asked of git once."""
+    out = git("for-each-ref", "--format=%(refname:strip=3) %(objectname)", "refs/remotes/origin", cwd=src, check=False)
+    pairs = [ln.split() for ln in out.splitlines() if len(ln.split()) == 2 and ln.split()[0] != "HEAD"]
+    return dict(sorted(pairs, key=lambda p: (p[0] != "main", p[0])))
+
+
+def branches(src):
+    return list(heads(src))
+
+
+def wheres():
+    """What a search can be kept to: each shed, then each mirrored repository's branches, and all of them at once."""
+    out = [{"where": "shed:" + s, "group": "Worksheds",
+            "label": "%s: %s" % (s, ", ".join(w["branch"] for w in worktrees() if w["shed"] == s))} for s in sheds()]
+    for src in mirrors():
+        names = branches(src)
+        group = "Branches of %s, on the origin" % src.name
+        if len(names) > 1:
+            out.append({"where": "every:" + src.name, "group": group, "label": "every branch (%d)" % len(names)})
+        out += [{"where": "branch:%s@%s" % (src.name, b), "group": group, "label": b} for b in names]
+    return out
+
+
+_blobs = {}                                        # blob: (text, title); a content read once is never read again
+_listings = {}                                     # (mirror, commit): [(path, blob)] of its text files
+
+
+def _git_items(src, commit):
+    """A commit's text files, read from the mirror's objects: no checkout."""
+    if not commit:
+        return []
+    key = (str(src), commit)
+    if key not in _listings:
+        rows = []
+        out = subprocess.run(["git", "ls-tree", "-r", "-z", "--long", commit], cwd=src, capture_output=True).stdout
+        for entry in out.decode("utf-8", "replace").split("\0"):
+            if not entry or "\t" not in entry:
+                continue
+            meta, path = entry.split("\t", 1)
+            mode, kind, blob, size = meta.split()
+            name = path.rsplit("/", 1)[-1]
+            if kind == "blob" and not name.startswith(".") and pathlib.Path(name).suffix.lower() in TEXT \
+                    and size.isdigit() and int(size) <= BIGGEST:
+                rows.append((path, blob))
+        _listings[key] = rows
+    missing = [b for _, b in _listings[key] if b not in _blobs]
+    if missing:
+        r = subprocess.run(["git", "cat-file", "--batch"], cwd=src, input=("\n".join(dict.fromkeys(missing)) + "\n").encode(),
+                           capture_output=True).stdout
+        at = 0
+        while at < len(r):
+            head_end = r.index(b"\n", at)
+            blob, _, size = r[at:head_end].decode().split()
+            body = r[head_end + 1:head_end + 1 + int(size)].decode("utf-8", "replace")
+            _blobs[blob] = (body, _title(body))
+            at = head_end + 1 + int(size) + 1
+    return [(path, blob, *_blobs[blob]) for path, blob in _listings[key] if blob in _blobs]
+
+
+def _trees(where):
+    """The places a search reads: (id, branch, [(path, key, text, title)]). A worktree's files are read where they are;
+    a branch's from git."""
+    kind, _, name = where.partition(":")
+    if kind == "shed":
+        trees = [w for w in worktrees() if w["shed"] == name]
+        if not trees:
+            raise Wrong("no shed %s in the workshed (%s)" % (name, ", ".join(sheds()) or "it is empty"))
+        out = []
+        for w in trees:
+            items = []
+            for f in _files(w["path"]):
+                try:
+                    st = f.stat()
+                    if st.st_size > BIGGEST:
+                        continue
+                    _, _, title, text = _load(f, st)
+                except OSError:
+                    continue
+                rel = f.relative_to(w["path"]).as_posix()
+                items.append((rel, w["name"] + ":" + rel, text, title))
+            out.append((w["name"], w["branch"], items))
+        return out
+    repo, _, branch = name.partition("@")
+    src = next((m for m in mirrors() if m.name == repo), None)
+    if src is None or kind not in ("branch", "every"):
+        raise Wrong("nothing to search called %s" % where)
+    at = heads(src)
+    if kind == "branch" and branch not in at:
+        raise Wrong("no branch %s of %s on the origin" % (branch, repo))
+    return [("branch:%s@%s" % (repo, b), b, _git_items(src, c)) for b, c in at.items() if kind == "every" or b == branch]
+
+
+def search(where, words, limit=200):
+    """Every thing and file in WHERE (shed:NAME, branch:REPO@BRANCH, every:REPO; a bare name is a shed) that says every
+    word, the closest first. A thing is a folder of .scopes files, found by its lines (scopes.find: "route 14" is a
+    route.14 line); any other text file holds every word in its path or its text. The same content on several branches
+    is one hit, saying where else it is. A word with spaces in it (quoted, from a terminal) is a phrase."""
+    where = where if ":" in where else "shed:" + where
     terms = [" ".join(w.lower().split()) for w in words if w.strip()]
     pats = [_pattern(t) for t in terms]
-    trees = [w for w in worktrees() if w["shed"] == shed]
-    if not trees:
-        raise Wrong("no shed %s in the workshed (%s)" % (shed, ", ".join(sheds()) or "it is empty"))
     scopes = _sibling("scopes")
-    began, hits, files = time.time(), [], 0
-    for w in trees:
+    began = time.time()
+    trees = _trees(where)
+    texts, things, seen = {}, {}, set()
+    for tid, branch, items in trees:
         worn, own = {}, {}
-        for f in _files(w["path"]):
-            try:
-                st = f.stat()
-                if st.st_size > BIGGEST:
-                    continue
-                _, _, title, text = _load(f, st)
-            except OSError:
-                continue
-            files += 1
-            rel = f.relative_to(w["path"]).as_posix()
-            if f.suffix == ".scopes":
+        for rel, key, text, title in items:
+            seen.add(key)
+            if rel.endswith(".scopes"):
                 folder = rel.rsplit("/", 1)[0] if "/" in rel else ""
-                (worn if f.name == scopes.WORN else own).setdefault(folder, []).extend(scopes.lines_of(text))
+                (worn if rel.rsplit("/", 1)[-1] == scopes.WORN else own).setdefault(folder, []).append((key, scopes.lines_of(text)))
                 continue
-            low = text.lower()
-            where = rel.lower().replace("/", " ").replace("-", " ") + "\n" + low
-            if not all(p.search(where) for p in pats):
-                continue
-            head = (title + " " + _object(rel).replace("/", " ").replace("-", " ")).lower()
-            lines = _matched(text, pats, title)
-            hits.append({"worktree": w["name"], "branch": w["branch"], "path": rel, "object": _object(rel),
-                         "title": title or _object(rel).rsplit("/", 1)[-1], "lines": lines[:4], "more": max(0, len(lines) - 4),
-                         "_rank": (2, -sum(bool(p.search(head)) for p in pats), rel.count("/"), rel)})
-        for folder, lines in own.items():
-            wear = [x for at, ls in worn.items() if at in ("", folder) or folder.startswith(at + "/") for x in ls]
-            said = scopes.find(terms, lines + wear) if terms else (lines[:1], 0, True)
-            if said is None:
-                continue
-            used, runs, opens = said
-            used = [x[len(lines[0]) + 1:] if x.startswith(lines[0] + ".") else x for x in used]   # the thing's name is the title
-            hits.append({"worktree": w["name"], "branch": w["branch"], "path": folder, "object": folder, "scopes": True,
-                         "title": scopes.title(lines) or folder.rsplit("/", 1)[-1], "lines": used[:4],
-                         "more": max(0, len(used) - 4), "_rank": (0 if opens else 1, runs, folder.count("/"), folder)})
+            u = texts.setdefault((rel, key), {"tree": tid, "rel": rel, "text": text, "title": title, "branches": []})
+            u["branches"].append(branch)
+        for folder, files in own.items():
+            wear = [kf for at, fs in worn.items() if at in ("", folder) or folder.startswith(at + "/") for kf in fs]
+            sig = (folder, tuple(k for k, _ in files + wear))
+            t = things.setdefault(sig, {"tree": tid, "folder": folder, "lines": [x for _, ls in files for x in ls],
+                                        "wear": [x for _, ls in wear for x in ls], "branches": []})
+            t["branches"].append(branch)
+    hits = []
+    for u in texts.values():
+        rel, text, title = u["rel"], u["text"], u["title"]
+        if not all(p.search(rel.lower().replace("/", " ").replace("-", " ") + "\n" + text.lower()) for p in pats):
+            continue
+        head = (title + " " + _object(rel).replace("/", " ").replace("-", " ")).lower()
+        lines = _matched(text, pats, title)
+        hits.append({"tree": u["tree"], "branch": u["branches"][0], "also": u["branches"][1:], "path": rel,
+                     "object": _object(rel), "title": title or _object(rel).rsplit("/", 1)[-1], "lines": lines[:4],
+                     "more": max(0, len(lines) - 4), "_rank": (2, -sum(bool(p.search(head)) for p in pats), rel.count("/"), rel)})
+    for t in things.values():
+        lines, folder = t["lines"], t["folder"]
+        if not lines:
+            continue
+        said = scopes.find(terms, lines + t["wear"]) if terms else (lines[:1], 0, True)
+        if said is None:
+            continue
+        used, runs, opens = said
+        used = [x[len(lines[0]) + 1:] if x.startswith(lines[0] + ".") else x for x in used]   # the thing's name is the title
+        hits.append({"tree": t["tree"], "branch": t["branches"][0], "also": t["branches"][1:], "path": folder,
+                     "object": folder, "scopes": True, "title": scopes.title(lines) or folder.rsplit("/", 1)[-1],
+                     "lines": used[:4], "more": max(0, len(used) - 4),
+                     "_rank": (0 if opens else 1, runs, folder.count("/"), folder)})
     hits.sort(key=lambda h: h.pop("_rank"))
-    return {"shed": shed, "words": terms, "worktrees": [w["name"] for w in trees], "files": files,
+    return {"where": where, "words": terms, "searched": [tid for tid, _, _ in trees], "files": len(seen),
             "total": len(hits), "hits": hits[:limit], "ms": int((time.time() - began) * 1000)}
 
 
-def read(shed, worktree, path):
-    """One file of a shed, as text, or one thing: every reader's .scopes in its folder, then what it wears from the
-    WORN.scopes above it. Only from a worktree in that shed, only inside it."""
-    w = next((x for x in worktrees() if x["shed"] == shed and x["name"] == worktree), None)
+def read(tree, path):
+    """One file, as text, or one thing: every reader's .scopes in its folder, then what it wears from the WORN.scopes
+    above it. TREE is a worktree's name (read from its folder) or branch:REPO@BRANCH (read from the mirror's objects)."""
+    if tree.startswith("branch:"):
+        return _read_git(tree, path)
+    w = next((x for x in worktrees() if x["name"] == tree), None)
     if w is None:
-        raise Wrong("no worktree %s in the shed %s" % (worktree, shed))
+        raise Wrong("no worktree %s in the workshed" % tree)
     root = w["path"].resolve()
     f = (w["path"] / path).resolve()
     if f.is_dir() and root in f.parents and any(f.glob("*.scopes")):
@@ -357,12 +471,47 @@ def read(shed, worktree, path):
                         (up / "WORN.scopes").read_text(encoding="utf-8", errors="replace").rstrip("\n")]
         return "\n".join(out) + "\n"
     if root not in f.parents or f.suffix.lower() not in TEXT | {".geojson"} or not f.is_file():
-        raise Wrong("%s is not a text file in %s" % (path, worktree))
+        raise Wrong("%s is not a text file in %s" % (path, tree))
     return f.read_text(encoding="utf-8", errors="replace")
 
 
+def _read_git(tree, path):
+    repo, _, branch = tree[len("branch:"):].partition("@")
+    src = next((m for m in mirrors() if m.name == repo), None)
+    path = path.strip("/")
+    if src is None or ".." in path.split("/") or branch not in branches(src):
+        raise Wrong("nothing to read at %s in %s" % (path, tree))
+    ref = "refs/remotes/origin/" + branch
+
+    def show(p):
+        r = subprocess.run(["git", "show", "%s:%s" % (ref, p)], cwd=src, capture_output=True)
+        return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else None
+    listing = git("ls-tree", "--name-only", "%s:%s" % (ref, path), cwd=src, check=False) if path else ""
+    own = sorted(n for n in listing.splitlines() if n.endswith(".scopes") and n != "WORN.scopes")
+    if own:
+        out = []
+        for n in own:
+            out += ["# %s" % n, (show("%s/%s" % (path, n)) or "").rstrip("\n")]
+        parts = path.split("/")
+        for i in range(len(parts)):
+            at = "/".join(parts[:i])
+            worn = show((at + "/" if at else "") + "WORN.scopes")
+            if worn is not None:
+                out += ["# worn, from %s" % ((at + "/" if at else "") + "WORN.scopes"), worn.rstrip("\n")]
+        return "\n".join(out) + "\n"
+    if pathlib.Path(path).suffix.lower() not in TEXT | {".geojson"}:
+        raise Wrong("%s is not a text file in %s" % (path, tree))
+    text = show(path)
+    if text is None:
+        raise Wrong("no %s in %s" % (path, tree))
+    return text
+
+
 def follow(shed=None):
-    """Each worktree (in SHED, or all) moved up to its origin branch: fetched, fast-forward only, never with changes."""
+    """Each worktree (in SHED, or all) moved up to its origin branch: fetched, fast-forward only, never with changes.
+    Each mirror of the LAN's origin is fetched too, so its branches are searched as they are now."""
+    for src in mirrors():
+        git("fetch", "--quiet", "origin", cwd=src, check=False)
     for w in worktrees():
         if shed and w["shed"] != shed:
             continue
@@ -387,13 +536,14 @@ def follow(shed=None):
     return 0
 
 
-def found(shed, words):
-    d = search(shed, words)
+def found(where, words):
+    d = search(where, words)
     for h in d["hits"]:
-        say("%s  %s:%s" % (h["title"], h["branch"], h["path"]))
+        also = " (and %d other branch%s)" % (len(h["also"]), "" if len(h["also"]) == 1 else "es") if h["also"] else ""
+        say("%s  %s:%s%s" % (h["title"], h["branch"], h["path"], also))
         for ln in h["lines"]:
             say("    " + ln[:160])
-    say("%d of %d files in %s (%s), %d ms" % (d["total"], d["files"], shed, ", ".join(d["worktrees"]), d["ms"]))
+    say("%d of %d files in %s, %d ms" % (d["total"], d["files"], d["where"], d["ms"]))
     return 0
 
 
@@ -693,6 +843,10 @@ def main(argv):
             return check(*args)
         if verb == "follow" and len(args) <= 1:
             return follow(*args)
+        if verb == "wheres" and not args:
+            for w in wheres():
+                say("%-40s %s" % (w["where"], w["label"]))
+            return 0
         if verb == "search" and args:
             return found(args[0], args[1:])
         if verb == "log" and len(args) <= 1:
