@@ -235,6 +235,12 @@ class Workshed(unittest.TestCase):
         self.assertEqual(workshed.search("library", ["ark"])["total"], 0)
         self.assertGreater(workshed.search("library", ["par"])["total"], 0)
 
+    def test_in_prose_a_dot_only_separates_and_two_are_a_period(self):
+        prose = "lee martinez has 89.56 acres. see route 14 and docs/workshed.md."
+        for term, says in (("89..56", True), ("89.56", True), ("route.14", True), ("workshed..md", True), ("..", True),
+                           ("147", False), ("art", False), ("89..5", False)):
+            self.assertEqual(bool(workshed._pattern(term).search(prose)), says, term)
+
     def test_search_reads_text_only_and_only_its_shed(self):
         self.facts()
         self.new("christmas")                                     # in dev: not searched from library

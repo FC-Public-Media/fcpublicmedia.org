@@ -256,9 +256,12 @@ def _files(root):
 
 
 def _pattern(term):
-    """A word matches where a word starts (park: parks, Parkwood); a number only whole (14: not 1478)."""
-    tail = r"(?![0-9])" if term.isdigit() else ""
-    return re.compile(r"(?<![a-z0-9])" + re.escape(term) + tail)
+    """A word matches where a word starts (park: parks, Parkwood); a number only whole (14: not 1478). Prose has no
+    parts, so a single dot in the term only separates words there, and `..` is a literal period."""
+    tail = r"(?![0-9])" if re.search(r"[0-9]$", term) and re.fullmatch(r"[0-9.]+|.*[^0-9][0-9]+", term) else ""
+    body = "".join(r"\." if piece == ".." else r"[^a-z0-9]+" if piece == "." else re.escape(piece)
+                   for piece in re.findall(r"\.\.|\.|[^.]+", term))
+    return re.compile((r"(?<![a-z0-9])" if re.match(r"[a-z0-9]", term) else "") + body + tail)
 
 
 def _matched(text, pats, title):

@@ -9,7 +9,6 @@ import functools
 import re
 
 WORN = "WORN.scopes"
-_WORD = re.compile(r"[a-z0-9]+")
 
 
 def parts(line):
@@ -39,14 +38,31 @@ def line(*ps):
     return ".".join(part(p) for p in ps if p is not None and str(p).strip() != "")
 
 
-def words(text):
-    return _WORD.findall(text.lower())
+_TOKEN = re.compile(r"\.\.|\.|[a-z0-9]+")
+_MARK = {".": "\x02", "..": "\x03"}       # a part's edge, a literal dot: kept as tokens of their own, never words
+
+
+def tokens(text):
+    """Words and dots, left to right: `..` is a literal dot, `.` a part's edge; anything else only parts words."""
+    return _TOKEN.findall(text.lower())
 
 
 @functools.lru_cache(maxsize=None)
 def strand(ln):
-    """A line as the words it says, in order, spaced at both ends so a run is found whole."""
-    return " %s " % " ".join(words(" ".join(parts(ln))))
+    """A line as its tokens, spaced at both ends so a run is found whole."""
+    return " %s " % " ".join(_MARK.get(t, t) for t in tokens(ln))
+
+
+@functools.lru_cache(maxsize=4096)
+def _run(toks):
+    """A run as a pattern: its words whole and in order. Where the ask has a dot, the line must have that dot there;
+    where it has only a space between words, the line may have either dot there or none."""
+    out = []
+    for k, t in enumerate(toks):
+        if k:
+            out.append(" (?:[\x02\x03] )?" if toks[k - 1] not in _MARK and t not in _MARK else " ")
+        out.append(_MARK.get(t) or re.escape(t))
+    return re.compile(" %s " % "".join(out))
 
 
 def lines_of(text):
@@ -54,37 +70,39 @@ def lines_of(text):
 
 
 def find(asked, lines):
-    """Whether these lines, together, say every word asked, and which lines say it.
+    """Whether these lines, together, say everything asked, and which lines say it.
 
-    The words are split into runs, each found together and in order in one line: "park route 14" is a park line and
-    a route.14 line. A number is never a run by itself unless it is all that was asked, so 14 is never found alone
-    when a route was asked for. None when the lines do not say it; else (lines used, how many runs, whether a run opens a
-    line, which is the thing itself)."""
-    q = words(" ".join(asked))
+    The ask is split into runs at the spaces between words, each run found together and in order in one line: "park
+    route 14" is a park line and a route.14 line. A dot in the ask is never split at: route.14 is route and 14 as two
+    parts side by side, 89..56 is a literal dot. A number is never a run by itself unless it is all that was asked,
+    so 14 is never found alone when a route was asked for. None when the lines do not say it; else (lines used, how
+    many runs, whether a run opens a line, which is the thing itself)."""
+    q = tuple(tokens(" ".join(asked)))
     if not q:
         return [], 0, False
     strands = [strand(x) for x in lines]
     n = len(q)
+    cut = {0, n} | {k for k in range(1, n) if q[k - 1] not in _MARK and q[k] not in _MARK}
     best = [None] * (n + 1)              # best[i]: the fewest runs that say q[:i], with the lines that say them
-    best[0] = ([], [], False)
-    for i in range(n):
-        if best[i] is None:
+    best[0] = ([], 0, False)
+    for i in sorted(cut):
+        if i == n or best[i] is None:
             continue
-        for j in range(n, i, -1):
+        for j in sorted((c for c in cut if c > i), reverse=True):
             if j == i + 1 and q[i].isdigit() and n > 1:
                 continue
-            run = " %s " % " ".join(q[i:j])
-            at = next((k for k, s in enumerate(strands) if run in s), None)
+            pat = _run(q[i:j])
+            at = next((k for k, s in enumerate(strands) if pat.search(s)), None)
             if at is None:
                 continue
             used, runs, opens = best[i]
-            cand = (used + [at], runs + [run], opens or strands[at].startswith(run))
-            if best[j] is None or len(cand[1]) < len(best[j][1]) or (len(cand[1]) == len(best[j][1]) and cand[2] and not best[j][2]):
+            cand = (used + [at], runs + 1, opens or bool(pat.match(strands[at])))
+            if best[j] is None or cand[1] < best[j][1] or (cand[1] == best[j][1] and cand[2] and not best[j][2]):
                 best[j] = cand
     if best[n] is None:
         return None
     used, runs, opens = best[n]
-    return [lines[k] for k in dict.fromkeys(used)], len(runs), opens
+    return [lines[k] for k in dict.fromkeys(used)], runs, opens
 
 
 def title(lines):

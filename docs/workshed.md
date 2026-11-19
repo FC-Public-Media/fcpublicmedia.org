@@ -91,7 +91,11 @@ Most of what is searched is **things**: a folder holding `.scopes` files ([Scope
 in any order, and a thing is a hit when its lines, together, say every one of them, where words side by side
 in the ask are side by side in one line: `park route 14` is a thing with a `park` line and a `route.14` line,
 the Venn of two facts. A word matches a whole word, and a number never stands alone when more was asked, so
-`park 14` finds no park. Any other text file is a hit when every word is in its path or its text (a word where
+`park 14` finds no park. Dots are asked the way the lines write them, never translated: a single dot is a part's
+edge (`route.14` is route and 14 as parts side by side; `.14` a part that is 14), and two are a literal dot
+(`89..56`, or `..` alone for lines that hold one). Where the ask has a space between words, the line may have a dot
+there or not, so `route 14` still finds `route.14`. In prose, which has no parts, a single dot only separates
+words and `..` is a period. Any other text file is a hit when every word is in its path or its text (a word where
 a word starts, a number whole); a file named `README.md` stands for its folder. Hits come as a list, things
 first, those whose own line opens with the ask (Route 14 for `route 14`) before those that only mention it,
 each with the lines that said it. It is kept in memory by the Helm between asks (the city with its layers:

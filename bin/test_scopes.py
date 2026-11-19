@@ -50,6 +50,14 @@ class Find(unittest.TestCase):
         self.assertIsNone(self.says("parks"))
         self.assertIsNone(self.says("mart"))
 
+    def test_a_dot_asked_is_a_parts_edge_and_two_are_a_literal_dot(self):
+        for asked in ("route.14", "near.route.14", ".14", "route.", "89..56", "89 56", ".."):
+            self.assertIsNotNone(self.says(asked), asked)
+        for asked in ("89.56", "near.14", "route..14", "lee.martinez"):
+            self.assertIsNone(self.says(asked), asked)
+        self.assertEqual(self.says("park route.14")[1], 2)
+        self.assertEqual(self.says("..")[0], ["park.lee-martinez.acres.89..56"])
+
     def test_the_thing_itself_opens_a_line(self):
         self.assertTrue(scopes.find(["route 14"], ["route.14", "route.14.name.Route 14"])[2])
         self.assertFalse(self.says("route 14")[2])
