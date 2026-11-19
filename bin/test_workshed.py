@@ -201,6 +201,74 @@ class Workshed(unittest.TestCase):
                                               workshed.CODE / "refs" / "jekyll-enough"])
         self.assertIsNone(workshed.engine())
 
+    def test_a_slash_in_a_branch_is_a_tilde_in_its_folder(self):
+        git("branch", "retain/notes", cwd=workshed.CODE / "refs" / "demo")
+        self.new("retain/notes", shed="library")
+        w = workshed.find("library/demo@retain~notes")
+        self.assertEqual(w["branch"], "retain/notes")
+        self.assertTrue((workshed.SHED / "library" / "demo@retain~notes" / "site" / "meet.md").exists())
+
+    def facts(self):
+        self.new("facts", shed="library")
+        root = workshed.SHED / "library" / "demo@facts"
+        (root / "city" / "parks" / "spring-park").mkdir(parents=True)
+        (root / "city" / "parks" / "spring-park" / "facts.yml").write_text(
+            "name: Spring Park\nkind: park\nroutes near:\n  - Route 14\n")
+        (root / "city" / "stops").mkdir(parents=True)
+        (root / "city" / "stops" / "1478.yml").write_text("name: Harmony & Hinsdale\nkind: bus stop\ncode: 1478\n")
+        (root / "city" / "shape.geojson").write_text('{"name": "Spring Park"}')
+        return root
+
+    def test_search_takes_every_word_in_any_order(self):
+        self.facts()
+        d = workshed.search("library", ["14", "park", "route"])
+        self.assertEqual([h["object"] for h in d["hits"]], ["city/parks/spring-park"])
+        self.assertEqual(d["hits"][0]["title"], "Spring Park")
+        self.assertIn("routes near: Route 14", d["hits"][0]["lines"])
+        self.assertEqual(workshed.search("library", ["route 14"])["total"], 1)        # a phrase
+        self.assertEqual(workshed.search("library", ["route 41"])["total"], 0)
+
+    def test_a_number_is_whole_and_a_word_starts_a_word(self):
+        self.facts()
+        self.assertEqual([h["path"] for h in workshed.search("library", ["1478"])["hits"]], ["city/stops/1478.yml"])
+        self.assertEqual(workshed.search("library", ["147"])["total"], 0)
+        self.assertEqual(workshed.search("library", ["ark"])["total"], 0)
+        self.assertGreater(workshed.search("library", ["par"])["total"], 0)
+
+    def test_search_reads_text_only_and_only_its_shed(self):
+        self.facts()
+        self.new("christmas")                                     # in dev: not searched from library
+        d = workshed.search("library", ["spring"])
+        self.assertTrue(all(h["worktree"] == "library/demo@facts" for h in d["hits"]))
+        self.assertNotIn("city/shape.geojson", [h["path"] for h in d["hits"]])
+        with self.assertRaises(workshed.Wrong):
+            workshed.search("attic", ["spring"])
+
+    def test_read_stays_inside_its_worktree(self):
+        self.facts()
+        self.assertIn("Spring Park", workshed.read("library", "library/demo@facts", "city/parks/spring-park/facts.yml"))
+        for path in ("../../../origin.git/config", "/etc/passwd", "city"):
+            with self.assertRaises(workshed.Wrong):
+                workshed.read("library", "library/demo@facts", path)
+
+    def test_follow_fast_forwards_a_clean_worktree_only(self):
+        self.new("christmas")
+        seed = pathlib.Path(self.tmp.name) / "seed"
+        (seed / "site" / "later.md").write_text("later\n")
+        git("checkout", "-q", "christmas", cwd=seed)
+        git("add", ".", cwd=seed)
+        git("commit", "-q", "-m", "later", cwd=seed)
+        git("push", "-q", str(pathlib.Path(self.tmp.name) / "origin.git"), "christmas", cwd=seed)
+        with contextlib.redirect_stdout(io.StringIO()):
+            workshed.follow()
+        wt = workshed.SHED / "dev" / "demo@christmas"
+        self.assertTrue((wt / "site" / "later.md").exists())
+        (wt / "site" / "mine.md").write_text("mine\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            workshed.follow("dev")
+        self.assertIn("has changes", out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

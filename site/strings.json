@@ -1,0 +1,7 @@
+---
+layout: null
+permalink: /strings.json
+sitemap: false
+offline: true
+---
+{{ site.data.strings | jsonify }}

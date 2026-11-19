@@ -17,6 +17,9 @@ nouns:
       - {title: Workshed, href: /workshed/, says: "what is being worked on here, each on its own port", staff: true, live: workshed}
       - {title: The Wix copy, href: "http://wix.{domain}/", says: "the old site, photocopied"}
       - {title: Gear, href: "http://{host}.{domain}/", says: "this machine's gear, each piece and its facts"}
+  - noun: Library
+    rows:
+      - {title: Search, href: /library/, says: "what we know, by words in any order; pick a shed to look in"}
   - noun: Streams
     rows:
       - {title: Out, href: /broadcast/, says: "where channel 97 goes, each destination", staff: true, live: broadcast}
@@ -39,6 +42,9 @@ nouns:
   - noun: Seats
     rows:
       - {from: seats}
+  - noun: Spend
+    rows:
+      - {title: Spend, href: /spend/, says: "every paid call: who called it, what it read, what it cost", staff: true, live: spend}
   - noun: Consoles
     rows:
       - {title: Consoles, href: /consoles, says: "what this helm holds up to read, a screen each, in plain text"}

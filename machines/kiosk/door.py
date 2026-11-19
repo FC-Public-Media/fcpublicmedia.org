@@ -22,6 +22,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
 
     GET /                  the board: an index by noun (board.yml), one row a page, lit by /board/now; then this machine's switches
     GET /board/now         what lights the board's rows now, by their `live` key
+    GET /spend/, /spend/now   every paid call (the seats' runs): who, what it read, tokens and dollars; by month
     GET /jobs/<job>/       one job: its profile, who wears it, its helm, its crew's lines here
     GET /qr/               the scanner's console as a page: its eyes, the inbox, what it last heard
     GET /verbs/            fcpm's verbs, as machines/fcpm.yml defines them, for this platform
@@ -1449,11 +1450,71 @@ def board_now():
                                                          {"say": "nobody hosting"})(replies.room_now(room, cfg)))
     for s in seats_called():
         put("seat:%s" % s["name"], lambda name=s["name"]: seat_now(name))
+    put("spend", spend_now)
     for j in jobs():
         put("job:%s" % j["job"], lambda j=j: job_now(j))
     put("qr", lambda: {"say": "eyes connected", "on": "live"}
         if subprocess.run(["pgrep", "-f", "scanner/page.py"], capture_output=True).returncode == 0 else {"say": "no eyes", "on": "bad"})
     return out
+
+
+def spent():
+    """Every paid call this helm made (the seats' runs, seats/runs/<nonce>/run.json), newest first, each with who called
+    it, what it read and what the API said it used, priced at seats.yml's prices; and the totals by month."""
+    import replies
+    rows = []
+    for p in (replies.STATE / "seats" / "runs").glob("*/run.json") if (replies.STATE / "seats" / "runs").is_dir() else []:
+        try:
+            r = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        u = r.get("usage") or {}
+        rows.append({"at": r.get("finished") or r.get("started") or "", "seat": r.get("seat"), "outcome": r.get("outcome"),
+                     "by": r.get("by") or "unsigned", "trust": r.get("trust"), "nonce": r.get("nonce"),
+                     "commits": (r.get("range") or {}).get("commits"), "model": u.get("model"),
+                     "input": u.get("input") or 0, "output": u.get("output") or 0, "dollars": u.get("dollars") or 0.0,
+                     "commit": r.get("commit")})
+    rows.sort(key=lambda r: r["at"], reverse=True)
+    months = {}
+    for r in rows:
+        m = months.setdefault(r["at"][:7], {"month": r["at"][:7], "calls": 0, "paid": 0, "dollars": 0.0, "input": 0, "output": 0})
+        m["calls"] += 1
+        m["paid"] += 1 if r["input"] else 0
+        for k in ("dollars", "input", "output"):
+            m[k] += r[k]
+    return {"calls": rows, "months": sorted(months.values(), key=lambda m: m["month"], reverse=True)}
+
+
+def spend_now():
+    m = (spent()["months"] or [None])[0]
+    this = time.strftime("%Y-%m")
+    if not m or m["month"] != this:
+        return {"say": "nothing spent this month"}
+    return {"say": "$%.2f this month · %d call%s" % (m["dollars"], m["calls"], "" if m["calls"] == 1 else "s")}
+
+
+def spend_page():
+    """What this helm has spent on the API, call by call: when, which seat, who called it and how far it was trusted,
+    the call's number, what it read, the tokens the API counted and their price. Nothing here asks the vendor."""
+    s = spent()
+    months = "".join('<div class="row switch"><b>%s</b><span class=says>%d call%s, %s tokens in, %s out</span>'
+                     '<span class="state live">$%.2f</span></div>' % (
+                         e(m["month"]), m["calls"], "" if m["calls"] == 1 else "s", format(m["input"], ","),
+                         format(m["output"], ","), m["dollars"]) for m in s["months"]) \
+        or '<div class=row><span class=says>nothing spent yet</span></div>'
+    calls = "".join('<div class=row><b>%s</b><span class=says>%s · %s · %s · …%s%s</span>'
+                    '<span class=state>%s</span></div>' % (
+                        e(r["at"][:16].replace("T", " ")), e(r["seat"]), e(r["outcome"]),
+                        "an unsigned call" if r["by"] == "unsigned" else "called by %s (%s)" % (e(r["by"]), e(r["trust"])),
+                        e((r["nonce"] or "")[-6:]), " · read %d commits" % r["commits"] if r["commits"] else "",
+                        "%s in, %s out, %s · $%.2f" % (format(r["input"], ","), format(r["output"], ","), e(r["model"]), r["dollars"])
+                        if r["input"] else "no API call")
+                    for r in s["calls"]) or '<div class=row><span class=says>no calls yet</span></div>'
+    body = """%s<main><section class=noun><h2>By month</h2><div class=rows>%s</div></section>
+<section class=noun><h2>Every call</h2><div class=rows>%s</div></section></main>
+<footer class=bar><a href="/#spend">Helm</a><code>/spend/now</code></footer>""" % (
+        masthead("Helm &middot; spend"), months, calls)
+    return shell("Spend · Helm", body, BOARD_CSS)
 
 
 def seat_now(name):
@@ -3473,6 +3534,10 @@ class Door(BaseHTTPRequestHandler):
             return
         return self.reply(404, "", TYPES[".txt"])
 
+    def query(self):
+        import urllib.parse
+        return {k: v[-1] for k, v in urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "").items()}
+
     def do_GET(self):
         route = self.path.split("?", 1)[0]
         tail = route.rsplit("/", 1)[-1]
@@ -3484,6 +3549,10 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, gear_page(gear))
             if route == "/":
                 return self.reply(200, board_page(self.here(), (self.headers.get("Host") or "").split(":")[0].rstrip(".").lower()))
+            if route in ("/spend", "/spend/"):
+                return self.reply(200, spend_page())
+            if route == "/spend/now":
+                return self.reply(200, json.dumps(spent()), TYPES[".json"])
             if route in ("/qr", "/qr/"):
                 return self.reply(200, qr_page())
             m = re.fullmatch(r"/jobs/([a-z0-9-]+)/?", route)
@@ -3577,6 +3646,13 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, workshed_page(self.here()))
             if route == "/workshed/now":
                 return self.reply(200, json.dumps(workshed_now(self.here())), TYPES[".json"])
+            # The library's search: a shed's worktrees, every word in any order (../workshed.py, docs/workshed.md, Search).
+            if route in ("/library", "/library/"):
+                return self.reply(200, library_page(self.query()))
+            if route == "/library/search":
+                return self.reply(200, json.dumps(library_search(self.query())), TYPES[".json"])
+            if route == "/library/read":
+                return self.reply(200, library_read(self.query()))
             # Consoles: what this helm holds up to read, a screen each (../consoles.py, docs/consoles.md). The list
             # is Fighter's CONSOLES, with this helm's addresses for paths; a page is served as it was last written.
             if route in ("/consoles", "/consoles/"):
@@ -4870,6 +4946,162 @@ WORKSHED_JS = """<script>
   var form = document.getElementById('new');
   if (form) form.onsubmit = function (ev) { ev.preventDefault(); ask({do: 'new', branch: form.branch.value}).then(function () { form.reset(); }); };
   now(); setInterval(now, 5000);
+})();
+</script>"""
+
+
+# --------------------------------------------------------------------- library --
+# THE LIBRARY'S SEARCH: pick a shed, give words in any order, get every file in its worktrees that holds them all,
+# as a list. A fact in a file read here is itself a search, so one thing leads to the next. docs/workshed.md, Search.
+def library_words(q):
+    import shlex
+    try:
+        return shlex.split(q or "")
+    except ValueError:
+        return (q or "").split()
+
+
+def library_search(q):
+    every = shed().sheds()
+    name = q.get("shed") or ("library" if "library" in every else (every[0] if every else ""))
+    if not every:
+        return {"sheds": [], "shed": "", "hits": [], "total": 0, "files": 0, "said": "No shed in the workshed here yet."}
+    try:
+        d = shed().search(name, library_words(q.get("q")))
+    except shed().Wrong as exc:
+        return {"sheds": every, "shed": name, "hits": [], "total": 0, "files": 0, "said": str(exc)}
+    d["sheds"] = every
+    return d
+
+
+def library_said(d):
+    if d.get("said"):
+        return d["said"]
+    more = ", the first %d" % len(d["hits"]) if d["total"] > len(d["hits"]) else ""
+    return "%d of %d in %s%s, %d ms" % (d["total"], d["files"], d["shed"], more, d.get("ms", 0))
+
+
+def library_hit(d, h):
+    """One hit as the page lists it; the script draws the same."""
+    import urllib.parse
+    href = "/library/read?" + urllib.parse.urlencode({"shed": d["shed"], "wt": h["worktree"], "path": h["path"]})
+    def lit(line):
+        low, marks, at, out = line.lower(), [], 0, ""
+        for w in d["words"]:
+            i = low.find(w)
+            if i >= 0:
+                marks.append((i, i + len(w)))
+        for a, b in sorted(marks):
+            if a >= at:
+                out += e(line[at:a]) + "<mark>" + e(line[a:b]) + "</mark>"
+                at = b
+        return out + e(line[at:])
+    more = ' <i>+%d</i>' % h["more"] if h.get("more") else ""
+    lines = '<span class=ln>%s%s</span>' % (" &middot; ".join(lit(x) for x in h["lines"]), more) if h["lines"] else ""
+    return '<li><a href="%s">%s</a><span class=at>%s &middot; %s</span>%s</li>' % (
+        e(href), e(h["title"]), e(h["branch"]), e(h["object"]), lines)
+
+
+def library_page(q):
+    d = library_search(q)
+    sheds = "".join('<option%s>%s</option>' % (" selected" if s == d["shed"] else "", e(s)) for s in d["sheds"])
+    body = """%s<main>
+<form id=ask class=ask role=search action="/library/"><select name=shed aria-label="Shed">%s</select>
+<input name=q type=search autofocus autocomplete=off value="%s" placeholder="words, any order: route 14 park" aria-label="Words">
+</form>
+<p class=dim id=said>%s</p>
+<ol id=hits class=hits>%s</ol>
+</main>%s""" % (masthead("%s &middot; library" % e(socket.gethostname().lower())), sheds, e(q.get("q") or ""),
+                e(library_said(d)), "".join(library_hit(d, h) for h in d["hits"]), LIBRARY_JS)
+    return shell("Library", body, LIBRARY_CSS)
+
+
+def library_read(q):
+    import urllib.parse
+    s, wt, path = q.get("shed", ""), q.get("wt", ""), q.get("path", "")
+    try:
+        text = shed().read(s, wt, path)
+    except shed().Wrong as exc:
+        return shell("Library", "%s<main><p>%s</p></main>" % (masthead("library"), e(str(exc))), LIBRARY_CSS)
+    def find(v):
+        return "/library/?" + urllib.parse.urlencode({"shed": s, "q": v})
+    out = []
+    for line in text.splitlines()[:3000]:
+        m = re.match(r"^(\s*(?:-\s+|[A-Za-z][\w ]*:\s+))(.+)$", line)
+        if path.endswith((".yml", ".yaml")) and m:
+            v = m.group(2).strip().strip('"')
+            link = ('<a href="%s" rel=noopener>%s</a>' % (e(v), e(v)) if re.match(r"https?://", v)
+                    else '<a href="%s">%s</a>' % (e(find(v)), e(m.group(2))))
+            out.append(e(m.group(1)) + link)
+        else:
+            out.append(e(line))
+    head = '<p class=dim><a href="/library/?%s">%s</a> &middot; %s:%s</p>' % (
+        e(urllib.parse.urlencode({"shed": s})), e(s), e(wt.split("@", 1)[-1].replace("~", "/")), e(path))
+    return shell(path.rsplit("/", 1)[-1], "%s<main>%s<pre class=read>%s</pre></main>" % (
+        masthead("library"), head, "\n".join(out)), LIBRARY_CSS)
+
+
+LIBRARY_CSS = BOARD_CSS + """
+main { gap:.8rem; }
+.ask { display:flex; gap:.5rem; position:sticky; top:0; background:var(--ink); padding:.6rem 0; }
+.ask input, .ask select { font:inherit; padding:.45rem .6rem; background:var(--slate); color:var(--paper); border:0; }
+.ask input { flex:1; min-width:0; font-size:1.1rem; }
+#said { margin:0; min-height:1.2em; font-size:.85rem; font-variant-numeric:tabular-nums; }
+.hits { list-style:none; margin:0; padding:0; background:var(--slate); }
+.hits li { padding:.4rem .8rem; } .hits li + li { border-top:1px solid var(--ink); }
+.hits a { color:var(--paper); font-weight:650; text-decoration:none; } .hits a:hover { text-decoration:underline; }
+.hits .at { color:var(--dim); font-size:.78rem; margin-left:.5rem; overflow-wrap:anywhere; }
+.hits .ln { display:block; color:var(--soft); font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hits mark { background:none; color:var(--signal); font-weight:700; } .hits i { color:var(--dim); font-style:normal; }
+.read { margin:0; padding:1rem; background:var(--slate); color:var(--soft); white-space:pre-wrap; font-size:.9rem;
+  overflow-wrap:anywhere; } .read a { color:var(--paper); }
+.dim a { color:var(--paper); }
+"""
+
+
+LIBRARY_JS = """<script>
+(function () {
+  var form = document.getElementById('ask'), hits = document.getElementById('hits'), said = document.getElementById('said');
+  var params = new URLSearchParams(location.search), timer = null, asked = 0;
+  function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+  function lit(span, line, words) {
+    var low = line.toLowerCase(), at = 0, marks = [];
+    words.forEach(function (w) { var i = low.indexOf(w); if (i >= 0) marks.push([i, i + w.length]); });
+    marks.sort(function (a, b) { return a[0] - b[0]; }).forEach(function (m) {
+      if (m[0] < at) return;
+      span.append(line.slice(at, m[0]), el('mark', null, line.slice(m[0], m[1]))); at = m[1];
+    });
+    span.append(line.slice(at));
+  }
+  function draw(d) {
+    var pick = form.shed;
+    if (pick.options.length !== d.sheds.length) {
+      pick.replaceChildren.apply(pick, d.sheds.map(function (s) { var o = el('option', null, s); o.value = s; return o; }));
+    }
+    pick.value = d.shed;
+    said.textContent = d.said || (d.total + ' of ' + d.files + ' in ' + d.shed + (d.total > d.hits.length ? ', the first ' + d.hits.length : '') + ', ' + d.ms + ' ms');
+    hits.replaceChildren.apply(hits, d.hits.map(function (h) {
+      var li = el('li'), a = el('a', null, h.title);
+      a.href = '/library/read?' + new URLSearchParams({shed: d.shed, wt: h.worktree, path: h.path});
+      li.append(a, el('span', 'at', h.branch + ' \u00b7 ' + h.object));
+      if (h.lines.length) {
+        var ln = el('span', 'ln');
+        h.lines.forEach(function (l, i) { if (i) ln.append(' \u00b7 '); lit(ln, l, d.words); });
+        if (h.more) ln.append(' ', el('i', null, '+' + h.more));
+        li.append(ln);
+      }
+      return li;
+    }));
+  }
+  function ask() {
+    var n = ++asked, q = {shed: form.shed.value || params.get('shed') || '', q: form.q.value};
+    history.replaceState(null, '', '?' + new URLSearchParams(q));
+    fetch('/library/search?' + new URLSearchParams(q), {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { if (n === asked) draw(d); }).catch(function () { said.textContent = 'This machine is not answering'; });
+  }
+  form.onsubmit = function (ev) { ev.preventDefault(); ask(); };
+  form.q.oninput = function () { clearTimeout(timer); timer = setTimeout(ask, 120); };
+  form.shed.onchange = ask;
 })();
 </script>"""
 

@@ -10,7 +10,7 @@ cd "$(dirname "$0")/../.." || exit 1
 up() { curl -fsS -o /dev/null http://127.0.0.1:8081/revision; }
 if ! up; then
   ( while :; do
-      FCPM_DOOR_PORT=8081 FCPM_DOOR_BIND=127.0.0.1 FCPM_DOOR_FRONT=80 python3 machines/kiosk/door.py serve
+      FCPM_DOOR_PORT=8081 FCPM_DOOR_BIND=127.0.0.1 FCPM_DOOR_FRONT=80 FCPM_DOOR_WATCH=commit,depot,wall,camera,replies,consoles python3 machines/kiosk/door.py serve
       sleep 5
     done ) &
   for _ in $(seq 60); do up && break; sleep 1; done

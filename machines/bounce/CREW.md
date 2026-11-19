@@ -2,8 +2,8 @@
 
 The captive bounce from the community-ping study, proven by FCPM as a peer with tools only: a Wi-Fi QR joins
 the wearer's own open network, the phone's sign-in sheet opens by itself, and the box's page is in front of
-the person with no internet, no app and nothing typed. Worn by [the Pi](PROFILE.md)'s spare radio for now;
-a real antenna gets its own box.
+the person with no internet, no app and nothing typed. Worn by [the Pi](PROFILE.md)'s one radio when it is not
+on Helm (`helm-wifi`); a real antenna gets its own box.
 
 | | |
 |---|---|

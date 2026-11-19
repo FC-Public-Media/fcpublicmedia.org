@@ -60,6 +60,12 @@ verbs:
     windows: machines/keys
     linux: machines/keys
 
+  - verb: lines
+    args: "[reader|hear WRITER CHANNEL...|tell READER CHANNEL FILE...|read WRITER]"
+    says: "this machine's lines on the LAN: data piles told and read through the origin (docs/lines.md)"
+    windows: "not: Git Bash with age.exe and jq.exe, not tried yet"
+    linux: machines/lines
+
   - verb: relay
     args: "[status|on|off]"
     says: "the origin's mode: on, what is pushed there goes out to GitHub every 15 minutes; off, LAN-only"
@@ -164,8 +170,8 @@ verbs:
     linux: "troves/pools/pools.py by uv"
 
   - verb: workshed
-    args: "[new BRANCH [--shed SHED] [--repo REPO|OWNER/REPO] [--from REV]|start NAME|stop NAME|serve NAME|check [NAME]|log [NAME]|remove NAME]"
-    says: "worktrees someone works in (~/code/workshed), each site built whole and served on its own port; the Helm's /workshed/"
+    args: "[new BRANCH [--shed SHED] [--repo REPO|OWNER/REPO] [--from REV]|start NAME|stop NAME|serve NAME|check [NAME]|log [NAME]|remove NAME|follow [SHED]|search SHED [WORDS]]"
+    says: "worktrees someone works in (~/code/workshed), each site built whole and served on its own port, and a shed searched by words; the Helm's /workshed/ and /library/"
     windows: "machines/workshed.py by uv"
     linux: "machines/workshed.py by uv (it needs a Node and jekyll-enough: fcpm workshed check)"
 

@@ -9,7 +9,7 @@
              decoding="async">
       </div>
     {% endif %}
-    <h4>
+    <h4 translate="no">
       {{ person.name }}
     </h4>
     {% for day_info in site.data.hosts.days %}
@@ -17,7 +17,7 @@
       {% if person[_info] %}
         <p class="office-hours">
           <span>
-            {{ site.data.hosts.labels[_info] }}:
+            <span>{{ site.data.hosts.labels[_info] }}</span>:
             {{ person[_info][0] | modulo: 12 }}-{{ person[_info][1] | modulo: 12 }}</span>
         </p>
       {% endif %}

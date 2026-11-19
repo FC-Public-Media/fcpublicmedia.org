@@ -24,7 +24,7 @@ helm: `~/code/consoles/CONSOLES` is the list Fighter's console tabs read, `name<
 
 | console | beat | says |
 |---|---|---|
-| `helm` | 10 s | the jobs this machine wears, whether its door answers, the revision, the wizards only it applies, and each peer helm in `helms.yml`: answering, not answering, or no address yet |
+| `helm` | 10 s | the jobs this machine wears, whether its door answers, the revision, the wizards only it applies, and every helm in `helms.yml` by its letter: here, answering, not answering, or no address yet, and whether it has joined this helm's intake. Main Helm's is what a screen's title bar shows (the scanner's page), blank when it goes stale |
 | `workshed` | 5 s | whether sites can be built here, and each worktree: its port or stopped, its changed pages, and how far it is from main ([workshed.md](workshed.md)) |
 | `library` | 60 s | the library's own console: who is at work, jobs, the hour's grants, the inbox, the x-rays ([library.md](library.md#the-console)) |
 | `constitution` | 300 s | each job's `machines/<job>/CONSTITUTION.md` with its history, or that it has none yet. A blank constitution is not good metadata, so its absence is shown, not left off |

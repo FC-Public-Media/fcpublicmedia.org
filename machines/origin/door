@@ -166,7 +166,7 @@ def serve(office, holder):
         record(verb="fetch", repo=full, **who)
         os.execvp(verb, [verb, str(repo)])
     before = refs(repo)
-    env = dict(os.environ, FCPM_DOOR_GITHUB=github, FCPM_DOOR_REPO=full)
+    env = dict(os.environ, FCPM_DOOR_GITHUB=github, FCPM_DOOR_REPO=full, FCPM_DOOR_OFFICE=office, FCPM_DOOR_HOLDER=holder)
     code = subprocess.run(["git", "-c", f"core.hooksPath={HERE / 'door-hooks'}", "receive-pack", str(repo)],
                           env=env).returncode
     after = refs(repo)

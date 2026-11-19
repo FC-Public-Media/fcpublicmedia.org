@@ -132,3 +132,7 @@
 	url = https://github.com/FCCN-ANTIBODY/you.anecdote.channel.git
 	# The bottle codec: the iced bottle, a GIF of QR frames and back (docs/pickup.md). The library bottles its
 	# answers with it (machines/library-bottle.mjs); it carries anecdote.channel as a submodule of its own.
+[submodule ".pile-engine"]
+	path = .pile-engine
+	url = https://github.com/FCCN-ANTIBODY/data-pile.git
+	# Data piles: drop-pack, verify, decrypt. The LAN's lines are piles (docs/lines.md).

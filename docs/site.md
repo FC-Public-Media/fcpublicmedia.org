@@ -99,6 +99,30 @@ stack is data: `fcpm.meet` in `site/_config.yml`, drawn by `_includes/tilt-stack
   window's top corner can cover its narrow side slot.
 - First module's pictures load at once; the rest load lazily.
 
+## Languages
+
+English is each page as built. Another language is one file, `site/_data/strings/<code>.yml`: its `name` in
+its own words, `strings` keyed by the English exactly as a page says it, and `images`, a picture to show
+instead, by path. Adding the file adds the language. Jekyll serves them all as `/strings.json`, which the
+offline kit keeps.
+
+- `assets/js/lang.js` puts the chosen language over the page with `strings.mjs`: an element's whole sentence
+  first (a value with markup brings its own links), else its separate pieces, then `alt`, `title`,
+  `aria-label`, `placeholder` and the page title. A key not in the file stays English, so a file can be
+  partial. Words a script writes later are caught as they appear.
+- The choice is the footer's, beside the colours. With none made, a device set to a language gets it only
+  where its file says `follow_device: true`, once a speaker has read it. Until it is on,
+  `_includes/head.html` keeps the page unseen, for 2.5s at most. Back to English is a reload.
+- `translate="no"` keeps a part as it is: names, addresses, email, everything from Cablecast. A browser's own
+  translator honours it too.
+- `assets/js/prefs.js` keeps the device's choices (`theme`, `lang`) in localStorage, and copies them to the
+  `fcpm-device` cache as `/device.json`, which a deploy does not clear and the kit's worker can read.
+- After a build, `cd site/tests && node strings-report.mjs` scores each page against each file;
+  `--missing es` lists what is untranslated as YAML to fill in, `--unused es` what no page says any more.
+  An English edit leaves its old translation unused, never wrong: the page shows the new English.
+- A number or date inside a sentence makes a new key each time it changes (the archive's counts). Give it its
+  own element.
+
 ## Data files
 
 | `site/_data/` | Holds |
@@ -126,8 +150,8 @@ Other data files name their doc in their first line.
   `--signal-ink`, `--record`, `--record-ink`, `--masthead`, `--masthead-ink`, `--masthead-soft`, `--accent`.
 - Yellow is a surface, never text on paper (1.4:1; 11.7:1 on ink). `--record` (red) is a fill;
   red text uses `--record-ink`. The masthead is dark in both schemes.
-- Light is the default. `assets/js/theme.js` runs the footer checkbox (localStorage `theme`: `light`
-  or `system`) and sets `data-theme="dark"` on `<html>`; `_includes/head.html` applies it before paint.
+- Light is the default. `assets/js/theme.js` runs the footer checkbox (`theme`: `light` or `system`,
+  kept by `prefs.js`) and sets `data-theme="dark"` on `<html>`; `_includes/head.html` applies it before paint.
 - Self-hosted Archivo (`--font-body`) and Source Serif 4 (`--font-display`); the brand tilt is -8deg.
 
 ## Scripts

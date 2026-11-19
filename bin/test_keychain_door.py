@@ -82,16 +82,16 @@ class Door(unittest.TestCase):
         self.assertIn("PRIVATE KEY", self.door("machine", "editing-bay-2", "get identity-editing-bay-2 ssh").stdout)
         self.assertEqual(self.door("machine", "production", "mint ssh x").returncode, 1)
 
-    def test_a_claim_code_hands_the_identity_once(self):
+    def test_a_backup_is_the_store_and_a_keepers(self):
         self.made()
-        minted = self.door("keeper", "digitization", "mint ssh editing-bay-2").stdout
-        code = minted.split("claim ", 1)[1].split()[0]
-        env = dict(self.env, SSH_ORIGINAL_COMMAND=code)
-        claim = lambda: subprocess.run([sys.executable, str(DOOR), "claim"], capture_output=True, text=True, env=env)
-        self.assertIn("PRIVATE KEY", claim().stdout)
-        self.assertEqual(claim().returncode, 1)
-        env["SSH_ORIGINAL_COMMAND"] = "aaaa-bbbb-cccc-dddd-eeee"
-        self.assertEqual(claim().returncode, 1)
+        self.door("keeper", "digitization", "put cloudflare TOKEN", "abc123")
+        env = dict(self.env, SSH_ORIGINAL_COMMAND="backup")
+        tar = subprocess.run([sys.executable, str(DOOR), "serve", "keeper", "digitization"], capture_output=True, env=env)
+        names = subprocess.run(["tar", "-tf", "-"], input=tar.stdout, capture_output=True).stdout.decode().split()
+        self.assertIn("identity.age", names)
+        self.assertIn("held/cloudflare/TOKEN/meta.json", names)
+        self.assertNotIn(b"abc123", tar.stdout)
+        self.assertEqual(self.door("machine", "production", "backup").returncode, 1)
 
     def test_nothing_held_is_plain(self):
         self.made()

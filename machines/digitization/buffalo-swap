@@ -1,0 +1,55 @@
+#!/bin/sh
+# buffalo-swap -- swap on the Buffalo, after zram and before the laptop disk; boot never waits for it. See PROFILE.md, Memory.
+# status (anyone) | plan (root, changes nothing) | carve (root) | on (root) | off (root, before unplugging)
+set -eu
+PATH=$PATH:/usr/sbin:/sbin
+LABEL=fcpm-swap
+NTFS=/dev/disk/by-label/RAID\\x20Backup
+MIB=${FCPM_SWAP_MIB:-16384}
+LINE="LABEL=$LABEL none swap sw,nofail,pri=10,x-systemd.device-timeout=5s 0 0"
+die() { echo "buffalo-swap: $*" >&2; exit 1; }
+
+layout() {   # sets part disk num start size newsize fsbytes, or dies
+  [ -e "$NTFS" ] || die "no partition labelled RAID Backup: is the Buffalo attached?"
+  part=$(readlink -f "$NTFS"); p=${part#/dev/}
+  disk=/dev/$(lsblk -no PKNAME "$part"); num=$(cat "/sys/class/block/$p/partition")
+  start=$(cat "/sys/class/block/$p/start"); size=$(cat "/sys/class/block/$p/size")
+  total=$(cat "/sys/class/block/${disk#/dev/}/size")
+  [ "$(lsblk -no FSTYPE "$part")" = ntfs ] || die "$part is not NTFS"
+  [ $((start + size)) -ge $((total - 2048)) ] || die "$part is not at the end of $disk: nothing to carve from"
+  ! grep -q "^$part " /proc/mounts || die "$part is mounted; unmount it first"
+  newsize=$(( (size - MIB * 2048) / 2048 * 2048 ))
+  fsbytes=$(( (newsize - 2048) * 512 ))
+  echo "$part on $disk: $((size / 2048)) MiB now, NTFS to $((fsbytes / 1048576)) MiB, swap $MIB MiB after it"
+}
+
+case "${1:-status}" in
+status)
+  if [ -e "/dev/disk/by-label/$LABEL" ]; then echo "partition: $(readlink -f "/dev/disk/by-label/$LABEL")"
+  else echo "partition: none labelled $LABEL"; fi
+  grep -qxF "$LINE" /etc/fstab && echo "fstab: yes" || echo "fstab: no"
+  cat /proc/swaps ;;
+plan)
+  layout
+  ntfsresize --no-action --size "$fsbytes" "$part" ;;
+carve)
+  [ ! -e "/dev/disk/by-label/$LABEL" ] || die "already carved: $(readlink -f "/dev/disk/by-label/$LABEL")"
+  layout
+  mkdir -p /var/backups
+  sfdisk -d "$disk" > "/var/backups/fcpm-buffalo-$(date +%Y%m%dT%H%M%S).sfdisk"
+  printf 'y\n' | ntfsresize --no-progress-bar --size "$fsbytes" "$part"
+  echo ",$newsize" | sfdisk --no-reread --wipe-partitions never -N "$num" "$disk"
+  echo ",,S" | sfdisk --no-reread -a "$disk"
+  partx -u "$disk"; udevadm settle
+  new=$(lsblk -lnpo NAME "$disk" | tail -1)
+  [ "$new" != "$part" ] || die "no new partition appeared on $disk"
+  mkswap -L "$LABEL" "$new" ;;
+on)
+  grep -qxF "$LINE" /etc/fstab || { cp /etc/fstab /etc/fstab.before-buffalo-swap; echo "$LINE" >> /etc/fstab; }
+  systemctl daemon-reload
+  [ ! -e "/dev/disk/by-label/$LABEL" ] || swapon -a
+  cat /proc/swaps ;;
+off)
+  swapoff -L "$LABEL" && echo "off: the Buffalo can be unplugged" ;;
+*) die "status | plan | carve | on | off" ;;
+esac

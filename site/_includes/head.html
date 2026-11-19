@@ -34,6 +34,13 @@
   {%- endif %}
 
   <link rel="stylesheet" href="{{ '/assets/css/site.css' }}?v={{ site.time | date: '%s' }}">
+  {%- assign _langs = "" -%}
+  {%- for _l in site.data.strings -%}{%- assign _langs = _langs | append: " " | append: _l[0] -%}{%- endfor -%}
+  {%- assign _follow = "" -%}
+  {%- for _l in site.data.strings -%}{%- if _l[1].follow_device -%}{%- assign _follow = _follow | append: " " | append: _l[0] -%}{%- endif -%}{%- endfor -%}
+  {%- assign _langs = _langs | strip -%}
+  {%- assign _follow = _follow | strip %}
+  <meta name="fcpm-strings" content="{{ '/strings.json' }}?v={{ site.time | date: '%s' }}" data-langs="{{ _langs }}" data-follow="{{ _follow }}">
 
   <script>
     (function () {
@@ -44,6 +51,24 @@
       if (follow && window.matchMedia &&
           window.matchMedia('(prefers-color-scheme: dark)').matches) {
         document.documentElement.setAttribute('data-theme', 'dark');
+      }
+      // Another language is put on by assets/js/lang.js; until then the page waits, briefly, unseen.
+      var offered = {{ _langs | split: " " | jsonify }};
+      var following = {{ _follow | split: " " | jsonify }};
+      var lang = null;
+      try { lang = localStorage.getItem('lang'); } catch (e) { lang = null; }
+      if (lang !== 'en' && offered.indexOf(lang) < 0) {
+        lang = 'en';
+        var tags = navigator.languages || [navigator.language || ''];
+        for (var i = 0; i < tags.length; i++) {
+          var base = String(tags[i]).toLowerCase().split('-')[0];
+          if (base === 'en' || following.indexOf(base) >= 0) { lang = base; break; }
+        }
+      }
+      if (lang !== 'en') {
+        var root = document.documentElement;
+        root.setAttribute('data-lang-pending', lang);
+        setTimeout(function () { root.removeAttribute('data-lang-pending'); }, 2500);
       }
     })();
   </script>

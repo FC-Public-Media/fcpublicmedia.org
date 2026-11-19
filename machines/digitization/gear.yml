@@ -17,6 +17,16 @@ gear:
     restart-tier: app
     holds: "nothing of its own"
 
+  - gear: age
+    for: >
+      The LAN's lines (docs/lines.md): this machine's reader key, and opening what a pile tells it.
+    package: age
+    provisioner: apt
+    answers: [age]            # ../../tell.yml needs
+    updates: apt
+    restart-tier: app
+    holds: "nothing of its own; the reader key is in ~/.local/state/fcpm/lines"
+
   - gear: git
     for: >
       The origin's bare repositories and every checkout in ~/code.
@@ -128,6 +138,16 @@ gear:
     updates: apt
     restart-tier: app
     holds: "its profile, in ~/.config/vivaldi"
+
+  - gear: samba
+    for: >
+      Shares the landing to the LAN and the tailnet as smb://digitization.local/landing,
+      so a Mac drops into it from Finder. Config is smb.conf here, put on by ./landing.
+    package: samba
+    provisioner: apt
+    updates: apt
+    restart-tier: app
+    holds: "its password database (/var/lib/samba/private): the share's one password"
 
   - gear: librsvg2-bin
     for: >

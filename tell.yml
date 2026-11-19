@@ -5,3 +5,19 @@ name: "FC Public Media"
 url: "https://www.fcpublicmedia.org"
 scope: fort-collins
 reports: "reports/govern-*"
+
+# What a machine must have to act as our Tell or hold its lines (docs/lines.md): programs, never how to
+# get them. data-pile is not an engine at our root, so its programs are named here. Each machine's
+# gear.yml answers a need with `answers:`, and `fcpm check` says WANTED for a need nothing answers. A
+# hosted runner is one more machine: its answer is a package, and a workflow should read this list
+# rather than carry its own `apt-get install`. register reads only the flat keys above.
+needs:
+  - program: age
+    for: "sealing to a reader's key, and opening what a pile tells us"
+    at-least: "1.1"           # ssh-ed25519 recipients
+  - program: jq
+    for: "data-pile's manifests"
+  - program: openssl
+    for: "data-pile's per-block keys"
+  - program: bash
+    for: "data-pile's bin/, which is bash"

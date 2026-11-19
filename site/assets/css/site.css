@@ -1118,6 +1118,24 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .theme-toggle input { accent-color: var(--signal); }
 .theme-toggle input:checked + span { color: var(--ink); font-weight: 650; }
 
+/* The language choice beside it: each language in its own words (assets/js/lang.js). */
+.lang-choice {
+  display: flex; flex-wrap: wrap; gap: 0.25rem 1rem;
+  margin: 0 0 1rem;
+  font-size: var(--step--1);
+}
+.lang-choice[hidden] { display: none; }
+.lang-choice button {
+  font: inherit; color: var(--ink-soft);
+  background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 0.2em;
+}
+.lang-choice button:hover { color: var(--ink); }
+.lang-choice button[aria-pressed="true"] { color: var(--ink); font-weight: 650; text-decoration: none; }
+
+/* Until assets/js/lang.js has put the chosen language on (head.html gives up after a moment). */
+html[data-lang-pending] body { visibility: hidden; }
+
 /* --- Footer --------------------------------------------------------------- */
 
 .site-foot {

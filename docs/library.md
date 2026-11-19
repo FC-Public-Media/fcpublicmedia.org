@@ -30,15 +30,24 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | branch | for | state |
 |---|---|---|
 | `main` | what we publish and what we run | |
-| `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | a skeleton; the LAN's |
+| `library` | holdings in git: the tenant list, `city/`, `voices/` ([members.md](members.md#library-and-wizards)) | `city/` on origin.local; the LAN's |
 | `origin` | the actual origin: canonical submodule references to what we work on; our computers fast-forward from it | not made |
 | `archives` | what we keep after we stop working on it | not made; not assigned yet |
-| `lobby` | the way in: compiled from what is publishable, only directions to the rest | not made |
+| `lobby` | first contact and orientation: takes people to things on other branches | not made |
+| `retain/studies` | studies, a folder each: what we are working out, in our own words. Where we keep them; the cloud line's are taken in as they came. The LAN's | on origin.local |
+| `studies` | the cloud line for studies: a cloud session commits a study here, and we take it into `retain/studies` | begun |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
 state, and the origin's map was part of it.
+
+**The library is where things go by default** (Autumn, 2026-11-17). Most of what we do is stored here,
+not in a folder on whichever computer did it. A session's context stays on its machine, and sessions
+often can't see each other, so work kept loose ties people to the one computer that holds it. In the
+library, any machine on the LAN reads it from the origin. Then what we did is summarized into released
+branches, because the reason to do it at all is to publish it: we heal local access, and we show the
+work in the open so others can see how. Released branches have no names yet.
 
 ### `refs/` stays; the origin is a branch of the library
 
@@ -175,8 +184,9 @@ branch and not a nesting inside another.
 | folder | branch | goes |
 |---|---|---|
 | `retain/` | `retain/<machine>` | to origin.local, after each commit, and never past it |
+| `studies/` | `retain/studies` | to origin.local, like `retain/`, and never past it |
 | `librarians/` | `librarians` | to origin.local, and never past it. Instructions, never data |
-| `lobby/` | `lobby` | to GitHub. Compiled from what is publishable: directions to the rest, and nothing else |
+| `lobby/` | `lobby` | to GitHub. First contact and orientation: directions to things on other branches, and nothing else |
 
 **`retain` is the LAN's earmark, not this machine's.** A branch named `retain/…` goes to the LAN's
 origin (origin.local), eagerly: `fcpm library` pushes it after each commit, when the library has a
@@ -194,8 +204,17 @@ the origin, without asking an agent or opening a session on the machine that wro
 
 Retained branches are our own operational history, chronicled on the LAN.
 
-**The lobby** is the way in. It is a thin branch compiled from what is publishable, holding only
-directions to the rest: what holdings there are, what each exposes, and how to ask. Not made yet.
+**Studies** are a folder each on `retain/studies`, flat: the study in our own words, confusion included, and
+every file tree made during it, written out. That is where we keep what we do. A cloud session can't reach
+the LAN, so its studies come in on the cloud line: the `studies` branch on GitHub, or a pull request. We take
+that payload as it came, its folder byte for byte, and note in `retain/studies`' README where it came from
+(the branch or pull request, its commit, the session). It may not be how we would have written it, but it was
+shared that way, so it is valid: it is our job to learn from outside study too, where our rules don't matter
+at the point of their authorship. What settles is summarized into a released branch.
+
+**The lobby** is first contact. It orients people and takes them to things on other branches, the
+released ones first: what is here, where it is, what each place exposes, and how to ask. It holds
+directions, never the things themselves. Not made yet.
 
 **One `retain` branch, or one per machine?** Open; Autumn is deciding. Today each machine has its own
 `retain/<machine>`. The leaning is one `retain` branch we all work on, with a folder per machine. That
@@ -203,6 +222,22 @@ way the record is canonical, and the hub's library knows everything when it need
 machine knows what it holds and when that is out of date. A thing moved to another machine could be
 noticed by the machine it arrived on, which updates its own folder without touching anyone else's.
 Seeing it all aligned in one place is easier than finding pieces apart.
+
+### The city
+
+`library/city/` on the `library` branch is Fort Collins as the city and Transfort publish it, as facts we
+can search: `parks/` and `natural-areas/` (a folder each: `facts.yml` and `shape.geojson`), `transit/routes/`
+(the same), `transit/stops/` (a file each), and `catalog.md`, both open-data portals as one list. Every place
+names the city's own page for it first, then the stops within a five-minute walk (400 m of its edge) and their
+routes, and every stop and route names the places near it, so any one of them leads to the others. The city
+holds the shapes and the pages; nothing in the open data links one to the other, so the join is ours, by name,
+asked of the city's site once a week, and the places it could not find are listed in `city/README.md`.
+
+`bin/city-shapes.py` writes it, the digitization crew's `city` line, once a day, into the library shed's
+checkout of the branch, and pushes it to origin.local. Each source is asked whether it changed (ETag,
+Last-Modified), so a quiet day costs the city a 304 and writes the same bytes. We follow; we are never the
+authority, and never instant. Transfort's data is redistributed under its own terms: the data, never its
+marks, and said to be unofficial. The study behind it is `open-data/` on `retain/studies`.
 
 ## X-rays
 

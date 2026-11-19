@@ -33,7 +33,9 @@ ssh -o BatchMode=yes -o ConnectTimeout=10 "${FCPM_KEYCHAIN_SSH:-fcpm-keychain}" 
 say $? "the keychain answers this machine's key" "../keychain/PROFILE.md: ~/.ssh/config's fcpm-keychain, this machine's key in ../keychain/HOLDERS"
 mountpoint -q /srv/landing
 say $? "the landing mounted at /srv/landing" \
-  "a disk labelled fcpm-landing, and in /etc/fstab: LABEL=fcpm-landing /srv/landing ext4 defaults,nofail,noatime 0 2"
+  "sudo sh machines/digitization/landing"
+cmp -s "$HERE/smb.conf" /etc/samba/smb.conf && systemctl is-active -q smbd
+say $? "the landing shared as smb://digitization.local/landing" "sudo sh machines/digitization/landing"
 [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ]
 say $? "the clock synchronized from the network" "sudo timedatectl set-ntp true"
 [ "$(timedatectl show -p Timezone --value 2>/dev/null)" = America/Denver ]
@@ -52,6 +54,12 @@ cmp -s "$HERE/sysctl-zram.conf" /etc/sysctl.d/60-fcpm-zram.conf && [ "$(cat /pro
 say $? "the kernel leans on that swap" "sudo cp $HERE/sysctl-zram.conf /etc/sysctl.d/60-fcpm-zram.conf && sudo sysctl --system"
 cmp -s "$HERE/earlyoom.default" /etc/default/earlyoom && systemctl is-active -q earlyoom
 say $? "earlyoom ends the biggest process before memory runs out" "sudo cp $HERE/earlyoom.default /etc/default/earlyoom && sudo systemctl restart earlyoom"
+grep -qxF 'LABEL=fcpm-swap none swap sw,nofail,pri=10,x-systemd.device-timeout=5s 0 0' /etc/fstab
+say $? "swap on the Buffalo, never waited for at boot" "sudo sh $HERE/buffalo-swap on"
+if [ -e /dev/disk/by-label/fcpm-swap ]; then
+  grep -q "^$(readlink -f /dev/disk/by-label/fcpm-swap) " /proc/swaps
+  say $? "the Buffalo's swap in use" "sudo swapon -a"
+fi
 cmp -s "$HERE/gai.conf" /etc/gai.conf
 say $? "IPv4 first where a name has both" "sudo cp $HERE/gai.conf /etc/gai.conf"
 hosts='files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4'

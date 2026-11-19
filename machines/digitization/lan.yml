@@ -20,3 +20,7 @@ bare:
 # <hostname>.fcpublicmedia.local is this machine's directory: its gear, each one level deeper
 # (atem-mini-pro.digitization.fcpublicmedia.local), named for its trove, which holds its facts.
 gear: [rodecaster-pro-ii, atem-mini-pro, aja-helo]
+
+# lines.<hostname>.fcpublicmedia.local: this machine's copy of the LAN's lines, read-only files nginx serves, so a
+# neighbor can fetch them with the origin away (../lines serve; ../../docs/lines.md).
+lines: true

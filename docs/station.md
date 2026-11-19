@@ -68,6 +68,11 @@ upgrade must not lose). Presence is never written: `check.ps1` finds it, and an 
 `WANTED`. A macOS profile's own `gear.yml` uses `bundle:` and `brew | mas | hand`; a Linux one,
 `package:` (an apt name) or `at:`, and `apt | hand`, with `check.sh` asking dpkg.
 
+`answers: [program, ...]` says which of the Tell's needs an entry meets ([`../tell.yml`](../tell.yml)
+`needs:`, the programs that holding our lines takes). The Tell names what, never how: a machine's gear
+is the how, and `check.ps1` says `WANTED` for a need no gear answers. A hosted runner is one more
+machine, so a workflow that needs `age` should read the same list, not carry its own `apt-get install`.
+
 ## fcpm
 
 `machines/fcpm` is the crew's one switch: every verb a person runs is `fcpm <verb>`, the same in cmd

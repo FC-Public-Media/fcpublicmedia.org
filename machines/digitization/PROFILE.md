@@ -8,6 +8,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 |---|---|
 | `names` | `linux Hostname digitization`. A live boot answers `debian`; the card's one-time setup (`settle-card.sh` on its toolbox partition, until this profile carries its own) reads this line from the origin and applies it: hostname, `/etc/hosts`, the desktop's login cookie, `digitization.local` |
 | `services` | the crew's order, from its own menu `../digitization.yml`, kept by `fcpm-crew@digitization` (`../crew.sh`): `follow every 5m` keeps this checkout on origin.local's main with every trove at its pin, so a merge reaches the board by itself |
+| `landing`, `smb.conf` | the landing: a logical volume `landing` on `digitization-vg`, ext4 labelled `fcpm-landing`, shared over SMB as `landing` to the LAN and the tailnet (user `fcpm`, the password typed on this screen). `sudo sh machines/digitization/landing` makes and shares it; idempotent |
 | `pools.yml` | the landing (`/srv/landing`, label `fcpm-landing`) as a pool, served by the crew's `pools` line on 8091 (`../../troves/pools.yml`); an emulated pool beside it for `pools.py sample` |
 | `post.yml`, `post-receive`, `post-senders.yml`, `known_hosts` | where the bays deliver finished post work: `/srv/landing/post`, beside the raws. A bay's key, merged into `post-senders.yml`, is let in within a minute by the crew's `senders` line and may only `receive` one sealed folder; it is kept only whole, never overwritten, and only while the landing is mounted. `post.py status` here shows each take's request, what is in, and `fulfilled`. `known_hosts` is this machine's host keys, for the bays to pin ([post](../../troves/post/README.md), Delivery) |
 | `gear.yml` | what the job stands on, apt names: `python3-yaml`, `git`, `gh`, `systemd-timesyncd`, `openssh-server`, `rsync`, `zenity`, `npm`, `avahi-utils`, `vivaldi-stable`, `firefox-esr`; Claude Code by hand |
@@ -20,6 +21,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `keys.yml` | the keychain: every secret FCPM's deploys and jobs use, by group, and where each lives (`fcpm keys`, [`../keys`](../keys)). See Keys |
 | `gai.conf` | `/etc/gai.conf`: IPv4 first when a name has both addresses. See IPv6 |
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
+| `buffalo-swap` | swap on the Buffalo, after zram and before the laptop disk; boot never waits for it. See Memory |
 | role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
 
 ## Names
@@ -187,6 +189,23 @@ only the power button helped. Now there is a way out on its own:
   Claude's desktop app, and avoiding SSH, X, the session, `python3` (the crew, the door, pools) and Claude Code.
   The patterns have no spaces or quotes: systemd splits the line at spaces. `journalctl -u earlyoom` says what it
   ended; `earlyoom --dryrun -m 90 -s 100` shows what it would pick now.
+
+Since the disk install (2026-11-13) the root and a 7.9 GB swap partition are on the old GoFlex, a spinning 2.5" laptop
+drive. Once zram fills, every page read back from it costs a seek (about 7 ms), and the desktop waits on them
+(`~/code/studies/load/`, 2026-11-18). So:
+
+- **The Buffalo as swap** (`buffalo-swap`): 16 GiB carved from the end of its NTFS ("RAID Backup"), labelled
+  `fcpm-swap`, on USB 3 with several disks. Order: zram (priority 100), the Buffalo (10), the laptop disk (-2).
+  `/etc/fstab`: `LABEL=fcpm-swap none swap sw,nofail,pri=10,x-systemd.device-timeout=5s 0 0`. `nofail` makes it
+  something `swap.target` wants, not needs, and the timeout is 5 s, so a box booted without the Buffalo (unplugged days
+  ago) comes up as before, with zram and the laptop disk. Hibernation resumes from the laptop disk's swap, never this.
+- Unplugging it while it holds pages kills the processes those pages belong to. Run `buffalo-swap off` first.
+- `buffalo-swap status` says what is there. `plan` asks `ntfsresize --no-action` whether the shrink fits and changes
+  nothing. `carve` keeps the partition table in `/var/backups/fcpm-buffalo-*.sfdisk` (`sfdisk` takes it back),
+  shrinks the NTFS, then adds the partition. `on` writes the fstab line (old fstab kept as
+  `/etc/fstab.before-buffalo-swap`). All but `status` run as root: `SUDO_ASKPASS=../kiosk/askpass sudo -A`.
+- Carved 2026-11-18: `sda3`, 16 GiB, in use. ntfsresize leaves the NTFS marked for a check; `ntfsfix -d` clears it
+  before Linux mounts it read-write.
 
 ## IPv6
 

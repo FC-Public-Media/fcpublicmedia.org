@@ -24,12 +24,23 @@ branches:
     merges: never
     made: false
   lobby:
-    for: "the way in: compiled from what is publishable, thin, and only directions to the rest"
+    for: "first contact and orientation: what is here and where, taking people to things on other branches.
+      Thin: directions, never the things themselves"
     merges: never
     made: false
+  studies:
+    for: "the cloud line for studies: a cloud session can't reach the LAN, so it commits a study here, a folder
+      each. We take each folder into retain/studies as it came"
+    merges: never
   librarians:
     for: "what librarian agents answer to: their constitution, and each place's decorum as AGENTS.md
       files in that place's own folder shape. Instructions, never data"
+    merges: never
+    pushes: lan
+  retain/studies:
+    for: "studies, a folder each: what we are working out, in our own words, and every file tree made during
+      it, written out. Where we keep what we do; what comes in on the cloud line is taken in as it came. The
+      working half: what settles is summarized into a released branch, to show the work in the open"
     merges: never
     pushes: lan
   retain/<machine>:
