@@ -22,6 +22,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `gai.conf` | `/etc/gai.conf`: IPv4 first when a name has both addresses. See IPv6 |
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
 | `buffalo-swap` | swap on the Buffalo, after zram and before the laptop disk; boot never waits for it. See Memory |
+| `buffalo-mirror` | a drive's mirror on the Buffalo, at `/srv/mirrors/<name>`, never waited for at boot. See Mirrors |
 | role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
 
 ## Names
@@ -214,6 +215,20 @@ IPv4 to Cablecast's API in half a second, IPv6 never). Programs that try IPv6 fi
 before falling back: Python's urllib waits its whole timeout on each, so a deploy's four Cablecast requests
 took most of an hour. `/etc/gai.conf` is `gai.conf`, which puts IPv4 first for every program on the box;
 IPv6 still works where it is the only way. The router is the real fix; this keeps the box steady meanwhile.
+
+## Mirrors
+
+A drive brought off another machine is kept as files, not an image, in its own ext4 partition on the Buffalo:
+`/srv/mirrors/<name>`, label `mirror-<name>`, cut from the end of the NTFS backup ("RAID Backup", which stays). About
+1 TB each unless a drive holds a big project. `buffalo-mirror plan NAME MIB` asks ntfsresize whether the shrink fits
+and how much would move, changing nothing; `carve` keeps the partition table in `/var/backups/fcpm-buffalo-*.sfdisk`,
+shrinks the NTFS and makes the partition; `mount` writes its fstab line (`nofail`, 5 s timeout, so a boot without the
+Buffalo is not held up) and mounts it. The machine itself is booted from the lan card, its drives mounted read-only
+there, and the files pulled here by `rsync -rt` over SSH (`root@card.local`), leaving out Windows, program files,
+AppData, the registry hives and recycle bins.
+
+- `bay3`: Editing Bay 3 (Precision 5820, 5YQX4Z2), 1 TiB, carved 2026-11-20: `DATA/` from its NVMe, `Users/` from its
+  Windows drive.
 
 ## The origin
 
