@@ -85,6 +85,11 @@ front matter dresses them. Nothing about it is in `_config.yml`.
 - A `> quote` under a heading becomes the window's side card. A short first line over the card's
   `### heading` is its eyebrow.
 - Words before the first heading open the first window.
+- A window's words are `.prose`, as on any page: `###` and `####` subheads, lists, later quotes, tables
+  and includes stay in it and keep the measure. Grow a window with subheads rather than add windows.
+- Only an `<h2>` ends a window, whether a `## Heading`, an include that writes one, or a line of text
+  with `---` under it (Markdown's other way to write a heading; leave a blank line above a rule).
+- Raw HTML is fine. A `<div>` stops Markdown inside it until it says `<div markdown="1">`.
 - `frames`, keyed by a heading's anchor (`The Board` is `the-board`), dresses a window. All optional; a
   window with no frame is plain paper.
 
@@ -95,6 +100,8 @@ front matter dresses them. Nothing about it is in `_config.yml`.
 | `photos` | `straight` (stand up inside the tilted mask) or `tilted` (ride the angle) |
 
 - Renaming a heading renames its anchor, and its frame must follow.
+- A bottom holding a picture or video is a landscape; a colour or nothing is a band a third that
+  tall, and the last window has none.
 - The first module's top is tall, so its colour comes in under the masthead; every later top is a bar
   the height of the masthead. Consecutive modules share an edge; a `mirror` between two `brand`s
   makes a chevron where they meet, filled by the later module's top.

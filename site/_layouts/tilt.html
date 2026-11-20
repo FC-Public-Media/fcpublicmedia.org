@@ -10,7 +10,8 @@ layout: default
   - The page's front matter `frames`, keyed by a heading's anchor ("The Board" is `the-board`), dresses a
     window: its four sides (top, left, right, bottom) and its lean (tilt: mirror). A window with no frame
     is plain paper.
-  - Words before the first heading open the first window.
+  - Words before the first heading open the first window. Everything else is .prose, like any page.
+  - Only an <h2> ends a window. A colour-only bottom is a thin band; the last window has none.
 
   See docs/site.md#tilt-stacks.
 {%- endcomment -%}
@@ -25,13 +26,17 @@ layout: default
   {%- assign f = page.frames[_id] -%}
   {%- assign _first = forloop.first -%}
 
+  {%- comment -%} The first quote is the side card; any later quote stays a quote, where it was. {%- endcomment -%}
   {%- assign _parts = _body | split: '<blockquote>' -%}
   {%- assign _words = '<h2' | append: _parts[0] -%}
   {%- assign _aside = '' -%}
   {%- if _parts.size > 1 -%}
     {%- assign _q = _parts[1] | split: '</blockquote>' -%}
     {%- assign _aside = _q[0] -%}
-    {%- if _q.size > 1 %}{% assign _words = _words | append: _q[1] %}{% endif -%}
+    {%- assign _after = _q | slice: 1, 999 | join: '</blockquote>' -%}
+    {%- assign _later = _parts | slice: 2, 999 | join: '<blockquote>' -%}
+    {%- assign _words = _words | append: _after -%}
+    {%- if _later != '' %}{% assign _words = _words | append: '<blockquote>' | append: _later %}{% endif -%}
   {%- endif %}
   <section class="tilt-module" id="{{ _id }}"
            data-tilt="{{ f.tilt | default: 'brand' }}" data-photos="{{ f.photos | default: 'straight' }}"
@@ -44,7 +49,7 @@ layout: default
 
       <div class="tilt-window">
         <div class="tilt-upright">
-          <div class="tilt-words">
+          <div class="tilt-words prose">
             {%- if _first and _lead != '' %}{{ _lead }}{% endif %}
             {{ _words }}
           </div>
