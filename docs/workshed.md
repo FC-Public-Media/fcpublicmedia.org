@@ -11,9 +11,12 @@ the loudspeaker's lines for it, and a shed that follows a pin ([Not yet](#not-ye
 in it; a branch's slash is a `~` in the folder's name (`fcpublicmedia.org@retain~studies`). A shed is a group with a plain name; `dev` is the one used unless another is named. A branch is named
 for what it is for, in the words of whoever asked: `meet-photos`, `christmas`, `spring-classes`.
 
-It is not `work/`. `work/` is a session's: one session each, cut from main, never reused. The workshed is a
-person's: it lasts, it is reused, and a session that helps there works in the worktree it is shown. Nothing
-removes a worktree with changes in it.
+A shed can be anywhere, as a library holding can: any folder of `<repo>@<branch>` worktrees, bound by name in
+`machines/<job>/workshed.yml` (`sheds: {work: work}`; a relative folder is from `~/code`). Bay 1 binds `work`
+to `~/code/work`, where sessions make theirs (`bin/refs work`), so a session's worktree is started, shown and
+searched like any other: `fcpm workshed start meet-says-more`. A bound name wins over a folder of the same name
+here. `follow` moves only a worktree following its own branch on the origin; a session's, cut from main and
+following it, is left as it is. Nothing removes a worktree with changes in it.
 
 | file | |
 |---|---|

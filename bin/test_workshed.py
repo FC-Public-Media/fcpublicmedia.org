@@ -46,10 +46,11 @@ class Workshed(unittest.TestCase):
         code = root / "code"
         (code / "refs").mkdir(parents=True)
         git("clone", "-q", str(root / "origin.git"), str(code / "refs" / "demo"), cwd=root)
-        self.saved = {k: getattr(workshed, k) for k in ("CODE", "SHED", "LOG", "PORTS", "STATE")}
+        self.saved = {k: getattr(workshed, k) for k in ("CODE", "SHED", "LOG", "PORTS", "STATE", "BINDINGS")}
         workshed.CODE, workshed.SHED = code, code / "workshed"
         workshed.LOG, workshed.PORTS = code / "workshed" / "workshed.log", code / "workshed" / "ports.json"
         workshed.STATE = root / "state"
+        workshed.BINDINGS = []                        # this machine's own bound sheds never leak into a test
         self.places_code, places.CODE = places.CODE, code
         # The library is the test's own, and not made unless a test makes it: never a real grant book.
         self.library_was = os.environ.get("FCPM_LIBRARY")
@@ -348,6 +349,45 @@ class Workshed(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             workshed.follow("dev")
         self.assertIn("has changes", out.getvalue())
+
+    def bind(self, **sheds):
+        f = pathlib.Path(self.tmp.name) / "workshed.yml"
+        f.write_text("sheds:\n" + "".join("  %s: %s\n" % kv for kv in sheds.items()))
+        workshed.BINDINGS = [f]
+
+    def session_worktree(self, branch):
+        """A worktree as bin/refs work makes one: work/<repo>@<branch>, cut from main and following it."""
+        src = workshed.CODE / "refs" / "demo"
+        path = workshed.CODE / "work" / ("demo@" + branch)
+        git("worktree", "add", "-q", "--track", "-b", branch, str(path), "origin/main", cwd=src)
+        return path
+
+    def test_a_bound_folder_is_a_shed(self):
+        self.bind(work="work")
+        path = self.session_worktree("meet-says-more")
+        self.assertEqual(workshed.shed_dirs()["work"], workshed.CODE / "work")
+        w = workshed.find("meet-says-more")
+        self.assertEqual((w["name"], w["shed"], w["path"]), ("work/demo@meet-says-more", "work", path))
+        self.assertIn("work", workshed.sheds())
+        self.assertEqual(self.new("roller", shed="work"), "work/demo@roller")
+        self.assertTrue((workshed.CODE / "work" / "demo@roller" / "site" / "meet.md").is_file())
+        self.assertFalse((workshed.SHED / "work").exists())
+
+    def test_nothing_is_bound_unless_a_file_says(self):
+        self.session_worktree("meet-says-more")
+        self.assertNotIn("work", workshed.shed_dirs())
+        with self.assertRaises(workshed.Wrong):
+            workshed.find("meet-says-more")
+
+    def test_follow_leaves_a_worktree_following_main(self):
+        self.bind(work="work")
+        path = self.session_worktree("meet-says-more")
+        was = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True).stdout
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            workshed.follow("work")
+        self.assertIn("follows origin/main, not its own branch", out.getvalue())
+        self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True).stdout, was)
 
 
 if __name__ == "__main__":
