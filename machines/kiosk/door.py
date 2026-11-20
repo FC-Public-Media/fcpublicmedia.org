@@ -35,6 +35,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /depot/now         the drive's index, as JSON. The page polls it
     GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
     GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, {name, again} restarts ours, from that page only
+    GET /broadcast/youtube the episodes marked not for YouTube; POST {show, youtube, title} marks one (ch97's page, through its nginx)
     GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
     GET /deploy/now        the same as JSON, with the deploy's log where it runs here and the PRs waiting on main
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
@@ -3505,6 +3506,18 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(400, json.dumps({"why": "asks for a name and on"}), TYPES[".json"])
             log("broadcast: %s %s, from %s" % (name, "again" if again else "on" if on else "off", self.peer()))
             return self.reply(200, json.dumps(broadcast_now(name, on, again)), TYPES[".json"])
+        if route == "/broadcast/youtube":
+            if (self.headers.get("Origin") or "") != "http://%s" % (self.headers.get("Host") or ""):
+                return self.reply(403, json.dumps({"why": "asked from another page"}), TYPES[".json"])
+            try:
+                ask = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024)))
+                show, yes, title = int(ask["show"]), bool(ask["youtube"]), str(ask.get("title") or "")[:200]
+            except (ValueError, KeyError, TypeError):
+                return self.reply(400, json.dumps({"why": "asks for a show and youtube"}), TYPES[".json"])
+            log("broadcast: show %d %s YouTube, from %s" % (show, "back on" if yes else "not for", self.peer()))
+            have, why = youtube_hand().mark(show, yes, title)
+            return self.reply(200, json.dumps({"marks": {str(k): v for k, v in have.items()}, "why": why}),
+                              TYPES[".json"])
         # The board's switches: asked here, by this computer's own page. A page from elsewhere may not ask.
         mine = here and (self.headers.get("Origin") or "null") in (
             "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
@@ -3670,6 +3683,9 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, deploy_page())
             if route == "/deploy/now":
                 return self.reply(200, json.dumps(deploy_now()), TYPES[".json"])
+            if route == "/broadcast/youtube":
+                return self.reply(200, json.dumps({"marks": {str(k): v for k, v in youtube_hand().marks().items()}}),
+                                  TYPES[".json"])
             if route == "/broadcast/now":
                 return self.reply(200, json.dumps(broadcast_now()), TYPES[".json"])
             if route in ("/preview", "/preview/"):
@@ -4604,6 +4620,13 @@ def broadcast_hand():
     sys.path.insert(0, str(ROOT / "machines" / "broadcast"))
     import cablecast
     return cablecast
+
+
+def youtube_hand():
+    """youtube.py: the episodes marked not for YouTube, kept in the broadcast repository."""
+    sys.path.insert(0, str(ROOT / "machines" / "broadcast"))
+    import youtube
+    return youtube
 
 
 STANDBY_STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast"   # machines/broadcast/standby's

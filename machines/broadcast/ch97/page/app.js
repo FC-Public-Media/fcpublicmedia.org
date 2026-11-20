@@ -1,7 +1,8 @@
 // app.js -- ch97: the day as we laid it (schedule/<date>.json), Cablecast's copy held up beside it,
 // and the reserve to fill from. Data comes in and the page draws it; each request to the box shows in
-// the bar for as long as it runs. Nothing here writes. See ../../PROFILE.md, "ch97".
-import React, { useEffect, useMemo, useState } from "react";
+// the bar for as long as it runs. The outline is the day as a list, no lengths; the one thing written
+// here is an episode's mark, not for YouTube (/youtube). See ../../PROFILE.md, "ch97".
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import htm from "htm";
 
@@ -100,6 +101,9 @@ function App() {
   const [fit, setFit] = useState(null);             // seconds the reserve's shows must fit in
   const [words, setWords] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [marks, setMarks] = useState(null);         // show id -> title, the episodes not for YouTube
+  const [said, setSaid] = useState(null);           // what marking last said, when it went wrong
+  const scroll = useRef(null);
 
   // Each request runs under a name in the bar, and leaves when it is done.
   async function ask(key, label, job) {
@@ -133,6 +137,7 @@ function App() {
   useEffect(() => {
     ask("days", "days laid", () => get("/schedule/"))
       .then((d) => d && setDays(d.map((f) => f.name.replace(/\.json$/, "")).filter((n) => /^\d{4}-\d\d-\d\d$/.test(n)).sort()));
+    ask("marks", "not for YouTube", () => get("/youtube")).then((d) => d && setMarks(d.marks));
     ask("cats", "categories", () => api("/categories?page_size=500"))
       .then((d) => d && setCats(Object.fromEntries(d.categories.map((c) => [c.id, c.name.trim()]))));
     ask("reserve", "the reserve", (tick) => every("/shows", "shows", 250, tick)).then((d) => d && setReserve(d));
@@ -147,7 +152,7 @@ function App() {
         }
         setLately(last);
       });
-    const tick = setInterval(() => setNow(Date.now()), 60e3);
+    const tick = setInterval(() => setNow(Date.now()), 15e3);
     return () => clearInterval(tick);
   }, []);
 
@@ -174,6 +179,26 @@ function App() {
   const holes = gaps.filter((g) => g.to - g.from >= SEAM * 1000);
   const dark = holes.reduce((s, g) => s + (g.to - g.from) / 1000, 0);
 
+  // Today opens where the air is, an hour back.
+  useEffect(() => {
+    if (laid && date === today() && scroll.current) scroll.current.scrollTop = y(Date.now() - 3600e3);
+  }, [laid]);
+
+  function jump(at, key) {
+    setChosen(key);
+    scroll.current?.scrollTo({ top: Math.max(y(at) - 60, 0), behavior: "smooth" });
+  }
+
+  // Every airing of the episode goes to YouTube or not; the door commits it to the broadcast repository.
+  async function mark(show, youtube) {
+    const d = await ask("mark", youtube ? "back to YouTube" : "keeping off YouTube", () =>
+      fetch("/youtube", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ show: show.id, youtube, title: show.on_air ?? show.title }) })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))));
+    if (d) { setMarks(d.marks); setSaid(d.why || null); }
+  }
+  const off = (a) => marks && String(a.show.id) in marks;
+
   function open(seconds, cat, key) {
     setChosen(key);
     setFit(seconds);
@@ -199,10 +224,34 @@ function App() {
           ${busy.map(([k, w]) => html`<span key=${k} class="busy">${w.label}${w.of ? html` <b>${w.done}/${w.of}</b>` : ""}</span>`)}
           ${Object.entries(trouble).filter(([k]) => !RESERVE.includes(k)).map(([k, label]) => html`<span key=${k} class="off">${label}: no answer</span>`)}
           ${differs > 0 && html`<span class="off">Cablecast differs ${differs}</span>`}
+          ${said && html`<span class="off" title=${said}>mark not pushed</span>`}
           ${changed && html`<button onClick=${() => { setTheirs(newer); setNewer(null); }}>Cablecast changed ${clock.format(now)}</button>`}
         </span>
       </div>
-      <div class="scroll">
+      <div class="split">
+      <nav class="outline">
+        ${airings.map((a, n) => {
+          const at = Date.parse(a.at);
+          const key = `a${n}`;
+          const on = now >= at && now < at + a.seconds * 1000;
+          const before = now >= start && now < at && (n === 0 || now >= Date.parse(airings[n - 1].at) + airings[n - 1].seconds * 1000);
+          return html`
+            ${before && html`<div key=${`now${n}`} class="nowline" title="the bulletin board, now"></div>`}
+            <div key=${key} class=${`line${on ? " on" : ""}${chosen === key ? " chosen" : ""}${off(a) ? " no" : ""}`}
+              onClick=${() => jump(at, key)}>
+              <span class="at">${clock.format(at)}</span>
+              <span class="t">${a.show.on_air ?? a.show.title}</span>
+              ${off(a) && html`<span class="tag">not to YouTube</span>`}
+              ${chosen === key && marks && html`<span class="yt" onClick=${(e) => e.stopPropagation()}>
+                ${off(a) ? "Every airing stays off YouTube." : "Every airing goes to YouTube."}
+                <button disabled=${!!work.mark} onClick=${() => mark(a.show, off(a))}>${off(a) ? "Send to YouTube" : "Keep off YouTube"}</button>
+              </span>`}
+            </div>`;
+        })}
+        ${laid && now >= start && now < end && airings.length > 0 && now >= Date.parse(airings[airings.length - 1].at) + airings[airings.length - 1].seconds * 1000
+          && html`<div class="nowline" title="the bulletin board, now"></div>`}
+      </nav>
+      <div class="scroll" ref=${scroll}>
         ${laid === null && html`<div class="unlaid">${named(date)} is not laid. ${theirs?.length ? "Cablecast's copy is shown at the right edge." : ""}</div>`}
         <div class="day" style=${{ height: `${y(end)}px` }}>
           ${hours.map((t) => html`<div key=${t} class="hour" style=${{ top: `${y(t)}px` }}>${hourName.format(t)}</div>`)}
@@ -225,9 +274,10 @@ function App() {
             const key = `a${n}`;
             const tip = `${clock.format(at)}  ${a.show.title}\n${a.show.category ?? "no category"} · ${length(a.seconds)}`;
             return html`
-              <div key=${key} class=${`airing${chosen === key ? " chosen" : ""}`} title=${tip}
+              <div key=${key} class=${`airing${chosen === key ? " chosen" : ""}${off(a) ? " no" : ""}`} title=${tip}
                 style=${{ top: `${y(at)}px`, height: `${h}px`, animationDelay: `${n * 6}ms` }}
                 onClick=${() => open(a.seconds, a.show.category, key)}>
+                ${h >= 13 && off(a) && html`<span class="at no">not to YouTube</span>`}
                 ${h >= 13 && html`<span class="at">${clock.format(at)}</span><div class="t">${a.show.on_air ?? a.show.title}</div>`}
                 ${h >= 30 && html`<div class="c">${a.show.category ?? "no category"} · ${length(a.seconds)}</div>`}
               </div>
@@ -242,6 +292,7 @@ function App() {
           })}
           ${now >= start && now < end && html`<div class="now" style=${{ top: `${y(now)}px` }}></div>`}
         </div>
+      </div>
       </div>
       <div class="foot">
         ${laid && html`<span><b>${airings.length}</b> airings</span>
