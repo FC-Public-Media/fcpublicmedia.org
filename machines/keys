@@ -27,6 +27,9 @@ kept apart from operations' (`projects`: public-run projects). Never prints a va
 `run` takes a key this machine does not hold from the keychain, into the command's environment only.
 FCPM_KEYCHAIN_SSH is how ssh reaches the keychain's door (default fcpm-keychain, a ~/.ssh/config name), and
 FCPM_KEYCHAIN_SSH_<NAME> a secondary's (default fcpm-<name>).
+A key whose spec says `from token: KEY` is never asked of a person: it is asked of Cloudflare with the group's
+token KEY (the one account it answers for), kept and flushed like any other. FCPM_CLOUDFLARE_API stands in for
+Cloudflare's API in a test.
 FCPM_KEYS_LEDGER (one keys.yml) and FCPM_WEARS (a comma list of jobs) stand in for the binding in a test;
 FCPM_BIRTH_FILE keeps a born key's private half in a file, as on Linux, so a test never touches the agent;
 FCPM_BIRTH_HELM is the helm a test's petition is set down at.
@@ -113,6 +116,34 @@ def gear_folders():
     return out
 
 
+def derived(group, held):
+    """{key: value} for each key the group's own token can answer (`from token:`) and the file lacks."""
+    got = {}
+    api = os.environ.get("FCPM_CLOUDFLARE_API", "https://api.cloudflare.com/client/v4")
+    for key, spec in group["keys"].items():
+        token = held.get(spec.get("from token", ""))
+        if held.get(key) or not token:
+            continue
+        ask_ = urllib.request.Request(f"{api}/accounts", headers={"Authorization": f"Bearer {token}"})
+        try:
+            with urllib.request.urlopen(ask_, timeout=20) as answer:
+                accounts = json.load(answer).get("result") or []
+        except (OSError, ValueError):
+            continue
+        if len(accounts) == 1:
+            got[key] = accounts[0]["id"]
+    return got
+
+
+def fill(name, group):
+    """Keep what the group's token answers for it; True when anything new was kept."""
+    got = derived(group, read(group))
+    for key, value in got.items():
+        store(group, key, value)
+        print(f"keys: {name} {key} kept, as its token answered for it", flush=True)
+    return bool(got)
+
+
 def read(group):
     """{key: value} for what the group's file holds; {} when it does not exist."""
     path = group["path"]
@@ -139,7 +170,9 @@ def facts(groups):
             value = held.get(key, "")
             prefix = spec.get("prefix", "")
             where = f"{name} {key}" + (f" ({prefix}…)" if prefix else "")
-            if not value:
+            if not value and spec.get("from token"):
+                yield False, f"key {where} in {short(path)}", f"comes from {spec['from token']} by itself: keys run {name} -- true"
+            elif not value:
                 yield False, f"key {where} in {short(path)}", f"keys take {name} {key}; get one from {spec['from']}"
             elif not fits(spec, value):
                 yield False, f"key {where} in {short(path)} has the wrong kind", f"keys take {name} {key}"
@@ -238,6 +271,7 @@ def take(groups, name, key):
                 f"until keys.yml or the key is set right. Nothing needs typing again.")
         print(f"keys: {said}")
         tell(f"Keychain: {name}", said)
+    fill(name, group)
     return flush({name: group})
 
 
@@ -260,7 +294,7 @@ def offer(groups, name, device, minutes=60):
 
     def wanted():
         held = read(group)
-        return [k for k, spec in group["keys"].items() if not held.get(k)]
+        return [k for k, spec in group["keys"].items() if not held.get(k) and not spec.get("from token")]
 
     def page(note=""):
         rows = "".join(
@@ -318,6 +352,8 @@ def offer(groups, name, device, minutes=60):
     while wanted() and time.monotonic() < end:
         server.handle_request()
     server.server_close()
+    if fill(name, group):
+        flush({name: group})
     left = wanted()
     print(f"keys: {name} still lacks {', '.join(left)}; the page is closed" if left else f"keys: {name} held; the page is closed")
     return 1 if left else 0
@@ -336,6 +372,10 @@ def run(groups, names, command):
             done = keychain("get", name, k, chain=group["keychain"])
             if done.returncode == 0 and done.stdout:
                 held[k] = done.stdout
+        for k, v in derived(group, held).items():          # the crew's flush carries it up; stdout is the command's
+            store(group, k, v)
+            held[k] = v
+            print(f"keys: {name} {k} kept, as its token answered for it", file=sys.stderr)
         missing = [k for k in group["keys"] if not held.get(k)]
         if missing:
             sys.exit(f"keys: {name} lacks {', '.join(missing)}, here and on the keychain: keys take {name} {missing[0]}")
