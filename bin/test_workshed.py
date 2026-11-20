@@ -400,6 +400,110 @@ class Workshed(unittest.TestCase):
         self.assertIn("follows origin/main, not its own branch", out.getvalue())
         self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True).stdout, was)
 
+    def fcpm(self, *argv):
+        """fcpm workshed ARGV: what it said, and its exit."""
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = workshed.main(list(argv))
+        return out.getvalue(), code
+
+    def test_mark_makes_a_folder_a_shed(self):
+        projects = pathlib.Path(self.tmp.name) / "home" / "Projects"
+        projects.parent.mkdir()
+        said, code = self.fcpm("mark", str(projects))
+        self.assertEqual(code, 0, said)
+        self.assertIn("Projects is a shed", said)
+        self.assertTrue((projects / ".workshed").is_file())          # made, and it says what it is
+        self.assertIn("name: Projects", (projects / ".workshed").read_text())
+        self.assertEqual(workshed.shed_dirs()["Projects"], projects.resolve())
+        self.assertEqual(self.fcpm("Projects", "new", "christmas", "--repo", "demo")[1], 0)
+        self.assertTrue((projects / "demo@christmas" / "site" / "meet.md").is_file())
+        self.assertEqual(workshed.find("christmas", "Projects")["name"], "Projects/demo@christmas")
+
+    def test_mark_takes_this_folder_and_another_name(self):
+        here = pathlib.Path(self.tmp.name) / "clones"
+        here.mkdir()
+        was = os.getcwd()
+        os.chdir(here)
+        try:
+            self.assertEqual(self.fcpm("mark")[1], 0)
+        finally:
+            os.chdir(was)
+        self.assertIn("clones", workshed.shed_dirs())
+        other = pathlib.Path(self.tmp.name) / "feature"
+        self.assertEqual(self.fcpm("mark", str(other), "big-idea")[1], 0)
+        self.assertEqual(workshed.shed_dirs()["big-idea"], other.resolve())
+
+    def test_mark_refuses_what_cannot_be_a_shed(self):
+        refused = lambda *a: self.assertEqual(self.fcpm("mark", *a)[1], 1, a)
+        refused(str(workshed.CODE / "refs" / "demo"))                    # a checkout holds no checkouts
+        refused(str(pathlib.Path(self.tmp.name) / "no" / "such" / "place"))  # only the last folder is ever made
+        self.assertFalse((pathlib.Path(self.tmp.name) / "no").exists())
+        refused(str(pathlib.Path(self.tmp.name) / "elsewhere"), "work")   # work is a shed already
+        refused(str(workshed.CODE / "work"), "again")                    # and that folder is it
+        refused(str(pathlib.Path(self.tmp.name) / "x"), "start")         # a verb is not a name
+        self.assertNotIn("again", workshed.shed_dirs())
+
+    @unittest.skipUnless(os.name == "nt", "Git Bash paths are Windows's")
+    def test_a_git_bash_path_is_the_windows_folder(self):
+        tmp = pathlib.Path(self.tmp.name).resolve()
+        typed = "/" + tmp.drive[0].lower() + tmp.as_posix()[2:] + "/clones"   # C:/Users/... typed as /c/Users/...
+        self.assertEqual(self.fcpm("mark", typed)[1], 0)
+        self.assertEqual(workshed.shed_dirs()["clones"], tmp / "clones")
+
+    def test_unmark_leaves_its_worktrees(self):
+        projects = pathlib.Path(self.tmp.name) / "Projects"
+        self.fcpm("mark", str(projects))
+        self.fcpm("Projects", "new", "christmas", "--repo", "demo")
+        said, code = self.fcpm("Projects", "unmark")
+        self.assertEqual(code, 0, said)
+        self.assertNotIn("Projects", workshed.shed_dirs())
+        self.assertFalse((projects / ".workshed").exists())
+        self.assertTrue((projects / "demo@christmas" / "site" / "meet.md").is_file())
+        said, code = self.fcpm("unmark", "work")                          # named for every install: not here
+        self.assertEqual(code, 1)
+        self.assertIn("machines/<job>/workshed.yml", said)
+
+    def test_a_folder_that_loses_its_mark_is_no_shed(self):
+        projects = pathlib.Path(self.tmp.name) / "Projects"
+        self.fcpm("mark", str(projects))
+        (projects / ".workshed").unlink()
+        self.assertNotIn("Projects", workshed.shed_dirs())
+
+    def test_the_shed_comes_first(self):
+        self.new("christmas", shed="seasons")
+        git("clone", "-q", str(pathlib.Path(self.tmp.name) / "origin.git"), str(workshed.CODE / "refs" / "demo2"),
+            cwd=self.tmp.name)                                          # the same branch, of another repo, in work
+        with contextlib.redirect_stdout(io.StringIO()):
+            workshed.new("christmas", repo="demo2")
+        said, code = self.fcpm("start", "christmas")
+        self.assertEqual(code, 1)
+        self.assertIn("could be", said)                                 # without a shed: which?
+        said, code = self.fcpm("seasons")
+        self.assertIn("seasons  %s  (named in" % (workshed.CODE / "seasons"), said)
+        self.assertIn("demo@christmas", said)
+        self.assertNotIn("work  ", said)
+        said, code = self.fcpm("library")
+        self.assertIn("nothing in it yet: fcpm workshed library new BRANCH", said)
+        said, code = self.fcpm("seasons", "check", "nowhere")
+        self.assertEqual(code, 1)
+        self.assertIn("no worktree nowhere in the seasons shed", said)
+        said, code = self.fcpm("seasons", "dance")
+        self.assertEqual(code, 1)
+        self.assertIn("seasons is a shed; what to do there?", said)
+
+    def test_an_origin_branch_is_a_shed_to_name_before_it_is_made(self):
+        said, code = self.fcpm("origin")
+        self.assertIn("made the first time a worktree is", said)
+        self.assertEqual(self.fcpm("origin", "new", "visit", "--repo", "demo")[1], 0)
+        self.assertIn("(an origin branch's)", self.fcpm("origin")[0])
+
+    def test_status_shows_every_shed_even_empty(self):
+        said, _ = self.fcpm()
+        for name in ("work", "seasons", "library"):
+            self.assertIn(name + "  ", said)
+        self.assertIn("origin branches' sheds:", said)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
