@@ -889,10 +889,12 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   border-left: 5px solid var(--signal);
   padding-left: clamp(1rem, 2vw, 1.5rem);
 }
-.tilt-aside .eyebrow { color: var(--record-ink); }
+/* A side card written as a quote: its first line, over the heading, is the eyebrow. */
+.tilt-aside > p:first-child:has(+ h3) {
+  font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 650;
+  color: var(--record-ink); margin-bottom: 0.6rem;
+}
 .tilt-aside h3 { font-size: var(--step-2); margin: 0 0 0.25em; }
-.tilt-aside-when { font-weight: 650; margin-bottom: 0.4em; }
-.tilt-aside .hero-actions { margin-top: 1.25rem; }
 
 @media (max-width: 56rem) {
   .tilt-upright { grid-template-columns: minmax(0, 1fr); }
