@@ -219,8 +219,8 @@ npm run test:live                                # against https://fcpublicmedia
 
 ## Deploy
 
-Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it refreshes the site's data
-([the sync jobs](programming.md#sync-jobs) and member sites), runs `jekyll build` in `site/` and uploads `_site` to
+Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it builds member sites, runs
+`jekyll build` in `site/` and uploads `_site` to
 the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
 side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new.fcpublicmedia.org`.
@@ -228,7 +228,7 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
 - It runs on any machine whose keychain ([`machines/keys`](../machines/keys), the job's `keys.yml`) holds a
   `cloudflare` group: digitization, and bay 1 in Git Bash ([production](../machines/production/PROFILE.md#deploy)).
   Each machine has its own token, so one can be revoked alone. `fcpm deploy` runs it; `fcpm deploy --build`
-  (`bin/deploy-site --build`) refreshes, builds and checks without uploading, and keeps the copy.
+  (`bin/deploy-site --build`) builds and checks without uploading, and keeps the copy.
 - The worker goes first. Before uploading, `site/bin/tanks_live.py` asks the live site-worker about every
   form in the build: its tank (`data-tank`, or a script's own `form: '...'`, as `book.js`'s) and every field it
   sends. A tank or field the worker doesn't have yet stops the deploy, named, with nothing uploaded; a worker
@@ -241,15 +241,16 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
 - The same page lists the pull requests waiting to merge into main: title, author, each check's result and
   whose review is asked, linked to GitHub. It asks with that helm's own `gh`, once a minute, so it shows what
   GitHub's inbox would, without the inbox. A helm without `gh` signed in leaves the list off.
-- The refreshed data goes up with the build, not into git: the committed `cablecast.json`,
-  `airings.json` and `nonprofits.json` are what the LAN build and the tests
-  use, and they age until someone commits a refresh. A refresh that fails keeps the committed copy.
+- It fetches nothing. The site's data (`cablecast.json`, `airings.json`, `nonprofits.json`) is committed to main weekly by digitization's `refresh`
+  ([the sync jobs](programming.md#sync-jobs)), so the cloud, the LAN and the tests build the same thing.
 - A push to GitHub deploys nothing. No GitHub Actions workflow deploys the site, and no other host
   serves it.
 - Pages reads `_redirects` and `_headers` from `_site`. Nothing in `site/` names the host or runs code.
   The one piece of running code is the [site-worker](https://github.com/FC-Public-Media/site-worker),
   deployed on its own; the site knows it only by `site/_data/site_worker.yml` `url`.
-- The LAN has the site from `machines/static` (`site-build`, served by nginx), through a cloud outage.
+- The LAN has the site at `www.fcpublicmedia.local` from `machines/static` (`site-build`, served by nginx),
+  through a cloud outage. It is origin.local's main: a push to main there (or intake bringing GitHub's in)
+  wakes digitization's `follow` (the origin's `hear main`), which builds `site/` again if it moved.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
   ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
   fcpublicmedia.org` prints the root directory.

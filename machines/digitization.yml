@@ -2,8 +2,13 @@
 
 serves:
   - service: follow
-    for: "this checkout follows origin.local's main, fast-forward only, troves and the Wix copy from there too; see digitization/PROFILE.md"
-    start: "/bin/sh machines/digitization/follow"
+    for: "this checkout follows origin.local's main the moment it moves there (the origin's `hear main`; five minutes at most), fast-forward only, troves and the Wix copy from there too, then the static job's sites; see digitization/PROFILE.md"
+    start: "/bin/sh machines/digitization/follow heed"
+    alive: {process: "machines/digitization/follow heed"}
+
+  - service: refresh
+    for: "the site's data from where it lives (Cablecast's catalog and schedule, the IRS nonprofit list), committed to origin.local's main once a week, so main, the LAN's site and a deploy all have it (../docs/programming.md, Sync jobs)"
+    start: "/bin/sh machines/digitization/refresh"
 
   - service: names
     for: "this machine's names under fcpublicmedia.local (lan.yml: helm, the site, its directory and gear), by mDNS, while this runs"

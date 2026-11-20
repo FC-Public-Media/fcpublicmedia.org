@@ -1,16 +1,15 @@
 #!/bin/sh
-# pre-receive -- the origin door's rules about refs (../door). In a repository that lives on GitHub,
-# main and github/* are intake's: GitHub's main comes in by intake alone. Other branches and tags may
-# wait here for GitHub; a repository that began here takes any ref. In every repository the LAN's
-# lines are kept by ./lines-gate: retain/lines (each machine its own folder) and retain/pile/* (piles).
+# pre-receive -- the origin door's rules about refs (../door). main takes a keyholder's fast-forward in
+# every repository (the repositories refuse rewriting); in one that lives on GitHub, github/* is intake's,
+# and relay carries main out. In every repository the LAN's lines are kept by ./lines-gate:
+# retain/lines (each machine its own folder) and retain/pile/* (piles).
 HOOKS=$(cd "$(dirname "$0")" && pwd)
 status=0
 while read -r old new ref; do
   case "$ref" in
-    refs/heads/main|refs/heads/github/*)
+    refs/heads/github/*)
       if [ -n "$FCPM_DOOR_GITHUB" ]; then
-        echo "origin: $ref of $FCPM_DOOR_REPO comes from GitHub ($FCPM_DOOR_GITHUB) by intake."
-        echo "origin: push a branch to wait here for GitHub, or open a pull request there."
+        echo "origin: $ref of $FCPM_DOOR_REPO is GitHub's main as intake last saw it; push main instead."
         status=1
       fi ;;
     refs/heads/retain/lines|refs/heads/retain/pile/*)

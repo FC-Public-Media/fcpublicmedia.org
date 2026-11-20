@@ -1,14 +1,24 @@
 #!/bin/sh
 # follow -- the canonical checkout follows FCPM's origin (origin.local, ../origin): main only,
-# fast-forward only, never over local changes. Every 5 minutes from the crew's `follow` line. It
-# costs GitHub nothing: the origin's intake, paced by the LAN's dev switch, brings GitHub in; this
-# places it. The checkout's `origin`, every submodule (troves, engines, the Wix copy) and their
+# fast-forward only, never over local changes. `follow heed` is the crew's `follow` line: a pass, then
+# it waits on the origin's `hear main` and passes again the moment any repository's main moves there
+# (a push, or intake bringing GitHub's in), or after five minutes of quiet. It costs GitHub nothing. The checkout's `origin`, every submodule (troves, engines, the Wix copy) and their
 # pushes all point at the origin, by its git account (FCPM_ORIGIN_URL; ~/.ssh/config's
 # fcpm-origin: git@origin.local by this machine's key, in ../origin/KEYHOLDERS). The door
 # restarts itself when its checkout moves.
 # Troves are submodules (`update = none`): each is checked out at the pin, as bin/refs and the
 # kiosk's door do, so a crew line `from troves/<name>` has its code; a pin already there costs nothing.
 # Then the static job's sites, each built only when its own commit moved (../static/publish.py).
+if [ "${1:-}" = heed ]; then
+  # Listening starts before each pass, so a move during the pass is heard: the wait then ends at once.
+  me="$(cd "$(dirname "$0")" && pwd)/follow"
+  while :; do
+    timeout 330 ssh -o BatchMode=yes -o ConnectTimeout=20 "${FCPM_ORIGIN_HOST:-fcpm-origin}" hear main >/dev/null 2>&1 &
+    heard=$!
+    /bin/sh "$me" || echo "follow: the pass failed ($?)"
+    wait "$heard" || sleep 270         # the origin out of reach or not hearing: every five minutes, as before
+  done
+fi
 cd "$(dirname "$0")/../.." || exit 1
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 [ -z "$(git status --porcelain --ignore-submodules=all)" ] || exit 0
