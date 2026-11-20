@@ -1,0 +1,38 @@
+# A payload the bay took in, run by hand. One file per arrival. See docs/station.md, Bay.
+
+payload: drobo-dashboard
+version: 3.5.0 [113780]
+replaces: nothing        # the first Dashboard on this host
+vendor: Drobo, Inc. (out of business; no support site, no firmware feed)
+role: managing the Drobo B810i over its MGMT port, so iSCSI 1 can be given a
+  deliberate address for this bay's initiator
+asked: Autumn, 2026-10-06 (get it up here, not on station-node's iMac)
+device: FC-Public-Media/drobo (instrument.yml holds the device facts)
+
+received: 2026-10-06
+source: https://github.com/dhomas1/DroboApps/releases/download/WinDashboard/Drobo-Dashboard-3.5.0.exe
+# The community archive the drobo trove names as vendor of record; the same
+# artifact station-node surveyed on 2026-10-02.
+size: 16619792
+
+verified:
+  sha256: c15de5bc66fe395e94f9962d0c1ae6512da89090dc46d73735e40fe0733321ea
+  # matches the vendor's own 3.5.0 release notes ("SHA-256 Win: 0xc15de5bc...321ea")
+  # and FC-Public-Media/drobo instrument.yml
+  authenticode: "Valid, CN=Drobo Inc (DigiCert SHA2 High Assurance), timestamped
+    by Symantec Time Stamping Services Signer - G4, so it outlives the cert"
+  inner: not checked. The InstallShield wrapper holds an MSI that was not
+    extracted before install; the outer signature is what vouched
+
+staged: "%LOCALAPPDATA%\\editing-bay-1\\bay\\staged\\drobo-dashboard-3.5.0"
+install-to: machine-wide (MSI, needs administrator)
+installed: 2026-10-06, by Autumn at the desk, from her own browser download
+  (Downloads\Drobo-Dashboard-3.5.0.exe, same sha256 as above), not from the
+  staged copy. Programs list: "Drobo Dashboard 3.5.0"
+restart-tier: app    # unconfirmed; the installer may ask for more
+cover: none
+grants: one administrator consent at the desk for the install
+
+run-log: "%LOCALAPPDATA%\\editing-bay-1\\bay.ndjson (receive, verify, stage; the install was not the bay's)"
+
+status: installed-outside
