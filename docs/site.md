@@ -75,22 +75,33 @@ a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 
 ## Tilt stacks
 
-`/meet/` is a tall stack of modules, each a window of words on the page's own colour, tilted on the
-brand angle and framed by four slots: `top`, `left`, `right` (portrait) and `bottom` (landscape). The
-stack is data: `fcpm.meet` in `site/_config.yml`, drawn by `_includes/tilt-stack.html`
-(`{% include tilt-stack.html modules=site.fcpm.<list> %}`), so another tall page (Learn) is one list away.
+`/meet/` is a tall stack of windows, each on the page's own colour, tilted on the brand angle and framed
+by four slots: `top`, `left`, `right` (portrait) and `bottom` (landscape). The page says it all itself:
+`site/meet.md` is `layout: tilt` (`_layouts/tilt.html`, over `default`), its words are its body, and its
+front matter dresses them. Nothing about it is in `_config.yml`.
 
-| Key | |
+- Each `## Heading` starts a window; everything under it, to the next `##`, is that window's words.
+  Liquid works there as on any page: The Board is `{% include board.html %}`.
+- A `> quote` under a heading becomes the window's side card. A short first line over the card's
+  `### heading` is its eyebrow.
+- Words before the first heading open the first window.
+- A window's words are `.prose`, as on any page: `###` and `####` subheads, lists, later quotes, tables
+  and includes stay in it and keep the measure. Grow a window with subheads rather than add windows.
+- Only an `<h2>` ends a window, whether a `## Heading`, an include that writes one, or a line of text
+  with `---` under it (Markdown's other way to write a heading; leave a blank line above a rule).
+- Raw HTML is fine. A `<div>` stops Markdown inside it until it says `<div markdown="1">`.
+- `frames`, keyed by a heading's anchor (`The Board` is `the-board`), dresses a window. All optional; a
+  window with no frame is plain paper.
+
+| `frames.<anchor>` | |
 |---|---|
-| `title`, `eyebrow`, `body` | the window's words; `body` is Markdown |
-| `actions` | buttons, `Label: /url`; the first is primary |
-| `aside` | the side card: `eyebrow`, `title`, `when`, `body`, `actions` (a class or a meet to sign up for) |
-| `include` | a part computed from other data, e.g. `board.html` (the board, from `hosts.yml`) |
 | `top`, `left`, `right`, `bottom` | a colour token (`signal`, `paper`, `paper-alt`, `slate`, `record`, `masthead`), a picture or video by path (`.mp4`/`.webm`/`.mov` play muted while on screen), or absent for the page's colour |
 | `tilt` | `brand` (rises to the right, like the mark) or `mirror` |
 | `photos` | `straight` (stand up inside the tilted mask) or `tilted` (ride the angle) |
-| `id` | the anchor; the title, slugified, when absent (`#the-board`) |
 
+- Renaming a heading renames its anchor, and its frame must follow.
+- A bottom holding a picture or video is a landscape; a colour or nothing is a band a third that
+  tall, and the last window has none.
 - The first module's top is tall, so its colour comes in under the masthead; every later top is a bar
   the height of the masthead. Consecutive modules share an edge; a `mirror` between two `brand`s
   makes a chevron where they meet, filled by the later module's top.

@@ -1,0 +1,65 @@
+---
+layout: default
+---
+{%- comment -%}
+  A tall page of tilted windows. The page writes the words; this only frames them.
+
+  - Each "## Heading" in the page starts a window, and everything under it is that window's words.
+  - A "> quote" under a heading becomes its side card. A short first line over the card's "### heading"
+    is its eyebrow.
+  - The page's front matter `frames`, keyed by a heading's anchor ("The Board" is `the-board`), dresses a
+    window: its four sides (top, left, right, bottom) and its lean (tilt: mirror). A window with no frame
+    is plain paper.
+  - Words before the first heading open the first window. Everything else is .prose, like any page.
+  - Only an <h2> ends a window. A colour-only bottom is a thin band; the last window has none.
+
+  See docs/site.md#tilt-stacks.
+{%- endcomment -%}
+{%- assign _sections = content | split: '<h2' -%}
+{%- assign _lead = _sections | first | strip -%}
+<div class="tilt-stack">
+{%- for _s in _sections offset: 1 %}
+  {%- assign _heading = '<h2' | append: _s | split: '</h2>' | first | strip_html | strip -%}
+  {%- assign _id = _heading | slugify -%}
+  {%- assign _idattr = ' id="' | append: _id | append: '"' -%}
+  {%- assign _body = _s | remove_first: _idattr -%}
+  {%- assign f = page.frames[_id] -%}
+  {%- assign _first = forloop.first -%}
+
+  {%- comment -%} The first quote is the side card; any later quote stays a quote, where it was. {%- endcomment -%}
+  {%- assign _parts = _body | split: '<blockquote>' -%}
+  {%- assign _words = '<h2' | append: _parts[0] -%}
+  {%- assign _aside = '' -%}
+  {%- if _parts.size > 1 -%}
+    {%- assign _q = _parts[1] | split: '</blockquote>' -%}
+    {%- assign _aside = _q[0] -%}
+    {%- assign _after = _q | slice: 1, 999 | join: '</blockquote>' -%}
+    {%- assign _later = _parts | slice: 2, 999 | join: '<blockquote>' -%}
+    {%- assign _words = _words | append: _after -%}
+    {%- if _later != '' %}{% assign _words = _words | append: '<blockquote>' | append: _later %}{% endif -%}
+  {%- endif %}
+  <section class="tilt-module" id="{{ _id }}"
+           data-tilt="{{ f.tilt | default: 'brand' }}" data-photos="{{ f.photos | default: 'straight' }}"
+           style="z-index: {{ forloop.rindex }}">
+    <div class="tilt-frame">
+      {% include tilt-slot.html where="top" value=f.top eager=_first %}
+      {% include tilt-slot.html where="left" value=f.left eager=_first %}
+      {% include tilt-slot.html where="right" value=f.right eager=_first %}
+      {% include tilt-slot.html where="bottom" value=f.bottom eager=_first %}
+
+      <div class="tilt-window">
+        <div class="tilt-upright">
+          <div class="tilt-words prose">
+            {%- if _first and _lead != '' %}{{ _lead }}{% endif %}
+            {{ _words }}
+          </div>
+          {%- if _aside != '' %}
+          <aside class="tilt-aside">{{ _aside }}</aside>
+          {%- endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+{%- endfor %}
+</div>
+<script src="{{ '/assets/js/tilt.js' }}?v={{ site.time | date: '%s' }}" type="module" defer></script>

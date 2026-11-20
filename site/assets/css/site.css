@@ -825,7 +825,9 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   margin-inline: calc(-1 * var(--bleed));
   display: grid;
   grid-template-columns: calc(var(--bleed) + var(--side)) minmax(0, 1fr) calc(var(--bleed) + var(--side));
-  grid-template-rows: var(--top) auto max(10rem, var(--side));
+  /* The bottom is a landscape for a picture or video; a colour, or nothing, is only a band. */
+  --bottom: max(10rem, var(--side));
+  grid-template-rows: var(--top) auto var(--bottom);
   grid-template-areas:
     "top    top    top"
     "left   window right"
@@ -843,6 +845,9 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 .tilt-left   { grid-area: left; }
 .tilt-right  { grid-area: right; }
 .tilt-bottom { grid-area: bottom; }
+.tilt-frame:has(> .tilt-bottom:not([data-fill="media"])) { --bottom: calc(max(10rem, var(--side)) / 3); }
+/* The last window ends the page: no band under it unless it holds a picture. */
+.tilt-module:last-child .tilt-frame:has(> .tilt-bottom:not([data-fill="media"])) { --bottom: 0px; }
 
 .tilt-slot > img,
 .tilt-slot > video {
@@ -880,19 +885,23 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
   row-gap: 1.5rem;
   align-items: start;
 }
+/* The words are .prose, as on any page: ### and #### subheads, lists, quotes and tables keep the measure. */
+.tilt-words { overflow-wrap: break-word; }
 .tilt-words h2 { font-size: var(--step-3); }
-.tilt-words > p { max-width: var(--measure); }
-.tilt-words > :last-child { margin-bottom: 0; }
+.tilt-words h4 { margin-top: 1.4em; }
+.tilt-words > :is(table, pre) { display: block; max-width: 100%; overflow-x: auto; }
 
 .tilt-aside {
   width: min(22rem, 100%);
   border-left: 5px solid var(--signal);
   padding-left: clamp(1rem, 2vw, 1.5rem);
 }
-.tilt-aside .eyebrow { color: var(--record-ink); }
+/* A side card written as a quote: its first line, over the heading, is the eyebrow. */
+.tilt-aside > p:first-child:has(+ h3) {
+  font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 650;
+  color: var(--record-ink); margin-bottom: 0.6rem;
+}
 .tilt-aside h3 { font-size: var(--step-2); margin: 0 0 0.25em; }
-.tilt-aside-when { font-weight: 650; margin-bottom: 0.4em; }
-.tilt-aside .hero-actions { margin-top: 1.25rem; }
 
 @media (max-width: 56rem) {
   .tilt-upright { grid-template-columns: minmax(0, 1fr); }

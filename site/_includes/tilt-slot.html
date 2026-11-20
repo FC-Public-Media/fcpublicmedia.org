@@ -3,7 +3,7 @@
 {%- assign _media = false -%}
 {%- if _v contains "/" -%}{%- assign _media = true -%}{%- endif -%}
 {%- assign _ext = _v | split: "." | last | downcase -%}
-<div class="tilt-slot tilt-{{ include.where }}"
+<div class="tilt-slot tilt-{{ include.where }}" data-fill="{% if _media %}media{% elsif _v != "" %}colour{% else %}none{% endif %}"
   {%- if _v != "" and _media == false %} style="--slot: var(--{{ _v }})"{% endif %} aria-hidden="true">
   {%- if _media -%}
     {%- if _ext == "mp4" or _ext == "webm" or _ext == "mov" or _ext == "m4v" %}
