@@ -78,7 +78,7 @@ a build error, which is how `sitemap.xml` and `watch.md` broke when they went.
 `/meet/` is a tall stack of windows, each on the page's own colour, tilted on the brand angle and framed
 by four slots: `top`, `left`, `right` (portrait) and `bottom` (landscape). The page says it all itself:
 `site/meet.md` is `layout: tilt` (`_layouts/tilt.html`, over `default`), its words are its body, and its
-front matter dresses them.
+front matter dresses them. Nothing about it is in `_config.yml`.
 
 - Each `## Heading` starts a window; everything under it, to the next `##`, is that window's words.
   Liquid works there as on any page: The Board is `{% include board.html %}`.
