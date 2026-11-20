@@ -123,6 +123,8 @@ The _{{ site.fcpm.address.venue }}_ studio at **{{ site.fcpm.address.street }}**
 We offer ready-to-go kits for home and field work. Booqable and Stripe will handle your reservation.
 Come for pickup when it's time.
 
+Equipment rental terms and conditions are here: {{ '/assets/pdfs/IMG_8956.JPG' }}
+
 {% include booqable.html config=page.booqable %}
 
 </section>
