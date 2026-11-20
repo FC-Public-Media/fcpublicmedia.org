@@ -1,29 +1,42 @@
 # The workshed
 
 Where a person sits down to work on something: a worktree each, its site built whole and served on its own
-port, on this computer. Built: `~/code/workshed`, `fcpm workshed`, the Helm's `/workshed/`, a preview by
+port, on this computer. Built: sheds bound wherever they are, `fcpm workshed`, the Helm's `/workshed/`, a preview by
 jekyll-enough, a shed kept to its origin branches, and searching a shed (the Helm's `/library/`). Not built:
 the loudspeaker's lines for it, and a shed that follows a pin ([Not yet](#not-yet)).
 
 ## The place
 
-`~/code/workshed/<shed>/<repo>@<branch>`: a worktree of `~/code/refs/<repo>`, kept for as long as someone works
-in it; a branch's slash is a `~` in the folder's name (`fcpublicmedia.org@retain~studies`). A shed is a group with a plain name; `dev` is the one used unless another is named. A branch is named
-for what it is for, in the words of whoever asked: `meet-photos`, `christmas`, `spring-classes`.
+There is no workshed folder. The workshed is every **shed** this machine binds, as the library binds its
+holdings ([library.md](library.md#where-things-are)): a shed is a folder of `<repo>@<branch>` worktrees of
+`~/code/refs/<repo>`, wherever someone keeps them, named in `machines/<job>/workshed.yml`. A branch's slash is a
+`~` in the folder's name (`fcpublicmedia.org@retain~studies`). A branch is named for what it is for, in the words
+of whoever asked: `meet-photos`, `christmas`, `spring-classes`.
 
-A shed can be anywhere, as a library holding can: any folder of `<repo>@<branch>` worktrees, bound by name in
-`machines/<job>/workshed.yml` (`sheds: {work: work}`; a relative folder is from `~/code`). Bay 1 binds `work`
-to `~/code/work`, where sessions make theirs (`bin/refs work`), so a session's worktree is started, shown and
-searched like any other: `fcpm workshed start meet-says-more`. A bound name wins over a folder of the same name
-here. `follow` moves only a worktree following its own branch on the origin; a session's, cut from main and
-following it, is left as it is. Nothing removes a worktree with changes in it.
+```yaml
+sheds:
+  work: work          # a relative folder is from ~/code; ~ is home; any path will do
+origins: origins      # where each origin branch's shed is made
+```
 
-| file | |
+- **Bound sheds** are wherever a person prefers to keep worktrees: bay 1's `work` is `~/code/work`, where
+  sessions make theirs (`bin/refs work`), so a session's worktree is started, shown and searched like any other
+  (`fcpm workshed start meet-says-more`). Another might be a folder of someone's own clones, or one for a feature
+  branch that may become main one day. `work` is used when no shed is named.
+- **Origin branches' sheds** are the semi-managed series: one per origin branch (`origins/<branch>`), made the
+  first time someone asks to work in that branch, from Places or Fighter, and filled one worktree at a time at the
+  branch's pins ([consoles.md](consoles.md#places)).
+- A shed nobody bound, and that is no origin branch, is refused with where to bind it. Nothing makes a shed by
+  being asked for one, except an origin branch's.
+- `follow` moves only a worktree following its own branch on the origin; a session's, cut from main and
+  following it, is left as it is. Nothing removes a worktree with changes in it.
+
+| file, in `%LOCALAPPDATA%\editing-bay-1\workshed\` | |
 |---|---|
 | `workshed.log` | one line for each thing done: made, given a port, started, stopped, removed. Tail it to follow along |
 | `ports.json` | each worktree's port, 4100 and up, given the first time and kept |
 
-What each server says (its builds, its pages) is under `%LOCALAPPDATA%\editing-bay-1\workshed\`.
+What each server says (its builds, its pages) is beside them, a folder per worktree.
 
 Where the machine has a library, the workshed writes in its grant book ([library.md](library.md#the-grant-book)),
 seat `workshed`: a worktree made is a grant spent at once, and a served one is a grant its server's own process

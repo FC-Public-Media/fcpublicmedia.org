@@ -13,7 +13,7 @@ It prints Fighter's provider format (fighter: macos/Sources/Explorer/CommandProv
     # <owner>                          a group
     <name><TAB><path><TAB><detail>     a place; an empty path is offered, not here
 
-A repository's place is its worktree in the workshed's shed named for the branch, else its read-only mirror in
+A repository's place is its worktree in the branch's own shed (the workshed's `origins`, made when first asked for), else its read-only mirror in
 refs/, else nothing: offered, and the detail says what it needs. A worktree at the pin, in that shed, is
 `fcpm workshed new BRANCH --shed <origin branch> --repo <owner>/<repo> --from <pin>`. FIGHTER_MODE, as Fighter sets it, picks the
 branch when none is named. The helm serves the same at /places. Doc: docs/consoles.md, Places.
@@ -83,8 +83,15 @@ def mirror(owner_repo):
 
 
 def worktrees(shed, repo):
-    d = CODE / "workshed" / shed
-    return sorted(d.glob(repo + "@*")) if d.is_dir() else []
+    """The repository's worktrees in an origin branch's shed, wherever the workshed's `origins` puts them."""
+    if str(HERE) not in sys.path:
+        sys.path.append(str(HERE))
+    was, sys.dont_write_bytecode = sys.dont_write_bytecode, True     # machines/ holds only profiles (test_binding)
+    try:
+        d = __import__("workshed").shed_dirs().get(shed)
+    finally:
+        sys.dont_write_bytecode = was
+    return sorted(d.glob(repo + "@*")) if d is not None and d.is_dir() else []
 
 
 def rows(branch):

@@ -41,7 +41,8 @@ branch as `fcpm pull` last fetched it and asks nothing of the network.
 
 Each repository's place is, in order:
 
-1. **Its worktree** in the shed named for the branch (`~/code/workshed/origin/...`).
+1. **Its worktree** in the branch's own shed, in the workshed's `origins` folder (bay 1: `~/code/origins/origin/...`),
+   made the first time someone asks to work in that branch ([workshed.md](workshed.md#the-place)).
 2. **Its mirror** in `refs/`, read only. The detail says so, and says if the pin is not fetched there.
 3. **Nothing: offered.** It is pinned but not mirrored here (`refs.wanted`, then `fcpm pull`).
 

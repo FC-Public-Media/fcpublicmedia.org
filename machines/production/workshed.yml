@@ -1,5 +1,10 @@
-# Sheds bay 1 keeps outside ~/code/workshed, for `fcpm workshed` and the Helm's /workshed/: a name, and a
-# folder of <repo>@<branch> worktrees (relative to ~/code). As library.yml binds holdings. Doc: docs/workshed.md.
+# Bay 1's sheds, for `fcpm workshed`, the Helm's /workshed/ and Places: each a name and a folder of
+# <repo>@<branch> worktrees, wherever someone keeps them (relative to ~/code). As library.yml binds holdings.
+# There is no workshed folder: only these. Doc: docs/workshed.md.
 
 sheds:
-  work: work      # sessions' worktrees (bin/refs work): served, searched and shown like any other shed
+  work: work        # sessions' worktrees (bin/refs work), and anyone's who works there
+
+# A shed for each origin branch, made here the first time someone asks to work in that branch (fcpm places,
+# Fighter): origins/<branch>/<repo>@<branch>, at the branch's pins.
+origins: origins

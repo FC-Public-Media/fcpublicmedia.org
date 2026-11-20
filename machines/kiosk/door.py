@@ -4883,8 +4883,9 @@ def shed():
 def workshed_now(here=False):
     d = shed().everything()
     if not here:                                                # where things are on the disk is this computer's business
-        for k in ("root", "log", "node", "engine"):
+        for k in ("log", "node", "engine"):
             d[k] = "here" if d[k] else ""
+        d["sheds"] = {k: "here" for k in d["sheds"]}
         for w in d["worktrees"]:
             w["path"] = ""
     d["here"] = here

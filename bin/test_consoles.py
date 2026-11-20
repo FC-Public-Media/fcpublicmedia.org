@@ -23,6 +23,7 @@ sys.dont_write_bytecode = True                    # machines/ holds only profile
 sys.path.insert(0, str(REPO / "machines"))
 import consoles  # noqa: E402
 import places  # noqa: E402
+import workshed  # noqa: E402
 
 
 def git(*args, cwd):
@@ -123,10 +124,15 @@ class Places(unittest.TestCase):
         git("remote", "set-url", "origin", "https://github.com/owner/Demo.git", cwd=demo)
         self.code, self.was = code, places.CODE
         places.CODE = code
+        # The origin branches' sheds are the workshed's, placed by a binding of the test's own.
+        self.shed_was = workshed.CODE, workshed.BINDINGS
+        (code / "workshed.yml").write_text("origins: origins\n")
+        workshed.CODE, workshed.BINDINGS = code, [code / "workshed.yml"]
         os.environ.pop("FIGHTER_MODE", None)
 
     def tearDown(self):
         places.CODE = self.was
+        workshed.CODE, workshed.BINDINGS = self.shed_was
         self.tmp.cleanup()
 
     def test_an_origin_is_known_by_its_shape(self):
@@ -136,12 +142,12 @@ class Places(unittest.TestCase):
         self.assertEqual(places.pins("origin")["Owner/demo"], (self.pin, "tiliv"))
 
     def test_a_mirror_a_worktree_and_an_offer(self):
-        (self.code / "workshed" / "origin" / "demo@visit").mkdir(parents=True)
+        (self.code / "origins" / "origin" / "demo@visit").mkdir(parents=True)
         lines = places.listing().splitlines()
         self.assertEqual(lines[0], "@modes\torigin")
         self.assertEqual(lines[1], "# Owner")
         rows = [l.split("\t") for l in lines[2:]]
-        self.assertEqual(rows[0][:2], ["demo@visit", str(self.code / "workshed" / "origin" / "demo@visit")])
+        self.assertEqual(rows[0][:2], ["demo@visit", str(self.code / "origins" / "origin" / "demo@visit")])
         self.assertIn("worktree in the origin shed", rows[0][2])
         self.assertEqual(rows[1][:2], ["demo", str(self.code / "refs" / "demo")])
         self.assertEqual(rows[1][2], "pin %s, follows tiliv, mirror (read only)" % self.pin[:7])

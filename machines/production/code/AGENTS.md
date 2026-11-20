@@ -45,8 +45,9 @@ bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-n
 - Never work or commit in `refs/`. Each change gets `work/REPO@BRANCH` from `bin/refs work REPO
   BRANCH` (off `origin/main`), one session per worktree, its branch named for its purpose. A `gh stack`
   gets one worktree, `work/REPO@<stack>`, and its layers are switched inside it.
-- The workshed's sheds are `workshed/<shed>/` and every bound folder, `work/` among them (`docs/workshed.md`):
-  any worktree there is served by `fcpm workshed start BRANCH`. Asked to help in one, work in the worktree
+- The workshed is no folder: its sheds are bound in `machines/production/workshed.yml`, `work/` among them, and
+  `origins/<branch>` is made for an origin branch when first asked for (`docs/workshed.md`). Any worktree in a
+  shed is served by `fcpm workshed start BRANCH`. Asked to help in one, work in the worktree
   they show you; make or serve one only by `fcpm workshed` or `bin/refs`.
 - Commit each step as it lands; a draft Autumn wants to read first stays unpushed until she says. Push
   before telling her a PR is ready. Once it merges: `bin/refs done REPO BRANCH` and `bin/refs pull`;
