@@ -34,7 +34,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /depot/            what is on the studio drive, for the third panel
     GET /depot/now         the drive's index, as JSON. The page polls it
     GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
-    GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, from that page only
+    GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, {name, again} restarts ours, from that page only
     GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
     GET /deploy/now        the same as JSON, with the deploy's log where it runs here and the PRs waiting on main
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
@@ -3499,11 +3499,12 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(403, json.dumps({"why": "asked from another page"}), TYPES[".json"])
             try:
                 ask = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024)))
-                name, on = str(ask["name"]), bool(ask["on"])
+                name, again = str(ask["name"]), bool(ask.get("again"))
+                on = None if again else bool(ask["on"])
             except (ValueError, KeyError, TypeError):
                 return self.reply(400, json.dumps({"why": "asks for a name and on"}), TYPES[".json"])
-            log("broadcast: %s %s, from %s" % (name, "on" if on else "off", self.peer()))
-            return self.reply(200, json.dumps(broadcast_now(name, on)), TYPES[".json"])
+            log("broadcast: %s %s, from %s" % (name, "again" if again else "on" if on else "off", self.peer()))
+            return self.reply(200, json.dumps(broadcast_now(name, on, again)), TYPES[".json"])
         # The board's switches: asked here, by this computer's own page. A page from elsewhere may not ask.
         mine = here and (self.headers.get("Origin") or "null") in (
             "null", "http://localhost", "http://127.0.0.1", "http://[::1]",
@@ -4627,20 +4628,45 @@ def standby_now(on=None):
             "said": words.get(said.get("state"), said.get("why") or said.get("state") or "")}
 
 
-def broadcast_now(name=None, on=None):
-    """{"destinations": [{id, name, on}], "keyed": bool}, or {"why": ...} when the box can't say. Our
-    standby, where it runs here, is the last card, switched here without the box."""
+def relay_now(on=None, again=False):
+    """Our relay to YouTube's primary ingest, where this machine runs it: {name, on, again, said}, or None.
+    Switched by its files (relay.off, relay.again), which the relay reads every two seconds."""
+    try:
+        said = json.loads((STANDBY_STATE / "relay.json").read_text())
+    except (OSError, ValueError):
+        return None
+    off = STANDBY_STATE / "relay.off"
+    if on is not None:
+        if on:
+            off.unlink(missing_ok=True)
+        else:
+            off.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
+    if again and not off.exists():
+        (STANDBY_STATE / "relay.again").write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
+    pushing = said.get("state") == "pushing"
+    words = {"pushing": "Sending to YouTube's primary since %s" % (said.get("since") or "")[11:16],
+             "off": "Off: nothing of ours reaches YouTube's primary"}
+    return {"name": "YouTube", "on": not off.exists(), "free": True, "again": pushing and not off.exists(),
+            "said": words.get(said.get("state"), said.get("why") or said.get("state") or "")}
+
+
+OURS = ("YouTube", "Standby")                    # the cards switched here, without the box
+
+
+def broadcast_now(name=None, on=None, again=False):
+    """{"destinations": [{id, name, on}], "keyed": bool}, or {"why": ...} when the box can't say. Ours,
+    where they run here, are the last cards: the relay to YouTube's primary, then the standby."""
+    relay = relay_now(on if name == "YouTube" else None, again and name == "YouTube")
     standby = standby_now(on if name == "Standby" else None)
     try:
         hand = broadcast_hand()
-        out = {"destinations": hand.push(None if name == "Standby" else name, on), "keyed": hand.TOKEN.exists()}
+        out = {"destinations": hand.push(None if name in OURS else name, on), "keyed": hand.TOKEN.exists()}
     except SystemExit as exc:                    # cablecast.py says what went wrong, then exits
         out = {"why": str(exc.code), "destinations": []}
     except Exception as exc:
         log("broadcast: %r" % exc)
         out = {"why": "the box is not answering", "destinations": []}
-    if standby:
-        out["destinations"].append(standby)
+    out["destinations"] += [x for x in (relay, standby) if x]
     return out
 
 
@@ -4661,8 +4687,15 @@ BROADCAST_JS = """<script>
       p.textContent = x.said || (x.on ? 'Streaming' : 'Not streaming');
       go.textContent = x.on ? 'Stop' : 'Start';
       go.disabled = busy || !(d.keyed || x.free);
-      go.onclick = function () { flip(x.name, !x.on); };
+      go.onclick = function () { flip(x.name, {on: !x.on}, x.on ? 'Stopping ' : 'Starting '); };
       card.append(b, p, go);
+      if (x.again) {
+        var re = document.createElement('button');
+        re.textContent = 'Restart';
+        re.disabled = busy;
+        re.onclick = function () { flip(x.name, {again: true}, 'Restarting '); };
+        card.append(re);
+      }
       list.append(card);
     });
   }
@@ -4671,12 +4704,13 @@ BROADCAST_JS = """<script>
     fetch('/broadcast/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(show)
       .catch(function () { said.textContent = 'This machine is not answering'; });
   }
-  function flip(name, on) {
+  function flip(name, ask, doing) {
     busy = true;
     list.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
-    said.textContent = (on ? 'Starting ' : 'Stopping ') + name + '...';
+    said.textContent = doing + name + '...';
+    ask.name = name;
     fetch('/broadcast/push', {method: 'POST', headers: {'Content-Type': 'application/json'},
-                              body: JSON.stringify({name: name, on: on})})
+                              body: JSON.stringify(ask)})
       .then(function (r) { return r.json(); })
       .then(function (d) { busy = false; show(d); setTimeout(now, 4000); })
       .catch(function () { busy = false; now(); });
@@ -4687,6 +4721,7 @@ BROADCAST_JS = """<script>
 
 BROADCAST_CSS = BOARD_CSS + """
 .card.on { border-left-color:#3fb950; } .card button:disabled { opacity:.4; cursor:default; }
+.card { margin-bottom:1.5em; } .card button + button { margin-left:.6em; }
 #said { min-height:1.4em; }
 """
 
@@ -5290,6 +5325,7 @@ def broadcast_page():
     body = """%s<main>
 <h2>Channel 97, out</h2>
 <p class=dim>The Live 350 pushes the channel to each destination that is on. Stopping one is an outage there.
+YouTube is ours, the channel to YouTube's primary: Restart ends the push and starts it again, a few seconds dark.
 Standby is ours, on YouTube's backup: stopped, nothing but the 350 reaches YouTube, until it is started again.</p>
 <section class=here id=dests></section>
 <p class=dim id=said></p></main>%s""" % (masthead("%s &middot; broadcast" % e(socket.gethostname().lower())), BROADCAST_JS)
