@@ -64,7 +64,7 @@ If you need a la carte reservations on the venue itself, please reach out to
   <label class="check">
     <input type="checkbox" name="agree_terms" required>
     <span>I have read and agree to the <a href="{{ '/assets/docs/studio-terms.pdf' }}">Studio</a> and
-      <a href="{{ '/assets/docs/equipment-terms.pdf' }}">Equipment</a> Terms and Conditions.</span>
+      <a href="{{ '/assets/docs/2026 Revised Equipment Terms and Conditions.pdf' }}">Equipment</a> Terms and Conditions.</span>
   </label>
   <label class="check">
     <input type="checkbox" name="submit_terms" required>
