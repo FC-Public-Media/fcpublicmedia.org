@@ -7,14 +7,16 @@ their office. Every key the git account takes is forced through here.
     door serve OFFICE HOLDER      sshd runs this for a keyholder's key; never by hand
 
 A keyholder's remote is `git@origin.local:<owner>/<repo>`. Every repository can be fetched and
-pushed to. In one that lives on GitHub (it has a `github` remote), `main` and `github/*` are intake's:
-GitHub's main comes in by intake alone, so the LAN never goes around a merge there. Any other branch,
-and tags, may be pushed, and wait here, in view, for GitHub (door-hooks/pre-receive). The
-repositories themselves refuse rewriting and deleting. `init <owner>/<repo>` makes a new one, and only the
-secretary's office may. `dev on|off|status` is the LAN's dev switch (intake asks GitHub every 15
-minutes while on, weekly while off), and `relay on|off|status` the origin's mode (on: what is pushed
-here is carried out to GitHub on intake's pass; off: LAN-only, it waits here), any keyholder's. Each action is appended to
-/srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref before and after.
+pushed to, main included: main is ours, and in one that lives on GitHub (it has a `github` remote)
+intake merges GitHub's main into it and relay carries it out; only `github/*` is intake's alone
+(door-hooks/pre-receive). The repositories themselves refuse rewriting and deleting. `init <owner>/<repo>`
+makes a new one, and only the secretary's office may. `dev on|off|status` is the LAN's dev switch (intake
+asks GitHub every 15 minutes while on, weekly while off), and `relay on|off|status` the origin's mode (on:
+what is pushed here is carried out to GitHub on intake's pass; off: LAN-only, it waits here), any
+keyholder's. `hear main` answers with one line when any repository's main next moves (a push, or intake),
+or with nothing after five minutes: a machine that follows main waits on it instead of asking. Each action
+is appended to /srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref
+before and after; `hear` is not an action and is not recorded.
 
 `keys` keeps one marked block in authorized_keys and leaves every other line as it is. A KEYHOLDERS
 line is `office holder <key type> <key> since`; `-` for a key is an empty slot. A key backed by a
@@ -29,6 +31,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 ORIGIN = pathlib.Path(os.environ.get("FCPM_ORIGIN", "/srv/origin"))
@@ -38,6 +41,8 @@ BEGIN = "# BEGIN origin door: from machines/origin/KEYHOLDERS, written by `door 
 END = "# END origin door"
 DEV = ORIGIN / ".intake/dev"
 SWITCHES = {"dev": DEV, "relay": ORIGIN / ".intake/relay"}
+HEARD = (ORIGIN / ".door/actions.ndjson", ORIGIN / ".intake/actions.ndjson")
+HEAR_FOR = 300                          # seconds `hear main` waits before it answers with nothing
 TYPES = {"ssh-ed25519", "sk-ssh-ed25519@openssh.com", "ecdsa-sha2-nistp256", "sk-ecdsa-sha2-nistp256@openssh.com"}
 MAKERS = {"secretary"}
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -118,6 +123,39 @@ def where(arg):
     return "/".join(parts)
 
 
+def moved_main(line):
+    """Whether a log line says some repository's main moved: a door push, or intake's take (not its carry)."""
+    try:
+        row = json.loads(line)
+    except ValueError:
+        return False
+    if row.get("verb") == "push":
+        return bool(row.get("ok")) and "refs/heads/main" in (row.get("moved") or {})
+    return bool(row.get("did")) and "ref" not in row and row.get("state") != "conflict"
+
+
+def hear():
+    """One line when any repository's main next moves, or nothing after HEAR_FOR seconds."""
+    at = {f: f.stat().st_size if f.exists() else 0 for f in HEARD}
+    end = time.monotonic() + HEAR_FOR
+    while time.monotonic() < end:
+        for f in HEARD:
+            size = f.stat().st_size if f.exists() else 0
+            if size < at[f]:
+                at[f] = 0               # the log was started again
+            if size > at[f]:
+                with f.open("rb") as fh:
+                    fh.seek(at[f])
+                    chunk = fh.read(size - at[f])
+                done = chunk.rfind(b"\n") + 1
+                at[f] += done
+                for line in chunk[:done].decode("utf-8", "replace").splitlines():
+                    if moved_main(line):
+                        print(line, flush=True)
+                        return
+        time.sleep(1)
+
+
 def serve(office, holder):
     asked = os.environ.get("SSH_ORIGINAL_COMMAND", "")
     who = {"office": office, "holder": holder}
@@ -126,7 +164,10 @@ def serve(office, holder):
     except ValueError:
         words = []
     if len(words) != 2:
-        refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`) and flips dev or relay", asked=asked, **who)
+        refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`), flips dev or relay, and hears main", asked=asked, **who)
+    if words == ["hear", "main"]:
+        hear()
+        return
     if words[0] in SWITCHES:
         name, flag = words[0], SWITCHES[words[0]]
         if words[1] == "on":

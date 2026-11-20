@@ -70,14 +70,30 @@ class Door(unittest.TestCase):
         self.assertEqual((push["office"], push["holder"], push["ok"]), ("technology", "Tester", True))
         self.assertEqual(push["moved"]["refs/heads/main"], [None, head])
 
-    def test_main_of_a_repository_on_github_is_intakes(self):
+    def test_main_of_a_repository_on_github_is_ours_and_github_main_is_intakes(self):
         work = self.clone("FC-Public-Media/hub")
         self.commit(work, "x")
-        for ref in ("main", "github/main"):
-            run = self.git("push", "-q", "origin", f"HEAD:{ref}", cwd=work, check=False)
-            self.assertNotEqual(run.returncode, 0, ref)
-            self.assertIn("by intake", run.stderr)
-        self.assertEqual(self.git("-C", str(self.origin / "FC-Public-Media/hub"), "for-each-ref").stdout, "")
+        run = self.git("push", "-q", "origin", "HEAD:github/main", cwd=work, check=False)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("intake", run.stderr)
+        self.git("push", "-q", "origin", "HEAD:main", cwd=work)
+        held = self.git("-C", str(self.origin / "FC-Public-Media/hub"), "for-each-ref", "--format=%(refname)").stdout.split()
+        self.assertEqual(held, ["refs/heads/main"])
+
+    def test_hear_main_answers_when_main_moves(self):
+        hear = subprocess.Popen([sys.executable, "-I", str(DOOR), "serve", "technology", "Tester"],
+                                env=dict(self.env, SSH_ORIGINAL_COMMAND="hear main"), stdout=subprocess.PIPE, text=True)
+        import time
+        time.sleep(1.5)
+        work = self.clone("FC-Public-Media/lan")
+        self.commit(work, "a")
+        self.git("push", "-q", "origin", "HEAD:refs/heads/side", cwd=work)    # not main: not heard
+        self.git("push", "-q", "origin", "HEAD:main", cwd=work)
+        out, _ = hear.communicate(timeout=10)
+        row = json.loads(out)
+        self.assertEqual((row["verb"], row["repo"]), ("push", "FC-Public-Media/lan"))
+        self.assertIn("refs/heads/main", row["moved"])
+        self.assertNotIn("hear", [r["verb"] for r in self.log()])
 
     def test_a_branch_waits_at_the_origin_for_github(self):
         work = self.clone("FC-Public-Media/hub")

@@ -1,0 +1,52 @@
+#!/bin/sh
+# refresh -- the site's data, from where it lives, committed to origin.local's main (../../docs/programming.md#sync-jobs):
+# Cablecast's catalog and schedule, the IRS nonprofit list. The crew runs it daily
+# (`refresh at`); it refreshes when main's last refresh is a week old, or now with `refresh now`. It works
+# in a clone of its own under ~/.cache, so no checkout here is touched. A source that fails keeps what
+# main has. Its push moves main, so every follower hears it (the origin's `hear main`) and the LAN's site
+# is rebuilt with it.
+set -u
+O=${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}
+URL="$O/FC-Public-Media/fcpublicmedia.org"
+W=${XDG_CACHE_HOME:-$HOME/.cache}/fcpm/refresh/fcpublicmedia.org
+SUBJECT="Refresh the site's data"
+WEEK=$((7 * 86400 - 3600))     # an hour short of a week, so a daily run at the same minute is never a day late
+
+[ -d "$W/.git" ] || { mkdir -p "$(dirname "$W")" && GIT_TERMINAL_PROMPT=0 git clone -q "$URL" "$W"; } || exit 1
+cd "$W" || exit 1
+git remote set-url origin "$URL"
+git fetch -q origin main || { echo "refresh: the origin did not answer"; exit 1; }
+git -c advice.detachedHead=false checkout -q --detach origin/main && git reset -q --hard && git clean -qfd -- site || exit 1
+
+last=$(git log -1 --format=%ct --grep="^$SUBJECT" origin/main)
+if [ "${1:-}" != now ] && [ -n "$last" ] && [ $(( $(date +%s) - last )) -lt $WEEK ]; then
+  exit 0
+fi
+
+export SYNC_STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"    # cablecast.json `fetched`
+err=$(mktemp)
+said=""
+for step in site/bin/sync-cablecast.py site/bin/sync-schedule.py site/bin/sync-nonprofits.py; do
+  if python3 "$step" >/dev/null 2>"$err"; then
+    said="$said
+refreshed: $step"
+  else
+    said="$said
+kept main's copy: $step failed: $(tail -n 1 "$err")"
+  fi
+done
+rm -f "$err"
+echo "$said" | sed '/^$/d'
+
+git add -A -- site/_data site/assets/nonprofits.json
+if git diff --cached --quiet; then
+  echo "refresh: nothing changed"
+  exit 0
+fi
+git -c user.name="FCPM Digitization" -c user.email="digitization@digitization.local" -c commit.gpgsign=false \
+  commit -q -m "$SUBJECT" -m "$(echo "$said" | sed '/^$/d')" || exit 1
+# Main moved while this ran: the data goes on top of it, once.
+git push -q origin HEAD:main \
+  || { git fetch -q origin main && git rebase -q origin/main && git push -q origin HEAD:main; } \
+  || { echo "refresh: the origin did not take it"; exit 1; }
+echo "refresh: $(git rev-parse --short HEAD) on main ($(git diff --stat HEAD~1 | tail -n 1 | sed 's/^ *//'))"

@@ -11,14 +11,19 @@ Changing anything on the box (our show fields, the schedule) takes a token: [mac
 
 | script in `site/bin/` | reads | writes | run by |
 |---|---|---|---|
-| `sync-cablecast.py` | Cablecast catalog | `site/_data/cablecast.json` | `bin/deploy-site`, every deploy |
-| `sync-schedule.py` | Cablecast schedule, 365 days | `site/_data/airings.json` | the same job |
-| `sync-feeds.py` | `site/_data/feeds.yml` | `site/_data/member_programs.json` | `sync-feeds.yml`, daily and on `feeds.yml` push |
+| `sync-cablecast.py` | Cablecast catalog | `site/_data/cablecast.json` | digitization's `refresh`, weekly |
+| `sync-schedule.py` | Cablecast schedule, 365 days | `site/_data/airings.json` | the same |
+| `sync-nonprofits.py` | IRS master file, region 3 | `site/assets/nonprofits.json` | the same |
+| `sync-feeds.py` | `site/_data/feeds.yml` | `site/_data/member_programs.json` | by hand (no `feeds.yml` today) |
 | `sync-calendar.py` | a published ICS calendar | `site/_data/calendar.json` | by hand |
 | `propose-shows.py` | `cablecast.json`, `_shows/` | `_shows/<slug>.md` | `propose-shows.yml`, monthly (GitHub; opens pull requests) |
 
-Standard-library Python except `sync-feeds.py` (PyYAML). `bin/deploy-site` runs the first two, and
-`sync-nonprofits.py` (`site/assets/nonprofits.json`), in its copy of HEAD; nothing commits what they fetch.
+Standard-library Python except `sync-feeds.py` (PyYAML). The data lives on main: digitization's crew line
+`refresh` ([`machines/digitization/refresh`](../machines/digitization/refresh)) runs the first three in a clone
+of origin.local's main once a week (the crew asks daily at 03:53; it refreshes when main's last
+"Refresh the site's data" commit is a week old) and pushes what changed to main. A source that fails keeps
+main's copy. `refresh now` does it at once. The push wakes every follower, so the LAN's site has it
+within the minute, and `bin/deploy-site` fetches nothing: it uploads what main has.
 
 - **cablecast.json**: titled programs, newest first; untitled records are only counted
   (`untitled_omitted`); programs without a VOD stay as `watchable: false`. `local` marks categories

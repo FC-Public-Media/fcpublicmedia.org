@@ -12,10 +12,14 @@ A repository new on GitHub under an owner the origin keeps (KEEP, by name) gets 
 here first, then comes in like the rest; other owners' repositories are only the ones already here.
 The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`).
 
+Main is ours: keyholders push it here, and GitHub's main is merged into it (fast-forward, or a clean
+merge; a conflict is recorded and main left alone).
+
 Relay (.intake/relay, `relay on|off`): on, the origin is a full relay. On the same pass it carries out
-to GitHub each branch and tag a keyholder pushed through the door since the last pass (the door's
-log says which): fast-forward only, never forced, never main or github/*, never a repository
-that began here, and never the library's branches (LAN_ONLY), which are the LAN's in every repository. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
+to GitHub main wherever ours is ahead of GitHub's, and each branch and tag a keyholder pushed through
+the door since the last pass (the door's log says which): fast-forward only, never forced, never
+github/*, never a repository that began here, and never the library's branches (LAN_ONLY), which are
+the LAN's in every repository. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
 person. Only what was pushed through the door is ever carried, so a branch GitHub merged and
 deleted is not brought back. Off, the origin is LAN-only: it pulls, and what is pushed waits here.
 Runs as the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
@@ -214,6 +218,27 @@ def switched_on(size):
     return at
 
 
+def carry_main(names):
+    """Main, out to GitHub in each repository where ours is ahead of GitHub's (relay on)."""
+    rows = []
+    for full in names:
+        p = os.path.join(ORIGIN, full)
+        ours, theirs = ref(p, "refs/heads/main"), ref(p, "refs/heads/github/main")
+        if not ours or not theirs or ours == theirs or not is_ancestor(p, theirs, ours):
+            continue
+        out = git(p, *CRED, "push", "-q", "github", "%s:refs/heads/main" % ours, check=False, timeout=180)
+        row = {"repo": full, "ref": "refs/heads/main", "sha": ours}
+        if out.returncode == 0:
+            git(p, "update-ref", "refs/heads/github/main", ours, theirs)
+            row.update(state="carried", did="carried out to GitHub")
+        elif "non-fast-forward" in out.stderr or "fetch first" in out.stderr:
+            row.update(state="diverged", did="GitHub's main moved since this pass looked; merged on the next")
+        else:
+            row.update(state="error", error=out.stderr.strip()[-300:])
+        rows.append(row)
+    return rows
+
+
 def carry():
     """Branches and tags pushed through the door since the last pass, out to GitHub (relay on)."""
     try:
@@ -311,7 +336,7 @@ def main():
             except Exception as e:
                 row = {"repo": full, "state": "error", "error": str(e)[-500:]}
             rows.append(row)
-        carried = carry() if os.path.exists(RELAY) and not offline else []
+        carried = carry_main([n for n in names if n in remote]) + carry() if os.path.exists(RELAY) and not offline else []
         stamp = now()
         with open(ACTIONS, "a") as log:
             for row in rows + carried:

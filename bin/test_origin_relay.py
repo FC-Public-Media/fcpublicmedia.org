@@ -142,11 +142,18 @@ class Relay(unittest.TestCase):
             self.assertEqual(self.on_github(f"refs/heads/{b}"), "", f"{b} reached GitHub")
         self.assertEqual(self.intake.carry(), [], "a LAN-only branch is not tried again")
 
-    def test_main_is_never_carried(self):
+    def test_our_main_goes_out_when_it_is_ahead(self):
         w = self.work()
         self.commit(w, "e")
-        self.assertNotEqual(self.git("push", "-q", "origin", "main", cwd=w, check=False).returncode, 0)
-        self.assertEqual(self.intake.carry(), [])
+        self.git("push", "-q", "origin", "main", cwd=w)
+        self.assertEqual(self.intake.carry(), [], "main is not a door branch")
+        head = self.git("rev-parse", "HEAD", cwd=w).stdout.strip()
+        rows = self.intake.carry_main(["FC-Public-Media/hub"])
+        self.assertEqual([(r["ref"], r["state"]) for r in rows], [("refs/heads/main", "carried")])
+        self.assertEqual(self.on_github("refs/heads/main"), head)
+        hub = self.origin / "FC-Public-Media/hub"
+        self.assertEqual(self.git("-C", str(hub), "rev-parse", "github/main").stdout.strip(), head)
+        self.assertEqual(self.intake.carry_main(["FC-Public-Media/hub"]), [], "even now: nothing to carry")
 
 
 if __name__ == "__main__":
