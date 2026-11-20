@@ -51,7 +51,9 @@ Cablecast once (`cablecast.py lay <checkout> [date] [days]`) and ours from then 
 that first: one column, a minute of air to four pixels, each gap left empty at its real size with
 what fills it (the bulletin board). Cablecast's own copy of the day is read beside it, and where the
 two differ is marked at the column's edge; a later change on Cablecast's side is offered in the bar,
-never drawn in under someone's hand. Clicking a gap or an airing opens the reserve: every show,
+never drawn in under someone's hand. The outline at the left is the same day as a list, without
+lengths: what is on the air is lit (a red line where the bulletin board is on), and a line takes the
+column to its airing and offers its YouTube mark (below, "Not to YouTube"). Clicking a gap or an airing opens the reserve: every show,
 narrowed to that category and to what fits, least lately aired first. Each request to the box shows
 in the bar while it runs.
 
@@ -177,6 +179,24 @@ Helm's `/broadcast/` page: Stop puts `standby.off` beside `standby.json`, and wh
 of ours is sent to YouTube, claims or none, across restarts, until Start takes it away. The floor goes
 on for the LAN either way. Any
 machine on the LAN can claim; the channel's own stream rides the primary ingest either way.
+
+### Not to YouTube
+
+Cable carries everything scheduled; YouTube need not. An episode may be kept off YouTube: music YouTube
+flags, or a member who doesn't want it there, are the same case to us. The mark is ours, never asked of
+the member: `youtube.scopes` at the top of the broadcast repository, `show.<id>.youtube.no` (Cablecast's
+show id, so every airing of the episode), with `show.<id>.title.<title>` beside it for people. It is set
+on ch97's outline (Keep off YouTube / Send to YouTube), which goes through Helm's door
+(`POST /broadcast/youtube`) to [`youtube.py`](youtube.py): it commits in the crew's checkout, as the
+machine, and pushes to our origin. `youtube.py` alone lists the marks and what is on our push now;
+`youtube.py mark SHOW no|yes` is the same from a shell.
+
+While a marked airing is on our push (about 30 s behind the room, with 15 s to spare at each end), the
+relay holds the primary off and says so (`held`, on Helm's YouTube card): YouTube falls to the backup,
+the floor. After it, the relay starts the primary again and claims the air for about 25 s, so the floor
+stands aside, YouTube takes the primary (it never switches back on its own), and the floor stands by
+again. With the floor switched off, YouTube gets nothing of ours while the hold lasts. The relay asks
+the box every 20 s; if the box doesn't answer, a hold already on is kept to its end.
 
 ## The standby page
 

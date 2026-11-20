@@ -9,7 +9,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); }
-#ch97 { display: grid; grid-template-columns: minmax(28rem, 1.3fr) minmax(24rem, 1fr); height: 100vh; }
+#ch97 { display: grid; grid-template-columns: minmax(40rem, 1.6fr) minmax(22rem, 1fr); height: 100vh; }
 .pane { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--rule); }
 .bar { display: flex; align-items: baseline; gap: 1rem; padding: .45rem .8rem; background: var(--signal);
        font-weight: 700; white-space: nowrap; }
@@ -24,6 +24,23 @@ html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink
         display: flex; gap: 1.2rem; }
 .foot b { color: var(--ink); font-weight: 600; }
 .scroll { flex: 1; overflow: auto; position: relative; }
+.split { flex: 1; display: grid; grid-template-columns: minmax(13rem, 18rem) 1fr; min-height: 0; }
+
+/* The outline: the day as a list, no lengths; a line takes the scroll to its airing. */
+.outline { overflow: auto; border-right: 1px solid var(--rule); font-size: .82rem; padding-bottom: 2rem; }
+.line { padding: .3rem .6rem; border-bottom: 1px solid var(--paper-alt); cursor: pointer; line-height: 1.2; }
+.line:hover, .line.chosen { background: var(--paper-alt); }
+.line.on { background: var(--signal); }
+.line .at { color: var(--ink-soft); font-variant-numeric: tabular-nums; margin-right: .4rem; }
+.line .t { font-weight: 600; }
+.line .tag, .airing .at.no { color: var(--record); font-weight: 600; }
+.line .tag { display: block; font-size: .75rem; }
+.line .yt { display: block; margin-top: .35rem; color: var(--ink-soft); cursor: default; }
+.line .yt button { font: inherit; font-weight: 700; display: block; margin-top: .25rem; padding: .25rem .5rem;
+                   background: var(--signal); color: var(--ink); border: 0; cursor: pointer; }
+.line .yt button:disabled { opacity: .4; }
+.nowline { border-top: 2px solid var(--record); }
+.airing.no { border-left: 4px solid var(--record); }
 
 /* The day: one column, a minute = --px. */
 .day { position: relative; margin: 0 1rem 2rem 4.2rem; }

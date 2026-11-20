@@ -15,6 +15,8 @@ ends the stream, ffmpeg ends, and this waits for it to come back; meanwhile YouT
 its backup ingest. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json for any screen.
 Its switches are files beside that (Helm's /broadcast/ card): relay.off, while there, nothing is
 pushed; relay.again, once there, ffmpeg is ended and started again, and the file taken away.
+An episode marked not for YouTube (./youtube.py) is held off the primary while it is on our push, so
+YouTube shows the backup; after it, the floor stands aside for a moment so YouTube comes back to us.
 ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import datetime
@@ -27,6 +29,9 @@ import threading
 import time
 import urllib.request
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import youtube  # noqa: E402  the episodes marked not for YouTube
+
 KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
 STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json"
 OFF = STATE.with_name("relay.off")        # the switch: there, nothing is pushed to YouTube
@@ -38,6 +43,8 @@ STAT = "http://127.0.0.1:1936/stat"
 WATCH = 5         # seconds between two reads of the ingest's counters, to see the channel arrive
 STALL = 60        # seconds of no output before ffmpeg is stopped
 WAIT = 10         # seconds between tries while nothing arrives or there is no key
+CHECK = 20        # seconds between asking whether a marked episode is on our push
+AIR = "http://127.0.0.1:8482/air"   # standby's claims: while one is fresh the floor is not sent to YouTube
 
 
 def now():
@@ -71,7 +78,35 @@ def arriving():
     return second is not None and second > first, second
 
 
-def push(target, key):
+GATE = {"at": 0.0, "held": None}
+
+
+def gate():
+    """The marked airing on our push now, or None. If the box doesn't answer, a hold already on is kept to its end."""
+    if time.time() - GATE["at"] >= CHECK:
+        try:
+            got = youtube.held()
+        except (Exception, SystemExit) as e:   # cablecast.py exits on an answer it can't use
+            last = GATE["held"]
+            got = last if last and last["until"].timestamp() > time.time() else None
+            print(f"relay: the box didn't say what is on ({type(e).__name__}: {e}"[:200] + ")", flush=True)
+        GATE.update(at=time.time(), held=got)
+    return GATE["held"]
+
+
+def hand_back():
+    """After a hold: the floor stands aside for about 25 s, so YouTube takes our primary again, then stands by."""
+    time.sleep(8)
+    for _ in range(2):
+        try:
+            urllib.request.urlopen(urllib.request.Request(
+                AIR, data=b'{"holder": "primary, after a hold"}', headers={"Content-Type": "application/json"}), timeout=5)
+        except OSError:
+            return
+        time.sleep(10)
+
+
+def push(target, key, after_hold=False):
     run = subprocess.Popen(
         ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "warning", "-rtmp_live", "live",
          "-rtmp_buffer", "3000", "-i", SOURCE, "-map", "0:v:0", "-map", "0:a:0", "-c", "copy",
@@ -87,9 +122,12 @@ def push(target, key):
                 seen.update(at=time.time(), out=line)
 
     threading.Thread(target=progress, daemon=True).start()
+    if after_hold:
+        threading.Thread(target=hand_back, daemon=True).start()
     while run.poll() is None:
         stop = (f"no output for {STALL} s; ffmpeg stopped" if time.time() - seen["at"] > STALL else
-                "stopped on Helm" if OFF.exists() else "started again on Helm" if AGAIN.exists() else None)
+                "stopped on Helm" if OFF.exists() else "started again on Helm" if AGAIN.exists() else
+                "an episode not for YouTube is on" if gate() else None)
         if stop:
             AGAIN.unlink(missing_ok=True)
             note(state="stalled" if "output" in stop else "stopped", why=stop, target=target)
@@ -104,10 +142,20 @@ def push(target, key):
 
 
 def main(check, target):
+    holding = False
     while True:
         AGAIN.unlink(missing_ok=True)       # nothing pushing, so nothing to start again
         if OFF.exists() and not check:
             note(state="off", why="stopped on Helm: nothing of ours reaches YouTube's primary")
+            time.sleep(2)
+            continue
+        held = gate()
+        if held and not check:
+            floor = "the backup has YouTube" if not OFF.with_name("standby.off").exists() else \
+                "the backup is off, so YouTube gets nothing of ours"
+            note(state="held", why=f"{held['title']} is not for YouTube; {floor} until "
+                                   f"{held['until'].astimezone().strftime('%H:%M')}", target=target)
+            holding = True
             time.sleep(2)
             continue
         key = KEY.read_text().strip() if KEY.exists() else ""
@@ -123,11 +171,13 @@ def main(check, target):
             elif not key:
                 note(state="waiting", why=f"the channel arrives; no key in {KEY}")
         if check:
-            print(json.dumps({"source": SOURCE, "arriving": flowing, "bytes_in": got,
-                              "key": bool(key), "target": INGEST[target].format(key="<key>")}, indent=1))
+            print(json.dumps({"source": SOURCE, "arriving": flowing, "bytes_in": got, "key": bool(key),
+                              "target": INGEST[target].format(key="<key>"),
+                              "held": held and f"{held['title']} until {held['until'].astimezone():%H:%M}"}, indent=1))
             return
         if flowing and key:
-            push(target, key)
+            push(target, key, after_hold=holding)
+            holding = False
             continue
         time.sleep(WAIT)
 
