@@ -18,4 +18,5 @@ groups:
       CLOUDFLARE_ACCOUNT_ID:
         shape: hex32
         may: names autumn-e2c (not secret; kept with its token)
-        from: "Cloudflare dashboard, autumn-e2c: the account's home page, Account ID"
+        from token: CLOUDFLARE_API_TOKEN
+        from: "Cloudflare itself, asked with the token: the one account it answers for. Never typed"

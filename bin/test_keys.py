@@ -109,6 +109,37 @@ class Keys(unittest.TestCase):
         self.assertTrue(all("fcpm-projects" in l for l in asked if " layers " in l), asked)
         self.assertTrue(all("keychain.invalid" in l for l in asked if " cloudflare " in l), asked)
 
+    def test_an_account_comes_from_its_token_never_from_a_person(self):
+        self.ledger.write_text(self.ledger.read_text().replace(
+            "{shape: hex32, may: names it, from: a test}", "{shape: hex32, may: names it, from: a test, from token: CLOUDFLARE_API_TOKEN}"))
+        seen = []
+
+        class Cloudflare(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen.append((self.path, self.headers["Authorization"]))
+                body = json.dumps({"success": True, "result": [{"id": "b" * 32, "name": "one"}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        api = http.server.HTTPServer(("127.0.0.1", 0), Cloudflare)
+        threading.Thread(target=api.serve_forever, daemon=True).start()
+        self.addCleanup(api.shutdown)
+        env = dict(FCPM_KEYS_LEDGER=str(self.ledger), FCPM_CLOUDFLARE_API="http://127.0.0.1:%d" % api.server_port)
+        self.assertIn("comes from CLOUDFLARE_API_TOKEN by itself", keys("check", **env).stdout)
+        (self.tmp / "held").mkdir(mode=0o700)
+        (self.tmp / "held" / "cloudflare.env").write_text("CLOUDFLARE_API_TOKEN=s3cret\n")
+        out = keys("run", "cloudflare", "--", "sh", "-c", 'echo "$CLOUDFLARE_ACCOUNT_ID"', **env)
+        self.assertEqual(out.stdout.strip(), "b" * 32, out.stderr)
+        self.assertEqual(seen, [("/accounts", "Bearer s3cret")])
+        self.assertIn("CLOUDFLARE_ACCOUNT_ID=" + "b" * 32, (self.tmp / "held" / "cloudflare.env").read_text())
+        keys("run", "cloudflare", "--", "true", **env)
+        self.assertEqual(len(seen), 1)                                # kept: Cloudflare is asked once
+
     def test_birth_makes_one_key_and_shows_only_its_public_half(self):
         home = dict(HOME=str(self.tmp), USERPROFILE=str(self.tmp), FCPM_BIRTH_FILE="1",
                     FCPM_BIRTH_HELM="http://127.0.0.1:9")                # nothing answers: never this machine's helm

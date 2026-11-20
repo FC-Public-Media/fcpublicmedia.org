@@ -17,7 +17,8 @@ groups:
       CLOUDFLARE_ACCOUNT_ID:
         shape: hex32
         may: names FCPM's Cloudflare account, the org account (not secret; kept with its token)
-        from: "Cloudflare dashboard, FCPM's Cloudflare account (the org account): the account's home page, Account ID"
+        from token: CLOUDFLARE_API_TOKEN
+        from: "Cloudflare itself, asked with the token: the one account it answers for. Never typed"
         issued: not held
 
   library:
