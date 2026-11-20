@@ -126,7 +126,10 @@ primary ingest by RTMPS, as it arrives, once the counters show the channel movin
 stops for a minute it is ended and started again; if the 350 goes, the ingest ends the stream and the
 relay waits for it, while YouTube shows the floor (below). Latency is spent for steadiness: a three
 second read buffer, one encode (the 350's), one hop on the LAN, one to YouTube. `relay --check` says
-what it sees; `relay.json` keeps it for any screen.
+what it sees; `relay.json` keeps it for any screen. Helm's `/broadcast/` page shows it as the YouTube
+card: Stop puts `relay.off` beside `relay.json` and nothing of ours reaches the primary until Start
+takes it away; Restart puts `relay.again` there, and the relay ends its push and starts it again (a few
+seconds dark), which gives YouTube a fresh connection when a broadcast won't start.
 
 Whether the 350 pushes is a switch: attaching the destination (`addOutput`, a forced event) starts
 the push and detaching it (`removeOutput`) stops it. Destinations themselves are made and edited

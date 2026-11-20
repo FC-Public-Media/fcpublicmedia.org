@@ -13,6 +13,8 @@ Nothing is pushed until the ingest's counters show the channel arriving (a publi
 bytes growing), and ffmpeg is stopped when its output stops moving. When the channel goes, the ingest
 ends the stream, ffmpeg ends, and this waits for it to come back; meanwhile YouTube has the floor on
 its backup ingest. What it saw is kept in ~/.local/state/fcpm/broadcast/relay.json for any screen.
+Its switches are files beside that (Helm's /broadcast/ card): relay.off, while there, nothing is
+pushed; relay.again, once there, ffmpeg is ended and started again, and the file taken away.
 ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import datetime
@@ -27,6 +29,8 @@ import urllib.request
 
 KEY = pathlib.Path.home() / ".config/fcpm/youtube.key"
 STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json"
+OFF = STATE.with_name("relay.off")        # the switch: there, nothing is pushed to YouTube
+AGAIN = STATE.with_name("relay.again")    # a restart asked for: the push ends, then starts again
 INGEST = {"primary": "rtmps://a.rtmp.youtube.com/live2/{key}",
           "backup": "rtmps://b.rtmp.youtube.com/live2/{key}?backup=1"}
 SOURCE = "rtmp://127.0.0.1:1935/ch97/air"     # the ingest, where the channel arrives
@@ -84,8 +88,11 @@ def push(target, key):
 
     threading.Thread(target=progress, daemon=True).start()
     while run.poll() is None:
-        if time.time() - seen["at"] > STALL:
-            note(state="stalled", why=f"no output for {STALL} s; ffmpeg stopped", target=target)
+        stop = (f"no output for {STALL} s; ffmpeg stopped" if time.time() - seen["at"] > STALL else
+                "stopped on Helm" if OFF.exists() else "started again on Helm" if AGAIN.exists() else None)
+        if stop:
+            AGAIN.unlink(missing_ok=True)
+            note(state="stalled" if "output" in stop else "stopped", why=stop, target=target)
             run.terminate()
             try:
                 run.wait(10)
@@ -98,6 +105,11 @@ def push(target, key):
 
 def main(check, target):
     while True:
+        AGAIN.unlink(missing_ok=True)       # nothing pushing, so nothing to start again
+        if OFF.exists() and not check:
+            note(state="off", why="stopped on Helm: nothing of ours reaches YouTube's primary")
+            time.sleep(2)
+            continue
         key = KEY.read_text().strip() if KEY.exists() else ""
         try:
             flowing, got = arriving()
