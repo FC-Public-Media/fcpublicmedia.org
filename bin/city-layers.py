@@ -9,8 +9,11 @@ things there by their shape.geojson and writes LAYER.scopes into their folders, 
     districts  the council district, precinct and state senate and house districts each place and stop is in;
                districts/<n>/ (the city's DistrictPrecinct layer)
     trails     the named trails, what they are, and the places they pass; trails/<name>/ (the city's Trails layer)
-    osm        what OpenStreetMap maps inside each park and natural area: playgrounds, dog parks, toilets, fields
-               (asked of Overpass at most once a week; © OpenStreetMap contributors, ODbL)
+    osm        what OpenStreetMap maps inside each park and natural area, in its own tags: leisure.playground,
+               amenity.toilets, leisure.pitch.sport.tennis (Overpass, at most once a week; © OpenStreetMap contributors, ODbL)
+
+Every value is the source's own, as it sent it: nothing is rounded, recased or renamed. What is ours is said as
+ours: which thing a line is about, what is near or inside what, and a trail's segment count and length total.
 
 A layer removes only its own files and starts again, so dropping one and reading it again is ordinary. It never
 writes another reader's lines: where two disagree, both stand. layers.md says where each came from. Doc:
@@ -36,15 +39,12 @@ OSM_AGE = 7                                     # days before Overpass is asked 
 TRAIL_REACH = 50                                # metres from a place's edge that a trail counts as passing it
 OSM_REACH = 15                                  # metres: a mapped thing just over a park's line is still in it
 
-# OpenStreetMap's tags, as the words a person would ask with; a pitch also says its sport.
-OSM_KINDS = {("leisure", "playground"): "playground", ("leisure", "dog_park"): "dog park",
-             ("leisure", "pitch"): "field", ("leisure", "fitness_station"): "fitness station",
-             ("leisure", "picnic_table"): "picnic table", ("tourism", "picnic_site"): "picnic site",
-             ("leisure", "skatepark"): "skate park", ("leisure", "swimming_pool"): "pool",
-             ("leisure", "disc_golf_course"): "disc golf", ("leisure", "water_park"): "water park",
-             ("leisure", "track"): "track", ("amenity", "toilets"): "toilets",
-             ("amenity", "drinking_water"): "drinking water", ("amenity", "shelter"): "shelter",
-             ("amenity", "bbq"): "grill", ("leisure", "garden"): "garden", ("leisure", "bandstand"): "bandstand"}
+# The OpenStreetMap tags asked for; each is written as OpenStreetMap wrote it (has.leisure.playground), with its sport.
+OSM_TAGS = (("leisure", "playground"), ("leisure", "dog_park"), ("leisure", "pitch"), ("leisure", "fitness_station"),
+            ("leisure", "picnic_table"), ("tourism", "picnic_site"), ("leisure", "skatepark"), ("leisure", "swimming_pool"),
+            ("leisure", "disc_golf_course"), ("leisure", "water_park"), ("leisure", "track"), ("amenity", "toilets"),
+            ("amenity", "drinking_water"), ("amenity", "shelter"), ("amenity", "bbq"), ("leisure", "garden"),
+            ("leisure", "bandstand"))
 
 
 def things(city):
@@ -78,14 +78,17 @@ def clear(city, layer):
 def districts(city, t):
     data, meta = cs.fetch("districts.geojson", cs.HUB % "DistrictPrecinct")
     precincts = []
-    for f in json.loads(data)["features"]:
-        p = f["properties"]
+    for f, said in zip(json.loads(data)["features"], json.loads(data, parse_float=str)["features"]):
+        p = said["properties"]
         if f.get("geometry") and p.get("DIST"):
             precincts.append((p, cs.Place("precinct", str(p.get("PRECT")), f["geometry"])))
     clear(city, "districts")
     by = {}
     for p, shape in precincts:
-        d = by.setdefault(int(p["DIST"]), {"member": p.get("NAME"), "precincts": set(), "senate": set(), "house": set(), "in": set()})
+        d = by.setdefault(int(p["DIST"]), {"names": set(), "members": set(), "precincts": set(), "senate": set(), "house": set(), "in": set()})
+        for k, f in (("names", "DIST_LEGEND"), ("members", "NAME")):
+            if cs.as_is(p.get(f)) is not None:
+                d[k].add(str(p[f]))
         d["precincts"].add(str(p.get("PRECT")))
         for k, f in (("senate", "SENATE"), ("house", "HOUSE")):
             if p.get(f):
@@ -106,7 +109,7 @@ def districts(city, t):
             cs.put(folder / "districts.scopes", in_lines(root, hit[0]))
     for n, d in sorted(by.items()):
         root = ("district", n)
-        rows = [root, root + ("name", "District %d" % n), root + ("member", cs.titled(d["member"] or "")) if d["member"] else None]
+        rows = [root] + [root + ("name", x) for x in sorted(d["names"])] + [root + ("member", x) for x in sorted(d["members"])]
         rows += [root + ("precinct", x) for x in sorted(d["precincts"], key=int)]
         rows += [root + ("state senate", x) for x in sorted(d["senate"], key=int)]
         rows += [root + ("state house", x) for x in sorted(d["house"], key=int)]
@@ -117,7 +120,7 @@ def districts(city, t):
 
 
 def in_lines(root, p):
-    rows = [root + ("in", "district", int(p["DIST"])), root + ("in", "precinct", p.get("PRECT"))]
+    rows = [root + ("in", "district", p["DIST"]), root + ("in", "precinct", p.get("PRECT"))]
     rows += [root + ("in", "state senate", p["SENATE"])] if p.get("SENATE") else []
     rows += [root + ("in", "state house", p["HOUSE"])] if p.get("HOUSE") else []
     return rows
@@ -126,13 +129,15 @@ def in_lines(root, p):
 def trails(city, t):
     data, meta = cs.fetch("trails.geojson", cs.HUB % "Trails")
     named = {}
-    for f in json.loads(data)["features"]:
-        p, g = f["properties"], f.get("geometry")
+    for f, said in zip(json.loads(data)["features"], json.loads(data, parse_float=str)["features"]):
+        p, g = said["properties"], f.get("geometry")
         name = (p.get("TRAILLABEL") or p.get("NAME") or "").strip()
         if not g or not name or name.upper().startswith("NONE"):
             continue
-        tr = named.setdefault(cs.slug(cs.titled(name)), {"name": cs.titled(name), "metres": 0.0, "pts": [], "facts": set()})
-        tr["metres"] += float(p.get("Shape__Length") or 0)
+        tr = named.setdefault(cs.slug(name), {"names": set(), "segments": 0, "metres": 0.0, "pts": [], "facts": set()})
+        tr["names"].add(name)
+        tr["segments"] += 1
+        tr["metres"] += float(f["properties"].get("Shape__Length") or 0)
         lines = g["coordinates"] if g["type"] == "MultiLineString" else [g["coordinates"]]
         for ln in lines:
             pts = [cs.xy(*c[:2]) for c in ln]
@@ -140,11 +145,11 @@ def trails(city, t):
                 n = max(1, int(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5 // 25))
                 tr["pts"] += [(x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n) for i in range(n)]
             tr["pts"] += pts[-1:]
-        for key, field in (("surface", "SURFACETYPE"), ("dogs", "DOGS"), ("bikes", "BIKEUSE"), ("horses", "HORSEUSE"),
-                           ("rating", "RATING"), ("ada", "ADA"), ("managed by", "MANAGER")):
-            v = str(p.get(field) or "").strip().lower()
-            if v and v not in ("unk", "unknown", "none", "null"):
-                tr["facts"].add((key, v))
+        for key, field in (("surface", "SURFACETYPE"), ("surface kind", "SURFACE"), ("construction", "CONSTRUCTIONTYPE"),
+                           ("dogs", "DOGS"), ("bikes", "BIKEUSE"), ("horses", "HORSEUSE"), ("rating", "RATING"),
+                           ("wheelchair rating", "WC_RATING"), ("ada", "ADA"), ("managed by", "MANAGER")):
+            if cs.as_is(p.get(field)) is not None:
+                tr["facts"].add((key, str(p[field])))
     clear(city, "trails")
     passes = {}
     for tid, tr in named.items():
@@ -157,7 +162,8 @@ def trails(city, t):
                 passes.setdefault(place, set()).add(tid)
                 tr.setdefault("near", set()).add(place.root)
         root = ("trail", tid)
-        rows = [root, root + ("name", tr["name"]), root + ("length km", round(tr["metres"] / 1000, 1))]
+        rows = [root] + [root + ("name", x) for x in sorted(tr["names"])]
+        rows += [root + ("segments", tr["segments"]), root + ("shape length total", repr(tr["metres"]))]
         rows += [root + f for f in sorted(tr["facts"])]
         rows += [root + ("near",) + r for r in sorted(tr.get("near", ()))]
         rows.append(root + ("source", "trails layer"))
@@ -177,7 +183,7 @@ def overpass(t):
     lat = [y for p in t["places"] for r in p.rings for _, y in r]
     k = 111320 * __import__("math").cos(__import__("math").radians(cs.LAT0))
     box = "%f,%f,%f,%f" % (min(lat) / 110540, min(lon) / k, max(lat) / 110540, max(lon) / k)
-    sel = "".join('nwr["%s"="%s"](%s);' % (a, b, box) for a, b in OSM_KINDS)
+    sel = "".join('nwr["%s"="%s"](%s);' % (a, b, box) for a, b in OSM_TAGS)
     q = "[out:json][timeout:120];(%s);out center tags;" % sel
     req = urllib.request.Request(OVERPASS, data=urllib.parse.urlencode({"data": q}).encode(), headers={"User-Agent": cs.UA})
     with urllib.request.urlopen(req, timeout=180) as r:
@@ -195,13 +201,13 @@ def osm(city, t):
     for el in data.get("elements", []):
         tags = el.get("tags", {})
         c = el.get("center") or ({"lat": el["lat"], "lon": el["lon"]} if "lat" in el else None)
-        kind = next((w for (a, b), w in OSM_KINDS.items() if tags.get(a) == b), None)
-        if not c or not kind:
+        tag = next(((a, b) for a, b in OSM_TAGS if tags.get(a) == b), None)
+        if not c or not tag:
             continue
         pt = cs.xy(c["lon"], c["lat"])
         for place in t["places"]:
             if place.near(pt, OSM_REACH):
-                row = ("has", kind) + ((tags["sport"].replace(";", " "),) if kind == "field" and tags.get("sport") else ())
+                row = ("has",) + tag + (("sport", tags["sport"]) if tags.get("sport") else ())
                 has.setdefault(place, set()).add(row)
                 n += 1
     for place, rows in has.items():
@@ -218,9 +224,12 @@ Readers that add lines to the things in this folder, each in its own file beside
 
 | file | says | from |
 |---|---|---|
-| `districts.scopes` | the council district, precinct, and state senate and house districts a place (by its middle) or a stop is in; `districts/<n>/` lists its member and everything in it | the city's DistrictPrecinct layer |
-| `trails.scopes` | the named trails a place's edge is within 50 m of; `trails/<name>/` says what each trail is | the city's Trails layer |
-| `osm.scopes` | what is mapped inside a park or natural area (within 15 m of its edge): playgrounds, dog parks, toilets, fields and their sport | OpenStreetMap, asked of Overpass at most weekly. © OpenStreetMap contributors, under the Open Database License (ODbL) |
+| `districts.scopes` | the council district, precinct, and state senate and house districts a place (by its middle) or a stop is in; `districts/<n>/` has the city's own legend and member name, and everything in it | the city's DistrictPrecinct layer |
+| `trails.scopes` | the named trails a place's edge is within 50 m of; `trails/<name>/` has each name and value the city's segments carry, their count and total length (segments named `NONE-<id>` belong to no trail) | the city's Trails layer |
+| `osm.scopes` | what is mapped inside a park or natural area (within 15 m of its edge), in OpenStreetMap's own tags: `leisure.playground`, `amenity.toilets`, `leisure.pitch.sport.tennis` | OpenStreetMap, asked of Overpass at most weekly. © OpenStreetMap contributors, under the Open Database License (ODbL) |
+
+Every value is the source's own, as sent; nothing is rounded, recased or renamed. A normalized value would be a
+reader of its own, its lines saying what it did.
 
 Last read:
 

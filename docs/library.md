@@ -244,10 +244,18 @@ marks, and said to be unofficial. The study behind it is `open-data/` on `retain
 **Layers.** `bin/city-layers.py` adds readers on top, each writing its own `.scopes` beside `city.scopes` and
 folders of its own things, the crew's `layers` line, after the city's: `districts` (the council district,
 precinct, and state senate and house districts a place or stop is in; `districts/<n>/` with its member),
-`trails` (the named trails within 50 m of a place; `trails/<name>/`: surface, dogs, bikes, length), and `osm`
-(what OpenStreetMap maps inside a park or natural area: playgrounds, dog parks, toilets, fields and their
-sport; Overpass asked at most weekly, © OpenStreetMap contributors, ODbL). Together they answer
-`playground route max` or `field tennis district 6`. `city/layers.md` says when each last read.
+`trails` (the named trails within 50 m of a place; `trails/<name>/`: surface, dogs, bikes, its segment count and
+length total), and `osm` (what OpenStreetMap maps inside a park or natural area, in its own tags:
+`leisure.playground`, `amenity.toilets`, `leisure.pitch.sport.tennis`; Overpass asked at most weekly, ©
+OpenStreetMap contributors, ODbL). Together they answer `playground route max` or `pitch tennis district 6`.
+`city/layers.md` says when each last read.
+
+**As is.** Every value is the source's own, as it sent it: a name in the city's capitals, acres to the city's eight
+places, OpenStreetMap's own tags, Transfort's dates and colours as its feed writes them. Nothing is rounded,
+recased or renamed on the way in, so there is no invisible transformation between a source and what we hold; the
+extraction is the truth. What is ours is said as ours: which thing a line is about, what is near or inside what,
+the city page we found for it, and a sum we made. A normalized value (acres to two places, a name as people
+write it) is a reader of its own whose lines say what it did, and it never replaces the source's line.
 
 ## X-rays
 

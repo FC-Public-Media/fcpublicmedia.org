@@ -65,7 +65,7 @@ class Words(unittest.TestCase):
 class Build(unittest.TestCase):
     def test_a_build_from_the_same_sources_writes_the_same_bytes(self):
         parks = json.dumps({"features": [{"properties": {"PARKNAME": "SPRING PARK", "PARKTYPE": "NEIGHBORHOOD PARK",
-                                                          "OBJECTID": 11, "ACRESTTL": 17, "YEAR": 1965},
+                                                          "OBJECTID": 11, "ACRESTTL": 16.98999977, "YEAR": "1965"},
                                            "geometry": SQUARE}]}).encode()
         sources = {"parks.geojson": parks, "natural-areas.geojson": b'{"features": []}', "transfort_gtfs.zip": gtfs()}
         was = cs.fetch, cs.page_answers, cs.CACHE
@@ -91,12 +91,17 @@ class Build(unittest.TestCase):
             self.assertIn("park.spring-park.page.https://www..fortcollins..gov/Parks-and-Natural-Areas-Directory/Parks/Spring-Park", park)
             self.assertIn("park.spring-park.near.route.14", park)
             self.assertIn("park.spring-park.near.stop.121", park)
-            self.assertIn("park.spring-park.type.neighborhood", park)
+            self.assertIn("park.spring-park.type.NEIGHBORHOOD PARK", park)        # every value as the city sent it
+            self.assertIn("park.spring-park.name.SPRING PARK", park)
+            self.assertIn("park.spring-park.acres.16..98999977", park)
+            self.assertIn("park.spring-park.opened.1965", park)
             stop = (out / "transit" / "stops" / "999" / "city.scopes").read_text()
             self.assertNotIn("near", stop)
             route = (out / "transit" / "routes" / "14" / "city.scopes").read_text().splitlines()
             self.assertIn("route.14.near.park.spring-park", route)
-            self.assertIn("route.14.schedule.to.2027-01-16", route)
+            self.assertIn("route.14.schedule.to.20270116", route)
+            self.assertIn("route.14.colour.a4c639", route)
+            self.assertIn("route.14.name.ROUTE 14", route)
             self.assertIn("route.14.stop.121", route)
 
 
@@ -138,16 +143,17 @@ class Layers(unittest.TestCase):
             self.assertEqual((park / "city.scopes").read_text(), "park.spring-park\n")
             self.assertEqual((park / "districts.scopes").read_text().splitlines()[0], "park.spring-park.in.district.3")
             self.assertIn("stop.121.in.state senate.14", (stop / "districts.scopes").read_text())
-            self.assertIn("district.3.member.Tricia Canonico", (city / "districts" / "3" / "districts.scopes").read_text())
+            self.assertIn("district.3.member.TRICIA CANONICO", (city / "districts" / "3" / "districts.scopes").read_text())
             self.assertIn("district.3.has.park.spring-park", (city / "districts" / "3" / "districts.scopes").read_text())
             self.assertEqual((park / "trails.scopes").read_text(), "park.spring-park.near.trail.spring-creek-trail\n")
             trail = (city / "trails" / "spring-creek-trail" / "trails.scopes").read_text()
-            self.assertIn("trail.spring-creek-trail.dogs.leash", trail)
-            self.assertIn("trail.spring-creek-trail.length km.1..5", trail)
-            self.assertNotIn("unknown", trail)
+            self.assertIn("trail.spring-creek-trail.name.Spring Creek Trail", trail)
+            self.assertIn("trail.spring-creek-trail.dogs.Leash", trail)
+            self.assertIn("trail.spring-creek-trail.surface.unknown", trail)            # the city's word, kept
+            self.assertIn("trail.spring-creek-trail.segments.1", trail)
             self.assertFalse((city / "trails" / "none-1").exists())
             self.assertEqual((park / "osm.scopes").read_text(),
-                             "park.spring-park.has.field.soccer\npark.spring-park.has.playground\n")
+                             "park.spring-park.has.leisure.pitch.sport.soccer\npark.spring-park.has.leisure.playground\n")
             self.assertIn("ODbL", (city / "layers.md").read_text())
 
 
