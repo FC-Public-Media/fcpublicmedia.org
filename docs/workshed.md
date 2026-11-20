@@ -19,7 +19,8 @@ sheds:
 origins: origins      # where each origin branch's shed is made
 ```
 
-- **Bound sheds** are wherever a person prefers to keep worktrees: bay 1's `work` is `~/code/work`, where
+- **Marked sheds** are any folder someone marks (`fcpm workshed mark`), on this computer, at once.
+- **Named sheds** are in `workshed.yml`, for every install of the job: bay 1's `work` is `~/code/work`, where
   sessions make theirs (`bin/refs work`), so a session's worktree is started, shown and searched like any other
   (`fcpm workshed start meet-says-more`). Another might be a folder of someone's own clones, or one for a feature
   branch that may become main one day. `work` is used when no shed is named.
@@ -45,23 +46,32 @@ holds, released on stop or lapsed when the process ends. The `library` and `work
 
 ## Doing it
 
+A shed is the ground you stand on, so it comes first: name the shed, then say what to do there.
+
 | | |
 |---|---|
-| `fcpm workshed` | every worktree: up or stopped, its port, what its branch changes (pages by URL) |
-| `fcpm workshed new BRANCH [--shed S] [--repo R] [--from REV]` | a worktree for BRANCH: following `origin/BRANCH` if it is there, else new from `origin/main`, or from REV (an origin's pin). R may be `<owner>/<repo>`, as `fcpm places` lists it |
-| `fcpm workshed start NAME` / `stop NAME` | its server, in the background. `serve NAME` keeps it in the window |
-| `fcpm workshed check [NAME]` | each thing it needs, a line each, `ok` or `WRONG` with what to do; exits 1 if any is wrong |
-| `fcpm workshed log [NAME]` | the workshed's log, or that worktree's server's |
-| `fcpm workshed remove NAME` | the worktree goes; its branch stays. Never with changes |
-| `fcpm workshed follow [SHED]` | each clean worktree brought up to its origin branch, fast-forward only; one with changes is left as it is |
-| `fcpm workshed search WHERE [WORDS]` | everything in WHERE holding every word, in any order: a shed's name, `branch:REPO@BRANCH` or `every:REPO` ([Search](#search)) |
-| `fcpm workshed wheres` | what a search can be kept to |
+| `fcpm workshed mark [FOLDER] [NAME]` | **this folder is a shed.** FOLDER is the one you are in unless named; NAME is its own name unless given. It is made if it is not there (only it: never the folders above it). A `.workshed` file in it says so, and this computer keeps where it is |
+| `fcpm workshed unmark [SHED]` | it is not a shed any more. What is in it stays. A shed named in `machines/<job>/workshed.yml` is changed there |
+| `fcpm workshed` | every shed: where it is, how it is one (marked, named, an origin branch's), and each worktree in it: up or stopped, its port, what its branch changes (pages by URL) |
+| `fcpm workshed SHED` | that shed alone |
+| `fcpm workshed SHED new BRANCH [--repo R] [--from REV]` | a worktree in SHED for BRANCH: following `origin/BRANCH` if it is there, else new from `origin/main`, or from REV (an origin's pin). R may be `<owner>/<repo>`, as `fcpm places` lists it |
+| `fcpm workshed SHED start BRANCH` / `stop BRANCH` | its server, in the background. `serve BRANCH` keeps it in the window |
+| `fcpm workshed SHED check [BRANCH]` | each thing it needs, a line each, `ok` or `WRONG` with what to do; exits 1 if any is wrong |
+| `fcpm workshed SHED log [BRANCH]` | the workshed's log, or that worktree's server's |
+| `fcpm workshed SHED remove BRANCH` | the worktree goes; its branch stays. Never with changes |
+| `fcpm workshed SHED follow` | each clean worktree brought up to its origin branch, fast-forward only; one with changes is left as it is |
+| `fcpm workshed SHED search WORDS` | everything in the shed holding every word, in any order ([Search](#search)) |
+| `fcpm workshed search WHERE [WORDS]`, `wheres` | the same over a shed, `branch:REPO@BRANCH` or `every:REPO`; and what WHERE can be |
 
-NAME is `<shed>/<repo>@<branch>`, or the shorter `<repo>@<branch>` or `<branch>` when only one worktree has it.
+An origin branch is a shed to name before it is made: `fcpm workshed origin new visit` makes `origins/origin`.
+
+Without a shed, the verbs still take a worktree by its branch when only one shed has it (`fcpm workshed start
+meet-says-more`), or by `<shed>/<repo>@<branch>`; `new BRANCH` uses `work` (`--shed S` for another). When the
+same branch is in two sheds, it says which, and asks.
 
 **For an agent preparing a shed**, asked in words like "we want to make the site Christmassy": pick the
-branch name from the words, then `fcpm workshed new christmas`, `fcpm workshed start christmas`, and
-`fcpm workshed check christmas`. Each step says what it did or what is wrong. Do not build or serve by hand.
+branch name from the words, then `fcpm workshed work new christmas`, `fcpm workshed work start christmas`, and
+`fcpm workshed work check christmas`. Each step says what it did or what is wrong. Do not build or serve by hand.
 
 ## The Helm's page
 
