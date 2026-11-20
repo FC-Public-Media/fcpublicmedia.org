@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""fcpm workshed (machines/workshed.py): a worktree is made in ~/code/workshed/<shed>/<repo>@<branch> from
+"""fcpm workshed (machines/workshed.py): a worktree is made in a bound shed, <shed>/<repo>@<branch>, from
 refs/<repo>, cut from origin/main or following origin's branch; each gets the lowest free port and keeps it;
 a short name finds it when only one worktree has it; a changed page is named by its URL; remove never takes
 a worktree with changes, and gives its port back. Building and serving need a Node and jekyll-enough, which
@@ -46,10 +46,13 @@ class Workshed(unittest.TestCase):
         code = root / "code"
         (code / "refs").mkdir(parents=True)
         git("clone", "-q", str(root / "origin.git"), str(code / "refs" / "demo"), cwd=root)
-        self.saved = {k: getattr(workshed, k) for k in ("CODE", "SHED", "LOG", "PORTS", "STATE")}
-        workshed.CODE, workshed.SHED = code, code / "workshed"
-        workshed.LOG, workshed.PORTS = code / "workshed" / "workshed.log", code / "workshed" / "ports.json"
+        self.saved = {k: getattr(workshed, k) for k in ("CODE", "LOG", "PORTS", "STATE", "BINDINGS", "origin_sheds")}
+        workshed.CODE = code
         workshed.STATE = root / "state"
+        workshed.LOG, workshed.PORTS = root / "state" / "workshed.log", root / "state" / "ports.json"
+        # The test's own sheds, never this machine's: work (the default), two more, and the origin branches'.
+        self.bind(work="work", seasons="seasons", library="library")
+        workshed.origin_sheds = lambda: {"origin"}
         self.places_code, places.CODE = places.CODE, code
         # The library is the test's own, and not made unless a test makes it: never a real grant book.
         self.library_was = os.environ.get("FCPM_LIBRARY")
@@ -58,7 +61,7 @@ class Workshed(unittest.TestCase):
 
     def tearDown(self):
         # The test's own worktrees, while workshed still points at the test's code root, and only inside it: a
-        # person's real ~/code/workshed is never touched (Windows cannot remove a directory git still lists).
+        # person's real sheds are never touched (Windows cannot remove a directory git still lists).
         tmp = pathlib.Path(self.tmp.name).resolve()
         for w in workshed.worktrees():
             if tmp in pathlib.Path(w["path"]).resolve().parents:
@@ -79,19 +82,19 @@ class Workshed(unittest.TestCase):
 
     def test_new_is_a_worktree_in_its_shed_with_a_port(self):
         name = self.new("meet-photos")
-        self.assertEqual(name, "dev/demo@meet-photos")
-        path = workshed.SHED / "dev" / "demo@meet-photos"
+        self.assertEqual(name, "work/demo@meet-photos")
+        path = workshed.CODE / "work" / "demo@meet-photos"
         self.assertTrue((path / "site" / "meet.md").is_file())
         self.assertEqual(workshed.port_of(name), workshed.FIRST_PORT)
         self.assertEqual(self.new("other", shed="seasons"), "seasons/demo@other")
         self.assertEqual(workshed.port_of("seasons/demo@other"), workshed.FIRST_PORT + 1)
-        self.assertIn("dev/demo@meet-photos: made (new, from origin/main), port %d" % workshed.FIRST_PORT,
+        self.assertIn("work/demo@meet-photos: made (new, from origin/main), port %d" % workshed.FIRST_PORT,
                       workshed.LOG.read_text())
 
     def test_a_branch_on_the_origin_is_followed(self):
         self.new("christmas")
         out = subprocess.run(["git", "rev-parse", "--abbrev-ref", "christmas@{upstream}"], capture_output=True, text=True,
-                             cwd=workshed.SHED / "dev" / "demo@christmas").stdout.strip()
+                             cwd=workshed.CODE / "work" / "demo@christmas").stdout.strip()
         self.assertEqual(out, "origin/christmas")
 
     def test_names_find_one_or_say_which(self):
@@ -103,7 +106,7 @@ class Workshed(unittest.TestCase):
             cwd=self.tmp.name)
         with contextlib.redirect_stdout(io.StringIO()):
             workshed.new("meet-photos", shed="seasons", repo="demo2")
-        self.assertEqual(workshed.find("dev/demo@meet-photos")["shed"], "dev")
+        self.assertEqual(workshed.find("work/demo@meet-photos")["shed"], "work")
         self.assertEqual(workshed.find("demo2@meet-photos")["shed"], "seasons")
         with self.assertRaises(workshed.Wrong) as said:
             workshed.find("meet-photos")
@@ -122,7 +125,7 @@ class Workshed(unittest.TestCase):
         state = workshed.state_dir(name)
         state.mkdir(parents=True)                     # what the server writes after a build
         (state / "pages.json").write_text(json.dumps([{"url": "/meet/", "title": "Meet", "source": "meet.md"}]))
-        path = workshed.SHED / "dev" / "demo@meet-photos"
+        path = workshed.CODE / "work" / "demo@meet-photos"
         (path / "site" / "meet.md").write_text("---\ntitle: Meet\n---\nhello\n")
         (path / "site" / "photo.jpg").write_bytes(b"\xff\xd8")
         d = workshed.describe(workshed.find("meet-photos"))
@@ -133,7 +136,7 @@ class Workshed(unittest.TestCase):
 
     def test_remove_never_takes_changes_and_gives_the_port_back(self):
         name = self.new("meet-photos")
-        path = workshed.SHED / "dev" / "demo@meet-photos"
+        path = workshed.CODE / "work" / "demo@meet-photos"
         (path / "site" / "meet.md").write_text("changed\n")
         with self.assertRaises(workshed.Wrong):
             workshed.remove("meet-photos")
@@ -170,7 +173,7 @@ class Workshed(unittest.TestCase):
             name = workshed.new("visit", shed="origin", repo="Owner/demo", start_at=self.seed[:12])
         self.assertEqual(name, "origin/demo@visit")
         head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
-                              cwd=workshed.SHED / "origin" / "demo@visit").stdout.strip()
+                              cwd=workshed.CODE / "origins" / "origin" / "demo@visit").stdout.strip()
         self.assertEqual(head, self.seed)
         with self.assertRaises(workshed.Wrong):
             workshed.new("elsewhere", repo="Someone/demo")          # a mirror of another owner's demo is not it
@@ -190,7 +193,7 @@ class Workshed(unittest.TestCase):
                              capture_output=True, text=True).stdout.splitlines()
         self.assertEqual(log[0].split("|")[1:], ["released", "workshed"])
         self.assertEqual(log[1].split("|")[1:], ["issued", "workshed"])
-        self.assertIn("made dev/demo@meet-photos", log[1])
+        self.assertIn("made work/demo@meet-photos", log[1])
         live = subprocess.run(["git", "--git-dir", str(lib.location() / ".git"), "for-each-ref", "refs/grants/live"],
                               capture_output=True, text=True).stdout
         self.assertEqual(live, "")
@@ -206,11 +209,11 @@ class Workshed(unittest.TestCase):
         self.new("retain/notes", shed="library")
         w = workshed.find("library/demo@retain~notes")
         self.assertEqual(w["branch"], "retain/notes")
-        self.assertTrue((workshed.SHED / "library" / "demo@retain~notes" / "site" / "meet.md").exists())
+        self.assertTrue((workshed.CODE / "library" / "demo@retain~notes" / "site" / "meet.md").exists())
 
     def facts(self):
         self.new("facts", shed="library")
-        root = workshed.SHED / "library" / "demo@facts"
+        root = workshed.CODE / "library" / "demo@facts"
         (root / "city" / "parks" / "spring-park").mkdir(parents=True)
         (root / "city" / "parks" / "spring-park" / "README.md").write_text(
             "name: Spring Park\nkind: park\nroutes near:\n  - Route 14\n")
@@ -253,7 +256,7 @@ class Workshed(unittest.TestCase):
 
     def things(self):
         self.new("things", shed="library")
-        root = workshed.SHED / "library" / "demo@things"
+        root = workshed.CODE / "library" / "demo@things"
         (root / "city").mkdir()
         (root / "city" / "WORN.scopes").write_text("city.fort-collins\n")
         for rel, lines in (("city/parks/spring", "park.spring\npark.spring.name.Spring Park\npark.spring.near.route.14\n"),
@@ -303,7 +306,7 @@ class Workshed(unittest.TestCase):
         self.origin_with_things()
         self.new("christmas")
         got = [w["where"] for w in workshed.wheres()]
-        self.assertEqual(got, ["shed:dev", "every:demo", "branch:demo@main", "branch:demo@christmas", "branch:demo@things"])
+        self.assertEqual(got, ["shed:work", "every:demo", "branch:demo@main", "branch:demo@christmas", "branch:demo@things"])
 
     def test_a_branch_is_searched_from_git_without_a_checkout(self):
         self.origin_with_things()
@@ -341,13 +344,61 @@ class Workshed(unittest.TestCase):
         git("push", "-q", str(pathlib.Path(self.tmp.name) / "origin.git"), "christmas", cwd=seed)
         with contextlib.redirect_stdout(io.StringIO()):
             workshed.follow()
-        wt = workshed.SHED / "dev" / "demo@christmas"
+        wt = workshed.CODE / "work" / "demo@christmas"
         self.assertTrue((wt / "site" / "later.md").exists())
         (wt / "site" / "mine.md").write_text("mine\n")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            workshed.follow("dev")
+            workshed.follow("work")
         self.assertIn("has changes", out.getvalue())
+
+    def bind(self, origins="origins", **sheds):
+        f = pathlib.Path(self.tmp.name) / "workshed.yml"
+        f.write_text("sheds:\n" + "".join("  %s: %s\n" % kv for kv in sheds.items())
+                     + ("origins: %s\n" % origins if origins else ""))
+        workshed.BINDINGS = [f]
+
+    def session_worktree(self, branch):
+        """A worktree as bin/refs work makes one: work/<repo>@<branch>, cut from main and following it."""
+        src = workshed.CODE / "refs" / "demo"
+        path = workshed.CODE / "work" / ("demo@" + branch)
+        git("worktree", "add", "-q", "--track", "-b", branch, str(path), "origin/main", cwd=src)
+        return path
+
+    def test_a_bound_folder_is_a_shed(self):
+        path = self.session_worktree("meet-says-more")
+        self.assertEqual(workshed.shed_dirs()["work"], workshed.CODE / "work")
+        w = workshed.find("meet-says-more")
+        self.assertEqual((w["name"], w["shed"], w["path"]), ("work/demo@meet-says-more", "work", path))
+        self.assertIn("work", workshed.sheds())
+        self.assertEqual(self.new("roller", shed="work"), "work/demo@roller")
+        self.assertTrue((workshed.CODE / "work" / "demo@roller" / "site" / "meet.md").is_file())
+        self.assertFalse((workshed.CODE / "workshed").exists())          # there is no workshed folder
+
+    def test_a_shed_is_bound_before_it_is_used(self):
+        with self.assertRaises(workshed.Wrong) as said:
+            self.new("anything", shed="elsewhere")
+        self.assertIn("bind it in machines/<job>/workshed.yml", str(said.exception))
+        self.assertFalse((workshed.CODE / "elsewhere").exists())
+        self.bind(origins=None, work="work")
+        with self.assertRaises(workshed.Wrong):
+            self.new("visit", shed="origin")                         # no origins placed: not even an origin's
+        self.assertEqual(sorted(workshed.shed_dirs()), ["work"])
+
+    def test_an_origin_branch_gets_its_shed_when_first_asked(self):
+        self.assertNotIn("origin", workshed.shed_dirs())
+        self.assertEqual(self.new("visit", shed="origin"), "origin/demo@visit")
+        self.assertEqual(workshed.shed_dirs()["origin"], workshed.CODE / "origins" / "origin")
+        self.assertTrue((workshed.CODE / "origins" / "origin" / "demo@visit" / "site" / "meet.md").is_file())
+
+    def test_follow_leaves_a_worktree_following_main(self):
+        path = self.session_worktree("meet-says-more")
+        was = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True).stdout
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            workshed.follow("work")
+        self.assertIn("follows origin/main, not its own branch", out.getvalue())
+        self.assertEqual(subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True).stdout, was)
 
 
 if __name__ == "__main__":

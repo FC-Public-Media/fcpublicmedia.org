@@ -2,7 +2,7 @@
 
     fcpm workshed                         every worktree in the workshed: branch, changes, port, running
     fcpm workshed new BRANCH [--shed SHED] [--repo REPO] [--from REV]
-                                          a worktree for BRANCH (dev and fcpublicmedia.org unless named),
+                                          a worktree for BRANCH (work and fcpublicmedia.org unless named),
                                           cut from origin/main (or REV: an origin's pin), or following
                                           origin's BRANCH if it is there. REPO may be OWNER/REPO, as
                                           `fcpm places` lists it
@@ -17,11 +17,14 @@
                                           branch:REPO@BRANCH or every:REPO, read from the origin's mirror in refs/
     fcpm workshed wheres                  what a search can be kept to
 
-The workshed is ~/code/workshed/<shed>/<repo>@<branch>: worktrees of ~/code/refs/<repo>, kept as long as
-someone works in them; a branch's slash is a ~ in its folder's name. NAME is that path from <shed>, or just <repo>@<branch>, or just <branch>, when only one
+The workshed is no folder. It is every shed this machine binds, as the library binds its holdings: a shed is a
+folder of <repo>@<branch> worktrees of ~/code/refs/<repo>, named in machines/<job>/workshed.yml (`sheds`), put
+wherever someone keeps them (bay 1: `work` is ~/code/work). Its `origins` folder holds a shed for each origin
+branch, made the first time someone asks to work in that branch (fcpm places, Fighter). A branch's slash is a ~
+in its folder's name. NAME is <shed>/<repo>@<branch>, or just <repo>@<branch>, or just <branch>, when only one
 worktree has it. Each gets a port of its own (4100 and up) the first time, and keeps it. The Helm's /workshed/
-page shows the same and starts and stops them. Every step says what it did on the workshed's log,
-~/code/workshed/workshed.log, one line each, and in the library's grant book when this machine has a library:
+page shows the same and starts and stops them. Every step says what it did on the workshed's log (in the
+machine's state folder, with the ports), one line each, and in the library's grant book when this machine has a library:
 a worktree made is a grant spent at once, and a server is a grant its own process holds until it stops.
 Doc: docs/workshed.md.
 """
@@ -38,14 +41,14 @@ import urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
 CODE = pathlib.Path(os.environ.get("FCPM_CODE") or pathlib.Path.home() / "code")
-SHED = CODE / "workshed"
-LOG = SHED / "workshed.log"
-PORTS = SHED / "ports.json"
 STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) / "editing-bay-1" / "workshed" if "LOCALAPPDATA" in os.environ
          else pathlib.Path.home() / ".local" / "state" / "fcpm" / "workshed")
+LOG = STATE / "workshed.log"
+PORTS = STATE / "ports.json"
 FIRST_PORT, LAST_PORT = 4100, 4199
-DEFAULT_SHED, DEFAULT_REPO = "dev", "fcpublicmedia.org"
+DEFAULT_SHED, DEFAULT_REPO = "work", "fcpublicmedia.org"
 SERVE = HERE / "workshed-serve.mjs"
+BINDINGS = None       # the files binding sheds elsewhere; None is machines/<job>/workshed.yml for each job worn
 
 
 class Wrong(Exception):
@@ -58,7 +61,7 @@ def say(what):
 
 def note(what):
     """One line on the workshed's log: what was done, for whoever tails it."""
-    SHED.mkdir(parents=True, exist_ok=True)
+    LOG.parent.mkdir(parents=True, exist_ok=True)
     with LOG.open("a", encoding="utf-8") as f:
         f.write("%s\tworkshed\t%s\n" % (time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), what))
 
@@ -102,14 +105,84 @@ def build_root(path):
 
 
 # ------------------------------------------------------------------ worktrees --
+def _jobs():
+    """The jobs this machine wears: FCPM_PROFILE when fcpm set it, else the binding's (kiosk/replies.wears)."""
+    if os.environ.get("FCPM_PROFILE"):
+        return [os.environ["FCPM_PROFILE"]]
+    try:
+        if str(HERE / "kiosk") not in sys.path:
+            sys.path.append(str(HERE / "kiosk"))
+        return sorted(__import__("replies").wears())
+    except Exception:
+        return []
+
+
+def _folder(at):
+    """A bound folder: ~ is home, and a relative one is from the code root."""
+    at = pathlib.Path(os.path.expanduser(str(at)))
+    return at if at.is_absolute() else CODE / at
+
+
+def bindings():
+    """This machine's machines/<job>/workshed.yml, every job's at once: {"sheds": {name: folder}, "origins": folder
+    or None}. The first job to name `origins` places them."""
+    sheds, origins = {}, None
+    for f in BINDINGS if BINDINGS is not None else [HERE / j / "workshed.yml" for j in _jobs()]:
+        try:
+            import yaml
+            d = yaml.safe_load(pathlib.Path(f).read_text(encoding="utf-8")) or {}
+        except (OSError, ImportError, ValueError):
+            continue
+        sheds.update((str(k), _folder(v)) for k, v in (d.get("sheds") or {}).items())
+        if origins is None and d.get("origins"):
+            origins = _folder(d["origins"])
+    return {"sheds": sheds, "origins": origins}
+
+
+def bound():
+    """The sheds this machine binds by name: {name: folder}."""
+    return bindings()["sheds"]
+
+
+def origin_sheds():
+    """Each origin branch here, by the name its shed has (a slash is a dash): what `origins` may be filled with."""
+    try:
+        return {b.replace("/", "-") for b in _sibling("places").origins()}
+    except Exception:
+        return set()
+
+
+def shed_dirs():
+    """Every shed, by name: each origin branch's that has been made, then each bound one (a bound name wins)."""
+    b = bindings()
+    out = {}
+    if b["origins"] is not None and b["origins"].is_dir():
+        out.update((p.name, p) for p in sorted(b["origins"].iterdir()) if p.is_dir() and not p.name.startswith("."))
+    out.update(b["sheds"])
+    return out
+
+
+def place(shed):
+    """Where SHED is, or is to be: a bound folder, or an origin branch's own in `origins`. Anything else is not a
+    shed here, and is said so: a shed is bound before it is used."""
+    b = bindings()
+    if shed in b["sheds"]:
+        return b["sheds"][shed]
+    if b["origins"] is not None and (shed in origin_sheds() or shed in shed_dirs()):
+        return b["origins"] / shed
+    raise Wrong("no shed %s here: bind it in machines/<job>/workshed.yml (sheds), or name an origin branch%s"
+                % (shed, "" if b["origins"] is not None else ", once that file places `origins`"))
+
+
 def worktrees():
     """Every worktree in the workshed, by name (<shed>/<repo>@<branch>)."""
     out = []
-    if SHED.is_dir():
-        for shed in sorted(p for p in SHED.iterdir() if p.is_dir() and not p.name.startswith(".")):
-            for wt in sorted(p for p in shed.iterdir() if p.is_dir() and "@" in p.name):
-                out.append({"name": "%s/%s" % (shed.name, wt.name), "shed": shed.name, "path": wt,
-                            "repo": wt.name.split("@", 1)[0], "branch": wt.name.split("@", 1)[1].replace("~", "/")})
+    for name, shed in sorted(shed_dirs().items()):
+        if not shed.is_dir():
+            continue
+        for wt in sorted(p for p in shed.iterdir() if p.is_dir() and "@" in p.name):
+            out.append({"name": "%s/%s" % (name, wt.name), "shed": name, "path": wt,
+                        "repo": wt.name.split("@", 1)[0], "branch": wt.name.split("@", 1)[1].replace("~", "/")})
     return out
 
 
@@ -141,7 +214,7 @@ def port_of(name, give=False):
     if free is None:
         raise Wrong("every port from %d to %d is given: remove a worktree" % (FIRST_PORT, LAST_PORT))
     p[name] = free
-    SHED.mkdir(parents=True, exist_ok=True)
+    PORTS.parent.mkdir(parents=True, exist_ok=True)
     PORTS.write_text(json.dumps(p, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     note("%s: given port %d" % (name, free))
     return free
@@ -216,7 +289,7 @@ def describe(w):
 def everything():
     """The whole workshed, for the Helm's /workshed/now."""
     eng, nd = engine(), node()
-    return {"root": str(SHED), "log": str(LOG), "node": str(nd) if nd else None, "engine": str(eng) if eng else None,
+    return {"sheds": {k: str(v) for k, v in shed_dirs().items()}, "log": str(LOG), "node": str(nd) if nd else None, "engine": str(eng) if eng else None,
             "worktrees": [describe(w) for w in worktrees()]}
 
 
@@ -516,8 +589,12 @@ def follow(shed=None):
         if shed and w["shed"] != shed:
             continue
         p = w["path"]
-        if not git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", cwd=p, check=False):
+        up = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", cwd=p, check=False)
+        if not up:
             say("%s  follows nothing" % w["name"])
+            continue
+        if up != "origin/" + w["branch"]:     # a session's worktree, cut from main and following it: not ours to move
+            say("%s  follows %s, not its own branch; left as it is" % (w["name"], up))
             continue
         if git("status", "--porcelain", cwd=p, check=False):
             say("%s  has changes; left as it is" % w["name"])
@@ -558,14 +635,16 @@ def mirror_of(repo):
     return m
 
 
-def new(branch, shed=DEFAULT_SHED, repo=DEFAULT_REPO, start_at=None):
+def new(branch, shed=None, repo=DEFAULT_REPO, start_at=None):
+    if shed is None:                              # work, when bound; else the first shed bound
+        shed = DEFAULT_SHED if DEFAULT_SHED in bound() else next(iter(bound()), DEFAULT_SHED)
     src = mirror_of(repo)
     repo = src.name
     if not (src / ".git").exists():
         raise Wrong("no %s in refs/ to make a worktree from (refs.wanted lists what fcpm pull keeps)" % repo)
     if git("check-ref-format", "--branch", branch, check=False) != branch or "/" in shed or not shed:
         raise Wrong("%s is not a name a branch can have: letters, digits and dashes are safe" % branch)
-    path = SHED / shed / ("%s@%s" % (repo, branch.replace("/", "~")))
+    path = place(shed) / ("%s@%s" % (repo, branch.replace("/", "~")))
     name = "%s/%s" % (shed, path.name)
     if path.exists():
         raise Wrong("%s is already in the workshed, at %s" % (name, path))
@@ -745,7 +824,12 @@ def check(name=None):
     nd, eng = node(), engine()
     row(bool(nd), "node: %s" % (nd or "none found"), "fcpm install (machines/production/bay/node-*.yml)")
     row(bool(eng), "jekyll-enough: %s" % (eng or "none in " + ", ".join(str(p) for p in engines())), "fcpm pull")
-    row(SHED.is_dir(), "the workshed: %s" % SHED, "fcpm workshed new BRANCH")
+    b = bindings()
+    row(bool(b["sheds"]), "sheds bound: %s" % (", ".join(sorted(b["sheds"])) or "none"),
+        "bind one in machines/<job>/workshed.yml (sheds: {work: work})")
+    for shed, at in sorted(b["sheds"].items()):
+        row(at.is_dir(), "the %s shed: %s" % (shed, at), "make that folder, or unbind it in machines/<job>/workshed.yml")
+    row(True, "origin branches' sheds: %s" % (b["origins"] or "not placed (origins: in machines/<job>/workshed.yml)"))
     if name:
         try:
             w = find(name)
@@ -787,7 +871,8 @@ def remove(name):
 def status():
     every = worktrees()
     if not every:
-        say("The workshed is empty. Make a worktree to work in: fcpm workshed new BRANCH")
+        say("No worktree in any shed (%s). Make one to work in: fcpm workshed new BRANCH"
+            % (", ".join(sorted(bound())) or "none bound: machines/<job>/workshed.yml"))
         return 0
     for w in every:
         d = describe(w)
