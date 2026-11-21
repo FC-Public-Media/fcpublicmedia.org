@@ -2,6 +2,7 @@
 label=lan
 hostname=card
 ventoy=2G
-isos="alpine-standard-*-x86_64.iso"
-default="alpine-standard-*-x86_64.iso"
+isos="alpine-standard-*.iso"
+default="alpine-standard-*.iso"
+grub2="alpine-standard-*.iso"   # Ventoy boots these with its own grub: Alpine has no shim for Secure Boot
 parts="kit:vfat:2G code:ext4:2G home:luks:rest"

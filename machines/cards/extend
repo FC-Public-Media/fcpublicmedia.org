@@ -8,7 +8,7 @@ TYPE="${1:-}"; DISK="${2:-}"
 [ "${3:-}" = "$(basename "$DISK")" ] || { echo "Name the disk twice: $DISK $(basename "$DISK")"; exit 1; }
 [ "$(id -u)" != 0 ] || { echo "Run as the desktop's user, not root."; exit 1; }
 [ "$(lsblk -dno TYPE "$DISK" 2>/dev/null)" = disk ] || { echo "$DISK is not a whole disk."; exit 1; }
-persistence=""; default=""; . "$HERE/$TYPE/card"
+persistence=""; default=""; grub2=""; . "$HERE/$TYPE/card"
 TOOLBOX="${TOOLBOX:-/srv/toolbox}"
 export PATH="$PATH:/sbin:/usr/sbin"
 mib() { case "$1" in *G) echo $(( ${1%G} * 1024 ));; *M) echo "${1%M}";; esac; }
@@ -57,13 +57,21 @@ done
 # Ventoy's partition: each image the type names and the card lacks, with its checksum. Nothing there is removed.
 P1="$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="Ventoy"{print $1; exit}')"
 sudo mount -t exfat -o uid="$(id -u)",gid="$(id -g)" "$P1" "$WORK/m"
+for g in $grub2; do                              # Ventoy's grub2 mode, by name: an image named before this is renamed
+  for f in "$WORK/m"/$g; do
+    [ -f "$f" ] || continue; case "$f" in *_VTGRUB2.iso) continue ;; esac
+    n="$(basename "$f")"; mv "$f" "${f%.iso}_VTGRUB2.iso"
+    sed -i "s|  $n\$|  ${n%.iso}_VTGRUB2.iso|" "$WORK/m/SHA256SUMS"; echo "grub2 mode: ${n%.iso}_VTGRUB2.iso"
+  done
+done
 for pat in $isos; do
   ls "$WORK/m"/$pat >/dev/null 2>&1 && continue
   f="$(ls "$TOOLBOX"/isos/$pat 2>/dev/null | tail -1)"; [ -n "$f" ] || { echo "No $pat in $TOOLBOX/isos."; continue; }
   n="$(basename "$f")"; h="$(awk '{print $1; exit}' "$f.sha256" 2>/dev/null || true)"
   [ -n "$h" ] || h="$(awk -v n="$n" '$2==n || $2=="*"n {print $1}' "$TOOLBOX/isos/SHA256SUMS")"
   [ -n "$h" ] || { echo "No published checksum for $n."; exit 1; }
-  cp "$f" "$WORK/m/"; sync
+  for g in $grub2; do case "$n" in $g) n="${n%.iso}_VTGRUB2.iso" ;; esac; done
+  cp "$f" "$WORK/m/$n"; sync
   echo "$h  $n" | (cd "$WORK/m" && sha256sum -c --quiet) && echo "$h  $n" >> "$WORK/m/SHA256SUMS"
   echo "added $n"
 done
