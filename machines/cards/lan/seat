@@ -1,6 +1,6 @@
 #!/bin/sh
-# tty1 on a lan card: the home's passphrase, then its holder's shell. Logging out locks it again.
-. "$(dirname "$0")/card"
+# tty1 on a card's Alpine: the home's passphrase, then its holder's shell. Logging out locks it again.
+. /etc/fcpm/card 2>/dev/null || . "$(dirname "$0")/card"
 H=/home/user; M="$label-home"
 while :; do
   clear
