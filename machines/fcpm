@@ -40,6 +40,8 @@ case "$cmd" in
     case "${1:-}" in sync) shift; exec "$HERE/cards/sync" "$@" ;; "") exec "$HERE/cards/sync" ;; *) echo "fcpm card [sync [/dev/sdX]]" >&2; exit 2 ;; esac ;;
   install)
     # A job named here is put on even before its `names` lists this computer (start.ps1).
+    # FCPM_DESK: a person is here, so a `system` line may ask for an administrator (../docs/station.md).
+    export FCPM_DESK=1
     if [ $# -gt 0 ]; then "$HERE/sync" -p "$1" install || exit; else "$HERE/sync" install || exit; fi
     "$HERE/watch" copy
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$HERE/watch" weekly install ;; esac ;;
@@ -66,7 +68,7 @@ case "$cmd" in
     # Only this repo: fcpm runs from it, and the other mirrors are reading
     # (Autumn, 2026-10-10). The reading mirrors are the weekly task's chore.
     "$CODE/bin/refs" pull "$(basename "$REPO")" || exit
-    "$HERE/sync" install || exit
+    FCPM_DESK=1 "$HERE/sync" install || exit
     # The public submodules (the engines, with theirs inside), by this repository's own word: the bin/refs
     # that pulled may be the copy from before this pull placed a newer one, so a new engine arrives now and
     # not on the next pull. The private ones (`update = none`) are bin/refs' to fetch.
@@ -124,7 +126,7 @@ case "$cmd" in
     p=$(profile)
     [ -f "$HERE/$p/audition.ps1" ] || { echo "fcpm: ${p:-this machine} carries no Audition panel"; exit 0; }
     ps1 "$HERE/$p/audition.ps1" "$@" ;;
-  drobo|share|audit|model|helm|hosts)
+  drobo|share|audit|model|helm)
     p=$(profile)
     [ -f "$HERE/$p/$cmd.ps1" ] || { echo "fcpm: ${p:-this machine} carries no $cmd"; exit 0; }
     ps1 "$HERE/$p/$cmd.ps1" "$@" ;;

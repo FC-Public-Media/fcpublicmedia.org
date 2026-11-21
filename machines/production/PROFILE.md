@@ -24,7 +24,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
-| `hosts`, `hosts.ps1` | `fcpm hosts`: the Windows hosts file, held. `hosts` is the lines not ours to publish, each with why. See Hosts |
+| `hosts`, `hosts.ps1` | the Windows hosts file, held, placed by `fcpm install` (MANIFEST's `system` line). `hosts` is the lines not ours to publish, each with why. See Hosts |
 | `model.ps1`, `model.yml`, `models/`, `shapes/` | `fcpm model`: the language models, an instrument answering the switched network only (llama.cpp serving the models picked from the spread in [`models/`](models/README.md)); its effort words, the shapes it offers, and the contexts it keeps |
 | `helm.ps1` | `fcpm helm`: this bay's helm, the crew's `helm` line (the door's intake and pages only, on 8080), which takes what a peer helm passes it ([`../helms.yml`](../helms.yml)); its one rule |
 | `keys.yml` | its own keychain (`fcpm keys`, [`../keys`](../keys)): a Cloudflare token for the site's deploy and the tanks' drain (see Deploy), and the library's signer for its iced bottles (`fcpm library signer mint`, once) |
@@ -36,14 +36,15 @@ grants: [docs/station.md](../../docs/station.md).
 `C:\Windows\System32\drivers\etc\hosts` is this bay's, and every line in it has a source. Windows
 asks mDNS for two-label `.local` names (`fcpublicmedia.local`, `qr.local`) and no deeper, so the names
 the machines' `lan.yml` declare (`www.`, `ch97.`, `lines.digitization.`, the gear) need a line to be
-reached from here. `fcpm hosts` reads the file and says of each line whose it is and whether it is
-current; it changes nothing and needs no administrator. `fcpm hosts write` composes the file from
-`hosts` (lines that are not ours to publish: Cablecast, whose public address the gateway will not
-loop back in) and `../lan.py names`, each name at the IPv4 its holder answers mDNS with now; shows
-what changes; and asks Windows for an administrator, whose half writes exactly the file shown
-(by its sha256), keeps the old one as `%LOCALAPPDATA%\editing-bay-1\hosts.prior`, and flushes the
-DNS cache. A name nobody answers for keeps its line. A line from neither source stays, commented
-`#!`, until `hosts` names what it named or a person deletes it. Change a line by its source, then write.
+reached from here. It is part of `fcpm install`, like everything else this bay carries (MANIFEST's
+`system` line): `fcpm status` says `same` or `differs`, and when it differs, install composes it from
+`hosts` (lines that are not ours to publish: Cablecast, whose public address the gateway will not loop
+back in) and `../lan.py names`, each name at the IPv4 its holder answers mDNS with now; shows what
+changes; and asks Windows for an administrator, whose half writes exactly the file shown (by its
+sha256), keeps the old one as `%LOCALAPPDATA%\editing-bay-1\hosts.prior`, and flushes the DNS cache.
+Only `fcpm install` and `fcpm pull` ask; the pool's pass leaves it differing. A change only in dates
+is none. A name nobody answers for keeps its line. A line from neither source stays, commented `#!`,
+until `hosts` names what it named or a person deletes it. `hosts.ps1 status` explains every line.
 
 ## Inbound
 
