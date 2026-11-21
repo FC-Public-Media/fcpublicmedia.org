@@ -85,6 +85,9 @@ case " $* " in *" -r "*|*" --reboot "*) a=reboot ;; *) a=poweroff ;; esac
 exec doas "$a"
 SH
 chmod 755 "$S/usr/local/bin/shutdown"
+# fcpm for every shell on the console, root's too (/etc/profile.d reaches login shells only): the card's own checkout.
+printf '#!/bin/sh\nexec sh /srv/code/fcpublicmedia.org/machines/fcpm "$@"\n' > "$S/usr/local/bin/fcpm"
+chmod 755 "$S/usr/local/bin/fcpm"
 # lbu keeps /root and /usr/local/bin from now on too, so a commit on the card does not drop them.
 mkdir -p "$S/etc/apk/protected_paths.d"
 for p in +root +usr/local/bin; do
