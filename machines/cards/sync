@@ -1,0 +1,76 @@
+#!/bin/bash
+# sync [DISK]: brings a card plugged into this host up to what we hold now, by the same steps every time (README.md).
+# Alone, it says which cards are here and how far each is behind. With DISK (/dev/sdX), it brings that one current:
+#   1. extend: the partitions and boot images its type names and it lacks (a window asks first; erases nothing)
+#   2. code:   its checkout fast-forwarded to the origin's main (origin.local; GitHub if the origin is away)
+#   3. kit:    Alpine's packages and the tools on its console, refreshed; its saved settings kept
+#   4. origin: each repository it carries fast-forwarded to origin.local's main (a steward card)
+# Run as the desktop's user; it asks sudo for the kit. Never forces: a card ahead of the origin is said, not undone.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; REPO="$(cd "$HERE/../.." && pwd)"
+export PATH="$PATH:/sbin:/usr/sbin"
+ORIGIN="${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}"
+
+typeof() {   # a card's type, from the label its partitions carry: the type whose card file names it
+  local l; l=$(lsblk -rno LABEL "$1" | sed -n 's/-kit$//p; s/-code$//p' | head -1)
+  for t in "$HERE"/*/card; do (. "$t"; [ "$label" = "$l" ]) && { basename "$(dirname "$t")"; return; }; done
+}
+part() { lsblk -rno PATH,LABEL "$1" | awk -v l="$2" '$2==l{print $1; exit}'; }
+mnt() { udisksctl mount -b "$1" >/dev/null 2>&1 || true; findmnt -rno TARGET -S "$1" | head -1; }
+unmnt() { sync; udisksctl unmount -b "$1" >/dev/null 2>&1 || true; }
+main_rev() { git ls-remote "$ORIGIN/FC-Public-Media/fcpublicmedia.org" main 2>/dev/null | cut -c1-40; }
+
+cards=$(for d in $(lsblk -dnro PATH,TRAN | awk '$2=="usb"||$2=="mmc"{print $1}'); do
+  if lsblk -rno LABEL "$d" | grep -qx Ventoy; then echo "$d"; fi; done)
+want=$(main_rev); src=origin.local
+[ -n "$want" ] || { want=$(git -C "$REPO" ls-remote https://github.com/FC-Public-Media/fcpublicmedia.org.git main | cut -c1-40); src=GitHub; }
+
+if [ $# -eq 0 ]; then
+  [ -n "$cards" ] || { echo "No card plugged in here."; exit 0; }
+  for d in $cards; do
+    t=$(typeof "$d"); c=$(part "$d" "$(. "$HERE/${t:-lan}/card"; echo "$label")-code")
+    have=""; [ -n "$c" ] && { m=$(mnt "$c"); have=$(git -C "$m/fcpublicmedia.org" rev-parse HEAD 2>/dev/null || true); unmnt "$c"; }
+    if [ -z "$have" ]; then s="no checkout"; elif [ "$have" = "$want" ]; then s="current"
+    elif git -C "$REPO" merge-base --is-ancestor "$have" "$want" 2>/dev/null; then s="behind $src's main"
+    else s="not on $src's main (${have:0:7})"; fi
+    echo "$d  ${t:-unknown} card  $(lsblk -dno SIZE "$d" | xargs)  code: $s"
+  done
+  echo; echo "Bring one current: fcpm card sync /dev/sdX"; exit 0
+fi
+
+DISK=$1; t=$(typeof "$DISK"); [ -n "$t" ] || { echo "$DISK is not a card of a type we know."; exit 1; }
+. "$HERE/$t/card"
+echo "== $DISK: a $t card"
+
+echo "-- 1. extend"
+"$HERE/extend" "$t" "$DISK" "$(basename "$DISK")" | tail -1
+
+echo "-- 2. code"
+c=$(part "$DISK" "$label-code"); m=$(mnt "$c"); w="$m/fcpublicmedia.org"
+git -C "$w" fetch -q "$ORIGIN/FC-Public-Media/fcpublicmedia.org" main 2>/dev/null \
+  || git -C "$w" fetch -q https://github.com/FC-Public-Media/fcpublicmedia.org.git main
+before=$(git -C "$w" rev-parse --short HEAD)
+if git -C "$w" merge -q --ff-only FETCH_HEAD 2>/dev/null; then
+  echo "checkout $before -> $(git -C "$w" log -1 --format='%h %G? %s' | cut -c1-80)"
+else echo "checkout $before is not behind $src's main; left as it is"; fi
+unmnt "$c"
+
+echo "-- 3. kit"
+k=$(part "$DISK" "$label-kit"); m=$(mnt "$k")
+sudo CARD="$HERE/$t/card" "$HERE/lan/kit" "$m" | tail -2
+unmnt "$k"
+
+o=$(part "$DISK" "$label-origin")
+if [ -n "$o" ]; then
+  echo "-- 4. origin"
+  m=$(mnt "$o"); n=0; moved=0
+  for r in "$m"/*/*/; do
+    [ -f "$r/HEAD" ] || continue; rel=${r#"$m"/}; rel=${rel%/}; n=$((n+1))
+    b=$(git -C "$r" rev-parse -q --verify main 2>/dev/null || true)
+    git -C "$r" fetch -q "$ORIGIN/$rel" main:main 2>/dev/null || { echo "  $rel: not fast-forward, or not on origin.local; left"; continue; }
+    [ "$b" = "$(git -C "$r" rev-parse main)" ] || moved=$((moved+1))
+  done
+  echo "$n repositories, $moved moved to origin.local's main"
+  unmnt "$o"
+fi
+echo "== $DISK is current with $src."

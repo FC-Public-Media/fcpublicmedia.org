@@ -14,15 +14,23 @@ CODE=$(cd "$(dirname "$0")/../.." && pwd)
 KIT=/media/$label-kit
 [ "$(id -u)" = 0 ] || exec doas "$0" "$@"
 
+apk add -q lsblk smartmontools >/dev/null 2>&1 || true
+serial() {   # what the drive itself answers: the kernel's, else lsblk's, else SMART's (a SATA disk on a live system without udev)
+  s=$(cat "/sys/block/${1#/dev/}/device/serial" 2>/dev/null | xargs)
+  [ -n "$s" ] || s=$(lsblk -dno SERIAL "$1" 2>/dev/null | xargs)
+  [ -n "$s" ] || s=$(smartctl -i "$1" 2>/dev/null | sed -n 's/^Serial Number: *//p' | xargs)
+  echo "${s:-none}"
+}
+health() { smartctl -H "$1" 2>/dev/null | sed -n 's/.*overall-health self-assessment test result: *//p; s/^SMART Health Status: *//p' | head -1; }
+
 jobs=$(for d in "$CODE"/machines/*/disk; do [ -f "$d" ] && basename "$(dirname "$d")"; done)
 disks() {
-  apk add -q lsblk >/dev/null 2>&1 || true
   live=$(lsblk -no PKNAME "$(findfs LABEL="$label-kit" 2>/dev/null)" 2>/dev/null || true)
   for b in /sys/block/*; do
     d=${b##*/}; case $d in loop*|ram*|zram*|sr*|dm-*) continue ;; esac
     [ "$d" = "$live" ] && continue
-    printf '  /dev/%-9s %6s  %-28s serial %s\n' "$d" "$(lsblk -dno SIZE /dev/$d | xargs)" \
-      "$(lsblk -dno MODEL /dev/$d | xargs)" "$(lsblk -dno SERIAL /dev/$d | xargs)"
+    printf '  /dev/%-9s %6s  %-28s serial %-22s SMART %s\n' "$d" "$(lsblk -dno SIZE /dev/$d | xargs)" \
+      "$(lsblk -dno MODEL /dev/$d | xargs)" "$(serial /dev/$d)" "$(health /dev/$d)"
   done
 }
 echo; echo "  This card: $(hostname).local, code at $(git -C "$CODE" log -1 --format='%h %cs' 2>/dev/null || echo '?')"
@@ -32,7 +40,7 @@ echo " $jobs " | grep -q " $JOB " || { echo "  No job '$JOB' with a disk script 
 DISK=${2:-}
 if [ -z "$DISK" ]; then printf '  Which disk for %s? /dev/' "$JOB"; read -r DISK; DISK=/dev/${DISK#/dev/}; fi
 [ -b "$DISK" ] || { echo "  $DISK is not a disk here."; exit 1; }
-SERIAL=$(lsblk -dno SERIAL "$DISK" | tr -d ' '); [ -n "$SERIAL" ] || SERIAL=none
+SERIAL=$(serial "$DISK")
 echo; echo "  $DISK: $(lsblk -dno SIZE,MODEL "$DISK" | xargs), serial $SERIAL"
 lsblk -no NAME,SIZE,FSTYPE,LABEL "$DISK" | sed 's/^/    /'
 echo; echo "  Everything on $DISK will be erased and $JOB installed."

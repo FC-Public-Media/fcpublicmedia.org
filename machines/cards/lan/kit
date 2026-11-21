@@ -10,7 +10,8 @@ ISO="${ISO:-$(ls "${TOOLBOX:-/srv/toolbox}"/isos/alpine-standard-*-x86_64.iso | 
 MIRROR=https://dl-cdn.alpinelinux.org/alpine
 CLAUDE=https://downloads.claude.ai/claude-code-releases
 WORLD="alpine-base bash doas cryptsetup e2fsprogs dosfstools util-linux tzdata chrony dbus avahi
-  avahi-tools openssh-client openssh-server git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less"
+  avahi-tools openssh-client openssh-server git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less
+  lsblk smartmontools nvme-cli pciutils usbutils dmidecode"
 
 (cd "$(dirname "$ISO")" && sha256sum -c --quiet "$(basename "$ISO").sha256")
 W="$(mktemp -d /var/tmp/kit.XXXXXX)"; R="$W/root"
