@@ -4,7 +4,7 @@
 (a bare repository on disk): what was pushed since the last pass, fast-forward only, never main, never
 a repository that began here, never what was already sitting at the origin. The beat: one pass in each
 ten minutes of the clock, GitHub quiet while dev is off, how GitHub's main is ahead read before it is
-taken, and a branch main holds let go with its record kept first.
+taken and merged by our main's own attributes, and a branch main holds let go with its record kept first.
 
     python3 bin/test_origin_relay.py
 """
@@ -267,6 +267,27 @@ class Beat(Origin):
                                          "largest": {"path": "big.jpg", "bytes": 2000},
                                          "pins": [{"path": "troves/producer", "from": "0" * 40, "to": pin}]})
         self.assertEqual((row["state"], row["did"]), ("even", "fast-forwarded to github/main"), "read, and taken as before")
+
+    def test_githubs_main_merges_into_ours_by_our_mains_own_attributes(self):
+        w = self.work()
+        (w / ".gitattributes").write_text("/.issues merge=union\n")
+        (w / ".issues").write_text("a the first\n")
+        self.git("add", "-A", cwd=w)
+        self.git("commit", "-qm", "the tape", cwd=w)
+        self.git("push", "-q", "origin", "main", cwd=w)
+        self.git("push", "-q", str(self.github / "hub"), "main", cwd=w)
+        self.intake.take(HUB, self.head(w))
+        there = self.tmp / "there"
+        self.git("clone", "-q", str(self.github / "hub"), str(there))
+        for work, line in ((w, "a said here\n"), (there, "a said on GitHub\n")):
+            with (work / ".issues").open("a") as f:
+                f.write(line)
+            self.git("commit", "-qam", line.strip(), cwd=work)
+            self.git("push", "-q", "origin", "main", cwd=work)
+        row = self.intake.take(HUB, self.head(there))
+        self.assertEqual((row["state"], row["did"]), ("ahead", "merged github/main cleanly"))
+        tape = self.git("-C", str(self.hub), "show", "main:.issues").stdout.splitlines()
+        self.assertEqual(sorted(tape), ["a said here", "a said on GitHub", "a the first"])
 
     def test_a_branch_main_holds_is_let_go_with_its_record(self):
         tip, merge = self.merged("feature", "b")

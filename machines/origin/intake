@@ -225,7 +225,8 @@ def take(full, theirs_remote):
     elif is_ancestor(p, theirs, ours):
         row["state"] = "ahead"          # ours has what GitHub has, and more
     else:
-        m = git(p, "merge-tree", "--write-tree", "--name-only", ours, theirs, check=False)
+        # by our main's own .gitattributes, which a bare repository does not read by itself
+        m = git(p, "--attr-source=" + ours, "merge-tree", "--write-tree", "--name-only", ours, theirs, check=False)
         if m.returncode == 0:
             tree = m.stdout.split("\n", 1)[0].strip()
             msg = "Merge GitHub's main into origin's main"

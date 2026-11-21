@@ -167,6 +167,9 @@ case "$cmd" in
   places)
     # An origin branch's repositories, as a listing Fighter's location providers read.
     export PYTHONDONTWRITEBYTECODE=1; pyrun "$HERE/places.py" "$@" ;;
+  issues)
+    # A repository's issues in one look: its .issues file and each line's history (docs/issues.md).
+    export PYTHONDONTWRITEBYTECODE=1; pyrun "$HERE/issues.py" "$@" ;;
   post)
     pyrun --with pyyaml "$REPO/troves/post/post.py" "$@" ;;
   camera)
