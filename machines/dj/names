@@ -1,0 +1,4 @@
+# Who wears the dj job; `../binding` asks it. Check with `hostname`. See PROFILE.md.
+
+# platform   key        value
+linux        Hostname   dj

@@ -1,0 +1,87 @@
+#!/bin/sh
+# disk DISK SERIAL -- from a card's Alpine, as root: headless Debian 13 onto DISK, booting through Debian's signed shim
+# so Secure Boot stays on. ERASES DISK. DISK must answer to SERIAL ("none" if it reports none), must not be in use, and
+# is never the disk the live system came from. Sent with settings and Debian's keyring by ./install. See PROFILE.md.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/settings"
+: "${FCPM_KEYS:?}" "${NAME:?}" "${ROOM_TZ:=America/Denver}"
+DISK=${1:?DISK}; SERIAL=${2:?SERIAL}; d=${DISK#/dev/}
+MIRROR=http://deb.debian.org/debian
+
+[ -d "/sys/firmware/efi" ] || { echo "This live system did not boot by UEFI; Debian's shim needs it. Stopping."; exit 1; }
+[ -d "/sys/block/$d" ] || { echo "$DISK is not a whole disk. Stopping."; exit 1; }
+apk add -q lsblk sgdisk dosfstools e2fsprogs debootstrap gpgv perl wget binutils xz zstd tar >/dev/null
+got=$(lsblk -dno SERIAL "$DISK" 2>/dev/null | tr -d ' '); [ -n "$got" ] || got=none
+[ "$got" = "$SERIAL" ] || { echo "$DISK answers to serial $got, not $SERIAL. Stopping."; exit 1; }
+busy=$(grep -c "^$DISK" /proc/mounts || true)
+for h in /sys/block/$d/holders /sys/block/$d/$d*/holders; do [ -z "$(ls -A "$h" 2>/dev/null)" ] || busy=1; done
+[ "$busy" = 0 ] || { echo "$DISK is in use (mounted, or held: the live system's own disk?). Stopping."; exit 1; }
+echo "Installing $NAME (Debian 13, headless) onto $DISK: $(cat /sys/block/$d/device/model 2>/dev/null | xargs), $(( $(cat /sys/block/$d/size) / 2048 )) MB, serial $got."
+
+# GPT: the EFI partition, then the root.
+sgdisk --zap-all "$DISK" >/dev/null
+sgdisk -n1:0:+512M -t1:ef00 -c1:"$NAME-efi" -n2:0:0 -t2:8304 -c2:"$NAME-root" "$DISK" >/dev/null
+partprobe "$DISK" 2>/dev/null || true; mdev -s 2>/dev/null || true; sleep 2
+case $d in *[0-9]) p=${DISK}p ;; *) p=$DISK ;; esac
+mkfs.vfat -F 32 -n DJ-EFI "${p}1" >/dev/null
+mkfs.ext4 -q -F -L "$NAME-root" "${p}2"
+
+M=/mnt/dj; mkdir -p $M; mount "${p}2" $M
+debootstrap --arch amd64 --keyring "$HERE/debian-archive-keyring.gpg" \
+  --include=ca-certificates,locales,systemd-sysv trixie $M "$MIRROR" >/dev/null
+mkdir -p $M/boot/efi; mount "${p}1" $M/boot/efi
+for x in dev dev/pts proc sys; do mount --bind /$x $M/$x; done
+mountpoint -q /sys/firmware/efi/efivars || mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null || true
+mount --bind /sys/firmware/efi/efivars $M/sys/firmware/efi/efivars 2>/dev/null || true
+cp /etc/resolv.conf $M/etc/resolv.conf
+
+cat > $M/etc/apt/sources.list <<S
+deb $MIRROR trixie main contrib non-free non-free-firmware
+deb $MIRROR trixie-updates main contrib non-free non-free-firmware
+deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
+S
+cat > $M/etc/fstab <<S
+UUID=$(blkid -s UUID -o value "${p}2")  /          ext4  errors=remount-ro,noatime  0 1
+UUID=$(blkid -s UUID -o value "${p}1")  /boot/efi  vfat  umask=0077                 0 1
+S
+echo "$NAME" > $M/etc/hostname
+printf '127.0.0.1\tlocalhost\n127.0.1.1\t%s.local %s\n::1\t\tlocalhost\n' "$NAME" "$NAME" > $M/etc/hosts
+mkdir -p $M/etc/systemd/network
+printf '[Match]\nName=en* eth*\n\n[Network]\nDHCP=yes\nMulticastDNS=no\n' > $M/etc/systemd/network/20-wired.network
+printf '%s\n' "$FCPM_KEYS" > $M/root/fcpm.keys
+
+cat > $M/root/inside <<'S'
+#!/bin/sh
+set -eu
+export DEBIAN_FRONTEND=noninteractive LC_ALL=C
+. /root/settings
+apt-get update -q >/dev/null
+apt-get install -y -q linux-image-amd64 shim-signed grub-efi-amd64-signed grub-efi-amd64 efibootmgr \
+  systemd-resolved openssh-server avahi-daemon libnss-mdns sudo systemd-timesyncd intel-microcode \
+  zram-tools git python3 python3-yaml rsync curl jq less >/dev/null
+ln -sf /usr/share/zoneinfo/$ROOM_TZ /etc/localtime; echo "$ROOM_TZ" > /etc/timezone
+sed -i 's/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen; locale-gen >/dev/null; echo 'LANG=en_US.UTF-8' > /etc/default/locale
+id fcpm >/dev/null 2>&1 || useradd -m -s /bin/bash -G sudo fcpm
+passwd -l root >/dev/null; usermod -p '*' fcpm
+install -d -m 700 -o fcpm -g fcpm /home/fcpm/.ssh
+install -m 600 -o fcpm -g fcpm /root/fcpm.keys /home/fcpm/.ssh/authorized_keys
+echo 'fcpm ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/fcpm; chmod 440 /etc/sudoers.d/fcpm
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/10-fcpm.conf
+printf 'ALGO=zstd\nPERCENT=25\n' > /etc/default/zramswap
+systemctl enable -q systemd-networkd systemd-resolved ssh avahi-daemon systemd-timesyncd zramswap
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --uefi-secure-boot --force-extra-removable >/dev/null 2>&1 \
+  || grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --uefi-secure-boot --no-nvram --force-extra-removable
+sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=2/; s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=""/' /etc/default/grub
+update-grub >/dev/null 2>&1
+ssh-keygen -A >/dev/null
+rm -f /root/inside /root/settings /root/fcpm.keys
+S
+cp "$HERE/settings" $M/root/settings
+chroot $M /bin/sh /root/inside
+rm -f $M/etc/resolv.conf; ln -s ../run/systemd/resolve/stub-resolv.conf $M/etc/resolv.conf
+echo "HOST-KEY: $(cut -d' ' -f1,2 $M/etc/ssh/ssh_host_ed25519_key.pub)"
+umount $M/sys/firmware/efi/efivars 2>/dev/null || true
+for x in dev/pts dev proc sys boot/efi; do umount $M/$x; done
+umount $M; sync
+echo "Installed onto $DISK."

@@ -32,6 +32,7 @@ DiscoveryWritten's workstation in the studio, is the prototype; FCPM copies its 
 | kiosk | [`kiosk`](../machines/kiosk/PROFILE.md) | `200-FCPANEDIT2` | the old editing bay 2, now the media node: door and screens ([kiosk.md](kiosk.md)) |
 | | [`editing-bay-2`](../machines/editing-bay-2/PROFILE.md) | `FCPMEDIT2` | "bay 2"; Windows, the twin of editing bay 1 |
 | | [`digitization`](../machines/digitization/PROFILE.md) | `digitization` | Debian: FCPM's git origin; takes the `digitization` crew from station-node |
+| | [`dj`](../machines/dj/PROFILE.md) | `dj` | Debian, headless: the test server and static CI, and the streaming (was Editing Bay 3) |
 | | [`thin-client`](../machines/thin-client/PROFILE.md) | unfilled | a donated HP t510 in the control rack: the kiosk's overflow console, beside the scanner; to be reformatted |
 | | [`bounce`](../machines/bounce/PROFILE.md) | `bounce` | a Raspberry Pi 3 with a camera: the member-site box prototype; its monitor shows the [`qr`](../machines/qr/PROFILE.md) console (worn by digitization at `qr.local`) |
 
