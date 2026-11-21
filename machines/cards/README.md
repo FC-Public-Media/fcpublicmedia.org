@@ -6,7 +6,7 @@ enrolled where Secure Boot is on.
 
     machines/cards/build TYPE /dev/sdX sdX       erases the card; a window on this screen asks first
     machines/cards/extend TYPE /dev/sdX sdX      adds the partitions and boot images its type names and it lacks; erases nothing
-    provision [JOB [DISK]]                       at a box booted from a card: puts JOB on its own disk from what the card carries
+    fcpm provision [JOB [DISK]]                  at a box booted from a card: puts JOB on its own disk from what the card carries
 
 | type | boots | carries | |
 |---|---|---|---|

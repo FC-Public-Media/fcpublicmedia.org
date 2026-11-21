@@ -19,7 +19,7 @@ to the Buffalo first (`../digitization/PROFILE.md`, Mirrors). Machines: [docs/st
 From the president card, at DJ, with nobody else driving:
 
 1. Boot DJ from the card: Ventoy's menu, Alpine (grub2 mode by itself). Unlock the card's home at the console.
-2. `provision dj`. It lists DJ's disks with their serials and asks which; pick the NVMe (`nvme0n1`), type its serial
+2. `fcpm provision dj`. It lists DJ's disks with their serials and asks which; pick the NVMe (`nvme0n1`), type its serial
    back, and it installs Debian there from what the card carries. Then `shutdown`, take the card out, power on:
    `dj.local`.
 3. From a workstation, `machines/dj/install fcpm@dj.local` (NVIDIA's driver), reboot, and answer the blue MokManager

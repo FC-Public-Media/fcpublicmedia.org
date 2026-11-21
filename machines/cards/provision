@@ -9,7 +9,8 @@
 # A job can be provisioned when machines/<job>/disk exists (dj). The box's managers are the card's own keys.
 set -eu
 CODE=$(cd "$(dirname "$0")/../.." && pwd)
-. /etc/fcpm/card 2>/dev/null || label=lan
+[ -f /etc/fcpm/card ] || { echo "provision runs at a box booted from a card (no /etc/fcpm/card here)."; exit 1; }
+. /etc/fcpm/card
 KIT=/media/$label-kit
 [ "$(id -u)" = 0 ] || exec doas "$0" "$@"
 

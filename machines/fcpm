@@ -21,6 +21,7 @@ cmd=${1:-watch}; [ $# -gt 0 ] && shift
 case "$cmd" in
   watch)     exec "$HERE/watch" ;;
   status)    exec "$HERE/sync" ;;
+  provision) exec sh "$HERE/cards/provision" "$@" ;;
   install)
     # A job named here is put on even before its `names` lists this computer (start.ps1).
     if [ $# -gt 0 ]; then "$HERE/sync" -p "$1" install || exit; else "$HERE/sync" install || exit; fi
