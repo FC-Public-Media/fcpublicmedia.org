@@ -1,9 +1,10 @@
 #!/bin/bash
-# kit DIR: a lan card's kit, made on any Linux, as root: the package cache Alpine boots from
+# kit DIR: a card's Alpine kit, made on any Linux, as root: the package cache Alpine boots from
 # (cache/, signed by Alpine), its saved settings (<hostname>.apkovl.tar.gz; kept when there already)
-# and bin/claude. Run again on a copy of a card's kit to refresh it, then copy it back.
+# and bin/claude. Run again on a copy of a card's kit to refresh it, then copy it back. CARD names another
+# type's card file (its label and hostname); a lan card's is the default.
 set -euo pipefail
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; . "$HERE/card"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; . "${CARD:-$HERE/card}"
 OUT="${1:?usage: kit DIR}"; mkdir -p "$OUT/cache" "$OUT/bin"
 ISO="${ISO:-$(ls "${TOOLBOX:-/srv/toolbox}"/isos/alpine-standard-*-x86_64.iso | tail -1)}"
 MIRROR=https://dl-cdn.alpinelinux.org/alpine
@@ -62,6 +63,8 @@ fi
 O="$(ls "$OUT"/*.apkovl.tar.gz | head -1)"; S="$W/settings"; mkdir -p "$S"
 tar -xzf "$O" -C "$S"
 grep -qx openssh-server "$S/etc/apk/world" || echo openssh-server >> "$S/etc/apk/world"
+mkdir -p "$S/etc/fcpm"                            # which card this is, for the seat: its partitions' label
+[ -f "$S/etc/fcpm/card" ] || printf 'label=%s\nhostname=%s\n' "$label" "$hostname" > "$S/etc/fcpm/card"
 mkdir -p "$S/etc/runlevels/default" "$S/etc/ssh/sshd_config.d" "$S/root/.ssh"
 ln -sfn /etc/init.d/sshd "$S/etc/runlevels/default/sshd"
 printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > "$S/etc/ssh/sshd_config.d/10-fcpm.conf"

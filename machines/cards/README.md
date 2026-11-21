@@ -5,10 +5,11 @@ and the checkout on it holds every job's profile. Every card boots through Vento
 enrolled where Secure Boot is on.
 
     machines/cards/build TYPE /dev/sdX sdX       erases the card; a window on this screen asks first
+    machines/cards/extend TYPE /dev/sdX sdX      adds the partitions and boot images its type names and it lacks; erases nothing
 
 | type | boots | carries | |
 |---|---|---|---|
-| [`steward`](steward/card) | Debian XFCE live, 16G persistence; SystemRescue; Alpine | home, origin, toolbox | brings FCPM back with nothing else around |
+| [`steward`](steward/card) | Debian XFCE live, 16G persistence; SystemRescue; Alpine, reachable as `steward.local` | home, origin, toolbox, kit, code | brings FCPM back with nothing else around; the card that provisions |
 | [`lan`](lan/card) | Alpine, diskless | kit, code, home | leans on the LAN: code from digitization, packages from the internet |
 
 A type is a folder: `card` (its partitions, `name:fs:size`), and `fill`, which `build` runs on each

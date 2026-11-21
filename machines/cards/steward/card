@@ -1,6 +1,8 @@
-# Everything to bring FCPM back with nothing else around. Read by ../build.
+# Everything to bring FCPM back with nothing else around; its Alpine comes up on the LAN as steward.local,
+# reachable by key (kit, code: ../lan/kit). Read by ../build and ../extend.
 label=card
+hostname=steward
 ventoy=48G
 isos="debian-live-*-xfce.iso debian-live-*-standard.iso systemrescue-*.iso alpine-standard-*.iso"
 persistence="16G debian-live-*-xfce.iso"
-parts="home:luks:32G origin:ext4:16G toolbox:ext4:16G"
+parts="home:luks:32G origin:ext4:16G toolbox:ext4:16G kit:vfat:2G code:ext4:2G"

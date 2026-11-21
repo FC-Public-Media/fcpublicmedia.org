@@ -1,0 +1,73 @@
+#!/bin/bash
+# extend TYPE /dev/sdX sdX: gives a TYPE card the partitions its type names and it lacks, in its free space at the
+# end, and fills them (README.md). Nothing already on the card is touched. Run as the desktop's user; a window asks first.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TYPE="${1:-}"; DISK="${2:-}"
+[ -n "$TYPE" ] && [ -f "$HERE/$TYPE/card" ] && [ -n "$DISK" ] || { echo "usage: extend TYPE /dev/sdX sdX"; exit 1; }
+[ "${3:-}" = "$(basename "$DISK")" ] || { echo "Name the disk twice: $DISK $(basename "$DISK")"; exit 1; }
+[ "$(id -u)" != 0 ] || { echo "Run as the desktop's user, not root."; exit 1; }
+[ "$(lsblk -dno TYPE "$DISK" 2>/dev/null)" = disk ] || { echo "$DISK is not a whole disk."; exit 1; }
+persistence=""; default=""; . "$HERE/$TYPE/card"
+TOOLBOX="${TOOLBOX:-/srv/toolbox}"
+export PATH="$PATH:/sbin:/usr/sbin"
+mib() { case "$1" in *G) echo $(( ${1%G} * 1024 ));; *M) echo "${1%M}";; esac; }
+
+lsblk -rno LABEL "$DISK" | grep -qx Ventoy || { echo "$DISK has no Ventoy partition: not a card. build makes one."; exit 1; }
+want=""
+for p in $parts; do
+  IFS=: read -r name fs size <<<"$p"
+  lsblk -rno LABEL,PARTLABEL "$DISK" | tr ' ' '\n' | grep -qx "$label-$name" || want="$want $p"
+done
+for p in $want; do
+  case "$p" in *:luks:*|*:rest) echo "extend makes no $p: an encrypted home or a 'rest' is build's."; exit 1;; esac
+done
+
+if [ -z "${DISPLAY:-}" ] && [ -S /tmp/.X11-unix/X0 ]; then export DISPLAY=:0; fi
+TEXT="$(printf 'Add to the %s card on %s, in its free space:\n\n%s\n\nand any boot image it lacks (%s). Nothing on it now is changed.\n\n%s' "$TYPE" "$DISK" \
+  "$(for p in $want; do IFS=: read -r n f s <<<"$p"; echo "$label-$n  $f  $s"; done)" "$isos" \
+  "$(lsblk -rno NAME,SIZE,FSTYPE,LABEL "$DISK" | tail -n +2)")"
+echo "$TEXT"
+zenity --question --no-markup --width 440 --title "Add to this card?" --ok-label "Add them" \
+  --cancel-label "Leave it" --text "$TEXT" 2>/dev/null || { echo "Left as it was."; exit 1; }
+
+WORK="$(mktemp -d)"
+trap 'sync; sudo umount "$WORK/m" 2>/dev/null || true; rm -rf "$WORK"' EXIT
+mkdir "$WORK/m"
+sudo sfdisk -d "$DISK" > "$WORK/before.sfdisk"; sudo mkdir -p /var/backups
+sudo cp "$WORK/before.sfdisk" "/var/backups/fcpm-card-$(basename "$DISK")-$(date +%Y%m%dT%H%M%S).sfdisk"
+for p in $want; do
+  IFS=: read -r name fs size <<<"$p"
+  A=$(sudo parted -ms "$DISK" unit MiB print | awk -F: 'NR>2{sub("MiB","",$3); if (int($3)+1>e) e=int($3)+1} END{print e}')
+  sudo parted -s "$DISK" unit MiB mkpart "$label-$name" "$A" $(( A + $(mib "$size") ))
+  sudo partprobe "$DISK"; sudo udevadm settle
+  dev="$(lsblk -rno PATH,PARTLABEL "$DISK" | awk -v l="$label-$name" '$2==l{print $1}')"
+  [ -n "$dev" ] || { echo "No partition $label-$name appeared on $DISK."; exit 1; }
+  case "$fs" in
+    ext4) sudo mkfs.ext4 -q -F -L "$label-$name" "$dev" ;;
+    vfat) sudo mkfs.fat -F 32 -n "$label-$name" "$dev" >/dev/null ;;
+  esac
+  if [ -x "$HERE/$TYPE/fill" ]; then
+    sudo mount "$dev" "$WORK/m"
+    sudo TOOLBOX="$TOOLBOX" "$HERE/$TYPE/fill" "$name" "$WORK/m"
+    sync; sudo umount "$WORK/m"
+  fi
+done
+
+# Ventoy's partition: each image the type names and the card lacks, with its checksum. Nothing there is removed.
+P1="$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="Ventoy"{print $1; exit}')"
+sudo mount -t exfat -o uid="$(id -u)",gid="$(id -g)" "$P1" "$WORK/m"
+for pat in $isos; do
+  ls "$WORK/m"/$pat >/dev/null 2>&1 && continue
+  f="$(ls "$TOOLBOX"/isos/$pat 2>/dev/null | tail -1)"; [ -n "$f" ] || { echo "No $pat in $TOOLBOX/isos."; continue; }
+  n="$(basename "$f")"; h="$(awk '{print $1; exit}' "$f.sha256" 2>/dev/null || true)"
+  [ -n "$h" ] || h="$(awk -v n="$n" '$2==n || $2=="*"n {print $1}' "$TOOLBOX/isos/SHA256SUMS")"
+  [ -n "$h" ] || { echo "No published checksum for $n."; exit 1; }
+  cp "$f" "$WORK/m/"; sync
+  echo "$h  $n" | (cd "$WORK/m" && sha256sum -c --quiet) && echo "$h  $n" >> "$WORK/m/SHA256SUMS"
+  echo "added $n"
+done
+sync; sudo umount "$WORK/m"
+
+echo; lsblk -o NAME,SIZE,FSTYPE,LABEL "$DISK"
+echo "Extended: the $TYPE card has every partition and image its type names."
