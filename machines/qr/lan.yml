@@ -1,0 +1,8 @@
+# lan.yml -- what the box wearing qr answers to beside its own <hostname>.local (`../lan.py publish`, the
+# crew's `names` line). See PROFILE.md.
+
+domain: fcpublicmedia.local
+
+# Bare <label>.local names: qr.local is where a bay sets a reply down (`POST /drop`), handed on to Helm.
+bare:
+  qr: board

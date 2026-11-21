@@ -1,0 +1,17 @@
+# What the qr job serves on the box that wears it (qr/services). See README.md and qr/PROFILE.md.
+
+serves:
+  - service: follow
+    for: "this checkout follows origin.local's main the moment it moves there (the origin's `hear main`; five minutes at most), fast-forward only, with the scanner trove at its pin"
+    start: "/bin/sh machines/qr/follow heed"
+    alive: {process: "machines/qr/follow heed"}
+
+  - service: intake
+    for: "the intake on port 80: every catch, from the camera or a POST /drop, kept first, then handed to Helm (helms.yml `intakes:`); no depot, wall or camera of the door's own"
+    start: "/usr/bin/python3 machines/kiosk/door.py serve"
+    env: {FCPM_DOOR_WATCH: "replies", FCPM_DOOR_PORT: "80"}
+    alive: {port: 80}
+
+  - service: names
+    for: "qr.local, the bays' join point, by mDNS while this runs (qr/lan.yml)"
+    start: "/usr/bin/python3 -I machines/lan.py publish"

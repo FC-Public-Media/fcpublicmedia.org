@@ -12,7 +12,9 @@ or held with the reason. Nothing is refused at the door, and nothing is applied 
 
 Helms are peers (machines/helms.yml). A reply whose wizard another job's helm holds is not read for
 its meaning here: it is passed, as it came, to that helm's /drop, and moved to routed/. While that helm
-does not answer, it waits in the inbox and is passed on a later pass.
+does not answer, it waits in the inbox and is passed on a later pass. A machine that wears an intake
+(helms.yml `intakes:`) and no helm applies nothing: what no helm holds, or what it cannot read, goes to its
+`hands_to` helm.
 
 Under the door's state (~/.local/state/media-node/replies on Linux, %LOCALAPPDATA%\\media-node\\replies):
     inbox/      set down, not yet read         applied/     read, good, acted on
@@ -642,6 +644,20 @@ def wears():
     return {p.name for p in b["profiles"]() if (b["declared"](p).get(system) or "").casefold() == fact.casefold()}
 
 
+def intakes():
+    return (load_yaml(HELMS).get("intakes") or {}) if HELMS.is_file() else {}
+
+
+def handed_to():
+    """(job, its helm's address) a reply no helm holds goes to, when this machine wears an intake and no helm;
+    None when it is read here."""
+    worn = wears()
+    if worn & set(helms()):
+        return None
+    to = next(((i or {}).get("hands_to") for j, i in intakes().items() if j in worn), None)
+    return (to, (helms().get(to) or {}).get("at")) if to else None
+
+
 def holder(wizard, job=None):
     """(job, its helm's address) when a job's helm holds this wizard; None when any helm applies it. When
     several hold it (each bay's models), the reply's own `job` says which, and else the first listed does."""
@@ -719,6 +735,8 @@ def take():
         name = path.stem                      # the name has a dot of its own (the microseconds)
         reply, meta = read(path)
         owner = holder(str(reply.get("wizard") or ""), reply.get("job")) if reply is not None else None
+        if owner is None:
+            owner = handed_to()               # an intake reads nothing for meaning, not even what it cannot read
         if owner and owner[0] not in wears():
             job, at = owner
             try:

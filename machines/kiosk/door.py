@@ -27,6 +27,8 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /qr/               the scanner's console as a page: its eyes, the inbox, what it last heard
     GET /verbs/            fcpm's verbs, as machines/fcpm.yml defines them, for this platform
     GET /ask/              wizard:model+ask, a question as a code; /loop/ the public loop of answers
+    GET /inbox/now         this door's inbox and the answerer, as JSON; /asks/bottles/<name>.json the loop's bottles
+                           as asks wrote them: what a joined intake's screen shows (machines/qr)
     GET /kiosk/            the welcome screen
     GET /kiosk/qr/<n>      the check-in QR for panel n, as welcome.yml names it
     GET /kiosk/wifi/<n>    Wi-Fi QR n, built in memory. See node.yml
@@ -1198,6 +1200,22 @@ def job_page(name):
 QR_EVENTS = pathlib.Path.home() / ".local" / "state" / "fcpm" / "scanner" / "events.log"
 
 
+def qr_now():
+    """The qr row: its eyes here, or its intake's door where another box wears it (helms.yml `intakes:`)."""
+    import replies
+    import urllib.request
+    at = (replies.intakes().get("qr") or {}).get("at")
+    if at and "qr" not in replies.wears():
+        try:
+            with urllib.request.urlopen(at.rstrip("/") + "/revision", timeout=3):
+                return {"say": "joined, at %s" % at.split("//")[-1], "on": "live"}
+        except (OSError, ValueError):
+            return {"say": "its intake is not answering", "on": "bad"}
+    if subprocess.run(["pgrep", "-f", "scanner/page.py"], capture_output=True).returncode == 0:
+        return {"say": "eyes connected", "on": "live"}
+    return {"say": "no eyes", "on": "bad"}
+
+
 def qr_page():
     """The scanner as a page: on this machine's own screen, its camera (QR_JS); anywhere, the Pi's eyes, the door's
     inbox, and what the scanner last heard (its own events.log)."""
@@ -1458,8 +1476,7 @@ def board_now():
     put("spend", spend_now)
     for j in jobs():
         put("job:%s" % j["job"], lambda j=j: job_now(j))
-    put("qr", lambda: {"say": "eyes connected", "on": "live"}
-        if subprocess.run(["pgrep", "-f", "scanner/page.py"], capture_output=True).returncode == 0 else {"say": "no eyes", "on": "bad"})
+    put("qr", qr_now)
     return out
 
 
@@ -3633,6 +3650,14 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, json.dumps(loop_now()), TYPES[".json"])
             if route == "/loop/head":
                 return self.reply(200, json.dumps(loop_head()), TYPES[".json"])
+            if route == "/inbox/now":
+                import replies
+                return self.reply(200, json.dumps({"rows": replies.inbox(12), "answerer": replies.asks_state()}),
+                                  TYPES[".json"])
+            m = re.fullmatch(r"/asks/bottles/(index|[A-Za-z0-9_-]{8,64})\.json", route)
+            if m:
+                path = asks_dir("bottles") / ("%s.json" % m.group(1))
+                return self.file(path if path.is_file() else None)
             m = re.fullmatch(r"/asks/answer/([A-Za-z0-9_-]{8,64})", route)
             if m:
                 path = asks_dir("answers") / ("%s.json" % m.group(1))

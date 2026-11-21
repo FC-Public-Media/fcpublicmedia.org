@@ -9,8 +9,8 @@ order it is built (Steps, at the end).
 
 ## The pickup station
 
-The QR pickup station is the `qr` job ([machines/qr](../machines/qr/PROFILE.md)), worn by digitization at
-`qr.local`. It is what makes anything available on the LAN at all:
+The QR pickup station is the `qr` job ([machines/qr](../machines/qr/PROFILE.md)), worn by the bounce Pi,
+joined, at `qr.local`: it keeps what it catches and hands every reply to Helm. It is what makes anything available on the LAN at all:
 
 - **In.** A camera catches a code, or a bay sets a bottle down at `qr.local/drop`. Helm passes each reply
   to the helm that holds its wizard ([kiosk.md](kiosk.md#helms)).

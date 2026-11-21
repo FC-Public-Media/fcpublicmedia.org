@@ -117,6 +117,41 @@ class Helms(unittest.TestCase):
         [(_, verdict, _)] = replies.take()
         self.assertEqual(verdict, "held")
 
+    def test_an_intake_hands_on_what_no_helm_holds_and_what_one_does(self):
+        self.assertEqual(replies.intakes()["qr"]["hands_to"], "digitization")
+        sent = []
+        replies.route = lambda path, at: sent.append((json.loads(path.read_bytes())["wizard"], at)) or "far-name"
+        os.environ["FCPM_WEARS"] = "qr,bounce"
+        self.assertEqual(replies.handed_to(), ("digitization", "http://digitization.local"))
+        replies.drop(json.dumps({"schema": "fcpm.reply/v0", "wizard": "wizard:nonesuch", "issued": "x", "nonce": "n"}))
+        replies.drop(up("qwen3.5-9b"))
+        self.assertEqual([v for _, v, _ in replies.take()], ["routed", "routed"])
+        self.assertEqual(sent, [("wizard:nonesuch", "http://digitization.local"),
+                                ("wizard:model+up", "http://10.209.1.20:8080")])
+        replies.route = lambda path, at: sent.append((path.read_bytes(), at)) or "far-name"
+        replies.drop("not a bottle at all")
+        self.assertEqual([v for _, v, _ in replies.take()], ["routed"])         # nor one it cannot read
+        self.assertEqual(sent[-1], (b"not a bottle at all", "http://digitization.local"))
+        self.assertFalse((replies.STATE / "nonces.json").exists())
+
+    def test_an_intake_that_also_wears_a_helm_reads_for_itself(self):
+        os.environ["FCPM_WEARS"] = "qr,digitization"
+        self.assertIsNone(replies.handed_to())
+        os.environ["FCPM_WEARS"] = "digitization"
+        self.assertIsNone(replies.handed_to())
+
+    def test_an_intake_waits_while_its_helm_is_away(self):
+        def away(path, at):
+            raise urllib.error.URLError("refused")
+        replies.route = away
+        os.environ["FCPM_WEARS"] = "qr"
+        name = replies.drop(json.dumps({"schema": "fcpm.reply/v0", "wizard": "wizard:kiosk+host", "issued": "x",
+                                        "nonce": "n"}))
+        [(_, verdict, why)] = replies.take()
+        self.assertEqual(verdict, "waiting")
+        self.assertIn("digitization", why)
+        self.assertEqual(replies.where(name)["state"], "inbox")
+
     def test_the_holding_helm_runs_the_pick_with_the_line_up(self):
         os.environ["FCPM_WEARS"] = "production"
         log = self.tmp / "picked"

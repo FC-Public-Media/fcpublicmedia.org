@@ -1,0 +1,5 @@
+# What qr runs: `name keep from` or `name every Nm from`. See machines/README.md.
+
+follow          keep        machines/qr
+intake          keep        machines/qr
+names           keep        machines/qr

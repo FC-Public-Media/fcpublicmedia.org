@@ -1,0 +1,22 @@
+#!/bin/sh
+# follow -- this checkout follows FCPM's origin (origin.local): main only, fast-forward only, never over
+# local changes, and the scanner trove at its pin. `follow heed` is the crew's line: a pass, then a wait on
+# the origin's `hear main`, five minutes at most. The origin is `fcpm-origin` in ~/.ssh/config (./install).
+if [ "${1:-}" = heed ]; then
+  me="$(cd "$(dirname "$0")" && pwd)/follow"
+  while :; do
+    timeout 330 ssh -o BatchMode=yes -o ConnectTimeout=20 "${FCPM_ORIGIN_HOST:-fcpm-origin}" hear main >/dev/null 2>&1 &
+    heard=$!
+    /bin/sh "$me" || echo "follow: the pass failed ($?)"
+    wait "$heard" || sleep 270
+  done
+fi
+cd "$(dirname "$0")/../.." || exit 1
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
+[ -z "$(git status --porcelain --ignore-submodules=all)" ] || exit 0
+O=${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}
+git remote set-url origin "$O/FC-Public-Media/fcpublicmedia.org"
+git config submodule.troves/scanner.url "$O/FC-Public-Media/scanner"
+[ -e troves/scanner/.git ] && git -C troves/scanner remote set-url origin "$O/FC-Public-Media/scanner"
+git fetch -q origin main && git merge -q --ff-only origin/main
+GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- troves/scanner

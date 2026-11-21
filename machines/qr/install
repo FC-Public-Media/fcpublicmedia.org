@@ -1,0 +1,68 @@
+#!/bin/sh
+# install -- the qr job onto the box its ./names names, joined: eyes, page and intake all there.
+#
+#   machines/qr/install fcpm@HOST   from digitization: carries this checkout's main (shallow) to
+#                                   HOST:~/code/fcpublicmedia.org once, gives HOST its own origin key
+#                                   (~/.ssh/origin, `fcpm-origin` in its ~/.ssh/config), then asks for
+#                                   HOST's sudo password in a window here and runs `install root` there
+#   machines/qr/install root        as root on the box: python3-yaml + avahi-utils, port 80 for fcpm,
+#                                   eyes.service from this checkout, the crew (../crew.sh install qr)
+#
+# The origin answers HOST's key once its line is in ../origin/KEYHOLDERS (merged); until then follow
+# waits and the box runs the checkout it was given. See PROFILE.md.
+set -eu
+cd "$(dirname "$0")/../.."
+REPO=$(pwd -P)
+TARGET=${1:?fcpm@HOST, or root on the box}
+
+if [ "$TARGET" = root ]; then
+  [ "$(id -u)" = 0 ] || { echo "install root: as root"; exit 1; }
+  USER_=${SUDO_USER:-fcpm}
+  need=""
+  python3 -c 'import yaml' 2>/dev/null || need="$need python3-yaml"
+  command -v avahi-publish >/dev/null || need="$need avahi-utils"
+  [ -z "$need" ] || apt-get install -y -q $need >/dev/null
+  echo "net.ipv4.ip_unprivileged_port_start=80" > /etc/sysctl.d/60-fcpm-qr.conf
+  sysctl -q -p /etc/sysctl.d/60-fcpm-qr.conf
+  u=/etc/systemd/system/eyes.service
+  [ ! -f "$u" ] || [ -f "$u.before-qr-joined" ] || cp "$u" "$u.before-qr-joined"
+  sed -e "s|@REPO@|$REPO|g" -e "s|@USER@|$USER_|g" machines/qr/eyes.service > "$u"
+  systemctl daemon-reload
+  systemctl enable -q eyes.service
+  systemctl restart eyes.service
+  sh machines/crew.sh install qr
+  echo "eyes.service: $(systemctl is-active eyes.service), page from $REPO/troves/scanner"
+  exit 0
+fi
+
+HOST=${TARGET#*@}
+ORIGIN_KNOWN=$(ssh-keygen -F origin.local | grep -v '^#' || true)
+[ -n "$ORIGIN_KNOWN" ] || { echo "origin.local's host key is not in this machine's known_hosts"; exit 1; }
+PIN=$(git ls-tree HEAD troves/scanner | awk '{print $3}')
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+git clone -q --depth 50 --branch main "file://$REPO" "$T/fcpublicmedia.org"
+git clone -q --no-checkout "file://$HOME/code/ref/scanner" "$T/scanner"
+git -C "$T/scanner" cat-file -e "$PIN^{commit}" || { echo "the scanner's pin $PIN is not here"; exit 1; }
+
+# The checkout, once: the box keeps its own afterward (follow).
+if ! ssh -o BatchMode=yes "$TARGET" test -d code/fcpublicmedia.org/.git; then
+  tar -C "$T" -cf - fcpublicmedia.org scanner | ssh "$TARGET" 'mkdir -p code/.carry && tar -C code/.carry -xf -'
+  ssh "$TARGET" "set -e; cd code; mv .carry/fcpublicmedia.org fcpublicmedia.org
+    cd fcpublicmedia.org
+    git config submodule.troves/scanner.url \"\$HOME/code/.carry/scanner\"
+    git -c protocol.file.allow=always submodule update -q --init --checkout -- troves/scanner
+    cd ..; rm -rf .carry"
+fi
+
+# Its own key to the origin, and the origin's host key.
+ssh "$TARGET" "set -e; mkdir -p .ssh; chmod 700 .ssh
+  [ -f .ssh/origin ] || ssh-keygen -q -t ed25519 -N '' -C 'qr on $HOST to origin' -f .ssh/origin
+  touch .ssh/config .ssh/known_hosts
+  grep -q '^Host fcpm-origin\$' .ssh/config || printf '\nHost fcpm-origin\n  HostName origin.local\n  User git\n  IdentityFile ~/.ssh/origin\n  IdentitiesOnly yes\n' >> .ssh/config
+  ssh-keygen -F origin.local -f .ssh/known_hosts >/dev/null || cat >> .ssh/known_hosts" <<K
+$ORIGIN_KNOWN
+K
+echo "$HOST's origin key (a KEYHOLDERS line): $(ssh "$TARGET" cat .ssh/origin.pub | awk '{print $1, $2}')"
+
+PW=$(zenity --entry --hide-text --title "qr on $HOST" --text "$HOST's password, for sudo there" 2>/dev/null) || { echo "no password given"; exit 1; }
+printf '%s\n' "$PW" | ssh "$TARGET" "sudo -S -p '' sh code/fcpublicmedia.org/machines/qr/install root"

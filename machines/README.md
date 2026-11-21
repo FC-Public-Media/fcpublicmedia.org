@@ -12,7 +12,7 @@ Gear comes from [`troves/`](../troves/README.md).
 |---|---|---|
 | [`production`](production/CREW.md) | recordings after they land: pools, transcription, episodes, release; it drives the roller TV for the kiosk and hosts digitization's tank | editing bay 1 (`EDIT2`) |
 | [`kiosk`](kiosk/CREW.md) | the front door, the screens and the roller TV's page, check-in, and the pickup point, where digitization's grants are redeemed | the old editing bay 2 (`200-FCPANEDIT2`) |
-| [`qr`](qr/PROFILE.md) | the kiosk's pickup point and the intake by camera ([`troves/scanner`](../troves/scanner/README.md)); `qr.local` | the OptiPlex 9020M, beside digitization; cameras join by leash |
+| [`qr`](qr/PROFILE.md) | the kiosk's pickup point and the intake by camera ([`troves/scanner`](../troves/scanner/README.md)); `qr.local`, handing every reply to Helm | the `bounce` Pi, joined: eyes, page and intake on the box |
 | [`thin-client`](thin-client/PROFILE.md) | the kiosk's overflow console, beside the scanner | a donated HP t510 |
 | [`origin`](origin/PROFILE.md) | FCPM's git origin on its own box; today a standby, a minute behind digitization's | the HP t510 |
 | [`digitization`](digitization/CREW.md) | capture: arming, presence, the ledger, the recorders, the tank | station-node today; the OptiPlex 9020M is to take it over |
