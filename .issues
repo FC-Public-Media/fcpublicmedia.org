@@ -1,0 +1,4 @@
+a The relay tries to carry the branch bay1-identity to GitHub on every ten-minute beat and is refused every time, because the branch changes .github/workflows/smoke.yml and our token has no workflow scope on purpose; nothing ever stops it trying
+a GitHub's merge button does not apply merge=union, so two branches that each add or revise a line of .issues collide there and need main merged in by hand, until landing happens on the origin
+a Not decided: whether a finished issue's line leaves .issues, or stays and is marked
+a docs/OPEN.md keeps 152 open items by hand, a line each, beside .issues; not decided whether they move here

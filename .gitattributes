@@ -1,5 +1,8 @@
 # Append-only: union merges keep both sides, so never edit an existing line (that loses data silently).
 machines/kiosk/GOTCHAS.log    merge=union
 
+# The issues, a line each: a merge keeps both sides' lines, and `fcpm issues` says where that left two of one.
+/.issues    merge=union
+
 # Windows batch files need CRLF to run; stored LF, checked out CRLF everywhere.
 *.cmd text eol=crlf

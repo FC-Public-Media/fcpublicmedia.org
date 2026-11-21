@@ -203,6 +203,12 @@ verbs:
     windows: "machines/places.py by uv"
     linux: "machines/places.py by uv"
 
+  - verb: issues
+    args: "[PATH|story WORDS]"
+    says: "a repository's issues in one look: its .issues file, a line each, and every commit that touched each line"
+    windows: "machines/issues.py by uv"
+    linux: "machines/issues.py by uv"
+
   - verb: library
     args: "[status|where|xray|diff|summary|log|browse LABEL ...|grant SEAT UNIT WORDS|release GRANT|grants|console|inbox [round|answer]|outbox [make]|signer [mint]]"
     says: "the library here (~/code/library): its holdings and their shapes (never contents), who is at work, and its console"
