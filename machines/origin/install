@@ -28,7 +28,7 @@ done
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 mkdir "$T/fcpm-origin"
 cp machines/leash.py machines/console-font.py machines/origin/facts.py machines/origin/page.py \
-  machines/origin/intake machines/origin/run-intake machines/origin/door machines/origin/KEYHOLDERS \
+  machines/origin/intake machines/origin/run-intake machines/origin/door machines/origin/traffic.py machines/origin/KEYHOLDERS \
   machines/origin/outfit "$T/fcpm-origin/"
 cp -r machines/origin/door-hooks "$T/fcpm-origin/"
 mkdir "$T/fcpm-origin/pile-engine"; cp -r .pile-engine/bin "$T/fcpm-origin/pile-engine/"   # data-pile, for lines-gate
