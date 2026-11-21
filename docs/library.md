@@ -38,6 +38,7 @@ into. The others are separate concerns: kept beside main, never merged into it.
 | `studies` | the cloud line for studies: a cloud session commits a study here, and we take it into `retain/studies` | begun |
 | `librarians` | what librarian agents answer to: the constitution, each place's decorum | seeded; the LAN's |
 | `retain/<machine>` | a machine's own record: x-rays, and later notes, summaries, errors. The LAN's | bay 1 |
+| `retain/origin` | the origin's own record, written by its intake: each branch main took in and the origin let go, as flat lines ([its profile](../machines/origin/PROFILE.md), landed). The LAN's | on origin.local, from its first landed branch |
 
 Working state and publishing are kept apart this way. The library had begun to gather working
 state, and the origin's map was part of it.

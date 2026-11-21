@@ -74,7 +74,7 @@ case "$cmd" in
       || echo "fcpm: an engine did not come down; fcpm pull again, and say so if it still does not" ;;
   dev)
     # The LAN's switch is the origin's (../origin/dev): while on, its intake
-    # asks GitHub every 15 minutes; off, weekly (Autumn, 2026-10-13, 2026-10-21).
+    # asks GitHub on its ten-minute beat; off, weekly.
     # The flag here is this machine's pool's (every 5 minutes while on;
     # Autumn, 2026-10-09), kept beside it.
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"

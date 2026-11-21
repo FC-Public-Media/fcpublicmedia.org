@@ -102,6 +102,8 @@ def workshed():
             said.append("%d ahead" % x["ahead"])
         if x["behind"]:
             said.append("%d behind" % x["behind"])
+        if x.get("let_go"):
+            said.append("landed" if x["let_go"] == "landed" else "branch gone")
         state = (":%d" % x["port"]) if x["running"] else "stopped"
         if x["running"] and x["ok"] is False:
             state += " FAILED"

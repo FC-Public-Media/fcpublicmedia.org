@@ -80,13 +80,13 @@ RATES = (1, 3, 8)                                       # commits a day where th
 
 
 def intake_pace():
-    """intake's own dev flag and dev pace (./intake, beside this file here and on the box), so the bar
-    says what intake does."""
+    """intake's own dev flag and its beat in minutes (./intake, beside this file here and on the box), so
+    the bar says what intake does."""
     path = os.path.join(HERE, "intake")
     loader = importlib.machinery.SourceFileLoader("origin_intake", path)
     intake = importlib.util.module_from_spec(importlib.util.spec_from_loader("origin_intake", loader))
     loader.exec_module(intake)
-    return intake.DEV, int(intake.DEV_EVERY.total_seconds() // 60)
+    return intake.DEV, intake.BEAT // 60
 
 
 NAME = next((w[2] for w in (line.split() for line in open(os.path.join(HERE, "names")))

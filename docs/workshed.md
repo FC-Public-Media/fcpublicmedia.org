@@ -31,6 +31,10 @@ origins: origins      # where each origin branch's shed is made
   being asked for one, except an origin branch's.
 - `follow` moves only a worktree following its own branch on the origin; a session's, cut from main and
   following it, is left as it is. Nothing removes a worktree with changes in it.
+- The origin lets a branch go once main holds its work ([its profile](../machines/origin/PROFILE.md), landed).
+  A machine learns it the next time it fetches: the branch leaves what is listed and searched, and a worktree
+  of it says "landed in main, and the origin let its branch go" wherever worktrees are shown. It is left as
+  it is, for whoever made it to remove when done; pushing it again makes it a branch again.
 
 | file, in `%LOCALAPPDATA%\editing-bay-1\workshed\` | |
 |---|---|
@@ -59,7 +63,7 @@ A shed is the ground you stand on, so it comes first: name the shed, then say wh
 | `fcpm workshed SHED check [BRANCH]` | each thing it needs, a line each, `ok` or `WRONG` with what to do; exits 1 if any is wrong |
 | `fcpm workshed SHED log [BRANCH]` | the workshed's log, or that worktree's server's |
 | `fcpm workshed SHED remove BRANCH` | the worktree goes; its branch stays. Never with changes |
-| `fcpm workshed SHED follow` | each clean worktree brought up to its origin branch, fast-forward only; one with changes is left as it is |
+| `fcpm workshed SHED follow` | each clean worktree brought up to its origin branch, fast-forward only; one with changes, or whose branch the origin let go, is left as it is |
 | `fcpm workshed SHED search WORDS` | everything in the shed holding every word, in any order ([Search](#search)) |
 | `fcpm workshed search WHERE [WORDS]`, `wheres` | the same over a shed, `branch:REPO@BRANCH` or `every:REPO`; and what WHERE can be |
 

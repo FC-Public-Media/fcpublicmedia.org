@@ -352,6 +352,27 @@ class Workshed(unittest.TestCase):
             workshed.follow("work")
         self.assertIn("has changes", out.getvalue())
 
+    def test_a_worktree_whose_branch_the_origin_let_go_says_so_and_stays(self):
+        self.new("christmas")
+        wt = workshed.CODE / "work" / "demo@christmas"
+        git("update-ref", "-d", "refs/heads/christmas", cwd=pathlib.Path(self.tmp.name) / "origin.git")
+        for _ in range(2):                      # the pass that learns it, and every one after
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                workshed.follow("work")
+            self.assertIn("work/demo@christmas  landed in main, and the origin let its branch go; left as it is",
+                          out.getvalue())
+        self.assertTrue((wt / "site" / "meet.md").is_file())
+        w = next(w for w in workshed.worktrees() if w["name"] == "work/demo@christmas")
+        self.assertEqual(workshed.describe(w)["let_go"], "landed")
+        (wt / "site" / "mine.md").write_text("mine\n")
+        git("add", ".", cwd=wt)
+        git("commit", "-q", "-m", "mine", cwd=wt)
+        self.assertEqual(workshed.describe(w)["let_go"], "gone", "it holds a commit main does not")
+        other = self.new("other")
+        self.assertIsNone(workshed.describe(next(w for w in workshed.worktrees() if w["name"] == other))["let_go"],
+                          "never on the origin: nothing was let go")
+
     def bind(self, origins="origins", **sheds):
         f = pathlib.Path(self.tmp.name) / "workshed.yml"
         f.write_text("sheds:\n" + "".join("  %s: %s\n" % kv for kv in sheds.items())
