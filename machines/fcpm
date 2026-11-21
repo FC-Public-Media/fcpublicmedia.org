@@ -7,6 +7,19 @@ set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/.." && pwd)
 CODE="$HOME/code"
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) PLAT=windows ;; *) PLAT=linux ;; esac
+
+# What fcpm.yml says does VERB on this platform, a line per entry.
+does() {
+  awk -v verb="$1" -v plat="$PLAT" '
+    function val(s) { sub(/^[^:]*:[ ]*/, "", s); gsub(/^"|"$/, "", s); return s }
+    /^  - verb:/ { v = val($0); next }
+    v == verb && $0 ~ "^    " plat ":" { print val($0) }
+  ' "$HERE/fcpm.yml"
+}
+
+# Not on this machine: say what stands in, and exit 3, apart from a failure.
+not_here() { echo "fcpm $cmd: not on this machine: $*" >&2; exit 3; }
 
 profile() { "$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2; exit }'; }
 
@@ -32,6 +45,8 @@ ps1() {
 }
 
 cmd=${1:-watch}; [ $# -gt 0 ] && shift
+d=$(does "$cmd")
+[ -n "$d" ] && ! printf '%s\n' "$d" | grep -qv '^not:' && not_here "$(printf '%s\n' "$d" | sed 's/^not: *//' | head -n 1)"
 case "$cmd" in
   watch)     exec "$HERE/watch" ;;
   status)    exec "$HERE/sync" ;;
@@ -62,23 +77,16 @@ case "$cmd" in
     done
     exit $rc ;;
   pull)
-    # Bring in what merged and put it in place: the mirrors, then the copies
-    # run from ~/code (sync install). One verb, nothing left half done
-    # (Autumn, 2026-10-10). The pool does the same by itself with `fcpm dev on`.
-    # Only this repo: fcpm runs from it, and the other mirrors are reading
-    # (Autumn, 2026-10-10). The reading mirrors are the weekly task's chore.
-    "$CODE/bin/refs" pull "$(basename "$REPO")" || exit
+    # This repository's mirror, then what it places (sync install). The other mirrors are the weekly task's.
+    m="$CODE/refs"; [ -d "$m" ] || m="$CODE/ref"
+    [ -e "$m/$(basename "$REPO")/.git" ] || not_here "no mirror of $(basename "$REPO") in ~/code/refs; a checkout that follows the origin has its crew's follow line"
+    "$REPO/bin/refs" pull "$(basename "$REPO")" || exit
     FCPM_DESK=1 "$HERE/sync" install || exit
-    # The public submodules (the engines, with theirs inside), by this repository's own word: the bin/refs
-    # that pulled may be the copy from before this pull placed a newer one, so a new engine arrives now and
-    # not on the next pull. The private ones (`update = none`) are bin/refs' to fetch.
+    # The public submodules, as the commit just pulled names them; the private ones (`update = none`) are bin/refs'.
     GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet \
       || echo "fcpm: an engine did not come down; fcpm pull again, and say so if it still does not" ;;
   dev)
-    # The LAN's switch is the origin's (../origin/dev): while on, its intake
-    # asks GitHub on its ten-minute beat; off, weekly.
-    # The flag here is this machine's pool's (every 5 minutes while on;
-    # Autumn, 2026-10-09), kept beside it.
+    # The LAN's switch is the origin's (../origin/dev); the flag here is this machine's pool's.
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
     o=${FCPM_ORIGIN_SSH:-fcpm-origin}
     case "${1:-status}" in
@@ -180,9 +188,7 @@ case "$cmd" in
     pyrun --with pyserial "$REPO/troves/ti-89/cable/link.py" "$@" ;;
   hear|say)  exec python3 "$HERE/loudspeaker" "$cmd" "$@" ;;
   help|-h|--help)
-    # From machines/fcpm.yml, the one place each verb is defined (Autumn, 2026-10-13).
-    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) plat=windows ;; *) plat=linux ;; esac
-    awk -v plat="$plat" '
+    awk -v plat="$PLAT" '
       function val(s) { sub(/^[^:]*:[ ]*/, "", s); gsub(/^"|"$/, "", s); return s }
       function flush() {
         if (v == "") return

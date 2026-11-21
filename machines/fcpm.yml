@@ -1,8 +1,6 @@
-# fcpm.yml -- what each fcpm verb means, once, for every platform. `fcpm help` prints from it and the
-# board (machines/kiosk/door.py) shows it, so neither can drift from it.
-#
-# A platform's script is an equivalent, never a lesser copy. `windows:` and `linux:` name what does the
-# verb there; "not: ..." says plainly that it cannot yet, and what stands in. Linux covers the Pi.
+# fcpm.yml: each fcpm verb, once, for every platform. fcpm reads it before it runs a verb, `fcpm help` prints it,
+# and the board (machines/kiosk/door.py) shows it. `windows:` and `linux:` (the Pi too) name what does the verb
+# there; "not: ..." says it cannot yet and what stands in, and fcpm says that and exits 3.
 # `board: switch` puts a control on the board: shown to all, flipped from that computer only.
 
 verbs:
@@ -31,8 +29,8 @@ verbs:
   - verb: pull
     args: ""
     says: "bring in what merged on GitHub, and put it in place"
-    windows: "~/code/bin/refs, then machines/sync install"
-    linux: "not: ~/code/bin is not placed here yet; the crew's follow line keeps the checkout on the origin"
+    windows: "bin/refs, then machines/sync install"
+    linux: "bin/refs, then machines/sync install, where ~/code/refs holds the mirror; elsewhere the crew's follow line keeps the checkout"
 
   - verb: install
     args: ""
@@ -61,7 +59,7 @@ verbs:
   - verb: deploy
     args: "SITE DIR [HOST]"
     says: "a finished site onto the static host (static.local): only what changed crosses"
-    windows: "not yet: no key for the static host"
+    windows: "not: no key for the static host yet"
     linux: machines/static/deploy
 
   - verb: keys
@@ -79,7 +77,7 @@ verbs:
   - verb: relay
     args: "[status|on|off]"
     says: "the origin's mode: on, what is pushed there goes out to GitHub every ten minutes on the clock; off, LAN-only"
-    windows: "not yet: no key for the origin"
+    windows: "not: no key for the origin yet"
     linux: "origin.local's switch (`ssh git@origin.local relay on`)"
 
   - verb: dev
@@ -119,6 +117,12 @@ verbs:
     windows: troves/recorder/env.ps1
     linux: "not: Windows gear (OBS on the bays)"
 
+  - verb: roku
+    args: "[find|status|play|home|obs|off|grant]"
+    says: "the Roku: its channel, and OBS relayed onto it (grant is an administrator's)"
+    windows: troves/roku/roku.ps1
+    linux: "not: the relay is the bay's (troves/roku)"
+
   - verb: screen
     args: "[status|on|off|reset|class|wall|toggle]"
     says: "the rolling TV (toggle: class mode <-> the wall)"
@@ -136,12 +140,6 @@ verbs:
     says: "the Drobo, over iSCSI (CHAP)"
     windows: "machines/<profile>/drobo.ps1"
     linux: "not: Windows gear (the iSCSI initiator)"
-
-  - verb: hosts
-    args: "[status|write]"
-    says: "this bay's hosts file: each line and whose it is; write composes it and asks for an administrator"
-    windows: "machines/<profile>/hosts.ps1"
-    linux: "not: Windows asks mDNS for two-label .local names only; Linux has mdns.allow"
 
   - verb: share
     args: "[status|install]"

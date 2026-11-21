@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
-# refs — keep refs/ current, and make changes in worktrees beside it.
+# refs: the read-only mirrors in ~/code/refs (the kiosk's ~/code/ref), and worktrees beside them in ~/code/work.
 #
-#   bin/refs pull [REPO...]    fetch every repo in refs/ (or just those named),
-#                              fast-forward the clean ones
+#   bin/refs pull [REPO...]    fetch, and fast-forward the clean ones; a dirty, off-branch or diverged one is left
 #   bin/refs status            one line per repo: branch, behind/ahead, dirty
 #   bin/refs work REPO BRANCH  new worktree at work/REPO@BRANCH, cut from origin/main
-#   bin/refs done REPO BRANCH  remove that worktree (the branch is kept), its submodules too
-#                              when nothing in them is theirs alone
+#   bin/refs done REPO BRANCH  remove that worktree (the branch is kept)
 #
-# refs/ only fast-forwards; a dirty, off-branch or diverged repo is reported and left. Its submodules
-# follow to the commits it pins: the public ones (engines, such as .you-engine) with theirs inside, and
-# troves/, private, too.
-# Git Bash only. See docs/station.md, Sessions.
+# FCPM_CODE names another root. See docs/station.md, Sessions.
 
 set -u
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REF="$ROOT/refs"
+ROOT=${FCPM_CODE:-$HOME/code}
+REF="$ROOT/refs"; [ -d "$REF" ] || [ ! -d "$ROOT/ref" ] || REF="$ROOT/ref"
 WORK="$ROOT/work"
 
 default_branch() {
@@ -114,5 +109,5 @@ case "${1:-status}" in
       exec git -C "$REF/$repo" worktree remove --force "$wt"
     fi
     git -C "$REF/$repo" worktree remove "$wt" ;;
-  *) sed -n '2,10p' "$0"; exit 1 ;;
+  *) sed -n '2,8p' "$0"; exit 1 ;;
 esac

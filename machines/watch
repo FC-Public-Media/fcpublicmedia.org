@@ -6,6 +6,7 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CODE="$HOME/code"
+REFS="$HERE/../bin/refs"
 REPO=fcpublicmedia.org
 MIRROR="$CODE/refs/$REPO"
 [ -d "$MIRROR" ] || MIRROR="$CODE/ref/$REPO"   # kiosk's mirrors are in ref/
@@ -40,7 +41,7 @@ weekly() {
   [ "$(cat "$STATE/weekly.done" 2>/dev/null)" = "$week" ] && return 0
   {
     echo "$(date '+%Y-%m-%d %H:%M:%S')  weekly pull for $week"
-    "$CODE/bin/refs" pull 2>&1 | tail -n 3
+    "$REFS" pull 2>&1 | tail -n 3
     catch_up ff && echo "working copy current" || echo "working copy has its own changes; left for a person"
   } >> "$STATE/weekly.log" 2>&1
   echo "$week" > "$STATE/weekly.done"
@@ -60,8 +61,8 @@ EOF
 }
 
 make_copy() {
-  [ -n "$called" ] && [ ! -d "$WC" ] && [ -x "$CODE/bin/refs" ] || return 0
-  "$CODE/bin/refs" work "$REPO" "$called" >/dev/null 2>&1 && echo "made      ~/code/work/$REPO@$called, the people's working copy"
+  [ -n "$called" ] && [ ! -d "$WC" ] && [ -d "$MIRROR" ] || return 0
+  "$REFS" work "$REPO" "$called" >/dev/null 2>&1 && echo "made      ~/code/work/$REPO@$called, the people's working copy"
 }
 
 case "${1:-}" in
@@ -151,9 +152,9 @@ pick=$(echo $opts | cut -d ' ' -f "$REPLY")
 echo
 
 case "$pick" in
-  make) exec "$CODE/bin/refs" work "$REPO" "$called" ;;
+  make) exec "$REFS" work "$REPO" "$called" ;;
   pull)
-    "$CODE/bin/refs" pull "$REPO"
+    "$REFS" pull "$REPO"
     catch_up && line ok "your working copy has the latest"
     if [ "$(cd "$HERE" && SYNC_CHECK=0 ./sync 2>&1 | grep -c '^differs')" -gt 0 ]; then
       ask "Install the updates on this computer now? [Y/n]"

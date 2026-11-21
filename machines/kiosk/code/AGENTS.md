@@ -24,7 +24,7 @@ Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.m
 | `work/REPO@BRANCH` | a worktree per branch: `bin/refs work REPO BRANCH`; once merged, `bin/refs done REPO BRANCH` |
 | `work/fcpublicmedia.org@media-node` | **the live checkout.** The door runs from it. Never edit here |
 | `work/fcpublicmedia.org@kiosk` | the people's working copy, once `fcpm` makes it. Leave it alone unless asked |
-| `bin/refs` | the mirrors and worktrees (`machines/kiosk/code/bin/refs`) |
+| `bin/refs` | the mirrors and worktrees (the site repo's `bin/refs`, placed here by `fcpm install`) |
 | `%LOCALAPPDATA%\media-node\` | the venv, `door.log`, the screens' browser profiles, the library wing |
 
 ## Work
