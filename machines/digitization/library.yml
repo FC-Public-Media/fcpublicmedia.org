@@ -1,0 +1,10 @@
+# Where digitization keeps the library's holdings, for `fcpm library`. Labels are ../../library.yml's.
+# Bound by volume label, so a holding is "not plugged in" rather than wrong when its disk is away. Nothing is
+# written into a holding: its x-rays go to ~/code/library/retain (retain/digitization). Doc: docs/library.md.
+
+holdings:
+  # The Buffalo's NTFS backup. Attached here since 2026-11-18 but not mounted: unmounted, it is "not plugged in".
+  # RAID 6 with one drive down (troves/buffalo-drivestation): an x-ray reads only names.
+  buffalo: {label: "RAID Backup"}
+  # Drives brought off our machines, one partition each on the Buffalo (buffalo-mirror; PROFILE.md, Mirrors).
+  mirror-bay3: {label: "mirror-bay3"}

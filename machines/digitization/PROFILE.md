@@ -23,6 +23,7 @@ which it is to take over from station-node. Not worn yet. Machines: [docs/statio
 | `zram-generator.conf`, `sysctl-zram.conf`, `earlyoom.default` | swap in compressed RAM, and earlyoom, so a memory shortage costs one process instead of the box. See Memory |
 | `buffalo-swap` | swap on the Buffalo, after zram and before the laptop disk; boot never waits for it. See Memory |
 | `buffalo-mirror` | a drive's mirror on the Buffalo, at `/srv/mirrors/<name>`, never waited for at boot. See Mirrors |
+| `library.yml` | where this machine keeps the library's holdings: the Buffalo and each mirror, by volume label ([docs/library.md](../../docs/library.md)). See Mirrors |
 | role | the workstation: it builds, and it is a client of the [origin](../origin/PROFILE.md) (origin.local holds FCPM's repositories since 2026-10-21) |
 
 ## Names
@@ -226,6 +227,12 @@ shrinks the NTFS and makes the partition; `mount` writes its fstab line (`nofail
 Buffalo is not held up) and mounts it. The machine itself is booted from the lan card, its drives mounted read-only
 there, and the files pulled here by `rsync -rt` over SSH (`root@card.local`), leaving out Windows, program files,
 AppData, the registry hives and recycle bins.
+
+Each mirror is a holding of the library ([docs/library.md](../../docs/library.md)), slotted the same way every time: a
+`mirror-<name>` entry in `../../library.yml` (what it holds, `expects`, `xray: shape`) and a line in this machine's
+`library.yml` binding that label. It starts with no metadata. A person directs the first `fcpm library xray
+mirror-<name>`, and what is added after, until scripts refine it; nothing opens the files. `fcpm check` says when a
+mounted mirror is not bound yet.
 
 - `bay3`: Editing Bay 3 (Precision 5820, 5YQX4Z2), 1 TiB, carved 2026-11-20: `DATA/` from its NVMe, `Users/` from its
   Windows drive.

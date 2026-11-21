@@ -91,6 +91,18 @@ holdings:
     expects: sensitive        # an old backup of everything; assume a name or a number in anything
     xray: shape
 
+  # A drive brought off one of our machines (machines/digitization/buffalo-mirror): its files, not an image, in
+  # a partition of its own on the Buffalo. The label is the partition's own. Each starts with no metadata; a
+  # person directs what is added until scripts refine it.
+  mirror-bay3:
+    is: intake
+    holds: "Editing Bay 3's drives as files (2026-11-20): DATA/ from its NVMe, Users/ from its Windows drive,
+      without Windows, programs, AppData or recycle bins. Kept until we know what can be cut away"
+    lifecycle: transient
+    disposition: private
+    expects: sensitive        # people's own accounts on a shared editing bay
+    xray: shape
+
   drive:
     is: intake
     holds: "the organization's Google Drive, mounted as a drive (streamed, not mirrored to a folder): the
