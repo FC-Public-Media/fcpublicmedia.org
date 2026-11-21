@@ -23,6 +23,13 @@ for p in $want; do
   case "$p" in *:luks:*|*:rest) echo "extend makes no $p: an encrypted home or a 'rest' is build's."; exit 1;; esac
 done
 
+lack=""                                           # images the type names that the card's Ventoy partition lacks
+V="$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="Ventoy"{print $1; exit}')"
+VM="$(findmnt -rno TARGET -S "$V" || true)"; [ -n "$VM" ] || { udisksctl mount -b "$V" -o ro >/dev/null; VM="$(findmnt -rno TARGET -S "$V" || true)"; vt=1; }
+for pat in $isos; do ls "$VM"/$pat >/dev/null 2>&1 || lack="$lack $pat"; done
+for g in $grub2; do for f in "$VM"/$g; do [ -f "$f" ] && case "$f" in *_VTGRUB2.iso) ;; *) lack="$lack $(basename "$f")" ;; esac; done; done
+[ -n "${vt:-}" ] && udisksctl unmount -b "$V" >/dev/null
+[ -n "$want$lack" ] || { echo "Nothing to add: the $TYPE card has every partition and image its type names."; exit 0; }
 if [ -z "${DISPLAY:-}" ] && [ -S /tmp/.X11-unix/X0 ]; then export DISPLAY=:0; fi
 TEXT="$(printf 'Add to the %s card on %s, in its free space:\n\n%s\n\nand any boot image it lacks (%s). Nothing on it now is changed.\n\n%s' "$TYPE" "$DISK" \
   "$(for p in $want; do IFS=: read -r n f s <<<"$p"; echo "$label-$n  $f  $s"; done)" "$isos" \
