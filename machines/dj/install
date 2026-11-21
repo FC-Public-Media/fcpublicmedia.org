@@ -1,0 +1,47 @@
+#!/bin/sh
+# install -- DJ (Editing Bay 3) onto its own disk as headless Debian, run from a workstation whose key manages it.
+#
+#   machines/dj/install root@HOST DISK SERIAL   HOST runs a card's Alpine (the president card: root, network, sshd,
+#                                              our keys). ERASES DISK, installs Debian 13 there, and powers HOST off.
+#   machines/dj/install fcpm@dj.local          outfit DJ as it runs: NVIDIA's driver for its encoder, and its jobs.
+#
+# DISK must answer to SERIAL ("none" if it reports none), so the wrong disk is never the one erased. Debian, not
+# Alpine: NVIDIA's driver (the P4000's encoder) is built for glibc. Settings, with what they default to:
+#   FCPM_KEYS  ~/.ssh/id_ed25519.pub        who manages it (fcpm, sudo)
+#   ROOM_TZ    America/Denver               the room's clock
+# See PROFILE.md.
+set -eu
+cd "$(dirname "$0")/../.."
+TARGET=${1:?root@HOST DISK SERIAL, or fcpm@dj.local}
+NAME=$(awk '$1=="linux" && $2=="Hostname" {print $3; exit}' machines/dj/names)
+FCPM_KEYS=${FCPM_KEYS:-$(cat ~/.ssh/id_ed25519.pub)}
+ROOM_TZ=${ROOM_TZ:-America/Denver}
+for v in "$FCPM_KEYS" "$ROOM_TZ" "$NAME"; do
+  case $v in *\'*) echo "A setting holds a quote. Stopping."; exit 1;; esac
+done
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+mkdir "$T/fcpm-dj"
+cp machines/dj/disk machines/dj/outfit "$T/fcpm-dj/"
+cp /usr/share/keyrings/debian-archive-keyring.gpg "$T/fcpm-dj/"
+cat > "$T/fcpm-dj/settings" <<S
+FCPM_KEYS='$FCPM_KEYS'
+NAME='$NAME'
+ROOM_TZ='$ROOM_TZ'
+S
+unpack='rm -rf /tmp/fcpm-dj && tar -xf - -C /tmp'
+
+if [ $# -eq 3 ]; then
+  out=$(tar -C "$T" -cf - fcpm-dj | ssh -o BatchMode=yes "$TARGET" \
+    "$unpack && sh /tmp/fcpm-dj/disk '$2' '$3'" | tee /dev/stderr)
+  hostkey=$(printf '%s\n' "$out" | sed -n 's/^HOST-KEY: //p')
+  [ -n "$hostkey" ] || { echo "No host key came back; the install did not finish."; exit 1; }
+  ssh-keygen -R "$NAME.local" >/dev/null 2>&1 || true
+  echo "$NAME.local $hostkey" >> ~/.ssh/known_hosts
+  ssh -o BatchMode=yes "$TARGET" poweroff || true
+  echo "Powered off. Take the card out, then power it on: it is $NAME.local. Then: machines/dj/install fcpm@$NAME.local"
+else
+  out=$(tar -C "$T" -cf - fcpm-dj | ssh -o BatchMode=yes "$TARGET" \
+    "$unpack && sudo sh /tmp/fcpm-dj/outfit; rm -rf /tmp/fcpm-dj" | tee /dev/stderr)
+  printf '%s\n' "$out" | grep -q '^OUTFITTED: ' || { echo "The outfit did not finish."; exit 1; }
+  echo "$NAME.local: outfitted from $(pwd -P) at $(git rev-parse --short HEAD)."
+fi

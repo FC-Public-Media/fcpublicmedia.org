@@ -1,0 +1,22 @@
+#!/bin/sh
+# outfit -- DJ as it runs, as root: NVIDIA's driver for the P4000 and its encoder (ffmpeg's nvenc), signed for
+# Secure Boot. The first time, it asks the firmware to trust the signing key: at the next boot a blue MokManager
+# screen asks for the password printed below, once, at DJ's own screen. Safe to run again. Sent by ./install.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/settings"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -q >/dev/null
+apt-get install -y -q linux-headers-amd64 dkms mokutil firmware-misc-nonfree >/dev/null
+apt-get install -y -q nvidia-driver nvidia-kernel-dkms nvidia-smi ffmpeg >/dev/null
+KEY=/var/lib/dkms/mok.pub
+[ -f "$KEY" ] || { echo "dkms made no signing key ($KEY)."; exit 1; }
+if mokutil --test-key "$KEY" 2>/dev/null | grep -q 'is already enrolled'; then
+  echo "The signing key is enrolled."
+  nvidia-smi -L 2>/dev/null || echo "The driver is not loaded yet: reboot."
+else
+  PW=fcpm-dj-1
+  printf '%s\n%s\n' "$PW" "$PW" | mokutil --import "$KEY" >/dev/null
+  echo "ENROLL: at the next boot, at DJ's screen: Enroll MOK, Continue, Yes, password $PW, Reboot."
+fi
+echo "OUTFITTED: $NAME"
