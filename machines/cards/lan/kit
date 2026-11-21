@@ -10,7 +10,8 @@ ISO="${ISO:-$(ls "${TOOLBOX:-/srv/toolbox}"/isos/alpine-standard-*-x86_64.iso | 
 MIRROR=https://dl-cdn.alpinelinux.org/alpine
 CLAUDE=https://downloads.claude.ai/claude-code-releases
 WORLD="alpine-base bash doas cryptsetup e2fsprogs dosfstools util-linux tzdata chrony dbus avahi
-  avahi-tools openssh-client openssh-server git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less"
+  avahi-tools openssh-client openssh-server git github-cli python3 py3-yaml curl jq ripgrep libgcc libstdc++ less
+  lsblk smartmontools nvme-cli pciutils usbutils dmidecode"
 
 (cd "$(dirname "$ISO")" && sha256sum -c --quiet "$(basename "$ISO").sha256")
 W="$(mktemp -d /var/tmp/kit.XXXXXX)"; R="$W/root"
@@ -98,4 +99,7 @@ SUM="$(curl -fsSL "$CLAUDE/$V/manifest.json" | jq -r '.platforms["linux-x64-musl
 curl -fsSL -o "$W/claude" "$CLAUDE/$V/linux-x64-musl/claude"
 echo "$SUM  $W/claude" | sha256sum -c --quiet
 cp "$W/claude" "$OUT/bin/claude"; chmod 755 "$OUT/bin/claude" 2>/dev/null || true
+# fcpm, on the console's PATH, from the card's own checkout (fcpm provision); and Debian's keyring, for the jobs it installs.
+printf '#!/bin/sh\nexec sh /srv/code/fcpublicmedia.org/machines/fcpm "$@"\n' > "$OUT/bin/fcpm"; rm -f "$OUT/bin/provision"
+mkdir -p "$OUT/keyrings"; cp /usr/share/keyrings/debian-archive-keyring.gpg "$OUT/keyrings/" 2>/dev/null || true
 echo "kit: Alpine $VER, $(ls "$OUT/cache" | grep -c '\.apk$') packages, Claude Code $V"

@@ -18,6 +18,16 @@ verbs:
     windows: machines/sync
     linux: machines/sync
 
+  - verb: card
+    args: "[sync [/dev/sdX]]"
+    says: "the cards plugged in here and how far each is behind; sync brings one current: partitions and images, its checkout, its kit, its origin (machines/cards/sync)"
+    windows: "not: cards are made and kept on Linux (machines/cards)"
+    linux: machines/cards/sync
+  - verb: provision
+    args: "[JOB [DISK]]"
+    says: "at a box booted from a card: the jobs the card can put on a disk, this box's disks with serials; then JOB onto DISK, its serial typed back first (machines/cards/provision)"
+    windows: "not: a card's Alpine does this, at the box being set up"
+    linux: machines/cards/provision
   - verb: pull
     args: ""
     says: "bring in what merged on GitHub, and put it in place"

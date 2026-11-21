@@ -1,0 +1,57 @@
+#!/bin/sh
+# provision [JOB [DISK]] -- at a box booted from a card's Alpine, as its console's user: puts a job onto this box's own
+# disk from what the card carries (its checkout, its keys, Debian's keyring in its kit). Nobody else drives it.
+#
+#   provision              the jobs a card can put on a disk, and this box's disks: model, size, serial
+#   provision JOB          the same, then asks which disk
+#   provision JOB DISK     shows the disk, asks for its serial to be typed back, then ERASES it and installs JOB
+#
+# A job can be provisioned when machines/<job>/disk exists (dj). The box's managers are the card's own keys.
+set -eu
+CODE=$(cd "$(dirname "$0")/../.." && pwd)
+[ -f /etc/fcpm/card ] || { echo "provision runs at a box booted from a card (no /etc/fcpm/card here)."; exit 1; }
+. /etc/fcpm/card
+KIT=/media/$label-kit
+[ "$(id -u)" = 0 ] || exec doas "$0" "$@"
+
+apk add -q lsblk smartmontools >/dev/null 2>&1 || true
+serial() {   # what the drive itself answers: the kernel's, else lsblk's, else SMART's (a SATA disk on a live system without udev)
+  s=$(cat "/sys/block/${1#/dev/}/device/serial" 2>/dev/null | xargs)
+  [ -n "$s" ] || s=$(lsblk -dno SERIAL "$1" 2>/dev/null | xargs)
+  [ -n "$s" ] || s=$(smartctl -i "$1" 2>/dev/null | sed -n 's/^Serial Number: *//p' | xargs)
+  echo "${s:-none}"
+}
+health() { smartctl -H "$1" 2>/dev/null | sed -n 's/.*overall-health self-assessment test result: *//p; s/^SMART Health Status: *//p' | head -1; }
+
+jobs=$(for d in "$CODE"/machines/*/disk; do [ -f "$d" ] && basename "$(dirname "$d")"; done)
+disks() {
+  live=$(lsblk -no PKNAME "$(findfs LABEL="$label-kit" 2>/dev/null)" 2>/dev/null || true)
+  for b in /sys/block/*; do
+    d=${b##*/}; case $d in loop*|ram*|zram*|sr*|dm-*) continue ;; esac
+    [ "$d" = "$live" ] && continue
+    printf '  /dev/%-9s %6s  %-28s serial %-22s SMART %s\n' "$d" "$(lsblk -dno SIZE /dev/$d | xargs)" \
+      "$(lsblk -dno MODEL /dev/$d | xargs)" "$(serial /dev/$d)" "$(health /dev/$d)"
+  done
+}
+echo; echo "  This card: $(hostname).local, code at $(git -C "$CODE" log -1 --format='%h %cs' 2>/dev/null || echo '?')"
+echo "  Jobs it can put on a disk: $(echo $jobs)"; echo "  Disks here (not the card):"; disks; echo
+JOB=${1:-}; [ -n "$JOB" ] || exit 0
+echo " $jobs " | grep -q " $JOB " || { echo "  No job '$JOB' with a disk script here."; exit 1; }
+DISK=${2:-}
+if [ -z "$DISK" ]; then printf '  Which disk for %s? /dev/' "$JOB"; read -r DISK; DISK=/dev/${DISK#/dev/}; fi
+[ -b "$DISK" ] || { echo "  $DISK is not a disk here."; exit 1; }
+SERIAL=$(serial "$DISK")
+echo; echo "  $DISK: $(lsblk -dno SIZE,MODEL "$DISK" | xargs), serial $SERIAL"
+lsblk -no NAME,SIZE,FSTYPE,LABEL "$DISK" | sed 's/^/    /'
+echo; echo "  Everything on $DISK will be erased and $JOB installed."
+printf '  Type its serial to go on: '; read -r typed
+[ "$typed" = "$SERIAL" ] || { echo "  Not its serial. Nothing was done."; exit 1; }
+
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+cp "$CODE/machines/$JOB/disk" "$T/"
+[ -f "$KIT/keyrings/debian-archive-keyring.gpg" ] && cp "$KIT/keyrings/debian-archive-keyring.gpg" "$T/"
+NAME=$(awk '$1=="linux" && $2=="Hostname" {print $3; exit}' "$CODE/machines/$JOB/names")
+{ printf "FCPM_KEYS='%s'\n" "$(grep -v '^[[:space:]]*#' /root/.ssh/authorized_keys | grep .)"
+  printf "NAME='%s'\nROOM_TZ='%s'\n" "$NAME" "$(cat /etc/timezone 2>/dev/null || echo America/Denver)"; } > "$T/settings"
+sh "$T/disk" "$DISK" "$SERIAL"
+echo; echo "  Done. Power off (shutdown), take the card out, power on: $NAME.local."

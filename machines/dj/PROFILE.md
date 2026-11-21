@@ -16,9 +16,13 @@ to the Buffalo first (`../digitization/PROFILE.md`, Mirrors). Machines: [docs/st
 
 ## Installing
 
-1. Boot DJ from the president card: in Ventoy's menu, Alpine (it boots in grub2 mode by itself), cable in. It answers
-   as `steward.local`.
-2. From a workstation: `ssh root@steward.local lsblk -o NAME,SIZE,MODEL,SERIAL`, then
-   `machines/dj/install root@steward.local /dev/nvme0n1 SERIAL`. It powers off when done.
-3. Take the card out and power DJ on: `dj.local`. Then `machines/dj/install fcpm@dj.local`, reboot, and answer the blue
-   MokManager screen once (Enroll MOK, Continue, Yes, the password, Reboot). `nvidia-smi -L` names the P4000 after.
+From the president card, at DJ, with nobody else driving:
+
+1. Boot DJ from the card: Ventoy's menu, Alpine (grub2 mode by itself). Unlock the card's home at the console.
+2. `fcpm provision dj`. It lists DJ's disks with their serials and asks which; pick the NVMe (`nvme0n1`), type its serial
+   back, and it installs Debian there from what the card carries. Then `shutdown`, take the card out, power on:
+   `dj.local`.
+3. From a workstation, `machines/dj/install fcpm@dj.local` (NVIDIA's driver), reboot, and answer the blue MokManager
+   screen once at DJ (Enroll MOK, Continue, Yes, the password it printed, Reboot). `nvidia-smi -L` names the P4000.
+
+A workstation can also do step 2 over SSH: `machines/dj/install root@steward.local /dev/nvme0n1 SERIAL`.

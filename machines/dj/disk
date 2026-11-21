@@ -11,8 +11,14 @@ MIRROR=http://deb.debian.org/debian
 
 [ -d "/sys/firmware/efi" ] || { echo "This live system did not boot by UEFI; Debian's shim needs it. Stopping."; exit 1; }
 [ -d "/sys/block/$d" ] || { echo "$DISK is not a whole disk. Stopping."; exit 1; }
-apk add -q lsblk sgdisk dosfstools e2fsprogs debootstrap gpgv perl wget binutils xz zstd tar >/dev/null
-got=$(lsblk -dno SERIAL "$DISK" 2>/dev/null | tr -d ' '); [ -n "$got" ] || got=none
+apk add -q lsblk smartmontools sgdisk dosfstools e2fsprogs debootstrap gpgv perl wget binutils xz zstd tar >/dev/null
+serial() {   # what the drive itself answers: the kernel's, else lsblk's, else SMART's (a SATA disk on a live system without udev)
+  s=$(cat "/sys/block/${1#/dev/}/device/serial" 2>/dev/null | xargs)
+  [ -n "$s" ] || s=$(lsblk -dno SERIAL "$1" 2>/dev/null | xargs)
+  [ -n "$s" ] || s=$(smartctl -i "$1" 2>/dev/null | sed -n 's/^Serial Number: *//p' | xargs)
+  echo "${s:-none}"
+}
+got=$(serial "$DISK")
 [ "$got" = "$SERIAL" ] || { echo "$DISK answers to serial $got, not $SERIAL. Stopping."; exit 1; }
 busy=$(grep -c "^$DISK" /proc/mounts || true)
 for h in /sys/block/$d/holders /sys/block/$d/$d*/holders; do [ -z "$(ls -A "$h" 2>/dev/null)" ] || busy=1; done
