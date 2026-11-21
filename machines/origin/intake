@@ -25,6 +25,10 @@ the LAN's in every repository. One GitHub will not fast-forward (a rebase) is re
 person. Only what was pushed through the door is ever carried, so a branch GitHub merged and
 deleted is not brought back. Off, the origin is LAN-only: it pulls, and what is pushed waits here.
 
+Orders (every beat, before landed): each branch a keyholder ordered to land (the door's `land`, traffic.py)
+is merged into main in the order given, by main's own .gitattributes; one that collides, or moved after it was
+ordered, is said so and main is left alone.
+
 Landed (every beat): a branch whose work main already has is let go, its record kept first on
 retain/origin (branches/<owner>/<repo>/<branch>/origin.scopes), in a repository that lives on GitHub
 too. Never main, github/*, the library's branches, one sitting on main's own commit, or one in a
@@ -39,6 +43,9 @@ import re
 import subprocess
 import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import traffic  # noqa: E402  the orders, landed here each beat (traffic.py beside this)
 
 ORIGIN = os.environ.get("FCPM_ORIGIN", "/srv/origin")
 STATE_DIR = os.path.join(ORIGIN, ".intake")
@@ -514,6 +521,10 @@ def main():
                     row = {"repo": full, "state": "error", "error": str(e)[-500:]}
                 rows.append(row)
         try:
+            ordered = traffic.land(names, WHO)
+        except Exception as e:          # an order that cannot be read or landed waits for the next beat
+            ordered = [{"repo": "orders", "state": "error", "error": str(e)[-500:]}]
+        try:
             landed, still = land(names, was.get("open") or {})
         except Exception as e:          # the record could not be kept: nothing was removed
             landed, still = [{"repo": BOOK, "ref": RECORD, "state": "error", "error": str(e)[-500:]}], was.get("open") or {}
@@ -522,14 +533,15 @@ def main():
             carried = carry_main([n for n in names if n in remote]) + carry()
         stamp = now()
         with open(ACTIONS, "a") as log:
-            for row in rows + landed + carried:
+            for row in rows + ordered + landed + carried:
                 if row.get("did") or row["state"] == "error":
                     log.write(json.dumps({"at": stamp, **row}) + "\n")
         asked = {"checked": stamp, "github": "unreachable: " + offline if offline else "ok", "repos": rows}
         tmp = STATE + ".tmp"
         with open(tmp, "w") as f:       # a quiet beat keeps what GitHub last said
             json.dump({"beat": beat(), **(asked if ask else {k: was.get(k) for k in asked}),
-                       "relay": os.path.exists(RELAY), "carried": carried, "landed": landed, "open": still}, f, indent=1)
+                       "relay": os.path.exists(RELAY), "ordered": ordered, "carried": carried, "landed": landed,
+                       "open": still}, f, indent=1)
         os.replace(tmp, STATE)
     return 0
 
