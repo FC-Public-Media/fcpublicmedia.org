@@ -40,7 +40,7 @@ function watch(page) {
     // away mid-load); an aborted video is not a missing file.
     if (request.resourceType() === 'media' && request.failure()?.errorText === 'net::ERR_ABORTED') return;
     // Headless Chromium has no PDF viewer, so a PDF in a frame is abandoned too.
-    if (request.frame() !== request.frame().page().mainFrame() && new URL(request.url()).pathname.endsWith('.pdf')
+    if (request.resourceType() === 'document' && new URL(request.url()).pathname.endsWith('.pdf')
       && request.failure()?.errorText === 'net::ERR_ABORTED') return;
     const entry = `${request.url()} (${request.failure()?.errorText || 'failed'})`;
     (isThirdParty(request.url()) ? thirdPartyFailures : ownFailures).push(entry);
