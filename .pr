@@ -1,0 +1,17 @@
+# hosts-file: bay 1 holds its hosts file
+
+Autumn, 2026-11-20: the hosts file is the one way this bay is told what our names say; hold it,
+comprehend every line, write it by a verb that knows to ask for elevation.
+
+Found: Windows asks mDNS only for two-label .local names (fcpublicmedia.local, qr.local work bare);
+deeper ones (www., lines.digitization., gear) need hosts lines. The fe80::...%14 lines are on the
+Wi-Fi adapter, disconnected: dead. lines.digitization.fcpublicmedia.local was missing.
+
+- [x] lan.py names: every name every lan.yml declares, for each host its profile names
+- [x] machines/production/hosts: the lines not on our domain (Cablecast), each with why
+- [x] machines/production/hosts.ps1: status (read, explains each line), write (diff, UAC, write)
+- [x] fcpm hosts; RUNNABLES claim; PROFILE.md row; docs/addresses.md note
+- [x] tested status, write, held strays, sha guard against a copy; Autumn runs `fcpm hosts write`
+
+Next, if prompting chafes: a task that holds the permission (the macOS-accessibility shape) needs
+the applier and its sources out of fcpub's reach first, or any fcpub process gets SYSTEM. Not now.

@@ -11,6 +11,8 @@ on the internet. Away, there is one number: digitization's tailnet address. On t
 ## In the building (Helm, 10.209.1.x)
 
 Macs and iPhones resolve these names as they are. Linux needs `mdns.allow` (machines/digitization/check.sh).
+Windows asks mDNS for two-label names only (`fcpublicmedia.local`); bay 1 reaches the deeper ones by
+its hosts file, held by `fcpm hosts` (machines/production/PROFILE.md, Hosts).
 
 | address | what |
 |---|---|

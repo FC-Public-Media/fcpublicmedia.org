@@ -1,0 +1,7 @@
+# hosts -- this bay's own lines for C:\Windows\System32\drivers\etc\hosts, beside the names every
+# lan.yml declares (which `fcpm hosts write` asks the LAN for). Only what is not ours to publish goes
+# here, each with why. Read by hosts.ps1; see PROFILE.md, Hosts.
+
+# address     name                         why
+10.1.10.84    fcpublicmedia.cablecast.tv   # Cablecast. Public DNS says 50.78.202.198, the building's own public address, and the gateway does not loop it back in (2026-11-20)
+10.1.10.84    ch97.fcpublicmedia.org       # the same Cablecast, by our name for it (a CNAME of the one above)

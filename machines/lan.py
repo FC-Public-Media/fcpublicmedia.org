@@ -3,6 +3,7 @@
 
     python3 machines/lan.py            each name: what it serves, and who holds it now
     python3 machines/lan.py publish    hold this machine's names up while this runs (a crew `keep` line)
+    python3 machines/lan.py names      every name any profile's lan.yml declares, for each host it names
 
 The profile whose `names` declares this host carries `lan.yml`: the domain, the names any machine
 may hold (`shared`), bare `<label>.local` names it holds the same way (`bare`), and its gear. <hostname>.<domain> is the machine's own directory, and each
@@ -46,8 +47,8 @@ def profile(host=None):
     return next((f for f in found if (f / "lan.yml").is_file()), found[0] if found else None)
 
 
-def load(where=None):
-    """{name: (serves, gear)} for this machine: serves is board, site, directory, gear or lines."""
+def load(where=None, host=None):
+    """{name: (serves, gear)} for this machine (or `host`): serves is board, site, directory, gear or lines."""
     where = where or profile()
     f = where / "lan.yml" if where else None
     if not f or not f.is_file():
@@ -62,13 +63,37 @@ def load(where=None):
         names[domain if label == "@" else "%s.%s" % (str(label).lower(), domain)] = (serves, None)
     for label, serves in (cfg.get("bare") or {}).items():
         names["%s.local" % str(label).lower()] = (serves, None)
-    own = "%s.%s" % (hostname(), domain)
+    own = "%s.%s" % ((host or hostname()).lower(), domain)
     names[own] = ("directory", None)
     for gear in cfg.get("gear") or []:
         names["%s.%s" % (gear, own)] = ("gear", gear)
     if cfg.get("lines"):
         names["lines.%s" % own] = ("lines", None)         # its copy of the LAN's lines, as files (../docs/lines.md)
     return names
+
+
+def hosts(where):
+    """The host names a profile's `names` file says its machines answer to."""
+    found = []
+    f = where / "names"
+    for line in (f.read_text(encoding="utf-8").splitlines() if f.is_file() else []):
+        parts = line.split("#", 1)[0].split()
+        if len(parts) == 3 and parts[2].lower() not in found:
+            found.append(parts[2].lower())
+    return found
+
+
+def every():
+    """{name: [(profile, serves)]} across every profile with a lan.yml, each for every host it names.
+    What a machine that publishes nothing (a Windows bay) needs to know to ask for them."""
+    found = {}
+    for f in sorted(HERE.glob("*/lan.yml")):
+        for host in hosts(f.parent):
+            for name, (serves, _) in load(f.parent, host).items():
+                found.setdefault(name, [])
+                if (f.parent.name, serves) not in found[name]:
+                    found[name].append((f.parent.name, serves))
+    return found
 
 
 def address():
@@ -225,5 +250,8 @@ if __name__ == "__main__":
         publish()
     elif verb == "status":
         sys.exit(status())
+    elif verb == "names":
+        for name, held in sorted(every().items(), key=lambda kv: (kv[0].count("."), kv[0])):
+            print("%-52s %s" % (name, ", ".join("%s:%s" % h for h in held)))
     else:
         sys.exit(__doc__)

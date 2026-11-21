@@ -127,6 +127,12 @@ verbs:
     windows: "machines/<profile>/drobo.ps1"
     linux: "not: Windows gear (the iSCSI initiator)"
 
+  - verb: hosts
+    args: "[status|write]"
+    says: "this bay's hosts file: each line and whose it is; write composes it and asks for an administrator"
+    windows: "machines/<profile>/hosts.ps1"
+    linux: "not: Windows asks mDNS for two-label .local names only; Linux has mdns.allow"
+
   - verb: share
     args: "[status|install]"
     says: "the drop shares: enhance (E:, TO ENHANCE)"
