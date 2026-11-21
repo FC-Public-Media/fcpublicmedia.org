@@ -36,6 +36,10 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
     GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, {name, again} restarts ours, from that page only
     GET /broadcast/youtube the episodes marked not for YouTube; POST {show, youtube, title} marks one (ch97's page, through its nginx)
+    GET /origin/           everything origin.local holds, read through its door's `look`: issues and branches, and the
+                           orders waiting (machines/origin/traffic.py)
+    GET /origin/now        the same as JSON; POST /origin/land {repo, branch, tip} orders a branch into main on the
+                           origin's next beat, /origin/hold {repo, branch} takes it back, from that page only
     GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
     GET /deploy/now        the same as JSON, with the deploy's log where it runs here and the PRs waiting on main
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
@@ -3506,6 +3510,16 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(400, json.dumps({"why": "asks for a name and on"}), TYPES[".json"])
             log("broadcast: %s %s, from %s" % (name, "again" if again else "on" if on else "off", self.peer()))
             return self.reply(200, json.dumps(broadcast_now(name, on, again)), TYPES[".json"])
+        if route in ("/origin/land", "/origin/hold"):                 # a traffic order, from the origin's own page here
+            if (self.headers.get("Origin") or "") != "http://%s" % (self.headers.get("Host") or ""):
+                return self.reply(403, json.dumps({"ok": False, "said": "asked from another page"}), TYPES[".json"])
+            try:
+                ask = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 1024)))
+            except ValueError:
+                ask = None
+            if not isinstance(ask, dict):
+                return self.reply(400, json.dumps({"ok": False, "said": "asks in JSON"}), TYPES[".json"])
+            return self.reply(200, json.dumps(origin_order(route.rsplit("/", 1)[1], ask)), TYPES[".json"])
         if route == "/broadcast/youtube":
             if (self.headers.get("Origin") or "") != "http://%s" % (self.headers.get("Host") or ""):
                 return self.reply(403, json.dumps({"why": "asked from another page"}), TYPES[".json"])
@@ -3660,6 +3674,11 @@ class Door(BaseHTTPRequestHandler):
                 return self.reply(200, workshed_page(self.here()))
             if route == "/workshed/now":
                 return self.reply(200, json.dumps(workshed_now(self.here())), TYPES[".json"])
+            # The origin's face: everything origin.local holds, and the branches ordered to land (machines/origin/traffic.py).
+            if route in ("/origin", "/origin/"):
+                return self.reply(200, origin_page())
+            if route == "/origin/now":
+                return self.reply(200, json.dumps(origin_now()), TYPES[".json"])
             # The library's search: a shed's worktrees, every word in any order (../workshed.py, docs/workshed.md, Search).
             if route in ("/library", "/library/"):
                 return self.reply(200, library_page(self.query()))
@@ -5006,6 +5025,184 @@ WORKSHED_JS = """<script>
   var form = document.getElementById('new');
   if (form) form.onsubmit = function (ev) { ev.preventDefault(); ask({do: 'new', branch: form.branch.value}).then(function () { form.reset(); }); };
   now(); setInterval(now, 5000);
+})();
+</script>"""
+
+
+# ---------------------------------------------------------------------- origin --
+# THE ORIGIN'S FACE: everything origin.local holds, read through its door in one look (`look`), and traffic orders:
+# a branch ordered to land goes into main on the origin's next ten-minute beat, in turn (machines/origin/traffic.py).
+ORIGIN_LOOK = {"at": 0.0, "d": None}
+ORIGIN_LOCK = threading.Lock()
+
+
+def origin_door(*words, timeout=30):
+    """Words to the origin's door, by this machine's key for its git account (as origin_dev)."""
+    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+                           os.environ.get("FCPM_ORIGIN_SSH") or "fcpm-origin", *words],
+                          capture_output=True, text=True, timeout=timeout)
+
+
+def origin_now(fresh=False):
+    """The origin's reading, asked again when it is older than 20 s (or fresh), one asking at a time."""
+    with ORIGIN_LOCK:
+        if fresh or ORIGIN_LOOK["d"] is None or time.time() - ORIGIN_LOOK["at"] > 20:
+            try:
+                r = origin_door("look", timeout=120)
+                d = json.loads(r.stdout) if r.returncode == 0 else {"said": (r.stderr or "").strip()[-300:]}
+            except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+                d = {"said": "origin.local did not answer (%s)" % exc.__class__.__name__}
+            if "said" in d and ORIGIN_LOOK["d"] and "repos" in ORIGIN_LOOK["d"]:
+                d = dict(ORIGIN_LOOK["d"], said=d["said"])          # the last good reading, and why it is not newer
+            ORIGIN_LOOK.update(at=time.time(), d=d)
+        return ORIGIN_LOOK["d"]
+
+
+def origin_order(verb, ask):
+    """A traffic order from the page: land a branch as it was seen, or hold it. Says how it went in a sentence."""
+    try:
+        repo, branch = str(ask["repo"]), str(ask["branch"])
+        words = [verb, repo, branch] + ([str(ask["tip"])] if verb == "land" else [])
+    except (KeyError, TypeError):
+        return {"ok": False, "said": "asks for a repo, a branch%s" % (" and its commit" if verb == "land" else "")}
+    if not all(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", w) for w in words):
+        return {"ok": False, "said": "that is not a branch here"}
+    try:
+        r = origin_door(*words)
+    except (OSError, subprocess.TimeoutExpired):
+        return {"ok": False, "said": "origin.local did not answer"}
+    said = (r.stdout if r.returncode == 0 else r.stderr).strip().removeprefix("origin: ")
+    log("origin: %s %s %s, %s" % (verb, repo, branch, said))
+    return {"ok": r.returncode == 0, "said": said, "now": origin_now(fresh=True)}
+
+
+def origin_page():
+    body = """%s<main>
+<h2>Origin</h2>
+<p class=dim>Everything the origin holds, read from it in one look: each repository's issues, a line each, and
+every branch beside its main. A branch ordered to land goes into main on the origin's next beat, every ten
+minutes on the clock, in the order given; then the origin lets it go, and carries main out to GitHub. One that
+collides, or moved after it was ordered, is said so here and main is left alone.</p>
+<section id=turn></section>
+<p class=dim id=said></p>
+<section id=list></section>
+<p class=dim id=quiet></p>
+<p class=dim>From a terminal: <code>ssh fcpm-origin look</code>, <code>land OWNER/REPO BRANCH COMMIT</code>,
+<code>hold OWNER/REPO BRANCH</code>. Issues: <code>fcpm issues</code> (docs/issues.md).</p>
+</main>%s""" % (masthead("%s &middot; origin" % e(socket.gethostname().lower())), ORIGIN_JS)
+    return shell("Origin", body, ORIGIN_CSS)
+
+
+ORIGIN_CSS = BOARD_CSS + """
+#list { display:grid; grid-template-columns:repeat(auto-fill, minmax(26rem, 1fr)); gap:.8rem; margin:1.2rem 0; }
+.repo { display:flex; flex-direction:column; gap:.5rem; padding:1rem 1.2rem; background:var(--slate); color:var(--dim); }
+.repo h3 { margin:0; font-size:1.3rem; color:var(--paper); } .repo h3 small { font-weight:400; color:var(--dim); }
+.tape { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.3rem; color:var(--paper); }
+.tape li { display:flex; gap:.6rem; align-items:baseline; } .tape b { min-width:1.4rem; font-size:.85rem; color:var(--dim); }
+.tape b.ready { font-size:1.2rem; color:var(--paper); }
+.br { display:flex; flex-direction:column; gap:.25rem; padding:.6rem 0 0; border-top:1px solid rgba(255,255,255,.08); }
+.br h4 { margin:0; font-size:1.05rem; color:var(--paper); } .br .lands { color:var(--paper); }
+.br .wrong { color:#ff7b72; } .br .acts { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+.br.waiting h4 { font-size:1.25rem; } .br.waiting .acts span { color:var(--signal); font-weight:700; }
+#turn { display:flex; flex-direction:column; gap:.3rem; margin:1rem 0; }
+#turn .next { font-size:1.4rem; color:var(--paper); } #turn ol { margin:0; padding-left:1.4rem; }
+#said { min-height:1.4em; }
+"""
+
+
+ORIGIN_JS = """<script>
+(function () {
+  var list = document.getElementById('list'), turn = document.getElementById('turn'), said = document.getElementById('said'),
+      quiet = document.getElementById('quiet'), last = null;
+  function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+  function clock(at) { return new Date(at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); }
+  function when(t) {
+    var d = new Date(t * 1000), days = (Date.now() - d) / 864e5;
+    return days < 1 ? clock(d) : days < 7 ? d.toLocaleDateString([], {weekday: 'long'}) : d.toLocaleDateString();
+  }
+  function n(k, word) { return k + ' ' + word + (k === 1 ? '' : (/h$/.test(word) ? 'es' : 's')); }
+  function ask(verb, body) {
+    said.textContent = (verb === 'land' ? 'Ordering ' : 'Holding ') + body.branch + '...';
+    return fetch('/origin/' + verb, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); }).then(function (k) { draw(k.now || last); said.textContent = k.said; })
+      .catch(function () { said.textContent = 'This machine is not answering'; });
+  }
+  function line(label, title) {
+    var li = el('li');
+    li.append(el('b', /^[A-Z]/.test(label) ? 'ready' : '', label), el('span', null, title));
+    return li;
+  }
+  function branch(r, b, waiting, next) {
+    var w = waiting[r.repo + ' ' + b.name], c = el('div', 'br' + (w ? ' waiting' : ''));
+    c.append(el('h4', null, b.name));
+    var far = [];
+    if (b.ahead) far.push(n(b.ahead, 'commit') + ' main does not have');
+    if (b.behind) far.push(b.behind + ' behind main');
+    var lands = {clean: 'lands clean', held: 'main holds all of it', unrelated: 'no history in common with main',
+                 collides: 'collides with main on ' + (b.conflicts || []).join(', ')}[b.lands] || '';
+    c.append(el('span', b.lands === 'collides' ? 'wrong' : 'lands', [lands].concat(far).filter(Boolean).join(', ')));
+    if (b.issues && b.issues.length) {
+      var ul = el('ul', 'tape');
+      b.issues.forEach(function (l) { var i = l.indexOf(' '); ul.append(line(i < 0 ? l : l.slice(0, i), i < 0 ? '' : l.slice(i + 1))); });
+      c.append(ul);
+    }
+    c.append(el('span', null, when(b.when) + ', ' + b.author + ': ' + b.said));
+    var acts = el('div', 'acts');
+    if (w) {
+      acts.append(el('span', null, 'Lands at ' + clock(next) + ', ' + w + ' in turn'));
+      var h = el('button', null, 'Hold');
+      h.onclick = function () { h.disabled = true; ask('hold', {repo: r.repo, branch: b.name}); };
+      acts.append(h);
+    } else if (b.lands === 'clean') {
+      var l = el('button', null, 'Land at ' + clock(next));
+      l.onclick = function () { l.disabled = true; ask('land', {repo: r.repo, branch: b.name, tip: b.tip}); };
+      acts.append(l);
+    }
+    if (acts.childNodes.length) c.append(acts);
+    return c;
+  }
+  function draw(d) {
+    if (!d) return;
+    last = d;
+    if (!d.repos) { said.textContent = d.said || 'origin.local has not answered yet'; return; }
+    if (d.said) said.textContent = 'Not newer than this: ' + d.said;
+    var waiting = {};
+    d.waiting.forEach(function (o, i) { waiting[o.repo + ' ' + o.branch] = i + 1; });
+    turn.replaceChildren(el('span', 'next', 'Next beat ' + clock(d.next_beat) + (d.waiting.length ? ': ' + n(d.waiting.length, 'branch') + ' to land' : ': nothing ordered')));
+    if (d.waiting.length) {
+      var ol = el('ol');
+      d.waiting.forEach(function (o) { ol.append(el('li', null, o.repo + ' ' + o.branch + ', ordered by ' + (o.holder || '?') + ' at ' + clock(o.at))); });
+      turn.append(ol);
+    }
+    d.done.slice(-5).reverse().forEach(function (o) {
+      turn.append(el('span', 'dim', clock(o.at) + '  ' + o.repo + ' ' + o.branch + ': ' + (o.order === 'hold' ? 'held, by ' + (o.holder || '?') : o.said)));
+    });
+    var busy = [], still = [];
+    d.repos.forEach(function (r) {
+      var open = r.branches.filter(function (b) { return !b.library; });
+      ((r.tape && r.tape.length) || open.length ? busy : still).push(r);
+    });
+    list.replaceChildren.apply(list, busy.map(function (r) {
+      var c = el('article', 'repo'), parts = r.repo.split('/'), h = el('h3');
+      h.append(el('small', null, parts[0] + ' / '), document.createTextNode(parts[1]));
+      c.append(h);
+      var gh = r.github ? [r.github.ours_ahead ? n(r.github.ours_ahead, 'commit') + ' of ours not on GitHub yet' : '',
+                           r.github.theirs_ahead ? 'GitHub has ' + n(r.github.theirs_ahead, 'commit') + ' not taken in' : ''].filter(Boolean) : [];
+      c.append(el('span', null, 'main ' + (r.main || '').slice(0, 7) + (r.began_here ? ', began here' : '') + (gh.length ? ', ' + gh.join(', ') : '')));
+      if (r.tape && r.tape.length) {
+        var ul = el('ul', 'tape');
+        r.tape.forEach(function (t) { ul.append(line(t[0], t[1])); });
+        c.append(ul);
+      }
+      r.branches.filter(function (b) { return !b.library; }).forEach(function (b) { c.append(branch(r, b, waiting, d.next_beat)); });
+      var lib = r.branches.filter(function (b) { return b.library; }).map(function (b) { return b.name; });
+      if (lib.length) c.append(el('span', null, "The library's, never landed: " + lib.join(', ')));
+      return c;
+    }));
+    quiet.textContent = still.length ? 'Main only, no issues: ' + still.map(function (r) { return r.repo.split('/')[1]; }).join(', ') : '';
+  }
+  function now() { fetch('/origin/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
+  now(); setInterval(now, 30000);
 })();
 </script>"""
 

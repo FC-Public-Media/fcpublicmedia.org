@@ -95,7 +95,7 @@ rm -rf /srv/git/git-shell-commands                   # every key is forced throu
 # Intake: GitHub's main into every repository, as git, every minute by cron (it paces itself: a pass in
 # each ten minutes of the clock, GitHub asked on it while dev is on, weekly while off). GitHub is asked as the account `gh auth login` gave
 # git (./github-login); until then intake says GitHub is out of reach, on the screen too.
-install -d $LIB; install -m 755 "$HERE/intake" "$HERE/run-intake" "$HERE/door" $LIB/
+install -d $LIB; install -m 755 "$HERE/intake" "$HERE/run-intake" "$HERE/door" $LIB/; install -m 644 "$HERE/traffic.py" $LIB/
 install -m 644 "$HERE/KEYHOLDERS" $LIB/KEYHOLDERS
 install -d $LIB/door-hooks; install -m 755 "$HERE/door-hooks/pre-receive" "$HERE/door-hooks/lines-gate" $LIB/door-hooks/
 # The LAN's lines: the gate plays data-pile's verify (bash, jq, openssl) on every pile pushed here.
