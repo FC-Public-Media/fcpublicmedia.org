@@ -4,6 +4,12 @@
 
 # holder                       | run        | shape                | class   | says
 
+# Bay 1's hosts file (machines/production/PROFILE.md, Hosts). status asks mDNS, writes nothing.
+machines/production/hosts.ps1 | powershell | -                    | read    | each line of the hosts file, whose it is, and whether it is current
+machines/production/hosts.ps1 | powershell | status               | read    | the same
+machines/production/hosts.ps1 | powershell | write                | desk    | compose the hosts file, show the change, write it as an administrator
+machines/lan.py               | python     | names                | read    | every name any profile's lan.yml declares, for each host it names
+
 # The door (kiosk). door.py's usage header is the source for every shape.
 machines/kiosk/door.py        | python     | -                    | read    | is the door up
 machines/kiosk/door.py        | python     | status               | read    | is the door up
