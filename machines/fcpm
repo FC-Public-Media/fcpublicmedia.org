@@ -140,7 +140,10 @@ case "$cmd" in
   library)
     # The library's holdings on this machine (library.yml, machines/<profile>/library.yml).
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    FCPM_PROFILE=$(profile) exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/library.py" "$@" ;;
+    # A machine wearing several jobs keeps its holdings in the one that has a library.yml.
+    p=$("$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2 }' | while read -r j; do
+      [ -f "$HERE/$j/library.yml" ] && { echo "$j"; break; }; done)
+    FCPM_PROFILE=${p:-$(profile)} exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/library.py" "$@" ;;
   workshed)
     # Worktrees someone works in, each served on its own port (~/code/workshed, docs/workshed.md).
     uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")

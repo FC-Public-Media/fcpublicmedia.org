@@ -1,0 +1,54 @@
+#!/bin/sh
+# buffalo-mirror -- a drive's mirror on the Buffalo: space cut from the end of its NTFS backup, ext4, mounted by label. See PROFILE.md, Mirrors.
+# status | plan NAME MIB (root, changes nothing) | carve NAME MIB (root) | mount NAME (root)
+# ntfsresize leaves the NTFS marked for a check after each resize; --force goes past that mark and still checks it.
+set -eu
+PATH=$PATH:/usr/sbin:/sbin
+NTFS=/dev/disk/by-label/RAID\\x20Backup
+die() { echo "buffalo-mirror: $*" >&2; exit 1; }
+label() { echo "mirror-$1"; }   # ext4 labels hold 16 characters
+fstab() { echo "LABEL=$(label "$1") /srv/mirrors/$1 ext4 defaults,nofail,noatime,x-systemd.device-timeout=5s 0 2"; }
+
+layout() {   # NAME MIB: sets part disk num start size newsize fsbytes cutstart, or dies
+  [ ${#1} -le 9 ] || die "name '$1' is longer than 9 characters"
+  [ ! -e "/dev/disk/by-label/$(label "$1")" ] || die "already carved: $(label "$1")"
+  [ -e "$NTFS" ] || die "no partition labelled RAID Backup: is the Buffalo attached?"
+  part=$(readlink -f "$NTFS"); p=${part#/dev/}
+  disk=/dev/$(lsblk -no PKNAME "$part"); num=$(cat "/sys/class/block/$p/partition")
+  start=$(cat "/sys/class/block/$p/start"); size=$(cat "/sys/class/block/$p/size")
+  [ "$(lsblk -no FSTYPE "$part")" = ntfs ] || die "$part is not NTFS"
+  ! grep -q "^$part " /proc/mounts || die "$part is mounted; unmount it first"
+  newsize=$(( (size - $2 * 2048) / 2048 * 2048 ))
+  fsbytes=$(( (newsize - 2048) * 512 ))
+  cutstart=$((start + newsize))
+  echo "$part on $disk: $((size / 2048)) MiB now, NTFS to $((fsbytes / 1048576)) MiB, $(label "$1") $2 MiB after it"
+}
+
+case "${1:-status}" in
+status)
+  lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINTS "$(readlink -f "$NTFS" | sed 's/[0-9]*$//')"
+  grep ' /srv/mirrors/' /etc/fstab || echo "fstab: no mirrors" ;;
+plan)
+  layout "$2" "$3"
+  ntfsresize --force --no-action --no-progress-bar --size "$fsbytes" "$part" ;;
+carve)
+  layout "$2" "$3"
+  mkdir -p /var/backups
+  sfdisk -d "$disk" > "/var/backups/fcpm-buffalo-$(date +%Y%m%dT%H%M%S).sfdisk"
+  printf 'y\n' | ntfsresize --force --no-progress-bar --size "$fsbytes" "$part"
+  echo ",$newsize" | sfdisk --no-reread --wipe-partitions never -N "$num" "$disk"
+  echo "$cutstart,$(( $3 * 2048 )),L" | sfdisk --no-reread -a "$disk"
+  partx -u "$disk"; udevadm settle
+  new=$(lsblk -lnpo NAME,START "$disk" | awk -v s="$cutstart" '$2 == s { print $1 }')
+  [ -n "$new" ] || die "no new partition at sector $cutstart on $disk"
+  mkfs.ext4 -q -L "$(label "$2")" -m 0 "$new"
+  echo "carved $new as $(label "$2")" ;;
+mount)
+  line=$(fstab "$2")
+  grep -qxF "$line" /etc/fstab || { cp /etc/fstab "/etc/fstab.before-mirror-$2"; echo "$line" >> /etc/fstab; }
+  mkdir -p "/srv/mirrors/$2"; systemctl daemon-reload
+  mountpoint -q "/srv/mirrors/$2" || mount "/srv/mirrors/$2"
+  chown fcpm:fcpm "/srv/mirrors/$2"
+  df -h "/srv/mirrors/$2" ;;
+*) die "status | plan NAME MIB | carve NAME MIB | mount NAME" ;;
+esac

@@ -236,7 +236,21 @@ def volume(path):
     """The coordinates a disk can give without anyone writing them down: its serial and label."""
     serial = f"{os.stat(path).st_dev & 0xFFFFFFFF:08X}"
     label = ""
-    if os.name == "nt":
+    if os.name != "nt":                              # st_dev follows the device name; the disk's UUID does not
+        dev = os.stat(path).st_dev
+        for kind in ("by-uuid", "by-label"):
+            d = Path("/dev/disk") / kind
+            for e in (d.iterdir() if d.is_dir() else []):
+                try:
+                    if os.stat(e).st_rdev != dev:
+                        continue
+                except OSError:
+                    continue
+                if kind == "by-uuid":
+                    serial = e.name.replace("-", "").upper()[:8].ljust(8, "0")
+                else:
+                    label = e.name.encode().decode("unicode_escape")
+    else:
         buf = ctypes.create_unicode_buffer(261)
         root = os.path.splitdrive(os.path.abspath(path))[0] + "\\"
         if ctypes.windll.kernel32.GetVolumeInformationW(root, buf, 261, None, None, None, None, 0):
