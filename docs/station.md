@@ -113,7 +113,8 @@ does not list the computer yet is put on all the same, with a warning.
 finds the profile the way `binding` does and reads its `MANIFEST`. `status` (default) says what
 differs and runs the check (`SYNC_CHECK=0` skips it). `install` puts the profile on; a person runs it,
 never a session, and it never destroys (a differing file goes to `<name>.pre-sync`, an existing clone
-is left). `mirror` copies the machine's files back into a `work/` worktree for a PR.
+is left). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
+and `fcpm pull` set it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
 
 | `MANIFEST` mode | `mode  path in the profile  path under ~` |
 |---|---|
@@ -121,6 +122,7 @@ is left). `mirror` copies the machine's files back into a `work/` worktree for a
 | `clone` | a file of repository URLs; any missing is cloned. This repository and station-node's mirror are cloned by hand |
 | `settings` | the named profile's GRANTS, compiled, written to the path. Never stored in the repository |
 | `path` | a home folder put on the user's PATH |
+| `system` | a script in the profile holding a file of the system's (`script check`, `script install`); the path is `-` |
 
 ## Sessions
 

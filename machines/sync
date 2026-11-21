@@ -4,7 +4,8 @@
 #
 #   machines/sync              status: which profile, what differs. Changes nothing
 #   machines/sync install      put the profile on: carried files, compiled settings, PATH, clone
-#                              missing mirrors. A person runs this, not a session
+#                              missing mirrors, system files (at the desk: FCPM_DESK). A person
+#                              runs this, not a session
 #   machines/sync mirror       bring the machine's copies back into this checkout,
 #                              for a pull request. Refused in refs/
 #   machines/sync -p NAME ...  name the profile instead of asking the machine
@@ -100,6 +101,23 @@ while read -r mode src dst <&3; do
           echo "placed    ~/$dst on PATH (new windows see it)"
       fi ;;
     path:mirror) ;;
+    # system <script> -: a file of the system's, held by the profile's script, which only an
+    # administrator may write. `check` says same or differs; install asks for an administrator only
+    # at the desk (FCPM_DESK, set by `fcpm install` and `fcpm pull`). Unattended (the pool's pass), it
+    # is left differing, for the next install at the desk. Declined, it is said, and nothing else stops.
+    system:status|system:install)
+      command -v powershell >/dev/null 2>&1 || { echo "sync: $src is Windows'" >&2; continue; }
+      win=$(cygpath -w "$from" 2>/dev/null || echo "$from")
+      if [ "$cmd" = install ] && [ -n "${FCPM_DESK:-}" ]; then
+        powershell -NoProfile -ExecutionPolicy Bypass -File "$win" install | tr -d '\r'
+      elif [ "$cmd" = install ]; then
+        powershell -NoProfile -ExecutionPolicy Bypass -File "$win" check >/dev/null 2>&1 ||
+          echo "waiting   $(basename "$src" .ps1) (system file): the next fcpm install at the desk places it"
+      else
+        out=$(powershell -NoProfile -ExecutionPolicy Bypass -File "$win" check 2>&1) || rc=1
+        printf '%s\n' "$out" | tr -d '\r'
+      fi ;;
+    system:mirror) ;;
     *) echo "sync: unknown mode '$mode', or verb '$cmd'" >&2; exit 2 ;;
   esac
 done 3< "$MAN"

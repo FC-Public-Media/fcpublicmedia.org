@@ -4,10 +4,11 @@
 
 # holder                       | run        | shape                | class   | says
 
-# Bay 1's hosts file (machines/production/PROFILE.md, Hosts). status asks mDNS, writes nothing.
+# Bay 1's hosts file, placed by `fcpm install` (machines/production/PROFILE.md, Hosts). status and check ask mDNS, write nothing.
 machines/production/hosts.ps1 | powershell | -                    | read    | each line of the hosts file, whose it is, and whether it is current
 machines/production/hosts.ps1 | powershell | status               | read    | the same
-machines/production/hosts.ps1 | powershell | write                | desk    | compose the hosts file, show the change, write it as an administrator
+machines/production/hosts.ps1 | powershell | check                | read    | one line for sync: same, or differs
+machines/production/hosts.ps1 | powershell | install              | desk    | compose the hosts file, show the change, write it as an administrator
 machines/lan.py               | python     | names                | read    | every name any profile's lan.yml declares, for each host it names
 
 # The door (kiosk). door.py's usage header is the source for every shape.

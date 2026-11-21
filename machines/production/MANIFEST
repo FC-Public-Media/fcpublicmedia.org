@@ -17,3 +17,6 @@ mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
 path      -                      .local/bin
 
 settings  production             code/.claude/settings.json
+
+# The hosts file, held: what this bay's names say (PROFILE.md, Hosts). An administrator's, so last.
+system    hosts.ps1              -
