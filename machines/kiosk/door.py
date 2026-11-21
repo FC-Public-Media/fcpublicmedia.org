@@ -36,8 +36,9 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /broadcast/        channel 97, out: where the Live 350 pushes it, each a switch (machines/broadcast)
     GET /broadcast/now     the same as JSON; POST /broadcast/push {name, on} switches one, {name, again} restarts ours, from that page only
     GET /broadcast/youtube the episodes marked not for YouTube; POST {show, youtube, title} marks one (ch97's page, through its nginx)
-    GET /origin/           everything origin.local holds, read through its door's `look`: issues and branches, and the
-                           orders waiting (machines/origin/traffic.py)
+    GET /origin/           a universe (one of our origin branches, ../places.py) picked on the left, then its repositories:
+                           each one's issues and branches, read through the origin's `look`, and the orders waiting
+                           (machines/origin/traffic.py). ?u=BRANCH&r=OWNER/REPO is what is picked
     GET /origin/now        the same as JSON; POST /origin/land {repo, branch, tip} orders a branch into main on the
                            origin's next beat, /origin/hold {repo, branch} takes it back, from that page only
     GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
@@ -5055,7 +5056,17 @@ def origin_now(fresh=False):
             if "said" in d and ORIGIN_LOOK["d"] and "repos" in ORIGIN_LOOK["d"]:
                 d = dict(ORIGIN_LOOK["d"], said=d["said"])          # the last good reading, and why it is not newer
             ORIGIN_LOOK.update(at=time.time(), d=d)
-        return ORIGIN_LOOK["d"]
+        return dict(ORIGIN_LOOK["d"], universes=origin_universes())
+
+
+def origin_universes():
+    """Our origin-shaped branches (../places.py), each with the repositories it pins: what the page is drawn for."""
+    try:
+        places = machines_module("places")
+        return [{"name": b, "pins": {r: sha for r, (sha, _) in (places.pins(b) or {}).items()}} for b in places.origins()]
+    except Exception as exc:
+        log("origin: the universes could not be read: %r" % exc)
+        return []
 
 
 def origin_order(verb, ask):
@@ -5077,131 +5088,181 @@ def origin_order(verb, ask):
 
 
 def origin_page():
-    body = """%s<main>
-<h2>Origin</h2>
-<p class=dim>Everything the origin holds, read from it in one look: each repository's issues, a line each, and
-every branch beside its main. A branch ordered to land goes into main on the origin's next beat, every ten
-minutes on the clock, in the order given; then the origin lets it go, and carries main out to GitHub. One that
-collides, or moved after it was ordered, is said so here and main is left alone.</p>
-<section id=turn></section>
-<p class=dim id=said></p>
-<section id=list></section>
-<p class=dim id=quiet></p>
-<p class=dim>From a terminal: <code>ssh fcpm-origin look</code>, <code>land OWNER/REPO BRANCH COMMIT</code>,
-<code>hold OWNER/REPO BRANCH</code>. Issues: <code>fcpm issues</code> (docs/issues.md).</p>
+    body = """%s<main class=origin>
+<nav class=side id=side aria-label="Universes"></nav>
+<section id=pane><p class=dim id=said></p><div id=view></div></section>
 </main>%s""" % (masthead("%s &middot; origin" % e(socket.gethostname().lower())), ORIGIN_JS)
     return shell("Origin", body, ORIGIN_CSS)
 
 
 ORIGIN_CSS = BOARD_CSS + """
-#list { display:grid; grid-template-columns:repeat(auto-fill, minmax(26rem, 1fr)); gap:.8rem; margin:1.2rem 0; }
-.repo { display:flex; flex-direction:column; gap:.5rem; padding:1rem 1.2rem; background:var(--slate); color:var(--dim); }
-.repo h3 { margin:0; font-size:1.3rem; color:var(--paper); } .repo h3 small { font-weight:400; color:var(--dim); }
-.tape { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.3rem; color:var(--paper); }
-.tape li { display:flex; gap:.6rem; align-items:baseline; } .tape b { min-width:1.4rem; font-size:.85rem; color:var(--dim); }
-.tape b.ready { font-size:1.2rem; color:var(--paper); }
-.br { display:flex; flex-direction:column; gap:.25rem; padding:.6rem 0 0; border-top:1px solid rgba(255,255,255,.08); }
-.br h4 { margin:0; font-size:1.05rem; color:var(--paper); } .br .lands { color:var(--paper); }
-.br .wrong { color:#ff7b72; } .br .acts { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
-.br.waiting h4 { font-size:1.25rem; } .br.waiting .acts span { color:var(--signal); font-weight:700; }
-#turn { display:flex; flex-direction:column; gap:.3rem; margin:1rem 0; }
-#turn .next { font-size:1.4rem; color:var(--paper); } #turn ol { margin:0; padding-left:1.4rem; }
-#said { min-height:1.4em; }
+main.origin { display:grid; grid-template-columns:16rem minmax(0, 1fr); gap:2rem; align-items:start; max-width:none; }
+.side { display:flex; flex-direction:column; position:sticky; top:1rem; }
+.side a { display:flex; justify-content:space-between; gap:.5rem; padding:.2rem .6rem; color:var(--dim); text-decoration:none;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.side a:hover { color:var(--paper); } .side a.on { color:var(--paper); background:var(--slate); }
+.side a.u { font-size:1.1rem; } .side a.u.on { border-left:3px solid var(--signal); }
+.side h5 { margin:.8rem .6rem .1rem; font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+.side .r { padding-left:1.2rem; }
+.badge { font-size:.75rem; display:flex; gap:.35rem; } .badge .w { color:var(--signal); font-weight:700; }
+.grid { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.grid th { text-align:left; font-weight:400; font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+  padding:.3rem .6rem; border-bottom:1px solid rgba(255,255,255,.12); }
+.grid td { padding:.3rem .6rem; border-bottom:1px solid rgba(255,255,255,.05); color:var(--paper); white-space:nowrap; }
+.grid td.t { white-space:normal; color:var(--dim); } .grid tr.dim td { color:var(--dim); }
+.grid a { color:inherit; } .grid .n { text-align:right; } .grid button { font-size:.85rem; padding:.1rem .6rem; }
+.collides, .grid td.collides { color:#ff7b72; } .grid td.held, .grid td.unrelated { color:var(--dim); }
+.waiting, .grid td.waiting { color:var(--signal); font-weight:700; }
+.top { display:flex; gap:1.5rem; align-items:baseline; margin:0 0 1rem; color:var(--dim); }
+.top h2 { margin:0; color:var(--paper); }
+.tape { list-style:none; margin:0 0 1.2rem; padding:0; } .tape li { display:flex; gap:.7rem; padding:.15rem 0; }
+.tape b { min-width:1.2rem; color:var(--dim); font-size:.85rem; } .tape b.ready { color:var(--paper); font-size:1.1rem; }
+#said { min-height:1.4em; margin:0; }
+@media (max-width:50rem) { main.origin { grid-template-columns:1fr; } .side { position:static; } }
 """
 
 
 ORIGIN_JS = """<script>
 (function () {
-  var list = document.getElementById('list'), turn = document.getElementById('turn'), said = document.getElementById('said'),
-      quiet = document.getElementById('quiet'), last = null;
+  var side = document.getElementById('side'), view = document.getElementById('view'), said = document.getElementById('said'), last = null;
   function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
   function clock(at) { return new Date(at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); }
   function when(t) {
     var d = new Date(t * 1000), days = (Date.now() - d) / 864e5;
-    return days < 1 ? clock(d) : days < 7 ? d.toLocaleDateString([], {weekday: 'long'}) : d.toLocaleDateString();
+    return days < 1 ? clock(d) : days < 7 ? d.toLocaleDateString([], {weekday: 'short'}) : d.toLocaleDateString([], {month: 'short', day: 'numeric'});
   }
-  function n(k, word) { return k + ' ' + word + (k === 1 ? '' : (/h$/.test(word) ? 'es' : 's')); }
+  function here() { var q = new URLSearchParams(location.search); return {u: q.get('u') || '', r: q.get('r') || ''}; }
+  function href(u, r) { var q = new URLSearchParams(); if (u) q.set('u', u); if (r) q.set('r', r); return '?' + q.toString(); }
+  function link(cls, text, u, r, on) {
+    var a = el('a', cls + (on ? ' on' : '')); a.href = href(u, r);
+    a.onclick = function (ev) { ev.preventDefault(); history.pushState(null, '', a.href); draw(); };
+    a.append(el('span', null, text)); return a;
+  }
+  function open(b) { return !b.library; }
+  function tally(repo, waiting) {
+    var r = repo || {branches: []}, o = r.branches.filter(open);
+    return {clean: o.filter(function (b) { return b.lands === 'clean'; }).length,
+            collides: o.filter(function (b) { return b.lands === 'collides'; }).length,
+            waiting: waiting.filter(function (w) { return w.repo === r.repo; }).length, open: o.length};
+  }
+  function badge(t) {
+    var s = el('span', 'badge');
+    if (t.waiting) s.append(el('span', 'w', t.waiting));
+    if (t.clean) s.append(el('span', null, t.clean));
+    return s;
+  }
   function ask(verb, body) {
-    said.textContent = (verb === 'land' ? 'Ordering ' : 'Holding ') + body.branch + '...';
-    return fetch('/origin/' + verb, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
-      .then(function (r) { return r.json(); }).then(function (k) { draw(k.now || last); said.textContent = k.said; })
-      .catch(function () { said.textContent = 'This machine is not answering'; });
+    said.textContent = verb === 'land' ? 'ordering ' + body.branch : 'holding ' + body.branch;
+    fetch('/origin/' + verb, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); }).then(function (k) { if (k.now) last = k.now; draw(); said.textContent = k.said; })
+      .catch(function () { said.textContent = 'not answering'; });
   }
-  function line(label, title) {
-    var li = el('li');
-    li.append(el('b', /^[A-Z]/.test(label) ? 'ready' : '', label), el('span', null, title));
-    return li;
+  function table(heads) {
+    var t = el('table', 'grid'), tr = el('tr');
+    heads.forEach(function (h) { tr.append(el('th', /^[+\\u2212#]/.test(h) ? 'n' : null, h)); });
+    t.append(tr); return t;
   }
-  function branch(r, b, waiting, next) {
-    var w = waiting[r.repo + ' ' + b.name], c = el('div', 'br' + (w ? ' waiting' : ''));
-    c.append(el('h4', null, b.name));
-    var far = [];
-    if (b.ahead) far.push(n(b.ahead, 'commit') + ' main does not have');
-    if (b.behind) far.push(b.behind + ' behind main');
-    var lands = {clean: 'lands clean', held: 'main holds all of it', unrelated: 'no history in common with main',
-                 collides: 'collides with main on ' + (b.conflicts || []).join(', ')}[b.lands] || '';
-    c.append(el('span', b.lands === 'collides' ? 'wrong' : 'lands', [lands].concat(far).filter(Boolean).join(', ')));
-    if (b.issues && b.issues.length) {
-      var ul = el('ul', 'tape');
-      b.issues.forEach(function (l) { var i = l.indexOf(' '); ul.append(line(i < 0 ? l : l.slice(0, i), i < 0 ? '' : l.slice(i + 1))); });
-      c.append(ul);
-    }
-    c.append(el('span', null, when(b.when) + ', ' + b.author + ': ' + b.said));
-    var acts = el('div', 'acts');
-    if (w) {
-      acts.append(el('span', null, 'Lands at ' + clock(next) + ', ' + w + ' in turn'));
-      var h = el('button', null, 'Hold');
-      h.onclick = function () { h.disabled = true; ask('hold', {repo: r.repo, branch: b.name}); };
-      acts.append(h);
-    } else if (b.lands === 'clean') {
-      var l = el('button', null, 'Land at ' + clock(next));
-      l.onclick = function () { l.disabled = true; ask('land', {repo: r.repo, branch: b.name, tip: b.tip}); };
-      acts.append(l);
-    }
-    if (acts.childNodes.length) c.append(acts);
-    return c;
+  function row(t, cells, cls) {
+    var tr = el('tr', cls || null);
+    cells.forEach(function (c) { var td = el('td', c && c.cls || null); if (c && c.node) td.append(c.node); else td.textContent = c && c.text != null ? c.text : (c == null ? '' : c); if (c && c.title) td.title = c.title; tr.append(td); });
+    t.append(tr); return tr;
   }
-  function draw(d) {
-    if (!d) return;
-    last = d;
-    if (!d.repos) { said.textContent = d.said || 'origin.local has not answered yet'; return; }
-    if (d.said) said.textContent = 'Not newer than this: ' + d.said;
+  function tape(lines) {
+    var ul = el('ul', 'tape');
+    lines.forEach(function (t) { var li = el('li'); li.append(el('b', /^[A-Z]/.test(t[0]) ? 'ready' : '', t[0]), el('span', null, t[1])); ul.append(li); });
+    return ul;
+  }
+  function universe(d, u) {
+    var byRepo = {};
+    d.repos.forEach(function (r) { byRepo[r.repo] = r; });
+    return Object.keys(u.pins).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; })
+      .map(function (k) { return {name: k, pin: u.pins[k], repo: byRepo[k]}; });
+  }
+  function drawSide(d, at) {
+    side.replaceChildren();
+    d.universes.forEach(function (u) {
+      side.append(link('u', u.name, u.name, '', at.u === u.name && !at.r));
+      if (at.u !== u.name) return;
+      var owner = null;
+      universe(d, u).forEach(function (x) {
+        var parts = x.name.split('/');
+        if (parts[0] !== owner) { owner = parts[0]; side.append(el('h5', null, owner)); }
+        var a = link('r', parts[1], u.name, x.name, at.r === x.name);
+        a.append(badge(tally(x.repo, d.waiting))); side.append(a);
+      });
+    });
+  }
+  function top(d, title) {
+    var h = el('div', 'top');
+    h.append(el('h2', null, title), el('span', null, 'next ' + clock(d.next_beat)));
+    if (d.waiting.length) h.append(el('span', 'waiting', d.waiting.length + ' waiting'));
+    if (d.said) h.append(el('span', 'collides', d.said));
+    return h;
+  }
+  function drawUniverse(d, u) {
+    var t = table(['repository', 'pin', 'main', '#', '+', '\\u00d7', 'waiting']);
+    universe(d, u).forEach(function (x) {
+      var r = x.repo, c = tally(r, d.waiting), parts = x.name.split('/');
+      var a = el('a', null, parts[1]); a.href = href(u.name, x.name);
+      a.onclick = function (ev) { ev.preventDefault(); history.pushState(null, '', a.href); draw(); };
+      row(t, [{node: a, title: x.name}, x.pin.slice(0, 7), r ? (r.main === x.pin ? '=' : (r.main || '').slice(0, 7)) : '\\u2205',
+              {text: r && r.tape ? r.tape.length : '', cls: 'n'}, {text: c.clean || '', cls: 'n'},
+              {text: c.collides || '', cls: 'n collides'}, {text: c.waiting || '', cls: 'waiting'}],
+          r && (c.open || (r.tape && r.tape.length)) ? null : 'dim');
+    });
+    view.replaceChildren(top(d, u.name), t);
+  }
+  function drawRepo(d, u, name) {
+    var r = d.repos.filter(function (x) { return x.repo === name; })[0], pin = u.pins[name] || '';
+    var parts = [top(d, name)];
+    if (!r) { view.replaceChildren(top(d, name)); said.textContent = 'not on the origin'; return; }
+    var head = table(['pin', 'main', 'github']);
+    row(head, [pin.slice(0, 7), r.main === pin ? '=' : (r.main || '').slice(0, 7),
+               r.began_here ? 'here only' : !r.github ? '' : (r.github.ours_ahead || r.github.theirs_ahead) ? '\\u2191' + r.github.ours_ahead + ' \\u2193' + r.github.theirs_ahead : '=']);
+    parts.push(head, el('p'));
+    if (r.tape && r.tape.length) parts.push(tape(r.tape));
     var waiting = {};
-    d.waiting.forEach(function (o, i) { waiting[o.repo + ' ' + o.branch] = i + 1; });
-    turn.replaceChildren(el('span', 'next', 'Next beat ' + clock(d.next_beat) + (d.waiting.length ? ': ' + n(d.waiting.length, 'branch') + ' to land' : ': nothing ordered')));
-    if (d.waiting.length) {
-      var ol = el('ol');
-      d.waiting.forEach(function (o) { ol.append(el('li', null, o.repo + ' ' + o.branch + ', ordered by ' + (o.holder || '?') + ' at ' + clock(o.at))); });
-      turn.append(ol);
-    }
-    d.done.slice(-5).reverse().forEach(function (o) {
-      turn.append(el('span', 'dim', clock(o.at) + '  ' + o.repo + ' ' + o.branch + ': ' + (o.order === 'hold' ? 'held, by ' + (o.holder || '?') : o.said)));
-    });
-    var busy = [], still = [];
-    d.repos.forEach(function (r) {
-      var open = r.branches.filter(function (b) { return !b.library; });
-      ((r.tape && r.tape.length) || open.length ? busy : still).push(r);
-    });
-    list.replaceChildren.apply(list, busy.map(function (r) {
-      var c = el('article', 'repo'), parts = r.repo.split('/'), h = el('h3');
-      h.append(el('small', null, parts[0] + ' / '), document.createTextNode(parts[1]));
-      c.append(h);
-      var gh = r.github ? [r.github.ours_ahead ? n(r.github.ours_ahead, 'commit') + ' of ours not on GitHub yet' : '',
-                           r.github.theirs_ahead ? 'GitHub has ' + n(r.github.theirs_ahead, 'commit') + ' not taken in' : ''].filter(Boolean) : [];
-      c.append(el('span', null, 'main ' + (r.main || '').slice(0, 7) + (r.began_here ? ', began here' : '') + (gh.length ? ', ' + gh.join(', ') : '')));
-      if (r.tape && r.tape.length) {
-        var ul = el('ul', 'tape');
-        r.tape.forEach(function (t) { ul.append(line(t[0], t[1])); });
-        c.append(ul);
+    d.waiting.forEach(function (w, i) { if (w.repo === name) waiting[w.branch] = i + 1; });
+    var t = table(['branch', '+', '\\u2212', 'lands', 'issues', 'last', 'by', '']);
+    r.branches.filter(open).forEach(function (b) {
+      var act = null, w = waiting[b.name];
+      if (w) {
+        act = el('span'); act.append(el('span', 'waiting', '#' + w + ' '));
+        var h = el('button', null, 'Hold'); h.onclick = function () { h.disabled = true; ask('hold', {repo: name, branch: b.name}); }; act.append(h);
+      } else if (b.lands === 'clean') {
+        act = el('button', null, 'Land'); act.onclick = function () { act.disabled = true; ask('land', {repo: name, branch: b.name, tip: b.tip}); };
       }
-      r.branches.filter(function (b) { return !b.library; }).forEach(function (b) { c.append(branch(r, b, waiting, d.next_beat)); });
-      var lib = r.branches.filter(function (b) { return b.library; }).map(function (b) { return b.name; });
-      if (lib.length) c.append(el('span', null, "The library's, never landed: " + lib.join(', ')));
-      return c;
-    }));
-    quiet.textContent = still.length ? 'Main only, no issues: ' + still.map(function (r) { return r.repo.split('/')[1]; }).join(', ') : '';
+      row(t, [{text: b.name, title: b.said}, {text: b.ahead || '', cls: 'n'}, {text: b.behind || '', cls: 'n'},
+              {text: b.lands, cls: b.lands, title: (b.conflicts || []).join('\\n')},
+              {text: (b.issues || []).length || '', cls: 'n', title: (b.issues || []).join('\\n')},
+              when(b.when), b.author, act ? {node: act} : ''], b.lands === 'held' ? 'dim' : null);
+    });
+    parts.push(t);
+    var lib = r.branches.filter(function (b) { return b.library; });
+    if (lib.length) {
+      var l = table(["library's", 'last']);
+      lib.forEach(function (b) { row(l, [{text: b.name, title: b.said}, when(b.when)], 'dim'); });
+      parts.push(el('p'), l);
+    }
+    var done = d.done.filter(function (o) { return o.repo === name; });
+    if (done.length) {
+      var o = table(['at', 'branch', 'done']);
+      done.slice().reverse().forEach(function (x) { row(o, [clock(x.at), x.branch, {text: x.done || x.order, title: x.said || '', cls: x.done === 'landed' ? null : 'collides'}]); });
+      parts.push(el('p'), o);
+    }
+    view.replaceChildren.apply(view, parts);
   }
-  function now() { fetch('/origin/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
+  function draw() {
+    var d = last, at = here();
+    if (!d) return;
+    if (!d.repos) { said.textContent = d.said || 'the origin has not answered yet'; return; }
+    drawSide(d, at);
+    var u = d.universes.filter(function (x) { return x.name === at.u; })[0];
+    if (!u) { view.replaceChildren(); return; }
+    if (at.r) drawRepo(d, u, at.r); else drawUniverse(d, u);
+  }
+  function now() { fetch('/origin/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { last = d; draw(); }).catch(function () {}); }
+  window.addEventListener('popstate', draw);
   now(); setInterval(now, 30000);
 })();
 </script>"""
