@@ -10,6 +10,20 @@ CODE="$HOME/code"
 
 profile() { "$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2; exit }'; }
 
+pyrun() {
+  # [--with PKG]... [python] SCRIPT ARGS: by uv, its Python 3.12 and the packages; where uv is not (a card's Alpine),
+  # by this system's python3, when it has the packages. A window opened before uv was installed finds it where winget puts it.
+  uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+  [ -x "$uv" ] && exec "$uv" run --no-project --python 3.12 "$@"
+  while [ "${1:-}" = --with ]; do
+    case $2 in pyyaml) m=yaml ;; pyserial) m=serial ;; *) m=$2 ;; esac
+    python3 -c "import $m" 2>/dev/null || { echo "fcpm: no uv here, and this system's python3 lacks $2" >&2; exit 1; }
+    shift 2
+  done
+  [ "${1:-}" = python ] && shift
+  exec python3 "$@"
+}
+
 ps1() {
   # The one way a .ps1 is run here: as the pool's logon task runs its own,
   # and as the crew's GRANTS names it.
@@ -85,8 +99,7 @@ case "$cmd" in
   keys)
     # The keychain of the jobs this machine wears (keys; each job's keys.yml).
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*)
-      uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-      exec "$uv" run --no-project --python 3.12 --with pyyaml --with qrcode python "$HERE/keys" "$@" ;;
+      pyrun --with pyyaml --with qrcode python "$HERE/keys" "$@" ;;
     esac
     exec python3 "$HERE/keys" "$@" ;;
   relay)
@@ -114,8 +127,7 @@ case "$cmd" in
     [ -f "$HERE/$p/$cmd.ps1" ] || { echo "fcpm: ${p:-this machine} carries no $cmd"; exit 0; }
     ps1 "$HERE/$p/$cmd.ps1" "$@" ;;
   pools)
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/pools.py" "$@" ;;
+    pyrun --with pyyaml "$REPO/troves/pools/pools.py" "$@" ;;
   crew)
     # This machine's crew (machines/<job>, production on bay 1): what its supervisor
     # keeps, asked live. `serve` is what the crew's service runs; in a window, it tries it.
@@ -127,48 +139,38 @@ case "$cmd" in
         *) exec python3 "$REPO/machines/crew.py" "$@" ;;
       esac ;;
     esac
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     case "${1:-status}" in
       status|install|uninstall) p=$(profile); ps1 "$REPO/machines/crew.ps1" "${1:-status}" ${p:+"$p"} ;;   # this machine's crew's task, and what it keeps; install is an administrator's
       restart)  # the supervisor reads its order and menus again, and restarts what it started (or the lines named)
-                shift; p=$(profile); exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/machines/crew.py" restart "${p:-production}" "$@" ;;
-      episodes) shift; exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/pools/episodes.py" "${@:-status}" ;;
+                shift; p=$(profile); pyrun --with pyyaml "$REPO/machines/crew.py" restart "${p:-production}" "$@" ;;
+      episodes) shift; pyrun --with pyyaml "$REPO/troves/pools/episodes.py" "${@:-status}" ;;
       *)        # crew.py's crew is its last word (`log NAME [CREW]`, `check [CREW]`): this machine's, unless named
                 p=$(profile); n=1; [ "$1" = log ] && n=2
                 [ $# -eq $n ] && [ -n "$p" ] && set -- "$@" "$p"
-                exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/machines/crew.py" "$@" ;;
+                pyrun --with pyyaml "$REPO/machines/crew.py" "$@" ;;
     esac ;;
   library)
     # The library's holdings on this machine (library.yml, machines/<profile>/library.yml).
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     # A machine wearing several jobs keeps its holdings in the one that has a library.yml.
     p=$("$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2 }' | while read -r j; do
       [ -f "$HERE/$j/library.yml" ] && { echo "$j"; break; }; done)
-    FCPM_PROFILE=${p:-$(profile)} exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/library.py" "$@" ;;
+    export FCPM_PROFILE=${p:-$(profile)}; pyrun --with pyyaml "$HERE/library.py" "$@" ;;
   workshed)
     # Worktrees someone works in, each served on its own port (~/code/workshed, docs/workshed.md).
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
     # pyyaml and the profile: what the library's grant book needs to record a worktree made and a port served.
-    FCPM_PROFILE=$(profile) PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/workshed.py" "$@" ;;
+    export FCPM_PROFILE=$(profile) PYTHONDONTWRITEBYTECODE=1; pyrun --with pyyaml "$HERE/workshed.py" "$@" ;;
   consoles)
     # What this machine holds up to read, a screen each (~/code/consoles, docs/consoles.md).
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    FCPM_PROFILE=$(profile) PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 --with pyyaml "$HERE/consoles.py" "$@" ;;
+    export FCPM_PROFILE=$(profile) PYTHONDONTWRITEBYTECODE=1; pyrun --with pyyaml "$HERE/consoles.py" "$@" ;;
   places)
     # An origin branch's repositories, as a listing Fighter's location providers read.
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    PYTHONDONTWRITEBYTECODE=1 exec "$uv" run --no-project --python 3.12 "$HERE/places.py" "$@" ;;
+    export PYTHONDONTWRITEBYTECODE=1; pyrun "$HERE/places.py" "$@" ;;
   post)
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    exec "$uv" run --no-project --python 3.12 --with pyyaml "$REPO/troves/post/post.py" "$@" ;;
+    pyrun --with pyyaml "$REPO/troves/post/post.py" "$@" ;;
   camera)
-    # uv brings its own Python; a window opened before uv was installed may not
-    # have it on PATH, so fall back to where winget puts it.
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    exec "$uv" run --no-project --python 3.12 --with comtypes --with pyyaml "$REPO/troves/camera/camera.py" "$@" ;;
+    pyrun --with comtypes --with pyyaml "$REPO/troves/camera/camera.py" "$@" ;;
   ti89)
-    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
-    exec "$uv" run --no-project --python 3.12 --with pyserial "$REPO/troves/ti-89/cable/link.py" "$@" ;;
+    pyrun --with pyserial "$REPO/troves/ti-89/cable/link.py" "$@" ;;
   hear|say)  exec python3 "$HERE/loudspeaker" "$cmd" "$@" ;;
   help|-h|--help)
     # From machines/fcpm.yml, the one place each verb is defined (Autumn, 2026-10-13).
