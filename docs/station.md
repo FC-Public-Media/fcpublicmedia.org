@@ -80,7 +80,8 @@ machine, so a workflow that needs `age` should read the same list, not carry its
 and PowerShell (`fcpm help`). A step that needs a path, an interpreter or a choice of shell is a gap
 in `fcpm`. Verbs are for people; a task names the tool itself, because a grant pins the tool's blob.
 `fcpm`'s own blob is pinned by a proof, so change it only with a new one. On Windows,
-`~/.local/bin/fcpm.cmd` runs the mirror's `machines/fcpm` with Git's bash.
+`~/.local/bin/fcpm.cmd` runs the mirror's `machines/fcpm` with Git's bash. `machines/fcpm.yml` says
+what does each verb per platform; where it says `not:`, `fcpm` prints what stands in and exits 3.
 
 | verb | does |
 |---|---|

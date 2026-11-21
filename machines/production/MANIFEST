@@ -5,7 +5,7 @@
 mirror  home/code/CLAUDE.md    code/CLAUDE.md
 mirror  home/code/AGENTS.md    code/AGENTS.md
 mirror  home/code/BAY1.md      code/BAY1.md
-mirror  code/bin/refs          code/bin/refs
+mirror  ../../bin/refs         code/bin/refs
 mirror  code/bin/pool.ps1      code/bin/pool.ps1
 mirror  code/refs.wanted       code/refs.wanted
 

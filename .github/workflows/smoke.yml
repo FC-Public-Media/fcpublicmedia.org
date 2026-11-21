@@ -72,6 +72,9 @@ jobs:
       - name: Test the consoles and places
         run: python3 bin/test_consoles.py
 
+      - name: Test fcpm against its verbs
+        run: python3 bin/test_fcpm.py
+
       - name: Test the crew's supervisor
         run: python3 bin/test_crew.py
 

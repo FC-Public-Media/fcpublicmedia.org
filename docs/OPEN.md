@@ -146,7 +146,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - The keystore's grant: petitions (`wizard:keys+birth`) are lodged on digitization and nothing grants them yet; the board's yes (`wizard:keys+grant`) and the keystore's acts are digitization's to build. docs/keystore.md#the-grant-a-study-for-digitization-to-build
 - editing-bay-2: names unfilled, and it may be the machine that is now the kiosk.
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
-- `code/bin/refs` has two copies that differ; it belongs where both machines read it.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
 - The pool restarts the `production` supervisor too. machines/production/code/bin/pool.ps1
 - The default `gear.yml` claude-code winget id is unconfirmed.
