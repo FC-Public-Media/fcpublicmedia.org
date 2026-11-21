@@ -358,6 +358,22 @@ def changed(w):
     return sorted(files)
 
 
+LET_GO = {"landed": "landed in main, and the origin let its branch go",
+          "gone": "the origin let its branch go, with commits main does not have as they are"}
+
+
+def let_go(w):
+    """A worktree whose own branch the origin had and has no more: `landed` when main holds every commit
+    of it, else `gone`; None while the branch is there, or was never followed."""
+    p, b = w["path"], w["branch"]
+    if not (p / ".git").exists() or git("config", "branch.%s.merge" % b, cwd=p, check=False) != "refs/heads/" + b:
+        return None
+    if git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + b, cwd=p, check=False):
+        return None
+    held = subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", "origin/main"], cwd=p, capture_output=True)
+    return "landed" if held.returncode == 0 else "gone"
+
+
 def describe(w):
     """One worktree as the Helm and `fcpm workshed` show it."""
     name, path = w["name"], w["path"]
@@ -383,7 +399,7 @@ def describe(w):
             "gaps": (up or {}).get("gaps") or [], "url": "http://localhost:%d/" % port if port else None,
             "pages": list(by_source.values()), "changed_pages": sorted(set(pages_changed)), "changed_other": other,
             "dirty": dirty, "ahead": int(ahead) if ahead.isdigit() else 0,
-            "behind": int(behind) if behind.isdigit() else 0}
+            "behind": int(behind) if behind.isdigit() else 0, "let_go": let_go(w)}
 
 
 def everything():
@@ -682,13 +698,17 @@ def _read_git(tree, path):
 
 def follow(shed=None):
     """Each worktree (in SHED, or all) moved up to its origin branch: fetched, fast-forward only, never with changes.
-    Each mirror of the LAN's origin is fetched too, so its branches are searched as they are now."""
+    Each mirror of the LAN's origin is fetched too, so its branches are searched as they are now: one the
+    origin let go is no longer listed, and a worktree of it is said so and left as it is."""
     for src in mirrors():
-        git("fetch", "--quiet", "origin", cwd=src, check=False)
+        git("fetch", "--quiet", "--prune", "origin", cwd=src, check=False)
     for w in worktrees():
         if shed and w["shed"] != shed:
             continue
-        p = w["path"]
+        p, how = w["path"], let_go(w)
+        if how:
+            say("%s  %s; left as it is" % (w["name"], LET_GO[how]))
+            continue
         up = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", cwd=p, check=False)
         if not up:
             say("%s  follows nothing" % w["name"])
@@ -696,10 +716,15 @@ def follow(shed=None):
         if up != "origin/" + w["branch"]:     # a session's worktree, cut from main and following it: not ours to move
             say("%s  follows %s, not its own branch; left as it is" % (w["name"], up))
             continue
+        got = subprocess.run(["git", "fetch", "--quiet", "origin", w["branch"]], cwd=p, capture_output=True, text=True,
+                             env=dict(os.environ, GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0", LC_ALL="C"))
+        if "couldn't find remote ref" in got.stderr:
+            git("update-ref", "-d", "refs/remotes/origin/" + w["branch"], cwd=p, check=False)
+            say("%s  %s; left as it is" % (w["name"], LET_GO[let_go(w) or "gone"]))
+            continue
         if git("status", "--porcelain", cwd=p, check=False):
             say("%s  has changes; left as it is" % w["name"])
             continue
-        git("fetch", "--quiet", "origin", w["branch"], cwd=p, check=False)
         was = git("rev-parse", "--short", "HEAD", cwd=p)
         r = subprocess.run(["git", "merge", "--ff-only", "--quiet", "@{u}"], cwd=p, capture_output=True, text=True)
         now = git("rev-parse", "--short", "HEAD", cwd=p)
@@ -748,7 +773,7 @@ def new(branch, shed=None, repo=DEFAULT_REPO, start_at=None):
     name = "%s/%s" % (shed, path.name)
     if path.exists():
         raise Wrong("%s is already in the workshed, at %s" % (name, path))
-    git("fetch", "--quiet", "origin", cwd=src, check=False)
+    git("fetch", "--quiet", "--prune", "origin", cwd=src, check=False)
     if start_at and not git("rev-parse", "--verify", "--quiet", start_at + "^{commit}", cwd=src, check=False):
         raise Wrong("%s is not a commit in refs/%s (fcpm pull, or the pin is not fetched here)" % (start_at, repo))
     mine = git("rev-parse", "--verify", "--quiet", "refs/heads/" + branch, cwd=src, check=False)
@@ -981,6 +1006,8 @@ def _worktree_lines(w):
         bits.append("%d behind main" % d["behind"])
     if d["dirty"]:
         bits.append("changes not committed")
+    if d["let_go"]:
+        bits.append(LET_GO[d["let_go"]])
     if d["changed_pages"]:
         bits.append("pages: " + " ".join(d["changed_pages"]))
     if d["changed_other"]:

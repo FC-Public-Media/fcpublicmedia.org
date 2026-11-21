@@ -1,13 +1,15 @@
 #!/usr/bin/python3
-"""intake: GitHub's main -> the origin, on the origin's own box: every 15 minutes while the LAN's dev
-is on, weekly while off, so GitHub is not asked 1,440 times a day (Autumn, 2026-10-21: a merge
-showing up within the minute was too eager).
+"""intake: the origin's beat, on the origin's own box: one pass in each ten minutes of the clock
+(:00, :10, :20). Every beat tidies what is here; GitHub is asked on the beat while the LAN's dev is
+on, and weekly while off, when the beat goes on without it.
 
-    intake            check every repo once, take what moved (if it is time)
-    intake --now      check now, whatever the pace
+    intake            a pass, if this ten minutes has not had one
+    intake --now      a pass now, GitHub asked, whatever the pace
     intake --status   print the last state, change nothing
 
 Only main is fetched, into github/main. A failure in one repo is recorded and the next goes on.
+How GitHub's main is ahead of ours is read before it is taken (commits, files, bytes, the largest
+file, pins moved) and kept with the take in actions.ndjson.
 A repository new on GitHub under an owner the origin keeps (KEEP, by name) gets its bare repository
 here first, then comes in like the rest; other owners' repositories are only the ones already here.
 The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`).
@@ -22,14 +24,21 @@ github/*, never a repository that began here, and never the library's branches (
 the LAN's in every repository. One GitHub will not fast-forward (a rebase) is recorded as diverged and left for a
 person. Only what was pushed through the door is ever carried, so a branch GitHub merged and
 deleted is not brought back. Off, the origin is LAN-only: it pulls, and what is pushed waits here.
+
+Landed (every beat): a branch whose work main already has is let go, its record kept first on
+retain/origin (branches/<owner>/<repo>/<branch>/origin.scopes), in a repository that lives on GitHub
+too. Never main, github/*, the library's branches, one sitting on main's own commit, or one in a
+repository that began here.
 Runs as the git account, by cron (run-intake). Stdlib, git and gh, logged in as that account. See PROFILE.md.
 """
 import datetime
 import fcntl
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 
 ORIGIN = os.environ.get("FCPM_ORIGIN", "/srv/origin")
 STATE_DIR = os.path.join(ORIGIN, ".intake")
@@ -65,16 +74,28 @@ def lan_only(r):
 
 
 WEEK = datetime.timedelta(days=7)
-DEV_EVERY = datetime.timedelta(minutes=15)
+BEAT = 600                              # seconds: a pass in each ten minutes of the clock
+# The origin's own record: retain/origin in this repository, the LAN's like every retain/ branch.
+BOOK = os.environ.get("FCPM_ORIGIN_BOOK") or "FC-Public-Media/fcpublicmedia.org"
+RECORD = "refs/heads/retain/origin"
+README = """# retain/origin
+
+The origin's own record: what it did by itself, kept as it happens. Retained: the LAN's, never carried
+to GitHub. `machines/origin/intake` in fcpublicmedia.org writes it; see `machines/origin/PROFILE.md` there.
+
+    branches/<owner>/<repo>/<branch>/origin.scopes    a branch main took in and the origin let go: its
+                                                      name, its last commit, how and when it landed
+                                                      (a branch's slash is a ~ in the folder's name)
+"""
 
 
 def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 
 
-def git(repo, *args, check=True, timeout=120):
+def git(repo, *args, check=True, timeout=120, input=None, env=None):
     return subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True,
-                          check=check, timeout=timeout)
+                          check=check, timeout=timeout, input=input, env=env)
 
 
 def ref(repo, name):
@@ -155,6 +176,28 @@ def discover(have):
     return made
 
 
+def reading(p, ours, theirs):
+    """How theirs is ahead of ours, in numbers: commits, files, bytes, the largest file, pins moved."""
+    span = "%s..%s" % (ours, theirs)
+    out = {"commits": int(git(p, "rev-list", "--count", span).stdout.strip() or 0)}
+    named = dict(l.split(" ", 1) for l in git(p, "rev-list", "--objects", span).stdout.splitlines() if " " in l)
+    sized = git(p, "cat-file", "--batch-check", input="".join(sha + "\n" for sha in named)).stdout.splitlines()
+    blobs = [(int(w[2]), w[0]) for w in (l.split() for l in sized) if w[1:2] == ["blob"]]
+    out.update(files=len(blobs), bytes=sum(size for size, _ in blobs))
+    if blobs:
+        size, sha = max(blobs)
+        out["largest"] = {"path": named[sha], "bytes": size}
+    pins = []
+    for l in git(p, "diff", "--raw", "--no-abbrev", "%s...%s" % (ours, theirs)).stdout.splitlines():
+        meta, path = l.split("\t", 1)
+        was, now_, old, new = meta.lstrip(":").split()[:4]
+        if "160000" in (was, now_):
+            pins.append({"path": path, "from": old, "to": new})
+    if pins:
+        out["pins"] = pins
+    return out
+
+
 def take(full, theirs_remote):
     """Bring one repo's origin main up to date with GitHub's. Returns its row."""
     p = os.path.join(ORIGIN, full)
@@ -165,6 +208,11 @@ def take(full, theirs_remote):
     theirs = ref(p, "refs/heads/github/main")
     ours = ref(p, "refs/heads/main")
     row.update(github=theirs, main=ours)
+    if ours and ours != theirs and not is_ancestor(p, theirs, ours):
+        try:
+            row["screen"] = reading(p, ours, theirs)
+        except Exception as e:          # a reading that fails never holds the take
+            row["screen"] = {"error": str(e)[-200:]}
 
     if ours is None:
         git(p, "update-ref", "refs/heads/main", theirs, "")
@@ -192,18 +240,143 @@ def take(full, theirs_remote):
     return row
 
 
-def due():
-    """Every 15 minutes while `fcpm dev on`; otherwise once a week after GitHub last answered."""
-    if "--now" in sys.argv:
+def beat(at=None):
+    """The ten minutes of the clock a moment is in, by its start."""
+    at = time.time() if at is None else at
+    return datetime.datetime.fromtimestamp(at - at % BEAT, datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def last():
+    try:
+        with open(STATE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def due(was):
+    """One pass in each ten minutes of the clock."""
+    return "--now" in sys.argv or was.get("beat") != beat()
+
+
+def asking(was):
+    """Whether this beat asks GitHub: every beat while dev is on; off, weekly, and until it has answered."""
+    if "--now" in sys.argv or os.path.exists(DEV) or was.get("github") != "ok":
         return True
     try:
-        last = json.load(open(STATE))
-        if last.get("github") != "ok":
-            return True
-        since = datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(last["checked"])
-        return since >= (DEV_EVERY if os.path.exists(DEV) else WEEK)
-    except (OSError, ValueError, KeyError):
+        since = datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(was["checked"])
+    except (KeyError, ValueError, TypeError):
         return True
+    return since >= WEEK
+
+
+def scope(*parts):
+    """One flat line (../scopes.py): parts joined by dots, a dot inside a part doubled."""
+    return ".".join(" ".join(str(p).split()).replace(".", "..") for p in parts)
+
+
+def adds_nothing(p, tip, main):
+    """Whether merging tip into main would change nothing: all it holds, main holds."""
+    m = git(p, "merge-tree", "--write-tree", main, tip, check=False)
+    return m.returncode == 0 and m.stdout.split("\n", 1)[0].strip() == ref(p, main + "^{tree}")
+
+
+def brought(p, tip, main):
+    """The merge that brought tip into main, followed down through a merge of GitHub's main to the one
+    that names tip itself; None when tip is on main's own line (a fast-forward)."""
+    by, at = None, main
+    while True:
+        span = "%s..%s" % (tip, at)
+        path = set(git(p, "rev-list", "--ancestry-path", span).stdout.split())
+        first = next((c for c in reversed(git(p, "rev-list", "--first-parent", span).stdout.split()) if c in path), None)
+        parents = git(p, "rev-parse", first + "^@").stdout.split() if first else []
+        if not parents or parents[0] == tip:
+            return by
+        by = first
+        at = next((q for q in parents[1:] if q != tip and is_ancestor(p, tip, q)), None)
+        if not at:
+            return by
+
+
+def record(p, full, name, tip, how, main, stamp):
+    """A landed branch as flat lines: what it was, and how main came to hold it."""
+    lines = [scope("branch", name), scope("repository", *full.split("/", 1)), scope("tip", tip), scope("landed", how)]
+    by = brought(p, tip, main) if how == "merged" else None
+    if by:
+        when, said = git(p, "show", "-s", "--format=%cI%n%s", by).stdout.split("\n", 1)
+        lines += [scope("landed", "by", by), scope("landed", "on", when)]
+        pull = re.match(r"Merge pull request #(\d+) ", said)
+        if pull:
+            lines.append(scope("github", "pull", pull.group(1)))
+    if by or how == "spent":            # its own commits: since the line it was merged into, or beyond main
+        ahead = "%s^1..%s" % (by, tip) if by else "%s..%s" % (main, tip)
+        lines.append(scope("commits", git(p, "rev-list", "--count", ahead).stdout.strip()))
+    return "\n".join(lines + [scope("removed", stamp), scope("main", main)]) + "\n"
+
+
+def keep(files, message):
+    """One commit on the origin's own record (RECORD in BOOK): each file's lines, after what it already says."""
+    book = os.path.join(ORIGIN, BOOK)
+    old = ref(book, RECORD)
+    index = os.path.join(STATE_DIR, "record.index")
+    env = dict(os.environ, GIT_INDEX_FILE=index)
+    if os.path.exists(index):
+        os.remove(index)
+    if old:
+        git(book, "read-tree", old, env=env)
+        files = {path: git(book, "cat-file", "-p", "%s:%s" % (old, path), check=False).stdout + text
+                 for path, text in files.items()}
+    else:
+        files = {"README.md": README, **files}
+    entries = ["100644 blob %s\t%s\n" % (git(book, "hash-object", "-w", "--stdin", input=text).stdout.strip(), path)
+               for path, text in sorted(files.items())]
+    git(book, "update-index", "--add", "--index-info", input="".join(entries), env=env)
+    tree = git(book, "write-tree", env=env).stdout.strip()
+    commit = git(book, *WHO, "commit-tree", tree, *(["-p", old] if old else []), "-m", message).stdout.strip()
+    git(book, "update-ref", RECORD, commit, old or "")
+    os.remove(index)
+
+
+def land(names, was):
+    """Branches whose work main already holds, let go: each one's record kept first, then the branch
+    removed. `was` is the open branches as last looked at; returns (rows, the open branches now)."""
+    if not os.path.isfile(os.path.join(ORIGIN, BOOK, "HEAD")):
+        return [], was                  # nowhere to keep a record: nothing is removed
+    going, still, stamp = [], {}, now()
+    for full in names:
+        p = os.path.join(ORIGIN, full)
+        main = ref(p, "refs/heads/main")
+        if not main or not git(p, "config", "remote.github.url", check=False).stdout.strip():
+            continue                    # began here: its branches are its own
+        heads = git(p, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads").stdout.splitlines()
+        for r, tip in (l.split() for l in heads):
+            name = r[len("refs/heads/"):]
+            if name == "main" or name.startswith("github/") or lan_only(r):
+                continue
+            looked = was.get(full, {}).get(name) == [tip, main]
+            if tip != main and is_ancestor(p, tip, main):
+                going.append((full, name, tip, "merged", main))
+            elif tip != main and not looked and adds_nothing(p, tip, main):
+                going.append((full, name, tip, "spent", main))
+            else:
+                still.setdefault(full, {})[name] = [tip, main]
+    if not going:
+        return [], still
+    keep({"branches/%s/%s/origin.scopes" % (full, name.replace("/", "~")):
+          record(os.path.join(ORIGIN, full), full, name, tip, how, main, stamp) for full, name, tip, how, main in going},
+         "%d branch%s landed and let go" % (len(going), "" if len(going) == 1 else "es"))
+    rows = []
+    for full, name, tip, how, main in going:
+        p = os.path.join(ORIGIN, full)
+        row = {"repo": full, "ref": "refs/heads/" + name, "sha": tip, "how": how}
+        held = how == "merged" or git(p, "update-ref", "refs/landed/" + name, tip, check=False).returncode == 0
+        if held and git(p, "update-ref", "-d", "refs/heads/" + name, tip, check=False).returncode == 0:
+            row.update(state="landed", did="main holds it (%s): the branch let go, its record on retain/origin" % how)
+        else:
+            row.update(state="left", did="it moved while this pass looked; left as it is")
+            still.setdefault(full, {})[name] = [ref(p, "refs/heads/" + name), main]
+        rows.append(row)
+    return rows, still
 
 
 def switched_on(size):
@@ -302,7 +475,8 @@ def main():
     if "--status" in sys.argv:
         print(open(STATE).read() if os.path.exists(STATE) else "no state yet")
         return 0
-    if not due():
+    was = last()
+    if not due(was):
         return 0
     with open(os.path.join(STATE_DIR, "lock"), "w") as lock:
         try:
@@ -313,39 +487,48 @@ def main():
         rows = [{"repo": n, "state": "not kept", "main": ref(os.path.join(ORIGIN, n), "refs/heads/main")}
                 for n in names if not kept(n)]     # here from before KEEP said otherwise: left as they are
         names = [n for n in names if kept(n)]
-        try:
-            names += discover(set(names))
-        except Exception:
-            pass                        # GitHub out of reach: the next run asks again
-        try:
-            remote = github_mains(names)
-        except Exception as e:          # offline, GitHub down: say so, change nothing
-            remote, offline = {}, repr(e)
-        else:
-            offline = None if remote else "GitHub did not answer"
-        for full in names:
-            p = os.path.join(ORIGIN, full)
-            if full not in remote:
-                ours = not git(p, "config", "remote.github.url", check=False).stdout.strip()
-                rows.append({"repo": full, "state": "here only" if ours and not offline else "unchecked",
-                             "main": ref(p, "refs/heads/main")})
-                continue
-            adopt(full)
+        ask, remote, offline = asking(was), {}, None
+        if ask:
             try:
-                row = take(full, remote[full])
-            except Exception as e:
-                row = {"repo": full, "state": "error", "error": str(e)[-500:]}
-            rows.append(row)
-        carried = carry_main([n for n in names if n in remote]) + carry() if os.path.exists(RELAY) and not offline else []
+                names += discover(set(names))
+            except Exception:
+                pass                    # GitHub out of reach: the next asking beat asks again
+            try:
+                remote = github_mains(names)
+            except Exception as e:      # offline, GitHub down: say so, change nothing
+                offline = repr(e)
+            else:
+                offline = None if remote else "GitHub did not answer"
+            for full in names:
+                p = os.path.join(ORIGIN, full)
+                if full not in remote:
+                    ours = not git(p, "config", "remote.github.url", check=False).stdout.strip()
+                    rows.append({"repo": full, "state": "here only" if ours and not offline else "unchecked",
+                                 "main": ref(p, "refs/heads/main")})
+                    continue
+                adopt(full)
+                try:
+                    row = take(full, remote[full])
+                except Exception as e:
+                    row = {"repo": full, "state": "error", "error": str(e)[-500:]}
+                rows.append(row)
+        try:
+            landed, still = land(names, was.get("open") or {})
+        except Exception as e:          # the record could not be kept: nothing was removed
+            landed, still = [{"repo": BOOK, "ref": RECORD, "state": "error", "error": str(e)[-500:]}], was.get("open") or {}
+        carried = []
+        if ask and os.path.exists(RELAY) and not offline:
+            carried = carry_main([n for n in names if n in remote]) + carry()
         stamp = now()
         with open(ACTIONS, "a") as log:
-            for row in rows + carried:
+            for row in rows + landed + carried:
                 if row.get("did") or row["state"] == "error":
                     log.write(json.dumps({"at": stamp, **row}) + "\n")
+        asked = {"checked": stamp, "github": "unreachable: " + offline if offline else "ok", "repos": rows}
         tmp = STATE + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump({"checked": stamp, "github": "unreachable: " + offline if offline else "ok",
-                       "relay": os.path.exists(RELAY), "repos": rows, "carried": carried}, f, indent=1)
+        with open(tmp, "w") as f:       # a quiet beat keeps what GitHub last said
+            json.dump({"beat": beat(), **(asked if ask else {k: was.get(k) for k in asked}),
+                       "relay": os.path.exists(RELAY), "carried": carried, "landed": landed, "open": still}, f, indent=1)
         os.replace(tmp, STATE)
     return 0
 

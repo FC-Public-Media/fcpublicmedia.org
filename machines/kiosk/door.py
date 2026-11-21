@@ -58,7 +58,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /wallpaper/<file>  brand/wallpaper/
     GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
     POST /key/unlock       the signing key into this session's agent, its passphrase asked on this screen; this box only
-    POST /dev/on, /dev/off `fcpm dev`: GitHub asked every few minutes, or weekly; this box only. The board shows it to all
+    POST /dev/on, /dev/off `fcpm dev`: GitHub asked every ten minutes, or weekly; this box only. The board shows it to all
 
 Runs from the fixed venv %LOCALAPPDATA%\\media-node\\venv (pyyaml, qrcode), so the firewall asks once.
 """
@@ -1365,8 +1365,8 @@ def board_page(here=False, host=""):
 
     dev = DEV.exists()
     switches = ['<div class="row switch"><b>GitHub</b><span class=says>%s</span>%s</div>' % (
-        "asked every few minutes" if dev else "asked weekly",
-        button("/dev/off", "Back to weekly") if dev else button("/dev/on", "Every few minutes"))]
+        "asked every ten minutes" if dev else "asked weekly",
+        button("/dev/off", "Back to weekly") if dev else button("/dev/on", "Every ten minutes"))]
     key = key_state() if here else None
     if key:
         switches.append('<div class="row switch"><b>Signing key</b><span class=says>%s</span>%s</div>' % (
@@ -4973,6 +4973,7 @@ WORKSHED_JS = """<script>
     if (w.ahead) bits.push(w.ahead + ' commit' + (w.ahead === 1 ? '' : 's') + ' past main');
     if (w.behind) bits.push(w.behind + ' behind main');
     if (w.dirty) bits.push('changes not committed');
+    if (w.let_go) bits.push(w.let_go === 'landed' ? 'landed in main, and the origin let its branch go' : 'the origin let its branch go, with commits main does not have as they are');
     if (w.changed_other.length) bits.push(w.changed_other.length + ' other file' + (w.changed_other.length === 1 ? '' : 's') + ' changed');
     c.append(el('span', null, bits.length ? bits.join(', ') : 'the same as main'));
     var acts = el('div', 'acts');

@@ -92,8 +92,8 @@ git config --system receive.denyNonFastForwards true
 git config --system receive.denyDeletes true
 rm -rf /srv/git/git-shell-commands                   # every key is forced through the door now
 
-# Intake: GitHub's main into every repository, as git, every minute by cron (it paces itself: 10
-# minutes while dev is on, weekly while off). GitHub is asked as the account `gh auth login` gave
+# Intake: GitHub's main into every repository, as git, every minute by cron (it paces itself: a pass in
+# each ten minutes of the clock, GitHub asked on it while dev is on, weekly while off). GitHub is asked as the account `gh auth login` gave
 # git (./github-login); until then intake says GitHub is out of reach, on the screen too.
 install -d $LIB; install -m 755 "$HERE/intake" "$HERE/run-intake" "$HERE/door" $LIB/
 install -m 644 "$HERE/KEYHOLDERS" $LIB/KEYHOLDERS

@@ -78,13 +78,13 @@ verbs:
 
   - verb: relay
     args: "[status|on|off]"
-    says: "the origin's mode: on, what is pushed there goes out to GitHub every 15 minutes; off, LAN-only"
+    says: "the origin's mode: on, what is pushed there goes out to GitHub every ten minutes on the clock; off, LAN-only"
     windows: "not yet: no key for the origin"
     linux: "origin.local's switch (`ssh git@origin.local relay on`)"
 
   - verb: dev
     args: "[status|on|off]"
-    says: "on: GitHub is asked every few minutes; off: weekly"
+    says: "on: GitHub is asked every ten minutes on the clock; off: weekly"
     board: switch
     windows: "the flag %LOCALAPPDATA%\\fcpm\\dev; the pool and the door read it"
     linux: "origin.local's switch (`ssh git@origin.local dev on`), which paces its intake; the flag ~/.local/state/fcpm/dev beside it for the door"

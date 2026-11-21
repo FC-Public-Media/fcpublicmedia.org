@@ -9,9 +9,10 @@ their office. Every key the git account takes is forced through here.
 A keyholder's remote is `git@origin.local:<owner>/<repo>`. Every repository can be fetched and
 pushed to, main included: main is ours, and in one that lives on GitHub (it has a `github` remote)
 intake merges GitHub's main into it and relay carries it out; only `github/*` is intake's alone
-(door-hooks/pre-receive). The repositories themselves refuse rewriting and deleting. `init <owner>/<repo>`
+(door-hooks/pre-receive). The repositories themselves refuse rewriting and deleting: only intake lets a
+branch go, once main holds it. `init <owner>/<repo>`
 makes a new one, and only the secretary's office may. `dev on|off|status` is the LAN's dev switch (intake
-asks GitHub every 15 minutes while on, weekly while off), and `relay on|off|status` the origin's mode (on:
+asks GitHub on its ten-minute beat while on, weekly while off), and `relay on|off|status` the origin's mode (on:
 what is pushed here is carried out to GitHub on intake's pass; off: LAN-only, it waits here), any
 keyholder's. `hear main` answers with one line when any repository's main next moves (a push, or intake),
 or with nothing after five minutes: a machine that follows main waits on it instead of asking. Each action
