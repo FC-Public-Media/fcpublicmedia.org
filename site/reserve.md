@@ -125,7 +125,7 @@ Come for pickup when it's time.
 
 Equipment rental terms and conditions are here:
 
-<iframe src="{{ '/assets/docs/2026 Revised Equipment Terms and Conditions.pdf' }}">
+<iframe class="terms-frame" title="Equipment rental terms and conditions" src="{{ '/assets/docs/2026 Revised Equipment Terms and Conditions.pdf' }}"></iframe>
 
 {% include booqable.html config=page.booqable %}
 
