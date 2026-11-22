@@ -83,8 +83,9 @@ case "$cmd" in
     "$REPO/bin/refs" pull "$(basename "$REPO")" || exit
     FCPM_DESK=1 "$HERE/sync" install || exit
     # The public submodules, as the commit just pulled names them; the private ones (`update = none`) are bin/refs'.
-    GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet \
-      || echo "fcpm: an engine did not come down; fcpm pull again, and say so if it still does not" ;;
+    out=$(GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet 2>&1) \
+      || { printf '%s\n' "$out" | grep -v "^Skipping submodule '" >&2
+           echo "fcpm: an engine did not come down; fcpm pull again, and say so if it still does not"; } ;;
   dev)
     # The LAN's switch is the origin's (../origin/dev); the flag here is this machine's pool's.
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
