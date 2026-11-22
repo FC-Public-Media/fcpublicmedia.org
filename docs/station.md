@@ -34,7 +34,7 @@ DiscoveryWritten's workstation in the studio, is the prototype; FCPM copies its 
 | | [`digitization`](../machines/digitization/PROFILE.md) | `digitization` | Debian: FCPM's git origin; takes the `digitization` crew from station-node |
 | | [`dj`](../machines/dj/PROFILE.md) | `dj` | Debian, headless: the test server and static CI, and the streaming (was Editing Bay 3) |
 | | [`thin-client`](../machines/thin-client/PROFILE.md) | unfilled | a donated HP t510 in the control rack: the kiosk's overflow console, beside the scanner; to be reformatted |
-| | [`bounce`](../machines/bounce/PROFILE.md) | `bounce` | a Raspberry Pi 3 with a camera: the member-site box prototype; its monitor shows the [`qr`](../machines/qr/PROFILE.md) console (worn by digitization at `qr.local`) |
+| | [`bounce`](../machines/bounce/PROFILE.md) | `bounce` | a Raspberry Pi 3 with a camera: the member-site box prototype; it wears [`qr`](../machines/qr/PROFILE.md) too, joined, at `qr.local` |
 
 All three Windows names end in `EDIT2`; in conversation use the called name (`machines/<profile>/called`).
 The bays share one account with a PIN; identity there is a browser profile. [Jobs](../machines/README.md).

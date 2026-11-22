@@ -75,6 +75,21 @@ class Consoles(unittest.TestCase):
         consoles.read("short")
         self.assertEqual(self.calls, 2)
 
+    def test_the_helm_console_lists_a_joined_intake_after_the_helms(self):
+        was = consoles.answers, os.environ.get("FCPM_WEARS")
+        consoles.answers = lambda url, timeout=2: "bounce.local" in url
+        os.environ["FCPM_WEARS"] = "digitization"
+        try:
+            rows = consoles.helm()
+        finally:
+            consoles.answers = was[0]
+            if was[1] is None:
+                os.environ.pop("FCPM_WEARS")
+            else:
+                os.environ["FCPM_WEARS"] = was[1]
+        self.assertEqual(rows[-1].split(), ["Q", "qr", "answering", "joined", "http://bounce.local"])
+        self.assertEqual(rows[-2].split()[:2], ["2", "editing-bay-2"])
+
     def test_the_list_is_fighters(self):
         consoles.write("short")
         text = (consoles.DIR / "CONSOLES").read_text(encoding="utf-8")

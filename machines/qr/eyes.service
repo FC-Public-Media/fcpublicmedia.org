@@ -1,0 +1,25 @@
+# The scanner's eyes on tty1, and its page beside them on this box: joined, not leashed (PROFILE.md).
+# ./install writes @REPO@ (this checkout). The eyes keep their config and font in ~/qr; the page its log
+# in ~/.local/state/fcpm/scanner, where this box's door reads it for /qr/.
+[Unit]
+Description=scanner eyes on tty1, with the qr page on this box
+After=network-online.target systemd-user-sessions.service getty@tty1.service
+Wants=network-online.target
+Conflicts=getty@tty1.service
+
+[Service]
+User=@USER@
+WorkingDirectory=/home/@USER@/qr
+ExecStart=/usr/bin/python3 @REPO@/troves/scanner/eyes.py -- /usr/bin/env -u QR_STATE TZ=America/Denver /usr/bin/python3 @REPO@/troves/scanner/page.py
+StandardInput=tty
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Environment=TERM=linux LANG=C.UTF-8 PYTHONUNBUFFERED=1 QR_STATE=/home/@USER@/qr
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

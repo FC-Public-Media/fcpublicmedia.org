@@ -21,3 +21,12 @@ helms:
     called: bay 2
     at: ""
     holds: [wizard:model+up, wizard:library+ask, wizard:library+urgent]   # the library here: docs/library.md
+
+# Intakes: boxes that keep what their camera and their /drop catch, and hand every reply to a helm, applying
+# none themselves. A reply some helm holds goes to that helm; any other goes to `hands_to`'s. An intake is
+# joined while its door answers; a box that also wears a helm's job applies what that helm would.
+intakes:
+  qr:
+    letter: Q
+    at: http://bounce.local
+    hands_to: digitization

@@ -358,5 +358,10 @@ Bay 1's helm is the production crew's `helm` line: `door.py serve` with `FCPM_DO
 so it keeps the intake and the pages but not the media node's depot, wall or camera, on 8080 for the
 switched network (`fcpm helm grant` places its one rule). Bay 2's crew orders the same line from bay 1's
 menu (`machines/editing-bay-2/services`). A guest's laptop on the guest network reaches
-none of this; the same reply reaches a helm by the camera instead. Not built yet: a helm joining qr.local
-(a special guest beside the bays' own joins), and helms finding each other rather than reading helms.yml.
+none of this; the same reply reaches a helm by the camera instead.
+
+An **intake** (`helms.yml` `intakes:`, the qr job first) is a box that keeps what its camera and its /drop
+catch and hands every reply on, applying none: a reply some helm holds goes to that helm, any other to its
+`hands_to` helm. It joins rather than leashes: it runs on its own and only its replies cross. A box that wears
+a helm's job too applies that helm's wizards itself. A helm's console lists the intakes after the helms, joined
+while one answers and hands to it. Not built yet: helms finding each other rather than reading helms.yml.
