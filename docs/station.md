@@ -86,8 +86,8 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | verb | does |
 |---|---|
 | (none) | the watcher, `machines/watch` |
-| `status`, `install [JOB]` | `sync`; `install` also makes the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
-| `pull` | `bin/refs pull fcpublicmedia.org`, then `sync install` |
+| `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
+| `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `~/code/bin/pool.ps1`; `bin/runnables` |
 | `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged; on the kiosk, the door fetches |
 | `audition`, `drobo`, `share`, `audit`, `hosts` | the profile's own `.ps1` of that name |
@@ -115,7 +115,7 @@ finds the profile the way `binding` does and reads its `MANIFEST`. `status` (def
 differs and runs the check (`SYNC_CHECK=0` skips it). `install` puts the profile on; a person runs it,
 never a session, and it never destroys (a differing file goes to `<name>.pre-sync`, an existing clone
 is left). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
-and `fcpm pull` set it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
+sets it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
 
 | `MANIFEST` mode | `mode  path in the profile  path under ~` |
 |---|---|

@@ -11,7 +11,7 @@ Your work\ and refs\ revolve around tooling provided by:
 - technology@fcpublicmedia.org
 - GitHub.com/FC-Public-Media
 
-`fcpm pull` keeps this outpost current, mirroring canonical for LAN peers.
+`fcpm install` keeps this outpost current, mirroring canonical for LAN peers.
 
 ## Orientation: Bay 1 (user "fcpub", device "EDIT2")
 

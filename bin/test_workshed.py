@@ -33,7 +33,7 @@ class Workshed(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         root = pathlib.Path(self.tmp.name)
-        # An origin with main and one branch of its own, and refs/demo cloned from it, as fcpm pull keeps it.
+        # An origin with main and one branch of its own, and refs/demo cloned from it, as fcpm install keeps it.
         seed = root / "seed"
         (seed / "site").mkdir(parents=True)
         (seed / "site" / "_config.yml").write_text("title: t\n")

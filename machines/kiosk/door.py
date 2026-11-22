@@ -3867,7 +3867,7 @@ def troves_checkout():
 
 def polls(where=None):
     """Fetch on the timer only from a LAN origin, or from GitHub while `fcpm dev on`. Otherwise
-    follow origin/main as the mirror has it: `fcpm pull` and the weekly pull move it, and a
+    follow origin/main as the mirror has it: `fcpm install` and the weekly pull move it, and a
     worktree shares its mirror's refs. GitHub is not asked every five minutes."""
     url = git("remote", "get-url", "origin", where=where) or ""
     return DEV.exists() or (url != "" and "github.com" not in url)

@@ -29,7 +29,7 @@ Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.m
 
 ## Work
 
-- **One branch per change**, from `origin/main` with `bin/refs work`. Commit, push, `gh pr create`. Autumn merges; `fcpm pull` brings it in (the door never asks GitHub on its own), and within 5 minutes the door rebases `media-node` onto main and restarts. **Never open a PR from `media-node`**: the door rebases it under the PR.
+- **One branch per change**, from `origin/main` with `bin/refs work`. Commit, push, `gh pr create`. Autumn merges; `fcpm install` brings it in (the door never asks GitHub on its own), and within 5 minutes the door rebases `media-node` onto main and restarts. **Never open a PR from `media-node`**: the door rebases it under the PR.
 - **Push before telling Autumn a PR is ready.** A commit pushed after the merge never lands: open a new PR. Check `gh pr view <n> --json state` before each push to an existing PR branch.
 - **This file is read from the mirror** through `~/code/CLAUDE.md`. Change it in a worktree (`machines/kiosk/code/AGENTS.md`). Never edit the root's own `CLAUDE.md` or `AGENTS.md`: they are pointers.
 - **Other machines are reached outward only**: code by commit (station-node mounts fcpublicmedia.org), media through the depot, conversation by session message (`rodecaster` is capture on station-node). Nothing connects in.

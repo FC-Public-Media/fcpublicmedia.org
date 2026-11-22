@@ -138,6 +138,17 @@ class Door(unittest.TestCase):
         self.assertNotEqual(door("sideways").returncode, 0)
         self.assertEqual([r.get("state") for r in self.log() if r.get("verb") == "dev"], ["on", "off"])
 
+    def test_kept_says_the_last_beat(self):
+        door = lambda: subprocess.run([self.env["GIT_SSH_COMMAND"], "door", "kept"], env=self.env, capture_output=True, text=True)
+        self.assertEqual(door().stdout, "kept: 0 branches, as of the last beat\n")
+        (self.origin / ".intake").mkdir(exist_ok=True)
+        (self.origin / ".intake/state.json").write_text(json.dumps({"kept": [
+            {"repo": "FC-Public-Media/hub", "ref": "refs/heads/live", "state": "kept", "did": "main merged in cleanly"},
+            {"repo": "FC-Public-Media/hub", "ref": "refs/heads/plain", "state": "current"}]}))
+        self.assertEqual(door().stdout.splitlines(), [
+            "FC-Public-Media/hub live kept main merged in cleanly", "FC-Public-Media/hub plain current",
+            "kept: 2 branches, as of the last beat"])
+
     def test_nothing_outside_the_origin(self):
         for asked in ("git-upload-pack '../../etc'", "git-upload-pack 'a/b/c'", "sh -c id", "git-upload-pack"):
             run = subprocess.run([self.env["GIT_SSH_COMMAND"], "door", asked], env=self.env,

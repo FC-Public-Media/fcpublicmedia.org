@@ -908,7 +908,7 @@ def engine():
                        capture_output=True, env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never"))
     if r.returncode == 0 and all(p.exists() for p in want):
         return None
-    return "the bottle code (.you-engine) is not on this machine and could not be fetched; `fcpm pull` fetches it"
+    return "the bottle code (.you-engine) is not on this machine and could not be fetched; `fcpm install` fetches it"
 
 
 def bottler(*args, input=None, key=None):

@@ -34,7 +34,9 @@ def git(*args, cwd):
 
 class Table(unittest.TestCase):
     def test_same_verbs(self):
-        self.assertEqual({v["verb"] for v in VERBS}, arms())
+        gone = {v["verb"] for v in VERBS if all(str(v[p]).startswith("not:") for p in ("windows", "linux"))}
+        self.assertEqual({v["verb"] for v in VERBS} - gone, arms())
+        self.assertFalse(gone & arms(), "a verb no platform has needs no arm")
 
     def test_every_verb_says_both_platforms(self):
         for v in VERBS:
@@ -61,15 +63,15 @@ class Run(unittest.TestCase):
         self.assertEqual(r.returncode, 3, r.stderr)
         self.assertIn("speaks Windows COM", r.stderr)
 
-    def test_pull_without_a_mirror_is_not_here(self):
+    def test_pull_points_to_install(self):
         r = self.run_("sh", str(FCPM), "pull")
         self.assertEqual(r.returncode, 3, r.stderr)
-        self.assertIn("no mirror", r.stderr)
+        self.assertIn("fcpm install brings in the latest", r.stderr)
 
     def test_help_lists_what_stands_in(self):
         r = self.run_("sh", str(FCPM), "help")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("fcpm pull", r.stdout.split("Not on linux")[0])
+        self.assertIn("fcpm install [JOB]", r.stdout.split("Not on linux")[0])
         self.assertIn("fcpm camera", r.stdout.split("Not on linux")[1])
 
     def test_refs_in_the_kiosks_ref(self):

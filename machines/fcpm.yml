@@ -26,17 +26,17 @@ verbs:
     says: "at a box booted from a card: the jobs the card can put on a disk, this box's disks with serials; then JOB onto DISK, its serial typed back first (machines/cards/provision)"
     windows: "not: a card's Alpine does this, at the box being set up"
     linux: machines/cards/provision
+  - verb: install
+    args: "[JOB]"
+    says: "this machine as its profile says: the latest brought in, then put on (its files, engines and system steps). A person runs this"
+    windows: "bin/refs, machines/sync install, the engines, machines/watch copy, the weekly task"
+    linux: "bin/refs where ~/code/refs holds the mirror (elsewhere the crew's follow line keeps the checkout), machines/sync install, the engines"
+
   - verb: pull
     args: ""
-    says: "bring in what merged on GitHub, and put it in place"
-    windows: "bin/refs, then machines/sync install"
-    linux: "bin/refs, then machines/sync install, where ~/code/refs holds the mirror; elsewhere the crew's follow line keeps the checkout"
-
-  - verb: install
-    args: ""
-    says: "put the profile on, and the weekly pull. A person runs this"
-    windows: "machines/sync install, machines/watch copy, the weekly task"
-    linux: "machines/sync install; no weekly task: the crew's intake keeps the origin"
+    says: "part of install now"
+    windows: "not: fcpm install brings in the latest and puts it on"
+    linux: "not: fcpm install brings in the latest and puts it on"
 
   - verb: check
     args: ""
@@ -73,6 +73,12 @@ verbs:
     says: "this machine's lines on the LAN: data piles told and read through the origin (docs/lines.md)"
     windows: "not: Git Bash with age.exe and jq.exe, not tried yet"
     linux: machines/lines
+
+  - verb: keep
+    args: ""
+    says: "the branches the origin keeps current with main (machines/origin/KEPT), as its last beat left them"
+    windows: "origin.local's door (`kept`)"
+    linux: "origin.local's door (`kept`)"
 
   - verb: relay
     args: "[status|on|off]"

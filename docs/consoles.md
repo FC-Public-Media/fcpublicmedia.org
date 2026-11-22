@@ -37,14 +37,14 @@ session starts no service, so `fcpm consoles beat` is only for trying it.
 `fcpm places [BRANCH]` lists the repositories an origin branch pins, in the format Fighter's location providers
 print (`@modes`, `# owner`, then `name<TAB>path<TAB>detail`). An origin branch is known by its shape: every folder
 holds only submodules at `<owner>/<repo>`, and files are only at the top. `origin` is the first. It reads the
-branch as `fcpm pull` last fetched it and asks nothing of the network.
+branch as `fcpm install` last fetched it and asks nothing of the network.
 
 Each repository's place is, in order:
 
 1. **Its worktree** in the branch's own shed, in the workshed's `origins` folder (bay 1: `~/code/origins/origin/...`),
    made the first time someone asks to work in that branch ([workshed.md](workshed.md#the-place)).
 2. **Its mirror** in `refs/`, read only. The detail says so, and says if the pin is not fetched there.
-3. **Nothing: offered.** It is pinned but not mirrored here (`refs.wanted`, then `fcpm pull`).
+3. **Nothing: offered.** It is pinned but not mirrored here (`refs.wanted`, then `fcpm install`).
 
 A worktree at the pin is asked for in words the listing gives:
 `fcpm workshed new BRANCH --shed origin --repo <owner>/<repo> --from <pin>`. It is a grant in the library's book,

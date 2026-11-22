@@ -1,0 +1,5 @@
+# KEPT: branches the origin keeps current with their repository's main, on every beat (./intake). Added and
+# removed by merged PR; the origin reads this file from its own main. Never main, github/* or the library's.
+# A kept branch takes main in cleanly or is left as it is, said so on the origin's page; landed never lets it go.
+
+# repository                        branch
