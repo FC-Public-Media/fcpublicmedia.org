@@ -5,7 +5,7 @@
 An origin branch is a branch of fcpublicmedia.org that holds every repository it keeps as a submodule at
 <owner>/<repo>, pinned (its README; docs/library.md). It is known by that shape, not by its name: every folder
 holds only submodules, and files are only at the top. This reads
-the branch as `refs/fcpublicmedia.org` last fetched it (fcpm pull), and asks nothing of the network.
+the branch as `refs/fcpublicmedia.org` last fetched it (fcpm install), and asks nothing of the network.
 
 It prints Fighter's provider format (fighter: macos/Sources/Explorer/CommandProvider.swift):
 
@@ -109,14 +109,14 @@ def rows(branch):
             has = git(m, "cat-file", "-e", sha + "^{commit}") is not None
             out.append((owner, repo, str(m), "%s, mirror (read only)%s" % (pin, "" if has else "; pin not fetched here")))
         elif not trees:
-            out.append((owner, repo, "", "%s, offered, not mirrored here (refs.wanted, then fcpm pull)" % pin))
+            out.append((owner, repo, "", "%s, offered, not mirrored here (refs.wanted, then fcpm install)" % pin))
     return out
 
 
 def listing(branch=None):
     every = origins()
     if not every:
-        return "# no origin branch in refs/%s (fcpm pull)\n" % HOME_REPO
+        return "# no origin branch in refs/%s (fcpm install)\n" % HOME_REPO
     branch = branch or os.environ.get("FIGHTER_MODE") or every[0]
     if branch not in every:
         return "@modes\t%s\n# %s is not an origin branch here\n" % ("\t".join(every), branch)

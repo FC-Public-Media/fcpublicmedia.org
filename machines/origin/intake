@@ -29,6 +29,10 @@ Orders (every beat, before landed): each branch a keyholder ordered to land (the
 is merged into main in the order given, by main's own .gitattributes; one that collides, or moved after it was
 ordered, is said so and main is left alone.
 
+Kept (every beat, after the orders): each branch machines/origin/KEPT names, as BOOK's main has it, takes in
+main: a fast-forward when it holds nothing of its own, else a clean merge by its own .gitattributes; one that
+collides is said so and left alone. Landed never lets a kept branch go.
+
 Landed (every beat): a branch whose work main already has is let go, its record kept first on
 retain/origin (branches/<owner>/<repo>/<branch>/origin.scopes), in a repository that lives on GitHub
 too. Never main, github/*, the library's branches, one sitting on main's own commit, or one in a
@@ -85,6 +89,7 @@ BEAT = 600                              # seconds: a pass in each ten minutes of
 # The origin's own record: retain/origin in this repository, the LAN's like every retain/ branch.
 BOOK = os.environ.get("FCPM_ORIGIN_BOOK") or "FC-Public-Media/fcpublicmedia.org"
 RECORD = "refs/heads/retain/origin"
+KEPT = "machines/origin/KEPT"
 README = """# retain/origin
 
 The origin's own record: what it did by itself, kept as it happens. Retained: the LAN's, never carried
@@ -345,9 +350,53 @@ def keep(files, message):
     os.remove(index)
 
 
-def land(names, was):
+def keeping():
+    """KEPT as BOOK's main has it: {(owner/repo, branch)}. Never main, github/* or the library's branches."""
+    text = git(os.path.join(ORIGIN, BOOK), "show", "refs/heads/main:" + KEPT, check=False).stdout
+    out = set()
+    for line in text.splitlines():
+        w = line.split("#", 1)[0].split()
+        if len(w) == 2 and w[1] != "main" and not w[1].startswith("github/") and not lan_only("refs/heads/" + w[1]):
+            out.add((w[0], w[1]))
+    return out
+
+
+def keep_up(pairs):
+    """Each kept branch takes in its repository's main. Returns its rows."""
+    rows = []
+    for full, name in sorted(pairs):
+        p, r = os.path.join(ORIGIN, full), "refs/heads/" + name
+        row = {"repo": full, "ref": r}
+        tip = ref(p, r) if os.path.isfile(os.path.join(p, "HEAD")) else None
+        main = tip and ref(p, "refs/heads/main")
+        if not main:
+            row["state"] = "missing"
+        elif is_ancestor(p, main, tip):
+            row["state"] = "current"
+        elif is_ancestor(p, tip, main):
+            ok = git(p, "update-ref", r, main, tip, check=False).returncode == 0
+            row.update(state="kept" if ok else "left", sha=main if ok else tip,
+                       did="fast-forwarded to main" if ok else "it moved while this pass looked; left as it is")
+        else:
+            m = git(p, "--attr-source=" + tip, "merge-tree", "--write-tree", "--name-only", tip, main, check=False)
+            if m.returncode == 0:
+                tree = m.stdout.split("\n", 1)[0].strip()
+                commit = git(p, *WHO, "commit-tree", tree, "-p", tip, "-p", main,
+                             "-m", "Keep %s current: main merged in" % name).stdout.strip()
+                ok = git(p, "update-ref", r, commit, tip, check=False).returncode == 0
+                row.update(state="kept" if ok else "left", sha=commit if ok else tip,
+                           did="main merged in cleanly" if ok else "it moved while this pass looked; left as it is")
+            else:
+                files = m.stdout.split("\n\n", 1)[0].splitlines()[1:]
+                row.update(state="collides", sha=tip, conflicts=files[:50],
+                           did="main does not merge in clean; the branch left alone")
+        rows.append(row)
+    return rows
+
+
+def land(names, was, held=frozenset()):
     """Branches whose work main already holds, let go: each one's record kept first, then the branch
-    removed. `was` is the open branches as last looked at; returns (rows, the open branches now)."""
+    removed. `was` is the open branches as last looked at, `held` the kept ones; returns (rows, the open branches now)."""
     if not os.path.isfile(os.path.join(ORIGIN, BOOK, "HEAD")):
         return [], was                  # nowhere to keep a record: nothing is removed
     going, still, stamp = [], {}, now()
@@ -359,7 +408,7 @@ def land(names, was):
         heads = git(p, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads").stdout.splitlines()
         for r, tip in (l.split() for l in heads):
             name = r[len("refs/heads/"):]
-            if name == "main" or name.startswith("github/") or lan_only(r):
+            if name == "main" or name.startswith("github/") or lan_only(r) or (full, name) in held:
                 continue
             looked = was.get(full, {}).get(name) == [tip, main]
             if tip != main and is_ancestor(p, tip, main):
@@ -525,7 +574,14 @@ def main():
         except Exception as e:          # an order that cannot be read or landed waits for the next beat
             ordered = [{"repo": "orders", "state": "error", "error": str(e)[-500:]}]
         try:
-            landed, still = land(names, was.get("open") or {})
+            held = keeping()
+            kept_rows = keep_up(held)
+        except Exception as e:          # KEPT unread: nothing is kept up this beat, and nothing kept is let go
+            held, kept_rows = None, [{"repo": BOOK, "ref": KEPT, "state": "error", "error": str(e)[-500:]}]
+        try:
+            if held is None:
+                raise RuntimeError("KEPT could not be read; nothing is let go this beat")
+            landed, still = land(names, was.get("open") or {}, held)
         except Exception as e:          # the record could not be kept: nothing was removed
             landed, still = [{"repo": BOOK, "ref": RECORD, "state": "error", "error": str(e)[-500:]}], was.get("open") or {}
         carried = []
@@ -533,14 +589,14 @@ def main():
             carried = carry_main([n for n in names if n in remote]) + carry()
         stamp = now()
         with open(ACTIONS, "a") as log:
-            for row in rows + ordered + landed + carried:
+            for row in rows + ordered + kept_rows + landed + carried:
                 if row.get("did") or row["state"] == "error":
                     log.write(json.dumps({"at": stamp, **row}) + "\n")
         asked = {"checked": stamp, "github": "unreachable: " + offline if offline else "ok", "repos": rows}
         tmp = STATE + ".tmp"
         with open(tmp, "w") as f:       # a quiet beat keeps what GitHub last said
             json.dump({"beat": beat(), **(asked if ask else {k: was.get(k) for k in asked}),
-                       "relay": os.path.exists(RELAY), "ordered": ordered, "carried": carried, "landed": landed,
+                       "relay": os.path.exists(RELAY), "ordered": ordered, "kept": kept_rows, "carried": carried, "landed": landed,
                        "open": still}, f, indent=1)
         os.replace(tmp, STATE)
     return 0

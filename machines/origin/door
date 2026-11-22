@@ -15,8 +15,8 @@ makes a new one, and only the secretary's office may. `dev on|off|status` is the
 asks GitHub on its ten-minute beat while on, weekly while off), and `relay on|off|status` the origin's mode (on:
 what is pushed here is carried out to GitHub on intake's pass; off: LAN-only, it waits here), any
 keyholder's. `hear main` answers with one line when any repository's main next moves (a push, or intake),
-or with nothing after five minutes: a machine that follows main waits on it instead of asking. `look
-[owner/repo]` answers with everything here in one JSON reading (traffic.py), and `land <owner>/<repo> <branch>
+or with nothing after five minutes: a machine that follows main waits on it instead of asking. `kept` says
+how each branch machines/origin/KEPT names fared on the last beat. `look [owner/repo]` answers with everything here in one JSON reading (traffic.py), and `land <owner>/<repo> <branch>
 <commit>` orders a branch, as it was seen, into main on intake's next beat (`hold <owner>/<repo> <branch>` takes
 the order back), any keyholder's. Each action
 is appended to /srv/origin/.door/actions.ndjson, with the office, the holder, and for a push every ref
@@ -187,9 +187,18 @@ def serve(office, holder):
         record(verb=words[0], repo=full, branch=words[2], **who)
         print("origin: " + said)
         return
+    if words == ["kept"]:
+        try:
+            rows = json.loads((ORIGIN / ".intake/state.json").read_text()).get("kept") or []
+        except (OSError, ValueError):
+            rows = []
+        for r in rows:
+            print(" ".join([r["repo"], r["ref"].removeprefix("refs/heads/"), r["state"]] + ([r["did"]] if r.get("did") else [])))
+        print("kept: %d branch%s, as of the last beat" % (len(rows), "" if len(rows) == 1 else "es"))
+        return
     if len(words) != 2:
         refuse("this door only fetches, pushes, makes repositories (git, or `init owner/repo`), flips dev or relay, "
-               "hears main, looks, and lands or holds a branch", asked=asked, **who)
+               "hears main, looks, says what is kept, and lands or holds a branch", asked=asked, **who)
     if words == ["hear", "main"]:
         hear()
         return

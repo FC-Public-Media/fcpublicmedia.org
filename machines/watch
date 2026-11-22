@@ -86,7 +86,7 @@ if git -C "$MIRROR" fetch -q origin 2>/dev/null; then
   mb=$(git -C "$MIRROR" rev-list --count HEAD..origin/main)
   # Named in full: the mirror is what this machine runs (fcpm, and what sync places).
   at="$(git -C "$MIRROR" log -1 --format="%h, %cr" 2>/dev/null)"
-  if [ "$mb" -gt 0 ]; then line behind "the mirror (~/code/refs/$REPO, what this machine runs) is $mb change(s) behind GitHub: fcpm pull"; behind=$mb
+  if [ "$mb" -gt 0 ]; then line behind "the mirror (~/code/refs/$REPO, what this machine runs) is $mb change(s) behind GitHub: fcpm install"; behind=$mb
   else line ok "the mirror (~/code/refs/$REPO, what this machine runs) has everything merged on GitHub ($at)"; fi
 else
   line NEEDS "cannot reach upstream ($(git -C "$MIRROR" remote get-url origin 2>/dev/null)). Network?"
@@ -111,7 +111,7 @@ else
 fi
 
 differs=$(printf '%s\n' "$SYNC" | grep -c '^differs')
-if [ "$differs" -gt 0 ]; then line update "$differs file(s) placed from the mirror are out of date: fcpm pull"
+if [ "$differs" -gt 0 ]; then line update "$differs file(s) placed from the mirror are out of date: fcpm install"
 else line ok "what is placed from the mirror matches it"; fi
 
 if [ -f "$CODE/bin/pool.ps1" ]; then
@@ -135,9 +135,8 @@ echo
 n=0; opts=""
 offer() { n=$((n + 1)); opts="$opts $1"; printf '  %d  %s\n' "$n" "$2"; }
 [ -n "$called" ] && [ ! -d "$WC" ] && offer make "Make my working copy  (work/$REPO@$called)"
-[ "$behind" -gt 0 ] && offer pull "Bring in the latest"
+[ "$behind" -gt 0 ] || [ "$differs" -gt 0 ] && offer install "Bring in the latest and install it on this computer"
 [ "$edits" -gt 0 ] || [ "$unsent" -gt 0 ] && offer send "Send my changes up"
-[ "$differs" -gt 0 ] && offer install "Install the updates on this computer"
 [ "$n" -eq 0 ] && { echo "Nothing to do. All good."; exit 0; }
 printf '  q  quit\n\n'
 [ -t 0 ] || exit 0
@@ -153,16 +152,9 @@ echo
 
 case "$pick" in
   make) exec "$REFS" work "$REPO" "$called" ;;
-  pull)
-    "$REFS" pull "$REPO"
-    catch_up && line ok "your working copy has the latest"
-    if [ "$(cd "$HERE" && SYNC_CHECK=0 ./sync 2>&1 | grep -c '^differs')" -gt 0 ]; then
-      ask "Install the updates on this computer now? [Y/n]"
-      case "$REPLY" in
-        n|N|no|No) echo "Not installed. Run fcpm again to install." ;;
-        *) exec "$HERE/fcpm" install ;;
-      esac
-    fi ;;
+  install)
+    "$HERE/fcpm" install || exit
+    catch_up && [ -d "$WC" ] && line ok "your working copy has the latest" ;;
   send)
     if [ "$edits" -gt 0 ]; then
       ask "In a few words, what did you change?"
@@ -179,5 +171,4 @@ case "$pick" in
       pr=$(cd "$WC" && "$GH" pr create --base main --head "$called" --title "$msg" --body "Sent from $called with \`fcpm\`." 2>&1 | tail -n 1)
       line ok "sent. Waiting for Autumn to merge it: $pr"
     fi ;;
-  install) exec "$HERE/fcpm" install ;;
 esac

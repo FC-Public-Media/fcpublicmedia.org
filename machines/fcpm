@@ -54,10 +54,17 @@ case "$cmd" in
   card)
     case "${1:-}" in sync) shift; exec "$HERE/cards/sync" "$@" ;; "") exec "$HERE/cards/sync" ;; *) echo "fcpm card [sync [/dev/sdX]]" >&2; exit 2 ;; esac ;;
   install)
-    # A job named here is put on even before its `names` lists this computer (start.ps1).
-    # FCPM_DESK: a person is here, so a `system` line may ask for an administrator (../docs/station.md).
+    # This machine as its profile says: its mirror caught up (forward only), what the profile places, the
+    # engines, the profile's system steps (FCPM_DESK: a person is here, so one may ask for an administrator),
+    # the working copy, and on Windows the weekly task. A job named is put on before `names` lists it (start.ps1).
     export FCPM_DESK=1
+    m="$CODE/refs"; [ -d "$m" ] || m="$CODE/ref"
+    [ -e "$m/$(basename "$REPO")/.git" ] && "$REPO/bin/refs" pull "$(basename "$REPO")"
     if [ $# -gt 0 ]; then "$HERE/sync" -p "$1" install || exit; else "$HERE/sync" install || exit; fi
+    # The public submodules, as this commit names them; the private ones (`update = none`) are bin/refs'.
+    out=$(GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet 2>&1) \
+      || { printf '%s\n' "$out" | grep -v "^Skipping submodule '" >&2
+           echo "fcpm: an engine did not come down; fcpm install again, and say so if it still does not"; }
     "$HERE/watch" copy
     case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$HERE/watch" weekly install ;; esac ;;
   weekly)    exec "$HERE/watch" weekly ;;
@@ -76,16 +83,6 @@ case "$cmd" in
       echo "-- $j"; sh "$HERE/$j/check.sh" || rc=1
     done
     exit $rc ;;
-  pull)
-    # This repository's mirror, then what it places (sync install). The other mirrors are the weekly task's.
-    m="$CODE/refs"; [ -d "$m" ] || m="$CODE/ref"
-    [ -e "$m/$(basename "$REPO")/.git" ] || not_here "no mirror of $(basename "$REPO") in ~/code/refs; a checkout that follows the origin has its crew's follow line"
-    "$REPO/bin/refs" pull "$(basename "$REPO")" || exit
-    FCPM_DESK=1 "$HERE/sync" install || exit
-    # The public submodules, as the commit just pulled names them; the private ones (`update = none`) are bin/refs'.
-    out=$(GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet 2>&1) \
-      || { printf '%s\n' "$out" | grep -v "^Skipping submodule '" >&2
-           echo "fcpm: an engine did not come down; fcpm pull again, and say so if it still does not"; } ;;
   dev)
     # The LAN's switch is the origin's (../origin/dev); the flag here is this machine's pool's.
     f="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/dev"
@@ -115,6 +112,10 @@ case "$cmd" in
       pyrun --with pyyaml --with qrcode python "$HERE/keys" "$@" ;;
     esac
     exec python3 "$HERE/keys" "$@" ;;
+  keep)
+    # The branches the origin keeps current with main (origin/KEPT), as its last beat left them.
+    out=$(ssh -o BatchMode=yes -o ConnectTimeout=10 "${FCPM_ORIGIN_SSH:-fcpm-origin}" kept 2>/dev/null) &&
+      printf '%s\n' "$out" | sed 's/^/origin.local /' || echo "origin.local did not answer; what it keeps is machines/origin/KEPT" ;;
   relay)
     # The origin's mode (../origin/door): on, what is pushed there goes out to GitHub on intake's
     # 15-minute pass; off, LAN-only: it pulls, and what is pushed waits there.

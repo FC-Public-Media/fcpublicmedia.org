@@ -103,7 +103,7 @@ while read -r mode src dst <&3; do
     path:mirror) ;;
     # system <script> -: a file of the system's, held by the profile's script, which only an
     # administrator may write. `check` says same or differs; install asks for an administrator only
-    # at the desk (FCPM_DESK, set by `fcpm install` and `fcpm pull`). Unattended (the pool's pass), it
+    # at the desk (FCPM_DESK, set by `fcpm install`). Unattended (the pool's pass), it
     # is left differing, for the next install at the desk. Declined, it is said, and nothing else stops.
     system:status|system:install)
       command -v powershell >/dev/null 2>&1 || { echo "sync: $src is Windows'" >&2; continue; }

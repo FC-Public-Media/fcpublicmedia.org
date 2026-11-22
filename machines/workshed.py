@@ -102,7 +102,7 @@ def node():
 
 def engines():
     """Where jekyll-enough may be, from the code root, first found wins: FCPM_JEKYLL_ENOUGH; the origin's
-    owner/repo layout, once the origin lives at the root (~/code/origin); then refs/, which fcpm pull keeps."""
+    owner/repo layout, once the origin lives at the root (~/code/origin); then refs/, which bin/refs keeps."""
     out = [pathlib.Path(os.environ["FCPM_JEKYLL_ENOUGH"])] if os.environ.get("FCPM_JEKYLL_ENOUGH") else []
     return out + [CODE / "origin" / "FCCN-ANTIBODY" / "jekyll-enough", CODE / "refs" / "jekyll-enough"]
 
@@ -756,7 +756,7 @@ def mirror_of(repo):
         return CODE / "refs" / repo
     m = _sibling("places").mirror(repo)
     if m is None:
-        raise Wrong("no mirror of %s in refs/ (refs.wanted, then fcpm pull)" % repo)
+        raise Wrong("no mirror of %s in refs/ (refs.wanted, then fcpm install)" % repo)
     return m
 
 
@@ -766,7 +766,7 @@ def new(branch, shed=None, repo=DEFAULT_REPO, start_at=None):
     src = mirror_of(repo)
     repo = src.name
     if not (src / ".git").exists():
-        raise Wrong("no %s in refs/ to make a worktree from (refs.wanted lists what fcpm pull keeps)" % repo)
+        raise Wrong("no %s in refs/ to make a worktree from (refs.wanted lists what fcpm install keeps)" % repo)
     if git("check-ref-format", "--branch", branch, check=False) != branch or "/" in shed or not shed:
         raise Wrong("%s is not a name a branch can have: letters, digits and dashes are safe" % branch)
     path = place(shed) / ("%s@%s" % (repo, branch.replace("/", "~")))
@@ -775,7 +775,7 @@ def new(branch, shed=None, repo=DEFAULT_REPO, start_at=None):
         raise Wrong("%s is already in the workshed, at %s" % (name, path))
     git("fetch", "--quiet", "--prune", "origin", cwd=src, check=False)
     if start_at and not git("rev-parse", "--verify", "--quiet", start_at + "^{commit}", cwd=src, check=False):
-        raise Wrong("%s is not a commit in refs/%s (fcpm pull, or the pin is not fetched here)" % (start_at, repo))
+        raise Wrong("%s is not a commit in refs/%s (fcpm install, or the pin is not fetched here)" % (start_at, repo))
     mine = git("rev-parse", "--verify", "--quiet", "refs/heads/" + branch, cwd=src, check=False)
     theirs = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/" + branch, cwd=src, check=False)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -948,7 +948,7 @@ def check(name=None):
 
     nd, eng = node(), engine()
     row(bool(nd), "node: %s" % (nd or "none found"), "fcpm install (machines/production/bay/node-*.yml)")
-    row(bool(eng), "jekyll-enough: %s" % (eng or "none in " + ", ".join(str(p) for p in engines())), "fcpm pull")
+    row(bool(eng), "jekyll-enough: %s" % (eng or "none in " + ", ".join(str(p) for p in engines())), "fcpm install")
     b = bindings()
     row(bool(b["sheds"]), "sheds bound: %s" % (", ".join(sorted(b["sheds"])) or "none"),
         "bind one in machines/<job>/workshed.yml (sheds: {work: work})")

@@ -14,7 +14,7 @@ What any machine wearing the kiosk owes, so a peer can step in beside it:
 - Status is asked live (`door.py`, `door.py screens`, `door.py server`); nothing it shows was written down at start.
 - A room's door (`rooms/<room>.yml`, `/room/<room>/`) only reads. What a wizard made comes in as a bottle, kept first and read later (`replies.py`); that inbox is the one writer of a room's state.
 - One supervisor, with no window and nothing in Startup apps.
-- It never asks GitHub on a timer: only when asked (`fcpm pull`), once a week (`fcpm weekly`), or while `fcpm dev on`. A LAN origin it may poll.
+- It never asks GitHub on a timer: only when asked (`fcpm install`), once a week (`fcpm weekly`), or while `fcpm dev on`. A LAN origin it may poll.
 
 ## Service
 
@@ -33,7 +33,7 @@ Log: `%LOCALAPPDATA%\media-node\door.log`.
 | job | what it does |
 |---|---|
 | bounce | `serve` exits 75 when the checkout's commit moves; `supervise` restarts it; pages reload on `/revision` |
-| pull | every 5 min, rebases `media-node` onto `origin/main` as the mirror has it (`fcpm pull` and `fcpm weekly` move it); fetches first only when origin is not GitHub, or while `fcpm dev on`; a dirty tree or a conflict is left as it was |
+| pull | every 5 min, rebases `media-node` onto `origin/main` as the mirror has it (`fcpm install` and `fcpm weekly` move it); fetches first only when origin is not GitHub, or while `fcpm dev on`; a dirty tree or a conflict is left as it was |
 | screens | every 30 s, one Edge kiosk per panel in `node.yml`, profile under `%LOCALAPPDATA%\media-node\screens\`: missing, astray, silent 120 s or moved is relaunched; covered is raised; none while a monitor is gone, or while stepped aside (a page's Minimize, until 10 min without input) |
 | depot | scans the router's shares every 15 s; files are `declared` (a `.sha256` beside), `arriving` or `unwitnessed`; the index stays in memory |
 | wall, turn | the wall, rewritten every 60 s to the depot share; `/turn/` is its shell on a panel here |

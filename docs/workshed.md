@@ -96,7 +96,7 @@ under a second, and again on every save. Never one page alone: the header, the f
 - jekyll-enough is found from the code root: `FCPM_JEKYLL_ENOUGH`, then `~/code/origin/FCCN-ANTIBODY/jekyll-enough`
   (once the origin lives at the root), then `~/code/refs/jekyll-enough`. Node is the bay's
   (`machines/production/bay/node-*.yml`). `fcpm workshed check` says which it found.
-- A server reads jekyll-enough once, when it starts: after `fcpm pull` brings a new one, stop and start.
+- A server reads jekyll-enough once, when it starts: after `fcpm install` brings a new one, stop and start.
 - What jekyll-enough cannot do is named, never skipped: the card says "Not built as the real site would be"
   with each gap. Against the live site, page by page (2026-11-16), what is left is cosmetic: headings get no
   `id` (so a `#anchor` link does not scroll), quotes stay straight, `markdown="1"` stays on its tag, list

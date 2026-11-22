@@ -200,6 +200,61 @@ class Beat(Origin):
     def land(self, was=None):
         return self.intake.land([HUB, LAN], was or {})
 
+    def keep(self, *lines):
+        """KEPT on the hub's main, as BOOK's main has it."""
+        w = self.work()
+        self.git("checkout", "-q", "main", cwd=w)
+        self.git("pull", "-q", "--ff-only", "origin", "main", cwd=w)
+        (w / "machines/origin").mkdir(parents=True, exist_ok=True)
+        (w / "machines/origin/KEPT").write_text("# kept\n" + "".join(l + "\n" for l in lines))
+        self.git("add", "-A", cwd=w)
+        self.git("commit", "-qm", "kept", cwd=w)
+        self.git("push", "-q", "origin", "main", cwd=w)
+
+    def keepable(self, name, *files):
+        w = self.work()
+        self.git("checkout", "-q", "-B", name, "origin/main", cwd=w)
+        for f in files:
+            self.commit(w, f)
+        self.git("push", "-q", "origin", name, cwd=w)
+        self.git("checkout", "-q", "main", cwd=w)
+
+    def test_a_kept_branch_takes_main_in_and_is_never_let_go(self):
+        self.keepable("live", "mine")
+        self.keepable("plain")
+        self.keep(f"{HUB} live", f"{HUB} plain", f"{HUB} main", f"{HUB} retain/x", f"{HUB} gone")
+        held = self.intake.keeping()
+        self.assertEqual(held, {(HUB, "live"), (HUB, "plain"), (HUB, "gone")})
+        rows = {r["ref"]: r for r in self.intake.keep_up(held)}
+        main = self.here("refs/heads/main")
+        self.assertEqual(rows["refs/heads/plain"]["state"], "kept")
+        self.assertEqual(self.here("refs/heads/plain"), main, "nothing of its own: a fast-forward")
+        self.assertEqual(rows["refs/heads/live"]["state"], "kept")
+        live = self.here("refs/heads/live")
+        self.assertEqual(self.git("-C", str(self.hub), "rev-parse", live + "^2").stdout.strip(), main)
+        self.assertEqual(rows["refs/heads/gone"]["state"], "missing")
+        self.assertEqual({r["state"] for r in self.intake.keep_up(held)}, {"current", "missing"})
+        rows, still = self.intake.land([HUB, LAN], {}, held)
+        self.assertNotIn("refs/heads/plain", [r["ref"] for r in rows])
+        self.assertTrue(self.here("refs/heads/plain"), "kept, though main holds it")
+
+    def test_a_kept_branch_that_collides_is_left_as_it_is(self):
+        w = self.work()
+        self.git("checkout", "-q", "-B", "live", "origin/main", cwd=w)
+        (w / "a").write_text("live's")
+        self.git("commit", "-qam", "live's a", cwd=w)
+        self.git("push", "-q", "origin", "live", cwd=w)
+        self.git("checkout", "-q", "main", cwd=w)
+        (w / "a").write_text("main's")
+        self.git("commit", "-qam", "main's a", cwd=w)
+        self.git("push", "-q", "origin", "main", cwd=w)
+        self.keep(f"{HUB} live")
+        tip = self.here("refs/heads/live")
+        [row] = self.intake.keep_up(self.intake.keeping())
+        self.assertEqual((row["state"], row["conflicts"]), ("collides", ["a"]))
+        self.assertEqual(self.here("refs/heads/live"), tip)
+
+
     def test_one_pass_in_each_ten_minutes_of_the_clock(self):
         at = datetime.datetime(2026, 11, 21, 12, 7, 31, tzinfo=datetime.timezone.utc).timestamp()
         self.assertEqual(self.intake.beat(at), "2026-11-21T12:00:00+00:00")
