@@ -1,11 +1,11 @@
 #!/bin/sh
 # install -- the qr job onto the box its ./names names, joined: eyes, page and intake all there.
 #
-#   machines/qr/install fcpm@HOST   from digitization: carries this checkout's main (shallow) to
+#   machines/qr/install fcpm@HOST   from digitization: carries this checkout (shallow, as main) to
 #                                   HOST:~/code/fcpublicmedia.org once, gives HOST its own origin key
 #                                   (~/.ssh/origin, `fcpm-origin` in its ~/.ssh/config), then asks for
 #                                   HOST's sudo password in a window here and runs `install root` there
-#   machines/qr/install root        as root on the box: python3-yaml + avahi-utils, port 80 for fcpm,
+#   machines/qr/install root        as root on the box: git, python3-yaml + avahi-utils, the scanner, port 80 for fcpm,
 #                                   eyes.service from this checkout, the crew (../crew.sh install qr)
 #
 # The origin answers HOST's key once its line is in ../origin/KEYHOLDERS (merged); until then follow
@@ -19,9 +19,15 @@ if [ "$TARGET" = root ]; then
   [ "$(id -u)" = 0 ] || { echo "install root: as root"; exit 1; }
   USER_=${SUDO_USER:-fcpm}
   need=""
+  command -v git >/dev/null || need="$need git"
   python3 -c 'import yaml' 2>/dev/null || need="$need python3-yaml"
   command -v avahi-publish >/dev/null || need="$need avahi-utils"
   [ -z "$need" ] || apt-get install -y -q $need >/dev/null
+  if [ ! -f troves/scanner/page.py ]; then                # the scanner carried beside the checkout, at its pin
+    runuser -u "$USER_" -- sh -c 'git config submodule.troves/scanner.url "$(cd .. && pwd)/.carry/scanner" &&
+      git -c protocol.file.allow=always submodule update -q --init --checkout -- troves/scanner'
+    rm -rf ../.carry
+  fi
   echo "net.ipv4.ip_unprivileged_port_start=80" > /etc/sysctl.d/60-fcpm-qr.conf
   sysctl -q -p /etc/sysctl.d/60-fcpm-qr.conf
   u=/etc/systemd/system/eyes.service
@@ -40,18 +46,15 @@ ORIGIN_KNOWN=$(ssh-keygen -F origin.local | grep -v '^#' || true)
 [ -n "$ORIGIN_KNOWN" ] || { echo "origin.local's host key is not in this machine's known_hosts"; exit 1; }
 PIN=$(git ls-tree HEAD troves/scanner | awk '{print $3}')
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-git clone -q --depth 50 --branch main "file://$REPO" "$T/fcpublicmedia.org"
+git clone -q --depth 50 "file://$REPO" "$T/fcpublicmedia.org"   # this checkout as it stands, as main
+git -C "$T/fcpublicmedia.org" checkout -q -B main "$(git rev-parse HEAD)"
 git clone -q --no-checkout "file://$HOME/code/ref/scanner" "$T/scanner"
 git -C "$T/scanner" cat-file -e "$PIN^{commit}" || { echo "the scanner's pin $PIN is not here"; exit 1; }
 
 # The checkout, once: the box keeps its own afterward (follow).
 if ! ssh -o BatchMode=yes "$TARGET" test -d code/fcpublicmedia.org/.git; then
   tar -C "$T" -cf - fcpublicmedia.org scanner | ssh "$TARGET" 'mkdir -p code/.carry && tar -C code/.carry -xf -'
-  ssh "$TARGET" "set -e; cd code; mv .carry/fcpublicmedia.org fcpublicmedia.org
-    cd fcpublicmedia.org
-    git config submodule.troves/scanner.url \"\$HOME/code/.carry/scanner\"
-    git -c protocol.file.allow=always submodule update -q --init --checkout -- troves/scanner
-    cd ..; rm -rf .carry"
+  ssh "$TARGET" "mv code/.carry/fcpublicmedia.org code/fcpublicmedia.org"   # the scanner waits in .carry for `install root`
 fi
 
 # Its own key to the origin, and the origin's host key.
