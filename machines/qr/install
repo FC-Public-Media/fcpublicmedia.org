@@ -28,6 +28,12 @@ if [ "$TARGET" = root ]; then
       git -c protocol.file.allow=always submodule update -q --init --checkout -- troves/scanner'
     rm -rf ../.carry
   fi
+  # Helm's deep names (helm.fcpublicmedia.local): mDNS for every .local name, as on digitization.
+  cp machines/digitization/mdns.allow /etc/mdns.allow
+  hosts='files myhostname mdns4_minimal [NOTFOUND=return] dns mdns4'
+  grep -qxF "hosts:          $hosts" /etc/nsswitch.conf || {
+    [ -f /etc/nsswitch.conf.before-qr ] || cp /etc/nsswitch.conf /etc/nsswitch.conf.before-qr
+    sed -i "s|^hosts:.*|hosts:          $hosts|" /etc/nsswitch.conf; }
   echo "net.ipv4.ip_unprivileged_port_start=80" > /etc/sysctl.d/60-fcpm-qr.conf
   sysctl -q -p /etc/sysctl.d/60-fcpm-qr.conf
   u=/etc/systemd/system/eyes.service
