@@ -105,6 +105,12 @@ verbs:
     windows: "machines/crew.ps1; crew.py by uv"
     linux: "machines/crew.sh (fcpm-crew@<job>); crew.py by python3"
 
+  - verb: refs
+    args: "[status|pull [REPO...]|work REPO BRANCH|done REPO BRANCH]"
+    says: "the read-only mirrors in ~/code/refs (the kiosk's ref/): how far each is behind, or each brought up; a worktree per branch in ~/code/work, and removed once merged"
+    windows: bin/refs
+    linux: bin/refs
+
   - verb: runnables
     args: "[...]"
     says: "the census, compile, prove"

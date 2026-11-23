@@ -88,6 +88,9 @@ class Run(unittest.TestCase):
 
         r = self.run_("bash", refs, "status")
         self.assertRegex(r.stdout, r"demo\s+main\s+behind=0")
+        r = self.run_("sh", str(FCPM), "refs", "status")   # the verb is the same file, on any machine
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stdout, r"demo\s+main\s+behind=0")
         (up / "a").write_text("b\n")
         git("commit", "-qam", "b", cwd=up)
         r = self.run_("bash", refs, "pull", "demo")

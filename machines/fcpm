@@ -127,6 +127,7 @@ case "$cmd" in
   pool)
     [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
     ps1 "$CODE/bin/pool.ps1" "$@" ;;
+  refs)      exec "$REPO/bin/refs" "$@" ;;   # the mirrors in ~/code/refs (the kiosk's ref/), and worktrees in ~/code/work
   runnables) exec "$REPO/bin/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
   env)       ps1 "$REPO/troves/recorder/env.ps1" "$@" ;;
