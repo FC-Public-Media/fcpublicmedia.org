@@ -144,7 +144,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Machines pull from a LAN origin (thin-client is the likely host) once they can reach it.
 - digitization: names not applied; SSH door and keys wait on passkeys; intake polls until a webhook.
 - The keystore's grant: petitions (`wizard:keys+birth`) are lodged on digitization and nothing grants them yet; the board's yes (`wizard:keys+grant`) and the keystore's acts are digitization's to build. docs/keystore.md#the-grant-a-study-for-digitization-to-build
-- editing-bay-2: names unfilled, and it may be the machine that is now the kiosk.
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
 - The pool restarts the `production` supervisor too. machines/production/code/bin/pool.ps1

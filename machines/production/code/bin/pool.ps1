@@ -11,8 +11,8 @@
 #                                    say if it is ready. off is authoritative
 #   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
 #
-# Keeps a Remote Control server at ~/code, with its one home session; wakes no other session.
-# See docs/station.md, Sessions. ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
+# Every bay's: the job is the one whose `names` lists this computer. See docs/station.md, Sessions.
+# ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
 param([Parameter(Position = 0)][string]$Verb = "status",
       [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$Rest)
@@ -20,11 +20,24 @@ param([Parameter(Position = 0)][string]$Verb = "status",
 # Not "Stop": under 5.1 any line claude.exe writes to stderr would become a terminating error.
 $ErrorActionPreference = "Continue"
 $Root = Split-Path -Parent $PSScriptRoot
-$State = Join-Path $env:LOCALAPPDATA "editing-bay-1"
+$Mirror = Join-Path $Root "refs\fcpublicmedia.org"
+
+function Find-Job {
+    foreach ($n in @(Get-ChildItem (Join-Path $Mirror "machines\*\names") -ErrorAction SilentlyContinue)) {
+        foreach ($l in Get-Content $n.FullName) {
+            $w = ($l -split "#")[0].Trim() -split "\s+"
+            if ($w.Count -eq 3 -and $w[0] -eq "windows" -and $w[2] -eq $env:COMPUTERNAME) { return $n.Directory.Name }
+        }
+    }
+    "production"
+}
+$Job = Find-Job
+$Bay = if ($Job -eq "production") { "editing-bay-1" } else { $Job }   # as crew.ps1 keeps it
+$State = Join-Path $env:LOCALAPPDATA $Bay
 $Log = Join-Path $State "pool.log"
 $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
-$TaskName = "editing-bay-1 pool"
+$TaskName = "$Bay pool"
 $CalmMin = 15
 # `fcpm dev on` creates this file (machines/fcpm): follow GitHub.
 $Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
@@ -214,19 +227,19 @@ function EnsureServer {
 }
 
 function Screens {
-    # The production crew's desktop half (its supervisor has no desktop); else the screen trove.
-    $crew = Join-Path $Root "refs\fcpublicmedia.org\machines\crew.py"
+    # The crew's desktop half (its supervisor has no desktop); else, on bay 1, the screen trove.
+    $crew = Join-Path $Mirror "machines\crew.py"
     $uv = @((Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),
             (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe")) |
           Where-Object { Test-Path $_ } | Select-Object -First 1
     if ((Test-Path $crew) -and $uv) {
-        & $uv run --no-project --python 3.12 --with pyyaml $crew desktop production 2>&1 | Out-Null
+        & $uv run --no-project --python 3.12 --with pyyaml $crew desktop $Job 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) { Say "crew: desktop pass failed ($LASTEXITCODE)" }
         return
     }
     # A child process, so the trove's strict mode stays out of the pool. It logs to screen.log.
-    $s = Join-Path $Root "refs\fcpublicmedia.org\troves\kiosk-screen\screen.ps1"
-    if (-not (Test-Path $s)) { return }
+    $s = Join-Path $Mirror "troves\kiosk-screen\screen.ps1"
+    if ($Job -ne "production" -or -not (Test-Path $s)) { return }
     $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
     # FCPM_BY, not -By: the mirror's screen.ps1 may predate the flag.
     $env:FCPM_BY = 'pool'
@@ -250,8 +263,7 @@ function Follow {
 
 function Current {
     # When the mirror moved, by any pull: `sync install` (this script included), then the supervisor.
-    $mirror = Join-Path $Root "refs\fcpublicmedia.org"
-    $head = (& git -C $mirror rev-parse HEAD 2>$null | Out-String).Trim()
+    $head = (& git -C $Mirror rev-parse HEAD 2>$null | Out-String).Trim()
     if (-not $head) { return }
     $f = Join-Path $State "placed"
     $was = "$(Get-Content $f -ErrorAction SilentlyContinue)".Trim()
@@ -268,8 +280,8 @@ function Current {
     foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'crew\.py"?\s+serve' })) {
         Say ("current: the crew's supervisor ({0}) runs older code: restarting it" -f $p.ProcessId)
         & taskkill /T /F /PID $p.ProcessId 2>&1 | Out-Null
-        try { Start-ScheduledTask -TaskName "production" -ErrorAction Stop }
-        catch { Say ("current: could not start 'production' again: {0}" -f $_) }
+        try { Start-ScheduledTask -TaskName $Job -ErrorAction Stop }
+        catch { Say ("current: could not start '{0}' again: {1}" -f $Job, $_) }
     }
 }
 
@@ -299,8 +311,8 @@ switch ($Verb) {
             Start-Sleep -Milliseconds 500
         }
         switch ($seen) {
-            "ready" { Say "server: ready: Edit2 has Remote Control" }
-            "refused" { Say "server: refused: claude.ai still holds Edit2 for a server that was killed. The pool tries every minute; up within ~3 min" }
+            "ready" { Say "server: ready: $env:COMPUTERNAME has Remote Control" }
+            "refused" { Say "server: refused: claude.ai still holds $env:COMPUTERNAME for a server that was killed. The pool tries every minute; up within ~3 min" }
             "exited" { Say "server: exited at start; see server.err" }
             default { Say "server: started, not ready yet; fcpm pool shows it" }
         }
@@ -317,7 +329,7 @@ switch ($Verb) {
             -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew
         $who = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
         Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($atLogon, $every) -Settings $set `
-            -Principal $who -Description "Editing bay 1's root: keep the Remote Control server up in $Root, and the roller's screen. bin\pool.ps1." -Force | Out-Null
+            -Principal $who -Description "$Bay's root: keep the Remote Control server up in $Root. bin\pool.ps1." -Force | Out-Null
         Write-Output "registered '$TaskName': at logon, and every minute"
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }

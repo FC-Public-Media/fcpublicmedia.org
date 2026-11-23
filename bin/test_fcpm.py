@@ -8,6 +8,7 @@ import os
 import pathlib
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -16,6 +17,9 @@ import yaml
 REPO = pathlib.Path(__file__).resolve().parents[1]
 FCPM = REPO / "machines" / "fcpm"
 VERBS = yaml.safe_load((REPO / "machines" / "fcpm.yml").read_text(encoding="utf-8"))["verbs"]
+PLAT = "windows" if sys.platform == "win32" else "linux"
+AWAY = next(v for v in VERBS if str(v[PLAT]).startswith("not:")
+            and not all(str(v[p]).startswith("not:") for p in ("windows", "linux")))
 
 
 def arms():
@@ -59,9 +63,9 @@ class Run(unittest.TestCase):
         return subprocess.run(list(args), env=self.env, capture_output=True, text=True, timeout=60)
 
     def test_not_here_exits_3_with_the_stand_in(self):
-        r = self.run_("sh", str(FCPM), "camera", "console")
+        r = self.run_("sh", str(FCPM), AWAY["verb"])
         self.assertEqual(r.returncode, 3, r.stderr)
-        self.assertIn("speaks Windows COM", r.stderr)
+        self.assertIn(str(AWAY[PLAT])[4:].strip(), r.stderr)
 
     def test_pull_points_to_install(self):
         r = self.run_("sh", str(FCPM), "pull")
@@ -71,8 +75,8 @@ class Run(unittest.TestCase):
     def test_help_lists_what_stands_in(self):
         r = self.run_("sh", str(FCPM), "help")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("fcpm install [JOB]", r.stdout.split("Not on linux")[0])
-        self.assertIn("fcpm camera", r.stdout.split("Not on linux")[1])
+        self.assertIn("fcpm install [JOB]", r.stdout.split("Not on " + PLAT)[0])
+        self.assertIn("fcpm " + AWAY["verb"], r.stdout.split("Not on " + PLAT)[1])
 
     def test_refs_in_the_kiosks_ref(self):
         up = self.home / "up"
