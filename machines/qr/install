@@ -5,7 +5,7 @@
 #                                   HOST:~/code/fcpublicmedia.org once, gives HOST its own origin key
 #                                   (~/.ssh/origin, `fcpm-origin` in its ~/.ssh/config), then asks for
 #                                   HOST's sudo password in a window here and runs `install root` there
-#   machines/qr/install root        as root on the box: git, python3-yaml + avahi-utils, the scanner, port 80 for fcpm,
+#   machines/qr/install root        as root on the box: git, python3-yaml + avahi-utils, the scanner, deep .local names, port 80,
 #                                   eyes.service from this checkout, the crew (../crew.sh install qr)
 #
 # The origin answers HOST's key once its line is in ../origin/KEYHOLDERS (merged); until then follow
