@@ -9,6 +9,7 @@ import datetime
 import json
 import os
 import pathlib
+import re
 import shutil
 import sys
 import tempfile
@@ -85,7 +86,8 @@ class Helms(unittest.TestCase):
         self.assertFalse((replies.STATE / "nonces.json").exists())       # the holder spends the nonce, not us
 
     def test_two_bays_hold_the_models_and_the_reply_names_which(self):
-        self.assertEqual(replies.holder("wizard:model+up", "editing-bay-2"), ("editing-bay-2", ""))
+        bay2 = replies.helms()["editing-bay-2"]["at"]
+        self.assertEqual(replies.holder("wizard:model+up", "editing-bay-2"), ("editing-bay-2", bay2))
         self.assertEqual(replies.holder("wizard:model+up", "nonesuch"), ("production", "http://10.209.1.20:8080"))
         sent = []
         replies.route = lambda path, at: sent.append(at) or "far-name"
@@ -95,11 +97,13 @@ class Helms(unittest.TestCase):
         os.environ["FCPM_WEARS"] = "digitization"
         replies.drop(up("qwen3.5-9b"))                        # no job: bay 1's, as before
         self.assertEqual([v for _, v, _ in replies.take()], ["routed"])
-        self.assertEqual(sent, ["", "http://10.209.1.20:8080"])
+        self.assertEqual(sent, [bay2, "http://10.209.1.20:8080"])
 
     def test_a_helm_without_an_address_is_waited_for(self):
-        saved = replies.route
+        saved = replies.route, replies.HELMS
         replies.route = self.saved[1]                         # the real one: it refuses an empty address
+        replies.HELMS = self.tmp / "helms.yml"                # bay 2 as it was before it had one
+        replies.HELMS.write_text(re.sub(r"(  editing-bay-2:\n(?:    .*\n)*?    at: ).*", r'\1""', saved[1].read_text()))
         try:
             name = replies.drop(up("qwen3.5-2b", job="editing-bay-2"))
             [(_, verdict, why)] = replies.take()
@@ -107,7 +111,7 @@ class Helms(unittest.TestCase):
             self.assertIn("no address", why)
             self.assertEqual(replies.where(name)["state"], "inbox")
         finally:
-            replies.route = saved
+            replies.route, replies.HELMS = saved
 
     def test_a_reply_any_helm_applies_is_never_routed(self):
         def never(path, at):
