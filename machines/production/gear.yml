@@ -15,7 +15,7 @@ gear:
     answers: [bash, openssl]    # ../../tell.yml needs; Git Bash ships both
 
   - gear: claude-code
-    for: the crew. The pool (code/bin/pool.ps1) calls it by this path
+    for: the crew. The pool (machines/pool.ps1) calls it by this path
     at: "%USERPROFILE%\\.local\\bin\\claude.exe"
     provisioner: hand         # the vendor's native installer, which updates itself
     updates: self

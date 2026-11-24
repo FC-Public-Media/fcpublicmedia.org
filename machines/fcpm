@@ -125,8 +125,10 @@ case "$cmd" in
       *) echo "fcpm relay [status|on|off]" >&2; exit 2 ;;
     esac ;;
   pool)
-    [ -f "$CODE/bin/pool.ps1" ] || { echo "fcpm: this machine keeps no pool"; exit 0; }
-    ps1 "$CODE/bin/pool.ps1" "$@" ;;
+    # The bays' pool, where the profile's MANIFEST holds it (`held ../pool.ps1`): the mirror's file, as the task runs it.
+    p=$(profile)
+    grep -qs '^held  *\.\./pool\.ps1' "$HERE/$p/MANIFEST" || { echo "fcpm: ${p:-this machine} keeps no pool"; exit 0; }
+    ps1 "$HERE/pool.ps1" "$@" ;;
   refs)      exec "$REPO/bin/refs" "$@" ;;   # the mirrors in ~/code/refs (the kiosk's ref/), and worktrees in ~/code/work
   runnables) exec "$REPO/bin/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;

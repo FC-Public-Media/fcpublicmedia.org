@@ -4,8 +4,9 @@
 #
 #   machines/sync              status: which profile, what differs. Changes nothing
 #   machines/sync install      put the profile on: carried files, compiled settings, PATH, clone
-#                              missing mirrors, system files (at the desk: FCPM_DESK). A person
-#                              runs this, not a session
+#                              missing mirrors, what scripts hold (tasks), unmapped files removed,
+#                              system files (at the desk: FCPM_DESK). A person runs this, not a
+#                              session; the pool's pass runs it too, so what is mapped is put back
 #   machines/sync mirror       bring the machine's copies back into this checkout,
 #                              for a pull request. Refused in refs/
 #   machines/sync -p NAME ...  name the profile instead of asking the machine
@@ -51,6 +52,7 @@ MAN="$P/MANIFEST"                                    # none: nothing placed, but
 [ -f "$MAN" ] || { echo "carries no MANIFEST"; MAN=/dev/null; }
 
 rc=0
+held_failed=0                                        # a `held` that did not take keeps what `gone` would remove
 while read -r mode src dst <&3; do
   case "$mode" in ''|'#'*) continue ;; esac
   from="$P/$src"; to="$HOME/$dst"
@@ -101,6 +103,43 @@ while read -r mode src dst <&3; do
           echo "placed    ~/$dst on PATH (new windows see it)"
       fi ;;
     path:mirror) ;;
+    # held <script> -: something of this machine's that is no file (a scheduled task), held by a script
+    # in the repository. `script check` says same or differs in sync's words; install runs `script
+    # install` when it differs, unattended too: what it holds needs no administrator. The script runs
+    # from the repository, so what it registers names the committed file, never a copy.
+    held:status|held:install)
+      command -v powershell >/dev/null 2>&1 || { echo "sync: $src is Windows'" >&2; continue; }
+      win=$(cygpath -w "$(cd "$(dirname "$from")" && pwd)/$(basename "$from")" 2>/dev/null || echo "$from")
+      out=$(powershell -NoProfile -ExecutionPolicy Bypass -File "$win" check 2>&1); ok=$?
+      out=$(printf '%s\n' "$out" | tr -d '\r')
+      if [ $ok -eq 0 ]; then [ "$cmd" = status ] && printf '%s\n' "$out"; continue; fi
+      if [ "$cmd" = status ]; then printf '%s\n' "$out"; rc=1; continue; fi
+      powershell -NoProfile -ExecutionPolicy Bypass -File "$win" install >/dev/null 2>&1
+      if now=$(powershell -NoProfile -ExecutionPolicy Bypass -File "$win" check 2>&1); then
+        printf '%s\n' "$now" | tr -d '\r' | sed 's/^same      /placed    /'
+      else
+        printf '%s\n' "$now" | tr -d '\r'; echo "sync: $src did not take; fcpm install at the desk" >&2
+        held_failed=1; rc=1
+      fi ;;
+    held:mirror) ;;
+    # gone - <home path>: a path this profile no longer maps. Removed when a commit here holds its
+    # contents (git has it back), else left and named: sync never destroys what only this machine has.
+    # Contents are the text: line endings and trailing blank lines say nothing, so a CRLF copy or a
+    # draft with blank lines after it is still the committed file.
+    gone:status|gone:install)
+      [ -e "$to" ] || continue
+      # Named, not a failure to install: the pool's pass would otherwise try again every minute.
+      if [ -d "$to" ]; then echo "stray     ~/$dst (unmapped, a folder: look, then remove it)"; [ "$cmd" = status ] && rc=1; continue; fi
+      blob=$(git -C "$REPO" hash-object --no-filters -- "$to" 2>/dev/null)
+      if [ -n "$blob" ] && ! git -C "$REPO" cat-file -e "$blob" 2>/dev/null; then
+        blob=$(tr -d '\r' < "$to" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' | git -C "$REPO" hash-object --stdin 2>/dev/null)
+      fi
+      if [ -z "$blob" ] || ! git -C "$REPO" cat-file -e "$blob" 2>/dev/null; then
+        echo "stray     ~/$dst (unmapped, and in no commit here: look, then delete it)"; [ "$cmd" = status ] && rc=1
+      elif [ "$cmd" = status ]; then echo "stray     ~/$dst (unmapped; a commit holds it, so install removes it)"; rc=1
+      elif [ "$held_failed" = 1 ]; then echo "kept      ~/$dst (what replaces it did not take)"; rc=1
+      else rm -f "$to" && echo "removed   ~/$dst (unmapped; the history holds $(printf '%.12s' "$blob"))"; fi ;;
+    gone:mirror) ;;
     # system <script> -: a file of the system's, held by the profile's script, which only an
     # administrator may write. `check` says same or differs; install asks for an administrator only
     # at the desk (FCPM_DESK, set by `fcpm install`). Unattended (the pool's pass), it

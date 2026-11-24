@@ -1,17 +1,21 @@
 # pool.ps1 -- keep this bay's root reachable, with nothing open until asked.
 #
-#   bin\pool.ps1 status              is the root's server up and current, and what sessions run
-#   bin\pool.ps1 pass                one pass: place what the mirror moved to (Current),
-#                                    bounce a stale server of ours, start the root's
-#                                    server if it is not up, keep the roller's screen
-#                                    (troves/kiosk-screen). What the logon task runs
-#   bin\pool.ps1 off|on             end every Remote Control server here (signed
-#                                    off, so the phone lets go) and keep it off
-#                                    until on or a restart, or start again and
-#                                    say if it is ready. off is authoritative
-#   bin\pool.ps1 install|uninstall   the per-user task that runs `pass`
+#   pool.ps1 status              is the root's server up and current, and what sessions run
+#   pool.ps1 pass                one pass: place what the profile maps (Current: when the mirror
+#                                moves, and every $HoldMin minutes), bounce a stale server of
+#                                ours, start the root's server if it is not up, keep the
+#                                roller's screen (troves/kiosk-screen). What the logon task runs
+#   pool.ps1 off|on              end every Remote Control server here (signed
+#                                off, so the phone lets go) and keep it off
+#                                until on or a restart, or start again and
+#                                say if it is ready. off is authoritative
+#   pool.ps1 check               the task, as install registers it: one line, as sync says it (exit 1)
+#   pool.ps1 install|uninstall   the per-user task that runs `pass`, from this file in the mirror
 #
-# Every bay's: the job is the one whose `names` lists this computer. See docs/station.md, Sessions.
+# Every bay's whose MANIFEST holds it (`held ../pool.ps1`): `fcpm install` registers the task and the
+# pool's own pass keeps it so. The task runs the committed file in ~/code/refs, never a copy, so what
+# runs every minute is what a commit says. The job is the one whose `names` lists this computer.
+# See docs/station.md, Sessions, and Sync and MANIFEST.
 # ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
 param([Parameter(Position = 0)][string]$Verb = "status",
@@ -19,7 +23,8 @@ param([Parameter(Position = 0)][string]$Verb = "status",
 
 # Not "Stop": under 5.1 any line claude.exe writes to stderr would become a terminating error.
 $ErrorActionPreference = "Continue"
-$Root = Split-Path -Parent $PSScriptRoot
+# The root by name, not by this file's place: the task runs this file where the mirror keeps it.
+$Root = if ($env:FCPM_CODE) { $env:FCPM_CODE } else { Join-Path $HOME "code" }
 $Mirror = Join-Path $Root "refs\fcpublicmedia.org"
 
 function Find-Job {
@@ -42,6 +47,8 @@ $CalmMin = 15
 # `fcpm dev on` creates this file (machines/fcpm): follow GitHub.
 $Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
 $PullMin = 5
+# However the mirror moves or does not, what the profile maps is placed again this often.
+$HoldMin = 15
 
 function Say([string]$m) {
     New-Item -ItemType Directory -Force $State | Out-Null
@@ -256,22 +263,27 @@ function Follow {
     if ($last -and $last.LastWriteTime -gt (Get-Date).AddMinutes(-$PullMin)) { return }
     Set-Content -Path $stamp -Value (Get-Date -Format s)
     $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    foreach ($l in @(& $bash (Join-Path $Root "bin\refs") pull fcpublicmedia.org 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
+    foreach ($l in @(& $bash (Join-Path $Mirror "bin\refs") pull fcpublicmedia.org 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
         Say ("dev: " + ($l -replace '\s+', ' '))
     }
 }
 
 function Current {
-    # When the mirror moved, by any pull: `sync install` (this script included), then the supervisor.
+    # `sync install` when the mirror moved, by any pull, and every $HoldMin minutes whether or not it
+    # did: a placed file or the task changed by hand is put back as the profile maps it. Then the supervisor.
     $head = (& git -C $Mirror rev-parse HEAD 2>$null | Out-String).Trim()
     if (-not $head) { return }
     $f = Join-Path $State "placed"
     $was = "$(Get-Content $f -ErrorAction SilentlyContinue)".Trim()
-    if ($head -eq $was) { return }
+    $at = (Get-Item $f -ErrorAction SilentlyContinue).LastWriteTime
+    if ($head -eq $was -and $at -and $at -gt (Get-Date).AddMinutes(-$HoldMin)) { return }
     $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
     $out = @(& $bash (Join-Path $mirror "machines\sync") install 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -notmatch '^profile ' })
     if ($LASTEXITCODE -ne 0) { SayOnce ("current: placing {0} failed: {1}" -f $head.Substring(0, 7), ($out -join "; ")); return }
-    Say ("current: {0} placed{1}" -f $head.Substring(0, 7), $(if ($out.Count) { ": " + ($out -join "; ") } else { "" }))
+    # Unmoved and nothing put back: quiet, so the log says only what changed.
+    if ($head -ne $was -or $out.Count) {
+        Say ("current: {0} placed{1}" -f $head.Substring(0, 7), $(if ($out.Count) { ": " + ($out -join "; ") } else { "" }))
+    }
     Set-Content -Path $f -Value $head
     # The supervisor rereads its order but not its code; ended, its task restarts it on the new code.
     if (-not $was) { return }
@@ -283,6 +295,35 @@ function Current {
         try { Start-ScheduledTask -TaskName $Job -ErrorAction Stop }
         catch { Say ("current: could not start '{0}' again: {1}" -f $Job, $_) }
     }
+}
+
+function TaskArgs {
+    # The task runs this file: in the mirror, when install ran from there, as sync does.
+    $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    "--headless `"{0}`" -NoProfile -ExecutionPolicy Bypass -File `"{1}`" pass" -f $ps, [IO.Path]::GetFullPath($PSCommandPath)
+}
+
+function TaskDiffers {
+    # What install registers, read back: the action runs this file, at logon and every minute, as
+    # this user, unelevated. Empty when it is so; else what is not.
+    $t = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if (-not $t) { return "not registered; fcpm install registers it" }
+    $a = @($t.Actions)
+    if ($a.Count -ne 1) { return "$($a.Count) actions, not 1" }
+    if ($a[0].Execute -ne "conhost.exe" -or $a[0].Arguments -ne (TaskArgs) -or $a[0].WorkingDirectory -ne $Root) {
+        return ("runs {0} {1} in {2}, not {3}" -f $a[0].Execute, $a[0].Arguments, $a[0].WorkingDirectory, $PSCommandPath)
+    }
+    $tr = @($t.Triggers)
+    $logon = @($tr | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskLogonTrigger" })
+    $each = @($tr | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskTimeTrigger" -and $_.Repetition.Interval -eq "PT1M" })
+    if ($tr.Count -ne 2 -or $logon.Count -ne 1 -or $each.Count -ne 1) { return "its triggers are not: at logon, and every minute" }
+    $me = "$env:USERDOMAIN\$env:USERNAME"
+    if ($t.Principal.RunLevel -ne "Limited" -or ($t.Principal.UserId -ne $me -and $t.Principal.UserId -ne $env:USERNAME)) {
+        return ("runs as {0} ({1}), not {2} unelevated" -f $t.Principal.UserId, $t.Principal.RunLevel, $me)
+    }
+    if ($t.Settings.MultipleInstances -ne "IgnoreNew" -or $t.Settings.ExecutionTimeLimit -ne "PT10M") { return "its settings differ" }
+    if ($t.State -eq "Disabled") { return "disabled" }
+    ""
 }
 
 function StopAll {
@@ -317,11 +358,14 @@ switch ($Verb) {
             default { Say "server: started, not ready yet; fcpm pool shows it" }
         }
     }
+    "check" {
+        $why = TaskDiffers
+        if (-not $why) { "same      task '$TaskName' (held by machines/pool.ps1)"; exit 0 }
+        "differs   task '$TaskName': $why"; exit 1
+    }
     "install" {
-        $ps = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
         # conhost --headless: no window flashes on a shared desktop every pass.
-        $act = New-ScheduledTaskAction -Execute "conhost.exe" -WorkingDirectory $Root `
-            -Argument ("--headless `"{0}`" -NoProfile -ExecutionPolicy Bypass -File `"{1}`" pass" -f $ps, $PSCommandPath)
+        $act = New-ScheduledTaskAction -Execute "conhost.exe" -WorkingDirectory $Root -Argument (TaskArgs)
         $me = "$env:USERDOMAIN\$env:USERNAME"
         $atLogon = New-ScheduledTaskTrigger -AtLogOn -User $me
         $every = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
@@ -329,7 +373,7 @@ switch ($Verb) {
             -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew
         $who = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
         Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($atLogon, $every) -Settings $set `
-            -Principal $who -Description "$Bay's root: keep the Remote Control server up in $Root. bin\pool.ps1." -Force | Out-Null
+            -Principal $who -Description "$Bay's root: keep the Remote Control server up in $Root. machines\pool.ps1, held by the MANIFEST." -Force | Out-Null
         Write-Output "registered '$TaskName': at logon, and every minute"
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }
