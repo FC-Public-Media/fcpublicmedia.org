@@ -113,7 +113,9 @@ ours, so when YouTube complains, the evidence is here.
 The stream's three lines (fetch, ingest, youtube) run on DJ, worn by its own crew ([`../dj`](../dj/PROFILE.md));
 "this box" below is DJ. The floor, the jukebox, the page and `lay` stay on digitization. DJ's `youtube` line
 takes the key from the keychain into the relay's environment only (`keys run youtube --`), and tells the floor
-who has the air through ch97's `/air` (`FCPM_AIR`).
+who has the air through ch97's `/air` (`FCPM_AIR`). Its [`relay-door`](relay-door) line (`:8483`) gives
+`relay.json` to anyone and takes Stop, Start and Restart from a helm (`../helms.yml`), so Helm's YouTube card on
+digitization shows and switches the relay on DJ.
 
 [`fetch`](fetch), the crew's `fetch` line, reads the channel's live stream from the box itself
 (`https://10.1.10.84/live-5/...`, the HLS that Reflect copies to the web): the largest picture and

@@ -5,3 +5,4 @@ follow          keep        machines/dj
 ingest          keep        machines/broadcast
 fetch           keep        machines/broadcast
 youtube         keep        machines/dj
+relay-door      keep        machines/broadcast

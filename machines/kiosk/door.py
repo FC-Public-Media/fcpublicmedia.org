@@ -1485,13 +1485,9 @@ def board_now():
 
     def broadcast():
         on = []
-        try:                                     # our relay's own word (machines/broadcast/relay), kept for any screen
-            r = json.loads((pathlib.Path.home() / ".local/state/fcpm/broadcast/relay.json").read_text(encoding="utf-8"))
-            if r.get("state") == "pushing":
-                on.append("YouTube %s" % (r.get("target") or ""))
-        except (OSError, ValueError):
-            pass
-        d = broadcast_now()
+        d = broadcast_now()                      # our relay's own word is its card (relay_now), wherever it runs
+        if any(x.get("name") == "YouTube" and x.get("again") for x in d.get("destinations") or []):
+            on.append("YouTube primary")
         on += [x.get("name") for x in d.get("destinations") or [] if x.get("on")]
         return {"say": "on air: %s" % ", ".join(on).strip(), "on": "air"} if on else {"say": d.get("why") or "off the air"}
 
@@ -4763,25 +4759,59 @@ def standby_now(on=None):
             "said": words.get(said.get("state"), said.get("why") or said.get("state") or "")}
 
 
+def relay_host():
+    """The host whose crew runs the relay (a `youtube` line in its job's services), or None for this machine."""
+    import replies
+    for services in sorted((ROOT / "machines").glob("*/services")):
+        if not any(l.split()[:1] == ["youtube"] for l in services.read_text(encoding="utf-8").splitlines()):
+            continue
+        if services.parent.name in replies.wears():
+            return None
+        names = services.parent / "names"
+        for line in names.read_text(encoding="utf-8").splitlines() if names.is_file() else []:
+            w = line.split("#")[0].split()
+            if w[:2] == ["linux", "Hostname"] and len(w) == 3:
+                return w[2] + ".local"
+    return None
+
+
 def relay_now(on=None, again=False):
-    """Our relay to YouTube's primary ingest, where this machine runs it: {name, on, again, said}, or None.
-    Switched by its files (relay.off, relay.again), which the relay reads every two seconds."""
-    try:
-        said = json.loads((STANDBY_STATE / "relay.json").read_text())
-    except (OSError, ValueError):
-        return None
-    off = STANDBY_STATE / "relay.off"
-    if on is not None:
-        if on:
-            off.unlink(missing_ok=True)
-        else:
-            off.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
-    if again and not off.exists():
-        (STANDBY_STATE / "relay.again").write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
+    """Our relay to YouTube's primary ingest: {name, on, again, said}, or None where nothing runs it. Here, switched
+    by its files (relay.off, relay.again), which the relay reads every two seconds; on another machine, by its
+    relay-door (machines/broadcast/relay-door), which takes a helm's word."""
+    host = relay_host()
+    if host:
+        import urllib.request
+        do = {True: "on", False: "off"}.get(on) or ("again" if again else None)
+        url = "http://%s:8483/relay" % host
+        try:
+            req = urllib.request.Request(url, data=json.dumps({"do": do}).encode(),
+                                         headers={"Content-Type": "application/json"}) if do else url
+            with urllib.request.urlopen(req, timeout=4) as r:
+                said = json.loads(r.read())
+        except (OSError, ValueError) as e:
+            return {"name": "YouTube", "on": True, "free": True, "again": False,
+                    "said": "%s's relay did not answer (%s)" % (host.split(".")[0], getattr(e, "reason", e))}
+        off = bool(said.get("off"))
+    else:
+        try:
+            said = json.loads((STANDBY_STATE / "relay.json").read_text())
+        except (OSError, ValueError):
+            return None
+        path = STANDBY_STATE / "relay.off"
+        if on is not None:
+            if on:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
+        if again and not path.exists():
+            (STANDBY_STATE / "relay.again").write_text(time.strftime("%Y-%m-%dT%H:%M:%S%z") + "\n")
+        off = path.exists()
     pushing = said.get("state") == "pushing"
-    words = {"pushing": "Sending to YouTube's primary since %s" % (said.get("since") or "")[11:16],
+    where = " (%s)" % host.split(".")[0] if host else ""
+    words = {"pushing": "Sending to YouTube's primary since %s%s" % ((said.get("since") or "")[11:16], where),
              "off": "Off: nothing of ours reaches YouTube's primary"}
-    return {"name": "YouTube", "on": not off.exists(), "free": True, "again": pushing and not off.exists(),
+    return {"name": "YouTube", "on": not off, "free": True, "again": pushing and not off,
             "said": words.get(said.get("state"), said.get("why") or said.get("state") or "")}
 
 
