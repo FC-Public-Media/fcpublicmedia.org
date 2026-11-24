@@ -196,7 +196,8 @@ def proven(m, tree):
 
 def tool(*cmd):
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        env = dict(os.environ, PATH="/opt/node/bin:" + os.environ.get("PATH", "/usr/bin:/bin"))
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, env=env)
         return one_line((r.stdout or r.stderr).strip().splitlines()[0]) if (r.stdout or r.stderr).strip() else "?"
     except (OSError, subprocess.TimeoutExpired):
         return "none"
@@ -243,8 +244,8 @@ def run(full, checks, m, commit, tree, made, ordered=None):
     lines.append("on " + system())
     lines.append("tools python %s, git %s, ruby %s, bundler %s, node %s, npm %s" % (
         platform.python_version(), tool("git", "--version").split()[-1], tool("ruby", "-e", "print RUBY_VERSION"),
-        tool("bundle", "--version").split()[-1], tool("/opt/node/bin/node", "--version"),
-        tool("/opt/node/bin/npm", "--version")))
+        tool("bundle", "--version").split()[-1], tool("node", "--version"),
+        tool("npm", "--version")))
     lines.append("started " + utc(started))
     logs, results = {}, []
     try:
@@ -261,8 +262,9 @@ def run(full, checks, m, commit, tree, made, ordered=None):
         n, stopped = 0, None
         for s in todo:
             if "uses" in s:
-                lines.append("given %s %s: by %s's own tools (above)" % (
-                    s["uses"], json.dumps(s.get("with") or {}, sort_keys=True), hostname()))
+                if not s.get("if"):
+                    lines.append("given %s %s: by %s's own tools (above)" % (
+                        s["uses"], json.dumps(s.get("with") or {}, sort_keys=True), hostname()))
                 continue
             n += 1
             if s.get("if"):

@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.dont_write_bytecode = True                          # no __pycache__ in machines/ (test_binding counts its folders)
 sys.path.insert(0, str(ROOT / "machines"))
 import proof  # noqa: E402
 

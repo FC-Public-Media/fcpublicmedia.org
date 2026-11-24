@@ -8,6 +8,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 |---|---|
 | [`addresses.md`](addresses.md) | the front doors: the names in the building, the one number away, the site |
 | [`OPEN.md`](OPEN.md) | everything not built, not decided, or known wrong |
+| [`proofs.md`](proofs.md) | proofs: a signed statement that a tree was tested and what the tests said, made by DJ, kept on `retain/proofs` |
 | [`issues.md`](issues.md) | issues: `.issues`, one file at a repository's root, a line each, and the history git keeps of every line |
 | [`site.md`](site.md) | the site: layout, build, pages, languages, data, tests, deploy, domain, redirects |
 | [`programming.md`](programming.md) | Cablecast, the schedule, feeds, shows, classes and class mode |
