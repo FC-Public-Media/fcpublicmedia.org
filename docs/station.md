@@ -131,7 +131,7 @@ the committed file in the mirror, never a copy that could drift from it.
 | `path` | a home folder put on the user's PATH |
 | `system` | a script in the profile holding a file of the system's (`script check`, `script install`); the path is `-` |
 | `held` | a script holding something of this machine's that is no file, a scheduled task (`script check`, `script install`), run from the repository; install runs it whenever check says differs, unattended too. The path is `-` |
-| `gone` | a home path no longer mapped (the profile path is `-`): removed when a commit holds its very contents, else named `stray` and left; kept while a `held` line before it did not take |
+| `gone` | a home path no longer mapped (the profile path is `-`): removed when a commit holds its contents (as text: line endings and trailing blank lines aside), else named `stray` and left; kept while a `held` line before it did not take |
 
 ## Sessions
 

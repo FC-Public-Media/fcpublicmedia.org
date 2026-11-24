@@ -122,13 +122,18 @@ while read -r mode src dst <&3; do
         held_failed=1; rc=1
       fi ;;
     held:mirror) ;;
-    # gone - <home path>: a path this profile no longer maps. Removed when a commit here holds its very
+    # gone - <home path>: a path this profile no longer maps. Removed when a commit here holds its
     # contents (git has it back), else left and named: sync never destroys what only this machine has.
+    # Contents are the text: line endings and trailing blank lines say nothing, so a CRLF copy or a
+    # draft with blank lines after it is still the committed file.
     gone:status|gone:install)
       [ -e "$to" ] || continue
       # Named, not a failure to install: the pool's pass would otherwise try again every minute.
       if [ -d "$to" ]; then echo "stray     ~/$dst (unmapped, a folder: look, then remove it)"; [ "$cmd" = status ] && rc=1; continue; fi
       blob=$(git -C "$REPO" hash-object --no-filters -- "$to" 2>/dev/null)
+      if [ -n "$blob" ] && ! git -C "$REPO" cat-file -e "$blob" 2>/dev/null; then
+        blob=$(tr -d '\r' < "$to" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' | git -C "$REPO" hash-object --stdin 2>/dev/null)
+      fi
       if [ -z "$blob" ] || ! git -C "$REPO" cat-file -e "$blob" 2>/dev/null; then
         echo "stray     ~/$dst (unmapped, and in no commit here: look, then delete it)"; [ "$cmd" = status ] && rc=1
       elif [ "$cmd" = status ]; then echo "stray     ~/$dst (unmapped; a commit holds it, so install removes it)"; rc=1

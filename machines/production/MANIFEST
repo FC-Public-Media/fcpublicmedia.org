@@ -5,6 +5,9 @@
 mirror  home/code/CLAUDE.md    code/CLAUDE.md
 mirror  home/code/AGENTS.md    code/AGENTS.md
 mirror  home/code/BAY1.md      code/BAY1.md
+# The drafts of that chain, from before it went in (b7e0ab7).
+gone    -                      code/new-CLAUDE.md
+gone    -                      code/new-AGENTS.md
 mirror  ../../bin/refs         code/bin/refs
 mirror  code/refs.wanted       code/refs.wanted
 
