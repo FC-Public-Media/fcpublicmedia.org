@@ -19,5 +19,6 @@ ff() {
 cd "$(dirname "$0")/../.." || exit 1
 ff . || exit 1
 B=${FCPM_BROADCAST:-$HOME/.local/share/fcpm/broadcast}
-[ -d "$B/.git" ] || GIT_TERMINAL_PROMPT=0 git clone -q fcpm-origin:/srv/origin/FC-Public-Media/broadcast "$B"
+git -C "$B" rev-parse -q --verify HEAD >/dev/null 2>&1 || { rm -rf "$B"     # the origin's repos name no HEAD: main by name
+  GIT_TERMINAL_PROMPT=0 git clone -q -b main fcpm-origin:/srv/origin/FC-Public-Media/broadcast "$B"; }
 ff "$B"
