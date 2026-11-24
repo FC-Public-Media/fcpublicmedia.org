@@ -14,12 +14,11 @@ helms:
     called: bay 1
     at: http://10.209.1.20:8080
     holds: [wizard:model+up, wizard:library+ask, wizard:library+urgent]   # the library here: docs/library.md
-  # Bay 2's models, the same wizard: only a reply naming `job: editing-bay-2` comes here (replies.py,
-  # holder). It has no address on the switched network yet, so such a reply waits until `at:` is filled.
+  # Bay 2's models, the same wizard: only a reply naming `job: editing-bay-2` comes here (replies.py, holder).
   editing-bay-2:
     letter: "2"
     called: bay 2
-    at: ""
+    at: http://10.209.1.52:8080
     holds: [wizard:model+up, wizard:library+ask, wizard:library+urgent]   # the library here: docs/library.md
 
 # Intakes: boxes that keep what their camera and their /drop catch, and hand every reply to a helm, applying
