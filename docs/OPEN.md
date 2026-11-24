@@ -150,6 +150,9 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name), and the kiosk's `fcpm weekly` task (the bays' pool does the weekly pull).
 - Bay 2 brings in main two ways: its crew's `follow` line every 15 minutes and the pool. One machine, one way: the twins as instances of one thing.
 - The default `gear.yml` claude-code winget id is unconfirmed.
+- Administrator steps wait unseen: the pool's pass prints `waiting`, and runs `sync install`, not `fcpm install`. docs/elevation.md
+- `machines/fcpm`'s proof on production names a blob long gone.
+- `keep` runs on the origin only once it is outfitted again (`machines/origin/install fcpm@origin.local`).
 
 ## Jobs and services
 
