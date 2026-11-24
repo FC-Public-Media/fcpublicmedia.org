@@ -1,0 +1,12 @@
+#!/bin/sh
+# sudo, for the user proofs run as (../../proof.py): it raises nothing. A step that asks for system packages
+# (`playwright install --with-deps`) passes when every one is installed already, and fails naming the ones
+# that are not: those go into ../gear. Anything else asked of it fails.
+want=$(printf '%s\n' "$*" | sed -n 's/.*apt-get install\(.*\)/\1/p' | tr ' ' '\n' | grep -v '^-' | grep -v '^$' | tr -d '"'"'"'&;')
+[ -n "$want" ] || { echo "sudo: steps run without privilege here (machines/dj/proof-shims/sudo): $*" >&2; exit 1; }
+missing=
+for p in $want; do
+  dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed' || missing="$missing $p"
+done
+[ -z "$missing" ] || { echo "sudo: DJ lacks$missing; add to machines/dj/gear" >&2; exit 1; }
+echo "sudo: every package asked for is installed already; nothing raised"

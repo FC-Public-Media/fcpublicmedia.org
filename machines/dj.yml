@@ -12,3 +12,7 @@ serves:
     alive: {process: 'machines/broadcast/relay(\s|$)'}
     needs: [ingest]
     env: {FCPM_AIR: "http://ch97.fcpublicmedia.local/air"}
+
+  - service: proofs
+    for: "what dj/proves names, tested once per tree (every order waiting to land, merged as landing will, and main), each proof signed by DJ's key and kept on the repository's retain/proofs; see ../docs/proofs.md"
+    start: "/usr/bin/python3 -I machines/proof.py watch"

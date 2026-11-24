@@ -6,3 +6,4 @@ ingest          keep        machines/broadcast
 fetch           keep        machines/broadcast
 youtube         keep        machines/dj
 relay-door      keep        machines/broadcast
+proofs          every 1m    machines/dj
