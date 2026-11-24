@@ -9,3 +9,4 @@ secretary     Autumn    -                                       -
 workstation   digitization  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDL8JGISv1fAIISOJDQTaV3z/p4ncm1kNuZ/zYecb/fO  2026-10-21
 workstation   production    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJnofUhPEeYW43yH479XnydwlUGwqzUjtDWF7nuHK5e  2026-11-17
 machine       dj            ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEnuJHjgXU2MPTC0OrqQtDO6LWPyA3MqyT66jtAv4/wH  2026-11-24
+machine       bounce        ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM956MKfUTJ5xul/pr5TbJE0nG4PXMJGTLefjDxTkgqb  2026-11-24
