@@ -105,7 +105,8 @@ older than the live keychain rolls it back to that day:
   key and set down in a data pile that machine listens on, by tell; the library's LAN-only branches at the
   origin carry it. A new machine's first key comes the same way, from the machine provisioning it. Bay 1's
   identity (`identity-production`, minted 2026-11-17) waits here for that.
-- **Moving digitization's raw files** (Cablecast, YouTube) behind `keys run` like the env groups.
+- **Moving digitization's raw files** (Cablecast, YouTube) behind `keys run` like the env groups. A raw group
+  with `env:` and `held: keychain` already goes that way: DJ's `youtube` (`../dj/keys.yml`).
 - **The library** on this box. Transcripts and notes, in wings: one per engine or concern, and
   branches that hold more aisles and are never merged. A resident's scratch space is outside git
   altogether. It needs storage the box can lose without losing itself: a card or SSD in one of the

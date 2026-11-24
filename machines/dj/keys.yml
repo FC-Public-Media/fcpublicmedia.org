@@ -1,0 +1,19 @@
+# The keychain DJ holds: machines/keys reads it on the machine wearing this job. Naming a group here is DJ's
+# grant to it (../keychain/door hands a protected key to a holder whose keys.yml names its group); a group
+# `held: keychain` is never kept on DJ: `keys run` takes it from the keychain into one command's environment.
+
+dir: ~/.config/fcpm/keys
+
+groups:
+  youtube:
+    what: the stream key channel 97's relay sends to.
+    form: raw
+    file: ~/.config/fcpm/youtube.key
+    env: YOUTUBE_KEY
+    held: keychain
+    used by: "dj.yml's youtube line: keys run youtube -- machines/broadcast/relay"
+    keys:
+      key:
+        may: publish to FCPM's YouTube live stream
+        from: "the keychain (digitization's, put 2026-11-16); YouTube Studio: Go live, Stream, Stream key"
+        issued: 2026-10-21

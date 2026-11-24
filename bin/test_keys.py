@@ -86,6 +86,37 @@ class Keys(unittest.TestCase):
         self.assertIn("no nonesuch-command", keys("run", "cloudflare", "--", "nonesuch-command",
                                                   FCPM_KEYS_LEDGER=str(self.ledger)).stderr)
 
+    def test_run_hands_a_raw_value_under_its_env_name_from_the_keychain(self):
+        ledger = self.tmp / "keys.raw.yml"
+        ledger.write_text(textwrap.dedent(f"""\
+            dir: {self.tmp}/held
+            groups:
+              youtube:
+                what: a test group
+                form: raw
+                file: {self.tmp}/youtube.key
+                env: YOUTUBE_KEY
+                keys:
+                  key: {{may: publish, from: a test}}
+              cablecast:
+                what: a raw group with no env name
+                form: raw
+                file: {self.tmp}/cablecast.token
+                keys:
+                  token: {{may: change, from: a test}}
+            """))
+        bin_ = self.tmp / "bin"
+        bin_.mkdir()
+        (bin_ / "ssh").write_text('#!/bin/sh\necho "$@" >> "%s/asked"\nprintf from-the-keychain\n' % self.tmp)
+        (bin_ / "ssh").chmod(0o755)
+        env = dict(FCPM_KEYS_LEDGER=str(ledger), PATH="%s:%s" % (bin_, os.environ["PATH"]))
+        out = keys("run", "youtube", "--", "sh", "-c", 'echo "$YOUTUBE_KEY"', **env)
+        self.assertEqual(out.stdout.strip(), "from-the-keychain")
+        self.assertFalse((self.tmp / "youtube.key").exists())            # never written here
+        (self.tmp / "youtube.key").write_text("held-here\n")
+        self.assertEqual(keys("run", "youtube", "--", "sh", "-c", 'echo "$YOUTUBE_KEY"', **env).stdout.strip(), "held-here")
+        self.assertIn("one raw value", keys("run", "cablecast", "--", "true", **env).stderr)
+
     def test_a_secondary_ledgers_groups_go_to_their_own_keychain(self):
         projects = self.tmp / "keys.projects.yml"
         projects.write_text(textwrap.dedent(f"""\

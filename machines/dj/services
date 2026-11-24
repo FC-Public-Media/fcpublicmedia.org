@@ -1,0 +1,7 @@
+# What DJ runs: `name keep from` or `name every Nm from`. See machines/README.md.
+# The stream: channel 97 fetched into the ingest and carried to YouTube. The floor stays on digitization.
+
+follow          keep        machines/dj
+ingest          keep        machines/broadcast
+fetch           keep        machines/broadcast
+youtube         keep        machines/dj

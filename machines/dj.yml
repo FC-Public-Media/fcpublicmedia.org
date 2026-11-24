@@ -1,0 +1,14 @@
+# What the dj job itself serves, when it orders it (dj/services). See README.md.
+
+serves:
+  - service: follow
+    for: "DJ's orders, by commit: this checkout and the broadcast repository follow origin.local's main, fast-forward only; a line merged into services comes up by itself; see dj/PROFILE.md"
+    start: "/bin/sh machines/dj/follow heed"
+    alive: {process: "machines/dj/follow heed"}
+
+  - service: youtube
+    for: "the broadcast job's relay (channel 97 to YouTube's primary) with the stream key from the keychain, in its environment only; the floor's air is digitization's, by ch97's /air; see dj/PROFILE.md"
+    start: "/usr/bin/python3 -I machines/keys run youtube -- /usr/bin/python3 -I machines/broadcast/relay"
+    alive: {process: 'machines/broadcast/relay(\s|$)'}
+    needs: [ingest]
+    env: {FCPM_AIR: "http://ch97.fcpublicmedia.local/air"}
