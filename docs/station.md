@@ -86,7 +86,7 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | verb | does |
 |---|---|
 | (none) | the watcher, `machines/watch` |
-| `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
+| `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and, where the profile holds no pool, the `fcpm weekly` task. A job named is put on by `sync -p` |
 | `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
 | `refs [status\|pull\|work\|done]` | `bin/refs`: the mirrors in `~/code/refs` (the kiosk's `ref/`) and the worktrees in `~/code/work`, on any machine; `~/code/bin/refs` is the same file, placed for sessions |
@@ -101,8 +101,10 @@ last weekly pull. It offers only what applies: *Make my working copy*, *Bring in
 my changes up* (commit, catch up with `main`, push `<called>`, open or join a PR), *Install the
 updates on this computer*. If edits and the latest change the same lines, it stops; nothing is lost.
 
-`fcpm weekly` runs at sign-in and 7am and works once a week: it pulls every mirror and fast-forwards
-the working copy, never merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). A bare
+`fcpm weekly` works once a week: it pulls every mirror and fast-forwards the working copy, never
+merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). Where the profile holds the pool
+(both bays), the pool's every-minute pass runs it, so the twins do it alike; elsewhere (the kiosk) a
+task of its own runs it at sign-in and 7am. A bare
 machine starts from the start line in [README.md](../README.md), *Setting up a machine*. It fetches
 [`machines/start.ps1`](../machines/start.ps1), which needs only winget: Git (machine-wide), this
 repository cloned or pulled into `~/code/refs/`, every `provisioner: winget` package in the job's
@@ -116,8 +118,10 @@ finds the profile the way `binding` does and reads its `MANIFEST`. `status` (def
 differs and runs the check (`SYNC_CHECK=0` skips it). `install` puts the profile on; a person runs it,
 never a session, and the pool's pass runs it again when the mirror moves and every 15 minutes, so what
 the MANIFEST maps is what is there, whatever was put there by hand. It never destroys what only this
-machine has (a differing file goes to `<name>.pre-sync`, an existing clone is left, a `gone` path no
-commit holds is named and left). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
+machine has, and keeps nothing else: a file it replaces goes to `<name>.pre-sync` only when it had
+changes of its own (never over one already kept), and an aside that holds only what sync had placed,
+as git or its record of the last compiled `settings` has it, is let go. An existing clone is left, and
+a `gone` path no commit holds is named and left. A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
 sets it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
 
 Whatever runs here on its own is mapped: a file by `mirror`, a task by `held`, and a script it runs is
