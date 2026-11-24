@@ -129,7 +129,7 @@ def verify(text, root=REPO_ROOT):
                              "-s", str(sigfile)], input=statement.encode(), capture_output=True)
         if ok.returncode:
             return False, "the signature does not match the statement (%s)" % ok.stderr.decode().strip()[-200:]
-    if f.get("by", "").split(" ")[0] != principal:
+    if re.split(r"[ ,]", f.get("by", ""))[0] != principal:
         return False, "signed by %s, but it says by %s" % (principal, f.get("by"))
     if f.get("repo") not in (proves(principal, root) or {}):
         return False, "%s does not prove %s (machines/%s/proves)" % (principal, f.get("repo"), principal)
@@ -326,8 +326,8 @@ def keep(full, m, tree, text, logs, when):
     f = fields(split(text)[0])[1]
     for attempt in range(3):
         parent = git(m, "rev-parse", "-q", "--verify", "refs/heads/" + BRANCH, check=False).stdout.strip()
-        with tempfile.NamedTemporaryFile() as index:
-            ienv = dict(env, GIT_INDEX_FILE=index.name)
+        with tempfile.TemporaryDirectory() as t:
+            ienv = dict(env, GIT_INDEX_FILE=os.path.join(t, "index"))
             if parent:
                 git(m, "read-tree", parent, env=ienv)
             files = {"%s/%s.proof" % (tree, stamp): text.encode()}
@@ -371,6 +371,9 @@ def prove(full, checks, m, main, tip=None, ordered=None, again=False):
     say(full, "testing", tree[:12], made)
     started = utc()
     text, logs = run(full, checks, m, commit, tree, made, ordered)
+    made_here = HOME / "made" / full / tree
+    made_here.mkdir(parents=True, exist_ok=True)                       # kept here first: a failed push loses nothing
+    (made_here / (started.replace("-", "").replace(":", "") + ".proof")).write_text(text)
     keep(full, m, tree, text, logs, started)
     say(full, "proof", tree[:12], fields(split(text)[0])[1].get("result"))
     return text
