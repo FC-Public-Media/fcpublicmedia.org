@@ -147,10 +147,10 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
 - The pool restarts the `production` supervisor too. machines/pool.ps1
-- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name), and the kiosk's `fcpm weekly` task (the bays' pool does the weekly pull).
-- Bay 2 brings in main two ways: its crew's `follow` line every 15 minutes and the pool. One machine, one way: the twins as instances of one thing.
+- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name), and the kiosk's `fcpm weekly` task (the bays' crews' `follow` line does the weekly pull).
+- A new crew.py waits for the pool to restart the supervisor, so for someone signed in; a supervisor that restarts itself would not.
 - The default `gear.yml` claude-code winget id is unconfirmed.
-- Administrator steps wait unseen: the pool's pass prints `waiting`, and runs `sync install`, not `fcpm install`. docs/elevation.md
+- Administrator steps wait unseen: the crew's `follow` line prints `waiting`, and runs `sync install`, not `fcpm install`. docs/elevation.md
 - `machines/fcpm`'s proof on production names a blob long gone.
 - `keep` runs on the origin only once it is outfitted again (`machines/origin/install fcpm@origin.local`).
 
@@ -194,3 +194,4 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - EdgeRouter X: joining the studio network, a preparation script, firmware.
 - PTZ: read each camera on arrival; how a show holds one; the board's policy on behind-the-scenes recording and a 24-hour stream.
 - Nest Cam: which app still sets it up was never checked.
+- `machines/editing-bay-2/follow` is a one-line shim to `../follow`, kept one release past the shared follow line; remove it once bay 2 runs the new line.

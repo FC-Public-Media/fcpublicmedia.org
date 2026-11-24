@@ -42,7 +42,7 @@ reached from here. It is part of `fcpm install`, like everything else this bay c
 back in) and `../lan.py names`, each name at the IPv4 its holder answers mDNS with now; shows what
 changes; and asks Windows for an administrator, whose half writes exactly the file shown (by its
 sha256), keeps the old one as `%LOCALAPPDATA%\editing-bay-1\hosts.prior`, and flushes the DNS cache.
-Only `fcpm install` asks; the pool's pass leaves it differing. A change only in dates
+Only `fcpm install` asks; the crew's `follow` line leaves it differing. A change only in dates
 is none. A name nobody answers for keeps its line. A line from neither source stays, commented `#!`,
 until `hosts` names what it named or a person deletes it. `hosts.ps1 status` explains every line.
 

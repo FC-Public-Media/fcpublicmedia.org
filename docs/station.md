@@ -90,7 +90,7 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
 | `refs [status\|pull\|work\|done]` | `bin/refs`: the mirrors in `~/code/refs` (the kiosk's `ref/`) and the worktrees in `~/code/work`, on any machine; `~/code/bin/refs` is the same file, placed for sessions |
-| `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged; on the kiosk, the door fetches |
+| `dev on`, `dev off` | on: the crew's `follow` line pulls this repository every 5 minutes; off, weekly. Either way it places what merged ([`machines/follow`](../machines/follow)); on the kiosk, the door fetches |
 | `audition`, `drobo`, `share`, `audit`, `hosts` | the profile's own `.ps1` of that name |
 | `recorder`, `screen`, `crew`, `pools`, `post`, `camera`, `ti89` | [troves](../troves/README.md) and [machines](../machines/README.md) |
 
@@ -103,7 +103,7 @@ updates on this computer*. If edits and the latest change the same lines, it sto
 
 `fcpm weekly` works once a week: it pulls every mirror and fast-forwards the working copy, never
 merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). Where the profile holds the pool
-(both bays), the pool's every-minute pass runs it, so the twins do it alike; elsewhere (the kiosk) a
+(both bays), the crew's `follow` line runs it, so the twins do it alike; elsewhere (the kiosk) a
 task of its own runs it at sign-in and 7am. A bare
 machine starts from the start line in [README.md](../README.md), *Setting up a machine*. It fetches
 [`machines/start.ps1`](../machines/start.ps1), which needs only winget: Git (machine-wide), this
@@ -116,13 +116,13 @@ does not list the computer yet is put on all the same, with a warning.
 `machines/sync [-p PROFILE] [status | install | mirror]` is shell, for machines without Python. It
 finds the profile the way `binding` does and reads its `MANIFEST`. `status` (default) says what
 differs and runs the check (`SYNC_CHECK=0` skips it). `install` puts the profile on; a person runs it,
-never a session, and the pool's pass runs it again when the mirror moves and every 15 minutes, so what
+never a session, and the crew's `follow` line runs it again when the mirror moves and every 15 minutes, so what
 the MANIFEST maps is what is there, whatever was put there by hand. It never destroys what only this
 machine has, and keeps nothing else: a file it replaces goes to `<name>.pre-sync` only when it had
 changes of its own (never over one already kept), and an aside that holds only what sync had placed,
 as git or its record of the last compiled `settings` has it, is let go. An existing clone is left, and
 a `gone` path no commit holds is named and left. A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
-sets it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
+sets it; the crew's `follow` line, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
 
 Whatever runs here on its own is mapped: a file by `mirror`, a task by `held`, and a script it runs is
 the committed file in the mirror, never a copy that could drift from it.
