@@ -1,6 +1,6 @@
 # production
 
-Editing bay 1 by its sticker; Windows answers to `EDIT2`. The studio's strongest machine. Its state
+Editing bay 1 by its sticker; Windows answers to `BAY1`. The studio's strongest machine. Its state
 on disk keeps the profile's old name, `%LOCALAPPDATA%\editing-bay-1\` (the OBS install, the pool's
 task and log, the Whisper models), and so does the `editing-bay-1 pool` task. Profiles, sync and
 grants: [docs/station.md](../../docs/station.md).
@@ -17,7 +17,7 @@ grants: [docs/station.md](../../docs/station.md).
 
 | file | what it is |
 |---|---|
-| `names`, `called` | `windows ComputerName EDIT2`; `production` |
+| `names`, `called` | `windows ComputerName BAY1`; `production` |
 | `MANIFEST` | carries `code/`, the root's instructions in `home/code/` (`CLAUDE.md` -> `AGENTS.md` -> `BAY1.md` -> `code/AGENTS.md`), the git ignore (`.pr`), `fcpm.cmd`, `~/.local/bin` on PATH, and the compiled GRANTS |
 | `code/` | the `~/code` root: `AGENTS.md` (read in place from the mirror), `bin/refs`, `bin/pool.ps1`, `refs.wanted` (the mirrors) |
 | `GRANTS` | admits the recorder's OBS cycle; denies stopping any process by name |

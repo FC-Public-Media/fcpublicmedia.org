@@ -13,7 +13,7 @@ Your work\ and refs\ revolve around tooling provided by:
 
 `fcpm install` keeps this outpost current, mirroring canonical for LAN peers.
 
-## Orientation: Bay 2 (user "fcpme", device "FCPMEDIT2")
+## Orientation: Bay 2 (user "fcpme", device "BAY2")
 
 `C:\Users\fcpme\code` is our root.
 `refs\` is available for worktree sources, or study.

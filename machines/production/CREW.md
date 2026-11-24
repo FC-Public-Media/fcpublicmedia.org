@@ -1,7 +1,7 @@
 # production
 
 Production looks after the recordings after they land: the pools, their transcription, the episodes and
-their release. Editing bay 1 (`EDIT2`) wears it. Jobs and the supervisor: [`machines/README.md`](../README.md).
+their release. Editing bay 1 (`BAY1`) wears it. Jobs and the supervisor: [`machines/README.md`](../README.md).
 
 ## Contract
 

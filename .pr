@@ -1,8 +1,0 @@
-machines/editing-bay-2: a root at ~/code, by bay 1's method
-
-1. [x] pool.ps1 knows its bay by its computer's `names`: state, task, crew; the roller's screen stays bay 1's
-2. [x] Bay 2's root: CLAUDE.md -> AGENTS.md -> BAY2.md -> code/AGENTS.md, bin/refs, pool.ps1, refs.wanted, git ignore, settings from GRANTS
-3. [x] gear.yml: claude-code by hand; PROFILE.md: its root, and no "without an agent"
-4. [ ] Draft PR, reviewer tiliv. Tests: no new failures (bay 2 lacks Developer Mode, so symlink tests fail here)
-5. [ ] At FCPMEDIT2, after merge: Claude Code from the vendor's installer, opened once in ~/code; fcpm pool install; fcpm crew install
-6. [ ] reset .pr to main's (empty) before merge
