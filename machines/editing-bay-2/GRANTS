@@ -1,0 +1,24 @@
+# GRANTS: editing bay 2's answer to ../RUNNABLES. Line types: docs/station.md, GRANTS.
+
+checkout  refs/fcpublicmedia.org
+
+wears  bin/runnables
+wears  machines/binding
+wears  machines/fcpm
+wears  machines/keys
+
+runner  powershell  Bash        powershell -NoProfile -ExecutionPolicy Bypass -File
+runner  powershell  PowerShell  &
+runner  sh          Bash
+runner  python      Bash        uv run --no-project --python 3.12 --with pyyaml python
+
+# A shared machine: never stop a process by name.
+host  deny  PowerShell(Stop-Process -Name *)
+host  deny  PowerShell(Stop-Process -ProcessName *)
+host  deny  PowerShell(kill -Name *)
+host  deny  PowerShell(taskkill /IM *)
+host  deny  Bash(taskkill /IM *)
+host  deny  Bash(taskkill //IM *)
+host  deny  Bash(taskkill -im *)
+host  deny  Bash(pkill *)
+host  deny  Bash(killall *)
