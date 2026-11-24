@@ -66,6 +66,7 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
     GET /revision          what a screen polls: <commit>-<kiosk revision>[-<ti-89 commit>]
     POST /key/unlock       the signing key into this session's agent, its passphrase asked on this screen; this box only
     POST /dev/on, /dev/off `fcpm dev`: GitHub asked every ten minutes, or weekly; this box only. The board shows it to all
+    POST /studio-camera/on, /off   the USB camera's console (troves/camera), opened from the board; this box only
 
 Runs from the fixed venv %LOCALAPPDATA%\\media-node\\venv (pyyaml, qrcode), so the firewall asks once.
 """
@@ -783,6 +784,52 @@ def camera_state():
             "said": said, "awake": awake_windows()}
 
 
+# ------------------------------------------------------------ studio camera --
+# The USB camera's console (troves/camera), started from the board and nowhere else.
+STUDIO = ROOT / "troves" / "camera" / "camera.py"
+STUDIO_URL = "http://127.0.0.1:8790/"
+_studio = {"proc": None}
+
+
+def studio_here():
+    return os.name == "nt" and STUDIO.exists()
+
+
+def studio_up():
+    try:
+        with socket.create_connection(("127.0.0.1", 8790), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def studio_on():
+    if studio_up():
+        return True
+    uv = shutil.which("uv") or os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WinGet", "Links", "uv.exe")
+    p = subprocess.Popen([uv, "run", "--no-project", "--python", "3.12", "--with", "comtypes", "--with", "pyyaml",
+                          str(STUDIO), "console", "--no-open"], cwd=str(STUDIO.parent), creationflags=NO_WINDOW,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _studio["proc"] = p
+    for _ in range(120):
+        if studio_up():
+            log("studio camera: on")
+            return True
+        if p.poll() is not None:
+            break
+        time.sleep(0.25)
+    log("studio camera: did not come up")
+    studio_off()
+    return False
+
+
+def studio_off():
+    p, _studio["proc"] = _studio["proc"], None
+    if p is not None and p.poll() is None:
+        subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True, creationflags=NO_WINDOW)
+        log("studio camera: off")
+
+
 # ------------------------------------------------------------------- the key --
 # THE SIGNING KEY: the machine's own SSH key (GitHub's "FCPM Digitization") signs commits once it is in
 # this desktop's ssh-agent. Asked from this computer only; the passphrase goes into a dialog on this
@@ -1395,6 +1442,13 @@ def board_page(here=False, host=""):
         switches.append('<div class="row switch"><b>Signing key</b><span class=says>%s</span>%s</div>' % (
             "unlocked" if key == "unlocked" else "locked",
             "" if key == "unlocked" else button("/key/unlock", "Unlock")))
+    if here and studio_here():
+        up = studio_up()
+        ours = _studio["proc"] is not None and _studio["proc"].poll() is None
+        switches.append('<div class="row switch"><b>Studio camera</b><span class=says>%s</span>%s</div>' % (
+            "its console is open" if up else "the USB camera's console",
+            ('<a href="%s">Open</a>' % STUDIO_URL + (button("/studio-camera/off", "Stop") if ours else ""))
+            if up else button("/studio-camera/on", "Open")))
     switches += ['<div class="row switch"><b>%s</b><span class=says>%s</span></div>' % (
         e(n["ssid"]), "Wi-Fi code ready" if n["ready"] else "no password here yet") for n in networks()]
     nouns.append(("Machine", None))
@@ -3562,6 +3616,19 @@ class Door(BaseHTTPRequestHandler):
             if not isinstance(ask, dict):
                 return self.reply(400, json.dumps({"ok": False, "said": "asks in JSON"}), TYPES[".json"])
             return self.reply(200, json.dumps(workshed_do(ask)), TYPES[".json"])
+        if mine and route == "/studio-camera/on" and studio_here():
+            if not studio_on():
+                return self.reply(503, shell("Studio camera", "<p>Its console did not start; the helm's log says why.</p>"))
+            self.send_response(303)
+            self.send_header("Location", STUDIO_URL)
+            self.end_headers()
+            return
+        if mine and route == "/studio-camera/off":
+            studio_off()
+            self.send_response(303)
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
         if mine and route in ("/key/unlock", "/dev/on", "/dev/off"):
             if route == "/key/unlock":
                 key_unlock()                                   # answered on this screen
