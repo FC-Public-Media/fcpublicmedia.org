@@ -234,13 +234,21 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
   sends. A tank or field the worker doesn't have yet stops the deploy, named, with nothing uploaded; a worker
   that can't be asked stops it too. The probe ends in a field no tank has, so the worker refuses it before
   keeping anything. On 2026-10-28 `/learn` sent `instructor@2` for 80 minutes before the worker had it.
-- The board's **Deploy** (`/deploy/`, on every helm) shows what is live beside main and sets down
-  `wizard:site+deploy` naming main's commit. The helm whose job holds it in `machines/helms.yml` runs
-  `bin/deploy-site` if its checkout is at that commit, one deploy at a time, into `deploy.log` beside its
-  replies; any other helm passes the bottle there. Moving the deploy to another machine is that one line.
-- The same page lists the pull requests waiting to merge into main: title, author, each check's result and
-  whose review is asked, linked to GitHub. It asks with that helm's own `gh`, once a minute, so it shows what
-  GitHub's inbox would, without the inbox. A helm without `gh` signed in leaves the list off.
+- The board's **Deploy** (`/deploy/`, on every helm) deploys our origin's main and nothing else. It asks our
+  origin which commit main is (the origin door's `look`, every 15 seconds while the page is open) and shows it
+  beside what is live and what the helm's checkout holds, with one sentence on how they stand: the same, behind
+  (follow brings the checkout to the origin's main within seconds of it moving, five minutes at most), or ahead
+  or apart (never deployed). The button names our origin's main and is off unless the checkout is that commit.
+  It sets down `wizard:site+deploy`; the helm whose job holds it in `machines/helms.yml` asks our origin again,
+  and runs `bin/deploy-site` on that commit (`FCPM_DEPLOY_REV`) only if its checkout and our origin's main are
+  both that commit, one deploy at a time, into `deploy.log` beside its replies. A moved main or an origin that
+  doesn't answer leaves the bottle held, with the reason. Any other helm passes the bottle there. Moving the
+  deploy to another machine is that one line.
+- The same page says how GitHub's main stands beside ours, as our origin last saw it: commits GitHub has that
+  ours hasn't taken yet (the origin takes them on its ten-minute beat if they merge clean), and ours the relay
+  hasn't carried out yet. The page asks GitHub nothing; GitHub is a copy and never decides what deploys. Below,
+  the branches waiting on our origin (not in main, so not in a deploy), from the same `look`, landed on Helm's
+  `/origin/`.
 - It fetches nothing. The site's data (`cablecast.json`, `airings.json`, `nonprofits.json`) is committed to main weekly by digitization's `refresh`
   ([the sync jobs](programming.md#sync-jobs)), so the cloud, the LAN and the tests build the same thing.
 - A push to GitHub deploys nothing. No GitHub Actions workflow deploys the site, and no other host

@@ -6,8 +6,9 @@
 #
 #   bin/deploy-site            build HEAD's site/ and upload it as fcpm-new's production (branch main)
 #   bin/deploy-site --build    build and run the publish checks; upload nothing, keep the copy and say where
+#   FCPM_DEPLOY_REV=<commit>   that commit instead of HEAD (Helm's Deploy names the one it checked)
 #
-# It works in a throwaway copy of HEAD, so this checkout is never touched. It fetches nothing: the site's data
+# It works in a throwaway copy of that commit, so this checkout is never touched. It fetches nothing: the site's data
 # is on main already (digitization's `refresh`, weekly; docs/programming.md#sync-jobs). A form whose tank or field the live
 # site-worker doesn't have yet stops it, before anything is uploaded (site/bin/tanks_live.py).
 
@@ -26,7 +27,7 @@ case "$(uname -s)" in
      esac ;;
 esac
 COPY="$(mktemp -d)/site-deploy"
-git -C "$ROOT" worktree add --quiet --detach "$COPY" HEAD
+git -C "$ROOT" worktree add --quiet --detach "$COPY" "${FCPM_DEPLOY_REV:-HEAD}"
 done_with_copy() { git -C "$ROOT" worktree remove --force "$COPY"; rmdir "$(dirname "$COPY")"; }
 [ "${1:-}" = --build ] || trap done_with_copy EXIT
 
