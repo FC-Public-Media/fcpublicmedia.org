@@ -42,6 +42,46 @@ if [ -z "$profiles" ]; then
   exit 0
 fi
 
+# Whether a file at home holds nothing of its own: git has its text back (line endings and trailing
+# blank lines aside), or it is what sync last compiled there (`settings`, never stored in git).
+PLACED="${LOCALAPPDATA:-$HOME/.local/state}/fcpm/placed"
+text_blob() { tr -d '\r' < "$1" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' | git -C "$REPO" hash-object --stdin 2>/dev/null; }
+committed() {
+  _b=$(git -C "$REPO" hash-object --no-filters -- "$1" 2>/dev/null)
+  [ -n "$_b" ] && git -C "$REPO" cat-file -e "$_b" 2>/dev/null && return 0
+  _b=$(text_blob "$1"); [ -n "$_b" ] && git -C "$REPO" cat-file -e "$_b" 2>/dev/null
+}
+record() { mkdir -p "$PLACED" && text_blob "$1" > "$PLACED/$(printf '%s' "$2" | tr '/' '%')"; }
+recorded() { _r="$PLACED/$(printf '%s' "$2" | tr '/' '%')"; [ -f "$_r" ] && [ "$(text_blob "$1")" = "$(cat "$_r")" ]; }
+# Every line of $1 is in $2, commas and indentation aside: an older compile holds no grant of its own.
+lines_in() {
+  _n=$(mktemp) || return 1
+  sed 's/,[[:space:]]*$//; s/^[[:space:]]*//' "$2" | tr -d '\r' > "$_n"
+  if sed 's/,[[:space:]]*$//; s/^[[:space:]]*//' "$1" | tr -d '\r' | grep -vxF -f "$_n" | grep -q .; then _s=1; else _s=0; fi
+  rm -f "$_n"; return $_s
+}
+ours() { committed "$1" || recorded "$1" "$2"; }
+
+# A file sync is about to replace: set aside only if it holds something of its own (a person's
+# edit); what sync itself placed there, git or its record has back, so it is let go.
+replace() {   # TO DST
+  [ -e "$1" ] || return 0
+  ours "$1" "$2" && { rm -f "$1"; return 0; }
+  # Never over an aside still kept: that one is a person's too.
+  _to="$1.pre-sync"; [ -e "$_to" ] && _to="$1.pre-sync.$(date +%Y%m%d%H%M%S)"
+  mv "$1" "$_to" && echo "aside     ~/$2 -> $(basename "$_to") (it had changes of its own)"
+}
+# An aside left by an earlier install: let go when it holds nothing of its own, else named.
+aside() {   # TO DST [COMPILED]
+  for _a in "$1.pre-sync" "$1".pre-sync.*; do
+    [ -e "$_a" ] || continue; _d="${_a#"$HOME"/}"
+    if ours "$_a" "$2" || { [ -n "${3:-}" ] && [ -e "$1" ] && lines_in "$_a" "$1"; }; then
+      if [ "$cmd" = install ]; then rm -f "$_a" && echo "let go    ~/$_d (only what sync had placed)"
+      else echo "stray     ~/$_d (only what sync had placed; install lets it go)"; rc=1; fi
+    else echo "kept      ~/$_d (it had changes of its own: look, then delete it)"; fi
+  done
+}
+
 # One pass per job this machine wears; a pass's `exit` ends only that pass.
 all=0
 for profile in $profiles; do
@@ -61,12 +101,15 @@ while read -r mode src dst <&3; do
       if [ ! -e "$to" ]; then echo "missing   ~/$dst"; rc=1
       elif cmp -s "$from" "$to"; then echo "same      ~/$dst"
       else echo "differs   ~/$dst   ($(git -C "$REPO" diff --no-index --shortstat "$from" "$to" | sed 's/^ *//'))"; rc=1
-      fi ;;
+      fi
+      aside "$to" "$dst" ;;
     mirror:install)
-      if [ -e "$to" ] && cmp -s "$from" "$to"; then continue; fi
-      mkdir -p "$(dirname "$to")"
-      [ -e "$to" ] && mv "$to" "$to.pre-sync" && echo "aside     ~/$dst -> $(basename "$to").pre-sync"
-      cp -p "$from" "$to" && echo "placed    ~/$dst" ;;
+      aside "$to" "$dst"
+      if ! { [ -e "$to" ] && cmp -s "$from" "$to"; }; then
+        mkdir -p "$(dirname "$to")"
+        replace "$to" "$dst"
+        cp -p "$from" "$to" && echo "placed    ~/$dst"
+      fi ;;
     mirror:mirror)
       case "$REPO" in */refs/*|*/ref/*) echo "sync: $REPO is a read-only mirror; mirror into a work/ worktree" >&2; exit 2 ;; esac
       if [ -e "$to" ] && ! cmp -s "$from" "$to"; then cp -p "$to" "$from" && echo "brought   ~/$dst"; fi ;;
@@ -82,13 +125,19 @@ while read -r mode src dst <&3; do
     # settings <profile> <home path>: that profile's GRANTS, compiled; never stored in the repository.
     settings:status|settings:install)
       want=$("$REPO/bin/runnables" compile "$src" 2>/dev/null)
-      if [ -f "$to" ] && [ "$(cat "$to")" = "$want" ]; then [ "$cmd" = status ] && echo "same      ~/$dst (compiled from $src's GRANTS)"; continue; fi
+      if [ -f "$to" ] && [ "$(cat "$to")" = "$want" ]; then
+        [ "$cmd" = status ] && echo "same      ~/$dst (compiled from $src's GRANTS)"
+        [ "$cmd" = install ] && ! recorded "$to" "$dst" && record "$to" "$dst"
+        aside "$to" "$dst" compiled; continue
+      fi
       if [ "$cmd" = status ]; then
         if [ -f "$to" ]; then echo "differs   ~/$dst (not what $src's GRANTS compiles to)"; else echo "missing   ~/$dst"; fi; rc=1
+        aside "$to" "$dst" compiled
       else
+        aside "$to" "$dst" compiled
         mkdir -p "$(dirname "$to")"
-        [ -e "$to" ] && mv "$to" "$to.pre-sync" && echo "aside     ~/$dst -> $(basename "$to").pre-sync"
-        printf '%s\n' "$want" > "$to" && echo "placed    ~/$dst (compiled from $src's GRANTS)"
+        replace "$to" "$dst"
+        printf '%s\n' "$want" > "$to" && record "$to" "$dst" && echo "placed    ~/$dst (compiled from $src's GRANTS)"
       fi ;;
     settings:mirror) ;;
     # path <home dir>: on this user's Windows PATH; a new window sees the change.
@@ -130,15 +179,11 @@ while read -r mode src dst <&3; do
       [ -e "$to" ] || continue
       # Named, not a failure to install: the pool's pass would otherwise try again every minute.
       if [ -d "$to" ]; then echo "stray     ~/$dst (unmapped, a folder: look, then remove it)"; [ "$cmd" = status ] && rc=1; continue; fi
-      blob=$(git -C "$REPO" hash-object --no-filters -- "$to" 2>/dev/null)
-      if [ -n "$blob" ] && ! git -C "$REPO" cat-file -e "$blob" 2>/dev/null; then
-        blob=$(tr -d '\r' < "$to" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' | git -C "$REPO" hash-object --stdin 2>/dev/null)
-      fi
-      if [ -z "$blob" ] || ! git -C "$REPO" cat-file -e "$blob" 2>/dev/null; then
+      if ! committed "$to"; then
         echo "stray     ~/$dst (unmapped, and in no commit here: look, then delete it)"; [ "$cmd" = status ] && rc=1
       elif [ "$cmd" = status ]; then echo "stray     ~/$dst (unmapped; a commit holds it, so install removes it)"; rc=1
       elif [ "$held_failed" = 1 ]; then echo "kept      ~/$dst (what replaces it did not take)"; rc=1
-      else rm -f "$to" && echo "removed   ~/$dst (unmapped; the history holds $(printf '%.12s' "$blob"))"; fi ;;
+      else rm -f "$to" && echo "removed   ~/$dst (unmapped; the history holds it)"; fi ;;
     gone:mirror) ;;
     # system <script> -: a file of the system's, held by the profile's script, which only an
     # administrator may write. `check` says same or differs; install asks for an administrator only

@@ -116,8 +116,10 @@ finds the profile the way `binding` does and reads its `MANIFEST`. `status` (def
 differs and runs the check (`SYNC_CHECK=0` skips it). `install` puts the profile on; a person runs it,
 never a session, and the pool's pass runs it again when the mirror moves and every 15 minutes, so what
 the MANIFEST maps is what is there, whatever was put there by hand. It never destroys what only this
-machine has (a differing file goes to `<name>.pre-sync`, an existing clone is left, a `gone` path no
-commit holds is named and left). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
+machine has, and keeps nothing else: a file it replaces goes to `<name>.pre-sync` only when it had
+changes of its own (never over one already kept), and an aside that holds only what sync had placed,
+as git or its record of the last compiled `settings` has it, is let go. An existing clone is left, and
+a `gone` path no commit holds is named and left. A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
 sets it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
 
 Whatever runs here on its own is mapped: a file by `mirror`, a task by `held`, and a script it runs is
