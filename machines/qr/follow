@@ -18,5 +18,5 @@ O=${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}
 git remote set-url origin "$O/FC-Public-Media/fcpublicmedia.org"
 git config submodule.troves/scanner.url "$O/FC-Public-Media/scanner"
 [ -e troves/scanner/.git ] && git -C troves/scanner remote set-url origin "$O/FC-Public-Media/scanner"
-git fetch -q origin main && git merge -q --ff-only origin/main
+git fetch -q origin +main:refs/remotes/origin/main && git merge -q --ff-only origin/main   # named: a shallow carry tracks only its own branch
 GIT_TERMINAL_PROMPT=0 git submodule update -q --init --checkout -- troves/scanner
