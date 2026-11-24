@@ -48,9 +48,9 @@ weekly() {
 }
 
 weekly_install() {
-  # At sign-in and every morning; `weekly` itself does the work once per week. Where the profile holds
-  # the pool, its pass runs `weekly` instead, and its install retires this task (machines/pool.ps1).
-  if grep -qs '^held  *\.\./pool\.ps1' "$HERE/$profile/MANIFEST"; then echo "weekly    the pool's pass does it here"; return 0; fi
+  # At sign-in and every morning; `weekly` itself does the work once per week. Where the crew orders
+  # `follow`, that line runs `weekly` instead, and the pool's install retires this task (machines/pool.ps1).
+  if sed -e 's/#.*$//' "$HERE/$profile/services" 2>/dev/null | grep -q '^follow[[:space:]]'; then echo "weekly    the crew's follow line does it here"; return 0; fi
   bash=$(cygpath -w /usr/bin/bash 2>/dev/null) || { echo "watch: weekly install is for Windows"; return 1; }
   me=$(cygpath -m "$HERE/watch")
   powershell -NoProfile -Command - <<EOF

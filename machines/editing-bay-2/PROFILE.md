@@ -22,9 +22,10 @@ Bay 2 becomes bay 1 progressively: a verb comes over when it is wanted, never th
 
 With no session open, bay 2 takes orders two ways, and only these:
 
-- **By commit.** The crew's `follow` line ([`follow`](follow), from [`../editing-bay-2.yml`](../editing-bay-2.yml)),
-  every 15 minutes, fast-forwards this checkout to `origin`'s main (never over local changes, never off
-  `main`) and runs `../sync install`. A line merged into [`services`](services) comes up by itself: the
+- **By commit.** The crew's `follow` line ([`../follow`](../follow), from bay 1's menu, [`../production.yml`](../production.yml)), the same line bay 1's crew runs,
+  every 5 minutes, fast-forwards this checkout to `origin`'s main (never over local changes, never off
+  `main`) as `fcpm dev` paces it, each pass while on and weekly while off, and runs `../sync install`
+  when main moved and every 15 minutes. With dev off, an order by commit waits for the weekly pull. A line merged into [`services`](services) comes up by itself: the
   supervisor rereads it. The helm restarts on the new commit. A job whose `names` gains this computer is
   put on, but its own crew task, if it has one, is still an administrator's `fcpm crew install`.
 - **By helm.** What the board asks at runtime: `wizard:model+up` for this bay's line-up.

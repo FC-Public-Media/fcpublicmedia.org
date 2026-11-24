@@ -1,6 +1,10 @@
 # What the production job itself serves, when it orders it (production/services). See README.md.
 
 serves:
+  - service: follow
+    for: "this bay's orders, by commit: main as the dev switch paces it (each pass on, weekly off), fast-forward only, then what the profile maps put on, every 15 minutes too; the crew restarts its lines when troves move (follow). Every bay's, so they take orders alike"
+    start: '"C:/Program Files/Git/bin/bash.exe" machines/follow'
+
   - service: helm
     for: "this bay's helm: the intake for replies only its helm applies (helms.yml: wizard:model+up) and the board's pages, on 8080 for the switched network; not the media node's door, so no depot, wall or camera"
     start: "{python} machines/kiosk/door.py serve"

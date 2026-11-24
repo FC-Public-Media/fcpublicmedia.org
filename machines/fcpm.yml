@@ -47,7 +47,7 @@ verbs:
   - verb: weekly
     args: ""
     says: "bring in the latest, once a week (the task runs it)"
-    windows: "machines/watch weekly: the pool's pass where the profile holds it, else the 'fcpm weekly' task"
+    windows: "machines/watch weekly: the crew's follow line where the crew orders one (the bays), else the 'fcpm weekly' task"
     linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
   - verb: deploy
@@ -90,7 +90,7 @@ verbs:
     args: "[status|on|off]"
     says: "on: GitHub is asked every ten minutes on the clock; off: weekly"
     board: switch
-    windows: "the flag %LOCALAPPDATA%\\fcpm\\dev; the pool and the door read it"
+    windows: "the flag %LOCALAPPDATA%\\fcpm\\dev; the crew's follow line (machines/follow) and the kiosk's door read it"
     linux: "origin.local's switch (`ssh git@origin.local dev on`), which paces its intake; the flag ~/.local/state/fcpm/dev beside it for the door"
 
   - verb: pool

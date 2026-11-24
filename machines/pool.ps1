@@ -1,11 +1,10 @@
 # pool.ps1 -- keep this bay's root reachable, with nothing open until asked.
 #
 #   pool.ps1 status              is the root's server up and current, and what sessions run
-#   pool.ps1 pass                one pass: the weekly pull, once a week (Weekly); place what the
-#                                profile maps (Current: when the mirror moves, and every $HoldMin
-#                                minutes); bounce a stale server of ours, start the root's server
-#                                if it is not up, keep the roller's screen (troves/kiosk-screen).
-#                                What the logon task runs
+#   pool.ps1 pass                one pass: restart the crew's supervisor if its crew.py is older
+#                                than the mirror's (Supervisor); bounce a stale server of ours,
+#                                start the root's server if it is not up, keep the roller's screen
+#                                (troves/kiosk-screen). What the logon task runs
 #   pool.ps1 off|on              end every Remote Control server here (signed
 #                                off, so the phone lets go) and keep it off
 #                                until on or a restart, or start again and
@@ -14,8 +13,10 @@
 #   pool.ps1 install|uninstall   the per-user task that runs `pass`, from this file in the mirror
 #
 # Every bay's whose MANIFEST holds it (`held ../pool.ps1`): `fcpm install` registers the task and the
-# pool's own pass keeps it so. The task runs the committed file in ~/code/refs, never a copy, so what
-# runs every minute is what a commit says. The job is the one whose `names` lists this computer.
+# crew's follow line keeps it so. Only what needs someone signed in is here: the server and the screens.
+# Bringing in main and placing it is the crew's `follow` line (machines/follow), signed in or not.
+# The task runs the committed file in ~/code/refs, never a copy, so what runs every minute is what a
+# commit says. The job is the one whose `names` lists this computer.
 # See docs/station.md, Sessions, and Sync and MANIFEST.
 # ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
@@ -44,13 +45,10 @@ $Log = Join-Path $State "pool.log"
 $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "$Bay pool"
-$Weekly = "fcpm weekly"   # machines/watch's task where no pool is held; here, the pool's pass does it
+$Weekly = "fcpm weekly"   # machines/watch's task where no crew follows; here, the crew's follow line does it
 $CalmMin = 15
-# `fcpm dev on` creates this file (machines/fcpm): follow GitHub.
+# `fcpm dev on` creates this file (machines/fcpm); the crew's follow line reads it, and status says it.
 $Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
-$PullMin = 5
-# However the mirror moves or does not, what the profile maps is placed again this often.
-$HoldMin = 15
 
 function Say([string]$m) {
     New-Item -ItemType Directory -Force $State | Out-Null
@@ -257,57 +255,20 @@ function Screens {
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
-function Weekly {
-    # Once a week, every mirror and the people's working copy (machines/watch weekly). The pool's
-    # pass does it wherever the pool is held, so the bays do it alike, with no task of its own.
-    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    $week = "$(& $bash -c 'date +%G-W%V' 2>$null)".Trim()
-    $done = "$(Get-Content (Join-Path $env:LOCALAPPDATA 'fcpm\weekly.done') -ErrorAction SilentlyContinue)".Trim()
-    if (-not $week -or $week -eq $done) { return }
-    & $bash -l (Join-Path $Mirror "machines\watch") weekly 2>&1 | Out-Null
-    Say ("weekly: pulled for {0} (fcpm\weekly.log)" -f $week)
-}
-
-function Follow {
-    # With dev on, fast-forward fcpublicmedia.org every $PullMin minutes, for Current to place.
-    if (-not (Test-Path $Dev)) { return }
-    $stamp = Join-Path $State "pulled"
-    $last = Get-Item $stamp -ErrorAction SilentlyContinue
-    if ($last -and $last.LastWriteTime -gt (Get-Date).AddMinutes(-$PullMin)) { return }
-    Set-Content -Path $stamp -Value (Get-Date -Format s)
-    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    foreach ($l in @(& $bash (Join-Path $Mirror "bin\refs") pull fcpublicmedia.org 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match 'UPDATED|FAILED|skipped' })) {
-        Say ("dev: " + ($l -replace '\s+', ' '))
-    }
-}
-
-function Current {
-    # `sync install` when the mirror moved, by any pull, and every $HoldMin minutes whether or not it
-    # did: a placed file or the task changed by hand is put back as the profile maps it. Then the supervisor.
-    $head = (& git -C $Mirror rev-parse HEAD 2>$null | Out-String).Trim()
-    if (-not $head) { return }
-    $f = Join-Path $State "placed"
-    $was = "$(Get-Content $f -ErrorAction SilentlyContinue)".Trim()
-    $at = (Get-Item $f -ErrorAction SilentlyContinue).LastWriteTime
-    if ($head -eq $was -and $at -and $at -gt (Get-Date).AddMinutes(-$HoldMin)) { return }
-    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    $out = @(& $bash (Join-Path $mirror "machines\sync") install 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -notmatch '^profile ' })
-    if ($LASTEXITCODE -ne 0) { SayOnce ("current: placing {0} failed: {1}" -f $head.Substring(0, 7), ($out -join "; ")); return }
-    # Unmoved and nothing put back: quiet, so the log says only what changed.
-    if ($head -ne $was -or $out.Count) {
-        Say ("current: {0} placed{1}" -f $head.Substring(0, 7), $(if ($out.Count) { ": " + ($out -join "; ") } else { "" }))
-    }
-    Set-Content -Path $f -Value $head
-    # The supervisor rereads its order but not its code; ended, its task restarts it on the new code.
-    if (-not $was) { return }
-    & git -C $mirror diff --quiet $was $head -- machines/crew.py troves 2>$null
-    if ($LASTEXITCODE -ne 1) { return }
-    foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'crew\.py"?\s+serve' })) {
-        Say ("current: the crew's supervisor ({0}) runs older code: restarting it" -f $p.ProcessId)
-        & taskkill /T /F /PID $p.ProcessId 2>&1 | Out-Null
-        try { Start-ScheduledTask -TaskName $Job -ErrorAction Stop }
-        catch { Say ("current: could not start '{0}' again: {1}" -f $Job, $_) }
-    }
+function Supervisor {
+    # The crew's follow line places a new crew.py but cannot restart the supervisor that runs it, so the
+    # pool does: when its beat names an older crew.py than the mirror's, end it and start its task again.
+    $crewPy = Join-Path $Mirror "machines\crew.py"
+    $beatF = Join-Path $State ("crew\{0}.beat" -f $Job)
+    if (-not (Test-Path $crewPy) -or -not (Test-Path $beatF)) { return }
+    try { $b = Get-Content $beatF -Raw | ConvertFrom-Json } catch { return }
+    if (-not $b.pid -or ((Get-Date) - [DateTimeOffset]::FromUnixTimeSeconds([long]$b.at).LocalDateTime).TotalSeconds -gt 60) { return }
+    $now = (Get-FileHash $crewPy -Algorithm SHA256).Hash.Substring(0, 12).ToLower()
+    if ($b.code -eq $now) { return }
+    Say ("crew: its supervisor ({0}) runs crew.py {1}, the mirror's is {2}: restarting it" -f $b.pid, $b.code, $now)
+    & taskkill /T /F /PID $b.pid 2>&1 | Out-Null
+    try { Start-ScheduledTask -TaskName $Job -ErrorAction Stop }
+    catch { Say ("crew: could not start '{0}' again: {1}" -f $Job, $_) }
 }
 
 function TaskArgs {
@@ -336,8 +297,8 @@ function TaskDiffers {
     }
     if ($t.Settings.MultipleInstances -ne "IgnoreNew" -or $t.Settings.ExecutionTimeLimit -ne "PT10M") { return "its settings differ" }
     if ($t.State -eq "Disabled") { return "disabled" }
-    # The pool's pass does the weekly pull; a task of its own, left from before, is not mapped.
-    if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) { return "'$Weekly' is left over: the pool's pass does the weekly pull" }
+    # The crew's follow line does the weekly pull; a task of its own, left from before, is not mapped.
+    if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) { return "'$Weekly' is left over: the crew's follow line does the weekly pull" }
     ""
 }
 
@@ -353,7 +314,7 @@ function StopAll {
 }
 
 switch ($Verb) {
-    "pass" { Follow; Weekly; Current; EnsureServer; Screens }
+    "pass" { Supervisor; EnsureServer; Screens }
     "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopAll }
     "on" {
         Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer
@@ -392,15 +353,17 @@ switch ($Verb) {
         Write-Output "registered '$TaskName': at logon, and every minute"
         if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) {
             Unregister-ScheduledTask -TaskName $Weekly -Confirm:$false
-            Write-Output "removed '$Weekly': the pool's pass does the weekly pull"
+            Write-Output "removed '$Weekly': the crew's follow line does the weekly pull"
         }
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }
     "status" {
         $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         Write-Output ("task      {0}" -f $(if ($task) { $task.State } else { "not installed" }))
-        $pulled = "$(Get-Content (Join-Path $State "pulled") -ErrorAction SilentlyContinue)".Trim()
-        Write-Output ("dev       {0}" -f $(if (Test-Path $Dev) { "on: pulls GitHub every $PullMin min" + $(if ($pulled) { ", last $pulled" } else { "" }) } else { "off: the weekly pull only" }))
+        $fcpm = Join-Path $env:LOCALAPPDATA "fcpm"
+        $placed = Get-Item (Join-Path $fcpm "follow.placed") -ErrorAction SilentlyContinue
+        Write-Output ("dev       {0}" -f $(if (Test-Path $Dev) { "on: the crew's follow line pulls main every pass" } else { "off: the crew's follow line pulls weekly" }))
+        Write-Output ("follow    {0}" -f $(if ($placed) { "placed {0} at {1:MM-dd HH:mm}" -f "$(Get-Content $placed.FullName)".Trim().Substring(0, 7), $placed.LastWriteTime } else { "has not placed here yet" }))
         $srv = @(Servers)
         Write-Output ("server    {0}{1}" -f $(if ($srv.Count) { "up (pid " + (($srv | ForEach-Object { $_.ProcessId }) -join ", ") + ")" } else { "down" }),
             $(if (Test-Path $Off) { "  (off: the pool will not start it until on or a restart)" } else { "" }))

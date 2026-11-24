@@ -54,7 +54,7 @@ Presence first: the records, the page and the wizard are the same either way.
 ## First cut
 
 1. `sync`: a waiting `system` or `held` step writes its record.
-2. `fcpm install` unattended (no `FCPM_DESK`), and the pool's pass runs it.
+2. `fcpm install` unattended (no `FCPM_DESK`), and the crew's `follow` line runs it.
 3. The `grant` verbs and `grant-pending` write records too.
 4. The helm page: the count and the list, then the button and its one elevated run.
 5. The wizard and its reply.
