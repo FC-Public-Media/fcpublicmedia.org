@@ -1,6 +1,6 @@
 # editing bay 2
 
-FCPMEDIT2: a Windows bay, the twin of editing bay 1 ([production](../production/PROFILE.md)), and
+BAY2: a Windows bay, the twin of editing bay 1 ([production](../production/PROFILE.md)), and
 new to us on 2026-11-09. Its user is `fcpme`. Git is `Git.Git` from winget, machine-wide, as on bay
 1; the repository's start line (README.md, Setting up a machine), ending in `editing-bay-2`, installs
 Git and the rest of [`gear.yml`](gear.yml) and puts the profile on. It carries `fcpm` and what it

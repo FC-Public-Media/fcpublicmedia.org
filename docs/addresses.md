@@ -25,7 +25,7 @@ its hosts file, which `fcpm install` keeps (machines/production/PROFILE.md, Host
 | `wix.fcpublicmedia.local` | the Wix site, photocopied |
 | `ch97.fcpublicmedia.local` | channel 97's day; `/jukebox/` is the floor's playlist |
 | `digitization.fcpublicmedia.local` | this machine's directory; each piece of gear one level deeper (`aja-helo.digitization.…`) |
-| `10.209.1.20:9931` | the model on bay 1 (EDIT2), when Autumn has it on (`fcpm model on`) |
+| `10.209.1.20:9931` | the model on bay 1 (BAY1), when Autumn has it on (`fcpm model on`) |
 
 ## Away (the tailnet)
 

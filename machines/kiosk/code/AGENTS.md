@@ -9,7 +9,7 @@ Windows 10, IT-managed, **no administrator**. Profile: `machines/kiosk/PROFILE.m
 | the media node | what it is when it runs fcpublicmedia.org's services, as station-node runs discoverywritten.com's |
 | `200-FCPANEDIT2` | what Windows answers to; `200-fcpanedit2.local` on the LAN |
 | the old editing bay 2 | what it was. It is not today's bay 2 |
-| `EDIT2` | **not this box**: editing bay 1, which Autumn calls `production`. Check `$env:COMPUTERNAME` before trusting any guess |
+| `BAY1` | **not this box**: editing bay 1, which Autumn calls `production`. Check `$env:COMPUTERNAME` before trusting any guess |
 
 ## What we own
 

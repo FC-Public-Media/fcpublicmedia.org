@@ -13,7 +13,7 @@ Your work\ and refs\ revolve around tooling provided by:
 
 `fcpm install` keeps this outpost current, mirroring canonical for LAN peers.
 
-## Orientation: Bay 1 (user "fcpub", device "EDIT2")
+## Orientation: Bay 1 (user "fcpub", device "BAY1")
 
 `C:\` is Windows and working data.
 `D:\` is becoming user data.

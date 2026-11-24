@@ -125,7 +125,7 @@ function Stale($srv) {
 
 function SignOff($srv, $all) {
     # End a server the way Ctrl+C in its terminal does, so it signs off and
-    # claude.ai lets go of Edit2. A kill never signs off: claude.ai holds the
+    # claude.ai lets go of the bay. A kill never signs off: claude.ai holds the
     # machine ~3 minutes, refuses each new server ("already served"), and the
     # phone shows the dead one, with no Remote Control (2026-10-10). Ctrl+C
     # goes to the server's own console from a helper process, since this one

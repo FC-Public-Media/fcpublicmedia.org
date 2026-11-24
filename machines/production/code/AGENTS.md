@@ -3,7 +3,7 @@
 # FCPM editing bay: the project
 
 This directory, `~/code`, is the project; sessions start here. Autumn calls it `production`: editing
-bay 1 by sticker, `EDIT2` to Windows (11 Home, user `fcpub`). The kiosk (media-node) is `200-FCPANEDIT2`.
+bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`). The kiosk (media-node) is `200-FCPANEDIT2`.
 
 > From the board:
 > 
