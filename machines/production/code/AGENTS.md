@@ -63,7 +63,7 @@ bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`). The kiosk (media-no
   message. Peers: `kiosk` (media-node), `digitization` (station-node, where `rodecaster` captures).
 - Hand Autumn an `fcpm` verb, never a path, interpreter or window; a step that needs one is a gap in
   `fcpm` to fill. Sessions use `bin/refs` directly. Log surprises with `machines/kiosk/gotcha`.
-- The pool (`bin/pool.ps1`, task `editing-bay-1 pool`) places what the mirror moves to and keeps the
+- The pool (`machines/pool.ps1` in the mirror, task `editing-bay-1 pool`, held by the MANIFEST) places what the profile maps and keeps the
   root's server and the rolling TV up (`%LOCALAPPDATA%\editing-bay-1\pool.log`). `fcpm screen` saying
   `kept: NO` means it is not running. `fcpm pool off` ends every Remote Control server here with
   Ctrl+C, so they sign off (a killed one leaves claude.ai refusing new servers for ~3 minutes),

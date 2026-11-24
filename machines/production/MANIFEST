@@ -6,7 +6,6 @@ mirror  home/code/CLAUDE.md    code/CLAUDE.md
 mirror  home/code/AGENTS.md    code/AGENTS.md
 mirror  home/code/BAY1.md      code/BAY1.md
 mirror  ../../bin/refs         code/bin/refs
-mirror  code/bin/pool.ps1      code/bin/pool.ps1
 mirror  code/refs.wanted       code/refs.wanted
 
 clone   code/refs.wanted       code/refs
@@ -17,6 +16,11 @@ mirror    home/bin/fcpm.cmd      .local/bin/fcpm.cmd
 path      -                      .local/bin
 
 settings  production             code/.claude/settings.json
+
+# The pool: its task runs machines/pool.ps1 in the mirror, as the commit has it, never a copy at the root.
+held      ../pool.ps1            -
+gone      -                      code/bin/pool.ps1
+gone      -                      code/bin/pool.ps1.pre-sync
 
 # The hosts file, held: what this bay's names say (PROFILE.md, Hosts). An administrator's, so last.
 system    hosts.ps1              -

@@ -52,7 +52,7 @@ Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { "note 
 
 # The pool, and what a background session needs before it can start.
 $t = Get-ScheduledTask -TaskName "editing-bay-1 pool" -ErrorAction SilentlyContinue
-Say ([bool]$t) "the pool's logon task" "powershell -NoProfile -File ~\code\bin\pool.ps1 install"
+Say ([bool]$t) "the pool's logon task (held by the MANIFEST: fcpm status says if it is as committed)" "fcpm install"
 $cj = Join-Path $HOME ".claude.json"
 $trusted = $false
 if (Test-Path $cj) {

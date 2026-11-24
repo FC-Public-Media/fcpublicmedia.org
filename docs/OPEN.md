@@ -15,7 +15,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
 - Unused after the 2026-10-25 reduction, the whole list so it can go in one cut: includes `community.html`, `countdown.html`, `featured.html` (the homepage stopped including it); data `hosts.yml`, `member_sites.json`, `featured.yml`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url`. Facebook is only in `org.social`, so it is on no page; `community.yml` `channels` is the live list and does not carry it.
-- `pools.py`'s fallback usage omits `timeline`; `pool.ps1`'s usage omits `install|uninstall`.
+- `pools.py`'s fallback usage omits `timeline`.
 - `crew.py`, `crew.ps1` and `episodes.py` hard-code the state folder `%LOCALAPPDATA%editing-bay-1` instead of asking the machine's profile.
 - `recorder/gear.yml` names the profile `fcpm-recorder`; `obs.ps1` uses `FCPM Recorder`. troves/recorder/gear.yml
 - `door.py`'s route table omits `/preview/`, `/helo/*`, `/input`, `/heard`, `/wall/`.
@@ -146,7 +146,8 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - The keystore's grant: petitions (`wizard:keys+birth`) are lodged on digitization and nothing grants them yet; the board's yes (`wizard:keys+grant`) and the keystore's acts are digitization's to build. docs/keystore.md#the-grant-a-study-for-digitization-to-build
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
-- The pool restarts the `production` supervisor too. machines/production/code/bin/pool.ps1
+- The pool restarts the `production` supervisor too. machines/pool.ps1
+- Held like the pool's task, not yet: the `fcpm weekly` task and each crew's task (registered by verbs, checked only by name).
 - The default `gear.yml` claude-code winget id is unconfirmed.
 
 ## Jobs and services

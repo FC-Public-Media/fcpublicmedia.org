@@ -88,7 +88,7 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | (none) | the watcher, `machines/watch` |
 | `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
 | `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
-| `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `~/code/bin/pool.ps1`; `bin/runnables` |
+| `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
 | `refs [status\|pull\|work\|done]` | `bin/refs`: the mirrors in `~/code/refs` (the kiosk's `ref/`) and the worktrees in `~/code/work`, on any machine; `~/code/bin/refs` is the same file, placed for sessions |
 | `dev on`, `dev off` | on: the pool pulls this repository every 5 minutes and places what merged; on the kiosk, the door fetches |
 | `audition`, `drobo`, `share`, `audit`, `hosts` | the profile's own `.ps1` of that name |
@@ -114,9 +114,14 @@ does not list the computer yet is put on all the same, with a warning.
 `machines/sync [-p PROFILE] [status | install | mirror]` is shell, for machines without Python. It
 finds the profile the way `binding` does and reads its `MANIFEST`. `status` (default) says what
 differs and runs the check (`SYNC_CHECK=0` skips it). `install` puts the profile on; a person runs it,
-never a session, and it never destroys (a differing file goes to `<name>.pre-sync`, an existing clone
-is left). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
+never a session, and the pool's pass runs it again when the mirror moves and every 15 minutes, so what
+the MANIFEST maps is what is there, whatever was put there by hand. It never destroys what only this
+machine has (a differing file goes to `<name>.pre-sync`, an existing clone is left, a `gone` path no
+commit holds is named and left). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
 sets it; the pool's pass, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
+
+Whatever runs here on its own is mapped: a file by `mirror`, a task by `held`, and a script it runs is
+the committed file in the mirror, never a copy that could drift from it.
 
 | `MANIFEST` mode | `mode  path in the profile  path under ~` |
 |---|---|
@@ -125,6 +130,8 @@ sets it; the pool's pass, unattended, leaves it differing for the next. `mirror`
 | `settings` | the named profile's GRANTS, compiled, written to the path. Never stored in the repository |
 | `path` | a home folder put on the user's PATH |
 | `system` | a script in the profile holding a file of the system's (`script check`, `script install`); the path is `-` |
+| `held` | a script holding something of this machine's that is no file, a scheduled task (`script check`, `script install`), run from the repository; install runs it whenever check says differs, unattended too. The path is `-` |
+| `gone` | a home path no longer mapped (the profile path is `-`): removed when a commit holds its very contents, else named `stray` and left; kept while a `held` line before it did not take |
 
 ## Sessions
 
@@ -139,7 +146,7 @@ sets it; the pool's pass, unattended, leaves it differing for the next. `mirror`
   it too. Nothing is revived: an old session waits for a message, a finished one stays finished.
   Other sessions start from zero at claude.ai or on the phone. A server is bounced when signed
   out, and when older than the installed `claude.exe` once calm for 15 minutes. Production does
-  this in `code/bin/pool.ps1`; the kiosk's door still runs `--no-create-session-in-dir`, so its
+  this in `machines/pool.ps1`; the kiosk's door still runs `--no-create-session-in-dir`, so its
   listed sessions lose their link at every restart until it adopts this.
 
 ## Runnables

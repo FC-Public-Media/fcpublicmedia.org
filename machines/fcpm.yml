@@ -94,9 +94,9 @@ verbs:
     linux: "origin.local's switch (`ssh git@origin.local dev on`), which paces its intake; the flag ~/.local/state/fcpm/dev beside it for the door"
 
   - verb: pool
-    args: "[status|pass|off|on|install]"
-    says: "the root's Remote Control server"
-    windows: "~/code/bin/pool.ps1"
+    args: "[status|pass|off|on|check|install]"
+    says: "the root's Remote Control server, and the task that keeps it (held by the profile's MANIFEST: fcpm install registers it)"
+    windows: "machines/pool.ps1, where the profile's MANIFEST holds it"
     linux: "not: the pool is editing bay 1's"
 
   - verb: crew
