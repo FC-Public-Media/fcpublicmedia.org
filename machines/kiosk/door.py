@@ -43,8 +43,8 @@ surfaces below. See machines/kiosk/PROFILE.md and docs/kiosk.md.
                            (machines/origin/traffic.py). ?u=BRANCH&r=OWNER/REPO is what is picked
     GET /origin/now        the same as JSON; POST /origin/land {repo, branch, tip} orders a branch into main on the
                            origin's next beat, /origin/hold {repo, branch} takes it back, from that page only
-    GET /deploy/           the site's deploy: live vs main here, and wizard:site+deploy, for the helm that holds it
-    GET /deploy/now        the same as JSON, with the deploy's log where it runs here and the PRs waiting on main
+    GET /deploy/           the site's deploy: live, our origin's main and this checkout, and wizard:site+deploy naming that main
+    GET /deploy/now        the same as JSON, with the deploy's log where it runs here and the branches waiting on our origin
     GET /turn/             the wall's turning shell over live pages, for a panel here (node.yml turn:)
     GET /room/<room>/      a room's hallway door, any shape (rooms/<room>.yml): who is hosting, what is coming, what is in
     GET /room/<room>/now   the same as JSON. The page polls it
@@ -1478,7 +1478,7 @@ def board_now():
             log("board: %s: %r" % (key, exc))
 
     def deploy():
-        d = deploy_now()
+        d = deploy_now(ask_origin=False)
         if d.get("running"):
             return {"say": "deploying %s" % d.get("head"), "on": "live"}
         return {"say": "live at %s" % d["live"][:7]} if d.get("live") else None
@@ -5582,14 +5582,63 @@ LIBRARY_JS = """<script>
 
 
 # ---------------------------------------------------------------------- deploy --
-# THE SITE's DEPLOY: what fcpublicmedia.org serves, what main here holds, and one button. The button is a reply,
-# wizard:site+deploy, set down here like any other: the helm whose job holds it runs bin/deploy-site, and any
-# other helm passes it there (replies.py, route). docs/site.md, Deploy.
+# THE SITE's DEPLOY: what fcpublicmedia.org serves, our origin's main, this checkout, and one button that names
+# our origin's main. The button is a reply, wizard:site+deploy, set down here like any other: the helm whose job
+# holds it runs bin/deploy-site on that commit, only if its checkout is our origin's main when it asks; any other
+# helm passes it there (replies.py, route). Nothing here asks GitHub. docs/site.md, Deploy.
 LIVE_AT = os.environ.get("FCPM_LIVE_AT", "https://fcpublicmedia.org/")
+_origin = {"at": 0.0, "seen": None, "lock": threading.Lock()}
 
 
-def deploy_now():
-    """The live site's revision, this checkout's main, who holds the deploy, and, where it runs here, its log."""
+def origin_seen():
+    """Our origin's main and the branches waiting on it, asked at most every 15 seconds: by the origin door's
+    `look` where this checkout's origin is that door (host:/srv/origin/<owner>/<repo>), else main alone."""
+    import replies
+    with _origin["lock"]:
+        if time.time() - _origin["at"] < 15:
+            return _origin["seen"]
+        url = replies.origin_url()
+        seen = {"url": url, "asked": datetime.datetime.now().astimezone().isoformat(timespec="seconds"), "main": None}
+        door = re.fullmatch(r"([^/:]+):/srv/origin/([^/]+/[^/]+?)(?:\.git)?", url or "")
+        if door:
+            try:
+                r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", door.group(1), "look",
+                                    door.group(2)], capture_output=True, text=True, timeout=30)
+                d = json.loads(r.stdout)
+                repo = d["repos"][0]
+                seen.update(main=repo.get("main"), github=repo.get("github"), next_beat=d.get("next_beat"),
+                            waiting=[{"name": b["name"], "by": b.get("author"), "said": b.get("said"),
+                                      "ahead": b.get("ahead"), "behind": b.get("behind"), "lands": b.get("lands")}
+                                     for b in repo.get("branches") or []
+                                     if not b.get("library") and b.get("lands") != "unrelated"])
+            except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, IndexError):
+                pass
+        if not seen["main"]:
+            seen["main"] = replies.origin_main()
+        _origin["at"], _origin["seen"] = time.time(), seen
+        return seen
+
+
+def against(full, main):
+    """This checkout beside our origin's main: same, behind (n), missing (not fetched yet), ahead (n), apart."""
+    import replies
+    git = lambda *a: subprocess.run(["git", "-C", str(replies.ROOT)] + list(a), capture_output=True, text=True)
+    if not main:
+        return {"state": "unknown"}
+    if main == full:
+        return {"state": "same"}
+    if git("cat-file", "-e", main + "^{commit}").returncode != 0:
+        return {"state": "missing"}
+    if git("merge-base", "--is-ancestor", full, main).returncode == 0:
+        return {"state": "behind", "n": int(git("rev-list", "--count", full + ".." + main).stdout or 0)}
+    if git("merge-base", "--is-ancestor", main, full).returncode == 0:
+        return {"state": "ahead", "n": int(git("rev-list", "--count", main + ".." + full).stdout or 0)}
+    return {"state": "apart"}
+
+
+def deploy_now(ask_origin=True):
+    """The live site's revision, our origin's main, this checkout beside it, who holds the deploy, and, where it
+    runs here, its log. The board's lamp leaves the origin unasked."""
     import urllib.request
     import replies
     try:
@@ -5607,93 +5656,95 @@ def deploy_now():
             tail = (replies.STATE / replies.DEPLOY_LOG).read_text(encoding="utf-8", errors="replace").splitlines()[-14:]
         except OSError:
             pass
-    return {"live": live, "head": full[:7], "subject": subject, "holder": holder[0] if holder else None,
-            "here": here, "running": here and replies.deploying(), "log": tail, "pulls": pulls_open()}
-
-
-PULLS_REPO = "FC-Public-Media/fcpublicmedia.org"
-_pulls = {"at": 0.0, "rows": None, "lock": threading.Lock()}
-
-
-def pulls_open():
-    """The pull requests waiting to merge into main, as gh here sees them; None where gh can't ask. Kept a minute."""
-    with _pulls["lock"]:
-        if time.time() - _pulls["at"] < 60:
-            return _pulls["rows"]
-        _pulls["at"] = time.time()
-        try:
-            r = subprocess.run(["gh", "pr", "list", "-R", PULLS_REPO, "--base", "main", "--state", "open", "--json",
-                                "number,title,author,url,isDraft,statusCheckRollup,reviewRequests"],
-                               capture_output=True, text=True, timeout=20)
-            found = json.loads(r.stdout) if r.returncode == 0 else None
-        except (OSError, subprocess.TimeoutExpired, ValueError):
-            found = None
-        _pulls["rows"] = None if found is None else [{
-            "number": p["number"], "title": p["title"], "url": p["url"], "draft": p["isDraft"],
-            "by": (p.get("author") or {}).get("login"),
-            "review": [q.get("login") or q.get("name") for q in p.get("reviewRequests") or []],
-            "checks": [{"name": c.get("name") or c.get("context"),
-                        "state": (c.get("conclusion") or c.get("state") or c.get("status") or "").lower()}
-                       for c in p.get("statusCheckRollup") or []],
-        } for p in found]
-        return _pulls["rows"]
+    out = {"live": live, "head": full[:7], "full": full, "subject": subject,
+           "checkout": str(replies.ROOT).replace(str(pathlib.Path.home()), "~", 1), "host": socket.gethostname().lower(),
+           "holder": holder[0] if holder else None, "here": here, "running": here and replies.deploying(), "log": tail}
+    if ask_origin:
+        out["origin"] = origin_seen()
+        out["against"] = against(full, out["origin"]["main"])
+    return out
 
 
 def deploy_page():
     body = """%s<main>
 <h2>Deploy the site</h2>
-<p class=dim>fcpublicmedia.org is a Cloudflare Pages bucket. A deploy refreshes the Cablecast, schedule and nonprofit
-data, builds main, checks it and uploads it, in a few minutes. It runs on the machine whose helm holds the deploy,
-with that machine's own key.</p>
+<p class=dim>fcpublicmedia.org is a Cloudflare Pages bucket. Deploy builds our origin's main, exactly the commit
+named on the button, checks it and uploads it, in a few minutes. It fetches nothing, from GitHub or anywhere: the
+site's data is already on main. It runs on the machine whose helm holds the deploy, with that machine's own key.</p>
 <section class=here id=state></section>
-<section id=pulls hidden><h3>Waiting to merge</h3><ul></ul></section>
+<p id=verdict></p>
+<p class=dim id=relay></p>
 <p><button id=go disabled>Deploy</button></p>
-<p class=dim id=said></p><pre id=log></pre></main>%s""" % (masthead("%s &middot; deploy" % e(socket.gethostname().lower())),
-                                                      DEPLOY_JS)
+<p class=dim id=said></p><pre id=log></pre>
+<section id=waiting hidden><h3>Waiting on our origin</h3><p class=dim>Branches not in main, so not in a deploy.
+<a href="/origin/">Land them</a> first.</p><ul></ul></section></main>%s""" % (
+        masthead("%s &middot; deploy" % e(socket.gethostname().lower())), DEPLOY_JS)
     return shell("Deploy the site", body, DEPLOY_CSS)
 
 
 DEPLOY_CSS = BOARD_CSS + """
 #state { display:grid; grid-template-columns:max-content 1fr; gap:.4rem 1.2rem; margin:1.2rem 0; }
-#state b { color:var(--paper); } #log { font-size:.8rem; color:var(--dim); white-space:pre-wrap; }
-#pulls ul { list-style:none; margin:.4rem 0 1.2rem; padding:0; } #pulls li { margin:.5rem 0; }
-#pulls a { color:var(--paper); text-decoration:none; } #pulls .dim { display:block; font-size:.85rem; }
-#said { min-height:1.4em; }
+#state b { color:var(--paper); } #state i { color:var(--dim); font-style:normal; }
+#verdict { color:var(--paper); max-width:44rem; } #relay { max-width:44rem; }
+#log { font-size:.8rem; color:var(--dim); white-space:pre-wrap; }
+#waiting ul { list-style:none; margin:.4rem 0 1.2rem; padding:0; } #waiting li { margin:.5rem 0; }
+#waiting b { color:var(--paper); font-weight:normal; } #waiting .dim { display:block; font-size:.85rem; }
+#waiting a { color:var(--paper); } #said { min-height:1.4em; }
 """
 
 
 DEPLOY_JS = """<script>
 (function () {
   var state = document.getElementById('state'), go = document.getElementById('go'), said = document.getElementById('said'),
-      logs = document.getElementById('log'), head = null;
-  function row(k, v) { var a = document.createElement('span'), b = document.createElement('b'); a.textContent = k; b.textContent = v; state.append(a, b); }
+      verdict = document.getElementById('verdict'), relay = document.getElementById('relay'),
+      logs = document.getElementById('log'), rev = null;
+  function row(k, v, small) {
+    var a = document.createElement('span'), b = document.createElement('b'); a.textContent = k; b.textContent = v;
+    if (small) { var i = document.createElement('i'); i.textContent = ' ' + small; b.append(i); }
+    state.append(a, b);
+  }
+  function clock(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}); }
+  function plural(n, one) { return n + ' ' + one + (n === 1 ? '' : 's'); }
   function draw(d) {
-    state.textContent = ''; head = d.head;
-    row('Live now', d.live || 'not answering');
-    row('Main here', d.head + ', ' + d.subject);
-    row('Deployed by', d.holder ? d.holder + "'s helm" + (d.here ? ' (this one)' : '') : 'no helm holds it');
-    go.textContent = d.live === d.head ? 'Deploy ' + d.head + ' again' : 'Deploy ' + d.head;
-    go.disabled = !d.holder || d.running || !!said.dataset.busy;
+    var o = d.origin || {}, main = o.main ? o.main.slice(0, 7) : null, s = (d.against || {}).state;
+    state.textContent = '';
+    row('Live now', d.live || 'not answering', 'at fcpublicmedia.org');
+    row("Our origin's main", main || 'not answering', (o.url || 'no origin') + (o.asked ? ', asked at ' + clock(o.asked) : ''));
+    row('This checkout', d.head + ', ' + d.subject, d.checkout + ' on ' + d.host);
+    row('Deploys', d.holder ? d.holder + "'s helm" + (d.here ? ' (this one)' : '') : 'no helm holds it');
+    var n = (d.against || {}).n;
+    verdict.textContent = !main ? "Our origin isn't answering, so nothing says which commit main is. Nothing deploys until it does." :
+      !d.here ? 'The deploy runs on ' + (d.holder || 'no') + "'s helm. It builds " + main + " only if its own checkout is our origin's main when it asks." :
+      s === 'same' ? "This checkout is our origin's main. Deploy builds " + main + ' and uploads it.' :
+      s === 'behind' ? 'This checkout is ' + plural(n, 'commit') + " behind our origin's main. It catches up by itself within seconds of main moving (follow), five minutes at most; the button waits for it." :
+      s === 'missing' ? "This checkout hasn't fetched our origin's main yet. It does by itself within seconds (follow), five minutes at most; the button waits for it." :
+      s === 'ahead' ? 'This checkout has ' + plural(n, 'commit') + " our origin's main doesn't. Only our origin's main is ever deployed." :
+      "This checkout and our origin's main have gone apart. Only our origin's main is ever deployed.";
+    var g = o.github, beat = o.next_beat ? ' at ' + clock(o.next_beat) : ' on its next beat';
+    relay.textContent = !g ? '' : [
+      g.theirs_ahead ? "GitHub's main has " + plural(g.theirs_ahead, 'commit') + " our origin hasn't taken. Our origin takes them" + beat + ' if they merge clean; until then they are not in a deploy.' : '',
+      g.ours_ahead ? plural(g.ours_ahead, 'commit') + ' on our main ' + (g.ours_ahead === 1 ? "isn't" : "aren't") + ' on GitHub yet; the relay carries them' + beat + '.' : '',
+      !g.theirs_ahead && !g.ours_ahead ? "GitHub's main is the same as ours, as our origin last saw it. GitHub is a copy; it never decides what deploys." : ''
+    ].filter(Boolean).join(' ');
+    rev = o.main || null;
+    go.textContent = !main ? 'Deploy' : d.live === main ? 'Deploy ' + main + ' again' : 'Deploy ' + main;
+    go.disabled = !d.holder || !rev || d.running || !!said.dataset.busy || (d.here && s !== 'same');
     if (d.running) said.textContent = 'Deploying...';
     logs.textContent = d.log.join('\\n');
-    pulls(d.pulls);
+    waiting(o.waiting);
   }
-  var WORD = {success: 'passed', failure: 'failed', cancelled: 'cancelled', skipped: 'skipped', neutral: 'neutral',
-              in_progress: 'running', queued: 'waiting', pending: 'running', error: 'failed', timed_out: 'timed out'};
-  function pulls(list) {
-    var box = document.getElementById('pulls'), ul = box.querySelector('ul');
-    box.hidden = !list; if (!list) return;
+  function waiting(list) {
+    var box = document.getElementById('waiting'), ul = box.querySelector('ul');
+    box.hidden = !list || !list.length; if (box.hidden) return;
     ul.textContent = '';
-    if (!list.length) { var none = document.createElement('li'); none.className = 'dim'; none.textContent = 'Nothing.'; ul.append(none); return; }
-    list.forEach(function (p) {
-      var li = document.createElement('li'), a = document.createElement('a'), s = document.createElement('span');
-      a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '#' + p.number + ' ' + p.title;
-      var bits = [p.draft ? 'draft' : null, p.by ? 'by ' + p.by : null];
-      p.checks.forEach(function (c) { bits.push(c.name + ' ' + (WORD[c.state] || c.state || 'not run')); });
-      if (!p.checks.length) bits.push('no checks yet');
-      if (p.review.length) bits.push('review: ' + p.review.join(', '));
-      s.className = 'dim'; s.textContent = bits.filter(Boolean).join(' · ');
-      li.append(a, s); ul.append(li);
+    list.forEach(function (w) {
+      var li = document.createElement('li'), b = document.createElement('b'), s = document.createElement('span');
+      b.textContent = w.name + (w.said ? ': ' + w.said : '');
+      s.className = 'dim';
+      s.textContent = [w.by ? 'by ' + w.by : null, w.ahead != null ? plural(w.ahead, 'commit') + ' ahead' : null,
+                       w.behind ? plural(w.behind, 'commit') + ' behind' : null,
+                       w.lands ? 'lands ' + w.lands : null].filter(Boolean).join(' · ');
+      li.append(b, s); ul.append(li);
     });
   }
   function now() { fetch('/deploy/now', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(draw).catch(function () {}); }
@@ -5714,8 +5765,8 @@ DEPLOY_JS = """<script>
     });
   }
   go.onclick = function () {
-    var reply = {schema: 'fcpm.reply/v0', wizard: 'wizard:site+deploy', at: head, issued: iso(new Date()), nonce: hex(16), rev: head};
-    said.dataset.busy = 1; go.disabled = true; said.textContent = 'Deploying ' + head + '...';
+    var reply = {schema: 'fcpm.reply/v0', wizard: 'wizard:site+deploy', at: rev, issued: iso(new Date()), nonce: hex(16), rev: rev};
+    said.dataset.busy = 1; go.disabled = true; said.textContent = 'Deploying ' + rev.slice(0, 7) + '...';
     fetch('/drop', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(reply)})
       .then(function (r) { return r.json(); }).then(function (k) { follow(k.kept, 20); })
       .catch(function () { said.textContent = 'This machine is not answering'; delete said.dataset.busy; });

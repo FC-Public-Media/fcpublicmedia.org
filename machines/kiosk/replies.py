@@ -537,13 +537,30 @@ def head():
     return full, subject
 
 
+def origin_url():
+    """Where this checkout's `origin` points: our origin, as follow sets it."""
+    out = subprocess.run(["git", "-C", str(ROOT), "remote", "get-url", "origin"], capture_output=True, text=True)
+    return out.stdout.strip() or None
+
+
+def origin_main():
+    """Our origin's main, asked now (never a remembered fetch); None where the origin doesn't answer."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "ls-remote", "origin", "refs/heads/main"], capture_output=True,
+                             text=True, timeout=30, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    sha = out.stdout.split()[0] if out.returncode == 0 and out.stdout.split() else ""
+    return sha if re.fullmatch(r"[0-9a-f]{40}", sha) else None
+
+
 def deploying():
     return _deploy is not None and _deploy.poll() is None
 
 
 def deploy_reply(reply, meta):
-    """{rev}: deploy what this helm's checkout holds, if it is that commit. deploy-site is started and left to
-    run (a few minutes); its words go to deploy.log."""
+    """{rev}: deploy that commit, only if it is our origin's main, asked now, and this helm's checkout holds it.
+    deploy-site builds that commit and no other, and is left to run (a few minutes); its words go to deploy.log."""
     global _deploy
     rev = str(reply.get("rev") or "").lower()
     if not (7 <= len(rev) <= 40 and all(c in "0123456789abcdef" for c in rev)):
@@ -553,13 +570,19 @@ def deploy_reply(reply, meta):
         return "rev %s: this helm's checkout is at %s" % (rev[:7], full[:7] or "no commit")
     if deploying():
         return "a deploy is already running (%s)" % DEPLOY_LOG
+    main = origin_main()
+    if main is None:
+        return "our origin is not answering, so nothing says which commit its main is; nothing deployed"
+    if main != full:
+        return "rev %s: our origin's main is %s now; nothing deployed" % (rev[:7], main[:7])
     STATE.mkdir(parents=True, exist_ok=True)
     with open(STATE / DEPLOY_LOG, "ab") as out:
         out.write(("\n%s %s %s, by %s\n" % (now().isoformat(timespec="seconds"), full[:7], subject,
                                             (meta or {}).get("by") or "unsigned")).encode())
         out.flush()
         _deploy = subprocess.Popen(deploy_command(), stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                                   cwd=str(ROOT), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                                   cwd=str(ROOT), env=dict(os.environ, FCPM_DEPLOY_REV=full),
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return None, "deploy of %s started (%s)" % (full[:7], DEPLOY_LOG)
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Helm to helm (machines/helms.yml, replies.py route): a reply whose wizard another job's helm holds is
 passed there as it came, or waits for it; the holding helm applies wizard:model+up by model.ps1 pick, and
-wizard:site+deploy by bin/deploy-site.
+wizard:site+deploy by bin/deploy-site, on our origin's main only.
 
     python3 bin/test_helms.py
 """
@@ -47,13 +47,14 @@ def up(*names, **fields):
 class Helms(unittest.TestCase):
     def setUp(self):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
-        self.saved = replies.STATE, replies.route, dict(os.environ)
+        self.saved = replies.STATE, replies.route, dict(os.environ), replies.origin_main
         replies.STATE = self.tmp / "state"
         replies._waiting.clear()
         os.environ["FCPM_WEARS"] = "digitization"
 
     def tearDown(self):
         replies.STATE, replies.route = self.saved[:2]
+        replies.origin_main = self.saved[3]
         if replies._deploy is not None:
             replies._deploy.wait()
             replies._deploy = None
@@ -208,22 +209,29 @@ class Helms(unittest.TestCase):
         [(_, verdict, _)] = replies.take()
         self.assertEqual((verdict, sent), ("routed", ["http://digitization.local"]))
 
-    def test_the_holding_helm_deploys_only_the_commit_it_has_and_one_at_a_time(self):
+    def test_the_holding_helm_deploys_only_our_origins_main_and_one_at_a_time(self):
         mark = self.tmp / "deployed"
         os.environ["FCPM_DEPLOY"] = json.dumps([sys.executable, "-c",
-                                                "import sys, time; open(%r, 'w').write('x'); time.sleep(1)" % str(mark)])
+                                                "import os, time; open(%r, 'w').write(os.environ['FCPM_DEPLOY_REV']); "
+                                                "time.sleep(1)" % str(mark)])
         full = replies.head()[0]
-        replies.drop(deploy("abc1234"))
-        replies.drop(deploy("not a commit"))
-        replies.drop(deploy(full[:7]))
-        replies.drop(deploy(full))
-        verdicts = [(v, w) for _, v, w in replies.take()]
+        elsewhere = "f" * 40 if full != "f" * 40 else "e" * 40
+        verdicts = []
+        for main, rev in ((full, "abc1234"), (full, "not a commit"), (None, full), (elsewhere, full),
+                          (full, full[:7]), (full, full)):
+            replies.origin_main = lambda main=main: main
+            replies.drop(deploy(rev))              # one at a time: Windows' clock can give two drops the same microsecond
+            verdicts += [(v, w) for _, v, w in replies.take()]
         self.assertEqual(verdicts[0], ("held", "rev abc1234: this helm's checkout is at %s" % full[:7]))
         self.assertEqual(verdicts[1], ("held", "rev: the commit to deploy"))
-        self.assertEqual(verdicts[2], ("applied", "deploy of %s started (deploy.log)" % full[:7]))
-        self.assertEqual(verdicts[3], ("held", "a deploy is already running (deploy.log)"))
+        self.assertEqual(verdicts[2], ("held", "our origin is not answering, so nothing says which commit its main is; "
+                                               "nothing deployed"))
+        self.assertEqual(verdicts[3], ("held", "rev %s: our origin's main is %s now; nothing deployed"
+                                       % (full[:7], elsewhere[:7])))
+        self.assertEqual(verdicts[4], ("applied", "deploy of %s started (deploy.log)" % full[:7]))
+        self.assertEqual(verdicts[5], ("held", "a deploy is already running (deploy.log)"))
         replies._deploy.wait()
-        self.assertTrue(mark.exists())
+        self.assertEqual(mark.read_text(), full)                          # that commit, by name, not whatever HEAD is
         self.assertIn("by unsigned", (replies.STATE / replies.DEPLOY_LOG).read_text())
 
     def test_a_birth_goes_to_the_keystores_helm_and_is_lodged_never_granted(self):
