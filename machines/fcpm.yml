@@ -47,7 +47,7 @@ verbs:
   - verb: weekly
     args: ""
     says: "bring in the latest, once a week (the task runs it)"
-    windows: machines/watch weekly
+    windows: "machines/watch weekly: the pool's pass where the profile holds it, else the 'fcpm weekly' task"
     linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
   - verb: deploy

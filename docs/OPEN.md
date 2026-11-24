@@ -147,7 +147,8 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
 - The pool restarts the `production` supervisor too. machines/pool.ps1
-- Held like the pool's task, not yet: the `fcpm weekly` task and each crew's task (registered by verbs, checked only by name).
+- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name), and the kiosk's `fcpm weekly` task (the bays' pool does the weekly pull).
+- Bay 2 brings in main two ways: its crew's `follow` line every 15 minutes and the pool. One machine, one way: the twins as instances of one thing.
 - The default `gear.yml` claude-code winget id is unconfirmed.
 
 ## Jobs and services

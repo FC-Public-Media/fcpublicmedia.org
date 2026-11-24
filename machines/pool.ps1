@@ -1,10 +1,11 @@
 # pool.ps1 -- keep this bay's root reachable, with nothing open until asked.
 #
 #   pool.ps1 status              is the root's server up and current, and what sessions run
-#   pool.ps1 pass                one pass: place what the profile maps (Current: when the mirror
-#                                moves, and every $HoldMin minutes), bounce a stale server of
-#                                ours, start the root's server if it is not up, keep the
-#                                roller's screen (troves/kiosk-screen). What the logon task runs
+#   pool.ps1 pass                one pass: the weekly pull, once a week (Weekly); place what the
+#                                profile maps (Current: when the mirror moves, and every $HoldMin
+#                                minutes); bounce a stale server of ours, start the root's server
+#                                if it is not up, keep the roller's screen (troves/kiosk-screen).
+#                                What the logon task runs
 #   pool.ps1 off|on              end every Remote Control server here (signed
 #                                off, so the phone lets go) and keep it off
 #                                until on or a restart, or start again and
@@ -43,6 +44,7 @@ $Log = Join-Path $State "pool.log"
 $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "$Bay pool"
+$Weekly = "fcpm weekly"   # machines/watch's task where no pool is held; here, the pool's pass does it
 $CalmMin = 15
 # `fcpm dev on` creates this file (machines/fcpm): follow GitHub.
 $Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
@@ -255,6 +257,17 @@ function Screens {
     if ($LASTEXITCODE -ne 0) { Say "screens: keep roller-tv failed ($LASTEXITCODE)" }
 }
 
+function Weekly {
+    # Once a week, every mirror and the people's working copy (machines/watch weekly). The pool's
+    # pass does it wherever the pool is held, so the bays do it alike, with no task of its own.
+    $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+    $week = "$(& $bash -c 'date +%G-W%V' 2>$null)".Trim()
+    $done = "$(Get-Content (Join-Path $env:LOCALAPPDATA 'fcpm\weekly.done') -ErrorAction SilentlyContinue)".Trim()
+    if (-not $week -or $week -eq $done) { return }
+    & $bash -l (Join-Path $Mirror "machines\watch") weekly 2>&1 | Out-Null
+    Say ("weekly: pulled for {0} (fcpm\weekly.log)" -f $week)
+}
+
 function Follow {
     # With dev on, fast-forward fcpublicmedia.org every $PullMin minutes, for Current to place.
     if (-not (Test-Path $Dev)) { return }
@@ -323,6 +336,8 @@ function TaskDiffers {
     }
     if ($t.Settings.MultipleInstances -ne "IgnoreNew" -or $t.Settings.ExecutionTimeLimit -ne "PT10M") { return "its settings differ" }
     if ($t.State -eq "Disabled") { return "disabled" }
+    # The pool's pass does the weekly pull; a task of its own, left from before, is not mapped.
+    if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) { return "'$Weekly' is left over: the pool's pass does the weekly pull" }
     ""
 }
 
@@ -338,7 +353,7 @@ function StopAll {
 }
 
 switch ($Verb) {
-    "pass" { Follow; Current; EnsureServer; Screens }
+    "pass" { Follow; Weekly; Current; EnsureServer; Screens }
     "off" { New-Item -ItemType Directory -Force $State | Out-Null; Set-Content -Path $Off -Value ""; Say "server: off"; StopAll }
     "on" {
         Remove-Item $Off -ErrorAction SilentlyContinue; Say "server: on"; EnsureServer
@@ -375,6 +390,10 @@ switch ($Verb) {
         Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($atLogon, $every) -Settings $set `
             -Principal $who -Description "$Bay's root: keep the Remote Control server up in $Root. machines\pool.ps1, held by the MANIFEST." -Force | Out-Null
         Write-Output "registered '$TaskName': at logon, and every minute"
+        if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $Weekly -Confirm:$false
+            Write-Output "removed '$Weekly': the pool's pass does the weekly pull"
+        }
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }
     "status" {

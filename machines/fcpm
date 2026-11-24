@@ -56,7 +56,7 @@ case "$cmd" in
   install)
     # This machine as its profile says: its mirror caught up (forward only), what the profile places, the
     # engines, the profile's system steps (FCPM_DESK: a person is here, so one may ask for an administrator),
-    # the working copy, and on Windows the weekly task. A job named is put on before `names` lists it (start.ps1).
+    # the working copy, and on Windows the weekly task where no pool is held (the pool's pass does it). A job named is put on before `names` lists it (start.ps1).
     export FCPM_DESK=1
     m="$CODE/refs"; [ -d "$m" ] || m="$CODE/ref"
     [ -e "$m/$(basename "$REPO")/.git" ] && "$REPO/bin/refs" pull "$(basename "$REPO")"

@@ -86,7 +86,7 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | verb | does |
 |---|---|
 | (none) | the watcher, `machines/watch` |
-| `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and the `fcpm weekly` task. A job named is put on by `sync -p` |
+| `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and, where the profile holds no pool, the `fcpm weekly` task. A job named is put on by `sync -p` |
 | `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
 | `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
 | `refs [status\|pull\|work\|done]` | `bin/refs`: the mirrors in `~/code/refs` (the kiosk's `ref/`) and the worktrees in `~/code/work`, on any machine; `~/code/bin/refs` is the same file, placed for sessions |
@@ -101,8 +101,10 @@ last weekly pull. It offers only what applies: *Make my working copy*, *Bring in
 my changes up* (commit, catch up with `main`, push `<called>`, open or join a PR), *Install the
 updates on this computer*. If edits and the latest change the same lines, it stops; nothing is lost.
 
-`fcpm weekly` runs at sign-in and 7am and works once a week: it pulls every mirror and fast-forwards
-the working copy, never merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). A bare
+`fcpm weekly` works once a week: it pulls every mirror and fast-forwards the working copy, never
+merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). Where the profile holds the pool
+(both bays), the pool's every-minute pass runs it, so the twins do it alike; elsewhere (the kiosk) a
+task of its own runs it at sign-in and 7am. A bare
 machine starts from the start line in [README.md](../README.md), *Setting up a machine*. It fetches
 [`machines/start.ps1`](../machines/start.ps1), which needs only winget: Git (machine-wide), this
 repository cloned or pulled into `~/code/refs/`, every `provisioner: winget` package in the job's
