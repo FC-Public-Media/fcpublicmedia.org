@@ -99,6 +99,6 @@ otherwise.
    machine's birth key. The first test of a move is to move the keystore off digitization onto another
    profile and still unlock it.
 
-Known on 2026-11-10: bay 2 (FCPMEDIT2) has not yet run `fcpm keys birth` against its real agent, so no
+Known on 2026-11-10: bay 2 (BAY2) has not yet run `fcpm keys birth` against its real agent, so no
 petition has been lodged yet. `bin/test_keys.py` and `bin/test_helms.py` cover birth and lodging.
 `bin/test_replies.py` needs Node, which bay 1 lacks.

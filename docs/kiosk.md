@@ -284,7 +284,7 @@ this one; a board wizard grants it (docs/keystore.md, Birth):
 
 ```json
 {"schema": "fcpm.reply/v0", "wizard": "wizard:keys+birth", "at": "6b2b5b7", "job": "editing-bay-2",
- "host": "FCPMEDIT2", "key": "ssh-ed25519 AAAA… fcpm editing-bay-2 FCPMEDIT2 2026-11-10",
+ "host": "BAY2", "key": "ssh-ed25519 AAAA… fcpm editing-bay-2 BAY2 2026-11-10",
  "issued": "2026-11-10T01:12:00-07:00", "nonce": "…", "sig": null}
 ```
 

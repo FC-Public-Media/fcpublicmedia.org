@@ -30,7 +30,7 @@ def deploy(rev):
 
 def birth(key, **fields):
     r = {"schema": "fcpm.reply/v0", "wizard": "wizard:keys+birth", "at": "test", "job": "editing-bay-2",
-         "host": "FCPMEDIT2", "key": key, "issued": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+         "host": "BAY2", "key": key, "issued": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
          "nonce": os.urandom(8).hex(), "sig": None}
     r.update(fields)
     return json.dumps(r)
