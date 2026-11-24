@@ -133,6 +133,12 @@ def repos():
     return out
 
 
+def on_main(p):
+    """HEAD names main, so a clone without -b checks out main (an older `git init` named master)."""
+    if ref(p, "refs/heads/main") and git(p, "symbolic-ref", "HEAD", check=False).stdout.strip() != "refs/heads/main":
+        git(p, "symbolic-ref", "HEAD", "refs/heads/main")
+
+
 def adopt(full):
     """A repository GitHub has but that came here without a github remote (made by `init` for a
     push) is given GitHub's by its path, main only. True if it has one now. One that GitHub does not
@@ -179,7 +185,7 @@ def discover(have):
             if full in have or not kept(full) or os.path.exists(os.path.join(ORIGIN, full)):
                 continue
             p = os.path.join(ORIGIN, full)
-            subprocess.run(["git", "init", "-q", "--bare", p], check=True)
+            subprocess.run(["git", "init", "-q", "--bare", "-b", "main", p], check=True)
             for k, v in (("receive.denyNonFastForwards", "true"), ("receive.denyDeletes", "true"),
                          ("remote.github.url", "https://github.com/%s.git" % full),
                          ("remote.github.fetch", "+refs/heads/main:refs/heads/github/main")):
@@ -541,6 +547,8 @@ def main():
         except BlockingIOError:
             return 0                    # the last run is still going
         names = repos()
+        for n in names:
+            on_main(os.path.join(ORIGIN, n))
         rows = [{"repo": n, "state": "not kept", "main": ref(os.path.join(ORIGIN, n), "refs/heads/main")}
                 for n in names if not kept(n)]     # here from before KEEP said otherwise: left as they are
         names = [n for n in names if kept(n)]

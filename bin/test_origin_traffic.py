@@ -57,6 +57,12 @@ class Traffic(relay.Beat):
         self.assertEqual(self.intake.main(), 0)
         return [json.loads(l) for l in (self.origin / ".intake/orders.ndjson").read_text().splitlines()]
 
+    def test_the_beat_points_head_at_main(self):
+        hub = self.origin / HUB
+        self.git("symbolic-ref", "HEAD", "refs/heads/master", cwd=hub)
+        self.assertEqual(self.intake.main(), 0)
+        self.assertEqual(self.git("symbolic-ref", "HEAD", cwd=hub).stdout.strip(), "refs/heads/main")
+
     def test_look_reads_every_branch_and_the_tape(self):
         self.main_with({".gitattributes": "/.issues merge=union\n", ".issues": "a the first\n"})
         self.branch("feature", {".issues": "a the first\nb a second, said on the branch\n"})
