@@ -19,6 +19,7 @@ Standing orders are in [`../AGENTS.md`](../AGENTS.md).
 | [`lines.md`](lines.md) | the LAN's lines: machines tell each other things by data piles through the origin, each pile's shape signed in |
 | [`keystore.md`](keystore.md) | a machine's own key (birth, granted by merge), and the keystore that holds real secrets |
 | [`pile-lines.md`](pile-lines.md) | lines on a data pile: masked x-ray metadata beside sealed content, signed by whoever x-rayed it, routed by path so a hook hears only its own (design) |
+| [`elevation.md`](elevation.md) | administrator steps: what a machine cannot place by itself, waiting as one stack for a staff wizard's yes and one click (design) |
 | [`station.md`](station.md) | the station: machines, profiles, fcpm, sync, grants, runnables, the bay, engines |
 | [`consoles.md`](consoles.md) | consoles, a screen each that a helm keeps written, and places, an origin branch's repositories as a listing |
 | [`workshed.md`](workshed.md) | the workshed: a worktree each for whoever is working on something, its site served on its own port, the Helm's `/workshed/` |
