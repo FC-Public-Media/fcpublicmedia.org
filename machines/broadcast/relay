@@ -6,8 +6,8 @@
 
 The source is the ingest (./ingest), fed by ./fetch from the Cablecast box on the LAN, read on
 127.0.0.1, so the only leg on the internet is ours to YouTube. It goes to YouTube's primary ingest
-by RTMPS, as it arrives. The stream key is kept in ~/.config/fcpm/youtube.key (600); nothing here
-prints it, and Cablecast never holds it. `--backup` sends to YouTube's backup ingest instead.
+by RTMPS, as it arrives. The stream key comes in YOUTUBE_KEY (`keys run youtube --`, from the keychain to
+this process only), else ~/.config/fcpm/youtube.key (600); nothing here prints it, and Cablecast never holds it. `--backup` sends to YouTube's backup ingest instead.
 
 Nothing is pushed until the ingest's counters show the channel arriving (a publisher on and its
 bytes growing), and ffmpeg is stopped when its output stops moving. When the channel goes, the ingest
@@ -21,6 +21,7 @@ ffmpeg and the system python. See PROFILE.md, "To YouTube".
 """
 import datetime
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -44,7 +45,7 @@ WATCH = 5         # seconds between two reads of the ingest's counters, to see t
 STALL = 60        # seconds of no output before ffmpeg is stopped
 WAIT = 10         # seconds between tries while nothing arrives or there is no key
 CHECK = 20        # seconds between asking whether a marked episode is on our push
-AIR = "http://127.0.0.1:8482/air"   # standby's claims: while one is fresh the floor is not sent to YouTube
+AIR = os.environ.get("FCPM_AIR", "http://127.0.0.1:8482/air")   # standby's claims (ch97's /air off its box)
 
 
 def now():
@@ -158,7 +159,7 @@ def main(check, target):
             holding = True
             time.sleep(2)
             continue
-        key = KEY.read_text().strip() if KEY.exists() else ""
+        key = os.environ.get("YOUTUBE_KEY", "").strip() or (KEY.read_text().strip() if KEY.exists() else "")
         try:
             flowing, got = arriving()
         except Exception as e:  # the ingest not answering is a state, not a crash
@@ -169,7 +170,7 @@ def main(check, target):
                 note(state="waiting", why="nothing arriving at the ingest" if got is None
                      else "a publisher is connected but nothing moves")
             elif not key:
-                note(state="waiting", why=f"the channel arrives; no key in {KEY}")
+                note(state="waiting", why=f"the channel arrives; no key in YOUTUBE_KEY or {KEY}")
         if check:
             print(json.dumps({"source": SOURCE, "arriving": flowing, "bytes_in": got, "key": bool(key),
                               "target": INGEST[target].format(key="<key>"),

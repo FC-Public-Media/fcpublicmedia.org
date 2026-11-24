@@ -1,0 +1,23 @@
+#!/bin/sh
+# follow -- DJ takes its orders from main: this checkout and the broadcast repository (the relay's marks,
+# ../broadcast/youtube.py) fast-forward to origin.local's main, never over local changes. `follow heed` is the
+# crew's line: a pass, then it waits on the origin's `hear main` (five minutes at most). Like ../digitization/follow.
+if [ "${1:-}" = heed ]; then
+  me="$(cd "$(dirname "$0")" && pwd)/follow"
+  while :; do
+    timeout 330 ssh -o BatchMode=yes -o ConnectTimeout=20 fcpm-origin hear main >/dev/null 2>&1 &
+    heard=$!
+    /bin/sh "$me" || echo "follow: the pass failed ($?)"
+    wait "$heard" || sleep 270
+  done
+fi
+ff() {
+  [ "$(git -C "$1" rev-parse --abbrev-ref HEAD)" = main ] || { echo "follow: $1 not on main; left alone"; return 0; }
+  [ -z "$(git -C "$1" status --porcelain --ignore-submodules=all)" ] || { echo "follow: $1 has local changes; left alone"; return 0; }
+  GIT_TERMINAL_PROMPT=0 git -C "$1" fetch -q origin main && git -C "$1" merge -q --ff-only origin/main
+}
+cd "$(dirname "$0")/../.." || exit 1
+ff . || exit 1
+B=${FCPM_BROADCAST:-$HOME/.local/share/fcpm/broadcast}
+[ -d "$B/.git" ] || GIT_TERMINAL_PROMPT=0 git clone -q fcpm-origin:/srv/origin/FC-Public-Media/broadcast "$B"
+ff "$B"

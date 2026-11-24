@@ -7,7 +7,7 @@ kept apart from operations' (`projects`: public-run projects). Never prints a va
   keys check            the same in `fcpm check`'s words; exit 1 if any is wanted
   keys take GROUP KEY   ask for one value in a window on this screen and keep it; a surprise in its shape is said
   keys offer GROUP DEVICE   ask for GROUP's wanted keys on a one-time page only DEVICE on the tailnet can open
-  keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys in its environment, and the
+  keys run GROUP [GROUP...] -- CMD...   run CMD with those groups' env keys (a raw group's under its `env:`) in its environment, and the
                         folders of the job's gear called by `at:` (a bay's Node) first on its PATH
   keys flush            hand every key held here up to the keychain (machines/keychain), protected; `take` does
                         it by itself, so a key stored here is never only here
@@ -170,7 +170,9 @@ def facts(groups):
             value = held.get(key, "")
             prefix = spec.get("prefix", "")
             where = f"{name} {key}" + (f" ({prefix}…)" if prefix else "")
-            if not value and spec.get("from token"):
+            if not value and group.get("held") == "keychain":
+                yield True, f"key {where} on the keychain, never kept here", None
+            elif not value and spec.get("from token"):
                 yield False, f"key {where} in {short(path)}", f"comes from {spec['from token']} by itself: keys run {name} -- true"
             elif not value:
                 yield False, f"key {where} in {short(path)}", f"keys take {name} {key}; get one from {spec['from']}"
@@ -365,7 +367,7 @@ def run(groups, names, command):
         group = groups.get(name)
         if not group:
             sys.exit(f"keys: no group {name} in this machine's keys.yml ({', '.join(wears()) or 'it wears no job'})")
-        if group["form"] != "env":
+        if group["form"] != "env" and not group.get("env"):
             sys.exit(f"keys: {name} is one raw value; its job reads {short(group['path'])} itself")
         held = read(group)
         for k in [k for k in group["keys"] if not held.get(k)]:
@@ -379,7 +381,10 @@ def run(groups, names, command):
         missing = [k for k in group["keys"] if not held.get(k)]
         if missing:
             sys.exit(f"keys: {name} lacks {', '.join(missing)}, here and on the keychain: keys take {name} {missing[0]}")
-        env.update({k: held[k] for k in group["keys"]})
+        if group["form"] == "env":
+            env.update({k: held[k] for k in group["keys"]})
+        else:                                               # a raw value, under the one name its ledger gives it
+            env[group["env"]] = held[next(iter(group["keys"]))]
     env["PATH"] = os.pathsep.join(gear_folders() + [env.get("PATH", "")])
     exe = shutil.which(command[0], path=env["PATH"])                    # Windows: npx is npx.cmd
     if not exe:

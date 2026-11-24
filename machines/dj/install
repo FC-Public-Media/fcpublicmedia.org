@@ -5,6 +5,12 @@
 #                                              our keys). ERASES DISK, installs Debian 13 there, and powers HOST off.
 #   machines/dj/install fcpm@dj.local          outfit DJ as it runs: NVIDIA's driver for its encoder, and its jobs.
 #
+# Outfitting is a keeper's (../keychain): DJ's identity (identity-dj, minted on the keychain, protected) and the
+# Secure Boot key its driver is signed with (dj-secureboot) come from the keychain straight to DJ, so a DJ put
+# on again, or a new box in his place, is the same DJ to the origin and the keychain. The first outfit puts the
+# signing key up; while firmware has enrolled it, no screen asks again. Needs DJ's lines in HOLDERS and
+# ../origin/KEYHOLDERS on main.
+#
 # DISK must answer to SERIAL ("none" if it reports none), so the wrong disk is never the one erased. Debian, not
 # Alpine: NVIDIA's driver (the P4000's encoder) is built for glibc. Settings, with what they default to:
 #   FCPM_KEYS  ~/.ssh/id_ed25519.pub        who manages it (fcpm, sudo)
@@ -40,8 +46,23 @@ if [ $# -eq 3 ]; then
   ssh -o BatchMode=yes "$TARGET" poweroff || true
   echo "Powered off. Take the card out, then power it on: it is $NAME.local. Then: machines/dj/install fcpm@$NAME.local"
 else
+  K=${FCPM_KEYCHAIN_SSH:-fcpm-keychain}
+  id=$(ssh -o BatchMode=yes "$K" get "identity-$NAME" ssh) || { echo "No identity-$NAME from the keychain (above)."; exit 1; }
+  printf '%s\n' "$id" | ssh -o BatchMode=yes "$TARGET" "umask 077; mkdir -p ~/.ssh; cat > ~/.ssh/fcpm-$NAME"; unset id
+  ssh -o BatchMode=yes "$K" get "identity-$NAME" ssh.pub | ssh -o BatchMode=yes "$TARGET" "cat > ~/.ssh/fcpm-$NAME.pub"
+  ssh-keygen -F origin.local | grep -v '^#' > "$T/fcpm-dj/origin.known" || { echo "origin.local is not in this machine's known_hosts."; exit 1; }
+  cp machines/digitization/mdns.allow machines/digitization/gai.conf "$T/fcpm-dj/"
+  mok=$(ssh -o BatchMode=yes "$K" get dj-secureboot mok.key 2>/dev/null) && [ -n "$mok" ] && {
+    printf '%s\n' "$mok" | ssh -o BatchMode=yes "$TARGET" 'base64 -d | sudo install -D -m 600 /dev/stdin /var/lib/dkms/mok.key'
+    ssh -o BatchMode=yes "$K" get dj-secureboot mok.pub | ssh -o BatchMode=yes "$TARGET" 'base64 -d | sudo install -D -m 644 /dev/stdin /var/lib/dkms/mok.pub'
+    echo "The Secure Boot signing key came from the keychain."; }
+  unset mok
   out=$(tar -C "$T" -cf - fcpm-dj | ssh -o BatchMode=yes "$TARGET" \
     "$unpack && sudo sh /tmp/fcpm-dj/outfit; rm -rf /tmp/fcpm-dj" | tee /dev/stderr)
   printf '%s\n' "$out" | grep -q '^OUTFITTED: ' || { echo "The outfit did not finish."; exit 1; }
+  if ! ssh -o BatchMode=yes "$K" get dj-secureboot mok.key >/dev/null 2>&1; then
+    ssh -o BatchMode=yes "$TARGET" 'sudo base64 -w0 /var/lib/dkms/mok.key' | ssh -o BatchMode=yes "$K" put dj-secureboot mok.key
+    ssh -o BatchMode=yes "$TARGET" 'sudo base64 -w0 /var/lib/dkms/mok.pub' | ssh -o BatchMode=yes "$K" put dj-secureboot mok.pub
+  fi
   echo "$NAME.local: outfitted from $(pwd -P) at $(git rev-parse --short HEAD)."
 fi

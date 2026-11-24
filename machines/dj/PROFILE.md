@@ -12,7 +12,8 @@ to the Buffalo first (`../digitization/PROFILE.md`, Mirrors). Machines: [docs/st
 | [`install`](install) | from a workstation: `root@steward.local DISK SERIAL` puts Debian on DISK from the president card's Alpine (`disk`); `fcpm@dj.local` outfits him as he runs (`outfit`) |
 | [`disk`](disk) | GPT (EFI 512M, root ext4), `debootstrap` trixie with Debian's own keyring, then Debian's signed shim and grub, so Secure Boot stays on. sshd by key only (`fcpm`, sudo), avahi, systemd-networkd by DHCP, zram, Fort Collins time |
 | [`outfit`](outfit) | NVIDIA's driver (DKMS, signed), `nvidia-smi`, ffmpeg. The first run asks the firmware to trust the module's signing key: at the next boot, at DJ's screen, MokManager asks once for the password it prints |
-| jobs | static CI and streaming: not built. CI is shaped openly: nothing a member project pushes runs here by itself |
+| jobs | the stream ([`services`](services)): `ingest`, `fetch` and `youtube`, the broadcast job's lines ([`../broadcast`](../broadcast/PROFILE.md), To YouTube), and `follow`. Static CI: not built; it is shaped openly: nothing a member project pushes runs here by itself |
+| keys | DJ is a holder of the keychain and the origin (`machine dj` in [`../keychain/HOLDERS`](../keychain/HOLDERS) and [`../origin/KEYHOLDERS`](../origin/KEYHOLDERS)), by `identity-dj`, minted on the keychain. [`keys.yml`](keys.yml) is its grant: a group named there is handed to DJ, and to no machine whose own `keys.yml` does not name it. `youtube` is never kept on DJ's disk. The Secure Boot signing key is `dj-secureboot` on the keychain |
 
 ## Installing
 
@@ -22,7 +23,10 @@ From the president card, at DJ, with nobody else driving:
 2. `fcpm provision dj`. It lists DJ's disks with their serials and asks which; pick the NVMe (`nvme0n1`), type its serial
    back, and it installs Debian there from what the card carries. Then `shutdown`, take the card out, power on:
    `dj.local`.
-3. From a workstation, `machines/dj/install fcpm@dj.local` (NVIDIA's driver), reboot, and answer the blue MokManager
-   screen once at DJ (Enroll MOK, Continue, Yes, the password it printed, Reboot). `nvidia-smi -L` names the P4000.
+3. From a keeper's workstation (digitization), `machines/dj/install fcpm@dj.local`: DJ's identity and signing key
+   from the keychain, NVIDIA's driver, the LAN's names, the checkout from origin.local, and the crew. Reboot. Only
+   when the firmware has not enrolled the signing key yet (the first time, or a new board), answer the blue
+   MokManager screen once at DJ (Enroll MOK, Continue, Yes, the password it printed, Reboot). `nvidia-smi -L`
+   names the P4000.
 
 A workstation can also do step 2 over SSH: `machines/dj/install root@steward.local /dev/nvme0n1 SERIAL`.

@@ -1,14 +1,16 @@
 #!/bin/sh
 # outfit -- DJ as it runs, as root: NVIDIA's driver for the P4000 and its encoder (ffmpeg's nvenc), signed for
 # Secure Boot. The first time, it asks the firmware to trust the signing key: at the next boot a blue MokManager
-# screen asks for the password printed below, once, at DJ's own screen. Safe to run again. Sent by ./install.
+# screen asks for the password printed below, once, at DJ's own screen. Then the LAN's names (.local however
+# deep, IPv4 first), the checkout from origin.local by DJ's own key, and the crew. Safe to run again. Sent by ./install.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 . "$HERE/settings"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q >/dev/null
 apt-get install -y -q linux-headers-amd64 dkms mokutil firmware-misc-nonfree >/dev/null
-apt-get install -y -q nvidia-driver nvidia-kernel-dkms nvidia-smi ffmpeg >/dev/null
+apt-get install -y -q nvidia-driver nvidia-kernel-dkms nvidia-smi ffmpeg git python3-yaml nginx libnginx-mod-rtmp >/dev/null
+systemctl disable -q --now nginx      # the ingest runs its own instance (../broadcast/ingest); nothing serves :80 here yet
 KEY=/var/lib/dkms/mok.pub
 [ -f "$KEY" ] || { echo "dkms made no signing key ($KEY)."; exit 1; }
 if mokutil --test-key "$KEY" 2>/dev/null | grep -q 'is already enrolled'; then
@@ -19,4 +21,35 @@ else
   printf '%s\n%s\n' "$PW" "$PW" | mokutil --import "$KEY" >/dev/null
   echo "ENROLL: at the next boot, at DJ's screen: Enroll MOK, Continue, Yes, password $PW, Reboot."
 fi
+install -m 644 "$HERE/mdns.allow" /etc/mdns.allow
+install -m 644 "$HERE/gai.conf" /etc/gai.conf
+sed -i 's/^hosts:.*/hosts:          files myhostname mdns4_minimal [NOTFOUND=return] mdns4 [NOTFOUND=return] resolve [!UNAVAIL=return] dns/' /etc/nsswitch.conf
+U=${SUDO_USER:-fcpm}; H=$(getent passwd "$U" | cut -d: -f6)
+as() { runuser -u "$U" -- env HOME="$H" "$@"; }
+as sh -s "$NAME" "$HERE/origin.known" <<'USER'
+set -eu
+mkdir -p ~/.ssh ~/code/work && chmod 700 ~/.ssh
+touch ~/.ssh/config ~/.ssh/known_hosts
+sed -i '/^# fcpm-identity >>>/,/^# fcpm-identity <<</d' ~/.ssh/config
+cat >> ~/.ssh/config <<C
+# fcpm-identity >>> (machines/dj/outfit)
+Host fcpm-origin
+  HostName origin.local
+  User git
+  IdentityFile ~/.ssh/fcpm-$1
+  IdentitiesOnly yes
+Host fcpm-keychain
+  HostName origin.local
+  User keys
+  IdentityFile ~/.ssh/fcpm-$1
+  IdentitiesOnly yes
+# fcpm-identity <<<
+C
+ssh-keygen -R origin.local >/dev/null 2>&1 || true
+cat "$2" >> ~/.ssh/known_hosts
+W=~/code/work/fcpublicmedia.org
+[ -d "$W/.git" ] || GIT_TERMINAL_PROMPT=0 git clone -q fcpm-origin:/srv/origin/FC-Public-Media/fcpublicmedia.org "$W"
+sh "$W/machines/dj/follow"
+USER
+sh "$H/code/work/fcpublicmedia.org/machines/crew.sh" install "$NAME"
 echo "OUTFITTED: $NAME"

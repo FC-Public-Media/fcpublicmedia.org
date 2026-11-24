@@ -110,6 +110,11 @@ from the Cablecast box and carry it to YouTube with our key. Cablecast holds no 
 and no YouTube key; the key lives only in our keychain (`youtube` group). The one internet leg is
 ours, so when YouTube complains, the evidence is here.
 
+The stream's three lines (fetch, ingest, youtube) run on DJ, worn by its own crew ([`../dj`](../dj/PROFILE.md));
+"this box" below is DJ. The floor, the jukebox, the page and `lay` stay on digitization. DJ's `youtube` line
+takes the key from the keychain into the relay's environment only (`keys run youtube --`), and tells the floor
+who has the air through ch97's `/air` (`FCPM_AIR`).
+
 [`fetch`](fetch), the crew's `fetch` line, reads the channel's live stream from the box itself
 (`https://10.1.10.84/live-5/...`, the HLS that Reflect copies to the web): the largest picture and
 the audio, copied, three segments behind live and paced by the clock, half a minute of slack against
