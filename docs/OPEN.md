@@ -194,3 +194,4 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - EdgeRouter X: joining the studio network, a preparation script, firmware.
 - PTZ: read each camera on arrival; how a show holds one; the board's policy on behind-the-scenes recording and a 24-hour stream.
 - Nest Cam: which app still sets it up was never checked.
+- `machines/editing-bay-2/follow` is a one-line shim to `../follow`, kept one release past the shared follow line; remove it once bay 2 runs the new line.

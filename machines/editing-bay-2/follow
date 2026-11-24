@@ -1,0 +1,4 @@
+#!/bin/sh
+# Retired: bay 2 follows by ../follow, as bay 1 does. Kept one release so the pull that retires it does
+# not delete the file running it (an untracked leftover would read as local changes); then it goes.
+exec sh "$(dirname "$0")/../follow" "$@"
