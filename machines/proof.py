@@ -233,8 +233,8 @@ def run(full, checks, m, commit, tree, made, ordered=None):
     lines = [FORMAT, "repo " + full, "tree " + tree, "made " + made]
     if ordered:
         lines.append("ordered " + ordered)
-    wf = git(m, "rev-parse", "%s:%s" % (commit, checks), check=False).stdout.strip()
-    main_wf = git(m, "rev-parse", "refs/heads/main:" + checks, check=False).stdout.strip()
+    wf = git(m, "rev-parse", "-q", "--verify", "%s:%s" % (commit, checks), check=False).stdout.strip()
+    main_wf = git(m, "rev-parse", "-q", "--verify", "refs/heads/main:" + checks, check=False).stdout.strip()
     lines.append("checks %s blob %s, %s" % (checks, wf or "none",
                                             "main's" if wf and wf == main_wf else "NOT main's (%s)" % (main_wf or "none")))
     runner_rev = git(REPO_ROOT, "rev-parse", "HEAD", check=False).stdout.strip()
