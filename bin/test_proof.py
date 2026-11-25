@@ -102,6 +102,15 @@ class Proofs(unittest.TestCase):
         self.assertEqual(tree, self.tree)
         self.assertEqual([t for _, t in found], [text, text])
 
+    def test_checks_are_name_colon_command_lines(self):
+        text = "# a comment: not a check\n\nBuild it: cd site && make: all\nTest it: python3 t.py\n"
+        self.assertEqual(proof.checks_in(text), [("Build it", "cd site && make: all"), ("Test it", "python3 t.py")])
+
+    def test_the_repositorys_checks_read(self):
+        checks = proof.checks_in((ROOT / ".checks").read_text())
+        self.assertTrue(checks)
+        self.assertIn("Test the proofs", [n for n, _ in checks])
+
     def test_landing_tree_is_main_tree_after_landing(self):
         sh("git", "checkout", "-qb", "topic", cwd=self.work)
         (self.work / "b").write_text("b\n")

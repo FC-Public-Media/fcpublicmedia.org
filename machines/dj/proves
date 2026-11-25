@@ -1,2 +1,2 @@
 # What DJ proves (../proof.py): `owner/repo checks-file` a line; the checks are the tested tree's own file.
-FC-Public-Media/fcpublicmedia.org   .github/workflows/smoke.yml
+FC-Public-Media/fcpublicmedia.org   .checks

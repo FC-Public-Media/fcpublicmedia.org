@@ -9,7 +9,7 @@
                                    exit 0 only when one is good and passed: the tree is safe to deploy
 
 A proof is one text file. Its lines say which repository and tree, how the tree was made (main, or main with a
-branch's tip as the origin's landing would merge them), which checks ran (the tree's own workflow file, by
+branch's tip as the origin's landing would merge them), which checks ran (the tree's own .checks file, by
 blob, and whether it is main's), where (the prover's system and tools), and each step: passed or failed, its
 time, the sha256 of everything it printed. The last line before the signature is the result. Below it is an
 SSH signature (namespace fcpm-proof) over every byte above it, by the prover's own key. A holder may sign
@@ -103,7 +103,7 @@ def split(text):
 def fields(statement):
     """The statement's lines as (word, rest) pairs, and a dict of the single-word ones."""
     pairs = [tuple((l.split(" ", 1) + [""])[:2]) for l in statement.splitlines() if l.strip()]
-    return pairs, {k: v for k, v in pairs if k not in ("step", "given", "skipped")}
+    return pairs, {k: v for k, v in pairs if k != "step"}
 
 
 def verify(text, root=REPO_ROOT):
@@ -141,16 +141,15 @@ def passed(text):
     return fields(split(text)[0])[1].get("result", "").startswith("passed")
 
 
-# ---- the checks, as the tree's own workflow says ------------------------------------------------------------
+# ---- the checks: the tree's own .checks ---------------------------------------------------------------------
 
-def steps(workflow_text):
-    """The workflow's steps, every job in order: dicts with name, and run or uses."""
-    import yaml
-    doc = yaml.safe_load(workflow_text) or {}
+def checks_in(text):
+    """[(name, command)] of a checks file: `name: command` a line, # for a comment."""
     out = []
-    for job in (doc.get("jobs") or {}).values():
-        for i, s in enumerate(job.get("steps") or []):
-            out.append(dict(s, name=s.get("name") or s.get("uses") or "step %d" % (i + 1)))
+    for line in text.splitlines():
+        if line.strip() and not line.lstrip().startswith("#") and ": " in line:
+            name, command = line.split(": ", 1)
+            out.append((name.strip(), command.strip()))
     return out
 
 
@@ -227,9 +226,8 @@ def run(full, checks, m, commit, tree, made, ordered=None):
     started = time.time()
     runs = HOME / "runs"
     work = runs / ("%s-%d" % (tree[:12], int(started)))
-    venv = runs / ("%s-%d.venv" % (tree[:12], int(started)))
-    base_env = {"HOME": str(HOME / "runner"), "LANG": "C.UTF-8", "TZ": "UTC", "CI": "true",
-                "PATH": "%s:%s:/opt/node/bin:/usr/local/bin:/usr/bin:/bin" % (HOME / "shims", venv / "bin")}
+    env = {"HOME": str(HOME / "runner"), "LANG": "C.UTF-8", "TZ": "UTC", "CI": "true",
+           "PATH": "/opt/node/bin:/usr/local/bin:/usr/bin:/bin"}
     ref = "refs/proof/" + tree
     git(m, "update-ref", ref, commit)
     lines = [FORMAT, "repo " + full, "tree " + tree, "made " + made]
@@ -247,52 +245,35 @@ def run(full, checks, m, commit, tree, made, ordered=None):
         tool("bundle", "--version").split()[-1], tool("node", "--version"),
         tool("npm", "--version")))
     lines.append("started " + utc(started))
-    logs, results = {}, []
+    logs = {}
     try:
         prep = [("git", "init", "-q", str(work)),
                 ("git", "-C", str(work), "fetch", "-q", "--depth", "1", "file://" + str(m), ref),
-                ("git", "-C", str(work), "checkout", "-q", "--detach", "FETCH_HEAD"),
-                ("python3", "-m", "venv", "--system-site-packages", str(venv))]
+                ("git", "-C", str(work), "checkout", "-q", "--detach", "FETCH_HEAD")]
         for cmd in prep:
-            if as_runner(*cmd, cwd=runs, env=base_env, stdout=subprocess.DEVNULL, timeout=600).returncode:
+            if as_runner(*cmd, cwd=runs, env=env, stdout=subprocess.DEVNULL, timeout=600).returncode:
                 raise RuntimeError("could not make the checkout (%s)" % " ".join(cmd[:3]))
-        todo = steps(git(m, "show", "%s:%s" % (commit, checks)).stdout) if wf else []
+        todo = checks_in(git(m, "show", "%s:%s" % (commit, checks)).stdout) if wf else []
         if not todo:
-            raise RuntimeError("no steps in %s" % checks)
-        n, stopped = 0, None
-        for s in todo:
-            if "uses" in s:
-                if not s.get("if"):
-                    lines.append("given %s %s: by %s's own tools (above)" % (
-                        s["uses"], json.dumps(s.get("with") or {}, sort_keys=True), hostname()))
-                continue
-            n += 1
-            if s.get("if"):
-                lines.append("skipped %d %s (if: %s)" % (n, s["name"], one_line(s["if"])))
-                continue
+            raise RuntimeError("no checks in %s" % checks)
+        stopped = None
+        for n, (name, command) in enumerate(todo, 1):
             if stopped:
-                lines.append("step %d not-run %s" % (n, s["name"]))
+                lines.append("step %d not-run %s" % (n, name))
                 continue
-            env = dict(base_env, **{k: str(v) for k, v in (s.get("env") or {}).items()})
-            cwd = work / s.get("working-directory", ".")
-            script = pathlib.Path(tempfile.mkstemp(prefix="step-", suffix=".sh", dir="/tmp")[1])
-            script.write_text(s["run"])
-            script.chmod(0o644)
             out = tempfile.TemporaryFile()
             t0 = time.time()
             try:
-                code = as_runner("bash", "--noprofile", "--norc", "-e", str(script), cwd=cwd, env=env,
+                code = as_runner("bash", "--noprofile", "--norc", "-e", "-c", command, cwd=work, env=env,
                                  stdout=out, timeout=STEP_LIMIT).returncode
             except subprocess.TimeoutExpired:
                 code = "timeout"
-            finally:
-                script.unlink()
             took = time.time() - t0
             out.seek(0)
             printed = out.read()
             digest = hashlib.sha256(printed).hexdigest()
             word = "passed" if code == 0 else "failed"
-            lines.append("step %d %s %.1fs exit %s sha256 %s %dB %s" % (n, word, took, code, digest, len(printed), s["name"]))
+            lines.append("step %d %s %.1fs exit %s sha256 %s %dB %s" % (n, word, took, code, digest, len(printed), name))
             if code != 0:
                 stopped = n
                 logs["%d" % n] = printed[-KEEP_LOG:]
@@ -305,7 +286,7 @@ def run(full, checks, m, commit, tree, made, ordered=None):
     finally:
         git(m, "update-ref", "-d", ref, check=False)
         subprocess.run(["sudo", "-n", "-u", RUNNER, "pkill", "-KILL", "-u", RUNNER])     # what a step left running
-        subprocess.run(["sudo", "-n", "-u", RUNNER, "rm", "-rf", str(work), str(venv)])
+        subprocess.run(["sudo", "-n", "-u", RUNNER, "rm", "-rf", str(work)])
     lines.append("finished " + utc())
     lines.append("result " + result)
     statement = "\n".join(lines) + "\n"

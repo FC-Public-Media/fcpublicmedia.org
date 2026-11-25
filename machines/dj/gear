@@ -8,7 +8,7 @@ U=${SUDO_USER:-fcpm}
 NODE=v22.23.5
 NODE_SHA=cdeb8670a0c81f51b4dc4ac61919f9b1ad917b304bf8221eb939570663d240f8
 export DEBIAN_FRONTEND=noninteractive NPM_CONFIG_UPDATE_NOTIFIER=false
-apt-get install -y -q jekyll ruby-bundler ruby-webrick ruby-csv ruby-base64 librsvg2-bin python3-venv python3-yaml \
+apt-get install -y -q jekyll ruby-bundler ruby-webrick ruby-csv ruby-base64 librsvg2-bin python3-yaml \
   xz-utils curl >/dev/null
 if [ "$(/opt/node/bin/node --version 2>/dev/null)" != "$NODE" ]; then
   t=$(mktemp -d)
@@ -20,10 +20,9 @@ if [ "$(/opt/node/bin/node --version 2>/dev/null)" != "$NODE" ]; then
   rm -rf "$t"
 fi
 id proof >/dev/null 2>&1 || useradd --system --user-group --home-dir /srv/proof/runner --shell /usr/sbin/nologin proof
-install -d -m 755 -o root -g root /srv/proof /srv/proof/shims
+install -d -m 755 -o root -g root /srv/proof
 install -d -m 755 -o "$U" -g "$U" /srv/proof/mirror /srv/proof/made
 install -d -m 755 -o proof -g proof /srv/proof/runner /srv/proof/runs
-install -m 755 "$HERE/proof-shims/sudo" /srv/proof/shims/sudo
 printf '[safe]\n\tdirectory = *\n' > /srv/proof/runner/.gitconfig     # the mirror is the prover's, read by proof
 chown proof:proof /srv/proof/runner/.gitconfig
 PW=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["devDependencies"]["@playwright/test"])' \

@@ -12,20 +12,19 @@ makes, keeps and reads them.
 ```
 fcpm proof 1
 repo FC-Public-Media/fcpublicmedia.org
-tree cb6a556e7283...                       the tree tested: what a deploy builds
-made main 3b0dd62... with 1a2b3c... merged as landing merges
-ordered land some-branch 1a2b3c... by tiliv at 2026-11-24T23:00:00+00:00
-checks .github/workflows/smoke.yml blob 9f0e..., main's
-by dj, machines/proof.py at 41397f2..., steps run as proof
-on Debian GNU/Linux 13 (trixie), Linux 6.12..., x86_64
+tree 093c966c5e9e...                       the tree tested: what a deploy builds
+made main 3b0dd62... with 86e662f... merged as landing merges
+ordered land proofs 86e662f... by tiliv at 2026-11-24T23:00:00+00:00
+checks .checks blob 9f0e..., main's
+by dj, machines/proof.py at 86e662f..., steps run as proof
+on Debian GNU/Linux 13 (trixie), Linux 6.12.118+deb13-amd64, x86_64
 tools python 3.13.5, git 2.47.3, ruby 3.3.14, bundler 2.6.7, node v22.23.5, npm 10.9.9
-started 2026-11-24T23:21:14Z
-given actions/setup-node@v4 {"node-version": "22"}: by dj's own tools (above)
-step 1 passed 21.4s exit 0 sha256 5e3c... 1200B Build the site
+started 2026-11-24T23:24:02Z
+step 1 passed 1.0s exit 0 sha256 9077... 386B Build the site
+step 2 passed 0.2s exit 0 sha256 59b1... 1751B Test the calendar parser
 ...
-skipped 23 Check embeds and outbound links (if: github.event_name == 'schedule' || ...)
-finished 2026-11-24T23:27:40Z
-result passed 22 of 22
+finished 2026-11-24T23:25:31Z
+result passed 44 of 44
 -----BEGIN SSH SIGNATURE-----
 ...
 ```
@@ -33,11 +32,10 @@ result passed 22 of 22
 - **The tree, not the commit.** A deploy builds a tree. A branch ordered to land is tested as main with the branch
   merged the way the origin's landing merges them (`merge-tree` by main's own attributes), so once it lands, its
   proof is the proof of main's tree.
-- **The checks are the tree's own.** The steps come from the workflow file the tree carries (for
-  fcpublicmedia.org, the smoke workflow GitHub runs), in order. `uses:` steps are the runner's setup: the proof
-  says they were given by DJ's own tools and names their versions. A step with `if:` is skipped and said so.
-  The first failed step stops the rest, as on GitHub. `checks` says whether the file is main's: a branch that
-  changed its own checks says so.
+- **The checks are the tree's own.** [`.checks`](../.checks) at the repository's root, read in one look like
+  `.issues`: a line each, `name: command`, run in order from the root by bash; the first that fails stops the rest.
+  `checks` says whether the file is main's: a branch that changed its own checks says so. GitHub has no part in
+  it: its workflow files are not read.
 - **Each step** has its time, exit, and the sha256 and size of everything it printed. A failed step's last 64 KB
   are kept beside the proof (`<when>.step-<n>.log`).
 - **`result`** is `passed N of N`, `failed at step K, ...`, or `untested: <why>` (no checkout, no steps).
@@ -51,9 +49,8 @@ holder, its `by` names that signer, and its `repo` is one the signer proves. Not
 file's place, not the branch it sits on.
 
 The steps run as the user `proof`, which has no sudo and cannot read DJ's keys, so nothing a test does can sign.
-Its `sudo` is [a stand-in](../machines/dj/proof-shims/sudo) that raises nothing: a step asking for system packages
-passes when they are installed already and fails naming the ones that are not (they go in
-[`machines/dj/gear`](../machines/dj/gear)).
+What the checks need from the system (Jekyll, Node 22, the browser's libraries) is put there by
+[`machines/dj/gear`](../machines/dj/gear), never by a check.
 
 ## Where they are
 
