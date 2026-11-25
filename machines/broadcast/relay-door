@@ -9,6 +9,7 @@ YouTube card does where the relay runs on its own machine; only a helm (machines
 when asked) or this machine may. See PROFILE.md, "To YouTube".
 """
 import json
+import os
 import pathlib
 import socket
 import time
@@ -19,7 +20,7 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 STATE = pathlib.Path.home() / ".local/state/fcpm/broadcast"
-PORT = 8483
+PORT = int(os.environ.get("FCPM_RELAY_DOOR_PORT", "8483"))
 
 
 def helm_addresses():

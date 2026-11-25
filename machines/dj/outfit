@@ -2,7 +2,7 @@
 # outfit -- DJ as it runs, as root: NVIDIA's driver for the P4000 and its encoder (ffmpeg's nvenc), signed for
 # Secure Boot. The first time, it asks the firmware to trust the signing key: at the next boot a blue MokManager
 # screen asks for the password printed below, once, at DJ's own screen. Then the LAN's names (.local however
-# deep, IPv4 first), the checkout from origin.local by DJ's own key, and the crew. Safe to run again. Sent by ./install.
+# deep, IPv4 first), the checkout from origin.local by DJ's own key, proofs' gear (./gear), and the crew. Safe to run again. Sent by ./install.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 . "$HERE/settings"
@@ -55,5 +55,6 @@ git -C "$W" rev-parse -q --verify HEAD >/dev/null 2>&1 || { rm -rf "$W"
   GIT_TERMINAL_PROMPT=0 git clone -q -b main fcpm-origin:/srv/origin/FC-Public-Media/fcpublicmedia.org "$W"; }
 sh "$W/machines/dj/follow"
 USER
+SUDO_USER="$U" sh "$H/code/work/fcpublicmedia.org/machines/dj/gear"     # what proofs need
 sh "$H/code/work/fcpublicmedia.org/machines/crew.sh" install "$NAME"
 echo "OUTFITTED: $NAME"

@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import socket
 import subprocess
 import sys
 import tempfile
@@ -17,7 +18,14 @@ import urllib.error
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-URL = "http://127.0.0.1:8483/relay"
+def free_port():
+    with socket.socket(socket.AF_INET6) as s:
+        s.bind(("::", 0))
+        return s.getsockname()[1]
+
+
+PORT = free_port()                                           # never 8483: a live door may be on it
+URL = "http://127.0.0.1:%d/relay" % PORT
 
 
 def ask(do=None):
@@ -34,7 +42,8 @@ class RelayDoor(unittest.TestCase):
         cls.state.mkdir(parents=True)
         (cls.state / "relay.json").write_text(json.dumps({"state": "pushing", "since": "2026-11-24T10:01:06-07:00"}))
         cls.door = subprocess.Popen([sys.executable, "-I", str(ROOT / "machines/broadcast/relay-door")],
-                                    env=dict(os.environ, HOME=str(cls.home)), stdout=subprocess.DEVNULL)
+                                    env=dict(os.environ, HOME=str(cls.home), FCPM_RELAY_DOOR_PORT=str(PORT)),
+                                    stdout=subprocess.DEVNULL)
         for _ in range(50):
             try:
                 ask()
