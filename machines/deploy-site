@@ -1,0 +1,62 @@
+#!/bin/sh
+# deploy-site: build site/ as committed and upload it to Cloudflare Pages, project fcpm-new
+# (fcpublicmedia.org, and new.). That is the whole deploy: a direct upload of _site, from a checkout on a machine
+# whose keychain holds `cloudflare` (machines/keys): digitization, or bay 1 in Git Bash (`fcpm deploy` there).
+# No CI, no git-connected build, no other host. See docs/site.md#deploy.
+#
+#   machines/deploy-site            build HEAD's site/ and upload it as fcpm-new's production (branch main)
+#   machines/deploy-site --build    build and run the publish checks; upload nothing, keep the copy and say where
+#   FCPM_DEPLOY_REV=<commit>   that commit instead of HEAD (Helm's Deploy names the one it checked)
+#
+# It works in a throwaway copy of that commit, so this checkout is never touched. It fetches nothing: the site's data
+# is on main already (digitization's `refresh`, weekly; docs/programming.md#sync-jobs). A form whose tank or field the live
+# site-worker doesn't have yet stops it, before anything is uploaded (site/bin/tanks_live.py).
+
+set -eu
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)   # a Windows bay: uv's Python and RubyInstaller's Jekyll (its gear.yml)
+    uv=$(command -v uv 2>/dev/null || echo "${LOCALAPPDATA:-}/Microsoft/WinGet/Links/uv.exe")
+    py() { "$uv" run --no-project --python 3.12 --with pyyaml python "$@"; }
+    jekyll() { ruby -S jekyll "$@"; } ;;
+  *) py() { python3 "$@"; }
+     # wrangler 4 wants Node 22 or later; Debian 13's is 20, so pnpm's (as replies.py finds it) goes first.
+     case "$(node -v 2>/dev/null)" in
+       v2[2-9].*|v[3-9][0-9].*) ;;
+       *) [ ! -x "$HOME/.local/share/pnpm/bin/node" ] || PATH="$HOME/.local/share/pnpm/bin:$PATH" ;;
+     esac ;;
+esac
+COPY="$(mktemp -d)/site-deploy"
+git -C "$ROOT" worktree add --quiet --detach "$COPY" "${FCPM_DEPLOY_REV:-HEAD}"
+done_with_copy() { git -C "$ROOT" worktree remove --force "$COPY"; rmdir "$(dirname "$COPY")"; }
+[ "${1:-}" = --build ] || trap done_with_copy EXIT
+
+cd "$COPY"
+# Member sites are built into site/member-sites/, beside the site (docs/members.md).
+py machines/static/build-sites.py --publish >/dev/null 2>&1 || echo "member sites: not built; the site goes up without them"
+
+cd "$COPY/site"
+# The commit, for wizards' replies (`at`, the form's version): _revision.yml is never published.
+printf 'revision: %s\n' "$(git rev-parse --short HEAD)" > _revision.yml
+JEKYLL_ENV=production jekyll build --quiet --config _config.yml,_revision.yml
+py bin/test_nothing_internal_is_published.py
+py bin/test_site_runs_no_code.py
+# Every form's tank, and every field it sends, must already be live on the site-worker, so a page never goes up
+# ahead of its tank. It asks the worker without leaving a reply behind (site/bin/tanks_live.py).
+if ! py bin/tanks_live.py _site; then
+  [ "${1:-}" = --build ] || { echo "deploy-site: not uploading. Deploy the site-worker first, then run this again."; exit 1; }
+  echo "deploy-site: a deploy would stop here (above)."
+fi
+if [ "${1:-}" = --build ]; then
+  echo "built: $COPY/site/_site (remove with: git worktree remove --force $COPY)"
+  exit 0
+fi
+
+cd "$COPY"
+fresh=false
+git diff --quiet HEAD || fresh=true
+# The subject without the characters a Windows .cmd (npx there) would read as its own.
+said=$(git log -1 --format=%s | tr -d '"&|<>^%!')
+py machines/keys run cloudflare -- npx --yes wrangler@4 pages deploy site/_site \
+  --project-name fcpm-new --branch main \
+  --commit-hash "$(git rev-parse HEAD)" --commit-message "$said" --commit-dirty="$fresh"

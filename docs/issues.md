@@ -29,7 +29,7 @@ revises neighbouring lines together gives them one story from there back.
                                 words of the line in any order, or its line number)
 
 It reads the file as committed, asks nothing of the network, and writes nothing (`machines/issues.py`;
-tests `bin/test_issues.py`).
+tests `machines/test_issues.py`).
 
 ## Two branches, one line
 

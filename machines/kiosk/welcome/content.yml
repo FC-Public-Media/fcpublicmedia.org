@@ -1,4 +1,4 @@
-# What the welcome kiosk says. Edit this, run python3 bin/build-kiosk.py, commit both. docs/kiosk.md.
+# What the welcome kiosk says. Edit this, run python3 machines/kiosk/build-kiosk.py, commit both. docs/kiosk.md.
 # Never the Wi-Fi password, here or in any file beside it: this repository is public.
 
 room: the welcome desk

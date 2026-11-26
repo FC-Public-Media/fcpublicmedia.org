@@ -71,7 +71,7 @@ push through the origin's door, which now tells it the pusher. It takes:
 - from the reader, only `shape/hears`.
 
 The shape is part of the signed payload, so what a pile refuses is something its keyholders signed.
-Tests: `bin/test_lines.py`:
+Tests: `machines/test_lines.py`:
 - a pile that hears nothing, then one shape, then an answer back;
 - another machine's folder, and a push by someone who did not sign;
 - a read from a neighbor's copy with the origin away;

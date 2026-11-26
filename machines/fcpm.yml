@@ -47,8 +47,8 @@ verbs:
   - verb: deploy
     args: "[--build]"
     says: "fcpublicmedia.org onto Cloudflare Pages: refresh, build, check, upload (--build uploads nothing)"
-    windows: bin/deploy-site
-    linux: bin/deploy-site
+    windows: machines/deploy-site
+    linux: machines/deploy-site
 
   - verb: deploy
     args: "SITE DIR [HOST]"
@@ -102,8 +102,8 @@ verbs:
   - verb: runnables
     args: "[...]"
     says: "the census, compile, prove"
-    windows: bin/runnables
-    linux: bin/runnables
+    windows: machines/runnables
+    linux: machines/runnables
 
   - verb: recorder
     args: "[status|prepare|start|record start|record stop|stop|grant]"

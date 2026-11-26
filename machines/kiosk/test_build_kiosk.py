@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+"""Tests for the kiosk artifact builder.
+
+    python3 machines/kiosk/test_build_kiosk.py
+
+No secret, inert and portable, current, and the panels' rules. See docs/kiosk.md.
+"""
+
+import importlib.util
+import json
+import pathlib
+import re
+import subprocess
+import unittest
+import unittest.mock
+
+import yaml
+
+
+def load():
+    spec = importlib.util.spec_from_file_location(
+        "build_kiosk", pathlib.Path(__file__).parent / "build-kiosk.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+bk = load()
+
+# A password that could not occur by coincidence, so a hit is always a leak.
+FAKE_PASSWORD = "zz-not-the-real-guest-password-4417"
+
+
+def sources(**overrides):
+    """Minimal sources, with the password in the input so copying unknown keys through shows up."""
+    src = {
+        "content": {
+            "room": "the welcome desk",
+            "greeting": "Welcome in.",
+            "panels": [
+                {"panel": "Checking in", "from": "checkin", "note": "Scan it."},
+                {"panel": "Guest Wi-Fi", "from": "wifi", "note": "Pick this network."},
+                {"panel": "Need a hand?", "say": "Ask at the desk."},
+            ],
+        },
+        "config": {"title": "Fort Collins Public Media"},
+        "wifi": {
+            "network": {"ssid": "FC Public Media Guest", "confirmed": True},
+            "poster": {"note": "Point your camera at the code and tap it."},
+            "password": FAKE_PASSWORD,
+        },
+        "checkin": {"url": "https://www.fcpublicmedia.org/check-in/"},
+    }
+    src.update(overrides)
+    return src
+
+
+class TestSecrets(unittest.TestCase):
+    def test_password_never_reaches_the_artifact(self):
+        text = bk.render(bk.build(sources()))
+        self.assertNotIn(FAKE_PASSWORD, text)
+
+    def test_the_password_guard_actually_fires(self):
+        """The guard must reject a leak rather than merely not causing one."""
+        with self.assertRaises(SystemExit) as caught:
+            bk.check_no_secrets("greeting: join with %s\n" % FAKE_PASSWORD, FAKE_PASSWORD)
+        self.assertIn("must not", str(caught.exception))
+
+    def test_the_gitignored_wifi_qr_is_refused(self):
+        with self.assertRaises(SystemExit) as caught:
+            bk.check_no_secrets("qr:\n  image: site/assets/img/wifi-qr.svg\n")
+        self.assertIn("gitignored", str(caught.exception))
+
+    def test_secret_looking_keys_are_refused(self):
+        for key in ("password", "passphrase", "secret", "psk"):
+            with self.subTest(key=key):
+                with self.assertRaises(SystemExit):
+                    bk.check_no_secrets("panels:\n  %s: hunter2\n" % key)
+
+    def test_the_real_artifact_passes_its_own_guard(self):
+        """Belt and braces: the committed file, checked as a string."""
+        text = bk.ARTIFACT.read_text(encoding="utf-8")
+        bk.check_no_secrets(text, FAKE_PASSWORD)
+        self.assertNotIn(bk.FORBIDDEN_ASSET, text)
+
+
+class TestInertAndPortable(unittest.TestCase):
+    def setUp(self):
+        self.text = bk.ARTIFACT.read_text(encoding="utf-8")
+
+    def test_no_template_syntax(self):
+        """A consumer resolves nothing. Liquid, Jinja and ERB all stay out."""
+        for token in ("{{", "{%", "<%", "${"):
+            with self.subTest(token=token):
+                self.assertNotIn(token, self.text)
+
+    def test_names_no_host_port_or_local_address(self):
+        """The serving address belongs to whoever serves it, not to the file."""
+        body = "\n".join(
+            line for line in self.text.splitlines() if not line.startswith("#")
+        )
+        for pattern in (r"localhost", r"\.local\b", r":\d{4}\b", r"127\.0\.0\.1"):
+            with self.subTest(pattern=pattern):
+                self.assertIsNone(
+                    re.search(pattern, body),
+                    "the artifact names an address for itself: %s" % pattern,
+                )
+
+    def test_the_only_url_is_the_qr_destination(self):
+        """`encodes:` is content. Anything else with a scheme is configuration."""
+        body = [
+            line for line in self.text.splitlines() if not line.strip().startswith("#")
+        ]
+        urls = [line for line in body if "://" in line]
+        self.assertEqual(len(urls), 1, "unexpected URLs: %r" % urls)
+        self.assertIn("encodes:", urls[0])
+
+    def test_no_timestamp(self):
+        """No self-stamp; a class's `starts:` and `ends:` are the only dates allowed."""
+        body = "\n".join(
+            line
+            for line in self.text.splitlines()
+            if not re.match(r"\s*(starts|ends): ", line)
+        )
+        for pattern in (r"\d{4}-\d{2}-\d{2}", r"generated_at", r"\btimestamp\b"):
+            with self.subTest(pattern=pattern):
+                self.assertIsNone(re.search(pattern, body))
+
+    def test_deterministic(self):
+        """Same sources, same bytes — otherwise --check is noise."""
+        first = bk.render(bk.build(sources()))
+        second = bk.render(bk.build(sources()))
+        self.assertEqual(first, second)
+
+
+class TestRevision(unittest.TestCase):
+    """`revision` changes when the content changes, and only then."""
+
+    def test_present_and_looks_like_a_digest(self):
+        artifact = yaml.safe_load(bk.ARTIFACT.read_text(encoding="utf-8"))
+        self.assertRegex(artifact["revision"], r"\A[0-9a-f]{12}\Z")
+
+    def test_stable_across_rebuilds(self):
+        """Regenerating without editing anything must not move it."""
+        self.assertEqual(
+            bk.render(bk.build(sources())), bk.render(bk.build(sources()))
+        )
+
+    def test_changes_when_the_content_changes(self):
+        before = yaml.safe_load(bk.render(bk.build(sources())))["revision"]
+        src = sources()
+        src["content"]["greeting"] = "Something else entirely."
+        after = yaml.safe_load(bk.render(bk.build(src)))["revision"]
+        self.assertNotEqual(before, after)
+
+    def test_changes_when_a_fact_changes(self):
+        """A new SSID is exactly the case a screen must not miss."""
+        before = yaml.safe_load(bk.render(bk.build(sources())))["revision"]
+        src = sources()
+        src["wifi"]["network"]["ssid"] = "FC Public Media Guest 5G"
+        after = yaml.safe_load(bk.render(bk.build(src)))["revision"]
+        self.assertNotEqual(before, after)
+
+    def test_does_not_cover_itself(self):
+        """The digest is over the body, so it is checkable by hand."""
+        text = bk.render(bk.build(sources()))
+        lines = [l for l in text.splitlines() if not l.startswith("#")]
+        body = "\n".join(l for l in lines if not l.startswith("revision:"))
+        # Strip the blank separator line the header leaves behind.
+        body = body.lstrip("\n") + "\n"
+        self.assertEqual(yaml.safe_load(text)["revision"], bk.revision(body))
+
+
+class TestTheJsTransport(unittest.TestCase):
+    """welcome.js is transport for file:// pages, and must never disagree with welcome.yml."""
+
+    def setUp(self):
+        self.artifact = bk.build(sources())
+        self.yaml_text, self.js_text = bk.outputs(self.artifact)
+
+    def payload(self, js_text=None):
+        """Parse the assignment back out, without executing anything."""
+        text = js_text if js_text is not None else self.js_text
+        body = text[text.index("window.%s = " % bk.GLOBAL) :]
+        body = body[body.index("{") : body.rindex("}") + 1]
+        return json.loads(body)
+
+    def test_is_one_assignment_and_nothing_else(self):
+        """No logic, no fetch, no side effects — it is data in a JS wrapper."""
+        code = "\n".join(
+            l for l in self.js_text.splitlines() if not l.strip().startswith("//")
+        ).strip()
+        self.assertTrue(code.startswith("window.%s = {" % bk.GLOBAL))
+        self.assertTrue(code.endswith("};"))
+        for forbidden in ("fetch(", "XMLHttpRequest", "eval(", "function", "=>", "import "):
+            with self.subTest(token=forbidden):
+                self.assertNotIn(forbidden, code)
+
+    def test_revision_is_identical_to_the_yaml(self):
+        """Copied, not recomputed. Two digests could disagree; one cannot."""
+        self.assertEqual(
+            self.payload()["revision"], yaml.safe_load(self.yaml_text)["revision"]
+        )
+
+    def test_content_is_identical_to_the_yaml(self):
+        """Same content, two encodings. Any drift here is the whole risk."""
+        from_yaml = yaml.safe_load(self.yaml_text)
+        from_js = self.payload()
+        self.assertEqual(from_js, from_yaml)
+
+    def test_committed_pair_agrees(self):
+        """The real files on disk, not just freshly rendered ones."""
+        on_disk_yaml = yaml.safe_load(bk.ARTIFACT.read_text(encoding="utf-8"))
+        on_disk_js = self.payload(bk.ARTIFACT_JS.read_text(encoding="utf-8"))
+        self.assertEqual(on_disk_js, on_disk_yaml)
+
+    def test_carries_no_secret_either(self):
+        """The guard must cover the file a browser actually loads."""
+        bk.check_no_secrets(self.js_text, FAKE_PASSWORD)
+        self.assertNotIn(FAKE_PASSWORD, self.js_text)
+        self.assertNotIn(bk.FORBIDDEN_ASSET, self.js_text)
+
+    def test_json_style_secret_keys_are_refused(self):
+        """A YAML-only key check would miss the JSON encoding entirely."""
+        for key in ("password", "passphrase", "secret", "psk"):
+            with self.subTest(key=key):
+                with self.assertRaises(SystemExit):
+                    bk.check_no_secrets('{\n  "%s": "hunter2"\n}\n' % key)
+
+    def test_check_mode_covers_both_files(self):
+        """A stale JS with a current YAML must still fail."""
+        original = bk.ARTIFACT_JS.read_text(encoding="utf-8")
+        try:
+            bk.ARTIFACT_JS.write_text(
+                original.replace("window.", "window.X", 1), encoding="utf-8", newline="\n"
+            )
+            self.assertEqual(bk.main(["--check"]), 1)
+        finally:
+            bk.ARTIFACT_JS.write_text(original, encoding="utf-8", newline="\n")
+        self.assertEqual(bk.main(["--check"]), 0)
+
+
+class TestTheWifiPanel(unittest.TestCase):
+    def test_unconfirmed_ssid_refuses_to_build(self):
+        """The same gate make-wifi-qr.py enforces before printing a poster."""
+        src = sources()
+        src["wifi"]["network"]["confirmed"] = False
+        with self.assertRaises(SystemExit) as caught:
+            bk.build(src)
+        self.assertIn("confirmed: true", str(caught.exception))
+
+    def test_ssid_is_not_retyped_anywhere(self):
+        """It comes from wifi.yml, which is the file that owns it."""
+        src = sources()
+        src["wifi"]["network"]["ssid"] = "Something Else Entirely"
+        panels = bk.build(src)["panels"]
+        wifi = next(p for p in panels if p["panel"] == "Guest Wi-Fi")
+        self.assertEqual(wifi["say"], "Something Else Entirely")
+
+    def test_does_not_inherit_the_posters_scan_wording(self):
+        """Regression: `wifi.poster.note` says to scan a code, and the kiosk has none."""
+        src = sources()
+        src["content"]["panels"][1].pop("note")
+        panels = bk.build(src)["panels"]
+        wifi = next(p for p in panels if p["panel"] == "Guest Wi-Fi")
+        self.assertNotIn("note", wifi)
+
+        # And the real content file must not have left it to chance either.
+        real = next(
+            p for p in bk.load(bk.CONTENT)["panels"] if p.get("from") == "wifi"
+        )
+        self.assertTrue(real.get("note"), "the Wi-Fi panel needs its own wording")
+        self.assertNotIn("scan", real["note"].lower())
+
+    def test_carries_no_qr(self):
+        panels = bk.build(sources())["panels"]
+        wifi = next(p for p in panels if p["panel"] == "Guest Wi-Fi")
+        self.assertNotIn("qr", wifi)
+
+
+class TestTheCheckinPanel(unittest.TestCase):
+    def test_qr_is_committed_and_present(self):
+        """A consumer reads it off disk with no build step, so it must be there."""
+        path = bk.REPO / bk.CHECKIN_QR
+        self.assertTrue(path.exists(), "%s is missing" % bk.CHECKIN_QR)
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", bk.CHECKIN_QR],
+            cwd=bk.REPO,
+            capture_output=True,
+        )
+        self.assertEqual(tracked.returncode, 0, "%s is not committed" % bk.CHECKIN_QR)
+
+    def test_say_matches_the_printed_poster(self):
+        """Two surfaces in one building must not disagree about a URL."""
+        panels = bk.build(sources())["panels"]
+        checkin = next(p for p in panels if p["panel"] == "Checking in")
+        self.assertEqual(checkin["say"], "www.fcpublicmedia.org/check-in/")
+        self.assertEqual(
+            checkin["qr"]["encodes"], "https://www.fcpublicmedia.org/check-in/"
+        )
+
+    def test_missing_qr_is_fatal_rather_than_a_broken_image(self):
+        src = sources()
+        with unittest.mock.patch.object(bk, "CHECKIN_QR", "site/assets/img/nope.svg"):
+            with self.assertRaises(SystemExit) as caught:
+                bk.build(src)
+        self.assertIn("make-qr.py", str(caught.exception))
+
+
+def session(title, starts, ends="2026-10-06T20:00:00-06:00", **extra):
+    s = {"title": title, "starts": starts, "ends": ends, "room": "Podcast Studio"}
+    s.update(extra)
+    return s
+
+
+class TestTheClassesPanel(unittest.TestCase):
+    """The schedule for a screen's clock, with the website's own windows."""
+
+    PANEL = {"panel": "On now", "from": "classes", "takeover": True}
+
+    def build(self, **overrides):
+        return bk.panel_from_classes(sources(**overrides), self.PANEL)
+
+    def test_it_is_the_config_classes_js_reads(self):
+        """pickSession(config) takes exactly this, so screen and site agree."""
+        out = self.build(
+            config={"title": "FC Public Media", "fcpm": {"classes": {"lead_minutes": 60, "late_minutes": 30}}},
+            calendar={"sessions": [session("A", "2026-10-06T18:00:00-06:00")]},
+        )
+        self.assertTrue(out["takeover"])
+        self.assertEqual(set(out["classes"]), {"leadMinutes", "lateMinutes", "sessions"})
+        self.assertEqual((out["classes"]["leadMinutes"], out["classes"]["lateMinutes"]), (60, 30))
+
+    def test_no_calendar_is_no_classes(self):
+        """Nothing falls back to a hand-kept list; an empty calendar is an empty panel."""
+        self.assertEqual(self.build(calendar={})["classes"]["sessions"], [])
+        self.assertEqual(self.build()["classes"]["leadMinutes"], 90)
+
+    def test_only_what_the_website_already_shows(self):
+        """Whatever the calendar grows, a stranger reads four fields."""
+        leaky = session(
+            "A", "2026-10-06T18:00:00-06:00",
+            attendees=["Somebody Private"], organizer="someone@example.org", notes="x",
+        )
+        out = self.build(calendar={"sessions": [leaky]})
+        (s,) = out["classes"]["sessions"]
+        self.assertEqual(set(s), {"title", "starts", "ends", "room", "summary"})
+        self.assertNotIn("Somebody Private", json.dumps(out))
+
+    def test_a_time_without_an_offset_is_refused(self):
+        for bad in ("2026-10-06T18:00:00", "2026-10-06 18:00"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(SystemExit):
+                    self.build(calendar={"sessions": [session("A", bad)]})
+
+    def test_cancelled_sessions_are_left_off_and_the_rest_sorted(self):
+        cal = {"sessions": [
+            session("Later", "2026-10-08T18:00:00-06:00", ends="2026-10-08T20:00:00-06:00"),
+            session("Off", "2026-10-07T18:00:00-06:00", cancelled=True),
+            session("Sooner", "2026-10-06T18:00:00-06:00"),
+        ]}
+        titles = [s["title"] for s in self.build(calendar=cal)["classes"]["sessions"]]
+        self.assertEqual(titles, ["Sooner", "Later"])
+
+    def test_sorted_by_the_instant_not_the_string(self):
+        """calendar.json is UTC; 18:30 in Denver is after 00:00 UTC next day."""
+        cal = {"sessions": [
+            session("Second", "2026-10-07T01:00:00+00:00", ends="2026-10-07T02:00:00+00:00"),
+            session("First", "2026-10-06T18:30:00-06:00", ends="2026-10-06T19:00:00-06:00"),
+        ]}
+        titles = [s["title"] for s in self.build(calendar=cal)["classes"]["sessions"]]
+        self.assertEqual(titles, ["First", "Second"])
+
+
+class TestMalformedContent(unittest.TestCase):
+    def test_unknown_source_is_named_rather_than_ignored(self):
+        src = sources()
+        src["content"]["panels"] = [{"panel": "Bookings", "from": "bookings"}]
+        with self.assertRaises(SystemExit) as caught:
+            bk.build(src)
+        self.assertIn("not a source", str(caught.exception))
+
+    def test_a_panel_that_says_nothing_is_refused(self):
+        src = sources()
+        src["content"]["panels"] = [{"panel": "Empty"}]
+        with self.assertRaises(SystemExit):
+            bk.build(src)
+
+    def test_no_panels_is_refused(self):
+        src = sources()
+        src["content"]["panels"] = []
+        with self.assertRaises(SystemExit):
+            bk.build(src)
+
+
+class TestTheCommittedArtifactIsCurrent(unittest.TestCase):
+    """The drift guard: the committed artifacts match their sources."""
+
+    def test_check_mode_passes_against_the_tree(self):
+        self.assertEqual(bk.main(["--check"]), 0)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

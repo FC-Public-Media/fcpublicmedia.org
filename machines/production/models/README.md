@@ -59,5 +59,5 @@ A new file here (its `source`, `size` and `sha256` read from Hugging Face's API,
 1 it can then be picked. Dropping one is deleting its file here; the weights stay in the store until
 someone deletes them there.
 
-`bin/test_model_ps1.py` runs model.ps1's own functions (the line-up, the presets, the picker) under
+`machines/production/test_model_ps1.py` runs model.ps1's own functions (the line-up, the presets, the picker) under
 PowerShell 7 on digitization; what needs Windows is proved on bay 1.

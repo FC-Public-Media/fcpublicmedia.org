@@ -5580,7 +5580,7 @@ LIBRARY_JS = """<script>
 # ---------------------------------------------------------------------- deploy --
 # THE SITE's DEPLOY: what fcpublicmedia.org serves, our origin's main, this checkout, and one button that names
 # our origin's main. The button is a reply, wizard:site+deploy, set down here like any other: the helm whose job
-# holds it runs bin/deploy-site on that commit, only if its checkout is our origin's main when it asks; any other
+# holds it runs machines/deploy-site on that commit, only if its checkout is our origin's main when it asks; any other
 # helm passes it there (replies.py, route). Nothing here asks GitHub. docs/site.md, Deploy.
 LIVE_AT = os.environ.get("FCPM_LIVE_AT", "https://fcpublicmedia.org/")
 _origin = {"at": 0.0, "seen": None, "lock": threading.Lock()}

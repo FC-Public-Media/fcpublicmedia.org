@@ -2,9 +2,9 @@
 
 The brand itself (names, the mark, colours, type) is made in its own repository, `FC-Public-Media/brand`,
 on the studio's origin. Its `render.py` writes what follows from it into this repository:
-`site/_data/brand.json` (read by the site's templates, the kiosk door, `bin/make-wallpaper.py` and
+`site/_data/brand.json` (read by the site's templates, the kiosk door, `brand/make-wallpaper.py` and
 origin's screen), the `brand:` blocks in `site/assets/css/site.css` and `idle/index.html`, the icons in
-`site/assets/img/`, and these wallpapers. `bin/test_brand.py` fails if a screen spells a brand colour
+`site/assets/img/`, and these wallpapers. `brand/test_brand.py` fails if a screen spells a brand colour
 itself again.
 
 Desktop backgrounds and the idle screen for the studio panels, outside `site/` so none of it can
@@ -19,7 +19,7 @@ reach a public URL. Screens and dim: [`docs/kiosk.md`](../docs/kiosk.md).
 | `wallpaper/band-*` | the masthead across the top, then paper | the panel by the door |
 | `idle/index.html` | the mark (`idle/dim.js`, `dim.css`) and a clock, no network; `#slot` takes one line, `?say=Back at 2pm` fills it | any panel, full screen (F11; macOS ⌃⌘F) |
 
-`bin/make-wallpaper.py` writes each design at `1050x1680` (portrait) and `1680x1050`, SVG (the source) and PNG (needs `rsvg-convert`: `brew install librsvg`). Edit the generator.
+`brand/make-wallpaper.py` writes each design at `1050x1680` (portrait) and `1680x1050`, SVG (the source) and PNG (needs `rsvg-convert`: `brew install librsvg`). Edit the generator.
 Other sizes: `--size 2160x3840`; one design: `--design plate`; `--no-text` drops the lockup.
 
 **Windows:** Settings → Personalization → Background, fit **Fill** (not Span), add the files, then in *Recent images* right-click each → *Set for monitor N*.
@@ -41,4 +41,4 @@ on the origin, with the artist's concept sheet; copy changes from there.
 ## The tilt
 
 The mark leans counterclockwise, −8°, as `site/assets/img/icon.svg` and `.wordmark-mark` do. The other way is a mistake
-(`site/assets/img/icon-inverted.svg` corrects one copy); `bin/test_make_wallpaper.py` fails if the sign flips.
+(`site/assets/img/icon-inverted.svg` corrects one copy); `brand/test_make_wallpaper.py` fails if the sign flips.

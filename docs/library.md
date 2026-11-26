@@ -236,13 +236,13 @@ routes, and every stop and route names the places near it, so any one of them le
 holds the shapes and the pages; nothing in the open data links one to the other, so the join is ours, by name,
 asked of the city's site once a week, and the places it could not find are listed in `city/README.md`.
 
-`bin/city-shapes.py` writes it, the digitization crew's `city` line, once a day, into the library shed's
+`machines/digitization/city-shapes.py` writes it, the digitization crew's `city` line, once a day, into the library shed's
 checkout of the branch, and pushes it to origin.local. Each source is asked whether it changed (ETag,
 Last-Modified), so a quiet day costs the city a 304 and writes the same bytes. We follow; we are never the
 authority, and never instant. Transfort's data is redistributed under its own terms: the data, never its
 marks, and said to be unofficial. The study behind it is `open-data/` on `retain/studies`.
 
-**Layers.** `bin/city-layers.py` adds readers on top, each writing its own `.scopes` beside `city.scopes` and
+**Layers.** `machines/digitization/city-layers.py` adds readers on top, each writing its own `.scopes` beside `city.scopes` and
 folders of its own things, the crew's `layers` line, after the city's: `districts` (the council district,
 precinct, and state senate and house districts a place or stop is in; `districts/<n>/` with its member),
 `trails` (the named trails within 50 m of a place; `trails/<name>/`: surface, dogs, bikes, its segment count and

@@ -54,7 +54,7 @@ claim to have the thing it names; absence is a complete answer, so add one only 
 Hostname` (`hostname`). Which profile is worn is never committed, since that file would be copied
 to every other machine. The key must be its platform's (macOS's `ComputerName` is not Windows'
 `COMPUTERNAME`); a bad line is reported and ignored. Matching is case-insensitive. No match is the
-clean state and exits 0; a host named by two profiles wears both, each with its own supervisor. Tests: `bin/test_binding.py`.
+clean state and exits 0; a host named by two profiles wears both, each with its own supervisor. Tests: `machines/test_binding.py`.
 
 ## Crew and gear
 
@@ -88,7 +88,7 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | (none) | the watcher, `machines/watch` |
 | `status`, `install [JOB]` | `sync`; `install` first brings this checkout from the origin's main ([`machines/pull`](../machines/pull)), then puts the profile on and the engines. A job named is put on by `sync -p` |
 | `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
-| `check`, `pool`, `runnables` | the profile's check; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
+| `check`, `pool`, `runnables` | the profile's check; `machines/pool.ps1` where the profile holds it; `machines/runnables` |
 | `dev on`, `dev off` | the origin's beat: origin.local asks GitHub every ten minutes, or weekly. The bays' crew `follow` line pulls from the origin every 5 minutes either way ([`machines/follow`](../machines/follow)) |
 | `audition`, `drobo`, `share`, `audit`, `hosts` | the profile's own `.ps1` of that name |
 | `recorder`, `screen`, `crew`, `pools`, `post`, `camera`, `ti89` | [troves](../troves/README.md) and [machines](../machines/README.md) |
@@ -148,9 +148,9 @@ the committed file in the mirror, never a copy that could drift from it.
 
 | layer | says | where | written by |
 |---|---|---|---|
-| census | every runnable this checkout carries, and its blob | `bin/runnables`, printed | nobody |
+| census | every runnable this checkout carries, and its blob | `machines/runnables`, printed | nobody |
 | claim | per verb: its narrowest shape, and what it touches | `machines/RUNNABLES` | the tool's author |
-| proof | this holder, at this blob, does what it claims here | `machines/<profile>/bay/runnables.proven` | `bin/runnables prove` |
+| proof | this holder, at this blob, does what it claims here | `machines/<profile>/bay/runnables.proven` | `machines/runnables prove` |
 | answer | what this crew may run without asking | `machines/<profile>/GRANTS` | the crew, by merged PR |
 
 A `RUNNABLES` line is `holder | run | shape | class | says`; `run` is `sh` (Git Bash), `python` or
@@ -166,7 +166,7 @@ checkout) allow; `outside` (the host, the depot) and `desk` (a person or an admi
 - An unproven allow is left off, not made an ask (a background session cannot answer one).
   Admission is a merge to `main`; a profile may narrow an answer, never loosen one.
 
-`bin/runnables prove <profile> <holder> --by <who> [--exercise]`, from a `work/` worktree, needs the
+`machines/runnables prove <profile> <holder> --by <who> [--exercise]`, from a `work/` worktree, needs the
 holder worn, committed and unchanged. It runs each `read` verb as the canonical Bash runner starts
 it; nothing may change in the checkout or `%LOCALAPPDATA%\<profile>\bay` and `troves`. It appends
 `holder blob date ran:... [exercised:...] [deps:<path>@<blob>;...] by:<who>`; `inside` verbs ride on
@@ -174,7 +174,7 @@ that line, and `--by` names who read the code. `--exercise` also runs the GRANTS
 
 ## GRANTS
 
-`bin/runnables compile <profile>` turns GRANTS into harness settings; `sync install` places them at
+`machines/runnables compile <profile>` turns GRANTS into harness settings; `sync install` places them at
 `~/code/.claude/settings.json`.
 
 | line | means |

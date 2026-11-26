@@ -92,7 +92,7 @@ gear:
     restart-tier: none
 
   - gear: ruby
-    for: building the site to deploy it (bin/deploy-site, `fcpm deploy`): Ruby and its DevKit (MSYS2), which
+    for: building the site to deploy it (machines/deploy-site, `fcpm deploy`): Ruby and its DevKit (MSYS2), which
       Jekyll's native gems compile with. The minor of the root's .ruby-version
     package: RubyInstallerTeam.RubyWithDevKit.3.2
     vendor: RubyInstaller (rubyinstaller.org), BSD-3-Clause

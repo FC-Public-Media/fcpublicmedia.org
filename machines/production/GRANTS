@@ -6,14 +6,14 @@ checkout  refs/fcpublicmedia.org
 
 # The door is the media node's; this bay does not run it.
 wears  troves/recorder/bay/obs-portable.ps1
-wears  bin/runnables
-wears  bin/build-kiosk.py
-wears  bin/build-sites.py
+wears  machines/runnables
+wears  machines/kiosk/build-kiosk.py
+wears  machines/static/build-sites.py
 wears  machines/binding
 wears  machines/fcpm
 wears  machines/keys
 wears  machines/drain
-wears  bin/deploy-site
+wears  machines/deploy-site
 
 runner  powershell  Bash        powershell -NoProfile -ExecutionPolicy Bypass -File
 runner  powershell  PowerShell  &

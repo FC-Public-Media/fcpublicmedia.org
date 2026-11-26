@@ -4,41 +4,41 @@ Build the site: cd site && JEKYLL_ENV=production bundle exec jekyll build
 Test the calendar parser: python3 site/bin/test_sync_calendar.py
 Test the claim minter: python3 site/bin/test_mint_claim.py
 Test the design tokens: python3 site/bin/test_tokens.py
-Test the machine binding: python3 bin/test_binding.py
-Test the wallpaper generator: python3 bin/test_make_wallpaper.py
+Test the machine binding: python3 machines/test_binding.py
+Test the wallpaper generator: python3 brand/test_make_wallpaper.py
 Test the show proposer: python3 site/bin/test_propose_shows.py
 Test the catalog report: python3 site/bin/test_catalog_report.py
 Test the feed reader: python3 site/bin/test_sync_feeds.py
-Test the library's x-ray: python3 bin/test_library.py
-Test the workshed: python3 bin/test_workshed.py
-Test the consoles and places: python3 bin/test_consoles.py
-Test fcpm against its verbs: python3 bin/test_fcpm.py
-Test the crew's supervisor: python3 bin/test_crew.py
+Test the library's x-ray: python3 machines/test_library.py
+Test the workshed: python3 machines/test_workshed.py
+Test the consoles and places: python3 machines/test_consoles.py
+Test fcpm against its verbs: python3 machines/test_fcpm.py
+Test the crew's supervisor: python3 machines/test_crew.py
 Test the tier reader: python3 site/bin/test_sync_tiers.py
 Test the subscription repricing: python3 site/bin/test_reprice_subscriptions.py
 Test the deploy's tank guard (offline): python3 site/bin/test_tanks_live.py
-Test the kiosk artifact builder: python3 bin/test_build_kiosk.py
-Check the kiosk artifact is not stale: python3 bin/build-kiosk.py --check
-Test the asks queue: python3 bin/test_asks.py
-Test the member sites' builder: python3 bin/test_build_sites.py
-Test the city catalog: python3 bin/test_city_catalog.py
-Test the city's shapes: python3 bin/test_city_shapes.py
-Test the helms: python3 bin/test_helms.py
-Test the issues tape: python3 bin/test_issues.py
-Test the keychain's door: python3 bin/test_keychain_door.py
-Test the keys: python3 bin/test_keys.py
-Test the lines: python3 bin/test_lines.py
-Test model.ps1: python3 bin/test_model_ps1.py
-Test the origin's door: python3 bin/test_origin_door.py
-Test the origin's relay: python3 bin/test_origin_relay.py
-Test the origin's traffic: python3 bin/test_origin_traffic.py
-Test the post-receive hook: python3 bin/test_post_receive.py
-Test the proofs: python3 bin/test_proof.py
-Test the relay's door: python3 bin/test_relay_door.py
-Test the replies: python3 bin/test_replies.py
-Test the flat scopes: python3 bin/test_scopes.py
-Test the seats: python3 bin/test_seats.py
-Test the model spread: python3 bin/test_spread.py
+Test the kiosk artifact builder: python3 machines/kiosk/test_build_kiosk.py
+Check the kiosk artifact is not stale: python3 machines/kiosk/build-kiosk.py --check
+Test the asks queue: python3 machines/digitization/test_asks.py
+Test the member sites' builder: python3 machines/static/test_build_sites.py
+Test the city catalog: python3 machines/digitization/test_city_catalog.py
+Test the city's shapes: python3 machines/digitization/test_city_shapes.py
+Test the helms: python3 machines/test_helms.py
+Test the issues tape: python3 machines/test_issues.py
+Test the keychain's door: python3 machines/keychain/test_keychain_door.py
+Test the keys: python3 machines/test_keys.py
+Test the lines: python3 machines/test_lines.py
+Test model.ps1: python3 machines/production/test_model_ps1.py
+Test the origin's door: python3 machines/origin/test_origin_door.py
+Test the origin's relay: python3 machines/origin/test_origin_relay.py
+Test the origin's traffic: python3 machines/origin/test_origin_traffic.py
+Test the post-receive hook: python3 machines/digitization/test_post_receive.py
+Test the proofs: python3 machines/test_proof.py
+Test the relay's door: python3 machines/broadcast/test_relay_door.py
+Test the replies: python3 machines/kiosk/test_replies.py
+Test the flat scopes: python3 machines/test_scopes.py
+Test the seats: python3 machines/digitization/test_seats.py
+Test the model spread: python3 machines/digitization/test_spread.py
 Check no secret key reached the site: python3 site/bin/test_no_secrets.py
 Check nothing internal reached the site: python3 site/bin/test_nothing_internal_is_published.py
 Check the site runs no code: python3 site/bin/test_site_runs_no_code.py

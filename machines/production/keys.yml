@@ -8,7 +8,7 @@ groups:
   cloudflare:
     what: "deploys the site to FCPM's Cloudflare account (the org account), Pages project fcpm-new, and drains the site-worker's tanks (KV site-worker-answers); never the worker itself"
     form: env
-    used by: "bin/deploy-site (fcpm deploy); machines/drain, when this job's crew holds the drain line"
+    used by: "machines/deploy-site (fcpm deploy); machines/drain, when this job's crew holds the drain line"
     keys:
       CLOUDFLARE_API_TOKEN:
         may: "Account: Cloudflare Pages Edit, Workers KV Storage Edit; FCPM's org account only"

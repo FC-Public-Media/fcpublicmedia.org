@@ -64,7 +64,7 @@ and mediamtx.exe carry those now. Vendors' own rules (Adobe, DaVinci, Drobo) are
 ## Deploy
 
 The site deploys from here the way it does from digitization: `fcpm deploy` (or `fcpm deploy --build`, which
-uploads nothing) runs `bin/deploy-site` in Git Bash, from `refs\fcpublicmedia.org`, with uv's Python,
+uploads nothing) runs `machines/deploy-site` in Git Bash, from `refs\fcpublicmedia.org`, with uv's Python,
 RubyInstaller's Jekyll and the bay's Node. It needs, once:
 
 1. Ruby: `winget install --id RubyInstallerTeam.RubyWithDevKit.3.2 --exact --scope user`, then `ridk install`

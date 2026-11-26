@@ -1,6 +1,6 @@
 # RUNNABLES: what this repository's own tools claim to do, one verb per line, at its narrowest
 # reusable shape. A claim grants nothing; a profile's GRANTS answers it. See docs/station.md.
-# Plain text, because bin/runnables reads it in Git Bash on a bay with no Python.
+# Plain text, because machines/runnables reads it in Git Bash on a bay with no Python.
 
 # holder                       | run        | shape                | class   | says
 
@@ -31,13 +31,13 @@ machines/kiosk/gotcha         | sh         | *                    | inside  | ap
 machines/binding                | python     | -                    | read    | which machine profile this checkout wears, if any
 
 # Build tooling at the root. Each writes files that are committed, and nothing else.
-bin/build-kiosk.py              | python     | --check              | read    | fail if machines/kiosk/welcome/welcome.* is stale
-bin/build-kiosk.py              | python     | --print              | read    | write nothing, show both
-bin/build-kiosk.py              | python     | -                    | inside  | write machines/kiosk/welcome/welcome.yml and welcome.js
-bin/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
-bin/runnables                   | sh         | *                    | read    | this census
-bin/deploy-site                 | sh         | --build              | outside | refresh the data, build site/ in a copy of HEAD and run the publish checks; upload nothing
-bin/deploy-site                 | sh         | -                    | outside | refresh the data, build site/ and upload it to Cloudflare Pages fcpm-new (new.fcpublicmedia.org)
+machines/kiosk/build-kiosk.py              | python     | --check              | read    | fail if machines/kiosk/welcome/welcome.* is stale
+machines/kiosk/build-kiosk.py              | python     | --print              | read    | write nothing, show both
+machines/kiosk/build-kiosk.py              | python     | -                    | inside  | write machines/kiosk/welcome/welcome.yml and welcome.js
+machines/static/build-sites.py              | python     | --list               | read    | show the manifest, build nothing
+machines/runnables                   | sh         | *                    | read    | this census
+machines/deploy-site                 | sh         | --build              | outside | refresh the data, build site/ in a copy of HEAD and run the publish checks; upload nothing
+machines/deploy-site                 | sh         | -                    | outside | refresh the data, build site/ and upload it to Cloudflare Pages fcpm-new (new.fcpublicmedia.org)
 
 # The recorder trove's bay procedure (troves/recorder/README.md). Every step but check logs to bay.ndjson.
 troves/recorder/bay/obs-portable.ps1 | powershell | check    | read    | what is received, staged, installed; the grant; changes nothing

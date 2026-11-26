@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""Generate desktop backgrounds for the studio monitors.
+
+    python3 brand/make-wallpaper.py [--size WxH] [--design NAME] [--no-text]
+
+Writes brand/wallpaper/ (SVG; PNG with rsvg-convert). Every measure is a fraction of the canvas.
+The tilt is negative, always. See brand/README.md.
+"""
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(HERE, "..", "brand", "wallpaper")
+
+# The brand, from site/_data/brand.json (FC-Public-Media/brand's render.py writes it, then runs this).
+BRAND = json.load(open(os.path.join(HERE, "..", "site", "_data", "brand.json"), encoding="utf-8"))
+INK = BRAND["colours"]["ink"]  # the dark field, and the masthead band
+SLATE = BRAND["colours"]["slate"]  # the second dark surface — rules, and unlit marks
+PAPER = BRAND["colours"]["paper"]  # warm, not white
+RULE = BRAND["colours"]["rule"]  # hairlines on paper
+SIGNAL = BRAND["colours"]["signal"]  # the plate. A surface, never a text colour.
+SOFT = BRAND["colours"]["masthead-soft"]  # secondary type on a dark ground — 7.2:1
+LOCKUP = BRAND["names"]["lockup"]
+
+TILT = BRAND["tilt"]  # degrees, counterclockwise; the other way is a mistake (brand/README.md, "The tilt")
+
+DISPLAY = "Georgia, 'Times New Roman', serif"
+BODY = "'Helvetica Neue', Helvetica, Arial, sans-serif"
+
+
+def askew(cx, cy, side, fill):
+    """The mark: a solid square set at the house angle, centred on a point."""
+    return (
+        f'<rect x="{cx - side / 2:.1f}" y="{cy - side / 2:.1f}" '
+        f'width="{side:.1f}" height="{side:.1f}" fill="{fill}" '
+        f'transform="rotate({TILT} {cx:.1f} {cy:.1f})"/>'
+    )
+
+
+def lockup(x, y, size, ink, soft, anchor="middle"):
+    """The masthead lockup, in the stylesheet's metric fallbacks: fontconfig cannot read the woff2."""
+    caps = size * 0.52
+    track = caps * 0.16
+    # Letter-spacing trails the last glyph too, so a centred line needs half a step's nudge.
+    nudge = track / 2 if anchor == "middle" else 0
+    return (
+        f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="{anchor}" '
+        f'font-family="{DISPLAY}" font-weight="700" font-size="{size:.1f}" '
+        f'letter-spacing="{-size * 0.02:.2f}" fill="{ink}">{LOCKUP[0]}</text>\n'
+        f'  <text x="{x + nudge:.1f}" y="{y + caps * 1.9:.1f}" text-anchor="{anchor}" '
+        f'font-family="{BODY}" font-size="{caps:.1f}" '
+        f'letter-spacing="{track:.2f}" fill="{soft}">{LOCKUP[1].upper()}</text>'
+    )
+
+
+def plate(w, h, text):
+    """One mark, one rule, one lockup, low: the top 40% is left to the desktop icons."""
+    m = min(w, h)
+    side = m * 0.40
+    rule_y = h * 0.66
+    cy = rule_y - m * 0.10 - side / 2
+    parts = [
+        f'<rect width="{w}" height="{h}" fill="{INK}"/>',
+        askew(w / 2, cy, side, SIGNAL),
+        f'<rect x="{w * 0.18:.1f}" y="{rule_y:.1f}" width="{w * 0.64:.1f}" '
+        f'height="{max(2, m / 420):.1f}" fill="{SLATE}"/>',
+    ]
+    if text:
+        parts.append(lockup(w / 2, rule_y + m * 0.085, m * 0.036, PAPER, SOFT))
+    return parts
+
+
+def tally(w, h, text, lit=1):
+    """Three marks in a column, `lit` one lit (1 left panel, 3 right); unlit ones filled slate."""
+    m = min(w, h)
+    side = m * 0.20
+    ys = [h * 0.30, h * 0.48, h * 0.66]
+    parts = [
+        f'<rect width="{w}" height="{h}" fill="{INK}"/>',
+        # Drawn first, so the marks sit on top of it.
+        f'<rect x="{w / 2 - max(2, m / 350) / 2:.1f}" y="{ys[0]:.1f}" '
+        f'width="{max(2, m / 350):.1f}" height="{ys[2] - ys[0]:.1f}" fill="{SLATE}"/>',
+    ]
+    for i, y in enumerate(ys, start=1):
+        parts.append(askew(w / 2, y, side, SIGNAL if i == lit else SLATE))
+    if text:
+        parts.append(
+            lockup(w / 2, ys[2] + side / 2 + m * 0.085, m * 0.036, PAPER, SOFT)
+        )
+    return parts
+
+
+def band(w, h, text):
+    """The masthead, then paper: the light one. The yellow mark only ever sits on ink."""
+    m = min(w, h)
+    band_h = h * 0.30
+    side = m * 0.24
+    cx, cy = w * 0.22, band_h * 0.48
+    parts = [
+        f'<rect width="{w}" height="{h}" fill="{PAPER}"/>',
+        f'<rect width="{w}" height="{band_h:.1f}" fill="{INK}"/>',
+        askew(cx, cy, side, SIGNAL),
+    ]
+    if text:
+        size = m * 0.055
+        parts.append(
+            lockup(
+                cx + side / 2 + m * 0.06,
+                cy + size * 0.10,
+                size,
+                PAPER,
+                SOFT,
+                anchor="start",
+            )
+        )
+    parts.append(
+        f'<rect x="{w * 0.10:.1f}" y="{h * 0.88:.1f}" width="{w * 0.80:.1f}" '
+        f'height="{max(1, m / 700):.1f}" fill="{RULE}"/>'
+    )
+    return parts
+
+
+# name -> (builder, kwargs). tally is three files from one builder.
+DESIGNS = {
+    "plate": (plate, {}),
+    "tally-1": (tally, {"lit": 1}),
+    "tally-2": (tally, {"lit": 2}),
+    "tally-3": (tally, {"lit": 3}),
+    "band": (band, {}),
+}
+
+
+def render(name, w, h, text=True):
+    builder, kwargs = DESIGNS[name]
+    body = "\n  ".join(builder(w, h, text, **kwargs))
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
+        f'viewBox="0 0 {w} {h}" role="img" '
+        f'aria-label="{BRAND["names"]["name"]}">\n'
+        f"  <!-- Generated by brand/make-wallpaper.py. Edit the generator. -->\n"
+        f"  {body}\n"
+        f"</svg>\n"
+    )
+
+
+def write(name, w, h, text, outdir, rasterise=True):
+    os.makedirs(outdir, exist_ok=True)
+    stem = f"{name}-{w}x{h}"
+    svg_path = os.path.join(outdir, stem + ".svg")
+    with open(svg_path, "w") as f:
+        f.write(render(name, w, h, text))
+    if not rasterise:
+        return svg_path, None
+    if not shutil.which("rsvg-convert"):
+        return svg_path, None
+    png_path = os.path.join(outdir, stem + ".png")
+    subprocess.run(
+        ["rsvg-convert", "-w", str(w), "-h", str(h), "-o", png_path, svg_path],
+        check=True,
+    )
+    return svg_path, png_path
+
+
+def parse_size(value):
+    try:
+        w, h = (int(part) for part in value.lower().split("x"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected WIDTHxHEIGHT, got {value!r}")
+    if w < 64 or h < 64:
+        raise argparse.ArgumentTypeError("a wallpaper smaller than 64px is a mistake")
+    return w, h
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument(
+        "--size",
+        type=parse_size,
+        action="append",
+        help="WIDTHxHEIGHT. Repeatable. Default: the studio's panels, portrait "
+        "and landscape.",
+    )
+    ap.add_argument(
+        "--design",
+        action="append",
+        choices=sorted(DESIGNS),
+        help="Repeatable. Default: all of them.",
+    )
+    ap.add_argument(
+        "--no-text",
+        action="store_true",
+        help="Mark only, no lockup. A desktop does not need to be told whose "
+        "it is every time somebody looks at it.",
+    )
+    ap.add_argument("--out", default=OUT, help="Output directory.")
+    ap.add_argument("--svg-only", action="store_true", help="Skip rasterising.")
+    args = ap.parse_args()
+
+    # The studio's panels are 1680x1050 turned portrait; landscape for one not yet turned.
+    sizes = args.size or [(1050, 1680), (1680, 1050)]
+    designs = args.design or sorted(DESIGNS)
+
+    wrote = 0
+    for name in designs:
+        for w, h in sizes:
+            svg_path, png_path = write(
+                name, w, h, not args.no_text, args.out, not args.svg_only
+            )
+            for path in (svg_path, png_path):
+                if path:
+                    print(os.path.relpath(path, os.path.join(HERE, "..")))
+                    wrote += 1
+
+    if not args.svg_only and not shutil.which("rsvg-convert"):
+        print(
+            "\nrsvg-convert not found, so only the SVGs were written.\n"
+            "Install it with `brew install librsvg` and run this again — "
+            "Windows and macOS both refuse an SVG as a wallpaper.",
+            file=sys.stderr,
+        )
+    return 0 if wrote else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

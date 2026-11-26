@@ -1,4 +1,4 @@
-# GRANTS: the kiosk's answer to ../RUNNABLES, compiled by `bin/runnables compile kiosk`. DRAFT.
+# GRANTS: the kiosk's answer to ../RUNNABLES, compiled by `machines/runnables compile kiosk`. DRAFT.
 # A widening lands only by a merged PR; an `allow` reaches settings only for a proven holder.
 # Lines: checkout <path> | runner <run> <tool> [prefix...] (first per run is canonical) | narrow | host
 
@@ -18,4 +18,4 @@ host  ask   Bash(taskkill *)
 host  ask   Bash(schtasks *)
 
 # A build writes into the live checkout, and the door's rebase skips a dirty tree.
-narrow  ask   bin/build-kiosk.py | -
+narrow  ask   machines/kiosk/build-kiosk.py | -

@@ -524,11 +524,11 @@ def git_bash():
 
 
 def deploy_command():
-    """bin/deploy-site, then its exit status into the log. FCPM_DEPLOY (a JSON list) stands in for it in a test."""
+    """machines/deploy-site, then its exit status into the log. FCPM_DEPLOY (a JSON list) stands in for it in a test."""
     if os.environ.get("FCPM_DEPLOY"):
         return json.loads(os.environ["FCPM_DEPLOY"])
     return [git_bash() if os.name == "nt" else "sh", "-c", 'sh "$0"; echo "deploy-site: exit $?"',
-            str(ROOT / "bin" / "deploy-site")]
+            str(ROOT / "machines" / "deploy-site")]
 
 
 def head():

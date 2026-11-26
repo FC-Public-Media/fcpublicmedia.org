@@ -2,7 +2,7 @@
 
 checkout  refs/fcpublicmedia.org
 
-wears  bin/runnables
+wears  machines/runnables
 wears  machines/binding
 wears  machines/fcpm
 wears  machines/keys

@@ -20,9 +20,9 @@ FIXTURE = SITE / "tests" / "fixtures" / "template-programs.yml"
 
 
 def load_factory():
-    """The factory's own composition rules (bin/build-sites.py), not a copy."""
+    """The factory's own composition rules (machines/static/build-sites.py), not a copy."""
     spec = importlib.util.spec_from_file_location(
-        "build_sites", REPO / "bin" / "build-sites.py"
+        "build_sites", REPO / "machines" / "static" / "build-sites.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

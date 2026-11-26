@@ -1,0 +1,353 @@
+#!/bin/sh
+# runnables — the census: every runnable this checkout carries, and what each claims.
+#
+#   machines/runnables              every runnable file, its verbs, and what they default to
+#   machines/runnables undeclared   runnable files with no claim at all
+#   machines/runnables check        claims for files that are not here. Exit 1 if any
+#   machines/runnables compile P    profile P's GRANTS, as harness settings, to stdout
+#   machines/runnables prove P H --by WHO [--exercise]
+#                              the bay's proof that holder H, at this blob, does
+#                              what its read verbs claim on profile P's machine.
+#                              Runs them, checks nothing changed, records it.
+#                              --exercise also runs the cycle P's GRANTS
+#                              declares for H, which is what `admit` allows
+#
+# Being on the census grants nothing. Identity is the git blob at HEAD; a changed file is marked.
+# Git Bash, no Python. See docs/station.md, Runnables and GRANTS.
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CLAIMS="$ROOT/machines/RUNNABLES"
+cd "$ROOT" || exit 1
+
+# Where runnables live.
+discover() {
+  git ls-files -- brand site/bin machines troves 2>/dev/null |
+  while IFS= read -r f; do
+    case "$f" in
+      *.py|*.ps1|*.sh) echo "$f" ;;
+      *.md|*.yml|*.yaml|*.json|*.log|*.txt|*/names|*/RUNNABLES|*/GRANTS|*/MANIFEST) ;;
+      *) [ "$(head -c2 "$f" 2>/dev/null)" = '#!' ] && echo "$f" ;;
+    esac
+  done | sort -u
+}
+
+# Claims, one per line: holder|run|shape|class|says, trimmed.
+claims() {
+  sed -e 's/#.*$//' "$CLAIMS" | awk -F'|' 'NF >= 5 {
+    for (i = 1; i <= NF; i++) { gsub(/^[ \t]+|[ \t\r]+$/, "", $i) }
+    print $1 "|" $2 "|" $3 "|" $4 "|" $5 }'
+}
+
+# A GRANTS file's `depends <holder> | <path>` lines as holder|path, for one holder or ("") all.
+depends_of() {
+  sed -e 's/#.*$//' "$1" | awk -v want="$2" '
+    $1 == "depends" {
+      r = $0; sub(/^[ \t]*depends[ \t]+/, "", r); split(r, a, "|")
+      gsub(/^[ \t]+|[ \t]+$/, "", a[1]); gsub(/^[ \t]+|[ \t]+$/, "", a[2])
+      if (want == "" || a[1] == want) print a[1] "|" a[2]
+    }'
+}
+
+default_for() {
+  case "$1" in
+    read|inside) echo allow ;;
+    outside|desk) echo ask ;;
+    secret|service) echo deny ;;
+    *) echo "?" ;;
+  esac
+}
+
+# A path's blob at HEAD. Inside a trove (a submodule) it is read at the commit this repo pins, so a
+# file keeps its identity, and its proof, when its trove moves to a repository of its own.
+blob_at() {
+  local p=$1 sub pin
+  git rev-parse --short=12 "HEAD:$p" 2>/dev/null && return 0
+  sub=$p
+  while [ "$sub" != "${sub%/*}" ]; do
+    sub=${sub%/*}
+    pin=$(git ls-tree HEAD -- "$sub" 2>/dev/null | awk '$1 == "160000" { print $3 }')
+    if [ -n "$pin" ]; then git -C "$sub" rev-parse --short=12 "$pin:${p#"$sub"/}" 2>/dev/null; return; fi
+  done
+  return 1
+}
+
+# Whether a path's bytes are what HEAD has; inside a trove, what the pinned commit has.
+as_committed() {
+  local p=$1 sub pin
+  sub=$p
+  while [ "$sub" != "${sub%/*}" ]; do
+    sub=${sub%/*}
+    pin=$(git ls-tree HEAD -- "$sub" 2>/dev/null | awk '$1 == "160000" { print $3 }')
+    if [ -n "$pin" ]; then git -C "$sub" diff --quiet "$pin" -- "${p#"$sub"/}" 2>/dev/null; return; fi
+  done
+  git diff --quiet HEAD -- "$p" 2>/dev/null
+}
+
+identity() {
+  blob=$(blob_at "$1" || echo "not-committed")
+  if ! as_committed "$1"; then blob="$blob+modified"; fi
+  echo "$blob"
+}
+
+cmd=${1:-list}
+case "$cmd" in
+  list)
+    all=$(discover); c=$(claims)
+    n=0; u=0
+    for f in $all; do
+      n=$((n + 1))
+      mine=$(printf '%s\n' "$c" | awk -F'|' -v f="$f" '$1 == f')
+      if [ -z "$mine" ]; then u=$((u + 1)); continue; fi
+      printf '%s  %s\n' "$f" "$(identity "$f")"
+      printf '%s\n' "$mine" | while IFS='|' read -r h run shape class says; do
+        printf '    %-6s %-8s %-22s %s\n' "$(default_for "$class")" "$class" "$shape" "$says"
+      done
+    done
+    echo
+    echo "$n runnable files; $((n - u)) claimed, $u undeclared (machines/runnables undeclared)."
+    ;;
+  undeclared)
+    c=$(claims | cut -d'|' -f1 | sort -u)
+    discover | while IFS= read -r f; do
+      printf '%s\n' "$c" | grep -qxF "$f" || printf '%s  %s\n' "$f" "$(identity "$f")"
+    done
+    ;;
+  check)
+    bad=0
+    for h in $(claims | cut -d'|' -f1 | sort -u); do
+      if [ ! -f "$h" ]; then echo "claimed, not here: $h"; bad=1; fi
+    done
+    claims | while IFS='|' read -r h run shape class says; do
+      [ "$(default_for "$class")" = "?" ] && echo "unknown class '$class': $h $shape"
+    done
+    [ $bad = 0 ] && echo "every claim names a file that is here."
+    exit $bad
+    ;;
+  compile)
+    # No judgment here: it prints, and `machines/sync` puts it in place.
+    p=${2:-}; G="$ROOT/machines/$p/GRANTS"; PROVEN="$ROOT/machines/$p/bay/runnables.proven"
+    [ -n "$p" ] && [ -f "$G" ] || { echo "compile: no machines/$p/GRANTS" >&2; exit 2; }
+    [ -f "$PROVEN" ] || PROVEN=/dev/null
+    # {LOCALAPPDATA} in a runner becomes this host's path, with forward slashes.
+    lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/')
+    blobs=$(claims | cut -d'|' -f1 | sort -u | while read -r h; do
+      printf '%s %s\n' "$h" "$(blob_at "$h")"; done)
+    # Each `depends` file's blob: a change to it revokes the grant as an edit to the holder would.
+    depblobs=$(depends_of "$G" "" | while IFS='|' read -r dh dp; do
+      printf '%s %s %s\n' "$dh" "$dp" "$(blob_at "$dp" || echo missing)"; done)
+    claims | awk -F'|' -v grants="$G" -v proven="$PROVEN" -v blobs="$blobs" -v lad="$lad" -v depblobs="$depblobs" '
+      function rank(a) { return a == "allow" ? 0 : a == "ask" ? 1 : 2 }
+      function esc(s) { gsub(/\\/, "\\\\", s); gsub(/"/, "\\\"", s); return s }
+      function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
+      BEGIN {
+        while ((getline l < grants) > 0) {
+          sub(/#.*$/, "", l); if (l ~ /^[ \t]*$/) continue
+          n = split(l, w, /[ \t]+/)
+          if (w[1] == "checkout") checkout = w[2]
+          else if (w[1] == "wears") { wears[w[2]] = 1; nwears++ }
+          else if (w[1] == "runner") {
+            pre = ""; for (i = 4; i <= n; i++) pre = pre w[i] " "
+            if (pre ~ /\{LOCALAPPDATA\}/) {
+              if (lad == "") { print "compile: LOCALAPPDATA unset, runner skipped: " l > "/dev/stderr"; continue }
+              gsub(/\{LOCALAPPDATA\}/, lad, pre)
+            }
+            forms[w[2]] = forms[w[2]] SUBSEP w[3] "\t" pre
+          } else if (w[1] == "host") {
+            # A command that is not ours: it can be held back, never let through.
+            # Only a proven holder of ours is ever allowed.
+            r = l; sub(/^[ \t]*host[ \t]+[a-z]+[ \t]+/, "", r); r = trim(r)
+            if (w[2] != "ask" && w[2] != "deny") { print "compile: refused, host may only ask or deny: " r > "/dev/stderr"; continue }
+            if (!seen[w[2], r]++) list[w[2]] = list[w[2]] (list[w[2]] == "" ? "" : ",\n") "      \"" esc(r) "\""
+          } else if (w[1] == "admit") {
+            # The one widening. An `outside` verb becomes an allow, and only
+            # once the bay has exercised it; the line itself is admitted by the
+            # merge that brings it. desk, secret and service are never admitted.
+            rest = l; sub(/^[ \t]*admit[ \t]+[a-z]+[ \t]+/, "", rest)
+            split(rest, hs, "|")
+            if (w[2] != "allow") { print "compile: refused, admit only allows: " rest > "/dev/stderr"; continue }
+            admit[trim(hs[1]) "|" trim(hs[2])] = 1
+          } else if (w[1] == "narrow") {
+            rest = l; sub(/^[ \t]*narrow[ \t]+[a-z]+[ \t]+/, "", rest)
+            split(rest, hs, "|"); narrow[trim(hs[1]) "|" trim(hs[2])] = w[2]
+          }
+        }
+        while ((getline l < proven) > 0) {
+          n = split(l, w, /[ \t]+/); if (w[1] ~ /^#/ || n < 2) continue
+          ok[w[1] " " w[2]] = 1
+          for (i = 3; i <= n; i++) if (w[i] ~ /^exercised:/) {
+            m = split(substr(w[i], 11), ex, ";")
+            for (j = 1; j <= m; j++) { gsub(/\+/, " ", ex[j]); exercised[w[1] " " w[2] "|" ex[j]] = 1 }
+          } else if (w[i] ~ /^deps:/) {
+            m = split(substr(w[i], 6), dd, ";")
+            for (j = 1; j <= m; j++) { split(dd[j], pb, "@"); pdep[w[1] " " w[2] "|" pb[1]] = pb[2] }
+          }
+        }
+        nb = split(blobs, bl, "\n"); for (i = 1; i <= nb; i++) { split(bl[i], w, " "); blob[w[1]] = w[2] }
+        # A proof counts only if every file its holder depends on is recorded
+        # in it at the blob that file has now.
+        nd = split(depblobs, dl, "\n")
+        for (i = 1; i <= nd; i++) {
+          if (split(dl[i], w, " ") < 3) continue
+          key = w[1] " " blob[w[1]]
+          if ((key in ok) && pdep[key "|" w[2]] != w[3]) {
+            delete ok[key]
+            print "compile: " w[1] " depends on " w[2] " @" w[3] ", which its proof does not record; unproven" > "/dev/stderr"
+          }
+        }
+      }
+      {
+        h = $1; run = $2; shape = $3; class = $4
+        # A profile that names what it wears answers for nothing else: the
+        # bays do not run the door, and its rules are not theirs to carry.
+        if (nwears && !(h in wears)) next
+        a = (class == "read" || class == "inside") ? "allow" : (class == "outside" || class == "desk") ? "ask" : "deny"
+        k = h "|" shape
+        if (k in narrow) {
+          if (rank(narrow[k]) < rank(a)) { print "compile: refused, narrow loosens " k > "/dev/stderr" }
+          else a = narrow[k]
+        }
+        if ((k in admit) && !(k in narrow)) {
+          if (class != "outside") {
+            print "compile: refused, admit is for outside verbs, not " class ": " k > "/dev/stderr"
+          } else if (((h " " blob[h]) in ok) && ((h " " blob[h] "|" shape) in exercised)) {
+            a = "allow"
+          } else {
+            print "compile: admitted, not proven and exercised at @" blob[h] ", still asks: " k > "/dev/stderr"
+          }
+        }
+        # Unproven is left OFF the list, not turned into `ask`: an ask rule
+        # forces a prompt even where the harness would have let it through, and
+        # a background session has nobody to answer one.
+        if (a == "allow" && !((h " " blob[h]) in ok)) {
+          print "compile: unproven, not listed: " h " @" blob[h] " " shape > "/dev/stderr"; next
+        }
+        if (!(run in forms)) { print "compile: no runner for " run ", skipped: " h > "/dev/stderr"; next }
+        nf = split(substr(forms[run], 2), f, SUBSEP)
+        for (i = 1; i <= nf; i++) {
+          if (a != "deny" && i > 1) break
+          split(f[i], tp, "\t"); cmd = tp[2] checkout "/" h
+          if (shape == "*") cmd = cmd " *"; else if (shape != "-") cmd = cmd " " shape
+          nr = 1; rs[1] = tp[1] "(" cmd ")"
+          # A deny also covers the verb with anything after it.
+          if (a == "deny" && cmd !~ /\*$/) { nr = 2; rs[2] = tp[1] "(" cmd " *)" }
+          for (j = 1; j <= nr; j++) { r = rs[j]
+            if (!seen[a, r]++) list[a] = list[a] (list[a] == "" ? "" : ",\n") "      \"" esc(r) "\"" }
+        }
+      }
+      END {
+        printf "{\n  \"permissions\": {\n"
+        printf "    \"allow\": [\n%s\n    ],\n", list["allow"]
+        printf "    \"ask\": [\n%s\n    ],\n", list["ask"]
+        printf "    \"deny\": [\n%s\n    ]\n  }\n}\n", list["deny"]
+      }'
+    ;;
+  prove)
+    # Run every `read` verb as the canonical runner starts it; nothing may change. --by vouches for the rest.
+    p=${2:-}; h=${3:-}; by=""; exercise=""
+    shift 3 2>/dev/null || true
+    while [ $# -gt 0 ]; do
+      case "$1" in --by) by=${2:-}; shift 2 ;; --exercise) exercise=1; shift ;; *) shift ;; esac
+    done
+    G="$ROOT/machines/$p/GRANTS"
+    [ -f "$G" ] && [ -n "$h" ] && [ -n "$by" ] || { echo "usage: machines/runnables prove <profile> <holder> --by <who>" >&2; exit 2; }
+    case "$ROOT" in */refs/*) echo "prove: $ROOT is a read-only mirror; prove from a work/ worktree" >&2; exit 2 ;; esac
+    if grep -q '^[[:space:]]*wears[[:space:]]' "$G" && ! grep -qE "^[[:space:]]*wears[[:space:]]+$h([[:space:]]|$)" "$G"; then
+      echo "prove: $p does not wear $h" >&2; exit 2; fi
+    blob=$(blob_at "$h") || { echo "prove: $h is not committed" >&2; exit 2; }
+    as_committed "$h" || { echo "prove: $h differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+    deps=""
+    for d in $(depends_of "$G" "$h" | cut -d'|' -f2); do
+      db=$(blob_at "$d") || { echo "prove: $h depends on $d, which is not committed" >&2; exit 2; }
+      as_committed "$d" || { echo "prove: $d differs from HEAD; a proof is of committed bytes" >&2; exit 2; }
+      deps="$deps${deps:+;}$d@$db"
+    done
+    run=$(claims | awk -F'|' -v h="$h" '$1 == h { print $2; exit }')
+    [ -n "$run" ] || { echo "prove: $h claims nothing (machines/RUNNABLES)" >&2; exit 2; }
+    prefix=$(sed -e 's/#.*$//' "$G" | awk -v r="$run" '$1 == "runner" && $2 == r && $3 == "Bash" { for (i = 4; i <= NF; i++) printf "%s ", $i; exit }')
+    lad=$(printf '%s' "${LOCALAPPDATA:-}" | tr '\\' '/'); prefix=$(printf '%s' "$prefix" | sed "s|{LOCALAPPDATA}|$lad|g")
+    state() {
+      git -C "$ROOT" status --porcelain
+      for d in bay troves; do
+        [ -d "$LOCALAPPDATA/$p/$d" ] && find "$LOCALAPPDATA/$p/$d" -printf '%p %s %T@\n' 2>/dev/null | sort
+      done
+      [ -f "$LOCALAPPDATA/$p/bay.ndjson" ] && wc -c < "$LOCALAPPDATA/$p/bay.ndjson"
+    }
+    before=$(state); ran=""
+    for shape in $(claims | awk -F'|' -v h="$h" '$1 == h && $4 == "read" { gsub(/ /, "\001", $3); print $3 }'); do
+      shape=$(printf '%s' "$shape" | tr '\001' ' ')
+      case "$shape" in *'*'*) echo "skip      $shape (takes arguments; proven by reading)"; continue ;; esac
+      args=""; [ "$shape" = "-" ] || args=$shape
+      echo "run       $prefix$h $args"
+      # shellcheck disable=SC2086
+      $prefix "$h" $args >/dev/null 2>&1; rc=$?
+      [ $rc -le 1 ] || { echo "prove: '$shape' exited $rc; not proven" >&2; exit 1; }
+      ran="$ran${ran:+,}$shape"
+    done
+    after=$(state)
+    [ "$before" = "$after" ] || { echo "prove: a read verb changed something; not proven:" >&2
+      diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -20 >&2; exit 1; }
+
+    # --exercise: the GRANTS cycle, run once and watched; only the profile's troves folder may change.
+    exercised=""
+    if [ -n "$exercise" ]; then
+      cycle=$(sed -e 's/#.*$//' "$G" | awk -v h="$h" '$1 == "exercise" { r = $0; sub(/^[ \t]*exercise[ \t]+/, "", r); split(r, a, "|"); gsub(/^[ \t]+|[ \t]+$/, "", a[1]); if (a[1] == h) print a[2] }')
+      [ -n "$cycle" ] || { echo "prove: GRANTS declares no exercise for $h" >&2; exit 2; }
+      expand() { printf '%s' "$1" | sed -e "s|{APPDATA}|$(printf '%s' "${APPDATA:-}" | tr '\\' '/')|g" \
+        -e "s|{LOCALAPPDATA}|$lad|g" -e "s|{USERPROFILE}|$(printf '%s' "${USERPROFILE:-}" | tr '\\' '/')|g"; }
+      untouched=$(sed -e 's/#.*$//' "$G" | awk '$1 == "untouched" { $1 = ""; sub(/^ /, ""); print }')
+      quiet=$(sed -e 's/#.*$//' "$G" | awk '$1 == "quiet" { print $2 }')
+      # expect <file> <text>: what the cycle appends to <file> must contain <text>.
+      expects=$(awk '$1 == "expect" { $1 = ""; sub(/^ /, ""); print }' "$G")
+      exp_sizes=$(printf '%s\n' "$expects" | while read -r f _; do [ -n "$f" ] || continue
+        f=$(expand "$f"); if [ -f "$f" ]; then wc -c < "$f"; else echo 0; fi; done)
+      watch() {
+        git -C "$ROOT" status --porcelain
+        [ -d "$LOCALAPPDATA/$p/bay" ] && find "$LOCALAPPDATA/$p/bay" -printf '%p %s %T@\n' | sort
+        [ -f "$LOCALAPPDATA/$p/bay.ndjson" ] && wc -c < "$LOCALAPPDATA/$p/bay.ndjson"
+        printf '%s\n' "$untouched" | while IFS= read -r u; do [ -n "$u" ] || continue
+          d=$(expand "$u"); if [ -e "$d" ]; then find "$d" -printf '%p %s %T@\n' | sort; else echo "absent $d"; fi; done
+      }
+      running() { powershell -NoProfile -Command "(@(Get-Process '$1' -ErrorAction SilentlyContinue)).Count" | tr -d '\r'; }
+      for q in $quiet; do
+        [ "$(running "$q")" = 0 ] || { echo "prove: $q is running. The exercise starts only on a quiet machine, so it cannot mistake theirs for ours" >&2; exit 1; }
+      done
+      w0=$(watch)
+      while IFS= read -r step; do
+        step=$(printf '%s' "$step" | sed 's/^ *//; s/ *$//'); [ -n "$step" ] || continue
+        echo "exercise  $prefix$h $step"
+        # shellcheck disable=SC2086
+        $prefix "$h" $step </dev/null; rc=$?
+        [ $rc = 0 ] || { echo "prove: exercise '$step' exited $rc; not proven" >&2; exit 1; }
+        exercised="$exercised${exercised:+;}$(printf '%s' "$step" | tr ' ' '+')"
+      done <<CYCLE
+$(printf '%s' "$cycle" | tr ';' '\n')
+CYCLE
+      for q in $quiet; do
+        [ "$(running "$q")" = 0 ] || { echo "prove: $q is still running after the exercise; not proven" >&2; exit 1; }
+      done
+      i=0
+      while read -r f text; do [ -n "$f" ] || continue
+        i=$((i + 1)); from=$(printf '%s\n' "$exp_sizes" | sed -n "${i}p"); f=$(expand "$f")
+        [ -f "$f" ] && tail -c +"$((from + 1))" "$f" | grep -qF -- "$text" ||
+          { echo "prove: the exercise did not write '$text' to $f; not proven" >&2; exit 1; }
+      done <<EXPECT
+$expects
+EXPECT
+      w1=$(watch)
+      [ "$w0" = "$w1" ] || { echo "prove: the exercise changed something it must not have; not proven:" >&2
+        diff <(printf '%s\n' "$w0") <(printf '%s\n' "$w1") | head -20 >&2; exit 1; }
+    fi
+
+    out="$ROOT/machines/$p/bay/runnables.proven"
+    mkdir -p "$(dirname "$out")"
+    [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
+      "# Written by \`machines/runnables prove\`. docs/station.md, Runnables." \
+      "#" "# holder  blob  date  ran  by" > "$out"
+    printf '%s %s %s ran:%s%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
+      "${exercised:+ exercised:$exercised}" "${deps:+ deps:$deps}" "$by" >> "$out"
+    echo "proven    $h @$blob on $p (ran: ${ran:-none}${exercised:+; exercised: $exercised}); recorded in machines/$p/bay/runnables.proven"
+    ;;
+  *)
+    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

@@ -7,7 +7,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
-- `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
+- `machines/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. machines/runnables
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
@@ -94,7 +94,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Members
 
-- Ejection owes the core as a commit to the member's repository; no tool writes it. bin/build-sites.py
+- Ejection owes the core as a commit to the member's repository; no tool writes it. machines/static/build-sites.py
 - A generated tier (a site from show data for shows without a repository): how `sites.yml` names it, never confusable with `scaffold`.
 - `_shows/` and `_podcasts/` as one collection moves live URLs.
 - `/meet/` to render `member_sites.json` once it has entries; nothing reports stale tenant pins.
