@@ -114,12 +114,13 @@ while read -r mode src dst <&3; do
       case "$REPO" in */refs/*|*/ref/*) echo "sync: $REPO is a read-only mirror; mirror into a work/ worktree" >&2; exit 2 ;; esac
       if [ -e "$to" ] && ! cmp -s "$from" "$to"; then cp -p "$to" "$from" && echo "brought   ~/$dst"; fi ;;
     clone:status|clone:install)
-      sed -e 's/#.*$//' "$from" | while read -r url; do
-        [ -n "$url" ] || continue
-        name=$(basename "$url" .git)
+      # Each line an owner/repo of our origin, cloned from there by bin/refs (never GitHub).
+      sed -e 's/#.*$//' "$from" | while read -r path; do
+        [ -n "$path" ] || continue
+        name=$(basename "$path")
         [ -e "$to/$name/.git" ] && continue
         if [ "$cmd" = status ]; then echo "missing   ~/$dst/$name"
-        else mkdir -p "$to" && git clone --quiet "$url" "$to/$name" && echo "cloned    ~/$dst/$name"; fi
+        else FCPM_CODE="$(dirname "$to")" "$HERE/../bin/refs" clone "$path" >/dev/null && echo "cloned    ~/$dst/$name from the origin"; fi
       done ;;
     clone:mirror) ;;
     # settings <profile> <home path>: that profile's GRANTS, compiled; never stored in the repository.

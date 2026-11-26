@@ -1,11 +1,11 @@
 #!/bin/sh
-# follow -- a bay takes its orders from main, paced by the dev switch. The crew's `follow` line, every
-# 5 minutes, from bay 1's menu (production.yml), on every bay whose crew orders it: one way for all of them.
+# follow -- a bay takes its orders from main on our origin. The crew's `follow` line, every 5 minutes,
+# from bay 1's menu (production.yml), on every bay whose crew orders it: one way for all of them.
 #
-#   dev on  (`fcpm dev on`: %LOCALAPPDATA%\fcpm\dev)  this repository's mirror from origin's main, each pass
-#   always                                           once a week, every mirror and the people's working copy
-#   then                                             what the profile maps (sync install), when the mirror
-#                                                    moved and every 15 minutes, so a hand change comes back
+#   each pass     this repository's mirror from the origin's main (bin/refs; never GitHub)
+#   once a week   every mirror and the people's working copy, from the origin too
+#   then          what the profile maps (sync install), when the mirror moved and every 15 minutes, so a
+#                 hand change comes back
 #
 # Fast-forward only, never over local changes (bin/refs). A move that touches what the crew's lines run
 # (troves/) has the crew restart them; a new crew.py is the pool's to restart, since a supervisor cannot
@@ -20,8 +20,8 @@ STATE="${LOCALAPPDATA:-$HOME/.local/state}/fcpm"
 HOLD=15
 mkdir -p "$STATE"
 
-# Pull: every pass with dev on; the weekly pull (every mirror, the working copy) once a week whatever it is.
-[ -f "$STATE/dev" ] && "$REPO/bin/refs" pull "$NAME" | grep -E 'UPDATED|FAILED|skipped'
+# Pull from the origin: this mirror every pass; every mirror and the working copy once a week.
+"$REPO/bin/refs" pull "$NAME" | grep -E 'UPDATED|FAILED|skipped'
 week=$(date +%G-W%V)
 [ "$(cat "$STATE/weekly.done" 2>/dev/null)" = "$week" ] || { "$HERE/watch" weekly && echo "weekly: pulled for $week"; }
 

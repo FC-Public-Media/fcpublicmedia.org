@@ -10,7 +10,6 @@ REFS="$HERE/../bin/refs"
 REPO=fcpublicmedia.org
 MIRROR="$CODE/refs/$REPO"
 [ -d "$MIRROR" ] || MIRROR="$CODE/ref/$REPO"   # kiosk's mirrors are in ref/
-GH=$(command -v gh 2>/dev/null || echo "$HOME/.local/bin/gh.exe")
 STATE="${LOCALAPPDATA:-$HOME/.local/state}/fcpm"
 
 line() { printf '%-7s %s\n' "$1" "$2"; }
@@ -80,18 +79,16 @@ if [ -z "$profile" ]; then
 fi
 line ok "this is ${called:-$profile} (profile $profile, Windows name ${COMPUTERNAME:-?})"
 
-if "$GH" auth status >/dev/null 2>&1; then line ok "GitHub is signed in"
-else line NEEDS "GitHub is not signed in. Someone at the desk runs: gh auth login"; fi
-
 behind=0
+"$REFS" point "$REPO"
 if git -C "$MIRROR" fetch -q origin 2>/dev/null; then
   mb=$(git -C "$MIRROR" rev-list --count HEAD..origin/main)
   # Named in full: the mirror is what this machine runs (fcpm, and what sync places).
   at="$(git -C "$MIRROR" log -1 --format="%h, %cr" 2>/dev/null)"
-  if [ "$mb" -gt 0 ]; then line behind "the mirror (~/code/refs/$REPO, what this machine runs) is $mb change(s) behind GitHub: fcpm install"; behind=$mb
-  else line ok "the mirror (~/code/refs/$REPO, what this machine runs) has everything merged on GitHub ($at)"; fi
+  if [ "$mb" -gt 0 ]; then line behind "the mirror (~/code/refs/$REPO, what this machine runs) is $mb change(s) behind the origin's main: fcpm install"; behind=$mb
+  else line ok "the mirror (~/code/refs/$REPO, what this machine runs) has everything on the origin's main ($at)"; fi
 else
-  line NEEDS "cannot reach upstream ($(git -C "$MIRROR" remote get-url origin 2>/dev/null)). Network?"
+  line NEEDS "cannot reach the origin ($(git -C "$MIRROR" remote get-url origin 2>/dev/null)): is origin.local up, and does this machine hold its key?"
 fi
 
 edits=0; unsent=0
@@ -166,11 +163,6 @@ case "$pick" in
       msg=$(git -C "$WC" log -1 --format=%s)
     fi
     catch_up || exit 1
-    git -C "$WC" push -q origin "HEAD:refs/heads/$called" || { line STOP "could not send to GitHub"; exit 1; }
-    pr=$(cd "$WC" && "$GH" pr list --head "$called" --state open --json url -q '.[0].url' 2>/dev/null)
-    if [ -n "$pr" ]; then line ok "sent. It joins the request already waiting: $pr"
-    else
-      pr=$(cd "$WC" && "$GH" pr create --base main --head "$called" --title "$msg" --body "Sent from $called with \`fcpm\`." 2>&1 | tail -n 1)
-      line ok "sent. Waiting for Autumn to merge it: $pr"
-    fi ;;
+    git -C "$WC" push -q origin "HEAD:refs/heads/$called" || { line STOP "could not send to the origin"; exit 1; }
+    line ok "sent to the origin as $called ($msg). It waits there to be landed (Helm, /origin/)." ;;
 esac

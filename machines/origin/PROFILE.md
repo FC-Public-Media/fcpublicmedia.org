@@ -100,4 +100,4 @@ How NCCV-OPINION came out (#401). For an owner, or for some of an owner's reposi
    and `.intake/state.json` does not name it.
 7. Do the same to any other copy (digitization's old `/srv/origin`).
 8. Search the checkout for the name. Whatever reads from the origin goes too. Whatever reads from GitHub
-   (a static site's `export_from: github`, a keychain group) stays until someone says otherwise.
+   (a keychain group) stays until someone says otherwise.

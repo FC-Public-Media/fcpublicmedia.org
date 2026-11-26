@@ -23,7 +23,7 @@ main_rev() { git ls-remote "$ORIGIN/FC-Public-Media/fcpublicmedia.org" refs/head
 cards=$(for d in $(lsblk -dnro PATH,TRAN | awk '$2=="usb"||$2=="mmc"{print $1}'); do
   if lsblk -rno LABEL "$d" | grep -qx Ventoy; then echo "$d"; fi; done)
 want=$(main_rev); src=origin.local
-[ -n "$want" ] || { want=$(git -C "$REPO" ls-remote https://github.com/FC-Public-Media/fcpublicmedia.org.git refs/heads/main | cut -c1-40); src=GitHub; }
+[ -n "$want" ] || { echo "The origin (origin.local) did not answer; a card is brought current from there alone."; exit 1; }
 
 if [ $# -eq 0 ]; then
   [ -n "$cards" ] || { echo "No card plugged in here."; exit 0; }
@@ -47,8 +47,7 @@ echo "-- 1. extend"
 
 echo "-- 2. code"
 c=$(part "$DISK" "$label-code"); m=$(mnt "$c"); w="$m/fcpublicmedia.org"
-git -C "$w" fetch -q "$ORIGIN/FC-Public-Media/fcpublicmedia.org" main 2>/dev/null \
-  || git -C "$w" fetch -q https://github.com/FC-Public-Media/fcpublicmedia.org.git main
+git -C "$w" fetch -q "$ORIGIN/FC-Public-Media/fcpublicmedia.org" main || { unmnt "$c"; echo "the origin did not answer"; exit 1; }
 before=$(git -C "$w" rev-parse --short HEAD)
 if git -C "$w" merge -q --ff-only FETCH_HEAD 2>/dev/null; then
   echo "checkout $before -> $(git -C "$w" log -1 --format='%h %G? %s' | cut -c1-80)"

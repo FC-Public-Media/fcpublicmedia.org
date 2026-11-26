@@ -1,46 +1,30 @@
-# Read-only mirrors this bay keeps in ~/code/refs. A private reference from beyond FC-Public-Media comes
-# by the origin (and the library crew in front of it), never by a second GitHub account signed in here.
-https://github.com/FCCN-ANTIBODY/advocate.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/data-pile.git
-https://github.com/FCCN-ANTIBODY/journal.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/library.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/tell.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/you.anecdote.channel.git
-https://fcpm-public@github.com/FC-Public-Media/contact-sheets.git
-https://fcpm-public@github.com/FC-Public-Media/enhance.git
-https://github.com/FCCN-ANTIBODY/anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/antidote.git
-https://github.com/FCCN-ANTIBODY/atlas.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/bottles.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/civic-node.git
-https://github.com/FCCN-ANTIBODY/constellation.anecdote.channel.git
-https://github.com/FCCN-ANTIBODY/judgement.git
-https://github.com/FCCN-ANTIBODY/template-civic-node.git
-https://github.com/FCCN-ANTIBODY/jekyll-enough.git
-https://github.com/DiscoveryWritten/discoverywritten.com.git
-# The site-worker, private: the drain's own code (machines/drain), beside fcpublicmedia.org.
-https://fcpm-public@github.com/FC-Public-Media/site-worker.git
-# Fighter and station-node, private, where fcpm-public is a collaborator (2026-11-16): kept here because they
-# are not FCPM's to pin in the origin. Named with the account, so a headless fetch never asks who.
-https://fcpm-public@github.com/tiliv/fighter.git
-https://fcpm-public@github.com/tiliv/station-node.git
-# Troves: private, so named with the account, as origin is; a bare URL makes a headless clone ask who.
-https://fcpm-public@github.com/FC-Public-Media/aja-helo.git
-https://fcpm-public@github.com/FC-Public-Media/atem-mini-pro.git
-https://fcpm-public@github.com/FC-Public-Media/buffalo-drivestation.git
-https://fcpm-public@github.com/FC-Public-Media/camera.git
-https://fcpm-public@github.com/FC-Public-Media/drobo.git
-https://fcpm-public@github.com/FC-Public-Media/edgerouter-x.git
-https://fcpm-public@github.com/FC-Public-Media/etc-colorsource-20.git
-https://fcpm-public@github.com/FC-Public-Media/game-intake.git
-https://fcpm-public@github.com/FC-Public-Media/ki-pro.git
-https://fcpm-public@github.com/FC-Public-Media/kiosk-screen.git
-https://fcpm-public@github.com/FC-Public-Media/nest-cam.git
-https://fcpm-public@github.com/FC-Public-Media/pools.git
-https://fcpm-public@github.com/FC-Public-Media/post.git
-https://fcpm-public@github.com/FC-Public-Media/ptz.git
-https://fcpm-public@github.com/FC-Public-Media/recorder.git
-https://fcpm-public@github.com/FC-Public-Media/roku.git
-https://fcpm-public@github.com/FC-Public-Media/rodecaster-pro-ii.git
-https://fcpm-public@github.com/FC-Public-Media/scanner.git
-https://fcpm-public@github.com/FC-Public-Media/ti-89.git
+# Read-only mirrors this bay keeps in ~/code/refs: an owner/repo of our origin a line, cloned and fetched
+# from there alone (../../../bin/refs). Something not on the origin is put there first, never fetched from GitHub.
+FCCN-ANTIBODY/advocate.anecdote.channel
+FCCN-ANTIBODY/data-pile
+FCCN-ANTIBODY/library.anecdote.channel
+FCCN-ANTIBODY/tell.anecdote.channel
+FC-Public-Media/contact-sheets
+FC-Public-Media/enhance
+FCCN-ANTIBODY/atlas.anecdote.channel
+FCCN-ANTIBODY/judgement
+FC-Public-Media/site-worker
+FC-Public-Media/aja-helo
+FC-Public-Media/atem-mini-pro
+FC-Public-Media/buffalo-drivestation
+FC-Public-Media/camera
+FC-Public-Media/drobo
+FC-Public-Media/edgerouter-x
+FC-Public-Media/etc-colorsource-20
+FC-Public-Media/game-intake
+FC-Public-Media/ki-pro
+FC-Public-Media/kiosk-screen
+FC-Public-Media/nest-cam
+FC-Public-Media/pools
+FC-Public-Media/post
+FC-Public-Media/ptz
+FC-Public-Media/recorder
+FC-Public-Media/roku
+FC-Public-Media/rodecaster-pro-ii
+FC-Public-Media/scanner
+FC-Public-Media/ti-89
