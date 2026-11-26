@@ -111,6 +111,48 @@ class Proofs(unittest.TestCase):
         self.assertTrue(checks)
         self.assertIn("Test the proofs", [n for n, _ in checks])
 
+    def member_statement(self, member="mods", repo="https://example.org/mods.git"):
+        return "\n".join([proof.FORMAT, "member " + member, "repo " + repo, "tree " + self.tree,
+                          "by dj, here", "step 1 passed 1.0s exit 0 sha256 0 0B one",
+                          "wanted dns repo1.maven.org x3", "result passed 1 of 1"]) + "\n"
+
+    def test_a_granted_member_proof_verifies(self):
+        (self.root / "machines/dj/members").write_text("mods https://example.org/mods.git minecraft\n")
+        proof.KEY = self.t / "dj"
+        s = self.member_statement()
+        good, said = proof.verify(s + proof.sign(s), self.root)
+        self.assertTrue(good, said)
+        self.assertIn("member mods", said)
+
+    def test_a_member_without_a_grant_or_at_another_source_is_refused(self):
+        (self.root / "machines/dj/members").write_text("mods https://example.org/mods.git minecraft\n")
+        proof.KEY = self.t / "dj"
+        for s in (self.member_statement(member="other"), self.member_statement(repo="https://elsewhere/mods.git")):
+            good, said = proof.verify(s + proof.sign(s), self.root)
+            self.assertFalse(good)
+            self.assertIn("no grant", said)
+
+    def test_members_and_environments_read(self):
+        (self.root / "machines/dj/members").write_text("# who\nmods https://example.org/m.git minecraft\nBad x y\n")
+        self.assertEqual(proof.members("dj", self.root), {"mods": {"source": "https://example.org/m.git", "env": "minecraft"}})
+        e = proof.env_read("# env\nnetwork none\napt openjdk-21-jdk-headless\n"
+                           "shelf %s 12 server.zip by tiliv at 2026-11-25T00:00:00Z\n" % ("a" * 64))
+        self.assertEqual(e["network"], "none")
+        self.assertEqual(e["apt"], ["openjdk-21-jdk-headless"])
+        self.assertEqual(e["shelf"][0]["name"], "server.zip")
+        self.assertEqual(proof.env_read(None), {"network": "none", "apt": [], "shelf": []})
+
+    def test_the_trap_answers_no_such_name(self):
+        import importlib.machinery
+        trap = importlib.machinery.SourceFileLoader("trap", str(ROOT / "machines/dj/trap")).load_module()
+        q = b"\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + b"\x05repo1\x05maven\x03org\x00" + b"\x00\x01\x00\x01"
+        name, end = trap.qname(q + b"\x00\x00\x29")                # an EDNS record after the question is left off
+        self.assertEqual(name, "repo1.maven.org")
+        a = trap.nxdomain(q, end)
+        self.assertEqual(a[:2], b"\x12\x34")
+        self.assertEqual(a[3] & 0x0F, 3)                             # NXDOMAIN
+        self.assertEqual(a[12:], q[12:])
+
     def test_landing_tree_is_main_tree_after_landing(self):
         sh("git", "checkout", "-qb", "topic", cwd=self.work)
         (self.work / "b").write_text("b\n")
