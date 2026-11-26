@@ -1,0 +1,31 @@
+#!/bin/sh
+# field [remove] -- as root on a carried box: its operator masters it with no password (sudo, network, USB gear).
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+who=${FIELD_USER:-$(stat -c %U "$here/field")}
+
+if [ "${1:-}" = remove ]; then
+	rm -f /etc/sudoers.d/020_fcpm-field /etc/polkit-1/rules.d/50-fcpm-field.rules /etc/udev/rules.d/60-fcpm-gear.rules
+	udevadm control --reload; udevadm trigger --subsystem-match=usb --subsystem-match=hidraw
+	echo "field removed"; exit 0
+fi
+
+printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$who" > /tmp/020_fcpm-field
+visudo -cf /tmp/020_fcpm-field >/dev/null
+install -m 0440 /tmp/020_fcpm-field /etc/sudoers.d/020_fcpm-field && rm -f /tmp/020_fcpm-field
+
+mkdir -p /etc/polkit-1/rules.d
+cat > /etc/polkit-1/rules.d/50-fcpm-field.rules <<RULES
+polkit.addRule(function(action, subject) {
+  if (subject.user == "$who" && action.id.indexOf("org.freedesktop.NetworkManager.") == 0) return polkit.Result.YES;
+});
+RULES
+
+cat > /etc/udev/rules.d/60-fcpm-gear.rules <<'RULES'
+# Gear a carried box plugs into: Blackmagic (switchers, cameras) and Metabones adapters, open to plugdev.
+SUBSYSTEM=="usb", ATTR{idVendor}=="1edb", MODE="0660", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="8090", MODE="0660", GROUP="plugdev"
+KERNEL=="hidraw*", ATTRS{idVendor}=="1fc9", ATTRS{idProduct}=="8090", MODE="0660", GROUP="plugdev"
+RULES
+udevadm control --reload; udevadm trigger --subsystem-match=usb --subsystem-match=hidraw
+echo "field: $who masters this box with no password"
