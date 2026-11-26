@@ -87,8 +87,9 @@ A member's code is tested on DJ the same way and gets the same kind of proof, wi
   the checkout (`work/`, updated in place, untracked build output kept) and their caches. The proof says `space warm
   since WHEN, run N` (or `new`).
 - **No network.** Each check runs in [`machines/dj/sandbox`](../machines/dj/sandbox): a network of loopback only, as
-  their user, below the stream (CPU weight 20, 16 GB). Its resolver and proxy ([`trap`](../machines/dj/trap)) answer
-  nothing and write down every name asked; the proof lists them, `wanted dns repo1.maven.org x14`, so a failing run
+  their user, below the stream (CPU weight 20, 16 GB). Names are looked up only through its resolver and proxy
+  ([`trap`](../machines/dj/trap)), which answer nothing and write down every name asked: the system's resolver, mDNS
+  and D-Bus sockets are hidden there, since each would look a name up outside; the proof lists them, `wanted dns repo1.maven.org x14`, so a failing run
   still says what it reached for. What they need arrives staged, by staff.
 - **The proof** has `member NAME`, `repo SOURCE`, the env's branch commit, its packages and their versions, and the
   space line. It verifies only when the signer's `members` file grants that name at that source. Kept on
