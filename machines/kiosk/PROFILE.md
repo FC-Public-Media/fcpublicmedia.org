@@ -19,8 +19,7 @@ Screens and content: [`docs/kiosk.md`](../../docs/kiosk.md).
   `vcruntime140.dll`, `vcruntime140_1.dll` from Edge's application folder next to
   `workerd.exe`, again after each wrangler update.
 - Checkout: `C:\Users\FCPM-user\code\work\fcpublicmedia.org@media-node`, branch `media-node`.
-- No keyboard or mouse, out of reach: the per-user task `fcpm weekly` pulls `ref/`, where the
-  root's instructions live, once a week (log `%LOCALAPPDATA%\fcpm\weekly.log`).
+- No keyboard or mouse, out of reach: its door rebases onto the origin's main every 5 minutes.
 
 ## The door
 

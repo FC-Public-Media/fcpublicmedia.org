@@ -109,7 +109,7 @@ def rows(branch):
             has = git(m, "cat-file", "-e", sha + "^{commit}") is not None
             out.append((owner, repo, str(m), "%s, mirror (read only)%s" % (pin, "" if has else "; pin not fetched here")))
         elif not trees:
-            out.append((owner, repo, "", "%s, offered, not mirrored here (refs.wanted, then fcpm install)" % pin))
+            out.append((owner, repo, "", "%s, offered, not mirrored here (the library's refs branch)" % pin))
     return out
 
 

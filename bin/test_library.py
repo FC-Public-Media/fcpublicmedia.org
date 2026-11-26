@@ -334,7 +334,7 @@ class Library(unittest.TestCase):
 
     @unittest.skipUnless((REPO / ".you-engine" / "bottle" / "bottle.mjs").is_file()
                          and (REPO / ".you-engine" / "anecdote.channel" / "composer").is_dir(),
-                         ".you-engine is not checked out here (bin/refs pull hydrates it)")
+                         ".you-engine is not checked out here (fcpm install hydrates it)")
     def test_an_answer_goes_out_as_an_iced_bottle_that_proves_itself(self):
         r, why = library.bottler("who")
         if r is None:

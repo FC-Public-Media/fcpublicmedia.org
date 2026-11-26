@@ -1,31 +1,25 @@
 #!/bin/sh
-# follow -- a bay takes its orders from main, paced by the dev switch. The crew's `follow` line, every
-# 5 minutes, from bay 1's menu (production.yml), on every bay whose crew orders it: one way for all of them.
+# follow -- a bay takes its orders from main. The crew's `follow` line, every 5 minutes, from bay 1's menu
+# (production.yml), on every bay whose crew orders it: one way for all of them.
 #
-#   dev on  (`fcpm dev on`: %LOCALAPPDATA%\fcpm\dev)  this repository's mirror from origin's main, each pass
-#   always                                           once a week, every mirror and the people's working copy
-#   then                                             what the profile maps (sync install), when the mirror
-#                                                    moved and every 15 minutes, so a hand change comes back
+#   each pass  this checkout from the origin's main (./pull)
+#   then       what the profile maps (sync install), when the checkout moved and every 15 minutes, so a
+#              hand change comes back
 #
-# Fast-forward only, never over local changes (bin/refs). A move that touches what the crew's lines run
-# (troves/) has the crew restart them; a new crew.py is the pool's to restart, since a supervisor cannot
-# restart itself from a line it runs (machines/pool.ps1, Supervisor). It runs from the crew, so it needs no
-# one signed in. See docs/station.md, fcpm.
+# A move that touches what the crew's lines run (troves/) has the crew restart them; a new crew.py is the
+# pool's to restart, since a supervisor cannot restart itself from a line it runs (machines/pool.ps1,
+# Supervisor). It runs from the crew, so it needs no one signed in. See docs/station.md, fcpm.
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/.." && pwd)
-NAME=$(basename "$REPO")
 STATE="${LOCALAPPDATA:-$HOME/.local/state}/fcpm"
 HOLD=15
 mkdir -p "$STATE"
 
-# Pull: every pass with dev on; the weekly pull (every mirror, the working copy) once a week whatever it is.
-[ -f "$STATE/dev" ] && "$REPO/bin/refs" pull "$NAME" | grep -E 'UPDATED|FAILED|skipped'
-week=$(date +%G-W%V)
-[ "$(cat "$STATE/weekly.done" 2>/dev/null)" = "$week" ] || { "$HERE/watch" weekly && echo "weekly: pulled for $week"; }
+sh "$HERE/pull"
 
-# Place: when the mirror moved, and every $HOLD minutes however it stands.
+# Place: when the checkout moved, and every $HOLD minutes however it stands.
 head=$(git -C "$REPO" rev-parse HEAD) || exit 1
 placed="$STATE/follow.placed"   # what it last put on; sync keeps its own records in placed/
 was=$(cat "$placed" 2>/dev/null)

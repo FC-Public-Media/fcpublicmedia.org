@@ -19,7 +19,7 @@ grants: [docs/station.md](../../docs/station.md).
 |---|---|
 | `names`, `called` | `windows ComputerName BAY1`; `production` |
 | `MANIFEST` | carries `code/`, the root's instructions in `home/code/` (`CLAUDE.md` -> `AGENTS.md` -> `BAY1.md` -> `code/AGENTS.md`), the git ignore (`.pr`), `fcpm.cmd`, `~/.local/bin` on PATH, and the compiled GRANTS |
-| `code/` | the `~/code` root: `AGENTS.md` (read in place from the mirror), `bin/refs`, `refs.wanted` (the mirrors). The pool is no file here: its task runs [`../pool.ps1`](../pool.ps1) in the mirror, held by the MANIFEST |
+| `code/` | the `~/code` root: `AGENTS.md` (read in place from the mirror). The pool is no file here: its task runs [`../pool.ps1`](../pool.ps1) in the mirror, held by the MANIFEST |
 | `GRANTS` | admits the recorder's OBS cycle; denies stopping any process by name |
 | `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |

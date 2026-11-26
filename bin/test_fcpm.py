@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """fcpm and machines/fcpm.yml name the same verbs; a verb this platform lacks says what stands in and exits 3;
-bin/refs keeps the mirrors under FCPM_CODE, in refs/ or the kiosk's ref/.
+machines/pull brings a checkout named at GitHub from the origin instead.
 
     python3 bin/test_fcpm.py
 """
@@ -78,35 +78,28 @@ class Run(unittest.TestCase):
         self.assertIn("fcpm install [JOB]", r.stdout.split("Not on " + PLAT)[0])
         self.assertIn("fcpm " + AWAY["verb"], r.stdout.split("Not on " + PLAT)[1])
 
-    def test_refs_in_the_kiosks_ref(self):
-        up = self.home / "up"
-        up.mkdir()
+    def test_pull_from_the_origin(self):
+        origin = self.home / "origin"
+        up = origin / "FC-Public-Media" / "fcpublicmedia.org"
+        up.mkdir(parents=True)
         git("init", "-q", "-b", "main", ".", cwd=up)
-        (up / "a").write_text("a\n")
+        (up / "machines").mkdir()
+        (up / "machines" / "pull").write_bytes((REPO / "machines" / "pull").read_bytes())
         git("add", "-A", cwd=up)
         git("commit", "-q", "-m", "a", cwd=up)
-        ref = self.home / "code" / "ref"
-        ref.mkdir(parents=True)
-        git("clone", "-q", str(up), "demo", cwd=ref)
-        refs = str(REPO / "bin" / "refs")
+        here = self.home / "code" / "fcpublicmedia.org"
+        git("clone", "-q", str(up), str(here), cwd=self.home)
+        git("remote", "set-url", "origin", "https://github.com/FC-Public-Media/fcpublicmedia.org.git", cwd=here)
+        (up / "b").write_text("b\n")
+        git("add", "-A", cwd=up)
+        git("commit", "-q", "-m", "b", cwd=up)
 
-        r = self.run_("bash", refs, "status")
-        self.assertRegex(r.stdout, r"demo\s+main\s+behind=0")
-        r = self.run_("sh", str(FCPM), "refs", "status")   # the verb is the same file, on any machine
+        env = dict(os.environ, HOME=str(self.home), FCPM_ORIGIN_URL=str(origin))
+        r = subprocess.run(["sh", str(here / "machines" / "pull")], env=env, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertRegex(r.stdout, r"demo\s+main\s+behind=0")
-        (up / "a").write_text("b\n")
-        git("commit", "-qam", "b", cwd=up)
-        r = self.run_("bash", refs, "pull", "demo")
-        self.assertIn("UPDATED", r.stdout, r.stderr)
-
-        r = self.run_("bash", refs, "work", "demo", "x/y")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertTrue((self.home / "code" / "work" / "demo@x-y" / "a").exists())
-        r = self.run_("bash", refs, "done", "demo", "x/y")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertFalse((self.home / "code" / "work" / "demo@x-y").exists())
-
+        url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=here, capture_output=True, text=True).stdout
+        self.assertEqual(url.strip(), str(up))
+        self.assertTrue((here / "b").exists(), r.stdout)
 
 if __name__ == "__main__":
     unittest.main()

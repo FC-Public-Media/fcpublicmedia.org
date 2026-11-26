@@ -147,7 +147,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
 - The pool restarts the `production` supervisor too. machines/pool.ps1
-- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name), and the kiosk's `fcpm weekly` task (the bays' crews' `follow` line does the weekly pull).
+- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name).
 - A new crew.py waits for the pool to restart the supervisor, so for someone signed in; a supervisor that restarts itself would not.
 - The default `gear.yml` claude-code winget id is unconfirmed.
 - Administrator steps wait unseen: the crew's `follow` line prints `waiting`, and runs `sync install`, not `fcpm install`. docs/elevation.md

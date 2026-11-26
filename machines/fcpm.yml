@@ -29,8 +29,8 @@ verbs:
   - verb: install
     args: "[JOB]"
     says: "this machine as its profile says: the latest brought in, then put on (its files, engines and system steps). A person runs this"
-    windows: "bin/refs, machines/sync install, the engines, machines/watch copy, the weekly task"
-    linux: "bin/refs where ~/code/refs holds the mirror (elsewhere the crew's follow line keeps the checkout), machines/sync install, the engines"
+    windows: "machines/pull, machines/sync install, the engines"
+    linux: "machines/pull, machines/sync install, the engines"
 
   - verb: pull
     args: ""
@@ -43,12 +43,6 @@ verbs:
     says: "what files cannot say: gear, settings, services"
     windows: "machines/<profile>/check.ps1"
     linux: "machines/<profile>/check.sh"
-
-  - verb: weekly
-    args: ""
-    says: "bring in the latest, once a week (the task runs it)"
-    windows: "machines/watch weekly: the crew's follow line where the crew orders one (the bays), else the 'fcpm weekly' task"
-    linux: "not: no weekly task; origin.local's intake asks GitHub weekly by itself (fcpm dev)"
 
   - verb: deploy
     args: "[--build]"
@@ -104,12 +98,6 @@ verbs:
     says: "this machine's crew: its one service and what it keeps; restart has it read its order again and restart its lines"
     windows: "machines/crew.ps1; crew.py by uv"
     linux: "machines/crew.sh (fcpm-crew@<job>); crew.py by python3"
-
-  - verb: refs
-    args: "[status|pull [REPO...]|work REPO BRANCH|done REPO BRANCH]"
-    says: "the read-only mirrors in ~/code/refs (the kiosk's ref/): how far each is behind, or each brought up; a worktree per branch in ~/code/work, and removed once merged"
-    windows: bin/refs
-    linux: bin/refs
 
   - verb: runnables
     args: "[...]"

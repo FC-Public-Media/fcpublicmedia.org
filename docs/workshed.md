@@ -21,7 +21,7 @@ origins: origins      # where each origin branch's shed is made
 
 - **Marked sheds** are any folder someone marks (`fcpm workshed mark`), on this computer, at once.
 - **Named sheds** are in `workshed.yml`, for every install of the job: bay 1's `work` is `~/code/work`, where
-  sessions make theirs (`bin/refs work`), so a session's worktree is started, shown and searched like any other
+  sessions make theirs (`fcpm workshed`), so a session's worktree is started, shown and searched like any other
   (`fcpm workshed start meet-says-more`). Another might be a folder of someone's own clones, or one for a feature
   branch that may become main one day. `work` is used when no shed is named.
 - **Origin branches' sheds** are the semi-managed series: one per origin branch (`origins/<branch>`), made the

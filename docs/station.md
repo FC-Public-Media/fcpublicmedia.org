@@ -86,28 +86,19 @@ what does each verb per platform; where it says `not:`, `fcpm` prints what stand
 | verb | does |
 |---|---|
 | (none) | the watcher, `machines/watch` |
-| `status`, `install [JOB]` | `sync`; `install` first brings this repository's mirror up (`bin/refs pull`), then puts the profile on, the engines, the people's working copy and, where the profile holds no pool, the `fcpm weekly` task. A job named is put on by `sync -p` |
+| `status`, `install [JOB]` | `sync`; `install` first brings this checkout from the origin's main ([`machines/pull`](../machines/pull)), then puts the profile on and the engines. A job named is put on by `sync -p` |
 | `keep` | the branches the origin keeps current with main ([`origin/KEPT`](../machines/origin/KEPT)), as its last beat left them |
-| `check`, `weekly`, `pool`, `runnables` | the profile's check; the weekly pull; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
-| `refs [status\|pull\|work\|done]` | `bin/refs`: the mirrors in `~/code/refs` (the kiosk's `ref/`) and the worktrees in `~/code/work`, on any machine; `~/code/bin/refs` is the same file, placed for sessions |
-| `dev on`, `dev off` | on: the crew's `follow` line pulls this repository every 5 minutes; off, weekly. Either way it places what merged ([`machines/follow`](../machines/follow)); on the kiosk, the door fetches |
+| `check`, `pool`, `runnables` | the profile's check; `machines/pool.ps1` where the profile holds it; `bin/runnables` |
+| `dev on`, `dev off` | the origin's beat: origin.local asks GitHub every ten minutes, or weekly. The bays' crew `follow` line pulls from the origin every 5 minutes either way ([`machines/follow`](../machines/follow)) |
 | `audition`, `drobo`, `share`, `audit`, `hosts` | the profile's own `.ps1` of that name |
 | `recorder`, `screen`, `crew`, `pools`, `post`, `camera`, `ti89` | [troves](../troves/README.md) and [machines](../machines/README.md) |
 
-`fcpm` alone shows the machine, `gh`'s sign-in, how far the mirror `~/code/refs/fcpublicmedia.org`
-is behind GitHub, edits and unsent commits in the people's working copy
-(`work/fcpublicmedia.org@<called>`), placed files that differ, the root's server, the screen and the
-last weekly pull. It offers only what applies: *Make my working copy*, *Bring in the latest*, *Send
-my changes up* (commit, catch up with `main`, push `<called>`, open or join a PR), *Install the
-updates on this computer*. If edits and the latest change the same lines, it stops; nothing is lost.
+`fcpm` alone shows the machine, how far this checkout is behind the origin's main, placed files that
+differ, the root's server and the screen, and offers to bring in the latest and install it.
 
-`fcpm weekly` works once a week: it pulls every mirror and fast-forwards the working copy, never
-merging, sending or installing (`%LOCALAPPDATA%\fcpm\weekly.log`). Where the profile holds the pool
-(both bays), the crew's `follow` line runs it, so the twins do it alike; elsewhere (the kiosk) a
-task of its own runs it at sign-in and 7am. A bare
-machine starts from the start line in [README.md](../README.md), *Setting up a machine*. It fetches
-[`machines/start.ps1`](../machines/start.ps1), which needs only winget: Git (machine-wide), this
-repository cloned or pulled into `~/code/refs/`, every `provisioner: winget` package in the job's
+A bare Windows
+machine starts from [`machines/start.ps1`](../machines/start.ps1), which needs winget and the machine's key
+at the origin: Git (machine-wide), this repository cloned or pulled from the origin into `~/code/refs/`, every `provisioner: winget` package in the job's
 `gear.yml` (else `machines/gear.yml`) not yet installed, then `fcpm install JOB`. A job whose `names`
 does not list the computer yet is put on all the same, with a warning.
 
@@ -139,8 +130,8 @@ the committed file in the mirror, never a copy that could drift from it.
 
 ## Sessions
 
-- A machine's root is `~/code`: read-only mirrors in `refs/` and a worktree per branch in
-  `work/REPO@BRANCH`, kept by `bin/refs`. `work/` is one of the workshed's sheds, and a person's worktrees are in
+- A machine's root is `~/code`: `refs/` and `work/` are sheds ([workshed.md](workshed.md)); the references
+  anyone keeps are the library's `refs` branch. `work/` is one of the workshed's sheds, and a person's worktrees are in
   whichever shed they keep, each bound in `machines/<job>/workshed.yml` ([workshed.md](workshed.md)). Its instructions are the profile's `code/AGENTS.md`, which
   `~/code/CLAUDE.md` points at in the mirror (`@refs/fcpublicmedia.org/machines/<profile>/...`).
 - At sign-in the root runs an unnamed Remote Control server, `claude remote-control`, with its

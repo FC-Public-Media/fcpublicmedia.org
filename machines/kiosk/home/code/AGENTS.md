@@ -2,4 +2,4 @@
 
 The instructions for this root are in the repository, at
 `ref/fcpublicmedia.org/machines/kiosk/code/AGENTS.md`. Each
-`bin/refs pull` keeps them current. This file only points there.
+`fcpm install` keeps them current. This file only points there.

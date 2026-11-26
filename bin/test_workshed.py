@@ -380,7 +380,7 @@ class Workshed(unittest.TestCase):
         workshed.BINDINGS = [f]
 
     def session_worktree(self, branch):
-        """A worktree as bin/refs work makes one: work/<repo>@<branch>, cut from main and following it."""
+        """A worktree in the work/ shed: work/<repo>@<branch>, cut from main and following it."""
         src = workshed.CODE / "refs" / "demo"
         path = workshed.CODE / "work" / ("demo@" + branch)
         git("worktree", "add", "-q", "--track", "-b", branch, str(path), "origin/main", cwd=src)

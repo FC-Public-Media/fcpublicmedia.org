@@ -16,16 +16,15 @@ Bay 2 becomes bay 1 progressively: a verb comes over when it is wanted, never th
 | `fcpm model` | [`model.ps1`](model.ps1) runs bay 1's, with bay 1's `model.yml`, spread (`models/`) and shapes, so a model picked here is one bay 1 knows. This bay's own: its state, `%LOCALAPPDATA%\editing-bay-2\model`, and its contexts' addresses, `editing-bay-2/<name>`. `install` verifies llama.cpp's build attestation, so `gh` signed in first; `on` needs an address in `10.209.1.0/24`; `grant` is an administrator's |
 | `fcpm helm`, `fcpm crew` | [`services`](services) orders one line, `helm`, from bay 1's menu ([`../production.yml`](../production.yml)): the door's intake and pages on 8080, applying `wizard:model+up` by this bay's `model.ps1` for a reply naming `job: editing-bay-2` ([`../helms.yml`](../helms.yml)). [`helm.ps1`](helm.ps1) is bay 1's. Its crew's state is `%LOCALAPPDATA%\editing-bay-2\crew`. `fcpm crew install` and `fcpm helm grant` are an administrator's. `helms.yml` gives it `10.209.1.52`, its lease on Helm's Wi-Fi; a cable or a new lease moves it |
 
-| the root, `fcpm pool` | [`MANIFEST`](MANIFEST) places `~/code` as bay 1's: `CLAUDE.md` -> `AGENTS.md` -> `BAY2.md` -> [`code/AGENTS.md`](code/AGENTS.md), `bin/refs`, and settings from [`GRANTS`](GRANTS); it holds the bays' pool's task (`editing-bay-2 pool`, running [`../pool.ps1`](../pool.ps1) in the mirror). Claude Code is the vendor's installer, into `~/.local/bin`, opened once in `~/code`; then `fcpm install` registers the task |
+| the root, `fcpm pool` | [`MANIFEST`](MANIFEST) places `~/code` as bay 1's: `CLAUDE.md` -> `AGENTS.md` -> `BAY2.md` -> [`code/AGENTS.md`](code/AGENTS.md), and settings from [`GRANTS`](GRANTS); it holds the bays' pool's task (`editing-bay-2 pool`, running [`../pool.ps1`](../pool.ps1) in the mirror). Claude Code is the vendor's installer, into `~/.local/bin`, opened once in `~/code`; then `fcpm install` registers the task |
 
 ## Orders, with no one here
 
 With no session open, bay 2 takes orders two ways, and only these:
 
 - **By commit.** The crew's `follow` line ([`../follow`](../follow), from bay 1's menu, [`../production.yml`](../production.yml)), the same line bay 1's crew runs,
-  every 5 minutes, fast-forwards this checkout to `origin`'s main (never over local changes, never off
-  `main`) as `fcpm dev` paces it, each pass while on and weekly while off, and runs `../sync install`
-  when main moved and every 15 minutes. With dev off, an order by commit waits for the weekly pull. A line merged into [`services`](services) comes up by itself: the
+  every 5 minutes, fast-forwards this checkout to the origin's main ([`../pull`](../pull); never over local changes,
+  never off `main`), and runs `../sync install` when main moved and every 15 minutes. A line merged into [`services`](services) comes up by itself: the
   supervisor rereads it. The helm restarts on the new commit. A job whose `names` gains this computer is
   put on, but its own crew task, if it has one, is still an administrator's `fcpm crew install`.
 - **By helm.** What the board asks at runtime: `wizard:model+up` for this bay's line-up.

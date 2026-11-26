@@ -3,7 +3,7 @@
 # There is no workshed folder: only these. Doc: docs/workshed.md.
 
 sheds:
-  work: work        # sessions' worktrees (bin/refs work), and anyone's who works there
+  work: work        # sessions' worktrees, and anyone's who works there
 
 # A shed for each origin branch, made here the first time someone asks to work in that branch (fcpm places,
 # Fighter): origins/<branch>/<repo>@<branch>, at the branch's pins.

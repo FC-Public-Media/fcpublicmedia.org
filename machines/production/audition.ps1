@@ -47,7 +47,7 @@ switch ($Verb) {
             $exe = Join-Path $Audition.FullName 'Adobe Audition.exe'
             Line 'audition' ("{0} ({1})" -f $Audition.Name, (Get-Item $exe).VersionInfo.ProductVersion)
         } else { Line 'audition' 'WANTED: not installed (Creative Cloud)' }
-        Line 'source' $(if (Test-Path $Source) { $Source } else { "MISSING: $Source (not on the engine's main yet, or bin/refs pull)" })
+        Line 'source' $(if (Test-Path $Source) { $Source } else { "MISSING: $Source (not on the engine's main yet, or fcpm install)" })
         $t = LinkTarget
         Line 'panel' $(if (-not $t) { 'not linked (fcpm audition install)' } elseif ($t -eq $Source) { "linked -> $t" } else { "ELSEWHERE: $Link -> $t" })
         foreach ($v in $Csxs) {
@@ -60,7 +60,7 @@ switch ($Verb) {
         } else { Line 'probe' 'none yet: open Audition once after install' }
     }
     'install' {
-        if (-not (Test-Path $Source)) { throw "the panel is not in the engine's mirror: $Source. Has enhance's PR merged, and bin/refs pull run?" }
+        if (-not (Test-Path $Source)) { throw "the panel is not in the engine's mirror: $Source. Has enhance's PR merged, and fcpm install run?" }
         $t = LinkTarget
         if ($t -eq 'NOT A LINK') { throw "$Link is a real folder, not ours to replace. Move it aside first." }
         if ($t -and $t -ne $Source) { throw "$Link already points at $t." }

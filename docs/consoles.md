@@ -44,7 +44,7 @@ Each repository's place is, in order:
 1. **Its worktree** in the branch's own shed, in the workshed's `origins` folder (bay 1: `~/code/origins/origin/...`),
    made the first time someone asks to work in that branch ([workshed.md](workshed.md#the-place)).
 2. **Its mirror** in `refs/`, read only. The detail says so, and says if the pin is not fetched there.
-3. **Nothing: offered.** It is pinned but not mirrored here (`refs.wanted`, then `fcpm install`).
+3. **Nothing: offered.** It is pinned but not mirrored here (the library's `refs` branch lists what a machine may keep).
 
 A worktree at the pin is asked for in words the listing gives:
 `fcpm workshed new BRANCH --shed origin --repo <owner>/<repo> --from <pin>`. It is a grant in the library's book,

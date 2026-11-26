@@ -1,6 +1,6 @@
-# start.ps1 -- a bare Windows machine's first step: Git, this repository, the job's gear, then
-# `fcpm install`. The start line in README.md (Setting up a machine) fetches and runs it, so it
-# needs nothing on the machine but winget. Run again any time: it adds only what is missing.
+# start.ps1 -- a bare Windows machine's first step: Git, this repository from the origin (origin.local),
+# the job's gear, then `fcpm install`. It needs winget, and this machine's key in Windows' OpenSSH agent
+# and in machines/origin/KEYHOLDERS. Run again any time: it adds only what is missing.
 #
 #   start.ps1 [JOB]    JOB is a folder in machines/ (production, editing-bay-2, ...). None: the
 #                      job whose `names` lists this computer, as `fcpm install` finds it.
@@ -16,7 +16,8 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"   # the progress bar is what makes a download crawl
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-$Url  = "https://github.com/FC-Public-Media/fcpublicmedia.org"
+$Url  = "ssh://git@origin.local/srv/origin/FC-Public-Media/fcpublicmedia.org"    # as machines/pull names it
+$Ssh  = "C:/Windows/System32/OpenSSH/ssh.exe -o BatchMode=yes"                    # the agent's key; Git's ssh cannot reach it
 $Repo = Join-Path $HOME "code\refs\fcpublicmedia.org"
 $Git  = Join-Path $env:ProgramFiles "Git\cmd\git.exe"
 $Bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
@@ -54,13 +55,16 @@ if (-not (Test-Path $Bash)) { Write-Host "Git did not land at $Bash; nothing mor
 & $Git config --global core.autocrlf false
 
 if (Test-Path (Join-Path $Repo ".git")) {
-    Step "pull $Repo"
+    Step "pull $Repo from the origin"
+    & $Git -C $Repo remote set-url origin $Url
+    & $Git -C $Repo config core.sshCommand $Ssh
     & $Git -C $Repo pull -q --ff-only
 } else {
     Step "clone $Url"
-    & $Git clone -q $Url $Repo
+    & $Git -c "core.sshCommand=$Ssh" clone -q $Url $Repo
+    if ($LASTEXITCODE -eq 0) { & $Git -C $Repo config core.sshCommand $Ssh }
 }
-if ($LASTEXITCODE -ne 0) { Write-Host "The repository did not come; nothing more is done."; return }
+if ($LASTEXITCODE -ne 0) { Write-Host "The repository did not come from the origin (origin.local); this machine needs its key there first. Nothing more is done."; return }
 
 if (-not $Job) { $Job = Find-Job }
 if ($Job) {
@@ -91,7 +95,7 @@ foreach ($e in $wanted) {
     if (Has $e.package) { Write-Host "   have $($e.package)" } else { Get-Gear $e.package $e.scope }
 }
 
-# The profile itself: its MANIFEST (fcpm.cmd, PATH, ...), the working copy, the weekly pull.
+# The profile itself: its MANIFEST (fcpm.cmd, PATH, ...) and the engines.
 Step "fcpm install $Job"
 if ($Job) { & $Bash "$Repo\machines\fcpm" install $Job } else { & $Bash "$Repo\machines\fcpm" install }
 Write-Host ""

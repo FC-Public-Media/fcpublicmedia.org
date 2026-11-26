@@ -3,10 +3,6 @@
 mirror    home/code/CLAUDE.md                code/CLAUDE.md
 mirror    home/code/AGENTS.md                code/AGENTS.md
 mirror    home/code/BAY2.md                  code/BAY2.md
-mirror    ../../bin/refs                     code/bin/refs
-mirror    code/refs.wanted                   code/refs.wanted
-
-clone     code/refs.wanted                   code/refs
 
 mirror    ../production/home/git/ignore      .config/git/ignore
 
@@ -19,3 +15,7 @@ settings  editing-bay-2                      code/.claude/settings.json
 held      ../pool.ps1            -
 gone      -                      code/bin/pool.ps1
 gone      -                      code/bin/pool.ps1.pre-sync
+
+# The references are the library's `refs` branch; what was placed here for them goes.
+gone      -                      code/bin/refs
+gone      -                      code/refs.wanted
