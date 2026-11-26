@@ -1,14 +1,14 @@
 #!/bin/sh
 # gear -- what DJ's proofs need (../proof.py), as root: the site's tools (Debian's Jekyll and Bundler, Node 22
 # from nodejs.org by a pinned checksum, Playwright's system packages for the tests' own Playwright version), the
-# user `proof` the steps run as (no sudo, no keys), and /srv/proof. Safe to run again. Run by ./outfit.
+# user `proof` the steps run as (no sudo, no keys), and /srv/proof (members' spaces, store and shelves too). Safe to run again. Run by ./outfit.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 U=${SUDO_USER:-fcpm}
 NODE=v22.23.5
 NODE_SHA=cdeb8670a0c81f51b4dc4ac61919f9b1ad917b304bf8221eb939570663d240f8
 export DEBIAN_FRONTEND=noninteractive NPM_CONFIG_UPDATE_NOTIFIER=false
-apt-get install -y -q jekyll ruby-bundler ruby-webrick ruby-csv ruby-base64 librsvg2-bin python3-yaml \
+apt-get install -y -q jekyll ruby-bundler ruby-webrick ruby-csv ruby-base64 librsvg2-bin python3-yaml iproute2 \
   xz-utils curl >/dev/null
 if [ "$(/opt/node/bin/node --version 2>/dev/null)" != "$NODE" ]; then
   t=$(mktemp -d)
@@ -22,6 +22,8 @@ fi
 id proof >/dev/null 2>&1 || useradd --system --user-group --home-dir /srv/proof/runner --shell /usr/sbin/nologin proof
 install -d -m 755 -o root -g root /srv/proof
 install -d -m 755 -o "$U" -g "$U" /srv/proof/mirror /srv/proof/made
+install -d -m 755 -o "$U" -g "$U" /srv/proof/store /srv/proof/shelf         # members: staged files, shelves
+install -d -m 755 -o root -g root /srv/proof/members                      # members: a warm space each, their own
 install -d -m 755 -o proof -g proof /srv/proof/runner /srv/proof/runs
 printf '[safe]\n\tdirectory = *\n' > /srv/proof/runner/.gitconfig     # the mirror is the prover's, read by proof
 chown proof:proof /srv/proof/runner/.gitconfig

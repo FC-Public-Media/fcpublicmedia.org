@@ -7,6 +7,11 @@
     proof verify FILE              check a proof's signature against the origin's KEYHOLDERS; say what it says
     proof for [REV]                every proof of REV's tree (HEAD unless named) on retain/proofs, each verified;
                                    exit 0 only when one is good and passed: the tree is safe to deploy
+    proof member NAME [REF]        a member's code (machines/<me>/members) at REF, in its warm space, each check
+                                   in the no-network sandbox; the proof kept under members/NAME/
+    proof env ENV [network ...|apt PKG...]   staff: show or set an environment (branch retain/env/ENV)
+    proof stage ENV FILE NAME [WHO]          staff: put a file on an environment's shelf, by sha256
+    proof prepare ENV              staff: DJ made to match an environment (packages, shelf)
 
 A proof is one text file. Its lines say which repository and tree, how the tree was made (main, or main with a
 branch's tip as the origin's landing would merge them), which checks ran (the tree's own .checks file, by
@@ -131,9 +136,15 @@ def verify(text, root=REPO_ROOT):
             return False, "the signature does not match the statement (%s)" % ok.stderr.decode().strip()[-200:]
     if re.split(r"[ ,]", f.get("by", ""))[0] != principal:
         return False, "signed by %s, but it says by %s" % (principal, f.get("by"))
-    if f.get("repo") not in (proves(principal, root) or {}):
+    if "member" in f:
+        grant = members(principal, root).get(f["member"])
+        if not grant or grant["source"] != f.get("repo"):
+            return False, "%s holds no grant for member %s at %s (machines/%s/members)" % (
+                principal, f["member"], f.get("repo"), principal)
+    elif f.get("repo") not in (proves(principal, root) or {}):
         return False, "%s does not prove %s (machines/%s/proves)" % (principal, f.get("repo"), principal)
-    return True, "signed by %s: %s tree %s %s (%s)" % (principal, f.get("repo"), f.get("tree", "?")[:12],
+    return True, "signed by %s: %s%s tree %s %s (%s)" % (principal, "member %s, " % f["member"] if "member" in f else "",
+                                                       f.get("repo"), f.get("tree", "?")[:12],
                                                      f.get("result", "?"), f.get("finished", "?"))
 
 
@@ -210,7 +221,8 @@ def system():
                 os_name = l.split("=", 1)[1].strip('"')
     except OSError:
         pass
-    return "%s, Linux %s, %s" % (os_name, platform.release(), platform.machine())
+    return "%s, Linux %s, %s, load %.1f %.1f %.1f on %d cores" % (os_name, platform.release(), platform.machine(),
+                                                            *os.getloadavg(), os.cpu_count() or 0)
 
 
 def as_runner(*cmd, cwd=None, env=None, stdout=None, timeout=None):
@@ -301,34 +313,39 @@ def sign(statement):
     return r.stdout.decode()
 
 
-def keep(full, m, tree, text, logs, when):
-    """Commit the proof (and failed steps' logs) onto retain/proofs and push it to the origin."""
-    stamp = when.replace("-", "").replace(":", "")
+def commit_files(m, branch, files, msg):
+    """Add files {path: bytes} onto branch in the mirror m as one commit and push it to the origin; the commit."""
     env = dict(os.environ, GIT_AUTHOR_NAME=hostname(), GIT_AUTHOR_EMAIL="%s@fcpublicmedia.local" % hostname(),
                GIT_COMMITTER_NAME=hostname(), GIT_COMMITTER_EMAIL="%s@fcpublicmedia.local" % hostname())
-    f = fields(split(text)[0])[1]
     for attempt in range(3):
-        parent = git(m, "rev-parse", "-q", "--verify", "refs/heads/" + BRANCH, check=False).stdout.strip()
+        parent = git(m, "rev-parse", "-q", "--verify", "refs/heads/" + branch, check=False).stdout.strip()
         with tempfile.TemporaryDirectory() as t:
             ienv = dict(env, GIT_INDEX_FILE=os.path.join(t, "index"))
             if parent:
                 git(m, "read-tree", parent, env=ienv)
-            files = {"%s/%s.proof" % (tree, stamp): text.encode()}
-            files.update({"%s/%s.step-%s.log" % (tree, stamp, n): b for n, b in logs.items()})
             for path, data in files.items():
                 blob = subprocess.run(["git", "-C", str(m), "hash-object", "-w", "--stdin"], input=data,
                                       capture_output=True, check=True).stdout.decode().strip()
                 git(m, "update-index", "--add", "--cacheinfo", "100644,%s,%s" % (blob, path), env=ienv)
             newtree = git(m, "write-tree", env=ienv).stdout.strip()
-        msg = "Proof of %s: %s\n\n%s" % (tree[:12], f.get("result", "?"), f.get("made", ""))
         commit = git(m, "commit-tree", newtree, *(["-p", parent] if parent else []), "-m", msg, env=env).stdout.strip()
-        push = git(m, "push", "-q", "origin", "%s:refs/heads/%s" % (commit, BRANCH), check=False,
+        push = git(m, "push", "-q", "origin", "%s:refs/heads/%s" % (commit, branch), check=False,
                    env=dict(env, GIT_TERMINAL_PROMPT="0"))
         if push.returncode == 0:
-            git(m, "update-ref", "refs/heads/" + BRANCH, commit)
+            git(m, "update-ref", "refs/heads/" + branch, commit)
             return commit
-        git(m, "fetch", "-q", "origin", "+refs/heads/%s:refs/heads/%s" % (BRANCH, BRANCH), check=False)
-    raise RuntimeError("could not push %s: %s" % (BRANCH, push.stderr.strip()[-300:]))
+        git(m, "fetch", "-q", "origin", "+refs/heads/%s:refs/heads/%s" % (branch, branch), check=False)
+    raise RuntimeError("could not push %s: %s" % (branch, push.stderr.strip()[-300:]))
+
+
+def keep(full, m, tree, text, logs, when, under=""):
+    """Commit the proof (and failed steps' logs) onto retain/proofs, under a folder if given, and push it."""
+    stamp = when.replace("-", "").replace(":", "")
+    f = fields(split(text)[0])[1]
+    at = "%s%s/%s" % (under, tree, stamp)
+    files = {at + ".proof": text.encode()}
+    files.update({"%s.step-%s.log" % (at, n): b for n, b in logs.items()})
+    return commit_files(m, BRANCH, files, "Proof of %s%s: %s\n\n%s" % (under, tree[:12], f.get("result", "?"), f.get("made", "")))
 
 
 def waiting(full):
@@ -383,6 +400,232 @@ def proofs_of(repo, rev):
     return tree, [(n, git(repo, "show", "%s:%s" % (ref, n)).stdout) for n in names if n.endswith(".proof")]
 
 
+# ---- members' tests: their code, their checks, our environment, no network ---------------------------------
+
+OURS = "FC-Public-Media/fcpublicmedia.org"               # where environments and every proof are kept
+NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,23}")
+ENV_FILE = "env"
+
+
+def members(holder=None, root=REPO_ROOT):
+    """Who may ask a holder to test their code: machines/<holder>/members, `name source env` a line (staff write it)."""
+    p = root / "machines" / (holder or hostname()) / "members"
+    out = {}
+    if p.is_file():
+        for line in p.read_text().splitlines():
+            words = line.split("#")[0].split()
+            if len(words) == 3 and NAME.fullmatch(words[0]):
+                out[words[0]] = {"source": words[1], "env": words[2]}
+    return out
+
+
+def env_branch(env):
+    return "retain/env/" + env
+
+
+def env_read(text):
+    """An environment's file: `network none`, `apt PKG...`, `shelf SHA256 SIZE NAME by WHO at WHEN` lines."""
+    out = {"network": "none", "apt": [], "shelf": []}
+    for line in (text or "").splitlines():
+        words = line.split("#")[0].split()
+        if not words:
+            continue
+        if words[0] == "network" and len(words) == 2:
+            out["network"] = words[1]
+        elif words[0] == "apt":
+            out["apt"] += words[1:]
+        elif words[0] == "shelf" and len(words) >= 4:
+            out["shelf"].append({"sha256": words[1], "size": int(words[2]), "name": words[3], "said": " ".join(words[4:])})
+    return out
+
+
+def env_now(m, env):
+    """(commit, text) of an environment's branch in our mirror, or (None, None) when staff have not made it."""
+    commit = git(m, "rev-parse", "-q", "--verify", "refs/heads/" + env_branch(env), check=False).stdout.strip()
+    if not commit:
+        return None, None
+    return commit, git(m, "show", "%s:%s" % (commit, ENV_FILE), check=False).stdout
+
+
+def env_write(m, env, text, msg):
+    return commit_files(m, env_branch(env), {ENV_FILE: text.encode()}, msg)
+
+
+def env_set(env, words):
+    """Staff: set an environment's `network` or `apt` line (`network none`, `apt openjdk-21-jdk-headless`)."""
+    if not NAME.fullmatch(env) or not words or words[0] not in ("network", "apt"):
+        raise SystemExit("proof: env NAME [network none|static] [apt PKG...]")
+    m = mirror(OURS)
+    _, text = env_now(m, env)
+    kept = [l for l in (text or "# environment %s: what members' tests run with (docs/proofs.md, Members)\n" % env).splitlines()
+            if l.split()[:1] != [words[0]]]
+    text = "\n".join(kept + [" ".join(words)]) + "\n"
+    return env_write(m, env, text, "env %s: %s" % (env, " ".join(words)))
+
+
+def stage(env, path, name, who):
+    """Staff: put a file on an environment's shelf: kept on DJ by sha256, a line on the environment's branch."""
+    data = pathlib.Path(path).read_bytes()
+    sha = hashlib.sha256(data).hexdigest()
+    store = HOME / "store" / sha
+    if not store.exists():
+        store.parent.mkdir(parents=True, exist_ok=True)
+        tmp = store.with_suffix(".part")
+        tmp.write_bytes(data)
+        tmp.chmod(0o444)
+        tmp.rename(store)
+    m = mirror(OURS)
+    _, text = env_now(m, env)
+    line = "shelf %s %d %s by %s at %s" % (sha, len(data), name, who, utc())
+    text = (text or "# environment %s: what members' tests run with (docs/proofs.md, Members)\n" % env) + line + "\n"
+    commit = env_write(m, env, text, "env %s: %s on the shelf (%d B), by %s" % (env, name, len(data), who))
+    prepare(env)
+    return commit
+
+
+def prepare(env):
+    """Staff: make DJ match an environment: its apt packages installed, its shelf linked from the store."""
+    m = mirror(OURS)
+    commit, text = env_now(m, env)
+    if not commit:
+        raise SystemExit("proof: no environment %s (staff make it: proof.py env %s network none)" % (env, env))
+    e = env_read(text)
+    if e["apt"]:
+        subprocess.run(["sudo", "-n", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", "-q"] + e["apt"],
+                       check=True, stdout=subprocess.DEVNULL)
+    shelf = HOME / "shelf" / env
+    shelf.mkdir(parents=True, exist_ok=True)
+    for item in e["shelf"]:
+        if not (HOME / "store" / item["sha256"]).exists():
+            raise SystemExit("proof: %s's shelf names %s (%s), which is not in %s/store" % (env, item["name"], item["sha256"][:12], HOME))
+        link = shelf / item["name"]
+        if not link.is_symlink() or os.readlink(link) != str(HOME / "store" / item["sha256"]):
+            link.unlink(missing_ok=True)
+            link.symlink_to(HOME / "store" / item["sha256"])
+    return commit, e
+
+
+def packages(names):
+    out = []
+    for n in names:
+        r = subprocess.run(["dpkg-query", "-W", "-f", "${Version}", n], capture_output=True, text=True)
+        out.append("%s %s" % (n, r.stdout.strip() if r.returncode == 0 else "MISSING"))
+    return ", ".join(out)
+
+
+def space(name):
+    """The member's warm space, made on first use: their own user, /srv/proof/members/<name> (checkout + caches)."""
+    user = "proof-" + name
+    home = HOME / "members" / name
+    if subprocess.run(["id", user], capture_output=True).returncode:
+        subprocess.run(["sudo", "-n", "useradd", "--system", "--user-group", "--home-dir", str(home),
+                        "--shell", "/usr/sbin/nologin", user], check=True)
+    if not home.exists():
+        subprocess.run(["sudo", "-n", "install", "-d", "-m", "700", "-o", user, "-g", user, str(home)], check=True)
+    if subprocess.run(["sudo", "-n", "test", "-e", str(home / ".gitconfig")]).returncode:     # the mirror is the prover's
+        subprocess.run(["sudo", "-n", "-u", user, "sh", "-c", 'printf "[safe]\\n\\tdirectory = *\\n" > "$0"',
+                        str(home / ".gitconfig")], check=True)
+    meta = HOME / "made" / "members" / name / "space.json"
+    meta.parent.mkdir(parents=True, exist_ok=True)
+    state = json.loads(meta.read_text()) if meta.exists() else {"since": utc(), "runs": 0}
+    return user, home, meta, state
+
+
+def member_run(name, ref):
+    """Test a member's code at ref: fetched from their source only now, checked out in their warm space, each check
+    in DJ's sandbox (no network; every name asked for is written down), the proof signed and kept."""
+    grant = members().get(name)
+    if not grant:
+        raise SystemExit("proof: %s is not granted (machines/%s/members)" % (name, hostname()))
+    ours = mirror(OURS)
+    env_commit, e = prepare(grant["env"])
+    m = HOME / "mirror" / "members" / (name + ".git")
+    if not (m / "HEAD").exists():
+        m.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-q", "--bare", str(m)], check=True)
+    git(m, "fetch", "-q", grant["source"], ref, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+    commit = git(m, "rev-parse", "FETCH_HEAD^{commit}").stdout.strip()
+    tree = git(m, "rev-parse", commit + "^{tree}").stdout.strip()
+    git(m, "update-ref", "refs/proof/member", commit)
+    user, home, meta, state = space(name)
+    state["runs"] += 1
+    started = time.time()
+    wanted = HOME / "made" / "members" / name / "wanted"           # not /tmp: root may not write others' files there
+    wanted.parent.mkdir(parents=True, exist_ok=True)
+    wanted.write_text("")
+    shelf = HOME / "shelf" / grant["env"]
+    lines = [FORMAT, "member " + name, "repo " + grant["source"], "tree " + tree, "made %s at %s" % (ref, commit),
+             "env %s at %s: network %s, %d on the shelf" % (grant["env"], env_commit, e["network"], len(e["shelf"]))]
+    if e["apt"]:
+        lines.append("packages " + packages(e["apt"]))
+    cf = git(m, "rev-parse", "-q", "--verify", commit + ":.checks", check=False).stdout.strip()
+    lines.append("checks .checks blob %s, the member's own" % (cf or "none"))
+    runner_rev = git(REPO_ROOT, "rev-parse", "HEAD", check=False).stdout.strip()
+    lines.append("by %s, machines/proof.py at %s, steps run as %s in machines/dj/sandbox" % (hostname(), runner_rev or "?", user))
+    lines.append("on " + system())
+    lines.append("space %s since %s, run %d" % ("warm" if state["runs"] > 1 else "new", state["since"], state["runs"]))
+    lines.append("started " + utc(started))
+    logs = {}
+    sandbox = str(REPO_ROOT / "machines" / "dj" / "sandbox")
+    work = home / "work"
+
+    def inside(command, out=None):
+        return subprocess.run(["sudo", "-n", sandbox, user, str(home), str(work), str(wanted), str(shelf), command],
+                              stdout=out, stderr=subprocess.STDOUT if out else None, timeout=STEP_LIMIT).returncode
+
+    try:
+        get = ("set -e; [ -d .git ] || git init -q .; git fetch -q --depth 1 file://%s refs/proof/member; "
+               "git checkout -q -f --detach FETCH_HEAD" % m)
+        if inside("mkdir -p %s && cd %s && %s" % (work, work, get), subprocess.DEVNULL):
+            raise RuntimeError("could not check out their code in the space")
+        todo = checks_in(git(m, "show", "%s:.checks" % commit).stdout) if cf else []
+        if not todo:
+            raise RuntimeError("their tree has no .checks")
+        stopped = None
+        for n, (cname, command) in enumerate(todo, 1):
+            if stopped:
+                lines.append("step %d not-run %s" % (n, cname))
+                continue
+            out = tempfile.TemporaryFile()
+            t0 = time.time()
+            try:
+                code = inside(command, out)
+            except subprocess.TimeoutExpired:
+                code = "timeout"
+            out.seek(0)
+            printed = out.read()
+            word = "passed" if code == 0 else "failed"
+            lines.append("step %d %s %.1fs exit %s sha256 %s %dB %s" % (n, word, time.time() - t0, code,
+                                                                     hashlib.sha256(printed).hexdigest(), len(printed), cname))
+            if code != 0:
+                stopped = n
+                logs["%d" % n] = printed[-KEEP_LOG:]
+        ran = [l for l in lines if l.startswith("step ")]
+        good = [l for l in ran if l.split()[2] == "passed"]
+        result = "passed %d of %d" % (len(good), len(ran)) if len(good) == len(ran) else \
+                 "failed at step %d, %d of %d passed" % (stopped, len(good), len(ran))
+    except Exception as ex:
+        result = "untested: %s" % one_line(ex)
+    finally:
+        git(m, "update-ref", "-d", "refs/proof/member", check=False)
+        meta.write_text(json.dumps(state))
+    asked = {}
+    for l in wanted.read_text(errors="replace").splitlines():
+        asked[l] = asked.get(l, 0) + 1
+    for what, count in sorted(asked.items(), key=lambda kv: -kv[1]):
+        lines.append("wanted %s x%d" % (what, count))
+    lines.append("finished " + utc())
+    lines.append("result " + result)
+    statement = "\n".join(lines) + "\n"
+    text = statement + sign(statement)
+    when = utc(started)
+    made_here = HOME / "made" / "members" / name / tree
+    made_here.mkdir(parents=True, exist_ok=True)
+    (made_here / (when.replace("-", "").replace(":", "") + ".proof")).write_text(text)
+    keep(OURS, ours, tree, text, logs, when, under="members/%s/" % name)
+    return text
+
+
 def main(argv):
     if argv[:1] == ["watch"]:
         watch()
@@ -399,6 +642,24 @@ def main(argv):
         text = prove(full, checks, m, main_, tip, again=True)
         print(text or "")
         return 0 if text and passed(text) else 1
+    if argv[:1] == ["member"] and len(argv) in (2, 3):
+        text = member_run(argv[1], argv[2] if len(argv) == 3 else "HEAD")
+        print(text)
+        return 0 if passed(text) else 1
+    if argv[:1] == ["env"] and len(argv) >= 2:
+        if len(argv) == 2:
+            commit, text = env_now(mirror(OURS), argv[1])
+            print(text if commit else "no environment %s" % argv[1])
+            return 0 if commit else 1
+        print(env_set(argv[1], argv[2:]))
+        prepare(argv[1])
+        return 0
+    if argv[:1] == ["stage"] and len(argv) in (4, 5):
+        print(stage(argv[1], argv[2], argv[3], argv[4] if len(argv) == 5 else os.environ.get("USER", "staff")))
+        return 0
+    if argv[:1] == ["prepare"] and len(argv) == 2:
+        print(prepare(argv[1])[0])
+        return 0
     if argv[:1] == ["verify"] and len(argv) == 2:
         text = pathlib.Path(argv[1]).read_text()
         good, said = verify(text)

@@ -1,0 +1,82 @@
+"""trap -- inside a member's sandbox: a resolver on 127.0.0.1:53 and a proxy on 127.0.0.1:3128 that answer nothing
+and write down every name asked, a line each (`dns NAME`, `http URL`, `connect HOST:PORT`), to the file named.
+Run by ./sandbox; the proof counts the lines. Doc: docs/proofs.md, Members."""
+import os
+import socket
+import sys
+import threading
+
+WANTED = sys.argv[1] if len(sys.argv) > 1 else "/dev/null"
+lock = threading.Lock()
+
+
+def note(line):
+    with lock:
+        fd = os.open(WANTED, os.O_WRONLY | os.O_APPEND)          # never O_CREAT: the sandbox made it
+        try:
+            os.write(fd, (line + "\n").encode())
+        finally:
+            os.close(fd)
+
+
+def qname(packet):
+    """The name a DNS query asks for, or None."""
+    try:
+        labels, i = [], 12
+        while packet[i]:
+            n = packet[i]
+            labels.append(packet[i + 1:i + 1 + n].decode("ascii", "replace"))
+            i += 1 + n
+        return ".".join(labels).lower(), i + 5
+    except IndexError:
+        return None, 0
+
+
+def nxdomain(packet, end):
+    """The same question, answered: no such name."""
+    flags = bytes([0x81 | (packet[2] & 0x01), 0x83])
+    return packet[:2] + flags + packet[4:6] + b"\0\0\0\0\0\0" + packet[12:end]
+
+
+def resolver(s):
+    while True:
+        packet, who = s.recvfrom(4096)
+        name, end = qname(packet)
+        if name:
+            note("dns " + name)
+            s.sendto(nxdomain(packet, end), who)
+
+
+def proxy_one(c):
+    try:
+        first = c.recv(4096).split(b"\r\n", 1)[0].decode("latin-1").split()
+        if len(first) >= 2:
+            note(("connect " if first[0] == "CONNECT" else "http ") + first[1])
+            what = first[1]
+        else:
+            what = "?"
+        c.sendall(b"HTTP/1.1 403 No network here\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n"
+                  b"FCPM: no network in this sandbox; asked for " + what.encode("latin-1", "replace") +
+                  b"; written down for staff.\n")
+    except OSError:
+        pass
+    finally:
+        c.close()
+
+
+def proxy(s):
+    while True:
+        c, _ = s.accept()
+        threading.Thread(target=proxy_one, args=(c,), daemon=True).start()
+
+
+if __name__ == "__main__":
+    udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp.bind(("127.0.0.1", 53))
+    tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    tcp.bind(("127.0.0.1", 3128))
+    tcp.listen(16)
+    open(WANTED + ".ready", "w").close()
+    threading.Thread(target=resolver, args=(udp,), daemon=True).start()
+    proxy(tcp)

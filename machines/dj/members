@@ -1,0 +1,3 @@
+# Who may ask DJ to test their code (../proof.py member NAME [REF]): `name source env` a line. Staff write this
+# file; the environment is staff's branch retain/env/<env>. Doc: docs/proofs.md, Members.
+sample   fcpm-origin:/srv/origin/FC-Public-Media/fcpublicmedia.org   plain

@@ -70,4 +70,39 @@ or failed, is the answer, and a failed one is not run again by itself. By hand: 
   (HEAD unless named), verifies each, and exits 0 only when one is good and passed.
 - `python3 machines/proof.py verify FILE` checks one file.
 
-Not built: Helm showing proofs; a deploy or a landing that waits for one; member material (stapled manifests).
+## Members
+
+A member's code is tested on DJ the same way and gets the same kind of proof, with what is theirs said so.
+
+- **Who may ask.** [`machines/dj/members`](../machines/dj/members), `name source env` a line, written by staff. `source`
+  is wherever the member's code lives (their origin, any git URL); DJ fetches from it only when a test is asked for.
+- **What is tested.** Their tree's own `.checks`, same format as ours.
+- **Their environment.** Staff's branch `retain/env/<env>` on fcpublicmedia.org's origin, one file `env`, read by every
+  run in a batch: `network none` (the only tier built), `apt PKG...` (installed on DJ by `prepare`), and `shelf SHA256
+  SIZE NAME by WHO at WHEN` lines. Members never write it.
+- **The shelf.** A large file a member provides is accepted by staff (`stage`): kept on DJ once, by sha256, in
+  `/srv/proof/store`, and linked read-only into `/srv/proof/shelf/<env>/` (`$FCPM_SHELF` in a check). Everything on an
+  environment's shelf is visible to every member on it, like a makerspace's: a build uses what its scripts name.
+- **Their space, kept warm.** Each member has their own user `proof-<name>` and space `/srv/proof/members/<name>`:
+  the checkout (`work/`, updated in place, untracked build output kept) and their caches. The proof says `space warm
+  since WHEN, run N` (or `new`).
+- **No network.** Each check runs in [`machines/dj/sandbox`](../machines/dj/sandbox): a network of loopback only, as
+  their user, below the stream (CPU weight 20, 16 GB). Names are looked up only through its resolver and proxy
+  ([`trap`](../machines/dj/trap)), which answer nothing and write down every name asked: the system's resolver, mDNS
+  and D-Bus sockets are hidden there, since each would look a name up outside; the proof lists them, `wanted dns repo1.maven.org x14`, so a failing run
+  still says what it reached for. What they need arrives staged, by staff.
+- **The proof** has `member NAME`, `repo SOURCE`, the env's branch commit, its packages and their versions, and the
+  space line. It verifies only when the signer's `members` file grants that name at that source. Kept on
+  fcpublicmedia.org's `retain/proofs` under `members/<name>/<tree>/`.
+
+Staff, on DJ, from `~/code/work/fcpublicmedia.org`:
+
+```
+python3 machines/proof.py env plain network none           # make or change an environment
+python3 machines/proof.py env minecraft apt openjdk-21-jdk-headless
+python3 machines/proof.py stage minecraft ~/server.zip bedrock-server.zip tiliv
+python3 machines/proof.py member sample retain/member-sample    # test a member's code at a ref
+```
+
+Not built: Helm showing proofs and taking members' requests; a deploy or a landing that waits for one; the static
+server tier; payloads (a member's code is a git ref today).

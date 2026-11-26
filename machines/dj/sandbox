@@ -1,0 +1,38 @@
+#!/bin/sh
+# sandbox -- one member check, as root: below the stream (CPU weight 20, 16 GB), in a network of loopback only whose
+# resolver and proxy answer nothing and write down every name asked (./trap), as the member's own user, in their
+# space. `sandbox USER HOME WORK WANTED SHELF COMMAND`; run by ../proof.py member. Doc: docs/proofs.md, Members.
+set -eu
+if [ "${1:-}" != inside ]; then
+  [ $# -eq 6 ] || { echo "sandbox USER HOME WORK WANTED SHELF COMMAND" >&2; exit 2; }
+  exec systemd-run --scope --quiet -p CPUWeight=20 -p MemoryMax=16G -- unshare --net --mount --fork "$0" inside "$@"
+fi
+shift
+USER_=$1 HOME_=$2 WORK=$3 WANTED=$4 SHELF=$5 CMD=$6
+HERE=$(cd "$(dirname "$0")" && pwd)
+ip link set lo up
+resolv=$(mktemp)
+printf 'nameserver 127.0.0.1\noptions attempts:1 timeout:1\n' > "$resolv"
+chmod 644 "$resolv"
+mount --bind "$resolv" /etc/resolv.conf
+nss=$(mktemp)
+sed 's/^hosts:.*/hosts: files dns/' /etc/nsswitch.conf > "$nss"; chmod 644 "$nss"
+mount --bind "$nss" /etc/nsswitch.conf                       # names only through the trap: no resolved, no mDNS
+for d in /run/systemd/resolve /run/avahi-daemon /run/dbus /run/nscd; do
+  [ -d "$d" ] && mount -t tmpfs -o size=4k,mode=755 sandbox "$d"     # their sockets would look names up outside
+done
+touch "$WANTED"; chmod 644 "$WANTED"
+python3 -I "$HERE/trap" "$WANTED" &
+trap_pid=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -e "$WANTED.ready" ] && break; sleep 0.1; done
+rm -f "$WANTED.ready"
+cd "$HOME_"; [ -d "$WORK" ] && cd "$WORK"
+set +e
+runuser -u "$USER_" -- env -i HOME="$HOME_" PATH=/opt/node/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 TZ=UTC CI=true \
+  FCPM_SHELF="$SHELF" http_proxy=http://127.0.0.1:3128 https_proxy=http://127.0.0.1:3128 \
+  HTTP_PROXY=http://127.0.0.1:3128 HTTPS_PROXY=http://127.0.0.1:3128 \
+  bash --noprofile --norc -e -c "$CMD"
+code=$?
+kill "$trap_pid" 2>/dev/null
+rm -f "$resolv" "$nss"
+exit $code
