@@ -522,6 +522,9 @@ def space(name):
                         "--shell", "/usr/sbin/nologin", user], check=True)
     if not home.exists():
         subprocess.run(["sudo", "-n", "install", "-d", "-m", "700", "-o", user, "-g", user, str(home)], check=True)
+    if subprocess.run(["sudo", "-n", "test", "-e", str(home / ".gitconfig")]).returncode:     # the mirror is the prover's
+        subprocess.run(["sudo", "-n", "-u", user, "sh", "-c", 'printf "[safe]\\n\\tdirectory = *\\n" > "$0"',
+                        str(home / ".gitconfig")], check=True)
     meta = HOME / "made" / "members" / name / "space.json"
     meta.parent.mkdir(parents=True, exist_ok=True)
     state = json.loads(meta.read_text()) if meta.exists() else {"since": utc(), "runs": 0}

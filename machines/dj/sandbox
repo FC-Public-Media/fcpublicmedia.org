@@ -25,7 +25,6 @@ set +e
 runuser -u "$USER_" -- env -i HOME="$HOME_" PATH=/opt/node/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 TZ=UTC CI=true \
   FCPM_SHELF="$SHELF" http_proxy=http://127.0.0.1:3128 https_proxy=http://127.0.0.1:3128 \
   HTTP_PROXY=http://127.0.0.1:3128 HTTPS_PROXY=http://127.0.0.1:3128 \
-  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*' \
   bash --noprofile --norc -e -c "$CMD"
 code=$?
 kill "$trap_pid" 2>/dev/null
