@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # runnables — the census: every runnable this checkout carries, and what each claims.
 #
 #   machines/runnables              every runnable file, its verbs, and what they default to

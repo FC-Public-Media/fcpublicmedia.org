@@ -97,7 +97,7 @@ case "$cmd" in
   deploy)
     # Alone or with --build: fcpublicmedia.org onto Cloudflare Pages (machines/deploy-site), from any machine whose
     # keychain holds `cloudflare`. With SITE DIR: a finished site onto the static host (static/deploy).
-    case "${1:-}" in ""|--build) exec "$REPO/bin/deploy-site" "$@" ;; esac
+    case "${1:-}" in ""|--build) exec "$REPO/machines/deploy-site" "$@" ;; esac
     exec "$HERE/static/deploy" "$@" ;;
   lines)
     # This machine's lines on the LAN: piles told and read through the origin (docs/lines.md).
@@ -125,7 +125,7 @@ case "$cmd" in
     p=$(profile)
     grep -qs '^held  *\.\./pool\.ps1' "$HERE/$p/MANIFEST" || { echo "fcpm: ${p:-this machine} keeps no pool"; exit 0; }
     ps1 "$HERE/pool.ps1" "$@" ;;
-  runnables) exec "$REPO/bin/runnables" "$@" ;;
+  runnables) exec "$REPO/machines/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
   env)       ps1 "$REPO/troves/recorder/env.ps1" "$@" ;;
   roku)      ps1 "$REPO/troves/roku/roku.ps1" "$@" ;;
