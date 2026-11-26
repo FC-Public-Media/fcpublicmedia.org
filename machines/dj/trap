@@ -1,6 +1,7 @@
 """trap -- inside a member's sandbox: a resolver on 127.0.0.1:53 and a proxy on 127.0.0.1:3128 that answer nothing
 and write down every name asked, a line each (`dns NAME`, `http URL`, `connect HOST:PORT`), to the file named.
 Run by ./sandbox; the proof counts the lines. Doc: docs/proofs.md, Members."""
+import os
 import socket
 import sys
 import threading
@@ -10,8 +11,12 @@ lock = threading.Lock()
 
 
 def note(line):
-    with lock, open(WANTED, "a") as f:
-        f.write(line + "\n")
+    with lock:
+        fd = os.open(WANTED, os.O_WRONLY | os.O_APPEND)          # never O_CREAT: the sandbox made it
+        try:
+            os.write(fd, (line + "\n").encode())
+        finally:
+            os.close(fd)
 
 
 def qname(packet):

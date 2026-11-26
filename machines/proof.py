@@ -550,7 +550,9 @@ def member_run(name, ref):
     user, home, meta, state = space(name)
     state["runs"] += 1
     started = time.time()
-    wanted = pathlib.Path(tempfile.mkstemp(prefix="wanted-", dir="/tmp")[1])
+    wanted = HOME / "made" / "members" / name / "wanted"           # not /tmp: root may not write others' files there
+    wanted.parent.mkdir(parents=True, exist_ok=True)
+    wanted.write_text("")
     shelf = HOME / "shelf" / grant["env"]
     lines = [FORMAT, "member " + name, "repo " + grant["source"], "tree " + tree, "made %s at %s" % (ref, commit),
              "env %s at %s: network %s, %d on the shelf" % (grant["env"], env_commit, e["network"], len(e["shelf"]))]
@@ -610,7 +612,6 @@ def member_run(name, ref):
     asked = {}
     for l in wanted.read_text(errors="replace").splitlines():
         asked[l] = asked.get(l, 0) + 1
-    wanted.unlink(missing_ok=True)
     for what, count in sorted(asked.items(), key=lambda kv: -kv[1]):
         lines.append("wanted %s x%d" % (what, count))
     lines.append("finished " + utc())

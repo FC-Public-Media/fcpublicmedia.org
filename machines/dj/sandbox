@@ -15,6 +15,12 @@ resolv=$(mktemp)
 printf 'nameserver 127.0.0.1\noptions attempts:1 timeout:1\n' > "$resolv"
 chmod 644 "$resolv"
 mount --bind "$resolv" /etc/resolv.conf
+nss=$(mktemp)
+sed 's/^hosts:.*/hosts: files dns/' /etc/nsswitch.conf > "$nss"; chmod 644 "$nss"
+mount --bind "$nss" /etc/nsswitch.conf                       # names only through the trap: no resolved, no mDNS
+for d in /run/systemd/resolve /run/avahi-daemon /run/dbus /run/nscd; do
+  [ -d "$d" ] && mount -t tmpfs -o size=4k,mode=755 sandbox "$d"     # their sockets would look names up outside
+done
 touch "$WANTED"; chmod 644 "$WANTED"
 python3 -I "$HERE/trap" "$WANTED" &
 trap_pid=$!
@@ -28,5 +34,5 @@ runuser -u "$USER_" -- env -i HOME="$HOME_" PATH=/opt/node/bin:/usr/local/bin:/u
   bash --noprofile --norc -e -c "$CMD"
 code=$?
 kill "$trap_pid" 2>/dev/null
-rm -f "$resolv"
+rm -f "$resolv" "$nss"
 exit $code
