@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switcher</title>
+<style>
+:root { --bg: #111; --fg: #eee; --dim: #777; --line: #333; --pgm: #d22; --pvw: #1a2; --aux: #fb0; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px 16px 40px; background: var(--bg); color: var(--fg); font: 15px/1.3 system-ui, sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-bottom: 10px; }
+header b { font-size: 18px; }
+.dim { color: var(--dim); }
+.bad { color: var(--pgm); font-weight: 700; }
+section { border-top: 1px solid var(--line); padding: 10px 0; }
+h2 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; }
+button { min-width: 64px; min-height: 48px; padding: 4px 8px; border: 2px solid var(--line); border-radius: 6px;
+  background: #1c1c1c; color: var(--fg); font: 600 14px system-ui, sans-serif; touch-action: manipulation; }
+button small { display: block; font-weight: 400; font-size: 11px; color: var(--dim); }
+button.pgm { background: var(--pgm); border-color: var(--pgm); }
+button.pvw { background: var(--pvw); border-color: var(--pvw); }
+button.on { background: var(--aux); border-color: var(--aux); color: #000; }
+button.on small { color: #000; }
+button.big { min-width: 110px; min-height: 64px; font-size: 18px; }
+.formats { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; }
+#err { color: var(--pgm); min-height: 1.3em; }
+</style>
+</head>
+<body>
+<header><b id="product">Switcher</b><span id="link" class="dim">joining…</span></header>
+<div id="err"></div>
+
+<section><h2>Program</h2><div class="row" id="pgm"></div></section>
+<section><h2>Preview</h2><div class="row" id="pvw"></div></section>
+<section><div class="row">
+  <button class="big" onclick="go({verb:'cut'})">CUT</button>
+  <button class="big" onclick="go({verb:'auto'})">AUTO</button>
+  <button class="big" id="ftb" onclick="go({verb:'ftb'})">FTB</button>
+</div></section>
+<section id="auxes"></section>
+<section><h2>Mode: switcher and every camera</h2><div class="row" id="modes"></div></section>
+<section><h2>Out of the box now</h2><div class="formats" id="formats"></div></section>
+<section id="mvs"></section>
+
+<script>
+const MODES = ["1080i59.94", "1080p29.97", "1080p59.94", "2160p29.97", "2160p59.94", "1080p24", "1080p23.98", "720p59.94", "1080i50", "2160p24"];
+let S = null, last = "";
+const el = (id) => document.getElementById(id);
+async function go(a) {
+  el("err").textContent = "";
+  try {
+    const r = await fetch("/do", {method: "POST", body: JSON.stringify(a)});
+    if (!r.ok) el("err").textContent = (await r.json()).error;
+  } catch (e) { el("err").textContent = "no answer from the panel"; }
+  tick();
+}
+function btn(label, sub, cls, act) {
+  const b = document.createElement("button");
+  b.className = cls || "";
+  b.innerHTML = label + (sub ? "<small>" + sub + "</small>" : "");
+  b.onclick = () => go(act);
+  return b;
+}
+function sources(test) { return S.inputs.filter(test); }
+function sub(i) { return i.id >= 1 && i.id <= 40 ? i.port : ""; }
+function draw() {
+  el("product").textContent = S.product || "Switcher";
+  el("link").innerHTML = S.ready ? (S.heard < 2 ? "joined" : "<span class=bad>quiet " + S.heard + "s</span>") : "<span class=bad>not joined</span>";
+  const me = sources(i => i.me);
+  const pg = S.pgm["0"], pv = S.pvw["0"];
+  el("pgm").replaceChildren(...me.map(i => btn(i.short, sub(i), i.id == pg ? "pgm" : "", {verb: "pgm", src: i.id})));
+  el("pvw").replaceChildren(...me.map(i => btn(i.short, sub(i), i.id == pv ? "pvw" : "", {verb: "pvw", src: i.id})));
+  const f = S.ftb["0"];
+  el("ftb").className = "big" + (f && f.black ? " pgm" : "");
+  const auxSrc = sources(i => i.aux && !(i.id >= 4000 && i.id < 6000));
+  const auxIds = Object.keys(S.aux).sort();
+  el("auxes").replaceChildren(...auxIds.map(k => {
+    const box = document.createElement("div");
+    box.style.marginBottom = "10px";
+    box.innerHTML = "<h2>Aux " + (+k + 1) + "</h2>";
+    const row = document.createElement("div"); row.className = "row";
+    row.replaceChildren(...auxSrc.map(i => btn(i.short, "", i.id == S.aux[k] ? "on" : "", {verb: "aux", out: +k, src: i.id})));
+    box.append(row); return box;
+  }));
+  el("modes").replaceChildren(...MODES.map(m => btn(m, "", m == S.mode ? "on" : "", {verb: "mode", mode: m})));
+  const name = (id) => (S.inputs.find(i => i.id == id) || {name: id}).name;
+  const rows = [["Program, aux", S.mode], ["Multiview", S.mv_mode[S.mode]], ["Down-converted", S.down_mode[S.mode]]];
+  auxIds.forEach(k => rows.push(["Aux " + (+k + 1) + " carries", name(S.aux[k])]));
+  el("formats").innerHTML = rows.map(r => "<span class=dim>" + r[0] + "</span><span>" + (r[1] || "?") + "</span>").join("");
+  const mvSrc = sources(i => i.mv && !(i.id >= 4000 && i.id < 6000));
+  el("mvs").replaceChildren(...Object.keys(S.mv).flatMap(m => Object.keys(S.mv[m]).filter(w => +w >= 2).map(w => {
+    const box = document.createElement("div");
+    box.style.marginBottom = "10px";
+    box.innerHTML = "<h2>Multiview window " + (+w + 1) + "</h2>";
+    const row = document.createElement("div"); row.className = "row";
+    row.replaceChildren(...mvSrc.map(i => btn(i.short, "", i.id == S.mv[m][w] ? "on" : "", {verb: "mv", window: +w, src: i.id})));
+    box.append(row); return box;
+  })));
+}
+async function tick() {
+  try {
+    const t = await (await fetch("/now")).text();
+    const n = JSON.parse(t); const heard = n.heard; n.heard = 0;
+    const same = JSON.stringify(n) === last; last = JSON.stringify(n); n.heard = heard; S = n;
+    if (!same) draw(); else el("link").innerHTML = S.ready ? (heard < 2 ? "joined" : "<span class=bad>quiet " + heard + "s</span>") : "<span class=bad>not joined</span>";
+  }
+  catch (e) { el("link").innerHTML = "<span class=bad>panel unreachable</span>"; }
+}
+tick(); setInterval(tick, 400);
+</script>
+</body>
+</html>

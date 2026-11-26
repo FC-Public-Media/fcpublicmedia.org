@@ -1,0 +1,6 @@
+# What the switcher serves, when a job orders it (`switcher keep machines/switcher` in its services).
+serves:
+  - service: switcher
+    for: "the ATEM 1 M/E 4K's control page on port 8970, joined to the switcher at FCPM_ATEM (10.1.10.150)"
+    start: "{python} machines/switcher/panel.py"
+    alive: {port: 8970}

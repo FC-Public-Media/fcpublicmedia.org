@@ -60,6 +60,7 @@ def run(system, fact):
 
 NOT_JOBS = {"cards",       # boot cards (machines/cards), worn by no machine
             "jukebox",     # a role a job orders in its services (machines/jukebox), not a profile
+            "switcher",    # a role a job orders in its services (machines/switcher), not a profile
             "attendant"}   # a seat on a studio page and its recipes (machines/attendant), worn by no machine
 
 
