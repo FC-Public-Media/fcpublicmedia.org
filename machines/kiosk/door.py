@@ -1465,17 +1465,14 @@ def board_page(here=False, host=""):
 
 def board_now():
     """What lights the board's rows, by their `live`: {key: {"say": words, "on": "live" | "air" | ""}}. Each is asked
-    on its own; one that cannot answer says nothing, and the rest still come."""
+    on its own and all at once, so the board waits only on its slowest; one that cannot answer says nothing, and the
+    rest still come."""
     import replies
-    out = {}
+    from concurrent.futures import ThreadPoolExecutor
+    asked = []
 
     def put(key, fn):
-        try:
-            v = fn()
-            if v:
-                out[key] = v
-        except Exception as exc:
-            log("board: %s: %r" % (key, exc))
+        asked.append((key, fn))
 
     def deploy():
         d = deploy_now(ask_origin=False)
@@ -1528,7 +1525,16 @@ def board_now():
     for j in jobs():
         put("job:%s" % j["job"], lambda j=j: job_now(j))
     put("qr", qr_now)
-    return out
+
+    def answer(item):
+        key, fn = item
+        try:
+            return key, fn()
+        except Exception as exc:
+            log("board: %s: %r" % (key, exc))
+            return key, None
+    with ThreadPoolExecutor(max_workers=len(asked) or 1) as pool:
+        return {k: v for k, v in pool.map(answer, asked) if v}
 
 
 def spent():
