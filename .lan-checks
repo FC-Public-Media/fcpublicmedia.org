@@ -1,0 +1,6 @@
+# On the LAN, as the prover itself, after .checks pass (docs/proofs.md, On the LAN). Same form as .checks.
+The origin answers this machine's key: python3 machines/test_lan.py Lan.test_the_origin_answers_this_machines_key
+The LAN's names resolve: python3 machines/test_lan.py Lan.test_the_lans_names_resolve
+A checkout comes from the origin by pull: python3 machines/test_lan.py Lan.test_pull_brings_a_checkout_from_the_origin
+The library takes up a machine's retained branch: python3 machines/test_lan.py Lan.test_the_library_takes_up_a_machines_retained_branch
+Helm's board answers: python3 machines/test_lan.py Lan.test_helms_board_answers

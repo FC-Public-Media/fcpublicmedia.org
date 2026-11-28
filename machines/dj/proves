@@ -1,2 +1,3 @@
-# What DJ proves (../proof.py): `owner/repo checks-file` a line; the checks are the tested tree's own file.
-FC-Public-Media/fcpublicmedia.org   .checks
+# What DJ proves (../proof.py): `owner/repo checks-file [lan-checks-file]` a line; the checks are the tested tree's
+# own files. The LAN checks run on the LAN as DJ itself, after the checks pass (docs/proofs.md, On the LAN).
+FC-Public-Media/fcpublicmedia.org   .checks   .lan-checks

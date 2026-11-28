@@ -168,5 +168,22 @@ class Proofs(unittest.TestCase):
         self.assertIn("merged as landing merges", made)
 
 
+    def test_lan_checks_run_as_this_machine_and_stop_at_the_first_failure(self):
+        (self.work / ".lan-checks").write_text("here: test -d \"$FCPM_LAN_SCRATCH\" && test -f a\n"
+                                              "fails: echo no; exit 3\nafter: true\n")
+        sh("git", "add", "-A", cwd=self.work)
+        sh("git", "commit", "-qm", "lan", cwd=self.work)
+        sh("git", "push", "-q", "origin", "main", cwd=self.work)
+        sh("git", "fetch", "-q", "origin", "+main:main", cwd=self.m)
+        commit = sh("git", "rev-parse", "main", cwd=self.m)
+        sh("git", "update-ref", "refs/proof/x", commit, cwd=self.m)
+        lines, logs = proof.lan_steps(self.m, "refs/proof/x", commit, ".lan-checks")
+        self.assertRegex(lines[0], r"^lan 1 passed .* here$")
+        self.assertRegex(lines[1], r"^lan 2 failed .* exit 3 .* fails$")
+        self.assertEqual(lines[2], "lan 3 not-run after")
+        self.assertEqual(lines[3], "lan-result failed at lan 2, 1 of 2 passed")
+        self.assertEqual(logs["lan-2"], b"no\n")
+        self.assertEqual(proof.proves("dj", self.root, column=2), {})
+
 if __name__ == "__main__":
     unittest.main()
