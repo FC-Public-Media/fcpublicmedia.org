@@ -17,7 +17,8 @@ A proof is one text file. Its lines say which repository and tree, how the tree 
 branch's tip as the origin's landing would merge them), which checks ran (the tree's own .checks file, by
 blob, and whether it is main's), where (the prover's system and tools), and each step: passed or failed, its
 time, the sha256 of everything it printed. The last line before the signature is the result. Below it is an
-SSH signature (namespace fcpm-proof) over every byte above it, by the prover's own key. A holder may sign
+SSH signature (namespace fcpm-proof) over every byte above it, by the prover's own key.  A `proves` line's third column
+names LAN checks, run after the checks pass as the prover itself: `lan` lines and a `lan-result`, beside the result. A holder may sign
 proofs when machines/<holder>/proves exists; its key is its line in machines/origin/KEYHOLDERS.
 
 Proofs live on the tested repository's retain/proofs branch at <tree>/<when>.proof, with the end of each failed
@@ -72,16 +73,17 @@ def hostname():
 
 # ---- who may sign -------------------------------------------------------------------------------------------
 
-def proves(holder, root=REPO_ROOT):
-    """What a holder proves: machines/<holder>/proves, `owner/repo checks-file` a line; None if it proves nothing."""
+def proves(holder, root=REPO_ROOT, column=1):
+    """What a holder proves: machines/<holder>/proves, `owner/repo checks-file [lan-checks-file]` a line; None if it
+    proves nothing. column=2 gives each repository's LAN checks, where the line names them."""
     p = root / "machines" / holder / "proves"
     if not p.is_file():
         return None
     out = {}
     for line in p.read_text().splitlines():
         words = line.split("#")[0].split()
-        if len(words) == 2:
-            out[words[0]] = words[1]
+        if len(words) > column:
+            out[words[0]] = words[column]
     return out
 
 
@@ -233,7 +235,46 @@ def as_runner(*cmd, cwd=None, env=None, stdout=None, timeout=None):
                           timeout=timeout)
 
 
-def run(full, checks, m, commit, tree, made, ordered=None):
+def lan_steps(m, ref, commit, lan):
+    """The tree's LAN checks, run as this machine with its own key; writes go under FCPM_LAN_SCRATCH."""
+    lines, logs = [], {}
+    todo = checks_in(git(m, "show", "%s:%s" % (commit, lan), check=False).stdout)
+    if not todo:
+        return ["lan-result untested: no checks in %s" % lan], logs
+    with tempfile.TemporaryDirectory(prefix="lan-") as tmp:
+        work, scratch = pathlib.Path(tmp) / "tree", pathlib.Path(tmp) / "scratch"
+        scratch.mkdir()
+        git(work.parent, "init", "-q", str(work))
+        git(work, "fetch", "-q", "--depth", "1", "file://" + str(m), ref)
+        git(work, "checkout", "-q", "--detach", "FETCH_HEAD")
+        env = dict(os.environ, FCPM_LAN_SCRATCH=str(scratch), FCPM_LIBRARY=str(scratch / "library"),
+                   LOCALAPPDATA=str(scratch / "local"), GIT_TERMINAL_PROMPT="0", LANG="C.UTF-8")
+        stopped = None
+        for n, (name, command) in enumerate(todo, 1):
+            if stopped:
+                lines.append("lan %d not-run %s" % (n, name))
+                continue
+            t0 = time.time()
+            try:
+                r = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-c", command], cwd=work, env=env,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=STEP_LIMIT)
+                code, printed = r.returncode, r.stdout
+            except subprocess.TimeoutExpired as e:
+                code, printed = "timeout", e.stdout or b""
+            word = "passed" if code == 0 else "failed"
+            lines.append("lan %d %s %.1fs exit %s sha256 %s %dB %s" % (
+                n, word, time.time() - t0, code, hashlib.sha256(printed).hexdigest(), len(printed), name))
+            if code != 0:
+                stopped = n
+                logs["lan-%d" % n] = printed[-KEEP_LOG:]
+    good = sum(1 for l in lines if l.split()[2] == "passed")
+    ran = sum(1 for l in lines if l.split()[2] in ("passed", "failed"))
+    lines.append("lan-result " + ("passed %d of %d" % (good, ran) if good == ran else
+                                  "failed at lan %d, %d of %d passed" % (stopped, good, ran)))
+    return lines, logs
+
+
+def run(full, checks, m, commit, tree, made, ordered=None, lan=None):
     """Test one tree and return the signed proof's text and the failed steps' logs {name: bytes}."""
     started = time.time()
     runs = HOME / "runs"
@@ -293,6 +334,14 @@ def run(full, checks, m, commit, tree, made, ordered=None):
         good = [l for l in ran if l.split()[2] == "passed"]
         result = "passed %d of %d" % (len(good), len(ran)) if len(good) == len(ran) else \
                  "failed at step %d, %d of %d passed" % (stopped, len(good), len(ran))
+        # Then on the LAN, as this machine: recorded beside the result, never part of it.
+        if lan and not stopped:
+            try:
+                more, lan_logs = lan_steps(m, ref, commit, lan)
+            except Exception as e:
+                more, lan_logs = ["lan-result untested: %s" % one_line(e)], {}
+            lines += more
+            logs.update(lan_logs)
     except Exception as e:                               # the proof says it could not test, and why
         result = "untested: %s" % one_line(e)
     finally:
@@ -360,7 +409,7 @@ def say(*words):
     print(utc(), *words, flush=True)
 
 
-def prove(full, checks, m, main, tip=None, ordered=None, again=False):
+def prove(full, checks, m, main, tip=None, ordered=None, again=False, lan=None):
     s = subject(m, main, tip)
     if not s:
         say(full, "collides:", ordered or tip, "(landing will say so; nothing to test)")
@@ -370,7 +419,7 @@ def prove(full, checks, m, main, tip=None, ordered=None, again=False):
         return None
     say(full, "testing", tree[:12], made)
     started = utc()
-    text, logs = run(full, checks, m, commit, tree, made, ordered)
+    text, logs = run(full, checks, m, commit, tree, made, ordered, lan)
     made_here = HOME / "made" / full / tree
     made_here.mkdir(parents=True, exist_ok=True)                       # kept here first: a failed push loses nothing
     (made_here / (started.replace("-", "").replace(":", "") + ".proof")).write_text(text)
@@ -381,13 +430,14 @@ def prove(full, checks, m, main, tip=None, ordered=None, again=False):
 
 def watch():
     me = hostname()
+    lans = proves(me, column=2) or {}
     for full, checks in (proves(me) or {}).items():
         m = mirror(full)
         main = git(m, "rev-parse", "refs/heads/main").stdout.strip()
         for o in waiting(full):
             prove(full, checks, m, main, o["tip"], ordered="land %s %s by %s at %s" % (
-                o.get("branch"), o["tip"], o.get("holder", "?"), o.get("at", "?")))
-        prove(full, checks, m, main)
+                o.get("branch"), o["tip"], o.get("holder", "?"), o.get("at", "?")), lan=lans.get(full))
+        prove(full, checks, m, main, lan=lans.get(full))
 
 
 def proofs_of(repo, rev):
@@ -639,7 +689,7 @@ def main(argv):
         m = mirror(full)
         main_ = git(m, "rev-parse", rev).stdout.strip()
         tip = git(m, "rev-parse", argv[3]).stdout.strip() if len(argv) == 4 else None
-        text = prove(full, checks, m, main_, tip, again=True)
+        text = prove(full, checks, m, main_, tip, again=True, lan=(proves(hostname(), column=2) or {}).get(full))
         print(text or "")
         return 0 if text and passed(text) else 1
     if argv[:1] == ["member"] and len(argv) in (2, 3):

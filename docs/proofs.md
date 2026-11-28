@@ -41,6 +41,14 @@ result passed 44 of 44
 - **`result`** is `passed N of N`, `failed at step K, ...`, or `untested: <why>` (no checkout, no steps).
 - **The signature** is `ssh-keygen -Y sign`, namespace `fcpm-proof`, over every byte above it.
 
+## On the LAN
+
+A `proves` line's third column names the tree's LAN checks ([`.lan-checks`](../.lan-checks), the same form).
+Once `.checks` pass, the prover runs them as itself: its own key to the origin, the LAN's names and doors. They
+only read live services; what they write goes under `FCPM_LAN_SCRATCH`. The proof gets `lan N ...` lines and a
+`lan-result`, beside `result` and never part of it, so a LAN that is down says so without holding up a deploy.
+Members' code never gets this lane.
+
 ## Who may sign
 
 A holder whose folder has a `proves` file (`machines/<holder>/proves`, `owner/repo checks-file` a line), by its key
