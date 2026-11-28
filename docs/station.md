@@ -151,7 +151,7 @@ the committed file in the mirror, never a copy that could drift from it.
 |---|---|---|---|
 | census | every runnable this checkout carries, and its blob | `machines/runnables`, printed | nobody |
 | claim | per verb: its narrowest shape, and what it touches | `machines/RUNNABLES` | the tool's author |
-| proof | this holder, at this blob, does what it claims here | `machines/<profile>/bay/runnables.proven` | `machines/runnables prove` |
+| proof | this holder, at this blob, does what it claims here | `runnables.proven` on the library's `retain/<profile>` | `machines/runnables prove` |
 | answer | what this crew may run without asking | `machines/<profile>/GRANTS` | the crew, by merged PR |
 
 A `RUNNABLES` line is `holder | run | shape | class | says`; `run` is `sh` (Git Bash), `python` or
@@ -163,15 +163,18 @@ checkout) allow; `outside` (the host, the depot) and `desk` (a person or an admi
 - Being on the census grants nothing; a runnable with no claim is undeclared and matches no rule.
 - In auto mode the harness honours narrow allow rules and suspends broad ones (`Bash(*)`, wildcarded
   interpreters). A compound command needs every part to match. Rules are read from the directory a
-  session starts in (`~/code`) and are relative to it. A rule names the script, never the interpreter.
+  session starts in (the checkout) and are relative to it. A rule names the script, never the interpreter.
 - An unproven allow is left off, not made an ask (a background session cannot answer one).
   Admission is a merge to `main`; a profile may narrow an answer, never loosen one.
 
-`machines/runnables prove <profile> <holder> --by <who> [--exercise]`, from a `work/` worktree, needs the
-holder worn, committed and unchanged. It runs each `read` verb as the canonical Bash runner starts
+`machines/runnables prove <profile> <holder> --by <who> [--exercise]` needs the holder worn, committed and
+unchanged; `prove <profile> --all --by <who>` proves every worn holder not yet proven at its blob, and the
+bays' `follow` line runs it each time it moves, before the grants are compiled. It runs each `read` verb as the canonical Bash runner starts
 it; nothing may change in the checkout or `%LOCALAPPDATA%\<profile>\bay` and `troves`. It appends
 `holder blob date ran:... [exercised:...] [deps:<path>@<blob>;...] by:<who>`; `inside` verbs ride on
-that line, and `--by` names who read the code. `--exercise` also runs the GRANTS cycle, watched.
+that line, and `--by` names who read the code (`follow`, when the machine proved it on its own). The line is a
+commit on the machine's library branch `retain/<profile>`, handed to the LAN's origin. `--exercise` also runs
+the GRANTS cycle, watched; follow never does, so an exercised verb waits for a person.
 
 ## GRANTS
 
@@ -209,7 +212,7 @@ install (at its restart tier, keeping the previous copy), confirm (it runs, and 
 | `%LOCALAPPDATA%\<profile>\bay\`, `bay.ndjson` | `received\`, `staged\<payload>-<version>\`, `cellar\<payload>\<version>\` (the rollback); the run log, a line per step |
 | `troves/<trove>/bay/` | a procedure, with a `check` that changes nothing |
 | `machines/<profile>/bay/<payload>-<version>.yml` | the record; `status:` `staged`, `installed`, `rolled-back`, `installed-outside`, `held`, `refused` |
-| `machines/<profile>/bay/runnables.proven` | proofs of our own runnables |
+| `runnables.proven` on `retain/<profile>` | proofs of our own runnables, the machine's own record |
 
 ## Engines
 

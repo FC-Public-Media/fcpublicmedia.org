@@ -14,6 +14,7 @@
     library.py inbox [round|answer]   asks of the library, by lane: list them, take a round's, answer one
     library.py signer [mint]          the library's bottling identity: its fingerprint, or make it once
     library.py outbox [make]          answers as iced bottles: what is there, and bottle any not yet
+    library.py retain                 this machine's retain/<profile> worktree, made on first use; its path
 
 The library says where things are and never reads them; an x-ray reads names, sizes, times and
 attributes, never what a file says. The profile comes from FCPM_PROFILE (fcpm sets it). The library
@@ -1127,10 +1128,11 @@ def main(argv):
     ib.add_argument("words", nargs="?")
     sub.add_parser("signer").add_argument("what", nargs="?", default="show", choices=["show", "mint"])
     sub.add_parser("outbox").add_argument("what", nargs="?", default="list", choices=["list", "make"])
+    sub.add_parser("retain")
     args = p.parse_args(argv)
     {"xray": xray, "diff": diff, "summary": summary_of, "log": log, "where": where, "browse": browse, "grant": grant,
      "release": release, "grants": grants, "console": console, "inbox": inbox,
-     "signer": signer, "outbox": outbox}.get(args.verb, status)(args)
+     "signer": signer, "outbox": outbox, "retain": lambda a: print(retain(a.profile, make=True))}.get(args.verb, status)(args)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ grants: [docs/station.md](../../docs/station.md).
 | `MANIFEST` | carries the git ignore (`.pr`), `~/.local/bin` and the checkout's `machines` (`fcpm.cmd`) on PATH, and the compiled GRANTS in the checkout's `.claude/` |
 | `code/` | this bay's instructions, after the repository's own `CLAUDE.md` and `AGENTS.md`; sessions start in `~/code/fcpublicmedia.org`. The pool's task runs [`../pool.ps1`](../pool.ps1) in the checkout, held by the MANIFEST |
 | `GRANTS` | admits the recorder's OBS cycle; denies stopping any process by name |
-| `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload, and `runnables.proven` |
+| `gear.yml`, `bay/` | this bay's gear (replaces `../gear.yml`); a record per payload (its proofs are on the library's `retain/production`) |
 | `check.ps1` | gear, Developer Mode, `core.autocrlf`, the pool's task, `~/code` trust, the depot. Changes nothing |
 | `audit.ps1`, `audition.ps1`, `drobo.ps1`, `share.ps1` | `fcpm audit`, `audition`, `drobo` (with `hfs_list.py`), `share` |
 | `hosts`, `hosts.ps1` | the Windows hosts file, held, placed by `fcpm install` (MANIFEST's `system` line). `hosts` is the lines not ours to publish, each with why. See Hosts |

@@ -6,16 +6,22 @@
 #   machines/runnables check        claims for files that are not here. Exit 1 if any
 #   machines/runnables compile P    profile P's GRANTS, as harness settings, to stdout
 #   machines/runnables prove P H --by WHO [--exercise]
-#                              the bay's proof that holder H, at this blob, does
+#                              the machine's proof that holder H, at this blob, does
 #                              what its read verbs claim on profile P's machine.
-#                              Runs them, checks nothing changed, records it.
+#                              Runs them, checks nothing changed, records it on
+#                              the library's retain/<profile> (runnables.proven).
 #                              --exercise also runs the cycle P's GRANTS
 #                              declares for H, which is what `admit` allows
+#   machines/runnables prove P --all --by WHO
+#                              every holder P wears not yet proven at its blob,
+#                              read verbs only; the bays' follow line runs it
 #
 # Being on the census grants nothing. Identity is the git blob at HEAD; a changed file is marked.
 # Git Bash, no Python. See docs/station.md, Runnables and GRANTS.
 
 set -u
+# This machine's retain/<profile> worktree in its library (machines/library.py): where its proofs are kept.
+retained() { printf '%s\n' "${FCPM_LIBRARY:-$HOME/code/library}/retain"; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLAIMS="$ROOT/machines/RUNNABLES"
 cd "$ROOT" || exit 1
@@ -126,7 +132,7 @@ case "$cmd" in
     ;;
   compile)
     # No judgment here: it prints, and `machines/sync` puts it in place.
-    p=${2:-}; G="$ROOT/machines/$p/GRANTS"; PROVEN="$ROOT/machines/$p/bay/runnables.proven"
+    p=${2:-}; G="$ROOT/machines/$p/GRANTS"; PROVEN="$(retained)/runnables.proven"
     [ -n "$p" ] && [ -f "$G" ] || { echo "compile: no machines/$p/GRANTS" >&2; exit 2; }
     [ -f "$PROVEN" ] || PROVEN=/dev/null
     # {LOCALAPPDATA} in a runner becomes this host's path, with forward slashes.
@@ -250,8 +256,23 @@ case "$cmd" in
       case "$1" in --by) by=${2:-}; shift 2 ;; --exercise) exercise=1; shift ;; *) shift ;; esac
     done
     G="$ROOT/machines/$p/GRANTS"
-    [ -f "$G" ] && [ -n "$h" ] && [ -n "$by" ] || { echo "usage: machines/runnables prove <profile> <holder> --by <who>" >&2; exit 2; }
-    case "$ROOT" in */refs/*) echo "prove: $ROOT is a read-only mirror; prove from a work/ worktree" >&2; exit 2 ;; esac
+    [ -f "$G" ] && [ -n "$h" ] && [ -n "$by" ] || { echo "usage: machines/runnables prove <profile> <holder>|--all --by <who>" >&2; exit 2; }
+    wt=$(retained)
+    if [ ! -d "$wt/.git" ] && [ ! -f "$wt/.git" ]; then
+      wt=$(sh "$ROOT/machines/fcpm" library retain 2>/dev/null | tail -n 1)
+      [ -n "$wt" ] && [ -e "$wt/.git" ] || { echo "prove: no library here to keep the proof in (fcpm library retain)" >&2; exit 2; }
+    fi
+    out="$wt/runnables.proven"
+    if [ "$h" = "--all" ]; then
+      # Each holder this profile wears, unless its blob is proven already: read verbs only.
+      rc=0
+      for w in $(sed -e 's/#.*$//' "$G" | awk '$1 == "wears" { print $2 }'); do
+        b=$(blob_at "$w") || continue
+        grep -qs "^$w $b " "$out" && continue
+        bash "$0" prove "$p" "$w" --by "$by" || rc=1
+      done
+      exit $rc
+    fi
     if grep -q '^[[:space:]]*wears[[:space:]]' "$G" && ! grep -qE "^[[:space:]]*wears[[:space:]]+$h([[:space:]]|$)" "$G"; then
       echo "prove: $p does not wear $h" >&2; exit 2; fi
     blob=$(blob_at "$h") || { echo "prove: $h is not committed" >&2; exit 2; }
@@ -274,6 +295,7 @@ case "$cmd" in
       [ -f "$LOCALAPPDATA/$p/bay.ndjson" ] && wc -c < "$LOCALAPPDATA/$p/bay.ndjson"
     }
     before=$(state); ran=""
+    set -f                                          # a shape of `*` is a word, not this folder's names
     for shape in $(claims | awk -F'|' -v h="$h" '$1 == h && $4 == "read" { gsub(/ /, "\001", $3); print $3 }'); do
       shape=$(printf '%s' "$shape" | tr '\001' ' ')
       case "$shape" in *'*'*) echo "skip      $shape (takes arguments; proven by reading)"; continue ;; esac
@@ -284,6 +306,7 @@ case "$cmd" in
       [ $rc -le 1 ] || { echo "prove: '$shape' exited $rc; not proven" >&2; exit 1; }
       ran="$ran${ran:+,}$shape"
     done
+    set +f
     after=$(state)
     [ "$before" = "$after" ] || { echo "prove: a read verb changed something; not proven:" >&2
       diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -20 >&2; exit 1; }
@@ -339,14 +362,15 @@ EXPECT
         diff <(printf '%s\n' "$w0") <(printf '%s\n' "$w1") | head -20 >&2; exit 1; }
     fi
 
-    out="$ROOT/machines/$p/bay/runnables.proven"
-    mkdir -p "$(dirname "$out")"
-    [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders the bay has proven on this machine, by blob." \
+    [ -f "$out" ] || printf '%s\n' "# runnables.proven: holders this machine has proven, by blob." \
       "# Written by \`machines/runnables prove\`. docs/station.md, Runnables." \
       "#" "# holder  blob  date  ran  by" > "$out"
     printf '%s %s %s ran:%s%s%s by:%s\n' "$h" "$blob" "$(date +%F)" "$(printf '%s' "${ran:-none}" | tr ' ' '+')" \
       "${exercised:+ exercised:$exercised}" "${deps:+ deps:$deps}" "$by" >> "$out"
-    echo "proven    $h @$blob on $p (ran: ${ran:-none}${exercised:+; exercised: $exercised}); recorded in machines/$p/bay/runnables.proven"
+    # Kept on the library's retain/<profile>, and handed to the LAN's origin; out of reach, it waits here.
+    git -C "$wt" add runnables.proven && git -C "$wt" commit -q -m "proven: $h @$blob ($by)" &&
+      { git -C "$wt" push -q origin HEAD 2>/dev/null || true; }
+    echo "proven    $h @$blob on $p (ran: ${ran:-none}${exercised:+; exercised: $exercised}); kept on $(git -C "$wt" branch --show-current)"
     ;;
   *)
     sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
