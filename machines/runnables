@@ -295,6 +295,7 @@ case "$cmd" in
       [ -f "$LOCALAPPDATA/$p/bay.ndjson" ] && wc -c < "$LOCALAPPDATA/$p/bay.ndjson"
     }
     before=$(state); ran=""
+    set -f                                          # a shape of `*` is a word, not this folder's names
     for shape in $(claims | awk -F'|' -v h="$h" '$1 == h && $4 == "read" { gsub(/ /, "\001", $3); print $3 }'); do
       shape=$(printf '%s' "$shape" | tr '\001' ' ')
       case "$shape" in *'*'*) echo "skip      $shape (takes arguments; proven by reading)"; continue ;; esac
@@ -305,6 +306,7 @@ case "$cmd" in
       [ $rc -le 1 ] || { echo "prove: '$shape' exited $rc; not proven" >&2; exit 1; }
       ran="$ran${ran:+,}$shape"
     done
+    set +f
     after=$(state)
     [ "$before" = "$after" ] || { echo "prove: a read verb changed something; not proven:" >&2
       diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -20 >&2; exit 1; }
