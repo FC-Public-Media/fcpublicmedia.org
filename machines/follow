@@ -3,8 +3,8 @@
 # (production.yml), on every bay whose crew orders it: one way for all of them.
 #
 #   each pass  this checkout from the origin's main (./pull)
-#   then       what the profile maps (sync install), when the checkout moved and every 15 minutes, so a
-#              hand change comes back
+#   then       what the crew may run proven here at its blob (runnables prove --all), and what the profile
+#              maps (sync install), when the checkout moved and every 15 minutes, so a hand change comes back
 #
 # A move that touches what the crew's lines run (troves/) has the crew restart them; a new crew.py is the
 # pool's to restart, since a supervisor cannot restart itself from a line it runs (machines/pool.ps1,
@@ -24,6 +24,9 @@ head=$(git -C "$REPO" rev-parse HEAD) || exit 1
 placed="$STATE/follow.placed"   # what it last put on; sync keeps its own records in placed/
 was=$(cat "$placed" 2>/dev/null)
 [ "$head" = "$was" ] && [ -n "$(find "$placed" -mmin -$HOLD 2>/dev/null)" ] && exit 0
+# Prove what this commit gives the crew to run, read verbs only, before its grants are compiled (runnables).
+p=$(SYNC_CHECK=0 "$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2; exit }')
+[ -f "$HERE/$p/GRANTS" ] && bash "$HERE/runnables" prove "$p" --all --by follow 2>&1 | grep -E '^(proven|prove:)'
 out=$("$HERE/sync" install 2>&1); rc=$?
 out=$(printf '%s\n' "$out" | grep -v '^profile ' | sed '/^$/d')
 [ "$head" != "$was" ] && echo "placed $(printf '%.7s' "$head")"
@@ -34,7 +37,6 @@ printf '%s\n' "$head" > "$placed"
 # The crew's lines run what moved: ask the crew to restart them (all but this one, which is ending).
 [ -n "$was" ] && [ "$head" != "$was" ] || exit 0
 git -C "$REPO" diff --quiet "$was" "$head" -- troves 2>/dev/null && exit 0
-p=$(SYNC_CHECK=0 "$HERE/sync" 2>/dev/null | awk '$1 == "profile" { print $2; exit }')
 lines=$(sed -e 's/#.*$//' "$HERE/$p/services" 2>/dev/null | awk 'NF >= 3 && $1 != "follow" { print $1 }')
 [ -n "$lines" ] && echo "troves moved: restarting $(echo $lines)" && sh "$HERE/fcpm" crew restart $lines
 exit 0

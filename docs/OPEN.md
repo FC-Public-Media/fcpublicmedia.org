@@ -11,7 +11,6 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
-- `machines/fcpm`'s proof is at blob fb3c96fd4d53; the file is now 73525b1cfe77, so its verbs are unproven. machines/production/bay/runnables.proven
 - `machines/fcpm`, `obs.ps1` and `obs-portable.ps1` still link `machines/README.md` and `machines/BAY.md` (kept as signposts) until each is next re-proven.
 - `--paper-sunk` (used by `.code-block`) is never defined. site/assets/css/site.css
 - Unused after the 2026-10-25 reduction, the whole list so it can go in one cut: includes `community.html`, `countdown.html`, `featured.html` (the homepage stopped including it); data `hosts.yml`, `member_sites.json`, `featured.yml`; `watch.yml` `live_url`, `live_provider`, `categories`; `org.yml` `social` and `newsletter_url`. Facebook is only in `org.social`, so it is on no page; `community.yml` `channels` is the live list and does not carry it.
