@@ -5,22 +5,6 @@
 Autumn calls this bay `production`: editing bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`).
 The kiosk (media-node) is `200-FCPANEDIT2`.
 
-## Orientation: Bay 1 (user "fcpub", device "BAY1")
-
-`C:\` is Windows and working data.
-`D:\` is becoming user data.
-`E:\` is meant to be mounted from LAN as automation fetch & drop.
-
-`C:\Users\fcpub\code` is our root.
-`C:\Users\fcpub\code\fcpublicmedia.org` is what this bay runs, from the origin's main; sessions start there.
-`D:\fcpm-audit` supports data management on our (eventual) way to M365
-`refs\` is a cold shed: references, for worktree sources, or study (the library's `refs` branch lists them).
-`work\` is worktrees and standalone clones.
-	- we own as code, or
-	- manage as deployed worker code with maintenance assist
-`pools\` is media pipeline prototyping.
-	- deprecated location & implementation
-
 > From the board:
 > 
 > You're on the FCPM Secretary (Autumn's) credentials as we move into

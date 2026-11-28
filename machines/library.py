@@ -49,7 +49,7 @@ LAN_ORIGIN = "origin.local"
 PRE_PUSH = """#!/bin/sh
 # What stays on the media node's LAN: retain/ branches, the grant book, jobs. They go to origin.local
 # and nowhere else. docs/library.md, The library here and The grant book.
-case "$2" in origin.local:*|*@origin.local:*|ssh://origin.local[/:]*|ssh://*@origin.local[/:]*) exit 0 ;; esac
+case "$2" in origin.local:*|*@origin.local:*|ssh://origin.local[/:]*|ssh://*@origin.local[/:]*|fcpm-origin:*) exit 0 ;; esac
 while read local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in refs/heads/retain/*|refs/grants/*|refs/jobs/*)
     echo "library: $remote_ref is kept on the LAN; only origin.local takes it" >&2; exit 1 ;;
@@ -66,6 +66,7 @@ commit, and never past it: not to GitHub, never published. `fcpm library` writes
 See docs/library.md in fcpublicmedia.org.
 
     <holding>/xray.tsv    the shape, as last x-rayed; its history is this branch's log
+    CONTEXT.md            what belongs to this machine alone, for its sessions (AGENTS.md, This machine)
 """
 
 
@@ -178,6 +179,10 @@ def retain(profile, make=False):
         hook.write_text(PRE_PUSH, encoding="utf-8", newline="\n")
         hook.chmod(0o755)
     g = ["--git-dir", str(gd)]
+    lan(gd)
+    if git(*g, "rev-parse", "--verify", "-q", f"refs/heads/{branch}", check=False).strip() == "":
+        # The origin's, when it has one: a machine's caretakers may have begun it there.
+        git(*g, "fetch", "-q", "origin", f"refs/heads/{branch}:refs/heads/{branch}", check=False)
     if git(*g, "rev-parse", "--verify", "-q", f"refs/heads/{branch}", check=False).strip() == "":
         # An orphan branch, its first commit the README: no history it did not make itself.
         blob = git(*g, "hash-object", "-w", "--stdin", input=RETAIN_README.format(profile=profile)).strip()
@@ -188,13 +193,31 @@ def retain(profile, make=False):
     return wt
 
 
+def lan(gd):
+    """The library's remote is the origin this checkout runs from (machines/pull points it there), and
+    its ssh too; a checkout still named elsewhere gives it none."""
+    url = subprocess.run(["git", "-C", str(REPO), "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
+    if not lan_url(url):
+        return
+    have = subprocess.run(["git", "--git-dir", str(gd), "remote", "get-url", "origin"], capture_output=True, text=True)
+    if have.returncode != 0:
+        git("--git-dir", str(gd), "remote", "add", "origin", url)
+    ssh = subprocess.run(["git", "-C", str(REPO), "config", "core.sshCommand"], capture_output=True, text=True).stdout.strip()
+    if ssh and have.returncode != 0:
+        git("--git-dir", str(gd), "config", "core.sshCommand", ssh)
+
+
+def lan_url(url):
+    return LAN_ORIGIN in url or url.startswith("fcpm-origin:")
+
+
 def transit(wt):
     """Hand this machine's retain/ to the LAN's origin, eagerly, after each commit on it: only when the
     library has a remote at origin.local. Out of reach, it waits here and the next commit tries again."""
     url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=wt, capture_output=True, text=True).stdout.strip()
-    if LAN_ORIGIN not in url:
+    if not lan_url(url):
         return
-    env = dict(os.environ, GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=5")
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
     r = subprocess.run(["git", "push", "-q", "origin", "HEAD"], cwd=wt, capture_output=True, text=True, env=env)
     print(f"lan       {'on ' + LAN_ORIGIN if r.returncode == 0 else 'waits here: ' + (r.stderr.strip().splitlines() or ['?'])[-1]}")
 

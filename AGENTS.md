@@ -30,8 +30,11 @@ Your work\ and refs\ revolve around tooling provided by:
 ## This machine
 
 A session starts in the checkout this machine runs, and these are its instructions. `fcpm` alone names
-the machine and its profile; the profile's own are `machines/<profile>/code/AGENTS.md` where it has one:
-read it before you work. This checkout only follows the origin's main: work in a shed (`fcpm workshed`).
+the machine and its profile; the profile's own are `machines/<profile>/code/AGENTS.md` where it has one.
+What belongs to this machine alone (its drives, its people, its folders) is on the library's
+`retain/<profile>` branch, which stays on the LAN: `git fetch origin retain/<profile>`, then its
+`CONTEXT.md`. Read both before you work. This checkout only follows the origin's main: work in a shed
+(`fcpm workshed`).
 
 ## Networks
 
