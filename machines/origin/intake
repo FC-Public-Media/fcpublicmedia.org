@@ -11,7 +11,7 @@ Only main is fetched, into github/main. A failure in one repo is recorded and th
 How GitHub's main is ahead of ours is read before it is taken (commits, files, bytes, the largest
 file, pins moved) and kept with the take in actions.ndjson.
 A repository new on GitHub under an owner the origin keeps (KEEP, by name) gets its bare repository
-here first, then comes in like the rest; other owners' repositories are only the ones already here.
+here first, then comes in like the rest; so does one that a main here pins, whoever owns it.
 The LAN's dev is the file .intake/dev beside the state (`ssh git@origin.local dev on|off`).
 
 Main is ours: keyholders push it here, and GitHub's main is merged into it (fast-forward, or a clean
@@ -184,12 +184,45 @@ def discover(have):
             full = "%s/%s" % (owner, node["name"])
             if full in have or not kept(full) or os.path.exists(os.path.join(ORIGIN, full)):
                 continue
-            p = os.path.join(ORIGIN, full)
-            subprocess.run(["git", "init", "-q", "--bare", "-b", "main", p], check=True)
-            for k, v in (("receive.denyNonFastForwards", "true"), ("receive.denyDeletes", "true"),
-                         ("remote.github.url", "https://github.com/%s.git" % full),
-                         ("remote.github.fetch", "+refs/heads/main:refs/heads/github/main")):
-                git(p, "config", k, v)
+            make(full)
+            made.append(full)
+    return made
+
+
+def make(full):
+    """A bare repository here for GitHub's owner/repo, main only, refusing rewrites and deletes."""
+    p = os.path.join(ORIGIN, full)
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", p], check=True)
+    for k, v in (("receive.denyNonFastForwards", "true"), ("receive.denyDeletes", "true"),
+                 ("remote.github.url", "https://github.com/%s.git" % full),
+                 ("remote.github.fetch", "+refs/heads/main:refs/heads/github/main")):
+        git(p, "config", k, v)
+
+
+PIN_URL = re.compile(r"^\s*url\s*=\s*(\S+)", re.M)
+
+
+def pinned(have):
+    """owner/repo that a main here pins (its .gitmodules), or the library's `origin` branch does, and the
+    origin lacks: made here, so a pin always has somewhere to come from. What a newcomer pins comes in on a
+    later beat, once its main is here."""
+    want = set()
+    for full in sorted(have):
+        p = os.path.join(ORIGIN, full)
+        owner = full.split("/", 1)[0]
+        for branch in ("main", "origin") if full == BOOK else ("main",):
+            text = git(p, "show", "refs/heads/%s:.gitmodules" % branch, check=False).stdout
+            for url in PIN_URL.findall(text):
+                m = (re.match(r"^https://(?:[^@/]+@)?github\.com/([^/]+/[^/]+?)(?:\.git)?/?$", url)
+                     or re.match(r"^\.\./\.\./([^/]+/[^/]+?)(?:\.git)?$", url))
+                if m:
+                    want.add(m.group(1))
+                elif re.match(r"^\.\./([^/]+?)(?:\.git)?$", url):
+                    want.add("%s/%s" % (owner, re.match(r"^\.\./([^/]+?)(?:\.git)?$", url).group(1)))
+    made = []
+    for full in sorted(want - set(have)):
+        if not os.path.exists(os.path.join(ORIGIN, full)):
+            make(full)
             made.append(full)
     return made
 
@@ -558,6 +591,10 @@ def main():
                 names += discover(set(names))
             except Exception:
                 pass                    # GitHub out of reach: the next asking beat asks again
+            try:
+                names += pinned(set(names))
+            except Exception:
+                pass                    # a .gitmodules that cannot be read: the next asking beat reads it again
             try:
                 remote = github_mains(names)
             except Exception as e:      # offline, GitHub down: say so, change nothing

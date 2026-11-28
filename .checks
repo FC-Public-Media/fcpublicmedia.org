@@ -32,6 +32,7 @@ Test model.ps1: python3 machines/production/test_model_ps1.py
 Test the origin's door: python3 machines/origin/test_origin_door.py
 Test the origin's relay: python3 machines/origin/test_origin_relay.py
 Test the origin's traffic: python3 machines/origin/test_origin_traffic.py
+Test the origin keeps what is pinned: python3 machines/origin/test_origin_pins.py
 Test the post-receive hook: python3 machines/digitization/test_post_receive.py
 Test the proofs: python3 machines/test_proof.py
 Test the relay's door: python3 machines/broadcast/test_relay_door.py
