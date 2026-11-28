@@ -1,5 +1,5 @@
 """tanks_live.py -- every form in a built _site against the live site-worker: each tank a page sends to must be
-there, with every field it sends. bin/deploy-site runs it before uploading, so a page never goes up ahead of
+there, with every field it sends. machines/deploy-site runs it before uploading, so a page never goes up ahead of
 its tank (2026-10-28: /learn sent instructor@2 for 80 minutes before the worker had that tank).
 
     python3 site/bin/tanks_live.py [SITE_DIR]      default: site/_site; the Origin is site/_config.yml's url

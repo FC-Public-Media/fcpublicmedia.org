@@ -7,7 +7,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 - `propose-shows.yml` runs `git diff --quiet` after writing an untracked stub, so no show PR ever opens. .github/workflows/propose-shows.yml
 - `machines/production/gear.yml` is not valid YAML (gh-stack `for:`); check.ps1 reads it by regex, so it still works.
-- `bin/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. bin/runnables
+- `machines/runnables` is `#!/bin/sh` but needs bash, and `compile` fails under BWK awk (macOS); Git Bash is fine. machines/runnables
 - Show pages gather episodes by `match.prefixes` only; `match.producers` is ignored. site/_layouts/show.html
 - `site/bin/redirect-report.py` still writes `docs/REDIRECTS.md`; point it elsewhere or retire it with Wix.
 - `/check-in/` on a shared browser prefills the last visitor's name and email (`fcpm.profile`); `dropStore` exists. site/assets/js/checkin.js
@@ -94,7 +94,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 
 ## Members
 
-- Ejection owes the core as a commit to the member's repository; no tool writes it. bin/build-sites.py
+- Ejection owes the core as a commit to the member's repository; no tool writes it. machines/static/build-sites.py
 - A generated tier (a site from show data for shows without a repository): how `sites.yml` names it, never confusable with `scaffold`.
 - `_shows/` and `_podcasts/` as one collection moves live URLs.
 - `/meet/` to render `member_sites.json` once it has entries; nothing reports stale tenant pins.
@@ -147,7 +147,7 @@ Plans that once had their own docs are here in a few lines; git history has the 
 - editing bay 1: depot only over opt-in Wi-Fi; `.ps1` under `-ExecutionPolicy Bypass`; capture for digitization waits on HDCP and a home for masters.
 - Runnables: a canonical door.py form; a door restart verb; claims for bay 1's `refs` and `pool.ps1`.
 - The pool restarts the `production` supervisor too. machines/pool.ps1
-- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name), and the kiosk's `fcpm weekly` task (the bays' crews' `follow` line does the weekly pull).
+- Held like the pool's task, not yet: each crew's task (registered by verbs, checked only by name).
 - A new crew.py waits for the pool to restart the supervisor, so for someone signed in; a supervisor that restarts itself would not.
 - The default `gear.yml` claude-code winget id is unconfirmed.
 - Administrator steps wait unseen: the crew's `follow` line prints `waiting`, and runs `sync install`, not `fcpm install`. docs/elevation.md

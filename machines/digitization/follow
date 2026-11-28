@@ -6,7 +6,7 @@
 # pushes all point at the origin, by its git account (FCPM_ORIGIN_URL; ~/.ssh/config's
 # fcpm-origin: git@origin.local by this machine's key, in ../origin/KEYHOLDERS). The door
 # restarts itself when its checkout moves.
-# Troves are submodules (`update = none`): each is checked out at the pin, as bin/refs and the
+# Troves are submodules (`update = none`): each is checked out at the pin, as machines/pull and the
 # kiosk's door do, so a crew line `from troves/<name>` has its code; a pin already there costs nothing.
 # Then the static job's sites, each built only when its own commit moved (../static/publish.py).
 if [ "${1:-}" = heed ]; then

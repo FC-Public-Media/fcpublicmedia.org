@@ -102,7 +102,7 @@ BOUNCE = 75          # exit code meaning "my code changed, start me again"
 PULL_EVERY = 300
 STATE = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ
          else pathlib.Path.home() / ".local" / "state") / "media-node"
-DEV = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ      # `fcpm dev on`: follow GitHub
+DEV = (pathlib.Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ      # `fcpm dev on`: the origin's beat
        else pathlib.Path.home() / ".local" / "state") / "fcpm" / "dev"
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -3920,20 +3920,16 @@ def troves_checkout():
     private ones, which say `update = none` so that CI's token never tries them."""
     if " troves/" not in (git("config", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.path$") or ""):
         return
-    # Never a sign-in prompt (nobody is at this machine): the account is the one origin's URL names.
-    m = re.match(r"https://([^@/]+)@github\.com/", git("remote", "get-url", "origin") or "")
-    named = ["-c", "credential.username=" + m.group(1)] if m else []
-    os.environ.update(GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0")
-    if git(*named, "submodule", "update", "--init", "--checkout", "--quiet", "--", "troves", timeout=600) is None:
+    os.environ.update(GCM_INTERACTIVE="never", GIT_TERMINAL_PROMPT="0")      # nobody is at this machine
+    if git("submodule", "update", "--init", "--checkout", "--quiet", "--", "troves", timeout=600) is None:
         log("pull: troves submodule update failed; the next pull tries again")
 
 
 def polls(where=None):
-    """Fetch on the timer only from a LAN origin, or from GitHub while `fcpm dev on`. Otherwise
-    follow origin/main as the mirror has it: `fcpm install` and the weekly pull move it, and a
-    worktree shares its mirror's refs. GitHub is not asked every five minutes."""
+    """Fetch on the timer when the checkout's origin is the LAN's origin; a checkout still named at GitHub
+    waits for machines/pull to point it there."""
     url = git("remote", "get-url", "origin", where=where) or ""
-    return DEV.exists() or (url != "" and "github.com" not in url)
+    return url != "" and "github.com" not in url
 
 
 def pull_once():
@@ -5584,7 +5580,7 @@ LIBRARY_JS = """<script>
 # ---------------------------------------------------------------------- deploy --
 # THE SITE's DEPLOY: what fcpublicmedia.org serves, our origin's main, this checkout, and one button that names
 # our origin's main. The button is a reply, wizard:site+deploy, set down here like any other: the helm whose job
-# holds it runs bin/deploy-site on that commit, only if its checkout is our origin's main when it asks; any other
+# holds it runs machines/deploy-site on that commit, only if its checkout is our origin's main when it asks; any other
 # helm passes it there (replies.py, route). Nothing here asks GitHub. docs/site.md, Deploy.
 LIVE_AT = os.environ.get("FCPM_LIVE_AT", "https://fcpublicmedia.org/")
 _origin = {"at": 0.0, "seen": None, "lock": threading.Lock()}

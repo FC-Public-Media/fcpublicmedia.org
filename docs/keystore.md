@@ -100,5 +100,5 @@ otherwise.
    profile and still unlock it.
 
 Known on 2026-11-10: bay 2 (BAY2) has not yet run `fcpm keys birth` against its real agent, so no
-petition has been lodged yet. `bin/test_keys.py` and `bin/test_helms.py` cover birth and lodging.
-`bin/test_replies.py` needs Node, which bay 1 lacks.
+petition has been lodged yet. `machines/test_keys.py` and `machines/test_helms.py` cover birth and lodging.
+`machines/kiosk/test_replies.py` needs Node, which bay 1 lacks.

@@ -23,7 +23,7 @@ Standard-library Python except `sync-feeds.py` (PyYAML). The data lives on main:
 of origin.local's main once a week (the crew asks daily at 03:53; it refreshes when main's last
 "Refresh the site's data" commit is a week old) and pushes what changed to main. A source that fails keeps
 main's copy. `refresh now` does it at once. The push wakes every follower, so the LAN's site has it
-within the minute, and `bin/deploy-site` fetches nothing: it uploads what main has.
+within the minute, and `machines/deploy-site` fetches nothing: it uploads what main has.
 
 - **cablecast.json**: titled programs, newest first; untitled records are only counted
   (`untitled_omitted`); programs without a VOD stay as `watchable: false`. `local` marks categories

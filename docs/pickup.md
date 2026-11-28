@@ -89,7 +89,7 @@ the cloud box, unless they show the code to a camera.
 ## Steps
 
 1. **Mount `.you-engine`** in this repository, so the codec is ours to call (bay 1). Built: pinned as a
-   submodule, and `bin/refs` hydrates public submodules, with theirs inside, on every pull.
+   submodule, and `fcpm install` hydrates public submodules, with theirs inside.
 2. **The library's outbox.** `fcpm library inbox answer` also writes the answer as an iced bottle of kind
    `fcpm.answer`, keyed by the ask's nonce, into `~/code/library/outbox/`. It records the transfer's id in
    `retain/`, so that a bottle which comes back can be proved ours (bay 1). Built: `machines/library-bottle.mjs`,

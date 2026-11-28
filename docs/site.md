@@ -17,7 +17,7 @@ booking, submissions) are hand-offs to other services ([payments.md](payments.md
 | `you/` | what is yours: your pass (`/check-in/`), `/you/`, authorize, devices, settings, upload. `/check-in/` and `/authorize/` keep their old URLs by `permalink` (a printed QR, an issued claim link); the rest are `/you/:name/` |
 | `studio/` | what a phone can do at the studio: codes for our cameras (`/ask/`, `/library/ask/`, `/lights/`) and posters for our walls (`/check-in/poster/`, `/wifi/poster/`), each at its own `permalink`. Each says what it is in its front matter (`studio: {kind: code or poster, says, reaches}`), and `/studio/` lists them from that, so a new one appears there by describing itself. The pass is yours; the poster that leads to it is the studio's |
 | `_data/`, `assets/` | [data files](#data-files); `css/site.css` (the whole design), `js/`, `fonts/`, `img/` |
-| `member-sites/` | built member sites, by `bin/build-sites.py --publish` ([members.md](members.md)); `bin/deploy-site` runs it |
+| `member-sites/` | built member sites, by `machines/static/build-sites.py --publish` ([members.md](members.md)); `machines/deploy-site` runs it |
 | `bin/`, `tests/` | tooling, syncs and Python tests; Playwright tests. Both excluded from the build |
 | `_redirects`, `_headers`, `robots.txt`, `sitemap.xml` | generated for hosts |
 
@@ -31,7 +31,7 @@ booking, submissions) are hand-offs to other services ([payments.md](payments.md
 | `advocate.yml`, `tell.yml`, `atlas.yml`, `keys/`, `_data/`, `.<name>-engine/` | seats, directory, submodules |
 
 - `site/_data` reads only what is inside `site/`; Jekyll's `data_dir` cannot leave the source.
-- The root reaches down: syncs write `site/_data/` and `bin/build-kiosk.py` reads it. `site/` never reaches up.
+- The root reaches down: syncs write `site/_data/` and `machines/kiosk/build-kiosk.py` reads it. `site/` never reaches up.
 - The site-worker is its own repository ([FC-Public-Media/site-worker](https://github.com/FC-Public-Media/site-worker));
   its `src/claims.js` is a copy of `site/assets/js/claims.js`: change both.
 - No symlinks across the boundary: `jekyll build --safe` silently reads them as empty.
@@ -190,7 +190,7 @@ with `offline: true` in its front matter (the check-in, `/you/`, `/submit/`, `/l
 `/reserve/`) registers it and links `manifest.webmanifest`. It keeps those pages and every file under
 `assets/js`, `assets/css`, `assets/fonts` and the icons, so they open with no signal, a check-in or a form is
 still kept, and Show it still pours. Pages and files come from the network whenever there is one; the kept
-copy answers only when there isn't. The cache is named for the build's `revision` (the commit; `bin/deploy-site`
+copy answers only when there isn't. The cache is named for the build's `revision` (the commit; `machines/deploy-site`
 stamps it), so each deploy replaces the last kit. `_headers` keeps `sw.js` itself uncached. Service workers
 need https: the LAN's `http://www.fcpublicmedia.local` copy registers nothing. On an iPhone, *Add to Home Screen*
 (the manifest's `start_url` is `/check-in/`) is also what keeps Safari from clearing what the phone kept.
@@ -219,7 +219,7 @@ npm run test:live                                # against https://fcpublicmedia
 
 ## Deploy
 
-Deploying is one thing: `bin/deploy-site`. In a throwaway copy of HEAD it builds member sites, runs
+Deploying is one thing: `machines/deploy-site`. In a throwaway copy of HEAD it builds member sites, runs
 `jekyll build` in `site/` and uploads `_site` to
 the Cloudflare Pages project `fcpm-new` on FCPM's org Cloudflare account, as its production (branch
 `main`). That project is a static bucket: direct upload, no git connection, no build on Cloudflare's
@@ -228,7 +228,7 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
 - It runs on any machine whose keychain ([`machines/keys`](../machines/keys), the job's `keys.yml`) holds a
   `cloudflare` group: digitization, and bay 1 in Git Bash ([production](../machines/production/PROFILE.md#deploy)).
   Each machine has its own token, so one can be revoked alone. `fcpm deploy` runs it; `fcpm deploy --build`
-  (`bin/deploy-site --build`) builds and checks without uploading, and keeps the copy.
+  (`machines/deploy-site --build`) builds and checks without uploading, and keeps the copy.
 - The worker goes first. Before uploading, `site/bin/tanks_live.py` asks the live site-worker about every
   form in the build: its tank (`data-tank`, or a script's own `form: '...'`, as `book.js`'s) and every field it
   sends. A tank or field the worker doesn't have yet stops the deploy, named, with nothing uploaded; a worker
@@ -240,7 +240,7 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
   (follow brings the checkout to the origin's main within seconds of it moving, five minutes at most), or ahead
   or apart (never deployed). The button names our origin's main and is off unless the checkout is that commit.
   It sets down `wizard:site+deploy`; the helm whose job holds it in `machines/helms.yml` asks our origin again,
-  and runs `bin/deploy-site` on that commit (`FCPM_DEPLOY_REV`) only if its checkout and our origin's main are
+  and runs `machines/deploy-site` on that commit (`FCPM_DEPLOY_REV`) only if its checkout and our origin's main are
   both that commit, one deploy at a time, into `deploy.log` beside its replies. A moved main or an origin that
   doesn't answer leaves the bottle held, with the reason. Any other helm passes the bottle there. Moving the
   deploy to another machine is that one line.
@@ -260,7 +260,7 @@ side, no Functions. It serves `fcpm-new.pages.dev`, `fcpublicmedia.org` and `new
   through a cloud outage. It is origin.local's main: a push to main there (or intake bringing GitHub's in)
   wakes digitization's `follow` (the origin's `hear main`), which builds `site/` again if it moved.
 - `deliver:` in `sites.yml` is `source` (this build) or `intermediate`
-  ([station.md](station.md#intermediates)); `python3 bin/build-sites.py --deploy-root
+  ([station.md](station.md#intermediates)); `python3 machines/static/build-sites.py --deploy-root
   fcpublicmedia.org` prints the root directory.
 
 ## Domain and DNS

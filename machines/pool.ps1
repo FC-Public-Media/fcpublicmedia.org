@@ -45,7 +45,7 @@ $Log = Join-Path $State "pool.log"
 $Off = Join-Path $State "server.off"
 $Claude = Join-Path $HOME ".local\bin\claude.exe"
 $TaskName = "$Bay pool"
-$Weekly = "fcpm weekly"   # machines/watch's task where no crew follows; here, the crew's follow line does it
+$Weekly = "fcpm weekly"   # a task from before; nothing runs it now
 $CalmMin = 15
 # `fcpm dev on` creates this file (machines/fcpm); the crew's follow line reads it, and status says it.
 $Dev = Join-Path $env:LOCALAPPDATA "fcpm\dev"
@@ -297,8 +297,8 @@ function TaskDiffers {
     }
     if ($t.Settings.MultipleInstances -ne "IgnoreNew" -or $t.Settings.ExecutionTimeLimit -ne "PT10M") { return "its settings differ" }
     if ($t.State -eq "Disabled") { return "disabled" }
-    # The crew's follow line does the weekly pull; a task of its own, left from before, is not mapped.
-    if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) { return "'$Weekly' is left over: the crew's follow line does the weekly pull" }
+    # A weekly task left from before is not mapped.
+    if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) { return "'$Weekly' is left over from before" }
     ""
 }
 
@@ -353,7 +353,7 @@ switch ($Verb) {
         Write-Output "registered '$TaskName': at logon, and every minute"
         if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) {
             Unregister-ScheduledTask -TaskName $Weekly -Confirm:$false
-            Write-Output "removed '$Weekly': the crew's follow line does the weekly pull"
+            Write-Output "removed '$Weekly', left over from before"
         }
     }
     "uninstall" { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false; Write-Output "removed '$TaskName'" }

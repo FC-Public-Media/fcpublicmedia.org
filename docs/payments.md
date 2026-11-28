@@ -97,7 +97,7 @@ Paying the year up front fixes that year's price; a subscription renews at the c
 
 Nonprofits pay half (`fcpm.membership.nonprofit_rate` in `site/_config.yml`), settled before payment. `site/bin/sync-nonprofits.py` writes
 Larimer County 501(c)(3)s from the IRS master file to `site/assets/nonprofits.json` (on every
-`bin/deploy-site`). The organization picks itself on `/membership/`; "not listed"
+`machines/deploy-site`). The organization picks itself on `/membership/`; "not listed"
 is an equal path to a person. Staff verify the EIN and issue a Stripe promotion code
 (`allow_promotion_codes` is on every session). The site-worker ignores any `nonprofit` field in a request.
 

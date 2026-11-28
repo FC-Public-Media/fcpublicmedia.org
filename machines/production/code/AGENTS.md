@@ -42,19 +42,15 @@ bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`). The kiosk (media-no
 
 ## Working here
 
-- Never work or commit in `refs/`. Each change gets `work/REPO@BRANCH` from `bin/refs work REPO
-  BRANCH` (off `origin/main`), one session per worktree, its branch named for its purpose. A `gh stack`
-  gets one worktree, `work/REPO@<stack>`, and its layers are switched inside it.
+- Never work or commit in `refs/`. Each change gets its own worktree in a shed (`fcpm workshed`), off
+  the origin's main, one session per worktree, its branch named for its purpose.
 - The workshed is no folder. A shed is a folder someone marks (`fcpm workshed mark`), or one named in
   `machines/production/workshed.yml` (`work/`), and `origins/<branch>` is made for an origin branch when first
   asked for (`docs/workshed.md`). The shed comes first: `fcpm workshed SHED start BRANCH`. Asked to help in one,
-  work in the worktree they show you; make or serve one only by `fcpm workshed` or `bin/refs`.
+  work in the worktree they show you; make or serve one only by `fcpm workshed`.
 - Commit each step as it lands; a draft Autumn wants to read first stays unpushed until she says. Push
-  before telling her a PR is ready. Once it merges: `bin/refs done REPO BRANCH` and `bin/refs pull`;
-  never reuse the worktree, and put any later commit in a new PR.
-- Open every PR, drafts and any repo included, with `--reviewer tiliv` (`gh pr edit N --add-reviewer
-  tiliv` if missed). We push as `fcpm-public`; `gh` is `~/.local/bin/gh.exe`. Autumn merges; within
-  5 minutes the door rebases `media-node` onto `main`. No global git identity: each repo has its own.
+  the branch to the origin; Autumn lands it (Helm, `/origin/`). Once it lands, never reuse the worktree:
+  a later commit goes on a new branch. No global git identity: each repo has its own.
 - Change this file in a worktree (`machines/production/code/AGENTS.md`); it is read from the mirror.
   The root's `CLAUDE.md`, `AGENTS.md` and `BAY1.md` come from `home/code/`; edit them there, never at the
   root: `fcpm install` restores them.
@@ -62,8 +58,8 @@ bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`). The kiosk (media-no
 - Reach other machines outward only: code by commit, media through the depot, talk by session
   message. Peers: `kiosk` (media-node), `digitization` (station-node, where `rodecaster` captures).
 - Hand Autumn an `fcpm` verb, never a path, interpreter or window; a step that needs one is a gap in
-  `fcpm` to fill. Sessions use `bin/refs` directly. Log surprises with `machines/kiosk/gotcha`.
-- The crew's `follow` line (`machines/follow`) brings in main as `fcpm dev` paces it and places what the profile maps.
+  `fcpm` to fill. Log surprises with `machines/kiosk/gotcha`.
+- The crew's `follow` line (`machines/follow`) brings in the origin's main (`machines/pull`) and places what the profile maps.
   The pool (`machines/pool.ps1` in the mirror, task `editing-bay-1 pool`, held by the MANIFEST) keeps the
   root's server and the rolling TV up (`%LOCALAPPDATA%\editing-bay-1\pool.log`). `fcpm screen` saying
   `kept: NO` means it is not running. `fcpm pool off` ends every Remote Control server here with

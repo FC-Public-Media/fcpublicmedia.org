@@ -19,7 +19,7 @@ every other machine gives up to the controller.
 | at rest | `held/<group>/<key>/<time>.age`: every version, sealed with age to the keychain's own recipient. `meta.json` beside it records the class, for whom, by whom and when, and a salted print, so the same value put twice is held once. The identity that opens them is `identity.age`, sealed under the passphrase. All of it is ciphertext, safe to copy for backup |
 | open | `unlock` opens the identity into memory (`/dev/shm/keychain`) until the box restarts or `lock`. Putting needs no unlock (sealing takes only the recipient), so flushing works while it is locked. Handing out needs it unlocked |
 | log | `/srv/keychain/actions.ndjson`: every put, get, refusal, mint, unlock and lock, with the holder |
-| tests | `bin/test_keychain_door.py` (needs age; the box has it) |
+| tests | `machines/keychain/test_keychain_door.py` (needs age; the box has it) |
 
 ## Protected and secret
 

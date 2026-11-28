@@ -7,7 +7,7 @@ platform: windows
 
 gear:
   - gear: git
-    for: everything; Git Bash is also the shell `../sync` and bin/refs run in
+    for: everything; Git Bash is also the shell `../sync` and `../pull` run in
     package: Git.Git
     provisioner: winget
     scope: machine
@@ -92,7 +92,7 @@ gear:
     restart-tier: none
 
   - gear: ruby
-    for: building the site to deploy it (bin/deploy-site, `fcpm deploy`): Ruby and its DevKit (MSYS2), which
+    for: building the site to deploy it (machines/deploy-site, `fcpm deploy`): Ruby and its DevKit (MSYS2), which
       Jekyll's native gems compile with. The minor of the root's .ruby-version
     package: RubyInstallerTeam.RubyWithDevKit.3.2
     vendor: RubyInstaller (rubyinstaller.org), BSD-3-Clause
@@ -125,7 +125,7 @@ gear:
     signer: none; CEP loads it under PlayerDebugMode (HKCU CSXS.12), which
       `fcpm audition install` turns on and `remove` turns off
     provisioner: fcpm audition install
-    updates: bin/refs pull
+    updates: fcpm install
     restart-tier: audition
 
   - gear: faster-whisper

@@ -102,7 +102,7 @@ def node():
 
 def engines():
     """Where jekyll-enough may be, from the code root, first found wins: FCPM_JEKYLL_ENOUGH; the origin's
-    owner/repo layout, once the origin lives at the root (~/code/origin); then refs/, which bin/refs keeps."""
+    owner/repo layout, once the origin lives at the root (~/code/origin); then refs/."""
     out = [pathlib.Path(os.environ["FCPM_JEKYLL_ENOUGH"])] if os.environ.get("FCPM_JEKYLL_ENOUGH") else []
     return out + [CODE / "origin" / "FCCN-ANTIBODY" / "jekyll-enough", CODE / "refs" / "jekyll-enough"]
 
@@ -756,7 +756,7 @@ def mirror_of(repo):
         return CODE / "refs" / repo
     m = _sibling("places").mirror(repo)
     if m is None:
-        raise Wrong("no mirror of %s in refs/ (refs.wanted, then fcpm install)" % repo)
+        raise Wrong("no mirror of %s in refs/ (the library's refs branch lists them)" % repo)
     return m
 
 
@@ -766,7 +766,7 @@ def new(branch, shed=None, repo=DEFAULT_REPO, start_at=None):
     src = mirror_of(repo)
     repo = src.name
     if not (src / ".git").exists():
-        raise Wrong("no %s in refs/ to make a worktree from (refs.wanted lists what fcpm install keeps)" % repo)
+        raise Wrong("no %s in refs/ to make a worktree from (the library's refs branch lists them)" % repo)
     if git("check-ref-format", "--branch", branch, check=False) != branch or "/" in shed or not shed:
         raise Wrong("%s is not a name a branch can have: letters, digits and dashes are safe" % branch)
     path = place(shed) / ("%s@%s" % (repo, branch.replace("/", "~")))

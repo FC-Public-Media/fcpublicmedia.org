@@ -9,9 +9,9 @@ written, the host finds it.
 ## Rules
 
 - One discipline per repository, citing outside itself only. Change it in its own worktree
-  (`bin/refs work <trove> <branch>`), merge it there, then move this repository's pin.
+  (`fcpm workshed`), merge it there, then move this repository's pin.
 - `.gitmodules` says `update = none` for every trove, so CI's token never tries a private
-  repository. `bin/refs pull` and the kiosk's door check every trove out anyway (`--checkout`), at
+  repository. `machines/pull` and the kiosk's door check every trove out anyway (`--checkout`), at
   the commit this repository pins, as the account origin's URL names, never with a prompt.
 - Its gear lives under its own prefix, `%LOCALAPPDATA%\<profile>\troves\<trove>\` on Windows: the
   path says whose code runs and which grant it needs.

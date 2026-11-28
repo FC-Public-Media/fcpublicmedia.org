@@ -56,7 +56,7 @@ member-site-core/       what FCPM supplies at build time
   site is built with `site/`'s toolchain: given `--source`, Jekyll reads
   `<source>/_config.yml`, not the one in the working directory.
 - `site-template/` carries no `.html`, `.xml` or `.css`
-  (`bin/test_build_sites.py` checks). A member who wants other markup ejects.
+  (`machines/static/test_build_sites.py` checks). A member who wants other markup ejects.
 - `site-template/` has no README. The one a member reads is theirs to write.
 - `site/bin/check-template.py`, run by `.github/workflows/smoke.yml`, composes
   the template with a fixture from `site/tests/fixtures/` and parses the
@@ -143,12 +143,12 @@ The canonical list of every site this node knows about.
 ## Build
 
 ```
-python3 bin/build-sites.py                       build everything buildable
-python3 bin/build-sites.py --list                show the manifest, build nothing
-python3 bin/build-sites.py --only PATH           build one
-python3 bin/build-sites.py --strict              a tenant failure is fatal too
-python3 bin/build-sites.py --publish             publish tenants, prune, rewrite the listing
-python3 bin/build-sites.py --deploy-root DOMAIN  print how DOMAIN is delivered, and its root
+python3 machines/static/build-sites.py                       build everything buildable
+python3 machines/static/build-sites.py --list                show the manifest, build nothing
+python3 machines/static/build-sites.py --only PATH           build one
+python3 machines/static/build-sites.py --strict              a tenant failure is fatal too
+python3 machines/static/build-sites.py --publish             publish tenants, prune, rewrite the listing
+python3 machines/static/build-sites.py --deploy-root DOMAIN  print how DOMAIN is delivered, and its root
 ```
 
 It needs PyYAML. Each entry is built on its own, and the run continues past a
@@ -191,13 +191,13 @@ hydrates or deploys.
   [{"name": …}]}`, sorted and with no timestamp, so it changes only when the
   list does. FCPM's own pages render the listing from it.
 
-It commits nothing. `python3 bin/test_build_sites.py` runs the tests; all but
+It commits nothing. `python3 machines/static/test_build_sites.py` runs the tests; all but
 one use a fake runner, and that one really builds the listed sites, skipping
 when bundler is absent.
 
 ## Publish workflow
 
-`bin/deploy-site` runs `build-sites.py --publish` on every deploy, in its copy
+`machines/deploy-site` runs `build-sites.py --publish` on every deploy, in its copy
 of HEAD, and uploads the result with the site; it commits nothing. FCPM promises
 a deploy, not real time. What follows is how the old GitHub workflow did it.
 
@@ -230,7 +230,7 @@ FCPM owns nothing of a member's. Its claim is one gitlink and one entry.
 
 | a member | what happens |
 |---|---|
-| carries a managed file | `bin/build-sites.py` reports `diverged` and builds nothing for them; the run stays green |
+| carries a managed file | `machines/static/build-sites.py` reports `diverged` and builds nothing for them; the run stays green |
 | ejects | their role becomes `listed`: enumerated, never built or fetched. They are owed the core as a commit to their repository, so their site builds alone; the tool that writes it is not built |
 | asks to be removed | their entry is deleted, and the next `--publish` prunes their site and drops them from the listing |
 | withdraws their feed | their source is removed from `site/_data/feeds.yml`; the sync runs on that push and drops their items |

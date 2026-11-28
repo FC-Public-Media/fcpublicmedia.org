@@ -10,13 +10,13 @@ every studio screen shares (`brand/idle/`). The kiosk's door draws the pages.
 | `welcome/content.yml` | hand-written: the room, the greeting, the panels' wording |
 | `welcome/welcome.yml` | generated, committed, canonical |
 | `welcome/welcome.js` | generated, committed: the same content as `window.FCPM_KIOSK`, for `file://` pages |
-| `bin/build-kiosk.py` | joins `content.yml` to `site/_data/` and writes both artifacts |
+| `machines/kiosk/build-kiosk.py` | joins `content.yml` to `site/_data/` and writes both artifacts |
 
 ```sh
-python3 bin/build-kiosk.py           # write both
-python3 bin/build-kiosk.py --check   # fail if either is stale (CI runs this)
-python3 bin/build-kiosk.py --print   # write nothing, show both
-python3 bin/test_build_kiosk.py
+python3 machines/kiosk/build-kiosk.py           # write both
+python3 machines/kiosk/build-kiosk.py --check   # fail if either is stale (CI runs this)
+python3 machines/kiosk/build-kiosk.py --print   # write nothing, show both
+python3 machines/kiosk/test_build_kiosk.py
 ```
 
 Edit `content.yml` (or the facts in `site/_data/`), regenerate, commit all three. The root
@@ -71,7 +71,7 @@ fetch. Read `welcome.yml` when you can.
 | | owes | never |
 |---|---|---|
 | `site/bin/sync-calendar.py` | `site/_data/calendar.json`, committed periodically | a live pipe to the screens |
-| `bin/build-kiosk.py` | the `classes` panel: the schedule and the two windows | a verdict on what is on now |
+| `machines/kiosk/build-kiosk.py` | the `classes` panel: the schedule and the two windows | a verdict on what is on now |
 | a renderer | the verdict, from its own clock, with `pickSession` | a second rule for "now" |
 
 The schedule is `calendar.json`, as the website's (`site/_includes/class-config.html`). Each session carries `title`, `starts`,
@@ -241,7 +241,7 @@ site-worker's to apply.
  "issued": "2026-10-28T23:29:02-06:00", "nonce": "…", "sig": null}
 ```
 
-`python3 bin/test_replies.py` feeds `replies.py` real bottles made by the site's composer, signed and unsigned.
+`python3 machines/kiosk/test_replies.py` feeds `replies.py` real bottles made by the site's composer, signed and unsigned.
 
 ### wizard:kiosk+host
 

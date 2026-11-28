@@ -1,4 +1,4 @@
-# Every site this node knows about: the canonical list bin/build-sites.py reads.
+# Every site this node knows about: the canonical list machines/static/build-sites.py reads.
 # Roles: site, scaffold, tenant, listed. See docs/members.md.
 
 core: member-site-core
@@ -10,7 +10,7 @@ sites:
     role: site
     domain: fcpublicmedia.org
     deliver: source
-    why: fcpublicmedia.org itself. bin/deploy-site builds it and uploads it to Cloudflare Pages (fcpm-new).
+    why: fcpublicmedia.org itself. machines/deploy-site builds it and uploads it to Cloudflare Pages (fcpm-new).
 
   - path: site-template
     role: scaffold

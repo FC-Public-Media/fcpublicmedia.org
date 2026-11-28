@@ -1,0 +1,38 @@
+#!/bin/sh
+# pull -- this checkout to the origin's main (origin.local), fast-forward only, never over local changes,
+# with its submodules from the origin too and the troves checked out at their pins. The bays' `follow`
+# line and `fcpm install` run it. On Windows the key is in Windows' own OpenSSH agent, which Git's ssh
+# does not speak to (keys), so git is pointed at Windows' ssh. FCPM_ORIGIN_URL names another origin.
+
+cd "$(dirname "$0")/.." || exit 1
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) O=${FCPM_ORIGIN_URL:-ssh://git@origin.local/srv/origin}
+                        SSH="C:/Windows/System32/OpenSSH/ssh.exe -o BatchMode=yes" ;;
+  *)                    O=${FCPM_ORIGIN_URL:-fcpm-origin:/srv/origin}; SSH="" ;;
+esac
+[ -z "$SSH" ] || git config core.sshCommand "$SSH"
+export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never
+
+git remote set-url origin "$O/FC-Public-Media/fcpublicmedia.org"
+# Each submodule from the origin: GitHub's owner/repo is the origin's path. The checked-out ones' own
+# `origin` too, since that is what `submodule update` fetches through.
+git config -f .gitmodules --get-regexp '^submodule\..*\.url$' | while read -r key url; do
+  path=$(printf '%s' "$url" | sed -n 's|^https://\([^@/]*@\)\{0,1\}github\.com/\([^/]*/[^/]*\)$|\2|p' | sed 's|\.git$||')
+  [ -n "$path" ] || continue
+  git config "$key" "$O/$path"
+  p=$(git config -f .gitmodules --get "${key%.url}.path") || continue
+  [ -e "$p/.git" ] || continue
+  git -C "$p" remote set-url origin "$O/$path"
+  [ -z "$SSH" ] || git -C "$p" config core.sshCommand "$SSH"
+done
+
+name=$(basename "$(pwd)")
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || { echo "$name: on $(git rev-parse --abbrev-ref HEAD), not main; left as it is"; exit 0; }
+[ -z "$(git status --porcelain --ignore-submodules=all)" ] || { echo "$name: has changes; left as it is"; exit 0; }
+before=$(git rev-parse --short HEAD)
+git fetch -q origin main || { echo "$name: the origin did not answer ($O)"; exit 1; }
+git merge -q --ff-only origin/main || { echo "$name: diverged from the origin's main; left as it is"; exit 0; }
+after=$(git rev-parse --short HEAD)
+[ "$before" = "$after" ] || echo "$name: $before -> $after ($(git log -1 --format=%s))"
+git submodule update -q --init --checkout -- troves || echo "$name: a trove did not come from the origin"
+exit 0

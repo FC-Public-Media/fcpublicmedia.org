@@ -54,20 +54,16 @@ case "$cmd" in
   card)
     case "${1:-}" in sync) shift; exec "$HERE/cards/sync" "$@" ;; "") exec "$HERE/cards/sync" ;; *) echo "fcpm card [sync [/dev/sdX]]" >&2; exit 2 ;; esac ;;
   install)
-    # This machine as its profile says: its mirror caught up (forward only), what the profile places, the
-    # engines, the profile's system steps (FCPM_DESK: a person is here, so one may ask for an administrator),
-    # the working copy, and on Windows the weekly task where no crew follows (machines/follow does it). A job named is put on before `names` lists it (start.ps1).
+    # This machine as its profile says: this checkout from the origin's main (./pull), what the profile
+    # places, the engines, the profile's system steps (FCPM_DESK: a person is here, so one may ask for an
+    # administrator). A job named is put on before `names` lists it (start.ps1).
     export FCPM_DESK=1
-    m="$CODE/refs"; [ -d "$m" ] || m="$CODE/ref"
-    [ -e "$m/$(basename "$REPO")/.git" ] && "$REPO/bin/refs" pull "$(basename "$REPO")"
+    sh "$HERE/pull"
     if [ $# -gt 0 ]; then "$HERE/sync" -p "$1" install || exit; else "$HERE/sync" install || exit; fi
-    # The public submodules, as this commit names them; the private ones (`update = none`) are bin/refs'.
+    # The rest of the submodules, as this commit names them; the troves (`update = none`) came with pull.
     out=$(GCM_INTERACTIVE=never GIT_TERMINAL_PROMPT=0 git -C "$REPO" submodule update --init --recursive --quiet 2>&1) \
       || { printf '%s\n' "$out" | grep -v "^Skipping submodule '" >&2
-           echo "fcpm: an engine did not come down; fcpm install again, and say so if it still does not"; }
-    "$HERE/watch" copy
-    case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) "$HERE/watch" weekly install ;; esac ;;
-  weekly)    exec "$HERE/watch" weekly ;;
+           echo "fcpm: an engine did not come down; fcpm install again, and say so if it still does not"; } ;;
   check)
     p=$(profile)
     [ -n "$p" ] || { echo "fcpm: this machine wears no profile"; exit 0; }
@@ -99,9 +95,9 @@ case "$cmd" in
       *) echo "fcpm dev [status|on|off]" >&2; exit 2 ;;
     esac ;;
   deploy)
-    # Alone or with --build: fcpublicmedia.org onto Cloudflare Pages (bin/deploy-site), from any machine whose
+    # Alone or with --build: fcpublicmedia.org onto Cloudflare Pages (machines/deploy-site), from any machine whose
     # keychain holds `cloudflare`. With SITE DIR: a finished site onto the static host (static/deploy).
-    case "${1:-}" in ""|--build) exec "$REPO/bin/deploy-site" "$@" ;; esac
+    case "${1:-}" in ""|--build) exec "$REPO/machines/deploy-site" "$@" ;; esac
     exec "$HERE/static/deploy" "$@" ;;
   lines)
     # This machine's lines on the LAN: piles told and read through the origin (docs/lines.md).
@@ -129,8 +125,7 @@ case "$cmd" in
     p=$(profile)
     grep -qs '^held  *\.\./pool\.ps1' "$HERE/$p/MANIFEST" || { echo "fcpm: ${p:-this machine} keeps no pool"; exit 0; }
     ps1 "$HERE/pool.ps1" "$@" ;;
-  refs)      exec "$REPO/bin/refs" "$@" ;;   # the mirrors in ~/code/refs (the kiosk's ref/), and worktrees in ~/code/work
-  runnables) exec "$REPO/bin/runnables" "$@" ;;
+  runnables) exec "$REPO/machines/runnables" "$@" ;;
   recorder)  ps1 "$REPO/troves/recorder/obs.ps1" "$@" ;;
   env)       ps1 "$REPO/troves/recorder/env.ps1" "$@" ;;
   roku)      ps1 "$REPO/troves/roku/roku.ps1" "$@" ;;
