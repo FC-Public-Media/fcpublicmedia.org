@@ -7,7 +7,7 @@
 holdings:
   attic: "D:/fcpm-audit"
   downloads: "~/Downloads"
-  # Where it is meant to be (BAY1.md: E: is the LAN mount; post.yml, pools.yml, share.ps1 say E:), and
+  # Where it is meant to be (code/AGENTS.md: E: is the LAN mount; post.yml, pools.yml, share.ps1 say E:), and
   # the label that proves it: a mismatch is told to a person, and nothing is x-rayed under the wrong name.
   enhance: {at: "E:/", label: "TO ENHANCE"}
   drive: {label: "Google Drive", in: "My Drive"}   # Google Drive for desktop, streamed: found on whatever letter it mounts

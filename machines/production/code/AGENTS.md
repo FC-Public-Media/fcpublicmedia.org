@@ -2,8 +2,24 @@
 
 # FCPM editing bay: the project
 
-This directory, `~/code`, is the project; sessions start here. Autumn calls it `production`: editing
-bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`). The kiosk (media-node) is `200-FCPANEDIT2`.
+Autumn calls this bay `production`: editing bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`).
+The kiosk (media-node) is `200-FCPANEDIT2`.
+
+## Orientation: Bay 1 (user "fcpub", device "BAY1")
+
+`C:\` is Windows and working data.
+`D:\` is becoming user data.
+`E:\` is meant to be mounted from LAN as automation fetch & drop.
+
+`C:\Users\fcpub\code` is our root.
+`C:\Users\fcpub\code\fcpublicmedia.org` is what this bay runs, from the origin's main; sessions start there.
+`D:\fcpm-audit` supports data management on our (eventual) way to M365
+`refs\` is a cold shed: references, for worktree sources, or study (the library's `refs` branch lists them).
+`work\` is worktrees and standalone clones.
+	- we own as code, or
+	- manage as deployed worker code with maintenance assist
+`pools\` is media pipeline prototyping.
+	- deprecated location & implementation
 
 > From the board:
 > 
@@ -51,17 +67,16 @@ bay 1 by sticker, `BAY1` to Windows (11 Home, user `fcpub`). The kiosk (media-no
 - Commit each step as it lands; a draft Autumn wants to read first stays unpushed until she says. Push
   the branch to the origin; Autumn lands it (Helm, `/origin/`). Once it lands, never reuse the worktree:
   a later commit goes on a new branch. No global git identity: each repo has its own.
-- Change this file in a worktree (`machines/production/code/AGENTS.md`); it is read from the mirror.
-  The root's `CLAUDE.md`, `AGENTS.md` and `BAY1.md` come from `home/code/`; edit them there, never at the
-  root: `fcpm install` restores them.
+- Change this file in a worktree (`machines/production/code/AGENTS.md`), like everything else in the
+  repository; the checkout this bay runs has it once it lands on the origin's main.
 - A session starts no service, keeps no live checkout and runs nothing long; nothing revives it.
 - Reach other machines outward only: code by commit, media through the depot, talk by session
   message. Peers: `kiosk` (media-node), `digitization` (station-node, where `rodecaster` captures).
 - Hand Autumn an `fcpm` verb, never a path, interpreter or window; a step that needs one is a gap in
   `fcpm` to fill. Log surprises with `machines/kiosk/gotcha`.
 - The crew's `follow` line (`machines/follow`) brings in the origin's main (`machines/pull`) and places what the profile maps.
-  The pool (`machines/pool.ps1` in the mirror, task `editing-bay-1 pool`, held by the MANIFEST) keeps the
-  root's server and the rolling TV up (`%LOCALAPPDATA%\editing-bay-1\pool.log`). `fcpm screen` saying
+  The pool (`machines/pool.ps1` in the checkout, task `editing-bay-1 pool`, held by the MANIFEST) keeps
+  the server sessions start from and the rolling TV up (`%LOCALAPPDATA%\editing-bay-1\pool.log`). `fcpm screen` saying
   `kept: NO` means it is not running. `fcpm pool off` ends every Remote Control server here with
   Ctrl+C, so they sign off (a killed one leaves claude.ai refusing new servers for ~3 minutes),
   until `on` or a restart: the bay always comes on with Remote Control. More:

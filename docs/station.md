@@ -80,7 +80,7 @@ machine, so a workflow that needs `age` should read the same list, not carry its
 and PowerShell (`fcpm help`). A step that needs a path, an interpreter or a choice of shell is a gap
 in `fcpm`. Verbs are for people; a task names the tool itself, because a grant pins the tool's blob.
 `fcpm`'s own blob is pinned by a proof, so change it only with a new one. On Windows,
-`~/.local/bin/fcpm.cmd` runs the mirror's `machines/fcpm` with Git's bash. `machines/fcpm.yml` says
+`machines/fcpm.cmd` runs `machines/fcpm` beside it with Git's bash; the profile's MANIFEST puts the checkout's `machines` on PATH. `machines/fcpm.yml` says
 what does each verb per platform; where it says `not:`, `fcpm` prints what stands in and exits 3.
 
 | verb | does |
@@ -112,7 +112,7 @@ the MANIFEST maps is what is there, whatever was put there by hand. It never des
 machine has, and keeps nothing else: a file it replaces goes to `<name>.pre-sync` only when it had
 changes of its own (never over one already kept), and an aside that holds only what sync had placed,
 as git or its record of the last compiled `settings` has it, is let go. An existing clone is left, and
-a `gone` path no commit holds is named and left. A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
+a `gone` path that neither a commit nor sync's own record holds is named and left. A home path that starts `./` is in this checkout instead (the compiled GRANTS, the checkout's `machines` on PATH). A `system` line asks for an administrator only when `FCPM_DESK` is set, as `fcpm install`
 sets it; the crew's `follow` line, unattended, leaves it differing for the next. `mirror` copies the machine's files back into a `work/` worktree for a PR.
 
 Whatever runs here on its own is mapped: a file by `mirror`, a task by `held`, and a script it runs is
@@ -126,15 +126,16 @@ the committed file in the mirror, never a copy that could drift from it.
 | `path` | a home folder put on the user's PATH |
 | `system` | a script in the profile holding a file of the system's (`script check`, `script install`); the path is `-` |
 | `held` | a script holding something of this machine's that is no file, a scheduled task (`script check`, `script install`), run from the repository; install runs it whenever check says differs, unattended too. The path is `-` |
-| `gone` | a home path no longer mapped (the profile path is `-`): removed when a commit holds its contents (as text: line endings and trailing blank lines aside), else named `stray` and left; kept while a `held` line before it did not take |
+| `gone` | a home path no longer mapped (the profile path is `-`): removed when a commit holds its contents (as text: line endings and trailing blank lines aside) or sync placed it as it is, else named `stray` and left; kept while a `held` line before it did not take |
 
 ## Sessions
 
 - A machine's root is `~/code`: `refs/` and `work/` are sheds ([workshed.md](workshed.md)); the references
   anyone keeps are the library's `refs` branch. `work/` is one of the workshed's sheds, and a person's worktrees are in
-  whichever shed they keep, each bound in `machines/<job>/workshed.yml` ([workshed.md](workshed.md)). Its instructions are the profile's `code/AGENTS.md`, which
-  `~/code/CLAUDE.md` points at in the mirror (`@refs/fcpublicmedia.org/machines/<profile>/...`).
-- At sign-in the root runs an unnamed Remote Control server, `claude remote-control`, with its
+  whichever shed they keep, each bound in `machines/<job>/workshed.yml` ([workshed.md](workshed.md)). What a bay runs is
+  `~/code/fcpublicmedia.org`, from the origin's main, and sessions start there: their instructions are the repository's
+  own `CLAUDE.md` and `AGENTS.md`, which send them to the profile's `code/AGENTS.md`.
+- At sign-in the checkout runs an unnamed Remote Control server, `claude remote-control`, with its
   one home session. Only with that session does the server read its bookmark
   (`bridge-pointer.json`) and come back as the same environment, so the sessions listed under the
   machine still answer after a restart; production freshens the bookmark so a night off keeps

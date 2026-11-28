@@ -26,3 +26,5 @@ __pycache__/
 site/assets/img/wifi-qr.svg
 # the ch97 page's libraries are kept on purpose (machines/broadcast/ch97/vendor.yml)
 !machines/broadcast/ch97/page/vendor/
+# A machine's own Claude settings, compiled from its GRANTS (machines/sync), and what a session approves.
+/.claude/

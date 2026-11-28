@@ -1,6 +1,7 @@
 # GRANTS: editing bay 2's answer to ../RUNNABLES. Line types: docs/station.md, GRANTS.
 
-checkout  refs/fcpublicmedia.org
+# Sessions start in the checkout this bay runs, so a path here is as committed.
+checkout  .
 
 wears  machines/runnables
 wears  machines/binding
