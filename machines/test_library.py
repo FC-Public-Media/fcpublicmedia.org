@@ -106,11 +106,36 @@ class Library(unittest.TestCase):
         hook.write_text(library.PRE_PUSH, encoding="utf-8", newline="\n")
         line = "refs/heads/retain/test abc refs/heads/retain/test 000\n"
         ask = lambda url: subprocess.run([sh, str(hook), "origin", url], input=line, capture_output=True, text=True)
-        for url in ("git@origin.local:FC-Public-Media/library", "ssh://git@origin.local/FC-Public-Media/library"):
+        for url in ("git@origin.local:FC-Public-Media/library", "ssh://git@origin.local/FC-Public-Media/library",
+                    "fcpm-origin:/srv/origin/FC-Public-Media/fcpublicmedia.org"):
             self.assertEqual(ask(url).returncode, 0, url)
         for url in ("git@github.com:FC-Public-Media/library", "https://github.com/origin.local/library",
                     "git@not-origin.local.example:x/y"):
             self.assertNotEqual(ask(url).returncode, 0, url)
+
+    def test_retain_begins_from_the_origins_branch(self):
+        # A machine's caretakers may begin its retain/ on the origin; its first x-ray builds on that.
+        root = pathlib.Path(self.tmp.name)
+        origin, checkout, seed = root / "origin.git", root / "checkout", root / "seed"
+        def g(*a, cwd=None):
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *a],
+                           cwd=cwd, check=True, capture_output=True)
+        g("init", "-q", "--bare", str(origin))
+        g("init", "-q", "-b", "retain/test", str(seed))
+        (seed / "CONTEXT.md").write_text("this machine\n")
+        g("add", "-A", cwd=seed)
+        g("commit", "-q", "-m", "context", cwd=seed)
+        g("push", "-q", str(origin), "retain/test", cwd=seed)
+        g("init", "-q", str(checkout))
+        g("remote", "add", "origin", str(origin), cwd=checkout)
+        was = (library.REPO, library.lan_url)
+        library.REPO, library.lan_url = checkout, lambda url: True
+        try:
+            self.run_(library.xray)
+        finally:
+            library.REPO, library.lan_url = was
+        self.assertEqual((self.retained() / "CONTEXT.md").read_text(), "this machine\n")
+        self.assertTrue((self.retained() / "attic" / "xray.tsv").exists())
 
     def test_diff_folds_whole_folders(self):
         self.run_(library.xray)

@@ -1,17 +1,14 @@
 # MANIFEST: what editing bay 2 carries of its own home, for `../sync`. Modes as in ../production/MANIFEST.
-# The twin of editing bay 1: CLAUDE.md -> AGENTS.md -> BAY2.md -> code/AGENTS.md, and the bays' pool.
-mirror    home/code/CLAUDE.md                code/CLAUDE.md
-mirror    home/code/AGENTS.md                code/AGENTS.md
-mirror    home/code/BAY2.md                  code/BAY2.md
+# The twin of editing bay 1, and the bays' pool.
 
 mirror    ../production/home/git/ignore      .config/git/ignore
 
-mirror    ../production/home/bin/fcpm.cmd    .local/bin/fcpm.cmd
 path      -                                  .local/bin
+path      -                                  ./machines
 
-settings  editing-bay-2                      code/.claude/settings.json
+settings  editing-bay-2                      ./.claude/settings.local.json
 
-# The pool: its task runs machines/pool.ps1 in the mirror, as the commit has it, never a copy at the root.
+# The pool: its task runs machines/pool.ps1 in the checkout, as the commit has it, never a copy.
 held      ../pool.ps1            -
 gone      -                      code/bin/pool.ps1
 gone      -                      code/bin/pool.ps1.pre-sync
@@ -19,3 +16,11 @@ gone      -                      code/bin/pool.ps1.pre-sync
 # The references are the library's `refs` branch; what was placed here for them goes.
 gone      -                      code/bin/refs
 gone      -                      code/refs.wanted
+
+# Sessions start in the checkout and read the repository's own CLAUDE.md; what was placed in ~/code for
+# them, and the copy of fcpm.cmd, goes.
+gone      -                      code/CLAUDE.md
+gone      -                      code/AGENTS.md
+gone      -                      code/BAY2.md
+gone      -                      code/.claude/settings.json
+gone      -                      .local/bin/fcpm.cmd

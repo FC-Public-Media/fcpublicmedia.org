@@ -1,4 +1,4 @@
-# pool.ps1 -- keep this bay's root reachable, with nothing open until asked.
+# pool.ps1 -- keep this bay's sessions reachable, in the checkout it runs, with nothing open until asked.
 #
 #   pool.ps1 status              is the root's server up and current, and what sessions run
 #   pool.ps1 pass                one pass: restart the crew's supervisor if its crew.py is older
@@ -15,8 +15,9 @@
 # Every bay's whose MANIFEST holds it (`held ../pool.ps1`): `fcpm install` registers the task and the
 # crew's follow line keeps it so. Only what needs someone signed in is here: the server and the screens.
 # Bringing in main and placing it is the crew's `follow` line (machines/follow), signed in or not.
-# The task runs the committed file in ~/code/refs, never a copy, so what runs every minute is what a
-# commit says. The job is the one whose `names` lists this computer.
+# The task runs the committed file in the checkout this bay runs (~/code/fcpublicmedia.org, by start.ps1),
+# never a copy, and the server starts its sessions there, so their instructions are the repository's own
+# (CLAUDE.md). The job is the one whose `names` lists this computer.
 # See docs/station.md, Sessions, and Sync and MANIFEST.
 # ASCII only: Windows PowerShell 5.1 reads a BOM-less script as ANSI.
 
@@ -25,9 +26,9 @@ param([Parameter(Position = 0)][string]$Verb = "status",
 
 # Not "Stop": under 5.1 any line claude.exe writes to stderr would become a terminating error.
 $ErrorActionPreference = "Continue"
-# The root by name, not by this file's place: the task runs this file where the mirror keeps it.
 $Root = if ($env:FCPM_CODE) { $env:FCPM_CODE } else { Join-Path $HOME "code" }
-$Mirror = Join-Path $Root "refs\fcpublicmedia.org"
+# The checkout is this file's own: the task runs it where the checkout keeps it.
+$Mirror = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 function Find-Job {
     foreach ($n in @(Get-ChildItem (Join-Path $Mirror "machines\*\names") -ErrorAction SilentlyContinue)) {
@@ -192,7 +193,7 @@ function KeepBookmark {
     # same environment. It does that from its bookmark, bridge-pointer.json, which it rewrites
     # hourly and drops at 4 h, so a night off orphaned every session (2026-10-10). Freshen it
     # before a start, only if one of ours wrote it. Old sessions wait for a message; none wakes.
-    $p = Join-Path $HOME (".claude\projects\{0}\bridge-pointer.json" -f ($Root -replace '[^A-Za-z0-9]', '-'))
+    $p = Join-Path $HOME (".claude\projects\{0}\bridge-pointer.json" -f ($Mirror -replace '[^A-Za-z0-9]', '-'))
     if (-not (Test-Path $p)) { return }
     try { $id = (Get-Content $p -Raw | ConvertFrom-Json).environmentId } catch { return }
     if (-not $id) { return }
@@ -216,7 +217,7 @@ function EnsureServer {
     }
     Bounce
     if (@(Servers).Count) { return }
-    # A server that ended unsigned-off holds ~/code for minutes; starts until then are refused.
+    # A server that ended unsigned-off holds its folder for minutes; starts until then are refused.
     $err = Join-Path $State "server.err"
     $why = Get-Content $err -ErrorAction SilentlyContinue | Where-Object { $_ -match '^Error:' } | Select-Object -Last 1
     if ($why) { Say ("the last server stopped: {0}" -f $why) }
@@ -227,9 +228,9 @@ function EnsureServer {
     $none = Join-Path $State "server.in"
     if (-not (Test-Path $none)) { New-Item -ItemType File $none | Out-Null }
     try {
-        $p = Start-Process -FilePath $Claude -ArgumentList $a -WorkingDirectory $Root -WindowStyle Hidden -PassThru `
+        $p = Start-Process -FilePath $Claude -ArgumentList $a -WorkingDirectory $Mirror -WindowStyle Hidden -PassThru `
             -RedirectStandardInput $none -RedirectStandardOutput (Join-Path $State "server.out") -RedirectStandardError $err
-        Say ("started the root's server in {0} (pid {1})" -f $Root, $p.Id)
+        Say ("started the server in {0} (pid {1})" -f $Mirror, $p.Id)
     } catch { Say ("could not start the root's server: {0}" -f $_) }
 }
 
@@ -349,7 +350,7 @@ switch ($Verb) {
             -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew
         $who = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
         Register-ScheduledTask -TaskName $TaskName -Action $act -Trigger @($atLogon, $every) -Settings $set `
-            -Principal $who -Description "$Bay's root: keep the Remote Control server up in $Root. machines\pool.ps1, held by the MANIFEST." -Force | Out-Null
+            -Principal $who -Description "$Bay's root: keep the Remote Control server up in $Mirror. machines\pool.ps1, held by the MANIFEST." -Force | Out-Null
         Write-Output "registered '$TaskName': at logon, and every minute"
         if (Get-ScheduledTask -TaskName $Weekly -ErrorAction SilentlyContinue) {
             Unregister-ScheduledTask -TaskName $Weekly -Confirm:$false

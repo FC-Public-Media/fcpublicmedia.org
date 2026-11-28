@@ -18,7 +18,7 @@ $ProgressPreference = "SilentlyContinue"   # the progress bar is what makes a do
 
 $Url  = "ssh://git@origin.local/srv/origin/FC-Public-Media/fcpublicmedia.org"    # as machines/pull names it
 $Ssh  = "C:/Windows/System32/OpenSSH/ssh.exe -o BatchMode=yes"                    # the agent's key; Git's ssh cannot reach it
-$Repo = Join-Path $HOME "code\refs\fcpublicmedia.org"
+$Repo = Join-Path $HOME "code\fcpublicmedia.org"      # what this machine runs; its sessions start here
 $Git  = Join-Path $env:ProgramFiles "Git\cmd\git.exe"
 $Bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
 

@@ -13,7 +13,7 @@ serves:
   - service: remote-control
     for: "the root's Remote Control server and its one home session, so listed sessions keep their link through a restart; it wakes none"
     start: "{home}/.local/bin/claude.exe remote-control"
-    cwd: "{code}"
+    cwd: "{repo}"
     alive: {process: 'claude.exe.*\sremote-control(\s|$)'}
 
   - service: drain

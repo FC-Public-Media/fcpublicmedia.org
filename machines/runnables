@@ -226,7 +226,7 @@ case "$cmd" in
         nf = split(substr(forms[run], 2), f, SUBSEP)
         for (i = 1; i <= nf; i++) {
           if (a != "deny" && i > 1) break
-          split(f[i], tp, "\t"); cmd = tp[2] checkout "/" h
+          split(f[i], tp, "\t"); cmd = tp[2] (checkout == "." ? "" : checkout "/") h
           if (shape == "*") cmd = cmd " *"; else if (shape != "-") cmd = cmd " " shape
           nr = 1; rs[1] = tp[1] "(" cmd ")"
           # A deny also covers the verb with anything after it.

@@ -1,8 +1,8 @@
 # GRANTS: editing bay 1's answer to ../RUNNABLES. Line types: docs/station.md, GRANTS.
 # People use this machine every week, and their OBS and its settings are theirs, not ours.
 
-# The read-only mirror: it only fast-forwards to main. This bay keeps no live checkout.
-checkout  refs/fcpublicmedia.org
+# Sessions start in the checkout this bay runs, so a path here is as committed.
+checkout  .
 
 # The door is the media node's; this bay does not run it.
 wears  troves/recorder/bay/obs-portable.ps1
